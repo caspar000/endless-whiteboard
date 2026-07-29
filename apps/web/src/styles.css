@@ -16,9 +16,9 @@
 	   on the desk, which is what gives the endless canvas a surface at all. */
 	--lb-canvas: #131317;
 	--lb-dot: #4a4a57;
-	/* Thumbnails are exported light (see persistence/thumbnails.ts), so the preview well behind a
-	   loading or letterboxed image matches the paper in the image itself. */
-	--lb-thumb-paper: #f7f7f8;
+	/* Thumbnails are exported in the app's own dark theme, so the preview well behind a loading or
+	   letterboxed image matches the paper inside the image. */
+	--lb-thumb-paper: var(--lb-canvas);
 	--lb-radius: 10px;
 	--lb-font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
 	color-scheme: dark;
@@ -295,9 +295,9 @@ button {
 	display: grid;
 	place-items: center;
 	background-color: var(--lb-thumb-paper);
-	background-image: radial-gradient(#c9c9cf 1px, transparent 1px);
+	background-image: radial-gradient(var(--lb-dot) 1px, transparent 1px);
 	background-size: 14px 14px;
-	color: #9a9aa4;
+	color: var(--lb-text-faint);
 	font-size: 22px;
 	font-weight: 600;
 	letter-spacing: 0.04em;
@@ -384,8 +384,7 @@ button {
 }
 .lb-card__fav--on {
 	color: var(--lb-star);
-	/* The thumbnails are light, so the star needs its own contrast to stay readable on them. */
-	text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
+	text-shadow: 0 1px 3px rgb(0 0 0 / 65%);
 }
 .lb-list__rename {
 	flex: 1;
@@ -522,12 +521,33 @@ button {
 	color: var(--lb-text);
 }
 .lb-board__name {
+	background: none;
+	border: 0;
+	color: var(--lb-text);
+	font-family: inherit;
 	font-size: 13px;
 	font-weight: 500;
 	max-width: 32ch;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	padding: 2px 4px;
+	border-radius: 5px;
+}
+.lb-board__name:hover {
+	background: var(--lb-surface-2);
+}
+.lb-board__rename input {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	padding: 2px 5px;
+	width: 22ch;
+	outline: none;
 }
 
 .lb-debug-badge {

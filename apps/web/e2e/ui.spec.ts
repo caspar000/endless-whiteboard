@@ -158,6 +158,46 @@ test.describe('home screen', () => {
 		})
 		expect(size.w).toBeGreaterThan(50)
 		expect(size.h).toBeGreaterThan(50)
+
+		// And it stays put. A second export used to run from the editor's unmount path, while the board
+		// was hidden for the persistence drain, and overwrote this one with a version missing every node
+		// background and font — previews looked right for about a second and then decayed.
+		const bytes = await thumbnailBytes(page)
+		expect(bytes.length).toBeGreaterThan(0)
+		await page.waitForTimeout(3000)
+		expect(await thumbnailBytes(page)).toEqual(bytes)
+	})
+
+	test('the board title can be renamed by double-clicking it on the canvas', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas')).toBeVisible()
+
+		const title = page.locator('.lb-board__name')
+		await expect(title).toHaveText('Home office shopping')
+		await title.dblclick()
+
+		const input = page.getByLabel('Board name')
+		await expect(input).toBeFocused()
+		await input.fill('Autumn shopping')
+		await input.press('Enter')
+
+		await expect(page.locator('.lb-board__name')).toHaveText('Autumn shopping')
+
+		// The rename is persisted, not just local to the chrome.
+		await backToList(page)
+		await expect(page.locator('.lb-card', { hasText: 'Autumn shopping' })).toHaveCount(1)
+	})
+
+	test('renaming on the canvas can be abandoned with Escape', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas')).toBeVisible()
+
+		await page.locator('.lb-board__name').dblclick()
+		const input = page.getByLabel('Board name')
+		await input.fill('Discard me')
+		await input.press('Escape')
+
+		await expect(page.locator('.lb-board__name')).toHaveText('Home office shopping')
 	})
 
 	test('an unopened board shows a placeholder rather than a broken image', async ({ page }) => {
@@ -231,6 +271,31 @@ async function countShapesTotal(page: import('@playwright/test').Page): Promise<
 /** The dot pattern's first circle offset, which encodes the camera position. */
 async function firstDotOffset(page: import('@playwright/test').Page): Promise<string> {
 	return page.locator('.lb-paper circle').first().getAttribute('cx').then((v) => v ?? '')
+}
+
+/** Sizes of every stored thumbnail, sorted — a cheap fingerprint for "did these change?". */
+async function thumbnailBytes(page: import('@playwright/test').Page): Promise<number[]> {
+	return page.evaluate(async () => {
+		const db = await new Promise<IDBDatabase>((resolve) => {
+			const req = indexedDB.open('lifeboard-kv')
+			req.onsuccess = () => resolve(req.result)
+		})
+		const store = () => db.transaction('kv', 'readonly').objectStore('kv')
+		const keys = await new Promise<IDBValidKey[]>((resolve) => {
+			const q = store().getAllKeys()
+			q.onsuccess = () => resolve(q.result)
+		})
+		const sizes: number[] = []
+		for (const key of keys.filter((k) => String(k).startsWith('thumb:'))) {
+			const blob = await new Promise<Blob | undefined>((resolve) => {
+				const q = store().get(key)
+				q.onsuccess = () => resolve(q.result)
+			})
+			sizes.push(blob?.size ?? 0)
+		}
+		db.close()
+		return sizes.sort((a, b) => a - b)
+	})
 }
 
 async function countThumbnails(page: import('@playwright/test').Page): Promise<number> {

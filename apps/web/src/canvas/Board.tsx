@@ -46,6 +46,9 @@ const canvasComponents: TLComponents = {
 	StylePanel: null,
 }
 
+/** Longest we'll make someone wait for a preview before leaving anyway. */
+const THUMBNAIL_TIMEOUT_MS = 2_000
+
 const editorOptions: Partial<TldrawOptions> = {
 	createTextOnCanvasDoubleClick: false,
 }
@@ -90,10 +93,12 @@ export function Board({
 	board,
 	seedDemo = false,
 	onExit,
+	onRename,
 }: {
 	board: BoardMeta
 	seedDemo?: boolean
 	onExit: () => void
+	onRename?: (name: string) => void
 }) {
 	const platform = usePlatform()
 	const [restore, setRestore] = useState<{ ready: boolean; snapshot?: RawBoardSnapshot }>({
@@ -117,6 +122,32 @@ export function Board({
 	// The node picker shown on double-clicking empty canvas (see NodeCreateMenu).
 	const [createPrompt, setCreatePrompt] = useState<NodeCreatePrompt | null>(null)
 	const [editor, setEditor] = useState<Editor | null>(null)
+	const [leaving, setLeaving] = useState(false)
+
+	/**
+	 * Capture the home-screen thumbnail, then leave.
+	 *
+	 * Awaited on purpose: the export has to finish while the board is still mounted *and visible*, so
+	 * it cannot be fired off into the navigation. It takes a fraction of a second, and the button
+	 * shows that it is working.
+	 */
+	const leave = async () => {
+		if (leaving) return
+		setLeaving(true)
+		if (editor) {
+			// Bounded: leaving a board must never be blocked by a thumbnail. `saveBoardThumbnail`
+			// swallows its own errors, but a hung export would otherwise strand the user on "Saving…".
+			await Promise.race([
+				saveBoardThumbnail(platform.kv, board.id, editor),
+				new Promise((resolve) => setTimeout(resolve, THUMBNAIL_TIMEOUT_MS)),
+			])
+		}
+		onExit()
+		// Cleared because the flag only covers the await above. This component is normally about to
+		// unmount — but not always: reopening the board while it is still draining reuses this very
+		// instance, and a stale `true` left the back button reading "Saving…" and refusing to leave.
+		setLeaving(false)
+	}
 
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
@@ -168,9 +199,10 @@ export function Board({
 						if (w.editor === editor) delete w.editor
 						stopWatchingDoubleClicks()
 						stopTracking()
-						// Capture the home-screen thumbnail here: this is the one moment we have a live
-						// editor for a board the user is leaving. Fire-and-forget — see thumbnails.ts.
-						void saveBoardThumbnail(platform.kv, board.id, editor)
+						// NB: no thumbnail capture here. Exporting from the unmount path ran while the
+						// board host was already hidden for the drain, and tldraw's exporter dropped every
+						// node background and font — previews looked right for a second and then decayed
+						// into serif text. It happens in `leave()` below, while the board is still visible.
 					}
 				}}
 			>
@@ -180,7 +212,7 @@ export function Board({
 				    dev, where the badge is the only thing that renders it. */}
 				{import.meta.env.DEV && <RollupDebugBadge />}
 			</Tldraw>
-			<BoardChrome board={board} onExit={onExit} />
+			<BoardChrome board={board} onExit={() => void leave()} leaving={leaving} onRename={onRename} />
 			{editor && createPrompt && (
 				<NodeCreateMenu
 					editor={editor}
@@ -214,13 +246,59 @@ function trackBoardActivity(editor: Editor, touch: () => void): () => void {
 	}
 }
 
-function BoardChrome({ board, onExit }: { board: BoardMeta; onExit: () => void }) {
+function BoardChrome({
+	board,
+	onExit,
+	leaving,
+	onRename,
+}: {
+	board: BoardMeta
+	onExit: () => void
+	leaving: boolean
+	onRename?: (name: string) => void
+}) {
+	const [renaming, setRenaming] = useState(false)
+
 	return (
 		<div className="lb-board__chrome">
 			<button className="lb-board__back" onClick={onExit} title="Back to all boards">
-				← Boards
+				{leaving ? '← Saving…' : '← Boards'}
 			</button>
-			<span className="lb-board__name">{board.name}</span>
+
+			{renaming && onRename ? (
+				<form
+					className="lb-board__rename"
+					onSubmit={(e) => {
+						e.preventDefault()
+						const value = new FormData(e.currentTarget).get('name')
+						if (typeof value === 'string' && value.trim()) onRename(value.trim())
+						setRenaming(false)
+					}}
+				>
+					{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+					<input
+						autoFocus
+						name="name"
+						defaultValue={board.name}
+						aria-label="Board name"
+						onBlur={() => setRenaming(false)}
+						onKeyDown={(e) => {
+							if (e.key === 'Escape') setRenaming(false)
+							// Otherwise the canvas would read these as tool shortcuts.
+							e.stopPropagation()
+						}}
+					/>
+				</form>
+			) : (
+				<button
+					className="lb-board__name"
+					// Double-click to rename, matching how the board name behaves on the home screen.
+					onDoubleClick={() => onRename && setRenaming(true)}
+					title={onRename ? 'Double-click to rename' : board.name}
+				>
+					{board.name}
+				</button>
+			)}
 		</div>
 	)
 }

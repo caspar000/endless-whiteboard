@@ -27,7 +27,8 @@ captured from the live editor as the board is closed; boards never opened show a
 placeholder. Star a board to pin it to Favourites.
 
 **Board** — the endless canvas on dotted paper, with a registry-driven toolbar. Double-clicking empty
-canvas asks which kind of node to add rather than creating a text shape.
+canvas asks which kind of node to add rather than creating a text shape; double-clicking the board's
+name in the top bar renames it.
 
 ## The three node types
 
@@ -71,11 +72,12 @@ tldraw's `Background` (rather than enabling grid mode, which would also snap mov
 set to `null`, and `createTextOnCanvasDoubleClick: false` disables the default double-click behaviour
 so `NodeCreateMenu` can offer the node types instead.
 
-**Board thumbnails are exported in light mode** even though the app is dark. Node components are
-styled dark in CSS, so a dark export renders as an almost-black rectangle at card size. Note also that
-tldraw's SVG export does not apply our node CSS, so thumbnails show node *content* without the card
-styling — legible and recognisable per board, but not pixel-faithful. Full fidelity would need a
-`toSvg` implementation per node type.
+**Board thumbnails are captured when you press "← Boards", not on unmount** — and that timing is
+load-bearing. Exporting from the editor's unmount path runs while the board host is
+`visibility: hidden` for the persistence drain, and tldraw's exporter then produces an image with every
+node background and font missing: previews looked correct for about a second and then decayed into
+serif text on white. `leave()` in `canvas/Board.tsx` captures while the board is still on screen, and
+awaits it (bounded by a timeout) so navigation can't outrun the export.
 
 **Changing a node's props requires a migration.** `apps/web/src/persistence/snapshot-fixtures.test.ts`
 loads a real snapshot from every released schema and fails if a migration is missing — verified to
@@ -107,7 +109,8 @@ port to one new file (`TauriPlatformAdapter`).
   as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
   follow-up.
 - **Dark theme only.** Every node component is styled dark; a light theme means restyling them, not
-  flipping a flag. (Board thumbnails are the one exception, and deliberately so — see above.)
+  flipping a flag. Thumbnails are exported in the same dark theme, so a preview looks like the board
+  you left.
 - **The canvas style panel is removed.** None of the node types have style props, so it only ever
   applied to tldraw's built-in shapes. Their colour and size now come from tldraw's defaults.
 

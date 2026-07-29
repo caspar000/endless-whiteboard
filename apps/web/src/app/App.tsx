@@ -66,6 +66,15 @@ export function App() {
 		})()
 	}, [api, platform, navigate])
 
+	// Reopening a board while it is still draining means the user is not leaving after all, so stop the
+	// countdown — otherwise its timer fires mid-session and unmounts the editor they just came back to.
+	useEffect(() => {
+		if (route.view !== 'board' || draining?.id !== route.boardId) return
+		if (drainTimer.current) clearTimeout(drainTimer.current)
+		drainTimer.current = null
+		setDraining(null)
+	}, [route, draining])
+
 	const exitToList = useCallback(
 		(board: BoardMeta) => {
 			setDraining(board)
@@ -136,6 +145,7 @@ export function App() {
 						board={mountedBoard}
 						seedDemo={route.view === 'board' && route.seedDemo === true}
 						onExit={() => exitToList(mountedBoard)}
+						onRename={(name) => void api.rename(mountedBoard.id, name)}
 					/>
 				</div>
 			)}

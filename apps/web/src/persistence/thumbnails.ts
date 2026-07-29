@@ -4,10 +4,14 @@ import type { KvStore } from '../platform/PlatformAdapter'
 /**
  * Board thumbnails — the previews on the home screen's cards.
  *
- * Generated from the live editor when you leave a board, which is the one moment we already have a
- * mounted editor for that board (see `DRAIN_MS` in app/App.tsx). No background worker, no re-opening
- * boards to render them: the plan deferred "thumbnail workers" as over-engineering, and this needs
- * none.
+ * Generated from the live editor at the moment you ask to leave a board — *before* anything starts
+ * tearing down. No background worker and no re-opening boards to render them: the plan deferred
+ * "thumbnail workers" as over-engineering, and this needs none.
+ *
+ * The timing is load-bearing. This used to run from the editor's unmount cleanup, by which point the
+ * board host is `visibility: hidden` for the persistence drain — and tldraw's exporter produced an
+ * image with every node's background and font missing, so previews visibly degraded to serif text a
+ * second after looking right. Capture while the board is still on screen.
  *
  * Stored as Blobs in the KV store under their own keys rather than inside the board index, so listing
  * boards stays a single small read and never drags a megabyte of images with it.
@@ -61,11 +65,11 @@ export async function saveBoardThumbnail(
 			format: 'webp',
 			quality: 0.7,
 			background: true,
-			// Exported light, even though the app is dark. Node components are styled dark in CSS, so a
-			// dark export is dark-on-dark and the preview reads as an almost-black rectangle. On light
-			// paper the same cards stand out — which is exactly why Freeform's thumbnails are legible at
-			// card size.
-			darkMode: false,
+			// Exported in the app's own theme, so a preview looks like the board you left. (An earlier
+			// version forced light mode to make previews legible — but that was compensating for a
+			// broken export that dropped the node card backgrounds entirely. With the cards rendering,
+			// dark-on-dark reads fine, and matching the app is what Freeform does.)
+			darkMode: true,
 			padding: 32,
 			// Clamped: a board whose content is tiny would otherwise be upscaled enormously.
 			scale: Math.min(scale, 2),

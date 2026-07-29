@@ -29,7 +29,14 @@ function daysSince(ts: number): number {
  * sites that aren't installed — a one-click backup plus a visible "last backup N days ago" is the
  * mitigation the plan calls for, not a nice-to-have.
  */
-export function SettingsPanel({ api }: { api: BoardsApi }) {
+export function SettingsPanel({
+	api,
+	onImported,
+}: {
+	api: BoardsApi
+	/** Called after a successful import so the caller can show the restored boards. */
+	onImported?: () => void
+}) {
 	const platform = usePlatform()
 	const [estimate, setEstimate] = useState<StorageEstimate | null>(null)
 	const [lastBackup, setLastBackup] = useState<number | null>(null)
@@ -70,6 +77,9 @@ export function SettingsPanel({ api }: { api: BoardsApi }) {
 		try {
 			const result = await importBackup(platform, file)
 			await api.refresh()
+			// Land the user on the boards they just restored: staying on this panel means the import
+			// reports success while the thing it produced is nowhere in sight.
+			onImported?.()
 			setMessage(
 				[
 					`Imported ${result.boardsImported} board${result.boardsImported === 1 ? '' : 's'} as copies.`,

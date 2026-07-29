@@ -344,6 +344,9 @@ test.describe('backup', () => {
 		await expect(page.locator('.lb-item')).toHaveCount(1)
 		await backToList(page)
 
+		// The backup controls live in the sidebar's Storage section now, not under the board grid.
+		await page.getByRole('button', { name: 'Storage & backup' }).click()
+
 		// Export and capture the zip bytes.
 		const downloadPromise = page.waitForEvent('download')
 		await page.getByRole('button', { name: /Export backup/ }).click()
@@ -359,12 +362,14 @@ test.describe('backup', () => {
 		await expect(page.locator('.lb-list__board', { hasText: 'Backed up' })).toHaveCount(0)
 
 		// Import the zip back.
+		await page.getByRole('button', { name: 'Storage & backup' }).click()
 		const fileChooserPromise = page.waitForEvent('filechooser')
 		await page.getByRole('button', { name: 'Import backup' }).click()
 		const fileChooser = await fileChooserPromise
 		await fileChooser.setFiles(zipPath!)
 
-		await expect(page.locator('.lb-settings__message')).toContainText('Imported')
+		// A successful import returns to the board grid, so the restored board is the assertion — not a
+		// status line on a panel the user has already been taken away from.
 		await expect(page.locator('.lb-list__board', { hasText: 'Backed up' })).toHaveCount(1)
 
 		// Open the restored board: its content came back through tldraw's snapshot loader.

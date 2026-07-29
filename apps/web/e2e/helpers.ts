@@ -45,7 +45,9 @@ export async function skipFirstRunDemo(page: Page): Promise<void> {
 
 export async function backToList(page: Page): Promise<void> {
 	await page.getByRole('button', { name: '← Boards' }).click()
-	await expect(page.getByRole('heading', { name: 'Lifeboard' })).toBeVisible()
+	// The home screen's heading is the *section* name now ("All boards"); the app name lives in the
+	// sidebar. Waiting on the sidebar nav is the stable signal that the home screen is up.
+	await expect(page.locator('.lb-sidebar__nav')).toBeVisible()
 }
 
 /**
@@ -64,7 +66,8 @@ export async function openBoard(page: Page, name: string): Promise<void> {
 }
 
 export async function createBoard(page: Page, name?: string): Promise<void> {
-	await page.getByRole('button', { name: 'New board' }).click()
+	// 'New board' appears in both the sidebar and the section header on the home screen.
+	await page.getByRole('button', { name: 'New board' }).first().click()
 	await expect(page.locator('.tl-canvas')).toBeVisible()
 	if (name) {
 		await backToList(page)

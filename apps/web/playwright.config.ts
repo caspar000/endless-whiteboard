@@ -24,7 +24,10 @@ export default defineConfig({
 	webServer: {
 		command: 'pnpm build && pnpm preview --port 4173 --strictPort',
 		url: 'http://localhost:4173',
-		reuseExistingServer: !process.env.CI,
+		// Never reuse a running server. The command *builds* first, so reusing one means testing a
+		// stale `dist/` — which silently produced passes and failures that had nothing to do with the
+		// current source. Paying for a rebuild each run is much cheaper than debugging that.
+		reuseExistingServer: false,
 		timeout: 180_000,
 	},
 })

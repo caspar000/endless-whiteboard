@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createBoard, listBoards, renameBoard, type BoardMeta } from '../boards/boardIndex'
+import {
+	createBoard,
+	listBoards,
+	renameBoard,
+	setBoardFavorite,
+	type BoardMeta,
+} from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
 import { usePlatform } from '../platform/PlatformContext'
 
@@ -8,6 +14,7 @@ export interface BoardsApi {
 	loading: boolean
 	create(name?: string): Promise<BoardMeta>
 	rename(id: string, name: string): Promise<void>
+	setFavorite(id: string, favorite: boolean): Promise<void>
 	remove(id: string): Promise<void>
 	refresh(): Promise<void>
 }
@@ -42,6 +49,14 @@ export function useBoards(): BoardsApi {
 		[platform, refresh]
 	)
 
+	const setFavorite = useCallback(
+		async (id: string, favorite: boolean) => {
+			await setBoardFavorite(platform.kv, id, favorite)
+			await refresh()
+		},
+		[platform, refresh]
+	)
+
 	const remove = useCallback(
 		async (id: string) => {
 			await deleteBoard(platform, id)
@@ -54,7 +69,7 @@ export function useBoards(): BoardsApi {
 	// identity on every render, re-running every consumer effect that depends on the API — which is
 	// exactly how the first-run demo seeding used to cancel itself before it could navigate.
 	return useMemo(
-		() => ({ boards, loading, create, rename, remove, refresh }),
-		[boards, loading, create, rename, remove, refresh]
+		() => ({ boards, loading, create, rename, setFavorite, remove, refresh }),
+		[boards, loading, create, rename, setFavorite, remove, refresh]
 	)
 }

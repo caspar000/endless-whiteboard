@@ -1,14 +1,24 @@
 import { createNodeShapeUtil, getNodeDefinitions, rollupStats } from '@lifeboard/node-kit'
 import { useEffect, useMemo, useState } from 'react'
-import { Tldraw, type Editor, type TLAnyShapeUtilConstructor } from 'tldraw'
+import {
+	Tldraw,
+	type Editor,
+	type TLAnyShapeUtilConstructor,
+	type TLComponents,
+	type TldrawOptions,
+	type TLEventInfo,
+} from 'tldraw'
 import 'tldraw/tldraw.css'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
 import { seedDemoBoard } from '../boards/demoBoard'
 import { usePlatform } from '../platform/PlatformContext'
 import { createLifeboardAssetStore } from '../persistence/assetStore'
+import { saveBoardThumbnail } from '../persistence/thumbnails'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
 import { clearPendingRestore, takePendingRestore } from '../persistence/pendingRestore'
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
+import { DottedPaper } from './DottedPaper'
+import { NodeCreateMenu, type NodeCreatePrompt } from './NodeCreateMenu'
 import { createNodeTools } from './nodeTools'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
@@ -26,6 +36,49 @@ import { RollupDebugBadge } from './RollupDebugBadge'
 // built-ins during its own module evaluation, which ESM guarantees happens before this line.
 const nodeShapeUtils: TLAnyShapeUtilConstructor[] = getNodeDefinitions().map(createNodeShapeUtil)
 const nodeTools = createNodeTools()
+
+const canvasComponents: TLComponents = {
+	...nodeComponents,
+	// The dotted-paper backdrop (see DottedPaper.tsx).
+	Background: DottedPaper,
+	// The colour/opacity panel in the top-right is removed: none of the node types have style props,
+	// so for the shapes this app is *about* the panel was always inert.
+	StylePanel: null,
+}
+
+const editorOptions: Partial<TldrawOptions> = {
+	createTextOnCanvasDoubleClick: false,
+}
+
+/**
+ * Turns a double-click on empty canvas into a request to open the node picker.
+ *
+ * Listens on `'event'` rather than subclassing the select tool: the behaviour we're replacing is
+ * already gated behind `createTextOnCanvasDoubleClick`, so with that off the default does nothing and
+ * this simply adds ours. `'settle-up'` is the phase after tldraw has decided the gesture really was a
+ * double-click and not the start of a triple.
+ */
+function watchCanvasDoubleClicks(
+	editor: Editor,
+	onPrompt: (prompt: NodeCreatePrompt) => void
+): () => void {
+	// `editor.on` returns the editor for chaining, not an unsubscribe, so the handler is kept and
+	// removed explicitly.
+	const handler = (info: TLEventInfo) => {
+		if (info.type !== 'click' || info.name !== 'double_click') return
+		if (info.phase !== 'settle-up' || info.target !== 'canvas') return
+		// Don't offer to create a node on top of an existing one.
+		if (editor.getShapeAtPoint(editor.inputs.getCurrentPagePoint(), { hitInside: true })) return
+
+		const page = editor.inputs.getCurrentPagePoint()
+		onPrompt({
+			page: { x: page.x, y: page.y },
+			screen: { x: info.point.x, y: info.point.y },
+		})
+	}
+	editor.on('event', handler)
+	return () => editor.off('event', handler)
+}
 
 // The rollup recompute counters, so the perf suite can assert the §4.3 guarantee ("zero rollup
 // recomputes while dragging") against real numbers rather than wall-clock timing, which varies by
@@ -61,6 +114,10 @@ export function Board({
 
 	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
 
+	// The node picker shown on double-clicking empty canvas (see NodeCreateMenu).
+	const [createPrompt, setCreatePrompt] = useState<NodeCreatePrompt | null>(null)
+	const [editor, setEditor] = useState<Editor | null>(null)
+
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
 	return (
@@ -72,7 +129,10 @@ export function Board({
 				shapeUtils={nodeShapeUtils}
 				tools={nodeTools}
 				overrides={nodeUiOverrides}
-				components={nodeComponents}
+				components={canvasComponents}
+				// Double-clicking empty canvas asks which kind of node to create instead of silently
+				// making a text shape — in an app about typed nodes, the untyped one is a poor default.
+				options={editorOptions}
 				// The app chrome and every node component are dark (styles.css). Letting tldraw follow
 				// the OS instead put a light canvas and light toolbar around dark node cards. A light
 				// theme is a reasonable follow-up, but it means restyling the nodes too, not just
@@ -94,16 +154,23 @@ export function Board({
 					// nothing, because writes to it are silently dropped.
 					const w = window as unknown as { editor?: Editor }
 					w.editor = editor
+					setEditor(editor)
 
 					const stopTracking = trackBoardActivity(editor, () =>
 						void touchBoard(platform.kv, board.id)
 					)
+					const stopWatchingDoubleClicks = watchCanvasDoubleClicks(editor, setCreatePrompt)
+
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
 						// unmounts *after* the next one has mounted, so an unguarded delete here would
 						// wipe the live editor's handle.
 						if (w.editor === editor) delete w.editor
+						stopWatchingDoubleClicks()
 						stopTracking()
+						// Capture the home-screen thumbnail here: this is the one moment we have a live
+						// editor for a board the user is leaving. Fire-and-forget — see thumbnails.ts.
+						void saveBoardThumbnail(platform.kv, board.id, editor)
 					}
 				}}
 			>
@@ -114,6 +181,13 @@ export function Board({
 				{import.meta.env.DEV && <RollupDebugBadge />}
 			</Tldraw>
 			<BoardChrome board={board} onExit={onExit} />
+			{editor && createPrompt && (
+				<NodeCreateMenu
+					editor={editor}
+					prompt={createPrompt}
+					onClose={() => setCreatePrompt(null)}
+				/>
+			)}
 		</div>
 	)
 }

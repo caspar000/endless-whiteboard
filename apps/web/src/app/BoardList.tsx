@@ -1,17 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
-import type { BoardsApi } from './useBoards'
+import { BoardCard } from './BoardCard'
 import { SettingsPanel } from './SettingsPanel'
+import { RECENTS_LIMIT, Sidebar, sectionTitle, type HomeSection } from './Sidebar'
+import type { BoardsApi } from './useBoards'
 
-function relativeDate(ts: number): string {
-	const days = Math.floor((Date.now() - ts) / 86_400_000)
-	if (days <= 0) return 'today'
-	if (days === 1) return 'yesterday'
-	if (days < 30) return `${days} days ago`
-	const months = Math.floor(days / 30)
-	return months === 1 ? 'last month' : `${months} months ago`
-}
-
+/**
+ * The home screen: a sidebar of sections beside a grid of board cards.
+ *
+ * Modelled on Freeform's board browser — thumbnail cards, section counts, a bold section heading —
+ * with Affine's darker, lower-contrast chrome.
+ */
 export function BoardList({
 	api,
 	onOpen,
@@ -19,101 +18,102 @@ export function BoardList({
 	api: BoardsApi
 	onOpen: (board: BoardMeta) => void
 }) {
+	const [section, setSection] = useState<HomeSection>('all')
 	const [renaming, setRenaming] = useState<string | null>(null)
-	const [draftName, setDraftName] = useState('')
-	const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+	const visible = useMemo(() => {
+		// `api.boards` is already sorted by `updatedAt` descending, so "recents" is just the head of it.
+		switch (section) {
+			case 'recents':
+				return api.boards.slice(0, RECENTS_LIMIT)
+			case 'favorites':
+				return api.boards.filter((b) => b.favorite)
+			default:
+				return api.boards
+		}
+	}, [api.boards, section])
+
+	const createAndOpen = async () => {
+		const board = await api.create()
+		onOpen(board)
+	}
 
 	return (
-		<div className="lb-list">
-			<header className="lb-list__header">
-				<h1>Lifeboard</h1>
-				<button
-					className="lb-btn lb-btn--primary"
-					onClick={async () => {
-						const board = await api.create()
-						onOpen(board)
-					}}
-				>
-					New board
-				</button>
-			</header>
+		<div className="lb-home">
+			<Sidebar
+				section={section}
+				onSelect={setSection}
+				boards={api.boards}
+				onNewBoard={() => void createAndOpen()}
+			/>
 
-			{api.loading ? (
-				<p className="lb-list__empty">Loading…</p>
-			) : api.boards.length === 0 ? (
-				<div className="lb-list__empty">
-					<p>No boards yet.</p>
-					<p className="lb-list__hint">
-						Create one and drop in item nodes with prices, then add a rollup to total them up.
-					</p>
-				</div>
-			) : (
-				<ul className="lb-list__boards">
-					{api.boards.map((board) => (
-						<li key={board.id} className="lb-list__board">
-							{renaming === board.id ? (
-								<form
-									className="lb-list__rename"
-									onSubmit={async (e) => {
-										e.preventDefault()
-										const name = draftName.trim()
-										if (name) await api.rename(board.id, name)
-										setRenaming(null)
-									}}
-								>
-									{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-									<input
-										autoFocus
-										value={draftName}
-										aria-label="Board name"
-										onChange={(e) => setDraftName(e.currentTarget.value)}
-										onBlur={() => setRenaming(null)}
-									/>
-								</form>
-							) : (
-								<button className="lb-list__open" onClick={() => onOpen(board)}>
-									<span className="lb-list__title">{board.name}</span>
-									<span className="lb-list__meta">edited {relativeDate(board.updatedAt)}</span>
-								</button>
-							)}
+			<main className="lb-home__main">
+				<header className="lb-home__header">
+					<h1>{sectionTitle(section)}</h1>
+					{section !== 'storage' && (
+						<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
+							New board
+						</button>
+					)}
+				</header>
 
-							<div className="lb-list__actions">
-								<button
-									className="lb-btn lb-btn--ghost"
-									onClick={() => {
-										setRenaming(board.id)
-										setDraftName(board.name)
-									}}
-								>
-									Rename
-								</button>
-								{confirmDelete === board.id ? (
-									<>
-										<button
-											className="lb-btn lb-btn--danger"
-											onClick={async () => {
-												await api.remove(board.id)
-												setConfirmDelete(null)
-											}}
-										>
-											Delete for good
-										</button>
-										<button className="lb-btn lb-btn--ghost" onClick={() => setConfirmDelete(null)}>
-											Cancel
-										</button>
-									</>
-								) : (
-									<button className="lb-btn lb-btn--ghost" onClick={() => setConfirmDelete(board.id)}>
-										Delete
-									</button>
-								)}
-							</div>
-						</li>
-					))}
-				</ul>
-			)}
+				{section === 'storage' ? (
+					<SettingsPanel api={api} onImported={() => setSection('all')} />
+				) : api.loading ? (
+					<p className="lb-list__empty">Loading…</p>
+				) : visible.length === 0 ? (
+					<EmptyState section={section} onNewBoard={() => void createAndOpen()} />
+				) : (
+					<ul className="lb-grid lb-list__boards">
+						{visible.map((board) => (
+							<BoardCard
+								key={board.id}
+								board={board}
+								onOpen={() => onOpen(board)}
+								onRename={() => setRenaming(board.id)}
+								renaming={renaming === board.id}
+								onRenameSubmit={(name) => {
+									const trimmed = name.trim()
+									if (trimmed && trimmed !== board.name) void api.rename(board.id, trimmed)
+									setRenaming(null)
+								}}
+								onRenameCancel={() => setRenaming(null)}
+								onToggleFavorite={() => void api.setFavorite(board.id, !board.favorite)}
+								onDelete={() => void api.remove(board.id)}
+							/>
+						))}
+					</ul>
+				)}
+			</main>
+		</div>
+	)
+}
 
-			<SettingsPanel api={api} />
+function EmptyState({
+	section,
+	onNewBoard,
+}: {
+	section: HomeSection
+	onNewBoard: () => void
+}) {
+	if (section === 'favorites') {
+		return (
+			<div className="lb-list__empty">
+				<p>No favourites yet.</p>
+				<p className="lb-list__hint">Star a board to keep it here.</p>
+			</div>
+		)
+	}
+	return (
+		<div className="lb-list__empty">
+			<p>No boards yet.</p>
+			<p className="lb-list__hint">
+				Create one, then double-click anywhere on the canvas to add an item, a note, or a rollup
+				that totals them up.
+			</p>
+			<button className="lb-btn lb-btn--primary" onClick={onNewBoard}>
+				New board
+			</button>
 		</div>
 	)
 }

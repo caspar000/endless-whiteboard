@@ -2,6 +2,7 @@ import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import { collectAssetHashes } from '../persistence/assetRefs'
 import { collectGarbageAssets } from '../persistence/assetStore'
 import { clearPendingRestore } from '../persistence/pendingRestore'
+import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import { deleteTldrawDocument, readBoardSnapshot } from '../persistence/tldrawLocalDb'
 import { listBoards, removeBoardFromIndex } from './boardIndex'
 
@@ -15,6 +16,7 @@ import { listBoards, removeBoardFromIndex } from './boardIndex'
 export async function deleteBoard(platform: PlatformAdapter, boardId: string): Promise<void> {
 	await removeBoardFromIndex(platform.kv, boardId)
 	await clearPendingRestore(platform.kv, boardId)
+	await deleteBoardThumbnail(platform.kv, boardId)
 
 	const { deleted } = await deleteTldrawDocument(boardId)
 	if (!deleted) {

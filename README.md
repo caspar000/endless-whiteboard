@@ -19,6 +19,16 @@ pnpm dev          # http://localhost:5173
 | `pnpm test:e2e` | Playwright, against the **production build** |
 | `pnpm --filter @lifeboard/web gen:icons` | Regenerate PWA icons from `public/favicon.svg` |
 
+## The two screens
+
+**Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
+board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
+captured from the live editor as the board is closed; boards never opened show a dotted-paper
+placeholder. Star a board to pin it to Favourites.
+
+**Board** — the endless canvas on dotted paper, with a registry-driven toolbar. Double-clicking empty
+canvas asks which kind of node to add rather than creating a text shape.
+
 ## The three node types
 
 | Node | What it holds | Toolbar |
@@ -34,11 +44,11 @@ are no feedback loops.
 
 ```
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
-  src/app/                routing, board list, settings
+  src/app/                routing, home screen (sidebar + card grid), storage panel
   src/boards/             board index, delete sequencing, first-run demo
-  src/canvas/             <Board> wrapper, registry-driven toolbar, dev recompute badge
+  src/canvas/             <Board> wrapper, dotted paper, node create menu, toolbar, debug badge
   src/platform/           PlatformAdapter (the entire future Tauri port surface)
-  src/persistence/        asset store, downscaling, backup zip, tldraw-internals wrapper
+  src/persistence/        asset store, downscaling, thumbnails, backup zip, tldraw-internals wrapper
 packages/node-kit/        @lifeboard/node-kit — the smart-node system
   src/registry.tsx        NodeDefinition + registry + createNodeShapeUtil  ← the load-bearing seam
   src/fields.ts           field types, coercion, currency formatting
@@ -53,8 +63,19 @@ gets reused by a future sync server for schema/validation, and ships unchanged i
 ## Things worth knowing before you change something
 
 **Adding a node type** means adding a `NodeDefinition` and registering it — nothing else. Shape util,
-canvas tool, toolbar entry, keyboard shortcut and rollup participation all follow from the registry.
-There is deliberately no per-node-type branching in the toolbar or menus.
+canvas tool, toolbar entry, keyboard shortcut, the double-click create menu, and rollup participation
+all follow from the registry. There is deliberately no per-node-type branching in the UI.
+
+**The canvas chrome is customised in three places**, all in `canvas/Board.tsx`: `DottedPaper` replaces
+tldraw's `Background` (rather than enabling grid mode, which would also snap movement), `StylePanel` is
+set to `null`, and `createTextOnCanvasDoubleClick: false` disables the default double-click behaviour
+so `NodeCreateMenu` can offer the node types instead.
+
+**Board thumbnails are exported in light mode** even though the app is dark. Node components are
+styled dark in CSS, so a dark export renders as an almost-black rectangle at card size. Note also that
+tldraw's SVG export does not apply our node CSS, so thumbnails show node *content* without the card
+styling — legible and recognisable per board, but not pixel-faithful. Full fidelity would need a
+`toSvg` implementation per node type.
 
 **Changing a node's props requires a migration.** `apps/web/src/persistence/snapshot-fixtures.test.ts`
 loads a real snapshot from every released schema and fails if a migration is missing — verified to
@@ -86,13 +107,16 @@ port to one new file (`TauriPlatformAdapter`).
   as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
   follow-up.
 - **Dark theme only.** Every node component is styled dark; a light theme means restyling them, not
-  flipping a flag.
+  flipping a flag. (Board thumbnails are the one exception, and deliberately so — see above.)
+- **The canvas style panel is removed.** None of the node types have style props, so it only ever
+  applied to tldraw's built-in shapes. Their colour and size now come from tldraw's defaults.
 
 ## Status
 
-MVP milestones 1–10 are implemented and verified: 69 unit tests, 16 Playwright specs covering board
+MVP milestones 1–10 are implemented and verified: 69 unit tests, 25 Playwright specs covering board
 CRUD, per-board persistence, node editing and undo granularity, live rollups, image
-downscaling/dedupe/GC, backup round-trip, offline operation, and the zero-recompute guarantee.
+downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute guarantee, the
+double-click create menu, dotted paper, and board thumbnails.
 
 Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, table/chart nodes, live API
 nodes, the sandboxed plugin runtime.

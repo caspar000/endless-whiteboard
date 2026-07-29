@@ -10,6 +10,8 @@ export interface BoardMeta {
 	name: string
 	createdAt: number
 	updatedAt: number
+	/** Pinned to the Favourites section of the home sidebar. */
+	favorite?: boolean
 }
 
 const INDEX_KEY = 'boards'
@@ -27,6 +29,7 @@ function sortBoards(boards: BoardMeta[]): BoardMeta[] {
 function isBoardMeta(value: unknown): value is BoardMeta {
 	if (!value || typeof value !== 'object') return false
 	const b = value as Partial<BoardMeta>
+	// `favorite` is intentionally not required: entries written before it existed must still load.
 	return (
 		typeof b.id === 'string' &&
 		typeof b.name === 'string' &&
@@ -65,6 +68,20 @@ export async function renameBoard(kv: KvStore, id: string, name: string): Promis
 	await writeBoards(
 		kv,
 		boards.map((b) => (b.id === id ? { ...b, name, updatedAt: Date.now() } : b))
+	)
+}
+
+export async function setBoardFavorite(
+	kv: KvStore,
+	id: string,
+	favorite: boolean
+): Promise<void> {
+	const boards = await listBoards(kv)
+	await writeBoards(
+		kv,
+		// Deliberately does not touch `updatedAt`: favouriting is not editing, and bumping it would
+		// reshuffle the "recently edited" ordering the home screen relies on.
+		boards.map((b) => (b.id === id ? { ...b, favorite } : b))
 	)
 }
 

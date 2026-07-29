@@ -1,0 +1,14 @@
+{
+  "name": "lifeboard",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "dev": "pnpm --filter @lifeboard/web dev",
+    "build": "pnpm --filter @lifeboard/node-kit build && pnpm --filter @lifeboard/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @lifeboard/web test:e2e",
+    "lint": "pnpm -r --if-present lint"
+  }
+}

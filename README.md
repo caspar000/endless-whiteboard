@@ -1,0 +1,101 @@
+# Lifeboard
+
+An infinite-canvas whiteboard where **every element is a typed node** — not just stickies and images,
+but markdown documents, structured item records, and live computed rollups over them.
+
+Think Notion-style databases on an endless whiteboard, local-first and fast.
+
+```
+pnpm install
+pnpm dev          # http://localhost:5173
+```
+
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Vite dev server |
+| `pnpm build` | Production build (also writes `apps/web/stats.html` for bundle inspection) |
+| `pnpm typecheck` | `tsc --noEmit` across the workspace |
+| `pnpm test` | Vitest units (rollup aggregation, fields, facts, registry, snapshot fixtures) |
+| `pnpm test:e2e` | Playwright, against the **production build** |
+| `pnpm --filter @lifeboard/web gen:icons` | Regenerate PWA icons from `public/favicon.svg` |
+
+## The three node types
+
+| Node | What it holds | Toolbar |
+|---|---|---|
+| **Markdown** (`node.markdown`) | A markdown string. Double-click to edit the source. | `M` / <kbd>m</kbd> |
+| **Item** (`node.item`) | Title, image, tags, and typed fields (`price: ₾2399`, `category: desk`). | `▤` / <kbd>i</kbd> |
+| **Rollup** (`node.rollup`) | A live aggregate over other nodes — sum/count/avg/min/max, optionally grouped. | `Σ` / <kbd>s</kbd> |
+
+Rollups are **pure derivations**: never written to the store, so undo history stays clean and there
+are no feedback loops.
+
+## Layout
+
+```
+apps/web/                 the app (Vite + React 19 + TS strict, PWA)
+  src/app/                routing, board list, settings
+  src/boards/             board index, delete sequencing, first-run demo
+  src/canvas/             <Board> wrapper, registry-driven toolbar, dev recompute badge
+  src/platform/           PlatformAdapter (the entire future Tauri port surface)
+  src/persistence/        asset store, downscaling, backup zip, tldraw-internals wrapper
+packages/node-kit/        @lifeboard/node-kit — the smart-node system
+  src/registry.tsx        NodeDefinition + registry + createNodeShapeUtil  ← the load-bearing seam
+  src/fields.ts           field types, coercion, currency formatting
+  src/facts.ts            the "what data does this node expose" contract
+  src/nodes/*/            markdown, item, rollup (definition + components + engine)
+docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
+```
+
+`node-kit` is a package, not a folder, because it is exactly the code that becomes the plugin SDK,
+gets reused by a future sync server for schema/validation, and ships unchanged into a Tauri build.
+
+## Things worth knowing before you change something
+
+**Adding a node type** means adding a `NodeDefinition` and registering it — nothing else. Shape util,
+canvas tool, toolbar entry, keyboard shortcut and rollup participation all follow from the registry.
+There is deliberately no per-node-type branching in the toolbar or menus.
+
+**Changing a node's props requires a migration.** `apps/web/src/persistence/snapshot-fixtures.test.ts`
+loads a real snapshot from every released schema and fails if a migration is missing — verified to
+catch it. See `src/persistence/fixtures/README.md` for how to add a fixture.
+
+**tldraw is pinned to an exact version (5.2.5).** Two files depend on its internals — the local
+IndexedDB naming in `persistence/tldrawLocalDb.ts` (pinned by a test that reads tldraw's own source)
+and the API notes in `docs/`. Re-read both before upgrading.
+
+**Rollups must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero re-aggregations
+during a drag on a 500-node board. In dev, a badge in the bottom-left shows the counters live. If that
+number starts climbing during drags, the facts `isEqual` stage has been broken.
+
+**tldraw persists on a 350 ms throttle and does not flush on unload.** Two consequences the app works
+around: leaving a board keeps its editor mounted briefly so the write lands (`DRAIN_MS` in
+`app/App.tsx`), and backup export waits out the window before reading from disk. Both are load-bearing
+— removing either silently loses the last edit.
+
+**No storage or file APIs outside `platform/` and `persistence/`.** That rule is what keeps the Tauri
+port to one new file (`TauriPlatformAdapter`).
+
+## Deliberate deviations from the original plan
+
+- **tldraw 5.2.5, not v4.** v4 was current when the plan was written. Every API the plan relies on
+  exists in 5.x; the deltas are recorded in `docs/tldraw-api-notes.md`.
+- **Markdown editing is source-based (a textarea), not TipTap.** Markdown is the source of truth, so
+  editing the string is lossless — a rich-text editor round-trips through its own AST and quietly
+  reformats what it doesn't model. It also avoids the two-ProseMirror focus conflict the plan flagged
+  as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
+  follow-up.
+- **Dark theme only.** Every node component is styled dark; a light theme means restyling them, not
+  flipping a flag.
+
+## Status
+
+MVP milestones 1–10 are implemented and verified: 69 unit tests, 16 Playwright specs covering board
+CRUD, per-board persistence, node editing and undo granularity, live rollups, image
+downscaling/dedupe/GC, backup round-trip, offline operation, and the zero-recompute guarantee.
+
+Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, table/chart nodes, live API
+nodes, the sandboxed plugin runtime.
+
+A free tldraw hobby licence key is still needed before any production deploy; the "made with tldraw"
+watermark stays.

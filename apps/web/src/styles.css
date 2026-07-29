@@ -1,0 +1,822 @@
+:root {
+	--lb-bg: #101012;
+	--lb-surface: #17171a;
+	--lb-surface-2: #1f1f24;
+	--lb-border: #2c2c33;
+	--lb-text: #ececed;
+	--lb-text-dim: #9a9aa4;
+	--lb-accent: #6c8cff;
+	--lb-danger: #e5484d;
+	--lb-money: #3dd68c;
+	--lb-radius: 10px;
+	--lb-font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+	color-scheme: dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--lb-bg);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	-webkit-font-smoothing: antialiased;
+	/* The canvas handles its own gestures; letting the page bounce would fight panning on iOS. */
+	overscroll-behavior: none;
+}
+
+button {
+	font-family: inherit;
+	font-size: inherit;
+	cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+.lb-btn {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 7px 12px;
+	font-size: 13px;
+	transition: background 120ms ease;
+}
+.lb-btn:hover:not(:disabled) {
+	background: #26262d;
+}
+.lb-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.lb-btn--primary {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+	color: #0b0b10;
+	font-weight: 600;
+}
+.lb-btn--primary:hover:not(:disabled) {
+	background: #7f9bff;
+}
+.lb-btn--ghost {
+	background: transparent;
+	color: var(--lb-text-dim);
+}
+.lb-btn--ghost:hover:not(:disabled) {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-btn--danger {
+	background: var(--lb-danger);
+	border-color: var(--lb-danger);
+	color: #fff;
+}
+
+/* --------------------------------------------------------------- board list */
+
+.lb-list {
+	max-width: 780px;
+	margin: 0 auto;
+	padding: 48px 24px 96px;
+}
+.lb-list__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 32px;
+}
+.lb-list__header h1 {
+	font-size: 26px;
+	letter-spacing: -0.02em;
+	margin: 0;
+}
+.lb-list__empty {
+	padding: 48px 0;
+	color: var(--lb-text-dim);
+	text-align: center;
+}
+.lb-list__hint {
+	font-size: 13px;
+	max-width: 42ch;
+	margin: 8px auto 0;
+	line-height: 1.6;
+}
+.lb-list__boards {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-list__board {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 12px 14px;
+}
+.lb-list__open {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 3px;
+	background: none;
+	border: 0;
+	color: inherit;
+	text-align: left;
+	padding: 0;
+}
+.lb-list__title {
+	font-size: 15px;
+	font-weight: 500;
+}
+.lb-list__meta {
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-list__actions {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.lb-list__rename {
+	flex: 1;
+}
+.lb-list__rename input {
+	width: 100%;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 6px;
+	color: var(--lb-text);
+	padding: 6px 8px;
+	font: inherit;
+	font-size: 15px;
+}
+
+/* ------------------------------------------------------------------ settings */
+
+.lb-settings {
+	margin-top: 56px;
+	padding-top: 24px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-settings h2 {
+	font-size: 14px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--lb-text-dim);
+	margin: 0 0 16px;
+}
+.lb-settings__stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 28px;
+	margin: 0 0 16px;
+}
+.lb-settings__stats dt {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 3px;
+}
+.lb-settings__stats dd {
+	margin: 0;
+	font-size: 14px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-settings__warn {
+	background: rgba(229, 72, 77, 0.1);
+	border: 1px solid rgba(229, 72, 77, 0.35);
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 13px;
+	line-height: 1.55;
+	margin: 0 0 12px;
+}
+.lb-settings__actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.lb-settings__message {
+	font-size: 13px;
+	color: var(--lb-text-dim);
+	margin: 12px 0 0;
+}
+.lb-settings__version {
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	margin: 24px 0 0;
+}
+
+/* --------------------------------------------------------------------- board */
+
+.lb-board {
+	position: fixed;
+	inset: 0;
+}
+
+/*
+ * A board being drained: still mounted so tldraw's throttled write can land (see DRAIN_MS in
+ * app/App.tsx), but invisible and inert so the board list behaves as if it were already gone.
+ * `visibility: hidden` rather than `display: none` — the latter would collapse the canvas to zero
+ * size and make tldraw recompute its viewport on the way out.
+ */
+.lb-board-host[data-draining] {
+	visibility: hidden;
+	pointer-events: none;
+}
+.lb-board__loading {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	color: var(--lb-text-dim);
+	font-size: 14px;
+}
+.lb-board__chrome {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 5px 10px;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+	pointer-events: all;
+}
+.lb-board__back {
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	padding: 2px 4px;
+}
+.lb-board__back:hover {
+	color: var(--lb-text);
+}
+.lb-board__name {
+	font-size: 13px;
+	font-weight: 500;
+	max-width: 32ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lb-debug-badge {
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	z-index: 300;
+	display: flex;
+	gap: 10px;
+	background: rgb(0 0 0 / 70%);
+	border-radius: 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+	pointer-events: none;
+}
+.lb-debug-badge__ok {
+	color: var(--lb-money);
+}
+.lb-debug-badge__warn {
+	color: var(--lb-danger);
+}
+
+/* Glyph icons for the registry-driven toolbar buttons (see canvas/uiOverrides.tsx). Sized to match
+   tldraw's own 18px icons so the row stays visually even. */
+.lb-tool-icon {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
+	color: currentcolor;
+}
+
+/* ================================================================== nodes  */
+/* Node components live inside tldraw's HTMLContainer. They are laid out in
+   shape space, so tldraw's transform scales them with the camera. */
+
+.lb-md,
+.lb-item,
+.lb-rollup {
+	width: 100%;
+	height: 100%;
+	background: var(--lb-surface);
+	/*
+	 * `color` and `font-family` are set explicitly, not inherited. Node components render inside
+	 * tldraw's container, so they inherit *its* theme — which meant node titles and markdown body
+	 * text came out near-black on our dark cards, effectively invisible. Elements with an explicit
+	 * colour (field labels, money values) looked fine, which made the bug easy to miss.
+	 */
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/*
+ * While editing, a node must not clip its own children: the item field editor and the rollup config
+ * are popovers anchored below the card, and the `overflow: hidden` above silently swallowed them —
+ * the elements were in the DOM and reported as "visible", just painted nowhere.
+ */
+.lb-md--editing,
+.lb-item--editing,
+.lb-rollup--editing {
+	overflow: visible;
+}
+
+/* ---------------------------------------------------------- markdown node */
+
+.lb-md {
+	padding: 12px 14px;
+}
+.lb-md--editing {
+	padding: 0;
+	border-color: var(--lb-accent);
+}
+.lb-md__body {
+	overflow-y: auto;
+	/* Editing is what enables interaction; in display mode the factory sets pointer-events: none
+	   on the container so scroll wheel reaches the canvas as zoom. */
+}
+.lb-md__textarea {
+	width: 100%;
+	height: 100%;
+	background: transparent;
+	border: 0;
+	resize: none;
+	color: var(--lb-text);
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	outline: none;
+	tab-size: 2;
+}
+.lb-md__placeholder {
+	color: var(--lb-text-dim);
+	font-style: italic;
+	margin: 0;
+}
+.lb-md__body > :first-child {
+	margin-top: 0;
+}
+.lb-md__body > :last-child {
+	margin-bottom: 0;
+}
+.lb-md__body h1 {
+	font-size: 19px;
+	letter-spacing: -0.01em;
+}
+.lb-md__body h2 {
+	font-size: 16px;
+}
+.lb-md__body h3 {
+	font-size: 14px;
+}
+.lb-md__body h1,
+.lb-md__body h2,
+.lb-md__body h3 {
+	margin: 14px 0 6px;
+	line-height: 1.3;
+}
+.lb-md__body p,
+.lb-md__body ul,
+.lb-md__body ol {
+	margin: 0 0 8px;
+}
+.lb-md__body ul,
+.lb-md__body ol {
+	padding-left: 20px;
+}
+.lb-md__body li {
+	margin-bottom: 2px;
+}
+.lb-md__body code {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 0.9em;
+}
+.lb-md__body pre {
+	background: var(--lb-surface-2);
+	border-radius: 6px;
+	padding: 8px 10px;
+	overflow-x: auto;
+	margin: 0 0 8px;
+}
+.lb-md__body pre code {
+	background: none;
+	padding: 0;
+}
+.lb-md__body blockquote {
+	margin: 0 0 8px;
+	padding-left: 10px;
+	border-left: 2px solid var(--lb-border);
+	color: var(--lb-text-dim);
+}
+.lb-md__body hr {
+	border: 0;
+	border-top: 1px solid var(--lb-border);
+	margin: 12px 0;
+}
+.lb-md__body table {
+	border-collapse: collapse;
+	margin-bottom: 8px;
+}
+.lb-md__body th,
+.lb-md__body td {
+	border: 1px solid var(--lb-border);
+	padding: 3px 7px;
+	text-align: left;
+}
+.lb-md__link {
+	color: var(--lb-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* -------------------------------------------------------------- item node */
+
+.lb-item {
+	position: relative;
+}
+.lb-item--editing {
+	border-color: var(--lb-accent);
+}
+.lb-item__image {
+	width: 100%;
+	flex: 1;
+	min-height: 0;
+	object-fit: cover;
+	display: block;
+	background: var(--lb-surface-2);
+}
+.lb-item__image--empty,
+.lb-item__image--loading {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text-dim);
+	font-size: 22px;
+}
+.lb-item__text {
+	padding: 8px 10px 10px;
+	flex-shrink: 0;
+}
+.lb-item__title {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.35;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-item__title--empty {
+	color: var(--lb-text-dim);
+	font-weight: 400;
+	font-style: italic;
+}
+.lb-item__title--editing {
+	width: 100%;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-weight: 600;
+	padding: 3px 5px;
+	outline: none;
+}
+.lb-item__fields {
+	margin: 5px 0 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.lb-item__field {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+}
+.lb-item__field dt {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-item__value {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	flex-shrink: 0;
+}
+.lb-item__value--money {
+	color: var(--lb-money);
+	font-weight: 600;
+}
+.lb-item__tags {
+	list-style: none;
+	margin: 7px 0 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-item__tags li {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 6px;
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------- editor popovers */
+/*
+ * Positioned by NodeEditorPopover, which portals the panel into tldraw's container: inside the shape
+ * it was painted under later shapes, and scaled to illegibility at low zoom. Here it sits above the
+ * canvas at a fixed size.
+ */
+.lb-popover {
+	position: absolute;
+	z-index: 400;
+	max-height: calc(100vh - 32px);
+	overflow-y: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-accent);
+	border-radius: 8px;
+	padding: 10px;
+	box-shadow: 0 10px 34px rgb(0 0 0 / 60%);
+	pointer-events: all;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 13px;
+}
+
+.lb-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-fields__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.lb-fields__row {
+	display: grid;
+	grid-template-columns: 1fr 84px 1fr 46px 22px;
+	gap: 4px;
+	align-items: center;
+}
+.lb-fields__key {
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-fields input,
+.lb-fields select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 11px;
+	padding: 3px 5px;
+	min-width: 0;
+	outline: none;
+}
+.lb-fields input:focus,
+.lb-fields select:focus {
+	border-color: var(--lb-accent);
+}
+.lb-fields input[type='checkbox'] {
+	width: 14px;
+	height: 14px;
+	justify-self: start;
+}
+.lb-fields__remove {
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	font-size: 15px;
+	line-height: 1;
+	padding: 0;
+}
+.lb-fields__remove:hover {
+	color: var(--lb-danger);
+}
+.lb-fields__add {
+	display: grid;
+	grid-template-columns: 1fr 78px auto;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-fields__add-btn,
+.lb-fields__save-template,
+.lb-fields__template,
+.lb-fields__tag {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-size: 11px;
+	padding: 3px 7px;
+}
+.lb-fields__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.lb-fields__tag-input {
+	flex: 1;
+	min-width: 110px;
+}
+.lb-fields__templates {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
+}
+
+/* ------------------------------------------------------------ rollup node */
+
+.lb-rollup {
+	position: relative;
+}
+.lb-rollup--editing {
+	border-color: var(--lb-accent);
+}
+.lb-rollup__body {
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+.lb-rollup__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+	flex-shrink: 0;
+}
+.lb-rollup__title {
+	font-weight: 600;
+	font-size: 13px;
+}
+.lb-rollup__op {
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	white-space: nowrap;
+}
+.lb-rollup__value {
+	font-size: 30px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--lb-money);
+	font-variant-numeric: tabular-nums;
+	margin: auto 0;
+}
+.lb-rollup__table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 8px;
+	overflow-y: auto;
+	display: block;
+	min-height: 0;
+}
+.lb-rollup__table td {
+	padding: 3px 0;
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-rollup__group {
+	color: var(--lb-text-dim);
+	/* Without this the group name and the count collide — "lighting2" instead of "lighting  2". */
+	padding-right: 10px !important;
+	max-width: 12ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-rollup__count {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	text-align: right;
+	padding-right: 10px !important;
+	font-variant-numeric: tabular-nums;
+}
+.lb-rollup__cell {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
+.lb-rollup__total-row td {
+	border-bottom: 0;
+	padding-top: 6px !important;
+	font-weight: 650;
+	color: var(--lb-money);
+}
+.lb-rollup__total-row .lb-rollup__group {
+	color: var(--lb-text);
+}
+.lb-rollup__meta {
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	margin-top: 6px;
+	flex-shrink: 0;
+}
+
+.lb-rollup__config {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-rollup__row {
+	display: grid;
+	grid-template-columns: 82px 1fr;
+	gap: 8px;
+	align-items: center;
+	font-size: 11px;
+}
+.lb-rollup__row > span:first-child {
+	color: var(--lb-text-dim);
+}
+.lb-rollup__config input,
+.lb-rollup__config select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 11px;
+	padding: 3px 5px;
+	min-width: 0;
+	outline: none;
+}
+.lb-rollup__config input:focus,
+.lb-rollup__config select:focus {
+	border-color: var(--lb-accent);
+}
+.lb-rollup__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-rollup__tag {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	padding: 2px 6px;
+}
+.lb-rollup__tag--on {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+	color: #0b0b10;
+	font-weight: 600;
+}
+.lb-rollup__hint {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+}

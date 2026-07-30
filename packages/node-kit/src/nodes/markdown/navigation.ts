@@ -1,30 +1,30 @@
-import { isMultiLineBlock } from './blocks'
-
 /**
- * The keymap for the per-block editor, as a pure decision function.
+ * The keymap for the line-based live-preview editor, as a pure decision function.
  *
- * Pure so it can be unit-tested without a DOM or a tldraw editor — the interesting logic is "which
- * key, in which block type, at which caret position, means what", and that deserves tests rather than
- * being buried in an event handler.
+ * Pure so it can be tested without a DOM or a tldraw editor. The interesting part is "which key, at
+ * which caret position, in which line of how many, means what" — that deserves tests rather than
+ * living inside an event handler where the IME guard is one forgotten condition away from breaking
+ * text entry in Japanese, Chinese or Korean.
  */
 export type NavigationAction =
+	/** Let the textarea handle it, but stop it reaching the canvas as a tool shortcut. */
 	| { kind: 'none' }
-	/** Leave the editing session entirely. */
+	/** Leave the editing session. */
 	| { kind: 'exit' }
-	/** Split the current block at the caret; the new block becomes active. */
-	| { kind: 'split' }
-	/** Merge this block into the previous one. */
-	| { kind: 'mergeBack' }
-	/** Merge the next block into this one. */
-	| { kind: 'mergeForward' }
-	/** Move to an adjacent block, placing the caret at the near edge. */
-	| { kind: 'focusBlock'; direction: -1 | 1; caret: 'start' | 'end' }
+	/** Insert a line break at the caret. Enter does this in every kind of block, unconditionally. */
+	| { kind: 'newline' }
+	/** Join this line onto the previous one. */
+	| { kind: 'joinBack' }
+	/** Pull the next line onto this one. */
+	| { kind: 'joinForward' }
+	/** Move to an adjacent line, caret at the near edge. */
+	| { kind: 'focusLine'; direction: -1 | 1; caret: 'start' | 'end' }
 	/**
-	 * The browser should handle the key first; if the caret does not move we were at a visual edge and
-	 * should then move blocks. Used for ArrowUp/ArrowDown, where "am I on the first visual line" cannot
-	 * be answered without measuring wrapped lines.
+	 * Let the browser move the caret first; if it doesn't move we were on a visual edge and should
+	 * change line. Used for ArrowUp/ArrowDown, because a long line wraps and "am I on the first visual
+	 * line" cannot be answered without measuring line boxes.
 	 */
-	| { kind: 'maybeFocusBlock'; direction: -1 | 1; caret: 'start' | 'end' }
+	| { kind: 'maybeFocusLine'; direction: -1 | 1; caret: 'start' | 'end' }
 	| { kind: 'undo' }
 	| { kind: 'redo' }
 
@@ -35,72 +35,50 @@ export interface KeyContext {
 	shift: boolean
 	/** True while an IME composition is in progress. */
 	composing: boolean
-	/** Block type from mdast — `paragraph`, `heading`, `list`, `code`, … */
-	blockType: string
-	/** Caret offset within the block's text. */
-	caret: number
-	/** Length of the block's text. */
-	length: number
-	/** True when the selection is not collapsed. */
-	hasSelection: boolean
+	/** Caret is at offset 0 with nothing selected. */
+	atLineStart: boolean
+	/** Caret is at the end of the line with nothing selected. */
+	atLineEnd: boolean
 	index: number
-	blockCount: number
+	lineCount: number
 }
 
 export function decideNavigation(ctx: KeyContext): NavigationAction {
-	// Never interpret keys mid-composition: an IME uses Enter and the arrows to pick candidates, and
-	// treating those as block navigation is the classic way to make an editor unusable in Japanese,
-	// Chinese or Korean — or with an accent picker.
+	// An IME uses Enter and the arrows to pick candidates. Interpreting those as navigation is the
+	// single easiest way to make the editor unusable for a large part of the world.
 	if (ctx.composing) return { kind: 'none' }
 
 	if (ctx.mod && (ctx.key === 'z' || ctx.key === 'Z')) {
 		return ctx.shift ? { kind: 'redo' } : { kind: 'undo' }
 	}
 
-	if (ctx.key === 'Escape') return { kind: 'exit' }
 	// ⌘/Ctrl+Enter is tldraw's convention for "done editing".
-	if (ctx.mod && ctx.key === 'Enter') return { kind: 'exit' }
+	if (ctx.key === 'Escape' || (ctx.mod && ctx.key === 'Enter')) return { kind: 'exit' }
 
-	if (ctx.key === 'Enter' && !ctx.shift) {
-		// Inside a list, quote, fence or table a newline continues the construct, so let the textarea
-		// insert it: the block stays one block, which is what the markdown means.
-		if (isMultiLineBlock(ctx.blockType)) return { kind: 'none' }
-		return { kind: 'split' }
+	// Unconditional: no split-vs-continue special cases by block type. A single newline renders as a
+	// line break (MarkdownView enables `remark-breaks`), so the note visibly grows either way.
+	if (ctx.key === 'Enter') return { kind: 'newline' }
+
+	if (ctx.key === 'Backspace' && ctx.atLineStart && ctx.index > 0) return { kind: 'joinBack' }
+
+	if (ctx.key === 'Delete' && ctx.atLineEnd && ctx.index < ctx.lineCount - 1) {
+		return { kind: 'joinForward' }
 	}
 
-	if (ctx.key === 'Backspace' && !ctx.hasSelection && ctx.caret === 0 && ctx.index > 0) {
-		return { kind: 'mergeBack' }
+	if (ctx.key === 'ArrowLeft' && ctx.atLineStart && ctx.index > 0) {
+		return { kind: 'focusLine', direction: -1, caret: 'end' }
 	}
 
-	if (
-		ctx.key === 'Delete' &&
-		!ctx.hasSelection &&
-		ctx.caret === ctx.length &&
-		ctx.index < ctx.blockCount - 1
-	) {
-		return { kind: 'mergeForward' }
+	if (ctx.key === 'ArrowRight' && ctx.atLineEnd && ctx.index < ctx.lineCount - 1) {
+		return { kind: 'focusLine', direction: 1, caret: 'start' }
 	}
 
-	if (ctx.key === 'ArrowLeft' && !ctx.hasSelection && ctx.caret === 0 && ctx.index > 0) {
-		return { kind: 'focusBlock', direction: -1, caret: 'end' }
+	if (ctx.key === 'ArrowUp' && ctx.index > 0) {
+		return { kind: 'maybeFocusLine', direction: -1, caret: 'end' }
 	}
 
-	if (
-		ctx.key === 'ArrowRight' &&
-		!ctx.hasSelection &&
-		ctx.caret === ctx.length &&
-		ctx.index < ctx.blockCount - 1
-	) {
-		return { kind: 'focusBlock', direction: 1, caret: 'start' }
-	}
-
-	// Vertical movement depends on *visual* lines, which wrap. Rather than compute line boxes, let the
-	// browser move the caret and check afterwards whether it actually moved.
-	if (ctx.key === 'ArrowUp' && !ctx.hasSelection && ctx.index > 0) {
-		return { kind: 'maybeFocusBlock', direction: -1, caret: 'end' }
-	}
-	if (ctx.key === 'ArrowDown' && !ctx.hasSelection && ctx.index < ctx.blockCount - 1) {
-		return { kind: 'maybeFocusBlock', direction: 1, caret: 'start' }
+	if (ctx.key === 'ArrowDown' && ctx.index < ctx.lineCount - 1) {
+		return { kind: 'maybeFocusLine', direction: 1, caret: 'start' }
 	}
 
 	return { kind: 'none' }

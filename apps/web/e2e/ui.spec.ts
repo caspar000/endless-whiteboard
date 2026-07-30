@@ -22,7 +22,7 @@ test.describe('canvas chrome', () => {
 		expect(editing).toBe(true)
 	})
 
-	test('markdown renders block by block as you leave each one', async ({ page }) => {
+	test('markdown renders line by line as you leave each line', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
@@ -31,29 +31,64 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('.lb-note__input')).toBeFocused()
 
 		await page.keyboard.type('# Chores')
-		// Still raw while the caret is in it — that is the whole point of live preview.
-		await expect(page.locator('.lb-note__block h1')).toHaveCount(0)
+		// Raw while the caret is on it — that is the point of live preview.
+		await expect(page.locator('.lb-note__rendered h1')).toHaveCount(0)
 
 		await page.keyboard.press('Enter')
-		// Leaving the block renders it, while the new block is the one raw textarea.
-		await expect(page.locator('.lb-note__block h1')).toHaveText('Chores')
+		// Leaving the *line* renders it. Per-line, not per-block: previously nothing rendered until
+		// you opened a whole new block, so a heading stayed raw while you typed the prose beneath it.
+		await expect(page.locator('.lb-note__rendered h1')).toHaveText('Chores')
 		await expect(page.locator('.lb-note__input')).toHaveCount(1)
 
-		// Enter inside a list continues the list rather than splitting the block.
+		// A second line renders as soon as the caret leaves it, even though it is the same paragraph.
+		await page.keyboard.type('first prose line')
+		await page.keyboard.press('Enter')
+		await expect(page.locator('.lb-note__rendered')).toContainText('first prose line')
+
 		await page.keyboard.type('- morning care')
 		await page.keyboard.press('Enter')
 		await page.keyboard.type('- workout')
 		await page.keyboard.press('Escape')
 
-		// Committed markdown is exactly what was typed — one list, not two paragraphs.
+		// Enter inserts a single newline every time — no block-type special cases.
 		const md = await page.evaluate(
 			() =>
 				(window as unknown as { editor: EditorLike }).editor
 					.getCurrentPageShapes()
 					.find((s) => s.type === 'node.markdown')!.props.md
 		)
-		expect(md).toBe('# Chores\n\n- morning care\n- workout')
+		expect(md).toBe('# Chores\nfirst prose line\n- morning care\n- workout')
 		await expect(page.locator('.lb-md__body li')).toHaveCount(2)
+	})
+
+	test('double-clicking an existing note puts the caret straight in the text', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// Make a note and leave it. Waiting for focus first is not optional: typing before the editor
+		// has the caret sends the keystrokes to the canvas, where letters are tool shortcuts.
+		await page.mouse.dblclick(560, 260)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await page.keyboard.type('# Existing note')
+		await page.keyboard.press('Escape')
+		await page.mouse.click(900, 620)
+
+		const point = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			const b = editor.getShapePageBounds(shape.id)!
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + 14 })
+		})
+		await page.mouse.dblclick(point.x, point.y)
+
+		// One double-click is enough: tldraw focuses its own canvas container after React mounts the
+		// editor, so without re-asserting focus the note looked active while keystrokes went nowhere
+		// and you had to click a second time.
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await page.keyboard.type('!')
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-md__body h1')).toHaveText('Existing note!')
 	})
 
 	test('a note grows with its content, and a vertical drag pins the height', async ({ page }) => {

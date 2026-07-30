@@ -135,12 +135,16 @@ test.describe('nodes', () => {
 		await drawNode(page, 'Note', { x: 400, y: 250 }, { w: 360, h: 240 })
 		await expect(page.locator('.lb-md')).toHaveCount(1)
 
-		// Double-click to edit, type markdown, then leave editing.
+		// Double-click to edit, type markdown, then leave editing. Typed rather than `fill`ed: the
+		// textarea holds a single line now, and Enter is what moves to the next one.
 		await dblclickNode(page, 'node.markdown')
-		const textarea = page.locator('.lb-note__input')
-		await expect(textarea).toBeFocused()
-		await textarea.fill('# Chores\n\n- morning care\n- workout')
-		await textarea.press('Escape')
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await page.keyboard.type('# Chores')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('- morning care')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('- workout')
+		await page.keyboard.press('Escape')
 
 		// Display mode shows rendered markdown, not source.
 		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')

@@ -740,15 +740,25 @@ button {
 	cursor: text;
 }
 
-/* A rendered (non-caret) block. Clicking one moves the caret into it. */
-.lb-note__block {
+/* The rendered markdown above and below the line being edited. */
+.lb-note__rendered {
 	cursor: text;
 }
-.lb-note__block > :first-child {
+.lb-note__rendered > :first-child {
 	margin-top: 0;
 }
-.lb-note__block > :last-child {
+.lb-note__rendered > :last-child {
 	margin-bottom: 0;
+}
+/*
+ * The rendered sides and the raw line sit in one vertical flow, so their block margins must not
+ * collapse differently on either side of the caret — that would make the note twitch by a few pixels
+ * as the caret moves between lines.
+ */
+.lb-note__rendered p,
+.lb-note__rendered ul,
+.lb-note__rendered ol {
+	margin: 0 0 8px;
 }
 
 /*

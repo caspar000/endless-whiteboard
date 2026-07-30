@@ -17,6 +17,7 @@ export {
 	getNodeDefinition,
 	getNodeDefinitions,
 	isNodeType,
+	getVisibleNodeDefinitions,
 	registerNode,
 	updateNodeProps,
 	type NodeBaseProps,
@@ -58,7 +59,17 @@ export {
 } from './facts'
 
 // Node definitions
-export { MARKDOWN_NODE_TYPE, markdownNodeDefinition, markdownTitle, type MarkdownNodeProps } from './nodes/markdown/definition'
+export {
+	MARKDOWN_NODE_TYPE,
+	NOTE_MIN_HEIGHT,
+	NOTE_NODE_TYPE,
+	markdownNodeDefinition,
+	markdownTitle,
+	noteNodeDefinition,
+	noteTitle,
+	type MarkdownNodeProps,
+	type NoteNodeProps,
+} from './nodes/markdown/definition'
 export { ITEM_NODE_TYPE, itemNodeDefinition, toTemplateFields, type ItemNodeProps } from './nodes/item/definition'
 export {
 	deleteFieldTemplate,

@@ -7,9 +7,19 @@ import remarkGfm from 'remark-gfm'
  * raw HTML in the source is *not* enabled (no `rehype-raw`), so there is no HTML-injection surface
  * to sanitise. GFM gives the tables, task lists and strikethrough that real notes contain.
  */
-export const MarkdownView = memo(function MarkdownView({ md }: { md: string }) {
-	return (
-		<div className="lb-md__body">
+export const MarkdownView = memo(function MarkdownView({
+	md,
+	bare = false,
+}: {
+	md: string
+	/**
+	 * Render without the `.lb-md__body` wrapper. The live-preview editor renders one block at a time
+	 * inside a single outer body element, so nesting a wrapper per block would both duplicate the
+	 * padding and make `.lb-md__body h1` match more than once.
+	 */
+	bare?: boolean
+}) {
+	const content = (
 			<Markdown
 				remarkPlugins={[remarkGfm]}
 				components={{
@@ -21,9 +31,10 @@ export const MarkdownView = memo(function MarkdownView({ md }: { md: string }) {
 						</span>
 					),
 				}}
-			>
-				{md}
-			</Markdown>
-		</div>
+		>
+			{md}
+		</Markdown>
 	)
+
+	return bare ? content : <div className="lb-md__body">{content}</div>
 })

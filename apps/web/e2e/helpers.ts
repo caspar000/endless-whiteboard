@@ -90,7 +90,7 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 /** Selects a node tool from the registry-driven toolbar and drags out a shape. */
 export async function drawNode(
 	page: Page,
-	label: 'Markdown' | 'Item' | 'Rollup',
+	label: 'Note' | 'Item' | 'Rollup',
 	at: { x: number; y: number },
 	size = { w: 240, h: 260 }
 ): Promise<void> {
@@ -101,9 +101,9 @@ export async function drawNode(
 	await page.mouse.up()
 }
 
-function labelToToolId(label: 'Markdown' | 'Item' | 'Rollup'): string {
+function labelToToolId(label: 'Note' | 'Item' | 'Rollup'): string {
 	// Mirrors toolIdForNodeType(): tldraw tool ids cannot contain dots.
-	return { Markdown: 'node-markdown', Item: 'node-item', Rollup: 'node-rollup' }[label]
+	return { Note: 'node-markdown', Item: 'node-item', Rollup: 'node-rollup' }[label]
 }
 
 /**

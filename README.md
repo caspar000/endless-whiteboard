@@ -27,14 +27,14 @@ captured from the live editor as the board is closed; boards never opened show a
 placeholder. Star a board to pin it to Favourites.
 
 **Board** — the endless canvas on dotted paper, with a registry-driven toolbar. Double-clicking empty
-canvas asks which kind of node to add rather than creating a text shape; double-clicking the board's
-name in the top bar renames it.
+canvas creates a **note** and puts the caret in it; right-click offers the other node types. Double-
+clicking the board's name in the top bar renames it.
 
 ## The three node types
 
 | Node | What it holds | Toolbar |
 |---|---|---|
-| **Markdown** (`node.markdown`) | A markdown string. Double-click to edit the source. | `M` / <kbd>m</kbd> |
+| **Note** (`node.markdown`) | Markdown, rendered live block by block as you write. Grows with its content. | `N` / <kbd>n</kbd> |
 | **Item** (`node.item`) | Title, image, tags, and typed fields (`price: ₾2399`, `category: desk`). | `▤` / <kbd>i</kbd> |
 | **Rollup** (`node.rollup`) | A live aggregate over other nodes — sum/count/avg/min/max, optionally grouped. | `Σ` / <kbd>s</kbd> |
 
@@ -61,6 +61,31 @@ docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read befor
 `node-kit` is a package, not a folder, because it is exactly the code that becomes the plugin SDK,
 gets reused by a future sync server for schema/validation, and ships unchanged into a Tauri build.
 
+## The note's live preview
+
+Writing is the default action, so the note is worth understanding. `nodes/markdown/blocks.ts` splits
+the markdown into blocks using **mdast node positions** — the same parser `react-markdown` renders
+with, so block boundaries provably agree with what you see. The block holding the caret renders as a
+`<textarea>`; every other block is rendered markdown. Pressing Enter therefore renders what you just
+wrote.
+
+Three things about it are load-bearing:
+
+- **Editing is byte-exact.** Whitespace between blocks belongs to no block, so an edit is
+  `source.slice(0, start) + next + source.slice(end)`. `blocks.test.ts` pins this as a property over
+  a corpus of documents a line-scanner would get wrong (fenced code with blank lines, loose lists,
+  setext headings, GFM tables, CRLF).
+- **The block's live extent is tracked separately from the stored layout.** Blocks are deliberately
+  not re-derived on every keystroke — that would re-render the textarea mid-typing — so the stored
+  block's `end` is stale the moment you type. Splicing against it corrupted the document; `extentRef`
+  is advanced on every change instead.
+- **mdast has no node for an empty block**, so `splitBlocks` synthesises a trailing one when the
+  source ends in a blank line. Without it, Enter at the end of a note produced a separator with
+  nowhere to type.
+
+Session undo (`sessionHistory.ts`) is not optional: a textarea's native undo belongs to its element,
+and merging blocks destroys elements. The board still sees exactly one undo entry per editing session.
+
 ## Things worth knowing before you change something
 
 **Adding a node type** means adding a `NodeDefinition` and registering it — nothing else. Shape util,
@@ -78,6 +103,10 @@ load-bearing. Exporting from the editor's unmount path runs while the board host
 node background and font missing: previews looked correct for about a second and then decayed into
 serif text on white. `leave()` in `canvas/Board.tsx` captures while the board is still on screen, and
 awaits it (bounded by a timeout) so navigation can't outrun the export.
+
+**The shape type id is `node.markdown`, but the product calls it a Note.** Renaming a persisted type
+id needs a store-scoped migration rewriting every record, for a cosmetic gain. `NOTE_NODE_TYPE` is the
+name to use in code; the old exports remain as deprecated aliases.
 
 **Changing a node's props requires a migration.** `apps/web/src/persistence/snapshot-fixtures.test.ts`
 loads a real snapshot from every released schema and fails if a migration is missing — verified to

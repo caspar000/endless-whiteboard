@@ -2,49 +2,132 @@ import { expect, test } from '@playwright/test'
 import { backToList, createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
 
 test.describe('canvas chrome', () => {
-	test('double-clicking empty canvas asks which node to create, and creates it', async ({ page }) => {
+	test('double-clicking empty canvas creates a note, already in editing mode', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		// Empty area of a blank board.
-		await page.mouse.dblclick(760, 420)
+		await page.mouse.dblclick(560, 300)
 
-		const menu = page.getByRole('menu', { name: 'Create a node' })
-		await expect(menu).toBeVisible()
-		// Registry-driven, so all three node types are offered — plus plain text, which is what the
-		// gesture used to create outright.
-		for (const label of ['Markdown', 'Item', 'Rollup', 'Text']) {
-			await expect(menu.getByRole('menuitem', { name: new RegExp(label) })).toBeVisible()
-		}
-
-		// tldraw's default (silently creating a text shape) must be gone.
+		// Writing is the default action now — no picker, no text shape.
+		await expect(page.locator('.lb-note--editing')).toBeVisible()
+		expect(await countByType(page, 'node.markdown')).toBe(1)
 		expect(await countByType(page, 'text')).toBe(0)
 
-		await menu.getByRole('menuitem', { name: /Item/ }).click()
-		await expect(menu).toBeHidden()
-		await expect(page.locator('.lb-item')).toHaveCount(1)
-		expect(await countByType(page, 'node.item')).toBe(1)
-		expect(await countByType(page, 'text')).toBe(0)
-
-		// Created centred on the click and already in edit mode, so you can type straight away.
+		// The caret is already in the note, so you can just type.
+		await expect(page.locator('.lb-note__input')).toBeFocused()
 		const editing = await page.evaluate(
 			() => (window as unknown as { editor: EditorLike }).editor.getEditingShapeId() !== null
 		)
 		expect(editing).toBe(true)
 	})
 
-	test('the picker dismisses without creating anything on Escape', async ({ page }) => {
+	test('markdown renders block by block as you leave each one', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(760, 420)
-		await expect(page.getByRole('menu', { name: 'Create a node' })).toBeVisible()
-		await page.keyboard.press('Escape')
-		await expect(page.getByRole('menu', { name: 'Create a node' })).toBeHidden()
+		await page.mouse.dblclick(560, 260)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
 
-		expect(await countShapesTotal(page)).toBe(0)
+		await page.keyboard.type('# Chores')
+		// Still raw while the caret is in it — that is the whole point of live preview.
+		await expect(page.locator('.lb-note__block h1')).toHaveCount(0)
+
+		await page.keyboard.press('Enter')
+		// Leaving the block renders it, while the new block is the one raw textarea.
+		await expect(page.locator('.lb-note__block h1')).toHaveText('Chores')
+		await expect(page.locator('.lb-note__input')).toHaveCount(1)
+
+		// Enter inside a list continues the list rather than splitting the block.
+		await page.keyboard.type('- morning care')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('- workout')
+		await page.keyboard.press('Escape')
+
+		// Committed markdown is exactly what was typed — one list, not two paragraphs.
+		const md = await page.evaluate(
+			() =>
+				(window as unknown as { editor: EditorLike }).editor
+					.getCurrentPageShapes()
+					.find((s) => s.type === 'node.markdown')!.props.md
+		)
+		expect(md).toBe('# Chores\n\n- morning care\n- workout')
+		await expect(page.locator('.lb-md__body li')).toHaveCount(2)
+	})
+
+	test('a note grows with its content, and a vertical drag pins the height', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+
+		const readNote = () =>
+			page.evaluate(() => {
+				const s = (window as unknown as { editor: EditorLike }).editor
+					.getCurrentPageShapes()
+					.find((x) => x.type === 'node.markdown')!
+				return { h: Math.round(s.props.h as number), auto: s.props.autoHeight as boolean }
+			})
+
+		const before = await readNote()
+		await page.keyboard.type('# Title')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('a line\n\nanother line\n\nand a third')
+		await page.keyboard.press('Escape')
+
+		await expect.poll(async () => (await readNote()).h).toBeGreaterThan(before.h)
+		expect((await readNote()).auto).toBe(true)
+
+		// The height is a derived cache written with `history: 'ignore'`, so growing it must not have
+		// added undo entries — one undo still reverts the whole editing session.
+		const grown = await readNote()
+		await page.keyboard.press('ControlOrMeta+z')
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					() =>
+						(window as unknown as { editor: EditorLike }).editor
+							.getCurrentPageShapes()
+							.filter((s) => s.type === 'node.markdown').length
+				)
+			)
+			.toBe(0)
+		await page.keyboard.press('ControlOrMeta+Shift+z')
+		await expect.poll(async () => (await readNote()).h).toBe(grown.h)
+
+		// Dragging the bottom edge is an explicit request for a fixed height.
+		const handle = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			const s = editor.getCurrentPageShapes().find((x) => x.type === 'node.markdown')!
+			const b = editor.getShapePageBounds(s.id)!
+			editor.select(s.id)
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h })
+		})
+		await page.mouse.move(handle.x, handle.y)
+		await page.mouse.down()
+		await page.mouse.move(handle.x, handle.y + 130, { steps: 8 })
+		await page.mouse.up()
+
+		await expect.poll(async () => (await readNote()).auto).toBe(false)
+		expect((await readNote()).h).toBeGreaterThan(grown.h)
+	})
+
+	test('the context menu offers every node type so they stay discoverable', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// Double-click is now "write", so right-click is what surfaces rollups and items.
+		await page.mouse.click(560, 300, { button: 'right' })
+		for (const label of ['Add note', 'Add item', 'Add rollup']) {
+			await expect(page.getByRole('menuitem', { name: label })).toBeVisible()
+		}
+
+		await page.getByRole('menuitem', { name: 'Add rollup' }).click()
+		expect(await countByType(page, 'node.rollup')).toBe(1)
 	})
 
 	test('double-clicking an existing node still edits it rather than offering to create', async ({
@@ -62,8 +145,9 @@ test.describe('canvas chrome', () => {
 		})
 		await page.mouse.dblclick(point.x, point.y)
 
-		await expect(page.getByRole('menu', { name: 'Create a node' })).toBeHidden()
+		// It edits the node rather than creating a new one on top of it.
 		await expect(page.locator('.lb-popover')).toBeVisible()
+		expect(await countByType(page, 'node.markdown')).toBe(1)
 	})
 
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {
@@ -262,12 +346,6 @@ async function countByType(page: import('@playwright/test').Page, type: string):
 	)
 }
 
-async function countShapesTotal(page: import('@playwright/test').Page): Promise<number> {
-	return page.evaluate(
-		() => (window as unknown as { editor: EditorLike }).editor.getCurrentPageShapes().length
-	)
-}
-
 /** The dot pattern's first circle offset, which encodes the camera position. */
 async function firstDotOffset(page: import('@playwright/test').Page): Promise<string> {
 	return page.locator('.lb-paper circle').first().getAttribute('cx').then((v) => v ?? '')
@@ -314,10 +392,11 @@ async function countThumbnails(page: import('@playwright/test').Page): Promise<n
 }
 
 interface EditorLike {
-	getCurrentPageShapes(): { id: string; type: string }[]
+	getCurrentPageShapes(): { id: string; type: string; props: Record<string, unknown> }[]
 	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
 	pageToScreen(p: { x: number; y: number }): { x: number; y: number }
 	getEditingShapeId(): string | null
 	setCamera(c: { x: number; y: number; z: number }): unknown
 	createShapes(s: unknown[]): unknown
+	select(...ids: string[]): unknown
 }

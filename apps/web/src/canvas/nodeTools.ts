@@ -1,5 +1,5 @@
 import { BaseBoxShapeTool, type TLStateNodeConstructor } from 'tldraw'
-import { getNodeDefinitions } from '@lifeboard/node-kit'
+import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
 
 /**
  * One click-and-drag tool per registered node type, generated from the registry — never hardcoded
@@ -22,7 +22,7 @@ export function toolIdForNodeType(nodeType: string): string {
 }
 
 export function createNodeTools(): TLStateNodeConstructor[] {
-	return getNodeDefinitions().map((def) => {
+	return getVisibleNodeDefinitions().map((def) => {
 		class NodeBoxTool extends BaseBoxShapeTool {
 			static override id = toolIdForNodeType(def.type)
 			// `shapeType` is typed against tldraw's closed union of box shapes; a registry entry's

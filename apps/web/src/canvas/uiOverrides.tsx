@@ -1,12 +1,17 @@
-import { getNodeDefinitions } from '@lifeboard/node-kit'
+import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
 import {
+	DefaultContextMenu,
+	DefaultContextMenuContent,
 	DefaultKeyboardShortcutsDialog,
 	DefaultKeyboardShortcutsDialogContent,
 	DefaultToolbar,
 	DefaultToolbarContent,
+	TldrawUiMenuGroup,
 	TldrawUiMenuItem,
+	useEditor,
 	useIsToolSelected,
 	useTools,
+	createShapeId,
 	type TLComponents,
 	type TLUiOverrides,
 } from 'tldraw'
@@ -22,7 +27,7 @@ import { toolIdForNodeType } from './nodeTools'
  * and `g` is an action, so neither is available; `m`, `i` and `s` are free.
  */
 const KBD_BY_TYPE: Record<string, string> = {
-	'node.markdown': 'm',
+	'node.markdown': 'n',
 	'node.item': 'i',
 	'node.rollup': 's',
 }
@@ -39,7 +44,7 @@ function glyphIcon(glyph: string) {
 
 export const nodeUiOverrides: TLUiOverrides = {
 	tools(editor, tools) {
-		for (const def of getNodeDefinitions()) {
+		for (const def of getVisibleNodeDefinitions()) {
 			const id = toolIdForNodeType(def.type)
 			tools[id] = {
 				id,
@@ -61,7 +66,7 @@ function NodeToolbarItems() {
 	// without breaking hook ordering. Each entry is therefore its own component.
 	return (
 		<>
-			{getNodeDefinitions().map((def) => (
+			{getVisibleNodeDefinitions().map((def) => (
 				<NodeToolbarItem key={def.type} toolId={toolIdForNodeType(def.type)} tools={tools} />
 			))}
 		</>
@@ -81,7 +86,55 @@ function NodeToolbarItem({
 	return <TldrawUiMenuItem {...tool} isSelected={isSelected} />
 }
 
+/**
+ * "Add to board" on the canvas context menu.
+ *
+ * Double-clicking empty canvas now creates a note outright — which is what makes writing the default
+ * action, but it also means nothing surfaces the other node types any more. Right-click keeps them
+ * discoverable, and stays registry-driven so a new type (or a plugin's) appears here for free.
+ */
+function AddToBoardItems() {
+	const editor = useEditor()
+	return (
+		<TldrawUiMenuGroup id="lifeboard-add">
+			{getVisibleNodeDefinitions().map((def) => (
+				<TldrawUiMenuItem
+					key={def.type}
+					id={`lifeboard-add-${def.type}`}
+					label={`Add ${def.label.toLowerCase()}`}
+					icon={glyphIcon(def.icon)}
+					onSelect={() => {
+						// The right-click point: where the user was pointing when the menu opened.
+						const point = editor.inputs.getCurrentPagePoint()
+						const id = createShapeId()
+						editor.run(() => {
+							editor.markHistoryStoppingPoint('create node')
+							editor.createShapes([
+								{
+									id,
+									type: def.type,
+									x: point.x - def.defaultSize.w / 2,
+									y: point.y - def.defaultSize.h / 2,
+								} as never,
+							])
+							editor.select(id)
+						})
+						const shape = editor.getShape(id)
+						if (shape && editor.canEditShape(shape)) editor.setEditingShape(id)
+					}}
+				/>
+			))}
+		</TldrawUiMenuGroup>
+	)
+}
+
 export const nodeComponents: TLComponents = {
+	ContextMenu: (props) => (
+		<DefaultContextMenu {...props}>
+			<AddToBoardItems />
+			<DefaultContextMenuContent />
+		</DefaultContextMenu>
+	),
 	Toolbar: (props) => (
 		<DefaultToolbar {...props}>
 			<NodeToolbarItems />

@@ -65,6 +65,29 @@ describe('snapshot fixtures', () => {
 		}
 	})
 
+	it.each(files)('runs props migrations on %s', (file) => {
+		// The note node's `autoHeight` was the repo's first real props migration. The v0.1.0 fixture
+		// predates it (its schema records `com.tldraw.shape.node.markdown: 0` and its shapes have no
+		// `autoHeight`), so loading it here is what proves the migration actually runs — and that it
+		// adds `false`, not `true`: a note drawn at a fixed height must keep the height it was drawn at.
+		const snapshot = JSON.parse(readFileSync(join(fixturesDir, file), 'utf8')) as TLStoreSnapshot
+		const store = makeStore()
+		loadSnapshot(store, snapshot)
+
+		const notes = store
+			.allRecords()
+			.filter((r) => r.typeName === 'shape' && (r as { type: string }).type === 'node.markdown')
+
+		expect(notes.length).toBeGreaterThan(0)
+		for (const note of notes) {
+			const props = (note as { props: { md: string; autoHeight: boolean } }).props
+			expect(typeof props.autoHeight).toBe('boolean')
+			expect(props.autoHeight).toBe(false)
+			// The content itself must survive untouched.
+			expect(props.md.length).toBeGreaterThan(0)
+		}
+	})
+
 	it.each(files)('preserves item field data in %s', (file) => {
 		const snapshot = JSON.parse(readFileSync(join(fixturesDir, file), 'utf8')) as TLStoreSnapshot
 		const store = makeStore()

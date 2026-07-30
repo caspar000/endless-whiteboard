@@ -1,4 +1,4 @@
-import { getNodeDefinitions } from '@lifeboard/node-kit'
+import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
 import { useEffect, useRef } from 'react'
 import { createShapeId, stopEventPropagation, type Editor, type TLShapePartial } from 'tldraw'
 
@@ -70,7 +70,7 @@ export function NodeCreateMenu({
 	}, [])
 
 	const create = (type: string) => {
-		const def = getNodeDefinitions().find((d) => d.type === type)
+		const def = getVisibleNodeDefinitions().find((d) => d.type === type)
 		const id = createShapeId()
 
 		editor.run(() => {
@@ -121,7 +121,7 @@ export function NodeCreateMenu({
 			onWheel={stopEventPropagation}
 		>
 			<div className="lb-create-menu__label">Add to board</div>
-			{getNodeDefinitions().map((def) => (
+			{getVisibleNodeDefinitions().map((def) => (
 				<button
 					key={def.type}
 					className="lb-create-menu__item"
@@ -144,7 +144,7 @@ export function NodeCreateMenu({
 
 /** One line each, so the menu explains what a "rollup" is at the moment you'd wonder. */
 const DESCRIPTIONS: Record<string, string> = {
-	'node.markdown': 'Notes, lists, headings',
+	'node.markdown': 'Text, lists, headings',
 	'node.item': 'Record with typed fields',
 	'node.rollup': 'Live total over items',
 }

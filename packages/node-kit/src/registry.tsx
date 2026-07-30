@@ -15,6 +15,7 @@ import {
 } from 'tldraw'
 import type { ComponentType } from 'react'
 import type { NodeFacts } from './facts'
+import { useAutoHeight } from './useAutoHeight'
 
 /**
  * Box geometry is owned by the factory, not by definitions. A definition never declares or
@@ -63,6 +64,17 @@ export interface NodeDefinition<Props extends object = object> {
 	canEdit?: boolean
 	/** Locks the resize aspect ratio (unused by the MVP nodes, needed by future media nodes). */
 	aspectRatioLocked?: boolean
+	/**
+	 * Opt in to factory-derived height: the node's `h` tracks its rendered content. The node's props
+	 * must include a boolean `autoHeight` that the user can pin off by dragging a vertical handle.
+	 * See `useAutoHeight` for the mechanism and its guards.
+	 */
+	autoHeight?: { minHeight: number }
+	/**
+	 * Still registered so existing boards load and validate, but hidden from the toolbar, the canvas
+	 * tools and the create menu. Use `getVisibleNodeDefinitions()` for anything user-facing.
+	 */
+	deprecated?: boolean
 	/** The rollup contract (§4.3). Omit for nodes that expose no structured data. */
 	extractFacts?: (shape: NodeShape<Props>) => NodeFacts | null
 
@@ -137,7 +149,22 @@ export function createNodeShapeUtil<Props extends object>(
 		}
 
 		override onResize(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {
-			return resizeBox(shape, info)
+			if (!def.autoHeight) return resizeBox(shape, info)
+
+			// Dragging a vertical handle is an explicit request for a fixed height, so pin it.
+			const isVerticalHandle = info.handle === 'top' || info.handle === 'bottom'
+			if (isVerticalHandle) {
+				const resized = resizeBox(shape, info)
+				return { ...resized, props: { ...resized.props, autoHeight: false } }
+			}
+
+			// Side and corner drags change the width; the height then re-derives from the reflow.
+			//
+			// `scaleY` is neutralised *before* calling `resizeBox` rather than overriding `h` after:
+			// `resizeBox` computes `x`/`y` from the scaled height, so a post-hoc override would leave
+			// the shape mis-positioned on any top-anchored drag.
+			const autoHeightOn = (shape.props as { autoHeight?: boolean }).autoHeight !== false
+			return resizeBox(shape, autoHeightOn ? { ...info, scaleY: 1 } : info)
 		}
 
 		/** v5 replaced `indicator()` with `getIndicatorPath()`; see docs/tldraw-api-notes.md. */
@@ -151,6 +178,21 @@ export function createNodeShapeUtil<Props extends object>(
 			const shape = rawShape as unknown as Shape
 			const isEditing = this.editor.getEditingShapeId() === shape.id
 			const Component = def.component
+
+			// Called unconditionally — `enabled` gates the behaviour rather than the hook, so hook
+			// order can never depend on which node type this is.
+			const autoHeightOn =
+				def.autoHeight !== undefined &&
+				(shape.props as { autoHeight?: boolean }).autoHeight !== false
+			const contentRef = useAutoHeight({
+				editor: this.editor,
+				shapeId: shape.id,
+				shapeType: shape.type,
+				currentHeight: shape.props.h,
+				enabled: autoHeightOn,
+				minHeight: def.autoHeight?.minHeight ?? 0,
+			})
+
 			return (
 				<HTMLContainer
 					id={shape.id}
@@ -167,7 +209,18 @@ export function createNodeShapeUtil<Props extends object>(
 						overflow: isEditing ? 'visible' : 'hidden',
 					}}
 				>
-					<Component shape={shape} isEditing={isEditing} editor={this.editor} />
+					{/*
+					 * The measured element. Its height must be *intrinsic* (never 100%) when
+					 * auto-height is on, or the ResizeObserver would be measuring the container —
+					 * i.e. this node's own output — and feed back on itself forever.
+					 */}
+					<div
+						ref={contentRef}
+						className="lb-node__content"
+						style={{ width: '100%', height: autoHeightOn ? 'auto' : '100%' }}
+					>
+						<Component shape={shape} isEditing={isEditing} editor={this.editor} />
+					</div>
 				</HTMLContainer>
 			)
 		}
@@ -195,9 +248,23 @@ export function getNodeDefinition(type: string): NodeDefinition<never> | undefin
 	return registry.get(type)
 }
 
-/** Stable ordering so toolbar entries don't reshuffle between reloads. */
+/**
+ * Every registered definition, including deprecated ones. **This is the schema source** — it is what
+ * builds `shapeUtils`, so a type must stay here for as long as any board might still contain it.
+ */
 export function getNodeDefinitions(): NodeDefinition<never>[] {
 	return [...registry.values()]
+}
+
+/**
+ * The definitions a user should be offered: toolbar, canvas tools, create menu.
+ *
+ * Separate from `getNodeDefinitions()` because those two audiences genuinely differ the moment a type
+ * is deprecated — it must remain in the schema (or boards containing it fail validation and won't
+ * open) while disappearing from the UI. One function serving both is a latent bug.
+ */
+export function getVisibleNodeDefinitions(): NodeDefinition<never>[] {
+	return [...registry.values()].filter((def) => !def.deprecated)
 }
 
 export function isNodeType(type: string): boolean {

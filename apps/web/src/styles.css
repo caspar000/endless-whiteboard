@@ -708,6 +708,111 @@ button {
 	overflow: visible;
 }
 
+/* ------------------------------------------------------------- note node */
+/*
+ * The measured element for auto-height. Its height is intrinsic when auto-height is on (set inline by
+ * the factory), which is what the ResizeObserver reads.
+ */
+.lb-node__content {
+	display: block;
+}
+
+.lb-note {
+	width: 100%;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	font-size: 13px;
+	line-height: 1.55;
+	padding: 10px 13px;
+	/* Auto-height notes size to content, so no fixed height and nothing to clip. */
+	height: auto;
+	min-height: var(--lb-note-min-h, 44px);
+	overflow: visible;
+	display: flex;
+	flex-direction: column;
+}
+
+.lb-note--editing {
+	border-color: var(--lb-accent);
+	cursor: text;
+}
+
+/* A rendered (non-caret) block. Clicking one moves the caret into it. */
+.lb-note__block {
+	cursor: text;
+}
+.lb-note__block > :first-child {
+	margin-top: 0;
+}
+.lb-note__block > :last-child {
+	margin-bottom: 0;
+}
+
+/*
+ * The active block's textarea.
+ *
+ * Every one of these declarations exists so that raw source and rendered markdown occupy the same
+ * space: if the two differ in font, size, weight or line-height, the note visibly jumps each time the
+ * caret crosses a block boundary and reads as broken rather than as a mode change. The per-block-type
+ * modifiers below match the heading and code styles in `.lb-md__body`.
+ */
+.lb-note__input {
+	width: 100%;
+	display: block;
+	background: transparent;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	resize: none;
+	overflow: hidden;
+	outline: none;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 13px;
+	line-height: 1.55;
+	caret-color: var(--lb-accent);
+}
+.lb-note__input::placeholder {
+	color: var(--lb-text-faint);
+	font-style: italic;
+}
+.lb-note__input--body {
+	margin: 0 0 8px;
+}
+.lb-note__input--h1 {
+	font-size: 19px;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	margin: 14px 0 6px;
+}
+.lb-note__input--h2 {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.3;
+	margin: 14px 0 6px;
+}
+.lb-note__input--h3,
+.lb-note__input--h4,
+.lb-note__input--h5,
+.lb-note__input--h6 {
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.3;
+	margin: 14px 0 6px;
+}
+.lb-note__input--code {
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	background: var(--lb-surface-2);
+	border-radius: 6px;
+	padding: 8px 10px;
+	margin: 0 0 8px;
+}
+
 /* ---------------------------------------------------------- markdown node */
 
 .lb-md {

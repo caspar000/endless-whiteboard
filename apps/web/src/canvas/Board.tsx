@@ -1,7 +1,14 @@
-import { createNodeShapeUtil, getNodeDefinitions, rollupStats } from '@lifeboard/node-kit'
+import {
+	NOTE_MIN_HEIGHT,
+	NOTE_NODE_TYPE,
+	createNodeShapeUtil,
+	getNodeDefinitions,
+	rollupStats,
+} from '@lifeboard/node-kit'
 import { useEffect, useMemo, useState } from 'react'
 import {
 	Tldraw,
+	createShapeId,
 	type Editor,
 	type TLAnyShapeUtilConstructor,
 	type TLComponents,
@@ -61,23 +68,35 @@ const editorOptions: Partial<TldrawOptions> = {
  * this simply adds ours. `'settle-up'` is the phase after tldraw has decided the gesture really was a
  * double-click and not the start of a triple.
  */
-function watchCanvasDoubleClicks(
-	editor: Editor,
-	onPrompt: (prompt: NodeCreatePrompt) => void
-): () => void {
+function watchCanvasDoubleClicks(editor: Editor): () => void {
 	// `editor.on` returns the editor for chaining, not an unsubscribe, so the handler is kept and
 	// removed explicitly.
 	const handler = (info: TLEventInfo) => {
 		if (info.type !== 'click' || info.name !== 'double_click') return
 		if (info.phase !== 'settle-up' || info.target !== 'canvas') return
-		// Don't offer to create a node on top of an existing one.
+		// Don't create on top of an existing shape.
 		if (editor.getShapeAtPoint(editor.inputs.getCurrentPagePoint(), { hitInside: true })) return
 
 		const page = editor.inputs.getCurrentPagePoint()
-		onPrompt({
-			page: { x: page.x, y: page.y },
-			screen: { x: info.point.x, y: info.point.y },
+		const id = createShapeId()
+
+		editor.run(() => {
+			editor.markHistoryStoppingPoint('create note')
+			editor.createShapes([
+				{
+					id,
+					type: NOTE_NODE_TYPE,
+					// Anchored at the click rather than centred: the note grows downward from here as
+					// you type, so centring an empty one would make it drift up as it fills.
+					x: page.x,
+					y: page.y,
+					props: { w: 360, h: NOTE_MIN_HEIGHT, md: '', autoHeight: true },
+				} as never,
+			])
+			editor.select(id)
 		})
+		// Straight into editing — the whole point is that you double-click and start typing.
+		editor.setEditingShape(id)
 	}
 	editor.on('event', handler)
 	return () => editor.off('event', handler)
@@ -190,7 +209,7 @@ export function Board({
 					const stopTracking = trackBoardActivity(editor, () =>
 						void touchBoard(platform.kv, board.id)
 					)
-					const stopWatchingDoubleClicks = watchCanvasDoubleClicks(editor, setCreatePrompt)
+					const stopWatchingDoubleClicks = watchCanvasDoubleClicks(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor

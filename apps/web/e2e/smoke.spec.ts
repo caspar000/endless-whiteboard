@@ -56,7 +56,7 @@ test.describe('board CRUD and persistence', () => {
 
 		await createBoard(page, 'Board A')
 		await openBoard(page, 'Board A')
-		await drawNode(page, 'Markdown', { x: 400, y: 300 })
+		await drawNode(page, 'Note', { x: 400, y: 300 })
 		await expect(page.locator('.lb-md')).toHaveCount(1)
 		await backToList(page)
 
@@ -132,12 +132,12 @@ test.describe('nodes', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await drawNode(page, 'Markdown', { x: 400, y: 250 }, { w: 360, h: 240 })
+		await drawNode(page, 'Note', { x: 400, y: 250 }, { w: 360, h: 240 })
 		await expect(page.locator('.lb-md')).toHaveCount(1)
 
 		// Double-click to edit, type markdown, then leave editing.
 		await dblclickNode(page, 'node.markdown')
-		const textarea = page.locator('.lb-md__textarea')
+		const textarea = page.locator('.lb-note__input')
 		await expect(textarea).toBeFocused()
 		await textarea.fill('# Chores\n\n- morning care\n- workout')
 		await textarea.press('Escape')
@@ -155,7 +155,7 @@ test.describe('nodes', () => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
-		await drawNode(page, 'Markdown', { x: 400, y: 250 }, { w: 360, h: 240 })
+		await drawNode(page, 'Note', { x: 400, y: 250 }, { w: 360, h: 240 })
 
 		await dblclickNode(page, 'node.markdown')
 		const cameraBefore = await page.evaluate(() =>
@@ -163,7 +163,7 @@ test.describe('nodes', () => {
 		)
 
 		// Space and arrow keys pan the canvas when it has focus — they must not while editing.
-		const textarea = page.locator('.lb-md__textarea')
+		const textarea = page.locator('.lb-note__input')
 		await textarea.fill('hello world')
 		await textarea.press('ArrowLeft')
 		await textarea.press('Space')

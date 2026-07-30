@@ -59,7 +59,10 @@ export function SettingsPanel({
 			const result = await exportBackup(platform, APP_VERSION)
 			await platform.saveFile(backupFileName(), result.blob)
 			setMessage(
-				`Exported ${result.boardCount} board${result.boardCount === 1 ? '' : 's'} and ${result.assetCount} image${result.assetCount === 1 ? '' : 's'} (${formatBytes(result.blob.size)}).`
+				[
+					`Exported ${result.boardCount} board${result.boardCount === 1 ? '' : 's'} and ${result.assetCount} image${result.assetCount === 1 ? '' : 's'} (${formatBytes(result.blob.size)}).`,
+					...result.warnings,
+				].join(' ')
 			)
 			await refreshStatus()
 		} catch (err) {

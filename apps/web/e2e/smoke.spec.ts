@@ -143,7 +143,8 @@ test.describe('nodes', () => {
 		await page.keyboard.press('Enter')
 		await page.keyboard.type('- morning care')
 		await page.keyboard.press('Enter')
-		await page.keyboard.type('- workout')
+		// Auto-continuation prefills the bullet, so only the text is typed.
+		await page.keyboard.type('workout')
 		await page.keyboard.press('Escape')
 
 		// Display mode shows rendered markdown, not source.

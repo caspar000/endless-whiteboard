@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
+import { assetUploadActivityAt } from '../persistence/assetStore'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { BoardList } from './BoardList'
+import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
 import { useHashRoute } from './useHashRoute'
 
@@ -20,6 +22,13 @@ import { useHashRoute } from './useHashRoute'
  */
 const DRAIN_MS = TLDRAW_PERSIST_THROTTLE_MS + 400
 
+/**
+ * Upper bound on a drain extended by a running image upload (see `drainSchedule.ts`), so a wedged
+ * upload can't pin a hidden editor for the rest of the session. Past the cap the asset stays
+ * half-written, which asset GC and backup export both detect and refuse to act on.
+ */
+const MAX_DRAIN_MS = 15_000
+
 export function App() {
 	const platform = usePlatform()
 	const api = useBoards()
@@ -28,7 +37,7 @@ export function App() {
 
 	/** A board being kept mounted purely to let its pending write flush. */
 	const [draining, setDraining] = useState<BoardMeta | null>(null)
-	const drainTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const cancelDrain = useRef<(() => void) | null>(null)
 
 	// Ask for durable storage once, at startup. Chrome grants it silently based on engagement;
 	// Safari grants it to installed PWAs. Either way, asking early is free (§4.4).
@@ -37,9 +46,7 @@ export function App() {
 	}, [platform])
 
 	useEffect(() => {
-		return () => {
-			if (drainTimer.current) clearTimeout(drainTimer.current)
-		}
+		return () => cancelDrain.current?.()
 	}, [])
 
 	// First run with no boards at all → seed the demo board so the app explains itself.
@@ -70,19 +77,25 @@ export function App() {
 	// countdown — otherwise its timer fires mid-session and unmounts the editor they just came back to.
 	useEffect(() => {
 		if (route.view !== 'board' || draining?.id !== route.boardId) return
-		if (drainTimer.current) clearTimeout(drainTimer.current)
-		drainTimer.current = null
+		cancelDrain.current?.()
+		cancelDrain.current = null
 		setDraining(null)
 	}, [route, draining])
 
 	const exitToList = useCallback(
 		(board: BoardMeta) => {
 			setDraining(board)
-			if (drainTimer.current) clearTimeout(drainTimer.current)
-			drainTimer.current = setTimeout(() => {
-				drainTimer.current = null
-				setDraining(null)
-			}, DRAIN_MS)
+			cancelDrain.current?.()
+			cancelDrain.current = startDrain({
+				drainMs: DRAIN_MS,
+				maxMs: MAX_DRAIN_MS,
+				lastActivityAt: assetUploadActivityAt,
+				onDone: () => {
+					cancelDrain.current = null
+					setDraining(null)
+				},
+			})
+
 			navigate({ view: 'list' })
 			void api.refresh()
 		},
@@ -97,8 +110,8 @@ export function App() {
 	const removeBoard = useCallback(
 		async (id: string) => {
 			if (draining?.id === id) {
-				if (drainTimer.current) clearTimeout(drainTimer.current)
-				drainTimer.current = null
+				cancelDrain.current?.()
+				cancelDrain.current = null
 				setDraining(null)
 				// Give React a frame to commit the unmount so tldraw closes its connection.
 				await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))

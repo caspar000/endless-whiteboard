@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { stopEventPropagation } from 'tldraw'
 import {
-	insertLineBreak,
 	joinWithNext,
 	joinWithPrevious,
 	lineIndexAtOffset,
@@ -10,6 +9,7 @@ import {
 	surroundingMarkdown,
 	type Line,
 } from './lines'
+import { decideEnter } from './listContinuation'
 import { MarkdownView } from './MarkdownView'
 import { decideNavigation } from './navigation'
 import { SessionHistory } from './sessionHistory'
@@ -45,6 +45,15 @@ export function NoteEditor({
 	const sourceRef = useRef(initial)
 	const historyRef = useRef(new SessionHistory({ source: initial, caret: initialCaret ?? initial.length }))
 
+	/**
+	 * Bumped on every structural change, and part of the textarea's `key`.
+	 *
+	 * The textarea is uncontrolled, so `defaultValue` is only read when it mounts. Keying on the line
+	 * index alone meant a change that *replaced the current line's text without moving to a different
+	 * line* — leaving a list does exactly that — left the old text in the DOM. The next flush then
+	 * spliced that stale text back in, resurrecting the marker that had just been removed.
+	 */
+	const [generation, setGeneration] = useState(0)
 	const [lines, setLines] = useState<Line[]>(() => splitLines(initial))
 	const [activeIndex, setActiveIndex] = useState(() =>
 		lineIndexAtOffset(splitLines(initial), initialCaret ?? initial.length)
@@ -101,6 +110,7 @@ export function NoteEditor({
 			pendingCaretRef.current = Math.max(0, caretAbsolute - line.start)
 			setLines(nextLines)
 			setActiveIndex(index)
+			setGeneration((n) => n + 1)
 		},
 		[]
 	)
@@ -181,8 +191,23 @@ export function NoteEditor({
 			case 'newline': {
 				e.preventDefault()
 				const { source, lineStart } = flush()
-				const result = insertLineBreak(source, lineStart + el.selectionStart)
-				apply(result.source, result.caret)
+				const caretInLine = el.selectionStart
+				const outcome = decideEnter(el.value, caretInLine)
+
+				if (outcome.kind === 'exitList') {
+					// Enter on an empty marker leaves the list, replacing the marker with a blank line so
+					// that what comes next is a new paragraph rather than a continuation of the last item.
+					const next =
+						source.slice(0, lineStart) +
+						outcome.insert +
+						source.slice(lineStart + outcome.prefixLength)
+					apply(next, lineStart + outcome.insert.length)
+					return
+				}
+
+				const at = lineStart + caretInLine
+				const next = source.slice(0, at) + outcome.text + source.slice(at)
+				apply(next, at + outcome.text.length)
 				return
 			}
 
@@ -271,8 +296,9 @@ export function NoteEditor({
 			)}
 
 			<textarea
-				// Keyed by line so switching lines remounts with a fresh `defaultValue`.
-				key={`line-${activeIndex}`}
+				// Keyed by line *and* generation: an uncontrolled textarea only reads `defaultValue` on
+				// mount, so a structural change that keeps the same line index must still remount it.
+				key={`line-${activeIndex}-${generation}`}
 				ref={textareaRef}
 				className={`lb-note__input ${typographyClass(style)}`}
 				defaultValue={source.slice(activeLine.start, activeLine.end)}

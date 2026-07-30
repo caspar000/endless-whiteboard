@@ -47,7 +47,8 @@ test.describe('canvas chrome', () => {
 
 		await page.keyboard.type('- morning care')
 		await page.keyboard.press('Enter')
-		await page.keyboard.type('- workout')
+		// The bullet is prefilled by auto-continuation, so only the text is typed.
+		await page.keyboard.type('workout')
 		await page.keyboard.press('Escape')
 
 		// Enter inserts a single newline every time — no block-type special cases.
@@ -59,6 +60,50 @@ test.describe('canvas chrome', () => {
 		)
 		expect(md).toBe('# Chores\nfirst prose line\n- morning care\n- workout')
 		await expect(page.locator('.lb-md__body li')).toHaveCount(2)
+	})
+
+	test('list markers auto-continue, and an empty one leaves the list', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+
+		await page.keyboard.type('# Shopping')
+		await page.keyboard.press('Enter')
+		// Only the first marker is typed; the rest are prefilled.
+		await page.keyboard.type('- [ ] standing desk')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('desk lamp')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('rug')
+		await page.keyboard.press('Enter')
+		// Enter on the now-empty marker leaves the list.
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('**Budget:** 3000 GEL')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('1. first')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('second')
+		await page.keyboard.press('Escape')
+
+		const md = await page.evaluate(
+			() =>
+				(window as unknown as { editor: EditorLike }).editor
+					.getCurrentPageShapes()
+					.find((s) => s.type === 'node.markdown')!.props.md
+		)
+		// A blank line after "rug" — leaving a list has to insert one, or the Budget line is a lazy
+		// continuation of the last item and renders indented under the bullet.
+		expect(md).toBe(
+			'# Shopping\n- [ ] standing desk\n- [ ] desk lamp\n- [ ] rug\n\n**Budget:** 3000 GEL\n1. first\n2. second'
+		)
+
+		// Three tasks, an ordered list that counted up, and Budget outside the list.
+		await expect(page.locator('.lb-md__body input[type=checkbox]')).toHaveCount(3)
+		await expect(page.locator('.lb-md__body ol li')).toHaveCount(2)
+		await expect(page.locator('.lb-md__body ul strong')).toHaveCount(0)
 	})
 
 	test('double-clicking an existing note puts the caret straight in the text', async ({ page }) => {
@@ -134,11 +179,35 @@ test.describe('canvas chrome', () => {
 		await expect.poll(async () => (await readNote()).h).toBe(grown.h)
 
 		// Dragging the bottom edge is an explicit request for a fixed height.
+		//
+		// Selection first, in its own step: the edge handle only exists once tldraw has rendered the
+		// selection foreground, and the bottom edge is only where it looks once auto-height has stopped
+		// adjusting. Computing the coordinates in the same breath as selecting made this flaky — the
+		// drag landed a pixel or two outside the handle and translated the shape instead of resizing it.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			const s = editor.getCurrentPageShapes().find((x) => x.type === 'node.markdown')!
+			editor.select(s.id)
+		})
+		// Two frames for tldraw to render the selection foreground the handle lives in.
+		await page.evaluate(
+			() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+		)
+
+		let settled = -1
+		await expect
+			.poll(async () => {
+				const { h } = await readNote()
+				const stable = h === settled
+				settled = h
+				return stable
+			})
+			.toBe(true)
+
 		const handle = await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorLike }).editor
 			const s = editor.getCurrentPageShapes().find((x) => x.type === 'node.markdown')!
 			const b = editor.getShapePageBounds(s.id)!
-			editor.select(s.id)
 			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h })
 		})
 		await page.mouse.move(handle.x, handle.y)
@@ -147,7 +216,7 @@ test.describe('canvas chrome', () => {
 		await page.mouse.up()
 
 		await expect.poll(async () => (await readNote()).auto).toBe(false)
-		expect((await readNote()).h).toBeGreaterThan(grown.h)
+		expect((await readNote()).h).toBeGreaterThan(settled)
 	})
 
 	test('the context menu offers every node type so they stay discoverable', async ({ page }) => {

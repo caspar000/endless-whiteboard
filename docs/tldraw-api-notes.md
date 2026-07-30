@@ -57,3 +57,32 @@ otherwise the index grows unboundedly. This is wrapped in exactly one function �
 `deleteTldrawDocument()` in `apps/web/src/persistence/tldrawLocalDb.ts` — with a test pinning
 both constants (`tldrawLocalDb.test.ts`). If a tldraw upgrade changes them, that test fails loudly
 instead of silently leaking board data.
+
+## `putExternalContent` resolves before the upload finishes
+
+In `tldraw/src/lib/defaultExternalContentHandlers.ts`, the files branch of
+`defaultHandleExternalContent` does this:
+
+```ts
+editor.createTemporaryAssetPreview(assetInfo.id, sanitizedFile)   // asset record, src: ''
+Promise.allSettled(assetsToUpdate.map(async (a) => {              // NOT awaited
+  const newAsset = await editor.getAssetForExternalContent({ type: 'file', file: a.file })
+  editor.updateAssets([{ ...newAsset, id: a.asset.id }])          // src filled in later
+}))
+createShapesForAssets(editor, assetPartials, pagePoint)
+```
+
+So `await editor.putExternalContent({ type: 'files', … })` resolves while the upload is still
+running, and for that window the store holds a shape pointing at an asset whose `src` is `''`.
+
+Three consequences we handle explicitly:
+
+- **Unmounting the editor in that window loses the image permanently.** The `updateAssets` write
+  never lands, so the record keeps `src: ''` — the shape renders blank forever while the bytes sit
+  orphaned in the blob store. `app/drainSchedule.ts` keeps a left board mounted until uploads settle
+  *plus one full clean window*, because filling in the `src` is itself a throttled write.
+- **Anything reading a persisted snapshot can see the half-written state** — asset GC and backup
+  export both do. `collectAssetRefs` reports it as `pending`, and both callers refuse to act on it
+  rather than concluding "this board references nothing".
+- **Tests cannot assume the blob exists once the import call returns.** `hasPendingAssetUploads()` /
+  `waitForAssetUploads()` in `persistence/assetStore.ts` are the seam for waiting on it.

@@ -35,15 +35,81 @@ export function assetSrcForHash(hash: string): string {
  */
 const objectUrlCache = new Map<string, string>()
 
+/**
+ * Upload bookkeeping: how many are running, when the last one finished, and who is waiting.
+ *
+ * This exists because of a sharp edge in tldraw: dropping files creates the `asset` record
+ * immediately with `src: ''` and then fires the upload as a **floating promise** that
+ * `putExternalContent` never awaits (`defaultHandleExternalContent`, the `Promise.allSettled` around
+ * `editor.updateAssets`). So `await editor.putExternalContent(…)` resolves while the image is still
+ * being downscaled and hashed, and the store is briefly in a state where the shape points at an
+ * asset that has no source yet.
+ *
+ * Unmounting the editor in that window loses the real `src` permanently — the shape keeps rendering
+ * blank, with the bytes sitting in the blob store unreachable. Module-level (like `objectUrlCache`
+ * above) because it is a property of the page, not of any one board: uploads outlive the board that
+ * started them, which is exactly the problem.
+ */
+let uploadsInFlight = 0
+let lastUploadFinishedAt = 0
+const uploadWaiters = new Set<() => void>()
+
+/** True while an image is still being downscaled, hashed or stored. */
+export function hasPendingAssetUploads(): boolean {
+	return uploadsInFlight > 0
+}
+
+/**
+ * When an upload last did something that will write to the editor's store, or 0 if none ever has.
+ * A running upload reports *now*, so it always reads as ongoing.
+ *
+ * The board drain needs the *timestamp*, not a boolean: finishing an upload triggers tldraw's
+ * `updateAssets`, and that write is throttled. A drain that only asked "is anything running?" would
+ * see nothing at a tick 190ms after an upload finished, unmount, and discard the `src`.
+ */
+export function assetUploadActivityAt(): number {
+	return uploadsInFlight > 0 ? Date.now() : lastUploadFinishedAt
+}
+
+/**
+ * Resolves once no upload is running, or after `timeoutMs` — whichever comes first.
+ *
+ * Bounded on purpose: anything that waits on this (backup export, asset GC) must still make progress
+ * if an upload is wedged. The timeout is not a correctness assumption, because both callers are
+ * separately conservative about asset records that still have no `src`.
+ */
+export function waitForAssetUploads(timeoutMs = 10_000): Promise<void> {
+	if (uploadsInFlight === 0) return Promise.resolve()
+	return new Promise((resolve) => {
+		const settle = () => {
+			clearTimeout(timer)
+			uploadWaiters.delete(settle)
+			resolve()
+		}
+		const timer = setTimeout(settle, timeoutMs)
+		uploadWaiters.add(settle)
+	})
+}
+
 export function createLifeboardAssetStore(blobs: BlobStore): TLAssetStore {
 	return {
 		async upload(_asset: TLAsset, file: File) {
-			// Downscale first, then hash: the hash must identify what we actually store, so that
-			// re-pasting the same photo dedupes against the stored (downscaled) blob.
-			const { blob } = await downscaleImage(file)
-			const hash = await sha256Hex(blob)
-			await blobs.put(hash, blob)
-			return { src: assetSrcForHash(hash) }
+			uploadsInFlight++
+			try {
+				// Downscale first, then hash: the hash must identify what we actually store, so that
+				// re-pasting the same photo dedupes against the stored (downscaled) blob.
+				const { blob } = await downscaleImage(file)
+				const hash = await sha256Hex(blob)
+				await blobs.put(hash, blob)
+				return { src: assetSrcForHash(hash) }
+			} finally {
+				uploadsInFlight--
+				lastUploadFinishedAt = Date.now()
+				if (uploadsInFlight === 0) {
+					for (const waiter of uploadWaiters) waiter()
+					uploadWaiters.clear()
+				}
+			}
 		},
 
 		async resolve(asset: TLAsset) {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-	insertLineBreak,
 	joinWithNext,
 	joinWithPrevious,
 	lineIndexAtOffset,
@@ -86,27 +85,6 @@ describe('surroundingMarkdown', () => {
 		const lines = splitLines(source)
 		expect(surroundingMarkdown(source, lines[0]!)).toEqual({ before: '', after: '\nb' })
 		expect(surroundingMarkdown(source, lines[1]!)).toEqual({ before: 'a\n', after: '' })
-	})
-})
-
-describe('insertLineBreak — what Enter does, in every block type', () => {
-	it('splits a line at the caret', () => {
-		expect(insertLineBreak('hello world', 5)).toEqual({ source: 'hello\n world', caret: 6 })
-	})
-
-	it('appends an empty line at the end', () => {
-		expect(insertLineBreak('done', 4)).toEqual({ source: 'done\n', caret: 5 })
-	})
-
-	it('works inside a list without ending the list', () => {
-		// A single newline keeps the list intact — the new line is just another item to fill in.
-		const { source } = insertLineBreak('- one', 5)
-		expect(source).toBe('- one\n')
-	})
-
-	it('works inside a fenced code block', () => {
-		const { source } = insertLineBreak('```js\ncode', 10)
-		expect(source).toBe('```js\ncode\n')
 	})
 })
 

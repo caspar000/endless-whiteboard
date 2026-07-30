@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { createBoard, gotoFresh, openBoard, skipFirstRunDemo, waitForPersistedShapes } from './helpers'
+import {
+	backToList,
+	createBoard,
+	gotoFresh,
+	openBoard,
+	skipFirstRunDemo,
+	waitForPersistedShapes,
+} from './helpers'
 
 /**
  * Milestone 3's acceptance criteria: "Paste a 10 MB photo → stored ≪1 MB, survives reload, re-paste
@@ -8,8 +15,19 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo, waitForPersistedSh
  * The image is generated in the page as a large PNG so the test carries no binary fixture, and so
  * the downscale path gets a genuinely oversized input (3000px wide, well past the 2048px cap).
  */
-async function importGeneratedImage(page: import('@playwright/test').Page): Promise<number> {
-	return page.evaluate(async () => {
+async function importGeneratedImage(
+	page: import('@playwright/test').Page,
+	/**
+	 * Leaves the board from *inside* the page, in the same task the import resolved in.
+	 *
+	 * The point is to make a race deterministic rather than hope for it. Driving the click from Node
+	 * costs a round trip, and the upload usually finishes during it — so a test that imports and then
+	 * clicks would pass whether or not the app handles an interrupted upload. Clicking here leaves the
+	 * upload no window at all to complete in.
+	 */
+	opts: { leaveBoardImmediately?: boolean } = {}
+): Promise<number> {
+	return page.evaluate(async ({ leaveBoardImmediately }) => {
 		const canvas = document.createElement('canvas')
 		canvas.width = 3000
 		canvas.height = 2000
@@ -34,8 +52,16 @@ async function importGeneratedImage(page: import('@playwright/test').Page): Prom
 		const editor = (window as unknown as { editor: { putExternalContent(i: unknown): Promise<void> } })
 			.editor
 		await editor.putExternalContent({ type: 'files', files: [file], point: { x: 200, y: 200 } })
+
+		if (leaveBoardImmediately) {
+			const back = [...document.querySelectorAll('button')].find((b) =>
+				b.textContent?.startsWith('←')
+			)
+			if (!back) throw new Error('Could not find the back button to leave the board')
+			back.click()
+		}
 		return blob.size
-	})
+	}, opts)
 }
 
 /** tldraw 5 renders image shapes as an <img> inside its generic HTML container. */
@@ -84,6 +110,46 @@ async function readBlobStore(page: import('@playwright/test').Page) {
 	})
 }
 
+/**
+ * The `src` of every `asset` record a board has actually persisted.
+ *
+ * Read from tldraw's own database rather than from the live editor, because that is what asset GC,
+ * backup export and the next board open all read. An empty string here is the failure mode worth
+ * catching: a record whose upload never landed.
+ */
+async function readPersistedAssetSrcs(
+	page: import('@playwright/test').Page,
+	boardId: string
+): Promise<string[]> {
+	return page.evaluate(async (id) => {
+		const dbName = `TLDRAW_DOCUMENT_v2lifeboard-${id}`
+		const exists = ((await indexedDB.databases?.()) ?? []).some((d) => d.name === dbName)
+		if (!exists) return ['<no database>']
+
+		const db = await new Promise<IDBDatabase>((resolve) => {
+			const req = indexedDB.open(dbName)
+			req.onsuccess = () => resolve(req.result)
+		})
+		try {
+			if (!db.objectStoreNames.contains('records')) return ['<no records store>']
+			const records = await new Promise<{ typeName?: string; props?: { src?: string } }[]>((r) => {
+				const q = db.transaction('records', 'readonly').objectStore('records').getAll()
+				q.onsuccess = () => r(q.result)
+			})
+			return records.filter((rec) => rec.typeName === 'asset').map((rec) => rec.props?.src ?? '')
+		} finally {
+			db.close()
+		}
+	}, boardId)
+}
+
+/** The id of the board currently open, taken from the route. */
+async function currentBoardId(page: import('@playwright/test').Page): Promise<string> {
+	const id = await page.evaluate(() => /#\/board\/([^?]+)/.exec(location.hash)?.[1])
+	if (!id) throw new Error('No board is open')
+	return decodeURIComponent(id)
+}
+
 test.describe('asset store', () => {
 	test('downscales on import, content-addresses, dedupes, and survives reload', async ({ page }) => {
 		await gotoFresh(page)
@@ -96,7 +162,9 @@ test.describe('asset store', () => {
 
 		// tldraw shows the shape immediately and runs the asset upload in the background, so the blob
 		// lands slightly after the shape does.
-		await expect.poll(async () => (await readBlobStore(page)).hashes.length).toBe(1)
+		await expect
+			.poll(async () => (await readBlobStore(page)).hashes.length)
+			.toBe(1)
 
 		const first = await readBlobStore(page)
 		expect(first.hashes).toHaveLength(1)
@@ -145,6 +213,45 @@ test.describe('asset store', () => {
 		await expect(imageShapes(page)).toHaveCount(2)
 		await expect(imageShapes(page).first()).toBeVisible()
 		expect((await readBlobStore(page)).hashes).toEqual(first.hashes)
+	})
+
+	test('an image survives leaving the board mid-upload', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Quick exit')
+		await openBoard(page, 'Quick exit')
+		const boardId = await currentBoardId(page)
+
+		// `putExternalContent` resolves *before* the upload finishes: tldraw creates the asset record
+		// with `src: ''` and fills it in from a promise it never awaits. Leaving in that window used to
+		// strand the image — the record kept its empty src, the shape rendered blank forever, and the
+		// uploaded bytes sat orphaned in the blob store.
+		//
+		// The click is issued from inside the page so no Playwright round trip gives the upload a head
+		// start. It is still a race, though, and on a fast machine the upload can simply win it — what
+		// makes the *mechanism* deterministic is `assetStore.test.ts`, which drives a blocked upload
+		// directly. This test's job is to prove the whole path works when a real user does it.
+		await importGeneratedImage(page, { leaveBoardImmediately: true })
+		await expect(page.locator('.lb-sidebar__nav')).toBeVisible()
+
+		// The persisted record is the thing that matters: it is what GC, backup and the next open read.
+		await expect
+			.poll(async () => readPersistedAssetSrcs(page, boardId), {
+				timeout: 20_000,
+			})
+			.toEqual([expect.stringMatching(/^asset:[0-9a-f]{64}$/)])
+
+		// And the image really renders on reopen — a stranded record produces an <img> too, just one
+		// that never loads.
+		await openBoard(page, 'Quick exit')
+		await expect(imageShapes(page)).toHaveCount(1)
+		await expect
+			.poll(async () =>
+				imageShapes(page)
+					.first()
+					.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+			)
+			.toBe(true)
 	})
 
 	test('deleting a board reclaims only the blobs nothing else references', async ({ page }) => {

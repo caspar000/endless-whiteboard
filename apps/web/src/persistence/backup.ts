@@ -1,8 +1,9 @@
 import { unzip, zip, type Unzipped, type Zippable } from 'fflate'
 import { addBoard, listBoards, newBoardId, setLastBackupAt, type BoardMeta } from '../boards/boardIndex'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
-import { collectAssetHashes } from './assetRefs'
-import { readBoardSnapshot, waitForPersistFlush, type RawBoardSnapshot } from './tldrawLocalDb'
+import { collectAssetRefs } from './assetRefs'
+import { waitForAssetUploads } from './assetStore'
+import { readBoardSnapshotResult, waitForPersistFlush, type RawBoardSnapshot } from './tldrawLocalDb'
 import { setPendingRestore } from './pendingRestore'
 
 /**
@@ -30,6 +31,8 @@ export interface ExportResult {
 	blob: Blob
 	boardCount: number
 	assetCount: number
+	/** Boards whose canvas data could not be read, so were exported without contents. */
+	warnings: string[]
 }
 
 const MANIFEST_PATH = 'manifest.json'
@@ -58,6 +61,8 @@ export async function exportBackup(
 	// Board snapshots are read from tldraw's database, and tldraw writes on a throttle with no flush
 	// on unload — so an export fired moments after an edit would capture the board as it was before
 	// that edit. Waiting out the window first is what makes "export" mean "export what I see".
+	// Uploads come first because finishing one *causes* a store write, and so a throttled persist.
+	await waitForAssetUploads()
 	await waitForPersistFlush()
 
 	const boards = await listBoards(platform.kv)
@@ -65,14 +70,28 @@ export async function exportBackup(
 	const referenced = new Set<string>()
 	const exportedBoards: BoardMeta[] = []
 
+	const warnings: string[] = []
 	for (const board of boards) {
-		const snapshot = await readBoardSnapshot(board.id)
-		// A board created but never opened has no canvas data. It still belongs in the manifest —
-		// dropping it would silently lose the board on restore.
-		if (snapshot) {
-			files[`${BOARD_DIR}${board.id}.json`] = encoder.encode(JSON.stringify(snapshot))
-			for (const hash of collectAssetHashes(snapshot)) referenced.add(hash)
+		const result = await readBoardSnapshotResult(board.id)
+
+		if (result.status === 'ok') {
+			files[`${BOARD_DIR}${board.id}.json`] = encoder.encode(JSON.stringify(result.snapshot))
+			const refs = collectAssetRefs(result.snapshot)
+			for (const hash of refs.hashes) referenced.add(hash)
+			if (refs.pending) {
+				// The board is still exported — everything else about it is fine, and a broken image is
+				// better than a missing board. But the image is genuinely not in the zip.
+				warnings.push(
+					`"${board.name}" has an image whose upload never finished; it is not in this backup.`
+				)
+			}
+		} else if (result.status === 'unreadable') {
+			// Exporting it as an empty board would be worse than saying so: the user would restore a
+			// backup and find the board silently blank.
+			warnings.push(`"${board.name}" could not be read and was exported without its contents.`)
 		}
+		// 'absent' needs no warning: a board created but never opened genuinely has no canvas data. It
+		// still belongs in the manifest, or restoring would lose the board itself.
 		exportedBoards.push(board)
 	}
 
@@ -98,6 +117,7 @@ export async function exportBackup(
 		blob: new Blob([zipped.slice().buffer as ArrayBuffer], { type: 'application/zip' }),
 		boardCount: exportedBoards.length,
 		assetCount: Object.keys(files).filter((f) => f.startsWith(ASSET_DIR)).length,
+		warnings,
 	}
 }
 

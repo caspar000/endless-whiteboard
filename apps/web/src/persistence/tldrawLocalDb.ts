@@ -127,7 +127,24 @@ export interface RawBoardSnapshot {
 	schema: unknown
 }
 
-function openExistingDb(dbName: string): Promise<IDBDatabase | null> {
+/**
+ * Why "absent" and "unreadable" are different answers.
+ *
+ * Asset GC marks the blobs reachable from every *remaining* board and sweeps the rest. Collapsing both
+ * cases to `null` made an unreadable board look like a board with no assets — so a blob still in use
+ * got collected. A board that has never been opened genuinely has no assets; a board we merely failed
+ * to read tells us nothing, and the sweep has to abstain.
+ */
+export type BoardSnapshotResult =
+	| { status: 'ok'; snapshot: RawBoardSnapshot }
+	/** No database for this board — it has never been opened, so it references nothing. */
+	| { status: 'absent' }
+	/** The database exists but could not be read (locked by another connection, or errored). */
+	| { status: 'unreadable' }
+
+type OpenResult = { status: 'ok'; db: IDBDatabase } | { status: 'absent' } | { status: 'unreadable' }
+
+function openExistingDb(dbName: string): Promise<OpenResult> {
 	return new Promise((resolve) => {
 		// Opening at tldraw's own version avoids triggering an upgrade; if the database does not
 		// exist yet, `upgradeneeded` fires and we abort rather than creating an empty one.
@@ -140,27 +157,30 @@ function openExistingDb(dbName: string): Promise<IDBDatabase | null> {
 		request.addEventListener('success', () => {
 			if (missing) {
 				request.result.close()
-				resolve(null)
+				resolve({ status: 'absent' })
 			} else {
-				resolve(request.result)
+				resolve({ status: 'ok', db: request.result })
 			}
 		})
-		request.addEventListener('error', () => resolve(null))
-		request.addEventListener('blocked', () => resolve(null))
+		// Errors and blocks mean "we don't know", never "there is nothing here".
+		request.addEventListener('error', () => resolve({ status: 'unreadable' }))
+		request.addEventListener('blocked', () => resolve({ status: 'unreadable' }))
 	})
 }
 
-/** Returns `null` when the board has never been opened, so has no canvas data yet. */
-export async function readBoardSnapshot(boardId: string): Promise<RawBoardSnapshot | null> {
-	const db = await openExistingDb(tldrawDbName(persistenceKeyForBoard(boardId)))
-	if (!db) return null
+/** Reads a board's canvas data straight out of tldraw's database. See {@link BoardSnapshotResult}. */
+export async function readBoardSnapshotResult(boardId: string): Promise<BoardSnapshotResult> {
+	const opened = await openExistingDb(tldrawDbName(persistenceKeyForBoard(boardId)))
+	if (opened.status !== 'ok') return opened
 
+	const db = opened.db
 	try {
 		if (!db.objectStoreNames.contains(RECORDS_STORE) || !db.objectStoreNames.contains(SCHEMA_STORE)) {
-			return null
+			// A database with no stores is one tldraw created but never wrote to.
+			return { status: 'absent' }
 		}
 
-		return await new Promise<RawBoardSnapshot | null>((resolve) => {
+		return await new Promise<BoardSnapshotResult>((resolve) => {
 			const tx = db.transaction([RECORDS_STORE, SCHEMA_STORE], 'readonly')
 			const recordsReq = tx.objectStore(RECORDS_STORE).getAll()
 			const keysReq = tx.objectStore(RECORDS_STORE).getAllKeys()
@@ -171,19 +191,25 @@ export async function readBoardSnapshot(boardId: string): Promise<RawBoardSnapsh
 				const ids = keysReq.result as IDBValidKey[]
 				const schema = schemaReq.result as unknown
 				if (!schema || records.length === 0) {
-					resolve(null)
+					resolve({ status: 'absent' })
 					return
 				}
 				const store: Record<string, unknown> = {}
 				ids.forEach((id, i) => {
 					store[String(id)] = records[i]
 				})
-				resolve({ store, schema })
+				resolve({ status: 'ok', snapshot: { store, schema } })
 			})
-			tx.addEventListener('error', () => resolve(null))
-			tx.addEventListener('abort', () => resolve(null))
+			tx.addEventListener('error', () => resolve({ status: 'unreadable' }))
+			tx.addEventListener('abort', () => resolve({ status: 'unreadable' }))
 		})
 	} finally {
 		db.close()
 	}
+}
+
+/** Convenience wrapper for callers that treat "absent" and "unreadable" alike. */
+export async function readBoardSnapshot(boardId: string): Promise<RawBoardSnapshot | null> {
+	const result = await readBoardSnapshotResult(boardId)
+	return result.status === 'ok' ? result.snapshot : null
 }

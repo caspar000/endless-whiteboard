@@ -58,14 +58,6 @@ export function surroundingMarkdown(
 	return { before: source.slice(0, line.start), after: source.slice(line.end) }
 }
 
-/** Insert a line break at an absolute offset. What Enter does — always, in every kind of block. */
-export function insertLineBreak(source: string, offset: number): { source: string; caret: number } {
-	return {
-		source: `${source.slice(0, offset)}\n${source.slice(offset)}`,
-		caret: offset + 1,
-	}
-}
-
 /**
  * Join a line onto its predecessor by removing the newline between them. What Backspace at offset 0
  * does. The caret lands at the join, which is where the text the user was about to delete now sits.

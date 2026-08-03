@@ -7,19 +7,23 @@ import {
 	drawNode,
 	gotoFresh,
 	openBoard,
+	openProperties,
 	waitForPersistedShapes,
 	skipFirstRunDemo,
 } from './helpers'
 
 test.describe('first run', () => {
-	test('seeds a demo shopping board that totals its items live', async ({ page }) => {
+	test('seeds a demo shopping board that totals its notes live', async ({ page }) => {
 		await gotoFresh(page)
 
-		// Milestone 10: the first-run board reproduces the driving use case.
+		// Milestone 10: the first-run board reproduces the driving use case. Since Phase 2 the cards are
+		// notes carrying properties, so what proves the data is there is the property strip on the shape.
 		await expect(page.locator('.tl-canvas')).toBeVisible()
-		await expect(page.locator('.lb-item').first()).toBeVisible()
+		await expect(page.locator('.lb-strip').first()).toBeVisible()
+		await expect(page.locator('.lb-strip').first()).toContainText('Price')
 
-		// Milestone 6 acceptance: the rollup shows a real total, computed from item fields.
+		// Milestone 6 acceptance: the rollup shows a real total, computed from property values — and
+		// with `nodeType: null`, from *anything* carrying a price rather than from one node type.
 		// 2399 + 850 + 240 + 320 + 120 + 480 = 4409
 		await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
 
@@ -31,7 +35,7 @@ test.describe('first run', () => {
 		await expect(table).toContainText('lighting')
 	})
 
-	test('totals update when an item is deleted', async ({ page }) => {
+	test('totals update when a note is deleted', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
 
@@ -40,8 +44,11 @@ test.describe('first run', () => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
 			const desk = editor
 				.getCurrentPageShapes()
-				.find((s) => s.type === 'node.item' && (s.props as { title?: string }).title === 'Standing desk')
-			if (!desk) throw new Error('demo desk item not found')
+				.find(
+					(s) =>
+						s.type === 'node.markdown' && (s.props as { md?: string }).md?.includes('Standing desk')
+				)
+			if (!desk) throw new Error('demo desk note not found')
 			editor.deleteShapes([desk.id])
 		})
 
@@ -62,22 +69,22 @@ test.describe('board CRUD and persistence', () => {
 
 		await createBoard(page, 'Board B')
 		await openBoard(page, 'Board B')
-		await drawNode(page, 'Item', { x: 400, y: 300 })
-		await drawNode(page, 'Item', { x: 700, y: 300 })
-		await expect(page.locator('.lb-item')).toHaveCount(2)
+		await drawNode(page, 'Rollup', { x: 400, y: 300 })
+		await drawNode(page, 'Rollup', { x: 700, y: 300 })
+		await expect(page.locator('.lb-rollup')).toHaveCount(2)
 
 		// Reload: tldraw's per-board persistenceKey must bring back exactly this board's content.
 		// Wait for the write to actually land first — tldraw throttles persists by 350 ms and does
 		// not flush on unload, so an immediate reload would legitimately lose the edits.
 		await waitForPersistedShapes(page, 2)
 		await page.reload()
-		await expect(page.locator('.lb-item')).toHaveCount(2)
+		await expect(page.locator('.lb-rollup')).toHaveCount(2)
 		await expect(page.locator('.lb-md')).toHaveCount(0)
 
 		await backToList(page)
 		await openBoard(page, 'Board A')
 		await expect(page.locator('.lb-md')).toHaveCount(1)
-		await expect(page.locator('.lb-item')).toHaveCount(0)
+		await expect(page.locator('.lb-rollup')).toHaveCount(0)
 	})
 
 	test('deleting a board removes its canvas database', async ({ page }) => {
@@ -181,29 +188,26 @@ test.describe('nodes', () => {
 		expect(cameraAfter.z).toBe(cameraBefore.z)
 	})
 
-	test('item fields drive a rollup total that updates live', async ({ page }) => {
+	test('properties on a note drive a rollup total that updates live', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		// Two items with prices, created through the store so the test stays about the rollup.
+		// Two notes carrying a price, created through the store so the test stays about the rollup.
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+				},
+			})
 			const mk = (title: string, price: number, x: number) => ({
-				type: 'node.item',
+				type: 'node.markdown',
 				x,
 				y: 100,
-				props: {
-					w: 220,
-					h: 260,
-					title,
-					imageAssetId: null,
-					tags: ['furniture'],
-					fields: [
-						{ key: 'price', type: 'currency', value: price, unit: 'GEL' },
-						{ key: 'category', type: 'select', value: 'desk' },
-					],
-				},
+				props: { w: 220, h: 100, md: `# ${title}`, autoHeight: false },
+				meta: { 'lifeboard:props': { price } },
 			})
 			editor.createShapes([mk('Desk', 1000, 100), mk('Chair', 500, 400)])
 		})
@@ -211,48 +215,152 @@ test.describe('nodes', () => {
 		await drawNode(page, 'Rollup', { x: 700, y: 500 }, { w: 280, h: 180 })
 		await expect(page.locator('.lb-rollup')).toHaveCount(1)
 
-		// A fresh rollup has no field selected yet, so configure it through its editing UI.
+		// A fresh rollup has no property selected yet, so configure it through its editing UI. The
+		// picker is fed from the board's registry, so "Price" is offered because it was *defined* —
+		// not because some shape happens to carry it.
 		await dblclickNode(page, 'node.rollup')
-		await page.locator('.lb-rollup__config').getByLabel('Field', { exact: true }).selectOption('price')
+		await page
+			.locator('.lb-rollup__config')
+			.getByLabel('Property', { exact: true })
+			.selectOption('price')
 		await page.keyboard.press('Escape')
 
 		await expect(page.locator('.lb-rollup__value')).toHaveText('₾1,500')
 
-		// Editing an item's price must flow through to the total.
+		// A meta-only edit must flow through to the total. This is the comparator regression: every
+		// comparator in the pipeline used to look at `props` alone, so this edit was invisible.
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
 			const chair = editor
 				.getCurrentPageShapes()
-				.find((s) => s.type === 'node.item' && (s.props as { title?: string }).title === 'Chair')
+				.find(
+					(s) => s.type === 'node.markdown' && (s.props as { md?: string }).md?.includes('Chair')
+				)
 			if (!chair) throw new Error('chair not found')
 			editor.updateShape({
 				id: chair.id,
-				type: 'node.item',
-				props: {
-					fields: [
-						{ key: 'price', type: 'currency', value: 700, unit: 'GEL' },
-						{ key: 'category', type: 'select', value: 'desk' },
-					],
-				},
+				type: 'node.markdown',
+				meta: { 'lifeboard:props': { price: 700 } },
 			})
 		})
 		await expect(page.locator('.lb-rollup__value')).toHaveText('₾1,700')
 	})
 
-	test('the item editor panel is fully visible above other shapes', async ({ page }) => {
+	test('properties work on a dragged-in image and a sticky note, not just on our own nodes', async ({
+		page,
+	}) => {
+		// The acceptance test for the whole property system: values live in `shape.meta`, so a shape type
+		// needs to do nothing at all to carry them. If this passes for tldraw's own shapes, it passes for
+		// anything.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+				},
+			})
+			editor.createShapes([
+				// tldraw's sticky note, carrying a price.
+				{ type: 'note', x: 100, y: 100, meta: { 'lifeboard:props': { price: 250 } } },
+				// tldraw's geo shape, carrying one too.
+				{
+					type: 'geo',
+					x: 400,
+					y: 100,
+					props: { w: 160, h: 120 },
+					meta: { 'lifeboard:props': { price: 75 } },
+				},
+			])
+		})
+
+		await drawNode(page, 'Rollup', { x: 700, y: 400 }, { w: 280, h: 180 })
+		await dblclickNode(page, 'node.rollup')
+		await page
+			.locator('.lb-rollup__config')
+			.getByLabel('Property', { exact: true })
+			.selectOption('price')
+		await page.keyboard.press('Escape')
+
+		// 250 + 75 — a sticky and a rectangle, summed by a rollup that knows nothing about either.
+		await expect(page.locator('.lb-rollup__value')).toHaveText('₾325')
+	})
+
+	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
+		page,
+	}) => {
+		// The whole journey, driven the way a user drives it: put a sticky on the board, open its
+		// properties, invent a property that did not exist, give it a value, and watch a rollup pick it
+		// up. Nothing here touches the store directly.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ type: 'note', x: 200, y: 200 }])
+		})
+
+		await openProperties(page, 'note')
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Price')
+		await panel.getByLabel('New property type').selectOption('currency')
+		await panel.getByRole('button', { name: 'Add' }).click()
+
+		// Defining it attaches it, empty. Filling it in is a separate act — which is the distinction
+		// aggregation reports as `skipped` rather than "not matched".
+		await panel.getByLabel('Value of Price').fill('420')
+		await page.keyboard.press('Escape')
+
+		// The value shows on the sticky itself, because a property is data *about the shape*, not a
+		// hidden annotation.
+		await expect(page.locator('.lb-strip').first()).toContainText('₾420')
+
+		await drawNode(page, 'Rollup', { x: 600, y: 400 }, { w: 280, h: 180 })
+		await dblclickNode(page, 'node.rollup')
+		await page
+			.locator('.lb-rollup__config')
+			.getByLabel('Property', { exact: true })
+			.selectOption('price')
+		await page.keyboard.press('Escape')
+
+		await expect(page.locator('.lb-rollup__value')).toHaveText('₾420')
+	})
+
+	test('the properties panel edits any shape and is fully visible above other shapes', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		// The demo board is deliberately crowded: neighbouring cards are what used to paint over the
-		// panel, and the node's own `overflow: hidden` is what used to clip it to one row.
-		await expect(page.locator('.lb-item').first()).toBeVisible()
-		await dblclickNode(page, 'node.item')
+		// panel, and a node's own `overflow: hidden` is what used to clip it to one row.
+		await expect(page.locator('.lb-strip').first()).toBeVisible()
+
+		// The ₾2,399 desk specifically: the demo's intro note is also a `node.markdown` but carries no
+		// properties, so "the first note" would open an empty panel and prove nothing.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const desk = editor
+				.getCurrentPageShapes()
+				.find(
+					(s) =>
+						s.type === 'node.markdown' && (s.props as { md?: string }).md?.includes('Standing desk')
+				)
+			if (!desk) throw new Error('demo desk note not found')
+			editor.select(desk.id)
+		})
+		await page.keyboard.press('Alt+p')
 
 		const panel = page.locator('.lb-popover')
 		await expect(panel).toBeVisible()
 		// Every control must be reachable, not just present — `toBeVisible` alone passed while the
 		// panel was clipped, because the elements were laid out but painted nowhere.
-		await expect(panel.getByRole('button', { name: 'Add' })).toBeVisible()
-		await expect(panel.getByRole('button', { name: 'Save as template' })).toBeVisible()
-		await expect(panel.getByPlaceholder('Add tag (e.g. desk)')).toBeVisible()
+		await expect(panel.getByLabel('Value of Price')).toBeVisible()
+		await expect(panel.getByRole('button', { name: 'New property…' })).toBeVisible()
 
 		// Nothing paints over it: the point at the panel's centre must hit the panel itself.
 		const box = (await panel.boundingBox())!
@@ -262,14 +370,15 @@ test.describe('nodes', () => {
 		)
 		expect(onTop).toBe(true)
 
-		// Editing a price *through the panel* updates the live rollup — the panel is wired to the
-		// store, not just rendered. The first demo item is the ₾2,399 desk: 4409 - 2399 + 1000 = 3010.
-		const priceInput = panel.getByLabel('Value of price')
-		await priceInput.fill('1000')
+		// Editing a price *through the panel* updates the live rollup — the panel is wired to the store,
+		// not just rendered. 4409 - 2399 + 1000 = 3010.
+		await page.locator('.lb-props').getByLabel('Value of Price').fill('1000')
 		await expect(page.locator('.lb-rollup__value')).toHaveText('₾3,010')
 	})
 
-	test('all three node types appear in the toolbar from the registry', async ({ page }) => {
+	test('the toolbar comes from the registry, and the retired item node is hidden from it', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
@@ -277,47 +386,79 @@ test.describe('nodes', () => {
 		// §7: registry-driven UI. These exist because the definitions are registered, not because
 		// anything in the toolbar names them.
 		await expect(page.getByTestId('tools.node-markdown')).toBeVisible()
-		await expect(page.getByTestId('tools.node-item')).toBeVisible()
 		await expect(page.getByTestId('tools.node-rollup')).toBeVisible()
+
+		// The item node stays *registered* — unregistering it would turn any surviving record into a
+		// validation failure — but a user must never be offered a type that no longer has a future.
+		await expect(page.getByTestId('tools.node-item')).toHaveCount(0)
 	})
 
-	test('item nodes survive copy-paste with fields intact', async ({ page }) => {
+	test('properties survive being copied to another board', async ({ page }) => {
+		// The definition sidecar's reason to exist. A copied shape carries id → value pairs, which are
+		// meaningless without knowing that `price` is GEL currency — so each shape also carries a copy of
+		// the definitions it uses, and pasting merges them into the target board's registry.
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
-		await createBoard(page)
+		await createBoard(page, 'Source')
+		await openBoard(page, 'Source')
 
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+				},
+			})
 			editor.createShapes([
 				{
-						type: 'node.item',
+					type: 'node.markdown',
 					x: 200,
 					y: 200,
-					props: {
-						w: 220,
-						h: 260,
-						title: 'Original',
-						imageAssetId: null,
-						tags: ['furniture'],
-						fields: [{ key: 'price', type: 'currency', value: 99, unit: 'GEL' }],
+					props: { w: 220, h: 100, md: '# Original', autoHeight: false },
+					meta: {
+						'lifeboard:props': { price: 99 },
+						'lifeboard:propDefs': [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
 					},
 				},
 			])
 		})
-		await expect(page.locator('.lb-item')).toHaveCount(1)
+		await expect(page.locator('.lb-strip')).toContainText('₾99')
 
-		// Duplicate rather than clipboard copy: it exercises the same props round-trip without
-		// depending on headless clipboard permissions.
-		await page.evaluate(() => {
+		// Read the shape back out, then re-create it on a *different* board — the same bytes a clipboard
+		// paste would carry, without depending on headless clipboard permissions.
+		const copied = await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
-			editor.selectAll()
-			editor.duplicateShapes(editor.getSelectedShapeIds(), { x: 300, y: 0 })
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			return { props: shape.props, meta: shape.meta }
 		})
 
-		await expect(page.locator('.lb-item')).toHaveCount(2)
-		const values = await page.locator('.lb-item__value--money').allTextContents()
-		expect(values).toEqual(['₾99', '₾99'])
-		expect(await countShapes(page, 'node.item')).toBe(2)
+		await backToList(page)
+		await createBoard(page, 'Target')
+		await openBoard(page, 'Target')
+
+		// The target board has never heard of `price`.
+		expect(
+			await page.evaluate(() => {
+				const editor = (window as unknown as { editor: EditorHandle }).editor
+				return editor.getDocumentSettings().meta['lifeboard:properties'] ?? null
+			})
+		).toBeNull()
+
+		await page.evaluate((copy) => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ type: 'node.markdown', x: 300, y: 300, ...copy }])
+		}, copied)
+
+		// The value renders — which it can only do if the target board adopted the definition, since the
+		// strip skips values it has no definition for.
+		await expect(page.locator('.lb-strip')).toContainText('₾99')
+		expect(
+			await page.evaluate(() => {
+				const editor = (window as unknown as { editor: EditorHandle }).editor
+				return editor.getDocumentSettings().meta['lifeboard:properties']
+			})
+		).toEqual([{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }])
 	})
 })
 
@@ -332,7 +473,7 @@ test.describe('backup', () => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
 			editor.createShapes([
 				{
-						type: 'node.item',
+					type: 'node.item',
 					x: 150,
 					y: 150,
 					props: {
@@ -385,12 +526,20 @@ test.describe('backup', () => {
 })
 
 interface EditorHandle {
-	getCurrentPageShapes(): { id: string; type: string; props: Record<string, unknown> }[]
+	getCurrentPageShapes(): {
+		id: string
+		type: string
+		props: Record<string, unknown>
+		meta: Record<string, unknown>
+	}[]
 	getCamera(): { x: number; y: number; z: number }
 	createShapes(shapes: unknown[]): void
 	updateShape(shape: unknown): void
 	deleteShapes(ids: string[]): void
 	selectAll(): void
+	select(...ids: string[]): void
 	getSelectedShapeIds(): string[]
 	duplicateShapes(ids: string[], offset: { x: number; y: number }): void
+	getDocumentSettings(): { meta: Record<string, unknown> }
+	updateDocumentSettings(settings: { meta: Record<string, unknown> }): void
 }

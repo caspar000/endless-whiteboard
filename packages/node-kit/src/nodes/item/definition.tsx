@@ -1,7 +1,8 @@
 import { T } from 'tldraw'
-import type { NodeFacts } from '../../facts'
 import { fieldValidator, type NodeField } from '../../fields'
 import { emptyPropsMigrations } from '../../migrations'
+import { TAGS_PROPERTY_ID, type PropertyValue } from '../../properties/types'
+import type { ShapeProperties } from '../../properties/values'
 import type { NodeDefinition, NodeShape } from '../../registry'
 import { ItemNodeComponent } from './ItemNodeComponent'
 
@@ -35,27 +36,37 @@ export const itemNodeDefinition: NodeDefinition<ItemNodeProps> = {
 	defaultSize: { w: 220, h: 260 },
 	component: ItemNodeComponent,
 	canEdit: true,
+	/**
+	 * **Retired.** Still registered, because unregistering a shape type makes any surviving record a
+	 * *validation* failure rather than a stale one — `createShapeRecordType` builds its validator as a
+	 * union over registered types, so a board would fail to open before the store migration got a chance
+	 * to repair it. Hidden from the toolbar, the canvas tools and the create menu instead.
+	 *
+	 * In practice no board reaches the app with an item on it: `itemsToNotesMigrations` converts them
+	 * before validation on every load path. This registration is the belt to that braces.
+	 */
+	deprecated: true,
 
 	/**
 	 * The rollup contract (§4.3). Note what is *absent*: x, y, rotation, selection. Facts change
 	 * only when the item's data changes, which is what makes dragging free of rollup recomputes.
 	 */
-	extractFacts: (shape: NodeShape<ItemNodeProps>): NodeFacts => {
-		const fields: Record<string, NodeField['value']> = {}
-		const units: Record<string, string> = {}
+	getLabel: (shape) => shape.props.title,
+	/**
+	 * The legacy route: an item's values live in `props.fields`, not in `shape.meta`, so they have to be
+	 * projected. The item→note migration moves them into meta for good, after which this is dead code
+	 * and the node type can be retired.
+	 */
+	extractValues: (shape: NodeShape<ItemNodeProps>): ShapeProperties => {
+		const values: Record<string, PropertyValue> = {}
 		for (const field of shape.props.fields) {
 			if (!field.key) continue
-			fields[field.key] = field.value
-			if (field.unit) units[field.key] = field.unit
+			values[field.key] = field.value
 		}
-		return {
-			type: ITEM_NODE_TYPE,
-			parentId: shape.parentId ?? null,
-			tags: shape.props.tags,
-			fields,
-			units,
-			label: shape.props.title,
-		}
+		// Tags were a separate concept; as a property they are just a multi-select value. `TAGS_PROPERTY_ID`
+		// is the id the migration creates, so a rollup keeps working across the migration.
+		if (shape.props.tags.length) values[TAGS_PROPERTY_ID] = shape.props.tags
+		return values
 	},
 }
 

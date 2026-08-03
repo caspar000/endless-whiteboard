@@ -2,7 +2,11 @@ import {
 	NOTE_MIN_HEIGHT,
 	NOTE_NODE_TYPE,
 	createNodeShapeUtil,
+	PropertiesPopover,
 	getNodeDefinitions,
+	mergeProperties,
+	readShapePropertyDefs,
+	itemsToNotesMigrations,
 	rollupStats,
 } from '@lifeboard/node-kit'
 import { useEffect, useMemo, useState } from 'react'
@@ -14,6 +18,8 @@ import {
 	type TLComponents,
 	type TldrawOptions,
 	type TLEventInfo,
+	useEditor,
+	useValue,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
@@ -25,7 +31,9 @@ import { MAX_IMPORT_BYTES } from '../persistence/downscale'
 import { clearPendingRestore, takePendingRestore } from '../persistence/pendingRestore'
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
 import { DottedPaper } from './DottedPaper'
+import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { NodeCreateMenu, type NodeCreatePrompt } from './NodeCreateMenu'
+import { closeProperties, getPropertiesTarget } from './propertiesTarget'
 import { createNodeTools } from './nodeTools'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
@@ -42,6 +50,9 @@ import { RollupDebugBadge } from './RollupDebugBadge'
 // type can never end up with a shape util but no tool (or vice versa) — node-kit registers its
 // built-ins during its own module evaluation, which ESM guarantees happens before this line.
 const nodeShapeUtils: TLAnyShapeUtilConstructor[] = getNodeDefinitions().map(createNodeShapeUtil)
+
+/** Migrations that rewrite records across types, rather than one shape's props. */
+const storeMigrations = [itemsToNotesMigrations]
 const nodeTools = createNodeTools()
 
 const canvasComponents: TLComponents = {
@@ -51,6 +62,8 @@ const canvasComponents: TLComponents = {
 	// The colour/opacity panel in the top-right is removed: none of the node types have style props,
 	// so for the shapes this app is *about* the panel was always inert.
 	StylePanel: null,
+	// Properties for shapes whose components we don't own. See ForeignPropertyStrips.
+	OnTheCanvas: ForeignPropertyStrips,
 }
 
 /** Longest we'll make someone wait for a preview before leaving anyway. */
@@ -102,11 +115,50 @@ function watchCanvasDoubleClicks(editor: Editor): () => void {
 	return () => editor.off('event', handler)
 }
 
+/**
+ * Adopts the property definitions carried by a pasted shape.
+ *
+ * A shape stores a small sidecar of the definitions it uses (`lifeboard:propDefs`), which is what makes
+ * copying between boards work: without it, the pasted values would be unrecoverable id → value pairs
+ * with no name, type or unit. Merging is idempotent and skips ids the board already knows, so the
+ * target board's own meaning of a property always wins over the copy's.
+ *
+ * Guarded to `source === 'user'`: loading a board creates every shape too, and re-merging a whole
+ * board's sidecars on open would write to the document record for nothing.
+ */
+function watchPastedProperties(editor: Editor): () => void {
+	return editor.sideEffects.registerAfterCreateHandler('shape', (shape, source) => {
+		if (source !== 'user') return
+		const defs = readShapePropertyDefs(shape)
+		if (defs.length) mergeProperties(editor, defs)
+	})
+}
+
 // The rollup recompute counters, so the perf suite can assert the §4.3 guarantee ("zero rollup
 // recomputes while dragging") against real numbers rather than wall-clock timing, which varies by
 // machine. Exposed at module scope, not per mount: `rollupStats` is a singleton, and tying it to a
 // mount meant a *draining* board's unmount deleted the live board's counters.
 ;(window as unknown as { __rollupStats?: typeof rollupStats }).__rollupStats = rollupStats
+
+/**
+ * Bridges the module-scope properties target to the panel.
+ *
+ * Its own component so that `useValue` runs inside the editor context, and so that a re-render caused
+ * by opening the panel doesn't re-render the whole board.
+ */
+function PropertiesPanel() {
+	const editor = useEditor()
+	const shape = useValue(
+		'lifeboard:properties-target',
+		() => {
+			const id = getPropertiesTarget()
+			return id ? (editor.getShape(id) ?? null) : null
+		},
+		[editor]
+	)
+	if (!shape) return null
+	return <PropertiesPopover shape={shape} editor={editor} onClose={closeProperties} />
+}
 
 export function Board({
 	board,
@@ -177,6 +229,11 @@ export function Board({
 				persistenceKey={persistenceKeyForBoard(board.id)}
 				{...(restore.snapshot ? { snapshot: restore.snapshot as never } : {})}
 				shapeUtils={nodeShapeUtils}
+				// Store-scoped migrations run *before* validation on every load path — the IndexedDB
+				// read, the `snapshot` prop above, and the fixture tests. That ordering is the only
+				// reason a shape type can be retired at all: an unregistered type is a validation
+				// failure, not a stale record, so the repair has to happen before the check.
+				migrations={storeMigrations}
 				tools={nodeTools}
 				overrides={nodeUiOverrides}
 				components={canvasComponents}
@@ -206,10 +263,12 @@ export function Board({
 					w.editor = editor
 					setEditor(editor)
 
-					const stopTracking = trackBoardActivity(editor, () =>
-						void touchBoard(platform.kv, board.id)
+					const stopTracking = trackBoardActivity(
+						editor,
+						() => void touchBoard(platform.kv, board.id)
 					)
 					const stopWatchingDoubleClicks = watchCanvasDoubleClicks(editor)
+					const stopWatchingPastes = watchPastedProperties(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -217,7 +276,11 @@ export function Board({
 						// wipe the live editor's handle.
 						if (w.editor === editor) delete w.editor
 						stopWatchingDoubleClicks()
+						stopWatchingPastes()
 						stopTracking()
+						// The target is module-scope, so a stale id would make the next board try to open
+						// a panel for a shape that isn't on it.
+						closeProperties()
 						// NB: no thumbnail capture here. Exporting from the unmount path ran while the
 						// board host was already hidden for the drain, and tldraw's exporter dropped every
 						// node background and font — previews looked right for a second and then decayed
@@ -230,8 +293,16 @@ export function Board({
 				    "useEditor must be used inside of <Tldraw />" and took the whole app down in
 				    dev, where the badge is the only thing that renders it. */}
 				{import.meta.env.DEV && <RollupDebugBadge />}
+				{/* Rendered inside <Tldraw> so it can portal into the editor's own container and track
+				    the shape through pans and zooms. */}
+				<PropertiesPanel />
 			</Tldraw>
-			<BoardChrome board={board} onExit={() => void leave()} leaving={leaving} onRename={onRename} />
+			<BoardChrome
+				board={board}
+				onExit={() => void leave()}
+				leaving={leaving}
+				onRename={onRename}
+			/>
 			{editor && createPrompt && (
 				<NodeCreateMenu
 					editor={editor}

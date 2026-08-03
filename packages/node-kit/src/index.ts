@@ -51,12 +51,55 @@ export {
 export {
 	areFactsEqual,
 	areFactsMapsEqual,
-	collectFieldKeys,
-	collectTags,
-	dominantUnit,
+	areValueRecordsEqual,
+	collectPropertyIds,
+	collectValuesForProperty,
+	isEmptyValue,
+	listValuesOf,
 	type FactsMap,
-	type NodeFacts,
+	type ShapeFacts,
 } from './facts'
+
+// The property system: definitions per board, values per shape. Any shape may carry any property.
+export {
+	PROPERTY_TYPES,
+	defaultUnitForType as defaultUnitForPropertyType,
+	emptyValueForType,
+	isListType,
+	nameFromPropertyKey,
+	propertyDefValidator,
+	propertyIdFromName,
+	propertyValueValidator,
+	TAGS_PROPERTY_ID,
+	type PropertyDef,
+	type PropertyType,
+	type PropertyValue,
+} from './properties/types'
+export {
+	coercePropertyValue,
+	formatPropertyValue,
+	groupKeysForValue,
+	numericPropertyValue,
+} from './properties/format'
+export {
+	createProperty,
+	deleteProperty,
+	findProperty,
+	mergeProperties,
+	parsePropertyRegistry,
+	propertyMap,
+	readPropertyRegistry,
+	updateProperty,
+} from './properties/schema'
+export {
+	attachProperty,
+	readShapeProperties,
+	readShapePropertyDefs,
+	removeShapeProperty,
+	shapeCarriesProperty,
+	updateShapeProperties,
+	type ShapeProperties,
+} from './properties/values'
 
 // Node definitions
 export {
@@ -97,6 +140,10 @@ export {
 	type SourceScope,
 } from './nodes/rollup/aggregate'
 export { getPageFacts, getRollupResult, rollupStats } from './nodes/rollup/engine'
+export { shapeLabel } from './properties/labels'
+export { ITEMS_TO_NOTES_MIGRATION_ID, itemsToNotesMigrations } from './properties/itemsToNotes'
+export { PropertiesPopover } from './properties/PropertiesPopover'
+export { PropertyStrip } from './properties/PropertyStrip'
 
 import { itemNodeDefinition } from './nodes/item/definition'
 import { markdownNodeDefinition } from './nodes/markdown/definition'

@@ -8,7 +8,11 @@ import { getRollupResult } from './engine'
 import { NodeEditorPopover } from '../../NodeEditorPopover'
 import { RollupConfig } from './RollupConfig'
 
-function RollupNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<RollupNodeProps>) {
+function RollupNodeComponentImpl({
+	shape,
+	isEditing,
+	editor,
+}: NodeComponentProps<RollupNodeProps>) {
 	const { title, agg, format } = shape.props
 
 	// Subscribes to this rollup's cache entry. Because the entry is keyed by shape id and its
@@ -76,5 +80,9 @@ function RollupNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProp
 
 export const RollupNodeComponent = memo(
 	RollupNodeComponentImpl,
-	(prev, next) => prev.isEditing === next.isEditing && prev.shape.props === next.shape.props
+	(prev, next) =>
+		prev.isEditing === next.isEditing &&
+		prev.shape.props === next.shape.props &&
+		// A property edit changes only `meta`; without this the shape would not re-render.
+		prev.shape.meta === next.shape.meta
 )

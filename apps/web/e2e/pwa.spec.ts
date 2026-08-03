@@ -35,6 +35,16 @@ test.describe('PWA', () => {
 		await expect(page.locator('.tl-canvas')).toBeVisible()
 
 		// Wait for the service worker to take control, so the reload below is served from its cache.
+		//
+		// A reload is part of the wait, not a workaround: a page that loaded *before* the worker
+		// activated is not controlled by it, and without `clients.claim()` it never becomes controlled —
+		// only the next navigation is. Waiting alone therefore hangs forever whenever registration loses
+		// the race, which under a loaded full-suite run is often.
+		await page.evaluate(() => navigator.serviceWorker?.ready)
+		if (await page.evaluate(() => navigator.serviceWorker?.controller === null)) {
+			await page.reload()
+			await expect(page.locator('.tl-canvas')).toBeVisible()
+		}
 		await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, undefined, {
 			timeout: 30_000,
 		})
@@ -49,7 +59,7 @@ test.describe('PWA', () => {
 			// The whole app shell comes from the cache…
 			await expect(page.locator('.tl-canvas')).toBeVisible()
 			// …the board's data comes from IndexedDB…
-			await expect(page.locator('.lb-item').first()).toBeVisible()
+			await expect(page.locator('.lb-strip').first()).toBeVisible()
 			// …and the rollup still derives its total, because nothing about it needs a network.
 			await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
 
@@ -58,7 +68,12 @@ test.describe('PWA', () => {
 				const editor = (
 					window as unknown as {
 						editor: {
-							getCurrentPageShapes(): { id: string; type: string; props: Record<string, unknown> }[]
+							getCurrentPageShapes(): {
+								id: string
+								type: string
+								props: Record<string, unknown>
+								meta: Record<string, unknown>
+							}[]
 							updateShape(s: unknown): void
 						}
 					}
@@ -66,18 +81,17 @@ test.describe('PWA', () => {
 				const lamp = editor
 					.getCurrentPageShapes()
 					.find(
-						(s) => s.type === 'node.item' && (s.props as { title?: string }).title === 'Desk lamp'
+						(s) =>
+							s.type === 'node.markdown' && (s.props as { md?: string }).md?.includes('Desk lamp')
 					)
 				if (!lamp) throw new Error('demo lamp not found')
+				const values = (lamp as unknown as { meta: Record<string, unknown> }).meta[
+					'lifeboard:props'
+				] as Record<string, unknown>
 				editor.updateShape({
 					id: lamp.id,
-					type: 'node.item',
-					props: {
-						fields: [
-							{ key: 'price', type: 'currency', value: 1120, unit: 'GEL' },
-							{ key: 'category', type: 'select', value: 'lighting' },
-						],
-					},
+					type: 'node.markdown',
+					meta: { 'lifeboard:props': { ...values, price: 1120 } },
 				})
 			})
 			// 4409 - 120 + 1120 = 5409

@@ -151,5 +151,7 @@ export const ItemNodeComponent = memo(
 	(prev, next) =>
 		prev.isEditing === next.isEditing &&
 		prev.shape.props === next.shape.props &&
+		// A property edit changes only `meta`; without this the shape would not re-render.
+		prev.shape.meta === next.shape.meta &&
 		prev.shape.parentId === next.shape.parentId
 )

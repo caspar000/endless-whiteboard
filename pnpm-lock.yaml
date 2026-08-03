@@ -78,6 +78,9 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
     devDependencies:
+      '@tldraw/store':
+        specifier: 5.2.5
+        version: 5.2.5(react@19.2.8)
       '@tldraw/tlschema':
         specifier: 5.2.5
         version: 5.2.5(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

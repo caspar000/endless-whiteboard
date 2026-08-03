@@ -1,15 +1,27 @@
 import { useValue, type Editor } from 'tldraw'
-import { collectFieldKeys, collectTags } from '../../facts'
-import { fieldKeyLabel } from '../../fields'
+import { listValuesOf } from '../../facts'
+import { propertyMap, readPropertyRegistry } from '../../properties/schema'
+import { isListType } from '../../properties/types'
 import { updateNodeProps, type NodeShape } from '../../registry'
-import { AGG_OPS, FORMAT_STYLES, SOURCE_SCOPES, type AggOp, type FormatStyle, type SourceScope } from './aggregate'
+import {
+	AGG_OPS,
+	FORMAT_STYLES,
+	SOURCE_SCOPES,
+	type AggOp,
+	type FormatStyle,
+	type SourceScope,
+} from './aggregate'
 import type { RollupNodeProps } from './definition'
 import { getPageFacts } from './engine'
 
 /**
- * Rollup configuration UI. Every picker is populated from what actually exists on the board
- * (§4.2) — field keys and tags come from the live facts map, frames from the current page. That is
- * what makes field-key typos self-correcting: a mistyped key simply never appears as an option.
+ * Rollup configuration UI. Every picker is populated from what actually exists on the board (§4.2):
+ * properties from the board's registry, tag values from the live facts map, frames from the current
+ * page. That is what makes typos self-correcting — a mistyped name simply never appears as an option.
+ *
+ * Properties come from the *registry* rather than from facts on purpose: a property the user defined
+ * but hasn't filled in anywhere yet must still be selectable, or a fresh board offers nothing to
+ * aggregate.
  */
 export function RollupConfig({
 	shape,
@@ -21,8 +33,22 @@ export function RollupConfig({
 	const { title, source, agg, format } = shape.props
 
 	const facts = useValue('facts', () => getPageFacts(editor).get(), [editor])
-	const fieldKeys = collectFieldKeys(facts, source.nodeType)
-	const tags = collectTags(facts)
+	const properties = useValue('properties', () => readPropertyRegistry(editor), [editor])
+	// Aggregation needs a number, so only numeric properties are offered as the value to roll up.
+	// Grouping works on anything, so `groupBy` gets the full list.
+	const numericProperties = properties.filter((p) => p.type === 'number' || p.type === 'currency')
+	const tags = useValue(
+		'tags',
+		() => {
+			const defs = propertyMap(readPropertyRegistry(editor))
+			const seen = new Set<string>()
+			for (const shapeFacts of getPageFacts(editor).get().values()) {
+				for (const value of listValuesOf(shapeFacts.values, defs)) seen.add(value)
+			}
+			return [...seen].sort()
+		},
+		[editor]
+	)
 	const frames = useValue(
 		'frames',
 		() =>
@@ -52,7 +78,9 @@ export function RollupConfig({
 				<select
 					aria-label="Scope"
 					value={source.scope}
-					onChange={(e) => update({ source: { ...source, scope: e.currentTarget.value as SourceScope } })}
+					onChange={(e) =>
+						update({ source: { ...source, scope: e.currentTarget.value as SourceScope } })
+					}
 				>
 					{SOURCE_SCOPES.map((s) => (
 						<option key={s} value={s}>
@@ -68,7 +96,9 @@ export function RollupConfig({
 					<select
 						aria-label="Frame"
 						value={source.frameId ?? ''}
-						onChange={(e) => update({ source: { ...source, frameId: e.currentTarget.value || null } })}
+						onChange={(e) =>
+							update({ source: { ...source, frameId: e.currentTarget.value || null } })
+						}
 					>
 						<option value="">— pick a frame —</option>
 						{frames.map((f) => (
@@ -125,16 +155,16 @@ export function RollupConfig({
 
 			{agg.op !== 'count' && (
 				<label className="lb-rollup__row">
-					<span>Field</span>
+					<span>Property</span>
 					<select
-						aria-label="Field"
+						aria-label="Property"
 						value={agg.fieldKey ?? ''}
 						onChange={(e) => update({ agg: { ...agg, fieldKey: e.currentTarget.value || null } })}
 					>
-						<option value="">— pick a field —</option>
-						{fieldKeys.map((k) => (
-							<option key={k} value={k}>
-								{fieldKeyLabel(k)}
+						<option value="">— pick a property —</option>
+						{numericProperties.map((p) => (
+							<option key={p.id} value={p.id}>
+								{p.name}
 							</option>
 						))}
 					</select>
@@ -149,9 +179,9 @@ export function RollupConfig({
 					onChange={(e) => update({ agg: { ...agg, groupBy: e.currentTarget.value || null } })}
 				>
 					<option value="">— none —</option>
-					{fieldKeys.map((k) => (
-						<option key={k} value={k}>
-							{fieldKeyLabel(k)}
+					{properties.map((p) => (
+						<option key={p.id} value={p.id}>
+							{isListType(p.type) ? `${p.name} (first value)` : p.name}
 						</option>
 					))}
 				</select>
@@ -162,7 +192,9 @@ export function RollupConfig({
 				<select
 					aria-label="Format"
 					value={format.style}
-					onChange={(e) => update({ format: { ...format, style: e.currentTarget.value as FormatStyle } })}
+					onChange={(e) =>
+						update({ format: { ...format, style: e.currentTarget.value as FormatStyle } })
+					}
 				>
 					{FORMAT_STYLES.map((s) => (
 						<option key={s} value={s}>
@@ -181,7 +213,9 @@ export function RollupConfig({
 						placeholder="GEL"
 						onChange={(e) => {
 							const unit = e.currentTarget.value.trim()
-							update({ format: unit ? { ...format, style: format.style, unit } : { style: format.style } })
+							update({
+								format: unit ? { ...format, style: format.style, unit } : { style: format.style },
+							})
 						}}
 						onKeyDown={(e) => e.stopPropagation()}
 					/>

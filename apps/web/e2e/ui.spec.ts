@@ -224,11 +224,13 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		// Double-click is now "write", so right-click is what surfaces rollups and items.
+		// Double-click is now "write", so right-click is what surfaces the other node types.
 		await page.mouse.click(560, 300, { button: 'right' })
-		for (const label of ['Add note', 'Add item', 'Add rollup']) {
+		for (const label of ['Add note', 'Add rollup']) {
 			await expect(page.getByRole('menuitem', { name: label })).toBeVisible()
 		}
+		// The retired item node stays registered but must not be offered anywhere.
+		await expect(page.getByRole('menuitem', { name: 'Add item' })).toHaveCount(0)
 
 		await page.getByRole('menuitem', { name: 'Add rollup' }).click()
 		expect(await countByType(page, 'node.rollup')).toBe(1)
@@ -239,11 +241,14 @@ test.describe('canvas chrome', () => {
 	}) => {
 		await gotoFresh(page)
 		// The demo board is full of nodes.
-		await expect(page.locator('.lb-item').first()).toBeVisible()
+		await expect(page.locator('.lb-strip').first()).toBeVisible()
 
+		const before = await countByType(page, 'node.markdown')
 		const point = await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorLike }).editor
-			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.item')!
+			// A rollup: the one remaining node type whose editor is a popover, so "did it edit rather
+			// than create?" has an unambiguous answer on screen.
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.rollup')!
 			const b = editor.getShapePageBounds(shape.id)!
 			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + 12 })
 		})
@@ -251,7 +256,7 @@ test.describe('canvas chrome', () => {
 
 		// It edits the node rather than creating a new one on top of it.
 		await expect(page.locator('.lb-popover')).toBeVisible()
-		expect(await countByType(page, 'node.markdown')).toBe(1)
+		expect(await countByType(page, 'node.markdown')).toBe(before)
 	})
 
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {
@@ -309,10 +314,14 @@ test.describe('home screen', () => {
 		const card = page.locator('.lb-card').first()
 		await card.hover()
 		await card.getByRole('button', { name: /^Favourite / }).click()
-		await expect(page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })).toBeVisible()
+		await expect(
+			page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })
+		).toBeVisible()
 
 		await page.reload()
-		await expect(page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })).toBeVisible()
+		await expect(
+			page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })
+		).toBeVisible()
 	})
 
 	test('board cards show a thumbnail of the board once it has been closed', async ({ page }) => {
@@ -337,7 +346,9 @@ test.describe('home screen', () => {
 		// The thumbnail is captured from the live editor as the board unmounts, so it appears shortly
 		// after leaving rather than instantly.
 		const card = page.locator('.lb-card', { hasText: 'Sketch' })
-		await expect.poll(async () => card.locator('.lb-card__image').count(), { timeout: 15_000 }).toBe(1)
+		await expect
+			.poll(async () => card.locator('.lb-card__image').count(), { timeout: 15_000 })
+			.toBe(1)
 
 		// A real image, not a zero-byte placeholder.
 		const size = await card.locator('.lb-card__image').evaluate((img) => {
@@ -425,7 +436,9 @@ test.describe('home screen', () => {
 		await skipFirstRunDemo(page)
 
 		const card = page.locator('.lb-card').first()
-		await expect.poll(async () => card.locator('.lb-card__image').count(), { timeout: 15_000 }).toBe(1)
+		await expect
+			.poll(async () => card.locator('.lb-card__image').count(), { timeout: 15_000 })
+			.toBe(1)
 		await expect.poll(() => countThumbnails(page)).toBe(1)
 
 		await card.hover()
@@ -452,7 +465,11 @@ async function countByType(page: import('@playwright/test').Page, type: string):
 
 /** The dot pattern's first circle offset, which encodes the camera position. */
 async function firstDotOffset(page: import('@playwright/test').Page): Promise<string> {
-	return page.locator('.lb-paper circle').first().getAttribute('cx').then((v) => v ?? '')
+	return page
+		.locator('.lb-paper circle')
+		.first()
+		.getAttribute('cx')
+		.then((v) => v ?? '')
 }
 
 /** Sizes of every stored thumbnail, sorted — a cheap fingerprint for "did these change?". */

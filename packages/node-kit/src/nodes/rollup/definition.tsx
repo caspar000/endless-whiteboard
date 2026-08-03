@@ -40,7 +40,11 @@ export const rollupNodeDefinition: NodeDefinition<RollupNodeProps> = {
 	migrations: emptyPropsMigrations(),
 	defaultProps: () => ({
 		title: 'Total',
-		source: { scope: 'page' as const, frameId: null, tags: [], nodeType: 'node.item' },
+		// `nodeType: null` — **anything** carrying the chosen property counts, which is the whole point
+		// of universal properties: a price on a photo is the same kind of fact as a price on a note.
+		// It also has to be null now that the item node is retired: defaulting to a type nothing has any
+		// more meant a freshly drawn rollup silently totalled zero.
+		source: { scope: 'page' as const, frameId: null, tags: [], nodeType: null },
 		agg: { op: 'sum' as const, fieldKey: null, groupBy: null },
 		format: { style: 'currency' as const },
 	}),

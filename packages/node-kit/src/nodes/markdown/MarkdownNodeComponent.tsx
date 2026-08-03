@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { PropertyStrip } from '../../properties/PropertyStrip'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import type { NoteNodeProps } from './definition'
 import { MarkdownView } from './MarkdownView'
@@ -35,6 +36,7 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 			) : (
 				<p className="lb-md__placeholder">Double-click to write</p>
 			)}
+			<PropertyStrip shape={shape} editor={editor} />
 		</div>
 	)
 }
@@ -46,12 +48,17 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
  * observer, so including it would re-render the editor on every measurement — i.e. on every
  * keystroke, mid-typing. The container's size comes from the ShapeUtil's `HTMLContainer`, which
  * re-renders independently of this component.
+ *
+ * `meta` **must** be included, and wasn't until properties moved there: a property edit changes only
+ * `meta`, so without this the strip below would never update and editing a price would appear to do
+ * nothing until the shape was moved.
  */
 export const NoteNodeComponent = memo(
 	NoteNodeComponentImpl,
 	(prev, next) =>
 		prev.shape.props.md === next.shape.props.md &&
 		prev.shape.props.w === next.shape.props.w &&
+		prev.shape.meta === next.shape.meta &&
 		prev.isEditing === next.isEditing
 )
 

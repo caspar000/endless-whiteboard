@@ -65,7 +65,11 @@ export const noteNodeDefinition: NodeDefinition<NoteNodeProps> = {
 	autoHeight: { minHeight: NOTE_MIN_HEIGHT },
 	component: MarkdownNodeComponent,
 	canEdit: true,
-	// No `extractFacts` yet — prose exposes no structured data. Phase 2 gives every shape properties.
+	// A note's name is its first heading. `ShapeUtil.getText` can't find it — the markdown lives in
+	// our own props — so the definition supplies it as the first rung of the `shapeLabel` ladder.
+	getLabel: (shape) => noteTitle(shape.props.md),
+	// No `extractFacts`: prose exposes no structured *values*. Its properties come from `shape.meta`
+	// like every other shape's, which is the whole point of the property system.
 }
 
 /** @deprecated Use {@link noteNodeDefinition}. */

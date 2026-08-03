@@ -6,41 +6,84 @@ import {
 	type TLShape,
 	type TLShapeId,
 } from 'tldraw'
-import { areFactsMapsEqual, type FactsMap, type NodeFacts } from '../../facts'
+import { areFactsEqual, areFactsMapsEqual, type FactsMap, type ShapeFacts } from '../../facts'
+import { shapeLabel } from '../../properties/labels'
+import { propertyMap, readPropertyRegistry } from '../../properties/schema'
+import { readShapeProperties } from '../../properties/values'
 import { getNodeDefinition } from '../../registry'
 import { aggregate, EMPTY_ROLLUP, type RollupResult } from './aggregate'
-import { ROLLUP_NODE_TYPE, type RollupNodeProps } from './definition'
+import { ROLLUP_NODE_TYPE } from './definition'
 
 /**
- * The two-stage reactive pipeline (§4.3).
+ * The reactive pipeline (§4.3), three stages since properties went universal.
  *
- * Stage 1 — `pageFacts`: one `computed` per page that maps shape id → `NodeFacts`, with a custom
- * `isEqual`. tldraw's store is signals-based, so this computed's inputs are invalidated by *any*
- * shape write, including the x/y churn of a drag. But dragging leaves facts identical, so `isEqual`
- * returns true and the computed's value is considered unchanged — nothing downstream recomputes.
- * (Pointer, camera and selection live in session-scoped records, which this never reads, so pan,
- * zoom and hover are already invisible to it.)
+ * Stage 0 — `factsCache`: one `createComputedCache` entry per *shape*, holding that shape's facts.
+ * This is what makes universality affordable. Facts now come from every shape on the board, so
+ * without it a single pointer move would re-validate meta and re-extract text for all 500 shapes.
+ * With it, a drag frame is 500 cheap signal reads returning the **same object references**, so
+ * `areFactsEqual`'s `a === b` fast path fires and stage 1 is nearly free.
  *
- * Stage 2 — one `createComputedCache` entry per rollup shape, which aggregates the facts map
- * against that shape's own spec. Components subscribe via `useValue`.
+ * Stage 1 — `pageFacts`: one `computed` per page mapping shape id → facts, with a custom `isEqual`.
+ * tldraw's store is signals-based, so this computed is invalidated by *any* shape write, including
+ * the x/y churn of a drag. But dragging leaves facts identical, so `isEqual` reports no change and
+ * nothing downstream recomputes. (Pointer, camera and selection live in session-scoped records this
+ * never reads, so pan, zoom and hover are already invisible to it.)
+ *
+ * Stage 2 — one cache entry per rollup shape, aggregating the facts map against that shape's spec.
+ * Components subscribe via `useValue`.
  *
  * Results are never written back to the store: a rollup is a pure derivation, which keeps undo
  * history clean, avoids feedback loops, and is safe under future CRDT sync.
  */
 
-// One facts computed per editor instance. Keyed weakly so a disposed editor (board switch) doesn't
-// retain its facts map.
-const factsByEditor = new WeakMap<Editor, Computed<FactsMap>>()
-
 /** Dev-only recompute counters — the regression tripwire for milestone 6's acceptance check. */
 export const rollupStats = {
 	factsRecomputes: 0,
+	shapeFactsRecomputes: 0,
 	aggregateRecomputes: 0,
 	reset() {
 		this.factsRecomputes = 0
+		this.shapeFactsRecomputes = 0
 		this.aggregateRecomputes = 0
 	},
 }
+
+/**
+ * Stage 0. The comparator is the entire point: it lists everything facts are derived from and
+ * **nothing positional**, so moving a shape does not invalidate its facts.
+ */
+const factsCache = createComputedCache<Editor, ShapeFacts, TLShape>(
+	'lifeboard:shapeFacts',
+	(editor, shape) => {
+		rollupStats.shapeFactsRecomputes++
+		const stored = readShapeProperties(shape)
+		// A node may also *compute* values from its own props — the legacy item node's route, and the
+		// seam a future computed node would use. Stored values win: they are what the user edited.
+		const computedValues = getNodeDefinition(shape.type)?.extractValues?.(shape as never)
+		return {
+			type: shape.type,
+			parentId: shape.parentId ?? null,
+			label: shapeLabel(editor, shape),
+			values: computedValues ? { ...computedValues, ...stored } : stored,
+		}
+	},
+	{
+		// `updateShape` replaces the `props`/`meta` objects only when they actually change, so
+		// reference equality is the right (and cheapest) test. Dragging rewrites x/y, which appear
+		// nowhere here — that omission is what keeps a drag free of recomputes.
+		areRecordsEqual: (a, b) =>
+			a.id === b.id &&
+			a.type === b.type &&
+			a.props === b.props &&
+			a.meta === b.meta &&
+			a.parentId === b.parentId,
+		areResultsEqual: areFactsEqual,
+	}
+)
+
+// One facts computed per editor instance. Keyed weakly so a disposed editor (board switch) doesn't
+// retain its facts map.
+const factsByEditor = new WeakMap<Editor, Computed<FactsMap>>()
 
 export function getPageFacts(editor: Editor): Computed<FactsMap> {
 	const existing = factsByEditor.get(editor)
@@ -50,14 +93,14 @@ export function getPageFacts(editor: Editor): Computed<FactsMap> {
 		'lifeboard:pageFacts',
 		() => {
 			rollupStats.factsRecomputes++
-			const map = new Map<string, NodeFacts>()
+			const map = new Map<string, ShapeFacts>()
 			// `getCurrentPageShapes` reads only shape records, so the computed depends on shapes and
 			// the current page id — not on camera or pointer state.
 			for (const shape of editor.getCurrentPageShapes()) {
-				const def = getNodeDefinition(shape.type)
-				if (!def?.extractFacts) continue
-				const extracted = def.extractFacts(shape as never)
-				if (extracted) map.set(shape.id, extracted)
+				// Every shape, not just registered node types: that is what "any shape can carry a
+				// property" means downstream.
+				const shapeFacts = factsCache.get(editor, shape.id)
+				if (shapeFacts) map.set(shape.id, shapeFacts)
 			}
 			return map
 		},
@@ -78,14 +121,17 @@ const rollupCache = createComputedCache<Editor, RollupResult, TLShape>(
 		if (shape.type !== ROLLUP_NODE_TYPE) return EMPTY_ROLLUP
 		rollupStats.aggregateRecomputes++
 		const { source, agg } = shape.props
-		return aggregate(getPageFacts(editor).get(), source, agg, shape.id)
+		const properties = propertyMap(readPropertyRegistry(editor))
+		return aggregate(getPageFacts(editor).get(), source, agg, shape.id, properties)
 	},
 	{
 		// A rollup shape being dragged rewrites x/y. Without this, the cache entry would be
 		// invalidated and re-aggregate on every pointer move even though its spec is unchanged.
-		// tldraw's `updateShape` replaces the props object only when props actually change, so
-		// reference equality is the right (and cheapest) test here.
-		areRecordsEqual: (a, b) => a.id === b.id && a.props === b.props,
+		//
+		// `meta` is compared too, and must be: a rollup's own properties live there now, so a
+		// meta-only change is a real change. Omitting it was a latent bug the moment properties
+		// stopped living exclusively in props.
+		areRecordsEqual: (a, b) => a.id === b.id && a.props === b.props && a.meta === b.meta,
 		areResultsEqual: areRollupResultsEqual,
 	}
 )

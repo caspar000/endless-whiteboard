@@ -2,12 +2,21 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { createNodeShapeUtil, getNodeDefinitions, ITEM_NODE_TYPE } from '@lifeboard/node-kit'
+import {
+	createNodeShapeUtil,
+	getNodeDefinitions,
+	itemsToNotesMigrations,
+	ITEM_NODE_TYPE,
+	NOTE_NODE_TYPE,
+	parsePropertyRegistry,
+	readShapeProperties,
+} from '@lifeboard/node-kit'
 import {
 	createTLStore,
 	defaultBindingUtils,
 	defaultShapeUtils,
 	loadSnapshot,
+	type JsonObject,
 	type TLStoreSnapshot,
 } from 'tldraw'
 
@@ -37,6 +46,10 @@ function makeStore() {
 	return createTLStore({
 		shapeUtils: [...defaultShapeUtils, ...getNodeDefinitions().map(createNodeShapeUtil)],
 		bindingUtils: defaultBindingUtils,
+		// The same store migrations `<Tldraw migrations>` gets. Without them this test would load
+		// fixtures through a schema the app never actually uses, and the one migration that rewrites
+		// records across *types* would go completely unexercised on real data.
+		migrations: [itemsToNotesMigrations],
 	})
 }
 
@@ -55,14 +68,21 @@ describe('snapshot fixtures', () => {
 		expect(() => loadSnapshot(store, snapshot)).not.toThrow()
 
 		const shapes = store.allRecords().filter((r) => r.typeName === 'shape')
-		expect(shapes.length).toBeGreaterThan(0)
 
-		// Every node type must survive the round trip, not just load without throwing. A migration
-		// that dropped or blanked records would otherwise pass the check above.
-		const types = new Set(shapes.map((s) => (s as { type: string }).type))
-		for (const def of getNodeDefinitions()) {
-			expect(types.has(def.type), `${file} should still contain a ${def.type}`).toBe(true)
+		// **No record from the snapshot may disappear.** This replaced "every registered type is still
+		// present", which was the wrong invariant twice over: it broke whenever a type was added (no old
+		// fixture contains it) and it forbade exactly what a store migration is *for* — deliberately
+		// rewriting one type into another.
+		//
+		// Checked by id rather than by count, because loading legitimately *adds* session records
+		// (instance, camera, page state, pointer) that no document snapshot contains. Ids are also what
+		// makes this strict enough to matter: the item→note migration rewrites records in place, so a
+		// version that created new shapes and deleted the old ones would fail here — and so would every
+		// arrow binding and frame parent on the user's board.
+		for (const id of Object.keys(snapshot.store)) {
+			expect(store.has(id as never), `${file} lost record ${id}`).toBe(true)
 		}
+		expect(shapes.length).toBeGreaterThan(0)
 	})
 
 	it.each(files)('runs props migrations on %s', (file) => {
@@ -88,29 +108,56 @@ describe('snapshot fixtures', () => {
 		}
 	})
 
-	it.each(files)('preserves item field data in %s', (file) => {
-		const snapshot = JSON.parse(readFileSync(join(fixturesDir, file), 'utf8')) as TLStoreSnapshot
+	it.each(files)('turns the items in %s into notes carrying properties', (file) => {
+		// The item→note migration, proven against a snapshot a shipped version of the app really wrote.
+		// This is the test that would fail if the migration mangled someone's shopping board.
+		const raw = readFileSync(join(fixturesDir, file), 'utf8')
+		const snapshot = JSON.parse(raw) as TLStoreSnapshot
 		const store = makeStore()
 		loadSnapshot(store, snapshot)
 
-		const items = store
+		// The fixture has to actually contain items, or this proves nothing.
+		const itemsInFixture = Object.values(snapshot.store).filter(
+			(r) => (r as { type?: string }).type === ITEM_NODE_TYPE
+		)
+		expect(itemsInFixture.length).toBeGreaterThan(0)
+
+		// None survive as items…
+		const remaining = store
 			.allRecords()
 			.filter((r) => r.typeName === 'shape' && (r as { type: string }).type === ITEM_NODE_TYPE)
+		expect(remaining).toEqual([])
 
-		expect(items.length).toBeGreaterThan(0)
-		for (const item of items) {
-			const props = (item as { props: { title: string; fields: { key: string; value: unknown }[] } })
-				.props
-			expect(typeof props.title).toBe('string')
-			expect(Array.isArray(props.fields)).toBe(true)
+		// …and their titles came across as note headings.
+		const notes = store
+			.allRecords()
+			.filter((r) => r.typeName === 'shape' && (r as { type: string }).type === NOTE_NODE_TYPE)
+		const titles = itemsInFixture.map((i) => (i as { props: { title: string } }).props.title)
+		const mds = notes.map((n) => (n as { props: { md: string } }).props.md)
+		for (const title of titles.filter(Boolean)) {
+			expect(
+				mds.some((md) => md.includes(title)),
+				`expected a note headed "${title}"`
+			).toBe(true)
 		}
 
-		// The whole point of the shopping vertical: prices must still be numbers after migration, or
-		// every rollup silently reads zero.
-		const prices = items
-			.flatMap((i) => (i as { props: { fields: { key: string; value: unknown }[] } }).props.fields)
-			.filter((f) => f.key === 'price')
+		// The whole point of the shopping vertical: prices must still be numbers, or every rollup
+		// silently reads zero.
+		const prices = notes
+			.map((n) => readShapeProperties(n as unknown as { meta: JsonObject }).price)
+			.filter((v) => v !== undefined)
 		expect(prices.length).toBeGreaterThan(0)
-		for (const price of prices) expect(typeof price.value).toBe('number')
+		for (const price of prices) expect(typeof price).toBe('number')
+
+		// And the board learned what a price *is* — without a registry entry the value is uninterpretable
+		// and aggregation would refuse to sum it.
+		const document = store.allRecords().find((r) => r.typeName === 'document')
+		const registry = parsePropertyRegistry(
+			(document as { meta: Record<string, unknown> }).meta['lifeboard:properties']
+		)
+		expect(registry.find((d) => d.id === 'price')).toMatchObject({
+			type: 'currency',
+			unit: 'GEL',
+		})
 	})
 })

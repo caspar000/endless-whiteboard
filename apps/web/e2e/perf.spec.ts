@@ -22,7 +22,12 @@ async function buildSyntheticBoard(page: import('@playwright/test').Page): Promi
 	await page.evaluate((count) => {
 		const editor = (
 			window as unknown as {
-				editor: { createShapes(s: unknown[]): void; run(fn: () => void): void }
+				editor: {
+					createShapes(s: unknown[]): void
+					run(fn: () => void): void
+					getDocumentSettings(): { meta: Record<string, unknown> }
+					updateDocumentSettings(s: { meta: Record<string, unknown> }): void
+				}
 			}
 		).editor
 		const categories = ['desk', 'lighting', 'soft', 'kitchen', 'tools']
@@ -30,19 +35,19 @@ async function buildSyntheticBoard(page: import('@playwright/test').Page): Promi
 		const perRow = 25
 		for (let i = 0; i < count; i++) {
 			shapes.push({
-				type: 'node.item',
+				type: 'node.markdown',
 				x: (i % perRow) * 260,
 				y: Math.floor(i / perRow) * 300,
-				props: {
-					w: 220,
-					h: 260,
-					title: `Item ${i}`,
-					imageAssetId: null,
-					tags: [categories[i % categories.length]!],
-					fields: [
-						{ key: 'price', type: 'currency', value: (i % 97) * 13 + 5, unit: 'GEL' },
-						{ key: 'category', type: 'select', value: categories[i % categories.length]! },
-					],
+				props: { w: 220, h: 120, md: `# Item ${i}`, autoHeight: false },
+				// Values in `meta`, which is what the facts pipeline now walks — for *every* shape on the
+				// board, not just the ones whose type we defined. That is exactly the cost the stage-0
+				// per-shape facts cache exists to absorb, so this is the board that proves it.
+				meta: {
+					'lifeboard:props': {
+						price: (i % 97) * 13 + 5,
+						category: categories[i % categories.length]!,
+						tags: [categories[i % categories.length]!],
+					},
 				},
 			})
 		}
@@ -56,13 +61,28 @@ async function buildSyntheticBoard(page: import('@playwright/test').Page): Promi
 					w: 280,
 					h: 200,
 					title: i === 0 ? 'Total' : 'By category',
-					source: { scope: 'page', frameId: null, tags: [], nodeType: 'node.item' },
+					// `nodeType: null` — anything carrying a price counts.
+					source: { scope: 'page', frameId: null, tags: [], nodeType: null },
 					agg: { op: 'sum', fieldKey: 'price', groupBy: i === 0 ? null : 'category' },
 					format: { style: 'currency', unit: 'GEL' },
 				},
 			})
 		}
-		editor.run(() => editor.createShapes(shapes))
+		editor.run(() => {
+			// Aggregation is registry-aware: without a definition saying `price` is currency, nothing is
+			// numeric and every total would be zero.
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+						{ id: 'category', name: 'Category', type: 'select' },
+						{ id: 'tags', name: 'Tags', type: 'multiSelect' },
+					],
+				},
+			})
+			editor.createShapes(shapes)
+		})
 	}, NODE_COUNT)
 }
 
@@ -76,7 +96,14 @@ test.describe('performance', () => {
 		await openBoard(page, 'Perf')
 
 		await buildSyntheticBoard(page)
-		expect(await page.evaluate(() => (window as never as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)).toBe(NODE_COUNT + 2)
+		expect(
+			await page.evaluate(
+				() =>
+					(
+						window as never as { editor: { getCurrentPageShapes(): unknown[] } }
+					).editor.getCurrentPageShapes().length
+			)
+		).toBe(NODE_COUNT + 2)
 
 		// The rollups produce a real total over all 500 items.
 		await expect(page.locator('.lb-rollup__value').first()).not.toHaveText('₾0')
@@ -93,7 +120,11 @@ test.describe('performance', () => {
 
 		// --- the tripwire ---
 		const baseline = await page.evaluate(() => {
-			const stats = (window as never as { __rollupStats?: { factsRecomputes: number; aggregateRecomputes: number } }).__rollupStats
+			const stats = (
+				window as never as {
+					__rollupStats?: { factsRecomputes: number; aggregateRecomputes: number }
+				}
+			).__rollupStats
 			if (!stats) throw new Error('rollup stats are not exposed')
 			return { ...stats }
 		})
@@ -109,7 +140,7 @@ test.describe('performance', () => {
 					}
 				}
 			).editor
-			const item = editor.getCurrentPageShapes().find((s) => s.type === 'node.item')!
+			const item = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
 			const b = editor.getShapePageBounds(item.id)
 			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
 		})
@@ -121,51 +152,54 @@ test.describe('performance', () => {
 		}
 		await page.mouse.up()
 
-		const afterDrag = await page.evaluate(
-			() => ({
-				...(window as never as { __rollupStats: { factsRecomputes: number; aggregateRecomputes: number } })
-					.__rollupStats,
-			})
-		)
+		const afterDrag = await page.evaluate(() => ({
+			...(
+				window as never as {
+					__rollupStats: { factsRecomputes: number; aggregateRecomputes: number }
+				}
+			).__rollupStats,
+		}))
 
 		// Dragging changes x/y on every pointer move, which invalidates the facts computed's inputs —
 		// but the extracted facts are identical, so `areFactsMapsEqual` short-circuits and no rollup
 		// re-aggregates. This must be exactly zero, not merely "small".
 		expect(afterDrag.aggregateRecomputes - baseline.aggregateRecomputes).toBe(0)
 
-		// Editing an item's price, by contrast, *must* recompute — otherwise the rollup is stale and
-		// this test would happily pass on a completely broken pipeline.
+		// Editing a price, by contrast, *must* recompute — otherwise the rollup is stale and this test
+		// would happily pass on a completely broken pipeline.
+		//
+		// The edit touches **only `meta`**, which is the regression this guards: every comparator in the
+		// pipeline used to compare `props` alone, so a property edit was invisible and the total silently
+		// never moved.
 		const totalBefore = await readRollupTotal(page)
 		await page.evaluate(() => {
 			const editor = (
 				window as never as {
 					editor: {
-						getCurrentPageShapes(): { id: string; type: string; props: Record<string, unknown> }[]
+						getCurrentPageShapes(): {
+							id: string
+							type: string
+							meta: Record<string, unknown>
+						}[]
 						updateShape(s: unknown): void
 					}
 				}
 			).editor
-			const item = editor.getCurrentPageShapes().find((s) => s.type === 'node.item')!
+			const item = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			const values = item.meta['lifeboard:props'] as Record<string, unknown>
 			editor.updateShape({
 				id: item.id,
-				type: 'node.item',
-				props: {
-					fields: [
-						{ key: 'price', type: 'currency', value: 999_999, unit: 'GEL' },
-						{ key: 'category', type: 'select', value: 'desk' },
-					],
-				},
+				type: 'node.markdown',
+				meta: { 'lifeboard:props': { ...values, price: 999_999 } },
 			})
 		})
 		// One item's price jumped to 999,999, so the total must climb by roughly that much. Asserting
 		// the *delta* rather than a hardcoded total keeps the test honest if the synthetic data changes.
 		await expect.poll(() => readRollupTotal(page)).toBeGreaterThan(totalBefore + 900_000)
 
-		const afterEdit = await page.evaluate(
-			() => ({
-				...(window as never as { __rollupStats: { aggregateRecomputes: number } }).__rollupStats,
-			})
-		)
+		const afterEdit = await page.evaluate(() => ({
+			...(window as never as { __rollupStats: { aggregateRecomputes: number } }).__rollupStats,
+		}))
 		expect(afterEdit.aggregateRecomputes).toBeGreaterThan(afterDrag.aggregateRecomputes)
 	})
 })

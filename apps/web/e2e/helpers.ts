@@ -90,7 +90,7 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 /** Selects a node tool from the registry-driven toolbar and drags out a shape. */
 export async function drawNode(
 	page: Page,
-	label: 'Note' | 'Item' | 'Rollup',
+	label: 'Note' | 'Rollup',
 	at: { x: number; y: number },
 	size = { w: 240, h: 260 }
 ): Promise<void> {
@@ -101,7 +101,7 @@ export async function drawNode(
 	await page.mouse.up()
 }
 
-function labelToToolId(label: 'Note' | 'Item' | 'Rollup'): string {
+function labelToToolId(label: 'Note' | 'Rollup'): string {
 	// Mirrors toolIdForNodeType(): tldraw tool ids cannot contain dots.
 	return { Note: 'node-markdown', Item: 'node-item', Rollup: 'node-rollup' }[label]
 }
@@ -113,6 +113,23 @@ function labelToToolId(label: 'Note' | 'Item' | 'Rollup'): string {
  * container has `pointer-events: none` so the shape drags and marquee-selects like any other shape
  * (§4.6). The double-click has to reach the canvas, which then routes it to the shape underneath.
  */
+/**
+ * Opens the properties panel for a shape, the way a user does: select it, then `alt+p`.
+ *
+ * Not ⌘-click — tldraw's select tool already uses `accelKey` on a shape click (select inside group), so
+ * the app deliberately uses right-click and `alt+p` instead.
+ */
+export async function openProperties(page: Page, shapeType: string): Promise<void> {
+	await page.evaluate((type) => {
+		const editor = (window as unknown as { editor: EditorLike }).editor
+		const shape = editor.getCurrentPageShapes().find((s) => s.type === type)
+		if (!shape) throw new Error(`No shape of type ${type} on the page`)
+		editor.select(shape.id)
+	}, shapeType)
+	await page.keyboard.press('Alt+p')
+	await expect(page.locator('.lb-props')).toBeVisible()
+}
+
 export async function dblclickNode(page: Page, shapeType: string): Promise<void> {
 	const point = await page.evaluate((type) => {
 		const editor = (window as unknown as { editor: EditorLike }).editor
@@ -190,4 +207,5 @@ interface EditorLike {
 	getCurrentPageShapes(): { type: string; id: string; props: Record<string, unknown> }[]
 	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
 	pageToScreen(p: { x: number; y: number }): { x: number; y: number }
+	select(...ids: string[]): void
 }

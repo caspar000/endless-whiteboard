@@ -11,11 +11,13 @@ import {
 	useEditor,
 	useIsToolSelected,
 	useTools,
+	useValue,
 	createShapeId,
 	type TLComponents,
 	type TLUiOverrides,
 } from 'tldraw'
 import { toolIdForNodeType } from './nodeTools'
+import { openProperties } from './propertiesTarget'
 
 /**
  * Toolbar and shortcut entries for the node types, generated from the registry (§7: "Registry-driven
@@ -43,6 +45,21 @@ function glyphIcon(glyph: string) {
 }
 
 export const nodeUiOverrides: TLUiOverrides = {
+	actions(editor, actions) {
+		// `alt+p` is free in tldraw's own set (`cmd+p` is print, `alt+r`/`alt+f`/`alt+t` are taken).
+		actions['lifeboard-properties'] = {
+			id: 'lifeboard-properties',
+			label: 'Properties',
+			kbd: 'alt+p',
+			onSelect() {
+				const selected = editor.getSelectedShapeIds()
+				// One shape only: properties are per-shape, and a panel that silently edited several at
+				// once would be a different feature with different undo semantics.
+				if (selected.length === 1) openProperties(selected[0]!)
+			},
+		}
+		return actions
+	},
 	tools(editor, tools) {
 		for (const def of getVisibleNodeDefinitions()) {
 			const id = toolIdForNodeType(def.type)
@@ -84,6 +101,33 @@ function NodeToolbarItem({
 	const isSelected = useIsToolSelected(tool)
 	if (!tool) return null
 	return <TldrawUiMenuItem {...tool} isSelected={isSelected} />
+}
+
+/**
+ * "Properties" on a shape's context menu.
+ *
+ * Right-click is the primary way in, because **⌘-click is not available**: tldraw's select tool already
+ * uses `accelKey` on a shape click (selecting inside a group), so taking it would fight the editor. The
+ * plan called for ⌘-click; `alt+p` is the accelerator instead.
+ *
+ * Deliberately *not* double-click, which keeps meaning "edit the content" — that separation is what
+ * lets a note be both prose and a row of data.
+ */
+function PropertiesMenuItem() {
+	const editor = useEditor()
+	const selectedIds = useValue('lifeboard:selected', () => editor.getSelectedShapeIds(), [editor])
+	if (selectedIds.length !== 1) return null
+	return (
+		<TldrawUiMenuGroup id="lifeboard-properties-group">
+			<TldrawUiMenuItem
+				id="lifeboard-properties"
+				label="Properties"
+				icon={glyphIcon('◫')}
+				kbd="alt+p"
+				onSelect={() => openProperties(selectedIds[0]!)}
+			/>
+		</TldrawUiMenuGroup>
+	)
 }
 
 /**
@@ -131,6 +175,7 @@ function AddToBoardItems() {
 export const nodeComponents: TLComponents = {
 	ContextMenu: (props) => (
 		<DefaultContextMenu {...props}>
+			<PropertiesMenuItem />
 			<AddToBoardItems />
 			<DefaultContextMenuContent />
 		</DefaultContextMenu>

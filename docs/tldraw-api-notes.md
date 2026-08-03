@@ -86,3 +86,31 @@ Three consequences we handle explicitly:
   rather than concluding "this board references nothing".
 - **Tests cannot assume the blob exists once the import call returns.** `hasPendingAssetUploads()` /
   `waitForAssetUploads()` in `persistence/assetStore.ts` are the seam for waiting on it.
+
+## `updateShape` merges `props` and `meta` exactly one level deep
+
+Verified in `@tldraw/editor/src/lib/editor/Editor.ts`, `applyPartialToRecordWithProps`:
+
+```ts
+if (k === 'props' || k === 'meta') {
+  next[k] = { ...prev[k] } as JsonObject
+  for (const [nextKey, nextValue] of Object.entries(v as object)) {
+    (next[k] as JsonObject)[nextKey] = nextValue
+  }
+  continue
+}
+```
+
+Three things the property system depends on, all confirmed here:
+
+- **One level, per key.** So `meta` keys are flat and colon-namespaced (`lifeboard:props`,
+  `lifeboard:propDefs`). A nested `meta.lifeboard` object would be *wholly replaced* on every write,
+  so writing a value would silently destroy the definition sidecar beside it. Within one key there is
+  no merging at all, which is why every write in `properties/values.ts` is read-modify-write.
+- **`props` is not required.** A `meta`-only partial is valid, which is what lets any shape — tldraw's
+  own images, stickies and text included — carry properties without that shape type cooperating.
+- **A no-op update returns the previous record** (`if (v === prev[k]) continue` … `if (!next) return
+  prev`), so reference-equality comparators stay correct.
+
+`meta` is typed `JsonObject` and is **not** covered by shape validation or migrations — hence the
+defensive parse on every read in `properties/`.

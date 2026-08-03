@@ -69,19 +69,30 @@ describe('registry', () => {
 		}
 	})
 
-	it('only exposes facts from nodes that carry structured data', () => {
-		// Markdown is prose, so rollups must ignore it. Rollups have no facts either, which is what
-		// makes rollup-of-rollup cycles impossible today.
-		expect(getNodeDefinition(MARKDOWN_NODE_TYPE)?.extractFacts).toBeUndefined()
-		expect(getNodeDefinition(ROLLUP_NODE_TYPE)?.extractFacts).toBeUndefined()
-		expect(getNodeDefinition(ITEM_NODE_TYPE)?.extractFacts).toBeTypeOf('function')
+	it('only computes values for the node whose data lives in props', () => {
+		// Since Phase 2 a shape's property values live in `shape.meta`, so no node needs to project
+		// them — a note carries a price exactly the way a sticky does. `extractValues` survives for the
+		// legacy item node, whose fields are in props until the migration moves them.
+		//
+		// Rollups still contribute no values at all, which is what keeps rollup-of-rollup cycles
+		// impossible.
+		expect(getNodeDefinition(MARKDOWN_NODE_TYPE)?.extractValues).toBeUndefined()
+		expect(getNodeDefinition(ROLLUP_NODE_TYPE)?.extractValues).toBeUndefined()
+		expect(getNodeDefinition(ITEM_NODE_TYPE)?.extractValues).toBeTypeOf('function')
+	})
+
+	it('labels notes by their first heading and items by their title', () => {
+		const note = getNodeDefinition(MARKDOWN_NODE_TYPE)!
+		expect(note.getLabel!({ props: { md: '# Chores\n- milk' } } as never)).toBe('Chores')
+		const item = getNodeDefinition(ITEM_NODE_TYPE)!
+		expect(item.getLabel!({ props: { title: 'Desk' } } as never)).toBe('Desk')
 	})
 })
 
-describe('item extractFacts', () => {
-	it('projects fields, units, tags and parent — and nothing positional', () => {
+describe('item extractValues', () => {
+	it('projects its fields, and its tags as a multi-select value', () => {
 		const def = getNodeDefinition(ITEM_NODE_TYPE)!
-		const facts = def.extractFacts!({
+		const values = def.extractValues!({
 			id: 'shape:1',
 			type: ITEM_NODE_TYPE,
 			parentId: 'shape:frame1',
@@ -107,13 +118,16 @@ describe('item extractFacts', () => {
 			},
 		} as never)!
 
-		expect(facts.type).toBe(ITEM_NODE_TYPE)
-		expect(facts.parentId).toBe('shape:frame1')
-		expect(facts.tags).toEqual(['furniture'])
-		expect(facts.label).toBe('Desk')
-		expect(facts.fields).toEqual({ price: 2399, category: 'desk' })
-		expect(facts.units).toEqual({ price: 'GEL' })
-		// The contract that makes drags free: no x/y/rotation anywhere in the output.
-		expect(JSON.stringify(facts)).not.toContain('"x"')
+		// Values only. Type, parent and label are the facts pipeline's job now, uniformly for every
+		// shape, which is what let the per-shape facts cache take over the drag guarantee.
+		expect(values).toEqual({
+			price: 2399,
+			category: 'desk',
+			// Tags are no longer a separate concept: they are a multi-select value under a well-known id,
+			// so a tag-scoped rollup keeps working on a board that hasn't been migrated yet.
+			tags: ['furniture'],
+		})
+		// The contract that makes drags free: nothing positional anywhere in the output.
+		expect(JSON.stringify(values)).not.toContain('"x"')
 	})
 })

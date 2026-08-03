@@ -14,7 +14,7 @@ import {
 	resizeBox,
 } from 'tldraw'
 import type { ComponentType } from 'react'
-import type { NodeFacts } from './facts'
+import type { ShapeProperties } from './properties/values'
 import { useAutoHeight } from './useAutoHeight'
 
 /**
@@ -75,8 +75,23 @@ export interface NodeDefinition<Props extends object = object> {
 	 * tools and the create menu. Use `getVisibleNodeDefinitions()` for anything user-facing.
 	 */
 	deprecated?: boolean
-	/** The rollup contract (§4.3). Omit for nodes that expose no structured data. */
-	extractFacts?: (shape: NodeShape<Props>) => NodeFacts | null
+	/**
+	 * What to call an instance of this node in rollup groups, table rows and pickers.
+	 *
+	 * The first rung of the `shapeLabel` ladder. Only needed when a node's name lives somewhere
+	 * `ShapeUtil.getText` won't find it — which for our nodes is always, since they hold their own
+	 * content in props.
+	 */
+	getLabel?: (shape: NodeShape<Props>) => string | undefined
+	/**
+	 * Property values *computed from this node's own props*, rather than stored in `shape.meta`.
+	 *
+	 * Almost never needed: since Phase 2 a shape's values live in its meta, which is what lets any
+	 * shape — ours or tldraw's — carry any property. This is the seam for a node whose values are
+	 * genuinely derived (the legacy item node, whose fields live in props; a future computed node).
+	 * Stored values win over computed ones, because those are what the user edited.
+	 */
+	extractValues?: (shape: NodeShape<Props>) => ShapeProperties | null
 
 	// RESERVED — not implemented in the MVP. A later app-side scheduler will call `refresh` and
 	// write the result into props; rendering, persistence, undo and rollups already work on props.

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { stopEventPropagation, useValue, type Editor } from 'tldraw'
-import type { NodeShape } from './registry'
+import { stopEventPropagation, useValue, type Editor, type TLShapeId } from 'tldraw'
 
 /**
  * The floating panel a node shows while it is being edited (the item field editor, the rollup config).
@@ -27,7 +26,11 @@ export function NodeEditorPopover({
 	width,
 	children,
 }: {
-	shape: NodeShape<object>
+	/**
+	 * Only the id is used — deliberately typed that narrowly so this works for *any* shape, including
+	 * tldraw's own. That is what lets the properties popover open on a photo or a sticky note.
+	 */
+	shape: { id: TLShapeId }
 	editor: Editor
 	/** Panel width in screen pixels; used to keep it inside the viewport. */
 	width: number

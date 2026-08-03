@@ -6,6 +6,7 @@ import {
 	getNodeDefinitions,
 	mergeProperties,
 	readShapePropertyDefs,
+	rollupsToTablesMigrations,
 	itemsToNotesMigrations,
 	rollupStats,
 } from '@lifeboard/node-kit'
@@ -51,8 +52,13 @@ import { RollupDebugBadge } from './RollupDebugBadge'
 // built-ins during its own module evaluation, which ESM guarantees happens before this line.
 const nodeShapeUtils: TLAnyShapeUtilConstructor[] = getNodeDefinitions().map(createNodeShapeUtil)
 
-/** Migrations that rewrite records across types, rather than one shape's props. */
-const storeMigrations = [itemsToNotesMigrations]
+/**
+ * Migrations that rewrite records across types, rather than one shape's props.
+ *
+ * Order here is not what sequences them — `rollupsToTablesMigrations` declares `dependsOn` — but keeping
+ * them in dependency order makes the intent readable.
+ */
+const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations]
 const nodeTools = createNodeTools()
 
 const canvasComponents: TLComponents = {

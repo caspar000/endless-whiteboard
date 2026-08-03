@@ -49,7 +49,7 @@ test.describe('PWA', () => {
 			timeout: 30_000,
 		})
 
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
 
 		// Airplane mode.
 		await context.setOffline(true)
@@ -61,7 +61,7 @@ test.describe('PWA', () => {
 			// …the board's data comes from IndexedDB…
 			await expect(page.locator('.lb-strip').first()).toBeVisible()
 			// …and the rollup still derives its total, because nothing about it needs a network.
-			await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
+			await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
 
 			// Editing works offline too: this is a local-first app, not an online one that degrades.
 			await page.evaluate(() => {
@@ -95,7 +95,7 @@ test.describe('PWA', () => {
 				})
 			})
 			// 4409 - 120 + 1120 = 5409
-			await expect(page.locator('.lb-rollup__value')).toHaveText('₾5,409')
+			await expect(page.locator('.lb-table__value')).toHaveText('₾5,409')
 		} finally {
 			await context.setOffline(false)
 		}

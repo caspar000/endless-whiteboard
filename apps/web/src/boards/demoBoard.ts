@@ -1,11 +1,13 @@
 import {
+	DEFAULT_MAX_ROWS,
+	LABEL_COLUMN,
 	NOTE_NODE_TYPE,
-	ROLLUP_NODE_TYPE,
+	TABLE_NODE_TYPE,
 	TAGS_PROPERTY_ID,
 	createProperty,
 	updateShapeProperties,
 	type PropertyValue,
-	type RollupNodeProps,
+	type TableNodeProps,
 } from '@lifeboard/node-kit'
 import type { Editor, TLShapeId, TLShapePartial } from 'tldraw'
 import { createShapeId } from 'tldraw'
@@ -80,7 +82,7 @@ export function seedDemoBoard(editor: Editor): void {
 					'',
 					'- Double-click a note to write in it',
 					'- Right-click one and choose **Properties** to add or edit its data',
-					'- The **Σ rollup** nodes on the right total everything with a price, live',
+					'- The **▦ table** nodes on the right show everything with a price, live',
 				].join('\n'),
 				autoHeight: false,
 			} satisfies Record<string, unknown> as never,
@@ -107,39 +109,57 @@ export function seedDemoBoard(editor: Editor): void {
 			})
 		}
 
-		// `nodeType: null` — anything carrying a price counts, which is the whole change Phase 2 makes.
-		const source = { scope: 'page' as const, frameId: null, tags: [], nodeType: null }
+		const priceId = price?.id ?? 'price'
+		// `shapeTypes: null` — anything carrying a price counts, which is the change Phase 2 made. The
+		// filter is what makes that usable: without it the table lists the intro note and the other table
+		// as rows with no price, which is technically true and completely unhelpful.
+		const source = {
+			shapeTypes: null,
+			scope: 'page' as const,
+			frameId: null,
+			filters: [{ propertyId: priceId, op: 'isNotEmpty' as const, value: null }],
+		}
 
-		const totalProps: RollupNodeProps & { w: number; h: number } = {
+		// The big number, which is a table in `value` mode — the same node type as the grid below it.
+		const totalProps: TableNodeProps & { w: number; h: number } = {
 			w: 280,
 			h: 150,
 			title: 'Total spend',
 			source,
-			agg: { op: 'sum', fieldKey: price?.id ?? 'price', groupBy: null },
-			format: { style: 'currency', unit: 'GEL' },
+			columns: [{ key: priceId, summary: 'sum', width: 1 }],
+			groupBy: null,
+			sorts: [],
+			layout: { mode: 'value', maxRows: DEFAULT_MAX_ROWS },
 		}
 		shapes.push({
 			id: createShapeId(),
-			type: ROLLUP_NODE_TYPE,
+			type: TABLE_NODE_TYPE,
 			x: 880,
 			y: 140,
 			props: totalProps as never,
 		})
 
-		const byCategoryProps: RollupNodeProps & { w: number; h: number } = {
-			w: 280,
-			h: 230,
-			title: 'By category',
+		// And the same data as a real table, grouped by category and sorted by price — so the demo shows
+		// both faces of the node.
+		const tableProps: TableNodeProps & { w: number; h: number } = {
+			w: 380,
+			h: 300,
+			title: 'Everything',
 			source,
-			agg: { op: 'sum', fieldKey: price?.id ?? 'price', groupBy: category?.id ?? 'category' },
-			format: { style: 'currency', unit: 'GEL' },
+			columns: [
+				{ key: LABEL_COLUMN, summary: 'count', width: 2 },
+				{ key: priceId, summary: 'sum', width: 1 },
+			],
+			groupBy: category?.id ?? 'category',
+			sorts: [{ key: priceId, dir: 'desc' }],
+			layout: { mode: 'table', maxRows: DEFAULT_MAX_ROWS },
 		}
 		shapes.push({
 			id: createShapeId(),
-			type: ROLLUP_NODE_TYPE,
+			type: TABLE_NODE_TYPE,
 			x: 880,
 			y: 330,
-			props: byCategoryProps as never,
+			props: tableProps as never,
 		})
 
 		editor.createShapes(shapes)

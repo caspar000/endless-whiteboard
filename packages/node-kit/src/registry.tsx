@@ -65,6 +65,15 @@ export interface NodeDefinition<Props extends object = object> {
 	/** Locks the resize aspect ratio (unused by the MVP nodes, needed by future media nodes). */
 	aspectRatioLocked?: boolean
 	/**
+	 * Let the wheel scroll the node's own content instead of zooming the canvas.
+	 *
+	 * Applies **only while the node is being edited** — tldraw consults `canScroll` for the editing shape
+	 * alone (`useGestureEvents.ts` checks `getEditingShapeId()` first). It is therefore not a way to make
+	 * a node scrollable in display mode, where the shape must not swallow pointer events at all or it
+	 * stops behaving like a shape.
+	 */
+	canScroll?: boolean
+	/**
 	 * Opt in to factory-derived height: the node's `h` tracks its rendered content. The node's props
 	 * must include a boolean `autoHeight` that the user can pin off by dragging a vertical handle.
 	 * See `useAutoHeight` for the mechanism and its guards.
@@ -152,6 +161,10 @@ export function createNodeShapeUtil<Props extends object>(
 
 		override canResize(): boolean {
 			return true
+		}
+
+		override canScroll(): boolean {
+			return def.canScroll ?? false
 		}
 
 		override isAspectRatioLocked(): boolean {

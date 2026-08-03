@@ -3,6 +3,7 @@ import {
 	ITEM_NODE_TYPE,
 	MARKDOWN_NODE_TYPE,
 	ROLLUP_NODE_TYPE,
+	TABLE_NODE_TYPE,
 	getNodeDefinition,
 	getNodeDefinitions,
 	isNodeType,
@@ -20,13 +21,14 @@ describe('registry', () => {
 			MARKDOWN_NODE_TYPE,
 			ITEM_NODE_TYPE,
 			ROLLUP_NODE_TYPE,
+			TABLE_NODE_TYPE,
 		])
 	})
 
 	it('is idempotent, so a stray registerBuiltinNodes() call cannot throw or duplicate', () => {
 		registerBuiltinNodes()
 		registerBuiltinNodes()
-		expect(getNodeDefinitions()).toHaveLength(3)
+		expect(getNodeDefinitions()).toHaveLength(4)
 	})
 
 	it('exposes definitions by type', () => {

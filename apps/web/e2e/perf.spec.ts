@@ -6,15 +6,15 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  * ("dev recompute counter shows zero recomputes while dragging items").
  *
  * The recompute assertion is the important one, and it is the standing tripwire for §4.3: if the
- * facts `isEqual` stage regresses, every rollup on the board re-aggregates on every pointer move and
+ * facts `isEqual` stage regresses, every table on the board re-queries on every pointer move and
  * a large board goes from smooth to unusable. A wall-clock timing test alone would not catch that —
  * it would just get slower on some machines and pass on others.
  */
 const NODE_COUNT = 500
 
-/** The rollup's displayed total, parsed back out of its formatted "₾1,234" text. */
+/** The table's displayed total, parsed back out of its formatted "₾1,234" text. */
 async function readRollupTotal(page: import('@playwright/test').Page): Promise<number> {
-	const text = (await page.locator('.lb-rollup__value').first().textContent()) ?? ''
+	const text = (await page.locator('.lb-table__value').first().textContent()) ?? ''
 	return Number(text.replace(/[^\d.-]/g, ''))
 }
 
@@ -51,20 +51,24 @@ async function buildSyntheticBoard(page: import('@playwright/test').Page): Promi
 				},
 			})
 		}
-		// Two rollups over the whole board, so any churn is amplified rather than hidden.
+		// Two tables over the whole board, so any churn is amplified rather than hidden. One is a big
+		// number, one a grouped grid — the two render paths cost different amounts, and both must be free
+		// during a drag.
 		for (let i = 0; i < 2; i++) {
 			shapes.push({
-				type: 'node.rollup',
+				type: 'node.table',
 				x: -400,
 				y: i * 250,
 				props: {
 					w: 280,
 					h: 200,
 					title: i === 0 ? 'Total' : 'By category',
-					// `nodeType: null` — anything carrying a price counts.
-					source: { scope: 'page', frameId: null, tags: [], nodeType: null },
-					agg: { op: 'sum', fieldKey: 'price', groupBy: i === 0 ? null : 'category' },
-					format: { style: 'currency', unit: 'GEL' },
+					// `shapeTypes: null` — anything carrying a price counts.
+					source: { shapeTypes: null, scope: 'page', frameId: null, filters: [] },
+					columns: [{ key: 'price', summary: 'sum', width: 1 }],
+					groupBy: i === 0 ? null : 'category',
+					sorts: [],
+					layout: { mode: i === 0 ? 'value' : 'table', maxRows: 12 },
 				},
 			})
 		}
@@ -105,8 +109,8 @@ test.describe('performance', () => {
 			)
 		).toBe(NODE_COUNT + 2)
 
-		// The rollups produce a real total over all 500 items.
-		await expect(page.locator('.lb-rollup__value').first()).not.toHaveText('₾0')
+		// The tables produce a real total over all 500 notes.
+		await expect(page.locator('.lb-table__value').first()).not.toHaveText('₾0')
 
 		// Zoom out so every node is inside the viewport: culling would otherwise hide the cost this
 		// test is trying to measure.

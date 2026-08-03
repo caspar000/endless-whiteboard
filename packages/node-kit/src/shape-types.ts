@@ -2,6 +2,7 @@ import type { ItemNodeProps } from './nodes/item/definition'
 import type { MarkdownNodeProps } from './nodes/markdown/definition'
 import type { NodeBaseProps } from './registry'
 import type { RollupNodeProps } from './nodes/rollup/definition'
+import type { TableNodeProps } from './nodes/table/spec'
 
 /**
  * tldraw 5 made `TLShape` a *closed* union derived from `TLGlobalShapePropsMap`. Custom shapes are
@@ -24,5 +25,6 @@ declare module '@tldraw/tlschema' {
 		'node.markdown': MarkdownNodeProps & NodeBaseProps
 		'node.item': ItemNodeProps & NodeBaseProps
 		'node.rollup': RollupNodeProps & NodeBaseProps
+		'node.table': TableNodeProps & NodeBaseProps
 	}
 }

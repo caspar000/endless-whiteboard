@@ -90,20 +90,31 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 /** Selects a node tool from the registry-driven toolbar and drags out a shape. */
 export async function drawNode(
 	page: Page,
-	label: 'Note' | 'Rollup',
+	label: 'Note' | 'Table',
 	at: { x: number; y: number },
 	size = { w: 240, h: 260 }
 ): Promise<void> {
-	await page.getByTestId(`tools.${labelToToolId(label)}`).click()
+	const toolId = labelToToolId(label)
+	await page.getByTestId(`tools.${toolId}`).click()
+	// Switching tools is asynchronous, and the click resolving is not the same as the tool being
+	// current. Dragging too early is handled by the *select* tool, which draws a marquee and creates
+	// nothing — a failure that looks like the node type being broken.
+	await page.waitForFunction(
+		(id) =>
+			(
+				window as unknown as { editor: { getCurrentToolId(): string } }
+			).editor.getCurrentToolId() === id,
+		toolId
+	)
 	await page.mouse.move(at.x, at.y)
 	await page.mouse.down()
 	await page.mouse.move(at.x + size.w, at.y + size.h, { steps: 8 })
 	await page.mouse.up()
 }
 
-function labelToToolId(label: 'Note' | 'Rollup'): string {
+function labelToToolId(label: 'Note' | 'Table'): string {
 	// Mirrors toolIdForNodeType(): tldraw tool ids cannot contain dots.
-	return { Note: 'node-markdown', Item: 'node-item', Rollup: 'node-rollup' }[label]
+	return { Note: 'node-markdown', Table: 'node-table' }[label]
 }
 
 /**
@@ -130,7 +141,29 @@ export async function openProperties(page: Page, shapeType: string): Promise<voi
 	await expect(page.locator('.lb-props')).toBeVisible()
 }
 
+/**
+ * Waits until a node's auto-height has settled.
+ *
+ * Auto-height writes `h` from a ResizeObserver a frame or two after the shape first renders, so bounds
+ * read immediately after creating one are stale. Clicking a point computed from them lands outside the
+ * now-shorter shape and silently does nothing — which showed up as a config panel that never opened.
+ */
+async function waitForStableHeight(page: Page, shapeType: string): Promise<void> {
+	let last = -1
+	for (let i = 0; i < 40; i++) {
+		const h = await page.evaluate((type) => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === type)
+			return shape ? Math.round((shape.props as { h?: number }).h ?? 0) : -1
+		}, shapeType)
+		if (h === last) return
+		last = h
+		await page.waitForTimeout(50)
+	}
+}
+
 export async function dblclickNode(page: Page, shapeType: string): Promise<void> {
+	await waitForStableHeight(page, shapeType)
 	const point = await page.evaluate((type) => {
 		const editor = (window as unknown as { editor: EditorLike }).editor
 		const shape = editor.getCurrentPageShapes().find((s) => s.type === type)

@@ -113,14 +113,63 @@ export {
 	type MarkdownNodeProps,
 	type NoteNodeProps,
 } from './nodes/markdown/definition'
-export { ITEM_NODE_TYPE, itemNodeDefinition, toTemplateFields, type ItemNodeProps } from './nodes/item/definition'
+export {
+	ITEM_NODE_TYPE,
+	itemNodeDefinition,
+	toTemplateFields,
+	type ItemNodeProps,
+} from './nodes/item/definition'
 export {
 	deleteFieldTemplate,
 	readFieldTemplates,
 	saveFieldTemplate,
 	type FieldTemplate,
 } from './nodes/item/templates'
-export { ROLLUP_NODE_TYPE, rollupNodeDefinition, type RollupNodeProps } from './nodes/rollup/definition'
+export {
+	ROLLUP_NODE_TYPE,
+	rollupNodeDefinition,
+	type RollupNodeProps,
+} from './nodes/rollup/definition'
+
+// The table node: a live, read-only view of the board. Replaces the rollup, and absorbs its big number.
+export {
+	TABLE_MIN_HEIGHT,
+	TABLE_NODE_TYPE,
+	tableNodeDefinition,
+	type TableNodeProps,
+} from './nodes/table/definition'
+export {
+	DEFAULT_MAX_ROWS,
+	FILTER_OPS,
+	LABEL_COLUMN,
+	LAYOUT_MODES,
+	SUMMARY_OPS,
+	TABLE_SCOPES,
+	columnTitle,
+	defaultTableProps,
+	filterOpsForType,
+	summaryOpsForType,
+	type FilterOp,
+	type LayoutMode,
+	type SummaryOp,
+	type TableColumn,
+	type TableFilter,
+	type TableSort,
+	type TableSource,
+} from './nodes/table/spec'
+export {
+	EMPTY_TABLE,
+	queryTable,
+	summarise,
+	type TableGroup,
+	type TableResult,
+	type TableRow,
+} from './nodes/table/query'
+export { areTableResultsEqual, getTableResult } from './nodes/table/engine'
+export {
+	ROLLUPS_TO_TABLES_MIGRATION_ID,
+	rollupsToTablesMigrations,
+} from './nodes/table/rollupsToTables'
 
 // Rollup engine
 export {
@@ -149,6 +198,7 @@ import { itemNodeDefinition } from './nodes/item/definition'
 import { markdownNodeDefinition } from './nodes/markdown/definition'
 import { getNodeDefinition, registerNode, type NodeDefinition } from './registry'
 import { rollupNodeDefinition } from './nodes/rollup/definition'
+import { tableNodeDefinition } from './nodes/table/definition'
 
 /**
  * Registers the built-in node types.
@@ -163,7 +213,12 @@ import { rollupNodeDefinition } from './nodes/rollup/definition'
  * Plugin-supplied definitions will later arrive through the same `registerNode` door.
  */
 export function registerBuiltinNodes(): void {
-	for (const def of [markdownNodeDefinition, itemNodeDefinition, rollupNodeDefinition]) {
+	for (const def of [
+		markdownNodeDefinition,
+		itemNodeDefinition,
+		rollupNodeDefinition,
+		tableNodeDefinition,
+	]) {
 		if (!getNodeDefinition(def.type)) registerNode(def as unknown as NodeDefinition<never>)
 	}
 }

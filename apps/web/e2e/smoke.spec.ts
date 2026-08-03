@@ -22,22 +22,23 @@ test.describe('first run', () => {
 		await expect(page.locator('.lb-strip').first()).toBeVisible()
 		await expect(page.locator('.lb-strip').first()).toContainText('Price')
 
-		// Milestone 6 acceptance: the rollup shows a real total, computed from property values — and
-		// with `nodeType: null`, from *anything* carrying a price rather than from one node type.
+		// Milestone 6 acceptance: a table shows a real total, computed from property values — and with
+		// `shapeTypes: null`, from *anything* carrying a price rather than from one node type.
 		// 2399 + 850 + 240 + 320 + 120 + 480 = 4409
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
 
-		// The grouped rollup breaks the same items down by category.
-		const table = page.locator('.lb-rollup__table')
-		await expect(table).toBeVisible()
-		await expect(table).toContainText('desk')
-		await expect(table).toContainText('₾3,489')
-		await expect(table).toContainText('lighting')
+		// And the same data as a grid, grouped by category, with each group's own subtotal.
+		const grid = page.locator('.lb-table__grid')
+		await expect(grid).toBeVisible()
+		await expect(grid).toContainText('Standing desk')
+		await expect(grid).toContainText('desk')
+		await expect(grid).toContainText('₾3,489')
+		await expect(grid).toContainText('lighting')
 	})
 
 	test('totals update when a note is deleted', async ({ page }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
 
 		// Delete the ₾2,399 desk through the store, then assert the derived total followed.
 		await page.evaluate(() => {
@@ -52,7 +53,7 @@ test.describe('first run', () => {
 			editor.deleteShapes([desk.id])
 		})
 
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾2,010')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾2,010')
 	})
 })
 
@@ -69,22 +70,22 @@ test.describe('board CRUD and persistence', () => {
 
 		await createBoard(page, 'Board B')
 		await openBoard(page, 'Board B')
-		await drawNode(page, 'Rollup', { x: 400, y: 300 })
-		await drawNode(page, 'Rollup', { x: 700, y: 300 })
-		await expect(page.locator('.lb-rollup')).toHaveCount(2)
+		await drawNode(page, 'Table', { x: 400, y: 300 })
+		await drawNode(page, 'Table', { x: 700, y: 300 })
+		await expect(page.locator('.lb-table')).toHaveCount(2)
 
 		// Reload: tldraw's per-board persistenceKey must bring back exactly this board's content.
 		// Wait for the write to actually land first — tldraw throttles persists by 350 ms and does
 		// not flush on unload, so an immediate reload would legitimately lose the edits.
 		await waitForPersistedShapes(page, 2)
 		await page.reload()
-		await expect(page.locator('.lb-rollup')).toHaveCount(2)
+		await expect(page.locator('.lb-table')).toHaveCount(2)
 		await expect(page.locator('.lb-md')).toHaveCount(0)
 
 		await backToList(page)
 		await openBoard(page, 'Board A')
 		await expect(page.locator('.lb-md')).toHaveCount(1)
-		await expect(page.locator('.lb-rollup')).toHaveCount(0)
+		await expect(page.locator('.lb-table')).toHaveCount(0)
 	})
 
 	test('deleting a board removes its canvas database', async ({ page }) => {
@@ -212,20 +213,21 @@ test.describe('nodes', () => {
 			editor.createShapes([mk('Desk', 1000, 100), mk('Chair', 500, 400)])
 		})
 
-		await drawNode(page, 'Rollup', { x: 700, y: 500 }, { w: 280, h: 180 })
-		await expect(page.locator('.lb-rollup')).toHaveCount(1)
+		await drawNode(page, 'Table', { x: 700, y: 500 }, { w: 280, h: 180 })
+		await expect(page.locator('.lb-table')).toHaveCount(1)
 
-		// A fresh rollup has no property selected yet, so configure it through its editing UI. The
-		// picker is fed from the board's registry, so "Price" is offered because it was *defined* —
-		// not because some shape happens to carry it.
-		await dblclickNode(page, 'node.rollup')
-		await page
-			.locator('.lb-rollup__config')
-			.getByLabel('Property', { exact: true })
-			.selectOption('price')
+		// A fresh table shows a row count, so configure it through its editing UI: add the Price column
+		// and sum it. The column picker is fed from the board's *registry*, so "Price" is offered because
+		// it was defined — not because some shape happens to carry it.
+		await dblclickNode(page, 'node.table')
+		const config = page.locator('.lb-tcfg')
+		await config.getByRole('button', { name: '+ Price' }).click()
+		await config.getByLabel('Summary of Price').selectOption('sum')
+		// One big number, so the assertion is about the total rather than about row rendering.
+		await config.getByLabel('Show as').selectOption('value')
 		await page.keyboard.press('Escape')
 
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾1,500')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾1,500')
 
 		// A meta-only edit must flow through to the total. This is the comparator regression: every
 		// comparator in the pipeline used to look at `props` alone, so this edit was invisible.
@@ -243,7 +245,7 @@ test.describe('nodes', () => {
 				meta: { 'lifeboard:props': { price: 700 } },
 			})
 		})
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾1,700')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾1,700')
 	})
 
 	test('properties work on a dragged-in image and a sticky note, not just on our own nodes', async ({
@@ -278,16 +280,16 @@ test.describe('nodes', () => {
 			])
 		})
 
-		await drawNode(page, 'Rollup', { x: 700, y: 400 }, { w: 280, h: 180 })
-		await dblclickNode(page, 'node.rollup')
-		await page
-			.locator('.lb-rollup__config')
-			.getByLabel('Property', { exact: true })
-			.selectOption('price')
+		await drawNode(page, 'Table', { x: 700, y: 400 }, { w: 280, h: 180 })
+		await dblclickNode(page, 'node.table')
+		const config = page.locator('.lb-tcfg')
+		await config.getByRole('button', { name: '+ Price' }).click()
+		await config.getByLabel('Summary of Price').selectOption('sum')
+		await config.getByLabel('Show as').selectOption('value')
 		await page.keyboard.press('Escape')
 
-		// 250 + 75 — a sticky and a rectangle, summed by a rollup that knows nothing about either.
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾325')
+		// 250 + 75 — a sticky and a rectangle, summed by a table that knows nothing about either.
+		await expect(page.locator('.lb-table__value')).toHaveText('₾325')
 	})
 
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
@@ -321,15 +323,15 @@ test.describe('nodes', () => {
 		// hidden annotation.
 		await expect(page.locator('.lb-strip').first()).toContainText('₾420')
 
-		await drawNode(page, 'Rollup', { x: 600, y: 400 }, { w: 280, h: 180 })
-		await dblclickNode(page, 'node.rollup')
-		await page
-			.locator('.lb-rollup__config')
-			.getByLabel('Property', { exact: true })
-			.selectOption('price')
+		await drawNode(page, 'Table', { x: 600, y: 400 }, { w: 280, h: 180 })
+		await dblclickNode(page, 'node.table')
+		const config = page.locator('.lb-tcfg')
+		await config.getByRole('button', { name: '+ Price' }).click()
+		await config.getByLabel('Summary of Price').selectOption('sum')
+		await config.getByLabel('Show as').selectOption('value')
 		await page.keyboard.press('Escape')
 
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾420')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾420')
 	})
 
 	test('the properties panel edits any shape and is fully visible above other shapes', async ({
@@ -373,10 +375,132 @@ test.describe('nodes', () => {
 		// Editing a price *through the panel* updates the live rollup — the panel is wired to the store,
 		// not just rendered. 4409 - 2399 + 1000 = 3010.
 		await page.locator('.lb-props').getByLabel('Value of Price').fill('1000')
-		await expect(page.locator('.lb-rollup__value')).toHaveText('₾3,010')
+		await expect(page.locator('.lb-table__value')).toHaveText('₾3,010')
 	})
 
-	test('the toolbar comes from the registry, and the retired item node is hidden from it', async ({
+	test('a table filters, groups and sorts shapes, and says what it held back', async ({ page }) => {
+		// The table as a database view: the acceptance test for Phase 3. Built through the config UI, over
+		// shapes that are only related by carrying the same property.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+						{ id: 'category', name: 'Category', type: 'select' },
+					],
+				},
+			})
+			// Five priced things and one unpriced, spread across two categories.
+			const things: [string, number | null, string][] = [
+				['Desk', 2399, 'desk'],
+				['Chair', 850, 'desk'],
+				['Arm', 240, 'desk'],
+				['Lamp', 120, 'light'],
+				['Bulb', 30, 'light'],
+				['Poster', null, 'decor'],
+			]
+			editor.createShapes(
+				things.map(([name, price, category], i) => ({
+					type: 'node.markdown',
+					x: (i % 3) * 200,
+					y: Math.floor(i / 3) * 140,
+					props: { w: 170, h: 80, md: `# ${name}`, autoHeight: false },
+					meta: {
+						'lifeboard:props': price === null ? { category } : { price, category },
+					},
+				}))
+			)
+		})
+
+		// Inside the 1280×720 viewport and clear of the shapes above, or the draw gesture would end
+		// off-screen and create nothing.
+		await drawNode(page, 'Table', { x: 680, y: 160 }, { w: 300, h: 220 })
+		await dblclickNode(page, 'node.table')
+		const config = page.locator('.lb-tcfg')
+
+		// Columns: Name is there by default; add Price and sum it.
+		await config.getByRole('button', { name: '+ Price' }).click()
+		await config.getByLabel('Summary of Price').selectOption('sum')
+
+		// Only things that actually have a price.
+		await config.getByRole('button', { name: '+ Filter' }).click()
+		await config.getByLabel('Filter 1 property').selectOption('price')
+		await config.getByLabel('Filter 1 operator').selectOption('isNotEmpty')
+
+		// Grouped by category, dearest first.
+		await config.getByLabel('Group by').selectOption('category')
+		await config.getByLabel('Sort by').selectOption('price')
+		await config.getByLabel('Sort direction').selectOption('desc')
+		await page.keyboard.press('Escape')
+
+		const grid = page.locator('.lb-table__grid')
+		// The unpriced poster is filtered out: 2399 + 850 + 240 + 120 + 30 = 3639 over 5 rows.
+		await expect(page.locator('.lb-table__row--summary')).toContainText('₾3,639')
+		await expect(grid).not.toContainText('Poster')
+
+		// Each group carries its own subtotal — what the old rollup's grouped mode did.
+		const groups = page.locator('.lb-table__row--group')
+		await expect(groups).toHaveCount(2)
+		await expect(groups.first()).toContainText('desk')
+		await expect(groups.first()).toContainText('₾3,489')
+		await expect(groups.nth(1)).toContainText('₾150')
+
+		// Sorted dearest first. `--data` rows only, so the group headers ("desk 3 ₾3,489") don't count as
+		// rows — which is exactly what a looser locator matched.
+		await expect(page.locator('.lb-table__row--data')).toHaveCount(5)
+		expect(await page.locator('.lb-table__row--data').allTextContents()).toEqual([
+			'Desk₾2,399',
+			'Chair₾850',
+			'Arm₾240',
+			'Lamp₾120',
+			'Bulb₾30',
+		])
+	})
+
+	test('a table caps its rows and says how many it is not showing', async ({ page }) => {
+		// A cap rather than a scrollbar: `canScroll` only applies to the shape being *edited*, and in
+		// display mode a shape must not swallow pointer events or it stops behaving like a shape. Silently
+		// truncating would make the table lie about the board, so the count is on screen.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+				},
+			})
+			editor.createShapes(
+				Array.from({ length: 20 }, (_, i) => ({
+					type: 'node.markdown',
+					x: (i % 5) * 120,
+					y: Math.floor(i / 5) * 90,
+					props: { w: 100, h: 60, md: `# Thing ${i}`, autoHeight: false },
+					meta: { 'lifeboard:props': { price: i + 1 } },
+				}))
+			)
+		})
+
+		await drawNode(page, 'Table', { x: 700, y: 150 }, { w: 280, h: 220 })
+		await dblclickNode(page, 'node.table')
+		await page.locator('.lb-tcfg').getByRole('button', { name: '+ Price' }).click()
+		await page.keyboard.press('Escape')
+
+		// 20 rows, 12 shown by default.
+		await expect(page.locator('.lb-table__count')).toHaveText('20 rows')
+		await expect(page.locator('.lb-table__more')).toHaveText('+8 more')
+	})
+
+	test('the toolbar comes from the registry, and retired node types are hidden from it', async ({
 		page,
 	}) => {
 		await gotoFresh(page)
@@ -386,11 +510,12 @@ test.describe('nodes', () => {
 		// §7: registry-driven UI. These exist because the definitions are registered, not because
 		// anything in the toolbar names them.
 		await expect(page.getByTestId('tools.node-markdown')).toBeVisible()
-		await expect(page.getByTestId('tools.node-rollup')).toBeVisible()
+		await expect(page.getByTestId('tools.node-table')).toBeVisible()
 
-		// The item node stays *registered* — unregistering it would turn any surviving record into a
+		// Both retired types stay *registered* — unregistering one would turn any surviving record into a
 		// validation failure — but a user must never be offered a type that no longer has a future.
 		await expect(page.getByTestId('tools.node-item')).toHaveCount(0)
+		await expect(page.getByTestId('tools.node-rollup')).toHaveCount(0)
 	})
 
 	test('properties survive being copied to another board', async ({ page }) => {

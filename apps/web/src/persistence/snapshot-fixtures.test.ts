@@ -6,10 +6,14 @@ import {
 	createNodeShapeUtil,
 	getNodeDefinitions,
 	itemsToNotesMigrations,
+	rollupsToTablesMigrations,
 	ITEM_NODE_TYPE,
 	NOTE_NODE_TYPE,
+	ROLLUP_NODE_TYPE,
+	TABLE_NODE_TYPE,
 	parsePropertyRegistry,
 	readShapeProperties,
+	type TableNodeProps,
 } from '@lifeboard/node-kit'
 import {
 	createTLStore,
@@ -49,7 +53,7 @@ function makeStore() {
 		// The same store migrations `<Tldraw migrations>` gets. Without them this test would load
 		// fixtures through a schema the app never actually uses, and the one migration that rewrites
 		// records across *types* would go completely unexercised on real data.
-		migrations: [itemsToNotesMigrations],
+		migrations: [itemsToNotesMigrations, rollupsToTablesMigrations],
 	})
 }
 
@@ -106,6 +110,46 @@ describe('snapshot fixtures', () => {
 			// The content itself must survive untouched.
 			expect(props.md.length).toBeGreaterThan(0)
 		}
+	})
+
+	it.each(files)('turns the rollups in %s into tables that still show their number', (file) => {
+		const raw = readFileSync(join(fixturesDir, file), 'utf8')
+		const snapshot = JSON.parse(raw) as TLStoreSnapshot
+		const store = makeStore()
+		loadSnapshot(store, snapshot)
+
+		const rollupsInFixture = Object.values(snapshot.store).filter(
+			(r) => (r as { type?: string }).type === ROLLUP_NODE_TYPE
+		)
+		expect(rollupsInFixture.length).toBeGreaterThan(0)
+
+		// None survive as rollups…
+		expect(
+			store
+				.allRecords()
+				.filter((r) => r.typeName === 'shape' && (r as { type: string }).type === ROLLUP_NODE_TYPE)
+		).toEqual([])
+
+		// …and each became a table still pointed at the same property, with the same operation, showing
+		// one big number rather than silently becoming a grid.
+		const tables = store
+			.allRecords()
+			.filter((r) => r.typeName === 'shape' && (r as { type: string }).type === TABLE_NODE_TYPE)
+		expect(tables).toHaveLength(rollupsInFixture.length)
+
+		for (const table of tables) {
+			const props = (table as unknown as { props: TableNodeProps }).props
+			expect(props.layout.mode).toBe('value')
+			expect(props.columns).toHaveLength(1)
+			expect(props.columns[0]!.summary).toBeTruthy()
+		}
+
+		// The fixture's rollups summed `price`, which is exactly the property the item migration defined —
+		// so the two passes agree, which is what `dependsOn` is there to guarantee.
+		const summed = tables.map(
+			(t) => (t as unknown as { props: TableNodeProps }).props.columns[0]!.key
+		)
+		expect(summed).toContain('price')
 	})
 
 	it.each(files)('turns the items in %s into notes carrying properties', (file) => {

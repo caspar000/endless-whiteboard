@@ -114,3 +114,39 @@ Three things the property system depends on, all confirmed here:
 
 `meta` is typed `JsonObject` and is **not** covered by shape validation or migrations — hence the
 defensive parse on every read in `properties/`.
+
+## `ShapeUtil.canScroll` applies only to the shape being *edited*
+
+The plan assumed this would let a table scroll its rows in display mode. It does not. From
+`@tldraw/editor/src/lib/editor/shapes/ShapeUtil.ts`:
+
+```ts
+/** Whether the shape can be scrolled while editing. */
+canScroll(shape: Shape): boolean { return false }
+```
+
+and its only consumer, `hooks/useGestureEvents.ts`:
+
+```ts
+const editingShapeId = editor.getEditingShapeId()
+if (editingShapeId) {
+  const shape = editor.getShape(editingShapeId)
+  if (shape && editor.getShapeUtil(shape).canScroll(shape)) {
+    const bounds = editor.getShapePageBounds(editingShapeId)
+    if (bounds?.containsPoint(editor.inputs.getCurrentPagePoint())) return   // don't zoom
+  }
+}
+```
+
+Two limits follow, and both are load-bearing for the table node:
+
+- **Editing only.** A shape not in editing state never gets asked, so this cannot make a node
+  scrollable in display mode. It also could not help there anyway: display mode sets
+  `pointer-events: none` on the shape container (otherwise the shape stops dragging and
+  marquee-selecting), so the wheel event never reaches the node's DOM in the first place.
+- **Wheel only.** It suppresses canvas zoom; it does not create a scroll container. The node's own
+  content still needs `overflow: auto` for anything to move.
+
+`node.table` therefore **caps its rows** (`layout.maxRows`, with a visible "+N more") and relies on
+auto-height to fit them, rather than being a small scrolling box. `canScroll: true` is still set, so
+the full set can be scrolled once you double-click into the table.

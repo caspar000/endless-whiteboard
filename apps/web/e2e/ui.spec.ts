@@ -226,14 +226,15 @@ test.describe('canvas chrome', () => {
 
 		// Double-click is now "write", so right-click is what surfaces the other node types.
 		await page.mouse.click(560, 300, { button: 'right' })
-		for (const label of ['Add note', 'Add rollup']) {
+		for (const label of ['Add note', 'Add table']) {
 			await expect(page.getByRole('menuitem', { name: label })).toBeVisible()
 		}
-		// The retired item node stays registered but must not be offered anywhere.
+		// Retired node types stay registered but must not be offered anywhere.
 		await expect(page.getByRole('menuitem', { name: 'Add item' })).toHaveCount(0)
+		await expect(page.getByRole('menuitem', { name: 'Add rollup' })).toHaveCount(0)
 
-		await page.getByRole('menuitem', { name: 'Add rollup' }).click()
-		expect(await countByType(page, 'node.rollup')).toBe(1)
+		await page.getByRole('menuitem', { name: 'Add table' }).click()
+		expect(await countByType(page, 'node.table')).toBe(1)
 	})
 
 	test('double-clicking an existing node still edits it rather than offering to create', async ({
@@ -248,7 +249,7 @@ test.describe('canvas chrome', () => {
 			const editor = (window as unknown as { editor: EditorLike }).editor
 			// A rollup: the one remaining node type whose editor is a popover, so "did it edit rather
 			// than create?" has an unambiguous answer on screen.
-			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.rollup')!
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'node.table')!
 			const b = editor.getShapePageBounds(shape.id)!
 			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + 12 })
 		})

@@ -27,6 +27,14 @@ export type NavigationAction =
 	| { kind: 'maybeFocusLine'; direction: -1 | 1; caret: 'start' | 'end' }
 	| { kind: 'undo' }
 	| { kind: 'redo' }
+	/** Tab / Shift+Tab: nest or un-nest the current line. */
+	| { kind: 'indent'; direction: 1 | -1 }
+	/** Wrap or unwrap the selection in an inline marker. */
+	| { kind: 'inline'; marker: string }
+	/** Tick or untick the current line's task checkbox. */
+	| { kind: 'toggleTask' }
+	/** Turn the current line into a list item of this kind, or back into plain text. */
+	| { kind: 'linePrefix'; prefix: '- ' | '- [ ] ' | '1. ' | '> ' }
 
 export interface KeyContext {
 	key: string
@@ -41,6 +49,25 @@ export interface KeyContext {
 	atLineEnd: boolean
 	index: number
 	lineCount: number
+	/** Whether the caret's line is a task item — decides what ⌘Enter means. */
+	onTaskLine?: boolean
+}
+
+/**
+ * After the browser has moved the caret for ArrowUp/ArrowDown, did it end up against the line's edge?
+ *
+ * This is how `maybeFocusLine` decides whether to change line, and the previous test — "did the caret
+ * fail to move?" — was wrong in the most common case there is. A textarea holding a single visual row
+ * moves the caret to offset 0 on ArrowUp rather than leaving it alone, so the first press did nothing
+ * visible and you had to press again to leave the line.
+ *
+ * Landing on the edge is the reliable signal instead: a caret on the first visual row always lands on
+ * offset 0, and one on any later row lands somewhere inside. (A caret at the very start of a *wrapped*
+ * row 2 also lands on 0 and so changes line a press early — rare, and far less annoying than every
+ * arrow press needing two.)
+ */
+export function crossedLineEdge(direction: -1 | 1, caret: number, length: number): boolean {
+	return direction === -1 ? caret === 0 : caret === length
 }
 
 export function decideNavigation(ctx: KeyContext): NavigationAction {
@@ -52,8 +79,32 @@ export function decideNavigation(ctx: KeyContext): NavigationAction {
 		return ctx.shift ? { kind: 'redo' } : { kind: 'undo' }
 	}
 
+	// Inline formatting, on the shortcuts every editor uses for them.
+	if (ctx.mod && !ctx.shift) {
+		if (ctx.key === 'b' || ctx.key === 'B') return { kind: 'inline', marker: '**' }
+		if (ctx.key === 'i' || ctx.key === 'I') return { kind: 'inline', marker: '*' }
+		if (ctx.key === 'e' || ctx.key === 'E') return { kind: 'inline', marker: '`' }
+	}
+	if (ctx.mod && ctx.shift) {
+		// ⌘⇧X is strikethrough in Notion and Bear; ⌘⇧7 / ⌘⇧8 are the ordered/bullet list shortcuts in
+		// Notion, Google Docs and Word, so they are what people's hands already know.
+		if (ctx.key === 'x' || ctx.key === 'X') return { kind: 'inline', marker: '~~' }
+		if (ctx.key === '7' || ctx.key === '&') return { kind: 'linePrefix', prefix: '1. ' }
+		if (ctx.key === '8' || ctx.key === '*') return { kind: 'linePrefix', prefix: '- ' }
+		if (ctx.key === '9' || ctx.key === '(') return { kind: 'linePrefix', prefix: '- [ ] ' }
+		if (ctx.key === '.' || ctx.key === '>') return { kind: 'linePrefix', prefix: '> ' }
+	}
+
+	// ⌘/Ctrl+Enter would be tldraw's "done editing", but on a task line ticking the box is what anyone
+	// means by it — and Escape already exits, so nothing is lost.
+	if (ctx.mod && ctx.key === 'Enter' && ctx.onTaskLine) return { kind: 'toggleTask' }
+
 	// ⌘/Ctrl+Enter is tldraw's convention for "done editing".
 	if (ctx.key === 'Escape' || (ctx.mod && ctx.key === 'Enter')) return { kind: 'exit' }
+
+	// Tab nests rather than moving focus. In a note the canvas has nothing to tab *to*, and every
+	// outliner binds Tab this way, so the default would be both useless and surprising.
+	if (ctx.key === 'Tab') return { kind: 'indent', direction: ctx.shift ? -1 : 1 }
 
 	// Unconditional: no split-vs-continue special cases by block type. A single newline renders as a
 	// line break (MarkdownView enables `remark-breaks`), so the note visibly grows either way.

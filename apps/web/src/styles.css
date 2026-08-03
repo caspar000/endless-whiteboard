@@ -891,6 +891,39 @@ button {
 .lb-md__body li {
 	margin-bottom: 2px;
 }
+
+/*
+ * A task item's checkbox *is* its marker, so the bullet has to go — a square next to a disc reads as two
+ * markers for one item.
+ *
+ * Targeted at `li.task-list-item` rather than at the list, because GFM puts task items and plain bullets
+ * in the *same* `<ul>` when the source mixes them: styling the list would strip the plain bullets too.
+ * The negative indent pulls the checkbox out to where the bullet was, so mixed lists still align.
+ */
+.lb-md__body li.task-list-item,
+.lb-md__bare li.task-list-item {
+	list-style: none;
+	margin-left: -18px;
+}
+
+/*
+ * Interactive in display mode. The shape container sets `pointer-events: none` there — otherwise a node
+ * stops behaving like a shape — and a child re-enabling them is exactly the documented escape hatch.
+ */
+.lb-md__task {
+	pointer-events: auto;
+	cursor: pointer;
+	margin-right: 5px;
+	vertical-align: -1px;
+	/* The dark theme's default checkbox is a light box on a dark card; `accent-color` tints the tick
+	   instead of needing a hand-built control. */
+	accent-color: var(--lb-accent);
+}
+/* A read-only preview still shows state, but must not look clickable. */
+.lb-md__body input[type='checkbox']:disabled {
+	margin-right: 5px;
+	vertical-align: -1px;
+}
 .lb-md__body code {
 	background: var(--lb-surface-2);
 	border-radius: 4px;

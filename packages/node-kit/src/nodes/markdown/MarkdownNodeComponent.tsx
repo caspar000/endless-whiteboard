@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { PropertyStrip } from '../../properties/PropertyStrip'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
+import { toggleTaskAt } from './tasks'
 import type { NoteNodeProps } from './definition'
 import { MarkdownView } from './MarkdownView'
 import { NoteEditor } from './NoteEditor'
@@ -32,7 +33,17 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 	return (
 		<div className="lb-note lb-md">
 			{md.trim() ? (
-				<MarkdownView md={md} />
+				<MarkdownView
+					md={md}
+					// Checkboxes are live in display mode: ticking something off a list is the most common
+					// thing anyone does to a checklist, and needing to enter an editor first to do it is the
+					// difference between a note and a document.
+					onToggleTask={(index) => {
+						const next = toggleTaskAt(md, index)
+						// `null` means nothing matched, which must not cost an undo entry.
+						if (next !== null) updateNodeProps(editor, shape, { md: next })
+					}}
+				/>
 			) : (
 				<p className="lb-md__placeholder">Double-click to write</p>
 			)}

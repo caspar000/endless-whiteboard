@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideNavigation, type KeyContext } from './navigation'
+import { crossedLineEdge, decideNavigation, type KeyContext } from './navigation'
 
 function ctx(over: Partial<KeyContext> = {}): KeyContext {
 	return {
@@ -133,5 +133,25 @@ describe('session undo', () => {
 describe('Escape', () => {
 	it('exits editing', () => {
 		expect(decideNavigation(ctx({ key: 'Escape' })).kind).toBe('exit')
+	})
+})
+
+describe('crossedLineEdge', () => {
+	it('reports the edge for ArrowUp when the caret lands on offset 0', () => {
+		// The bug this replaced: the old test was "did the caret fail to move?", but a single-row textarea
+		// moves the caret to 0 on ArrowUp, so the first press appeared to do nothing and leaving a line
+		// took two presses.
+		expect(crossedLineEdge(-1, 0, 12)).toBe(true)
+		expect(crossedLineEdge(-1, 5, 12)).toBe(false)
+	})
+
+	it('reports the edge for ArrowDown when the caret lands on the last offset', () => {
+		expect(crossedLineEdge(1, 12, 12)).toBe(true)
+		expect(crossedLineEdge(1, 5, 12)).toBe(false)
+	})
+
+	it('treats an empty line as being at both edges, so arrows never get stuck on it', () => {
+		expect(crossedLineEdge(-1, 0, 0)).toBe(true)
+		expect(crossedLineEdge(1, 0, 0)).toBe(true)
 	})
 })

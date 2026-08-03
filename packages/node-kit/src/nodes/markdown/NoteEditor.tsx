@@ -9,10 +9,12 @@ import {
 	surroundingMarkdown,
 	type Line,
 } from './lines'
+import { indentLine, toggleInline, toggleLinePrefix, type LineEdit } from './lineEdits'
 import { decideEnter } from './listContinuation'
 import { MarkdownView } from './MarkdownView'
-import { decideNavigation } from './navigation'
+import { crossedLineEdge, decideNavigation } from './navigation'
 import { SessionHistory } from './sessionHistory'
+import { findTasks, lineIsTask, toggleTaskAt, toggleTaskOnLine } from './tasks'
 
 /**
  * The live-preview editor: the **line** holding the caret is a raw `<textarea>`; everything above and
@@ -43,7 +45,9 @@ export function NoteEditor({
 	onExit: () => void
 }) {
 	const sourceRef = useRef(initial)
-	const historyRef = useRef(new SessionHistory({ source: initial, caret: initialCaret ?? initial.length }))
+	const historyRef = useRef(
+		new SessionHistory({ source: initial, caret: initialCaret ?? initial.length })
+	)
 
 	/**
 	 * Bumped on every structural change, and part of the textarea's `key`.
@@ -70,6 +74,14 @@ export function NoteEditor({
 
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 	const pendingCaretRef = useRef<number | 'start' | 'end' | null>(null)
+	/**
+	 * A selection to restore after a remount, for the edits that produce one.
+	 *
+	 * Separate from `pendingCaretRef` because almost every edit collapses the selection; only formatting
+	 * (⌘B on a selected word) needs to hand one back, and folding that into the caret path would mean
+	 * every caller thinking about ranges.
+	 */
+	const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
 	const composingRef = useRef(false)
 
 	const commitRef = useRef(onCommit)
@@ -146,7 +158,13 @@ export function NoteEditor({
 		}
 
 		target.focus()
-		target.setSelectionRange(offset, offset)
+		const selection = pendingSelectionRef.current
+		if (selection) {
+			target.setSelectionRange(selection.start, selection.end)
+			pendingSelectionRef.current = null
+		} else {
+			target.setSelectionRange(offset, offset)
+		}
 		pendingCaretRef.current = null
 		autoSizeTextarea(target)
 
@@ -175,10 +193,10 @@ export function NoteEditor({
 			shift: e.shiftKey,
 			composing: composingRef.current || e.nativeEvent.isComposing,
 			atLineStart: el.selectionStart === 0 && el.selectionEnd === 0,
-			atLineEnd:
-				el.selectionStart === el.value.length && el.selectionEnd === el.value.length,
+			atLineEnd: el.selectionStart === el.value.length && el.selectionEnd === el.value.length,
 			index: activeIndex,
 			lineCount: lines.length,
+			onTaskLine: lineIsTask(el.value),
 		})
 
 		switch (action.kind) {
@@ -233,11 +251,16 @@ export function NoteEditor({
 				return
 
 			case 'maybeFocusLine': {
-				const before = el.selectionStart
 				const { direction, caret } = action
+				// The native move happens first, then its result is inspected: whether a long line wraps —
+				// and so whether ArrowUp stays inside it — cannot be answered without letting the browser
+				// try. See `crossedLineEdge`.
 				requestAnimationFrame(() => {
 					const target = textareaRef.current
-					if (target && target.selectionStart === before) moveToLine(direction, caret)
+					if (!target) return
+					if (crossedLineEdge(direction, target.selectionStart, target.value.length)) {
+						moveToLine(direction, caret)
+					}
 				})
 				e.stopPropagation()
 				return
@@ -257,10 +280,73 @@ export function NoteEditor({
 				return
 			}
 
+			case 'indent': {
+				e.preventDefault()
+				const { source, lineStart } = flush()
+				const edited = indentLine(
+					{ text: el.value, selStart: el.selectionStart, selEnd: el.selectionEnd },
+					action.direction
+				)
+				// `null` means there was nothing to outdent — don't spend an undo entry on a no-op.
+				if (!edited) return
+				replaceLine(source, lineStart, el.value, edited)
+				return
+			}
+
+			case 'inline': {
+				e.preventDefault()
+				const { source, lineStart } = flush()
+				const edited = toggleInline(
+					{ text: el.value, selStart: el.selectionStart, selEnd: el.selectionEnd },
+					action.marker
+				)
+				replaceLine(source, lineStart, el.value, edited)
+				return
+			}
+
+			case 'linePrefix': {
+				e.preventDefault()
+				const { source, lineStart } = flush()
+				const edited = toggleLinePrefix(
+					{ text: el.value, selStart: el.selectionStart, selEnd: el.selectionEnd },
+					action.prefix
+				)
+				replaceLine(source, lineStart, el.value, edited)
+				return
+			}
+
+			case 'toggleTask': {
+				e.preventDefault()
+				const { source, lineStart } = flush()
+				const caretInLine = el.selectionStart
+				const next = toggleTaskOnLine(source, lineIndexAtOffset(splitLines(source), lineStart))
+				if (next !== null) apply(next, lineStart + caretInLine)
+				return
+			}
+
 			default:
 				// Anything else stays in the textarea rather than reaching the canvas as a shortcut
 				// (`d` would pick the draw tool, space would pan, and so on).
 				e.stopPropagation()
+		}
+	}
+
+	/**
+	 * Swaps the active line's text for an edited version, restoring the selection the edit asked for.
+	 *
+	 * Goes through `apply` like every other structural change, so the session history sees it as one
+	 * step and ⌘Z undoes an indent or a bold in one press rather than character by character.
+	 */
+	function replaceLine(source: string, lineStart: number, oldText: string, edited: LineEdit): void {
+		const next = source.slice(0, lineStart) + edited.text + source.slice(lineStart + oldText.length)
+		apply(next, lineStart + edited.selStart)
+		// A selection, rather than a bare caret, has to be restored after the remount — `apply` only
+		// carries a caret, because every other edit collapses the selection.
+		if (edited.selEnd !== edited.selStart) {
+			pendingSelectionRef.current = {
+				start: edited.selStart,
+				end: edited.selEnd,
+			}
 		}
 	}
 
@@ -277,6 +363,23 @@ export function NoteEditor({
 	const { before, after } = surroundingMarkdown(source, activeLine)
 	const style = lineStyle(source, activeLine)
 
+	/**
+	 * Ticking a box in the preview regions, while editing.
+	 *
+	 * The regions above and below the caret are previews of the same document, so a checkbox there should
+	 * behave like one in display mode. They are rendered from *slices*, though, so the second slice's
+	 * first checkbox is not the document's first — hence the offset. Without it, clicking a box below the
+	 * caret would tick one above it.
+	 */
+	const toggleTaskFromPreview = (index: number) => {
+		const { source: current } = flush()
+		const next = toggleTaskAt(current, index)
+		if (next !== null)
+			apply(next, extentRef.current.start + (textareaRef.current?.selectionStart ?? 0))
+	}
+	const tasksBefore =
+		findTasks(before).length + (lineIsTask(source.slice(activeLine.start, activeLine.end)) ? 1 : 0)
+
 	return (
 		<div
 			className="lb-note lb-note--editing"
@@ -291,7 +394,7 @@ export function NoteEditor({
 					// Clicking the rendered part above puts the caret at the end of the nearest line.
 					onPointerDown={() => moveToLine(-1, 'end')}
 				>
-					<MarkdownView md={before} bare />
+					<MarkdownView md={before} bare onToggleTask={toggleTaskFromPreview} />
 				</div>
 			)}
 
@@ -317,7 +420,12 @@ export function NoteEditor({
 
 			{after.trim() !== '' && (
 				<div className="lb-note__rendered" onPointerDown={() => moveToLine(1, 'start')}>
-					<MarkdownView md={after} bare />
+					<MarkdownView
+						md={after}
+						bare
+						onToggleTask={toggleTaskFromPreview}
+						taskIndexOffset={tasksBefore}
+					/>
 				</div>
 			)}
 		</div>

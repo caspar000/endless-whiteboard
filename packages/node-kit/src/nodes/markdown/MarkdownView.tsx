@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
@@ -16,6 +16,8 @@ import { useImageOrVideoAsset, type TLAssetId } from 'tldraw'
 export const MarkdownView = memo(function MarkdownView({
 	md,
 	bare = false,
+	onToggleTask,
+	taskIndexOffset = 0,
 }: {
 	md: string
 	/**
@@ -24,7 +26,24 @@ export const MarkdownView = memo(function MarkdownView({
 	 * padding and make `.lb-md__body h1` match more than once.
 	 */
 	bare?: boolean
+	/**
+	 * Called with a task's index in document order when its checkbox is clicked. Omit to render
+	 * checkboxes read-only.
+	 *
+	 * Ticking a box has to rewrite the markdown, because the markdown *is* the model — see `tasks.ts`.
+	 */
+	onToggleTask?: (index: number) => void
+	/**
+	 * Added to the index reported by `onToggleTask`.
+	 *
+	 * The live-preview editor renders the document in two pieces around the line being edited, so the
+	 * second piece's first checkbox is not the document's first. Without the offset, clicking a box below
+	 * the caret would tick one above it.
+	 */
+	taskIndexOffset?: number
 }) {
+	const rootRef = useRef<HTMLDivElement>(null)
+
 	const content = (
 		<Markdown
 			remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -40,13 +59,48 @@ export const MarkdownView = memo(function MarkdownView({
 				// the item→note migration writes, so without this every migrated photo would render as
 				// a broken image.
 				img: ({ src, alt }) => <MarkdownImage src={typeof src === 'string' ? src : ''} alt={alt} />,
+				// GFM renders a task item's checkbox as a *disabled* `<input>`. Enabling it — and working
+				// out *which* task it is from its position among its siblings — is what makes a note's
+				// checklist usable without first entering the editor.
+				input: (props) =>
+					props.type === 'checkbox' && onToggleTask ? (
+						<input
+							type="checkbox"
+							className="lb-md__task"
+							checked={props.checked === true}
+							// The index is read from the DOM at click time rather than counted during render:
+							// DOM order *is* document order, guaranteed, whereas a render-time counter breaks
+							// under StrictMode's double render.
+							onChange={(e) => {
+								const root = rootRef.current
+								if (!root) return
+								const boxes = [...root.querySelectorAll('input.lb-md__task')]
+								const index = boxes.indexOf(e.currentTarget)
+								if (index >= 0) onToggleTask(index + taskIndexOffset)
+							}}
+							// The shape swallows pointer events in display mode, and the editor's preview
+							// regions move the caret on click. Neither should happen when the target is a box.
+							onPointerDown={(e) => e.stopPropagation()}
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<input {...props} />
+					),
 			}}
 		>
 			{md}
 		</Markdown>
 	)
 
-	return bare ? content : <div className="lb-md__body">{content}</div>
+	// The wrapper is always present when tasks are interactive: the click handler needs a root to scope
+	// its query to, or two notes on screen would share one checkbox ordering.
+	return bare && !onToggleTask ? (
+		content
+	) : (
+		<div className={bare ? 'lb-md__bare' : 'lb-md__body'} ref={rootRef}>
+			{content}
+		</div>
+	)
 })
 
 /**

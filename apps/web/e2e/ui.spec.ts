@@ -106,6 +106,144 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('.lb-md__body ul strong')).toHaveCount(0)
 	})
 
+	test('a task shows only its checkbox, and plain bullets keep their marker', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 100,
+					y: 100,
+					props: { w: 300, h: 160, md: '- [ ] task\n- plain', autoHeight: true },
+				},
+			])
+		})
+
+		// A checkbox *is* the item's marker, so a bullet beside it reads as two markers for one item. GFM
+		// puts task items and plain bullets in the same <ul>, so this has to be per-item.
+		const task = page.locator('.lb-md__body li.task-list-item')
+		const plain = page.locator('.lb-md__body li:not(.task-list-item)')
+		await expect(task).toHaveCount(1)
+		await expect(plain).toHaveCount(1)
+		expect(await task.evaluate((el) => getComputedStyle(el).listStyleType)).toBe('none')
+		expect(await plain.evaluate((el) => getComputedStyle(el).listStyleType)).toBe('disc')
+	})
+
+	test('a task can be ticked straight from the preview, without entering the editor', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 100,
+					y: 100,
+					props: { w: 300, h: 180, md: '# Chores\n- [ ] milk\n- [x] bread', autoHeight: true },
+				},
+			])
+		})
+
+		const readMd = () =>
+			page.evaluate(
+				() =>
+					(window as unknown as { editor: EditorLike }).editor
+						.getCurrentPageShapes()
+						.find((s) => s.type === 'node.markdown')!.props.md
+			)
+
+		const boxes = page.locator('.lb-md__task')
+		await expect(boxes).toHaveCount(2)
+
+		await boxes.first().click()
+		await expect.poll(readMd).toBe('# Chores\n- [x] milk\n- [x] bread')
+
+		// The second box unticks the one it belongs to — the mapping from checkbox to source line is by
+		// position, so an off-by-one here would tick the wrong task.
+		await boxes.nth(1).click()
+		await expect.poll(readMd).toBe('# Chores\n- [x] milk\n- [ ] bread')
+
+		// And ticking is not an edit gesture: the shape must not become selected or enter editing, or
+		// every tick would fight the canvas.
+		expect(
+			await page.evaluate(() => {
+				const editor = (window as unknown as { editor: EditorLike }).editor
+				return {
+					editing: editor.getEditingShapeId(),
+					selected: editor.getSelectedShapeIds().length,
+				}
+			})
+		).toEqual({ editing: null, selected: 0 })
+	})
+
+	test('the editor has Tab, formatting and task shortcuts', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+		const line = page.locator('.lb-note__input')
+
+		await page.keyboard.type('- milk')
+
+		// Tab nests, Shift+Tab un-nests. In a note the canvas has nothing to tab to, and every outliner
+		// binds Tab this way.
+		await page.keyboard.press('Tab')
+		await expect(line).toHaveValue('  - milk')
+		await page.keyboard.press('Tab')
+		await expect(line).toHaveValue('    - milk')
+		await page.keyboard.press('Shift+Tab')
+		await expect(line).toHaveValue('  - milk')
+
+		// ⌘B wraps the word under the caret, and toggles rather than nesting the markers.
+		await page.keyboard.press('ControlOrMeta+b')
+		await expect(line).toHaveValue('  - **milk**')
+		await page.keyboard.press('ControlOrMeta+b')
+		await expect(line).toHaveValue('  - milk')
+
+		// ⌘⇧9 makes it a task; ⌘Enter then ticks it rather than exiting, which is what anyone means by
+		// that chord on a checklist.
+		await page.keyboard.press('ControlOrMeta+Shift+9')
+		await expect(line).toHaveValue('  - [ ] milk')
+		await page.keyboard.press('ControlOrMeta+Enter')
+		await expect(line).toHaveValue('  - [x] milk')
+
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-md__task')).toHaveCount(1)
+		await expect(page.locator('.lb-md__task')).toBeChecked()
+	})
+
+	test('one arrow press leaves a line', async ({ page }) => {
+		// A textarea holding a single visual row moves the caret to offset 0 on ArrowUp rather than
+		// leaving it alone, so the old "did the caret move?" test made the first press do nothing and
+		// leaving a line took two.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await page.keyboard.type('first')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('second')
+
+		const line = page.locator('.lb-note__input')
+		await expect(line).toHaveValue('second')
+		await page.keyboard.press('ArrowUp')
+		await expect(line).toHaveValue('first')
+		await page.keyboard.press('ArrowDown')
+		await expect(line).toHaveValue('second')
+	})
+
 	test('double-clicking an existing note puts the caret straight in the text', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
@@ -521,4 +659,5 @@ interface EditorLike {
 	setCamera(c: { x: number; y: number; z: number }): unknown
 	createShapes(s: unknown[]): unknown
 	select(...ids: string[]): unknown
+	getSelectedShapeIds(): string[]
 }

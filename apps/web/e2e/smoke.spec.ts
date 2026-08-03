@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+	NOTE_EDITOR,
 	backToList,
 	countShapes,
 	createBoard,
@@ -8,8 +9,8 @@ import {
 	gotoFresh,
 	openBoard,
 	openProperties,
-	waitForPersistedShapes,
 	skipFirstRunDemo,
+	waitForPersistedShapes,
 } from './helpers'
 
 test.describe('first run', () => {
@@ -146,7 +147,7 @@ test.describe('nodes', () => {
 		// Double-click to edit, type markdown, then leave editing. Typed rather than `fill`ed: the
 		// textarea holds a single line now, and Enter is what moves to the next one.
 		await dblclickNode(page, 'node.markdown')
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('# Chores')
 		await page.keyboard.press('Enter')
 		await page.keyboard.type('- morning care')
@@ -176,7 +177,7 @@ test.describe('nodes', () => {
 		)
 
 		// Space and arrow keys pan the canvas when it has focus — they must not while editing.
-		const textarea = page.locator('.lb-note__input')
+		const textarea = page.locator(NOTE_EDITOR)
 		await textarea.fill('hello world')
 		await textarea.press('ArrowLeft')
 		await textarea.press('Space')

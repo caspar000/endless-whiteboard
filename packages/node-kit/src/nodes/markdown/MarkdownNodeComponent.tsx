@@ -19,6 +19,7 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 		return (
 			<NoteEditor
 				initial={md}
+				editor={editor}
 				onCommit={(next) => {
 					if (next !== shape.props.md) updateNodeProps(editor, shape, { md: next })
 				}}

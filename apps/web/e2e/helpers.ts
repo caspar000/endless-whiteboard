@@ -162,6 +162,29 @@ async function waitForStableHeight(page: Page, shapeType: string): Promise<void>
 	}
 }
 
+/**
+ * The note editor's focusable element.
+ *
+ * CodeMirror's `contenteditable` div, not a textarea — the editor is CM6 now. Named so the tests read as
+ * "the editor" rather than naming an implementation detail twice over.
+ */
+export const NOTE_EDITOR = '.cm-content'
+
+/**
+ * The markdown of the first note on the board, as committed to the shape.
+ *
+ * Asserting on this rather than on the editor's DOM is deliberate: the live preview *hides* markup, so
+ * the DOM shows `•milk` where the source says `- milk`. The committed source is both the truth and the
+ * thing every other feature reads.
+ */
+export async function noteMarkdown(page: Page): Promise<string> {
+	return page.evaluate(() => {
+		const editor = (window as unknown as { editor: EditorLike }).editor
+		const note = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')
+		return (note?.props as { md?: string } | undefined)?.md ?? ''
+	})
+}
+
 export async function dblclickNode(page: Page, shapeType: string): Promise<void> {
 	await waitForStableHeight(page, shapeType)
 	const point = await page.evaluate((type) => {

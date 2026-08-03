@@ -150,3 +150,43 @@ Two limits follow, and both are load-bearing for the table node:
 `node.table` therefore **caps its rows** (`layout.maxRows`, with a visible "+N more") and relies on
 auto-height to fit them, rather than being a small scrolling box. `canScroll: true` is still set, so
 the full set can be scrolled once you double-click into the table.
+
+## `markEventAsHandled` is the only way to stop tldraw acting on a key you handled
+
+tldraw listens for `keydown` on **its container** (`useDocumentEvents.ts`:
+`container.addEventListener('keydown', handleKeyDown)`), and `handleKeyDown` begins with:
+
+```ts
+if (editor.wasEventAlreadyHandled(e)) return
+editor.markEventAsHandled(e)
+```
+
+That pair is `@public` and documented for exactly this purpose. Nothing else works from inside a shape:
+
+- **React's `onKeyDown` is too late.** React attaches its listeners at the React root, which is *above*
+  tldraw's container, so tldraw's handler has already run by the time the synthetic event is delivered.
+- **A native listener on the shape's own element is also not enough on its own** if handling the key
+  unmounts that element. React flushes discrete events like `keydown` synchronously, so exiting an editor
+  from inside a CodeMirror keymap removed the listener's node *during* dispatch — the listener never ran,
+  tldraw saw an unclaimed Escape, and handled it as "clear selection".
+
+That last one cost a real bug: "clear selection" calls `markHistoryStoppingPoint`, so an **empty history
+entry** landed on top of the undo stack and the first ⌘Z after writing a note did nothing at all. The fix
+is a **capture-phase** listener on the shape's element that marks the event handled before anything else
+sees it — see `nodes/markdown/NoteEditor.tsx`.
+
+## CodeMirror 6 works correctly inside tldraw's camera transform
+
+Worth recording because it was the main risk when choosing an editor. Verified by driving the real app at
+1×, 0.5× and 2× zoom: clicking a specific character places the caret at exactly that offset, and
+drag-selection tracks the pointer. CodeMirror uses client rects consistently, so a CSS `scale` on an
+ancestor does not skew its coordinate mapping.
+
+Two things *do* need overriding, both because CodeMirror is built to be a viewport onto a long document
+and a note is the opposite:
+
+- `.cm-scroller { overflow: auto }` and `.cm-content { min-height: 100% }` make the editor size to its
+  container. Inside an auto-height shape that is circular — the container is measured *from* the editor —
+  and it latches at whatever height the shape happened to start with.
+- Those rules have to be overridden in a real stylesheet, not an `EditorView.theme`: a theme is injected
+  as a `<style>` block that a later-loaded stylesheet beats at equal specificity.

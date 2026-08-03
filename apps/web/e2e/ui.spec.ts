@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { backToList, createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
+import {
+	NOTE_EDITOR,
+	backToList,
+	dblclickNode,
+	createBoard,
+	gotoFresh,
+	noteMarkdown,
+	openBoard,
+	skipFirstRunDemo,
+} from './helpers'
 
 test.describe('canvas chrome', () => {
 	test('double-clicking empty canvas creates a note, already in editing mode', async ({ page }) => {
@@ -15,51 +24,39 @@ test.describe('canvas chrome', () => {
 		expect(await countByType(page, 'text')).toBe(0)
 
 		// The caret is already in the note, so you can just type.
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		const editing = await page.evaluate(
 			() => (window as unknown as { editor: EditorLike }).editor.getEditingShapeId() !== null
 		)
 		expect(editing).toBe(true)
 	})
 
-	test('markdown renders line by line as you leave each line', async ({ page }) => {
+	test('markdown renders inline as you leave each line, keeping the source intact', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 260)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('# Chores')
-		// Raw while the caret is on it — that is the point of live preview.
-		await expect(page.locator('.lb-note__rendered h1')).toHaveCount(0)
+		// Raw while the caret is on the line — that is what makes it *live* preview rather than a
+		// deferred render.
+		await expect(page.locator(NOTE_EDITOR)).toContainText('# Chores')
 
 		await page.keyboard.press('Enter')
-		// Leaving the *line* renders it. Per-line, not per-block: previously nothing rendered until
-		// you opened a whole new block, so a heading stayed raw while you typed the prose beneath it.
-		await expect(page.locator('.lb-note__rendered h1')).toHaveText('Chores')
-		await expect(page.locator('.lb-note__input')).toHaveCount(1)
-
-		// A second line renders as soon as the caret leaves it, even though it is the same paragraph.
 		await page.keyboard.type('first prose line')
-		await page.keyboard.press('Enter')
-		await expect(page.locator('.lb-note__rendered')).toContainText('first prose line')
+		// The heading now renders: its `#` is gone from the text even though the source still has it.
+		await expect(page.locator(NOTE_EDITOR)).not.toContainText('# Chores')
+		await expect(page.locator(NOTE_EDITOR)).toContainText('Chores')
 
-		await page.keyboard.type('- morning care')
-		await page.keyboard.press('Enter')
-		// The bullet is prefilled by auto-continuation, so only the text is typed.
-		await page.keyboard.type('workout')
 		await page.keyboard.press('Escape')
-
-		// Enter inserts a single newline every time — no block-type special cases.
-		const md = await page.evaluate(
-			() =>
-				(window as unknown as { editor: EditorLike }).editor
-					.getCurrentPageShapes()
-					.find((s) => s.type === 'node.markdown')!.props.md
-		)
-		expect(md).toBe('# Chores\nfirst prose line\n- morning care\n- workout')
-		await expect(page.locator('.lb-md__body li')).toHaveCount(2)
+		// Asserted on the source, because that is what every other feature reads. The markup was hidden,
+		// never removed.
+		expect(await noteMarkdown(page)).toBe('# Chores\nfirst prose line')
+		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')
 	})
 
 	test('list markers auto-continue, and an empty one leaves the list', async ({ page }) => {
@@ -68,7 +65,7 @@ test.describe('canvas chrome', () => {
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 220)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('# Shopping')
 		await page.keyboard.press('Enter')
@@ -184,64 +181,186 @@ test.describe('canvas chrome', () => {
 		).toEqual({ editing: null, selected: 0 })
 	})
 
-	test('the editor has Tab, formatting and task shortcuts', async ({ page }) => {
+	test('the editor has Tab, formatting and list shortcuts', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 220)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
-		const line = page.locator('.lb-note__input')
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('- milk')
-
 		// Tab nests, Shift+Tab un-nests. In a note the canvas has nothing to tab to, and every outliner
 		// binds Tab this way.
 		await page.keyboard.press('Tab')
-		await expect(line).toHaveValue('  - milk')
 		await page.keyboard.press('Tab')
-		await expect(line).toHaveValue('    - milk')
 		await page.keyboard.press('Shift+Tab')
-		await expect(line).toHaveValue('  - milk')
-
-		// ⌘B wraps the word under the caret, and toggles rather than nesting the markers.
+		// ⌘B wraps the word under the caret — no selecting first.
 		await page.keyboard.press('ControlOrMeta+b')
-		await expect(line).toHaveValue('  - **milk**')
-		await page.keyboard.press('ControlOrMeta+b')
-		await expect(line).toHaveValue('  - milk')
-
-		// ⌘⇧9 makes it a task; ⌘Enter then ticks it rather than exiting, which is what anyone means by
-		// that chord on a checklist.
-		await page.keyboard.press('ControlOrMeta+Shift+9')
-		await expect(line).toHaveValue('  - [ ] milk')
-		await page.keyboard.press('ControlOrMeta+Enter')
-		await expect(line).toHaveValue('  - [x] milk')
-
 		await page.keyboard.press('Escape')
-		await expect(page.locator('.lb-md__task')).toHaveCount(1)
-		await expect(page.locator('.lb-md__task')).toBeChecked()
+		expect(await noteMarkdown(page)).toBe('  - **milk**')
 	})
 
-	test('one arrow press leaves a line', async ({ page }) => {
-		// A textarea holding a single visual row moves the caret to offset 0 on ArrowUp rather than
-		// leaving it alone, so the old "did the caret move?" test made the first press do nothing and
-		// leaving a line took two.
+	test('a shortcut turns a whole selection into a checklist', async ({ page }) => {
+		// Only possible because the editor is CodeMirror now: a selection can span lines, so a line-level
+		// command can apply to all of them. The previous editor put one textarea on the caret's line and
+		// could not express this at all.
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 220)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
-		await page.keyboard.type('first')
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+		await page.keyboard.type('milk')
 		await page.keyboard.press('Enter')
-		await page.keyboard.type('second')
+		await page.keyboard.type('bread')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('rug')
 
-		const line = page.locator('.lb-note__input')
-		await expect(line).toHaveValue('second')
-		await page.keyboard.press('ArrowUp')
-		await expect(line).toHaveValue('first')
-		await page.keyboard.press('ArrowDown')
-		await expect(line).toHaveValue('second')
+		await page.keyboard.press('ControlOrMeta+a')
+		await page.keyboard.press('ControlOrMeta+Shift+9')
+		await page.keyboard.press('Escape')
+		expect(await noteMarkdown(page)).toBe('- [ ] milk\n- [ ] bread\n- [ ] rug')
+		await expect(page.locator('.lb-md__task')).toHaveCount(3)
+	})
+
+	test('Tab indents every line of a selection at once', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 100,
+					y: 100,
+					props: { w: 320, h: 120, md: '- one\n- two\n- three', autoHeight: true },
+				},
+			])
+		})
+		await dblclickNode(page, 'node.markdown')
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+
+		await page.keyboard.press('ControlOrMeta+a')
+		await page.keyboard.press('Tab')
+		await page.keyboard.press('Escape')
+		expect(await noteMarkdown(page)).toBe('  - one\n  - two\n  - three')
+	})
+
+	test('leaving a list inserts the blank line markdown needs', async ({ page }) => {
+		// Without it the next paragraph is a *lazy continuation* of the last item and renders inside its
+		// bullet. This is the behaviour that ruled out the editor library tried before CodeMirror: it binds
+		// Enter at the highest precedence and registers first, so its version could not be overridden.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+		await page.keyboard.type('- [ ] rug')
+		await page.keyboard.press('Enter')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type('**Budget:** 3000 GEL')
+		await page.keyboard.press('Escape')
+
+		expect(await noteMarkdown(page)).toBe('- [ ] rug\n\n**Budget:** 3000 GEL')
+		// And the paragraph really is outside the list.
+		await expect(page.locator('.lb-md__body ul strong')).toHaveCount(0)
+		await expect(page.locator('.lb-md__body > p strong')).toHaveText('Budget:')
+	})
+
+	test('one undo reverts a whole editing session', async ({ page }) => {
+		// Escape has to be claimed *before* CodeMirror and tldraw both see it. tldraw otherwise treats the
+		// same Escape as "clear selection", which marks a history stopping point — an empty entry that sat on
+		// top of the undo stack, so the first ⌘Z after writing a note did nothing at all.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 220)
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+		await page.keyboard.type('# Chores')
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')
+
+		// Nothing between exiting and undoing: the point is that the *first* press does the work.
+		await page.keyboard.press('ControlOrMeta+z')
+		await expect.poll(async () => countByType(page, 'node.markdown')).toBe(0)
+	})
+
+	test('the caret starts at the end of an existing note, not the beginning', async ({ page }) => {
+		// CodeMirror defaults the selection to offset 0, which made double-clicking a note and typing insert
+		// the text *before* the content — `!# Existing note`.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 100,
+					y: 100,
+					props: { w: 320, h: 100, md: '# Existing note', autoHeight: true },
+				},
+			])
+		})
+		await dblclickNode(page, 'node.markdown')
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+		await page.keyboard.type('!')
+		await page.keyboard.press('Escape')
+		expect(await noteMarkdown(page)).toBe('# Existing note!')
+	})
+
+	test('markdown markers hide once the caret leaves their line', async ({ page }) => {
+		// The live-preview contract: the document is never transformed, only decorated — so the markers are
+		// hidden from view while remaining in the source.
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 100,
+					y: 100,
+					props: {
+						w: 340,
+						h: 160,
+						md: '# Heading\n\nsome **bold** text\n\n- [ ] a task\n- a bullet\n\ntail',
+						autoHeight: true,
+					},
+				},
+			])
+		})
+		await dblclickNode(page, 'node.markdown')
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+
+		const editorText = () => page.locator(NOTE_EDITOR).innerText()
+		// The caret lands on the last line, so every other line renders.
+		expect(await editorText()).toContain('Heading')
+		expect(await editorText()).not.toContain('# Heading')
+		expect(await editorText()).not.toContain('**bold**')
+		// A task's checkbox is a real control, and it replaces the bullet rather than joining it — one
+		// checkbox for the task, one bullet for the plain item.
+		await expect(page.locator('.lb-cm-task')).toHaveCount(1)
+		await expect(page.locator('.lb-cm-bullet')).toHaveCount(1)
+
+		// Move the caret onto the heading and its `#` comes back: that is what makes it *editable* rather
+		// than merely rendered.
+		await page.keyboard.press('ControlOrMeta+Home')
+		await expect.poll(editorText).toContain('# Heading')
+
+		// The source was untouched throughout — decorations are presentation only.
+		await page.keyboard.press('Escape')
+		expect(await noteMarkdown(page)).toBe(
+			'# Heading\n\nsome **bold** text\n\n- [ ] a task\n- a bullet\n\ntail'
+		)
 	})
 
 	test('double-clicking an existing note puts the caret straight in the text', async ({ page }) => {
@@ -252,7 +371,7 @@ test.describe('canvas chrome', () => {
 		// Make a note and leave it. Waiting for focus first is not optional: typing before the editor
 		// has the caret sends the keystrokes to the canvas, where letters are tool shortcuts.
 		await page.mouse.dblclick(560, 260)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('# Existing note')
 		await page.keyboard.press('Escape')
 		await page.mouse.click(900, 620)
@@ -268,7 +387,7 @@ test.describe('canvas chrome', () => {
 		// One double-click is enough: tldraw focuses its own canvas container after React mounts the
 		// editor, so without re-asserting focus the note looked active while keystrokes went nowhere
 		// and you had to click a second time.
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('!')
 		await page.keyboard.press('Escape')
 		await expect(page.locator('.lb-md__body h1')).toHaveText('Existing note!')
@@ -280,7 +399,7 @@ test.describe('canvas chrome', () => {
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 220)
-		await expect(page.locator('.lb-note__input')).toBeFocused()
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		const readNote = () =>
 			page.evaluate(() => {

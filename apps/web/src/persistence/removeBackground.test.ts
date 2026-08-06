@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyBackgroundMask, estimateTolerance, sampleBorderColour } from './removeBackground'
+import {
+	applyBackgroundMask,
+	contentBounds,
+	estimateTolerance,
+	sampleBorderColour,
+} from './removeBackground'
 
 /** A `width`×`height` RGBA buffer filled with one opaque colour. */
 function image(width: number, height: number, [r, g, b]: [number, number, number]) {
@@ -156,5 +161,40 @@ describe('applyBackgroundMask', () => {
 
 	it('is a no-op on an empty image rather than throwing', () => {
 		expect(applyBackgroundMask(new Uint8ClampedArray(0), 0, 0).removed).toBe(0)
+	})
+})
+
+describe('contentBounds', () => {
+	it('finds the box around what is left after a removal', () => {
+		const data = image(40, 40, WHITE)
+		fillRect(data, 40, { x: 12, y: 8, w: 16, h: 20 }, RED)
+		applyBackgroundMask(data, 40, 40)
+
+		const bounds = contentBounds(data, 40, 40)
+		// Within a pixel of the subject: the mask's soft edge can keep a faint outer row, and the
+		// threshold is what stops it keeping the whole ramp.
+		expect(bounds!.x).toBeGreaterThanOrEqual(11)
+		expect(bounds!.x).toBeLessThanOrEqual(12)
+		expect(bounds!.y).toBeGreaterThanOrEqual(7)
+		expect(bounds!.y).toBeLessThanOrEqual(8)
+		expect(bounds!.w).toBeGreaterThanOrEqual(16)
+		expect(bounds!.w).toBeLessThanOrEqual(18)
+		expect(bounds!.h).toBeGreaterThanOrEqual(20)
+		expect(bounds!.h).toBeLessThanOrEqual(22)
+	})
+
+	it('ignores an almost-invisible fringe, which is what makes the crop look right', () => {
+		const data = image(10, 10, WHITE)
+		// One solid pixel, and a ring of barely-there ones that must not widen the box.
+		for (let i = 0; i < 100; i++) data[i * 4 + 3] = 3
+		const p = (5 * 10 + 5) * 4
+		data[p + 3] = 255
+
+		expect(contentBounds(data, 10, 10)).toEqual({ x: 5, y: 5, w: 1, h: 1 })
+	})
+
+	it('is null when nothing survived, so the caller can refuse rather than crop to nothing', () => {
+		const data = new Uint8ClampedArray(20 * 20 * 4)
+		expect(contentBounds(data, 20, 20)).toBeNull()
 	})
 })

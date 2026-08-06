@@ -386,4 +386,77 @@ test.describe('asset store', () => {
 		await page.keyboard.press('ControlOrMeta+z')
 		await expect.poll(async () => (await imageInfo())?.assetId).toBe(before.assetId)
 	})
+
+	test('removing the background trims the image to the subject, in place', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// The disc is deliberately off-centre, so an offset applied in the wrong direction shows up as
+		// drift rather than cancelling out.
+		await page.evaluate(async () => {
+			const c = document.createElement('canvas')
+			c.width = 400
+			c.height = 300
+			const x = c.getContext('2d')!
+			x.fillStyle = '#ffffff'
+			x.fillRect(0, 0, 400, 300)
+			x.fillStyle = '#d92b2b'
+			x.beginPath()
+			x.arc(120, 90, 60, 0, Math.PI * 2)
+			x.fill()
+			const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png'))
+			await (
+				window as unknown as { editor: { putExternalContent(o: unknown): Promise<void> } }
+			).editor.putExternalContent({
+				type: 'files',
+				files: [new File([blob], 'disc.png', { type: 'image/png' })],
+				point: { x: 500, y: 400 },
+			})
+		})
+
+		type Geometry = { id: string; x: number; y: number; w: number; h: number }
+		const geometry = () =>
+			page.evaluate((): Geometry | null => {
+				const ed = (
+					window as unknown as {
+						editor: {
+							getCurrentPageShapes(): {
+								id: string
+								type: string
+								x: number
+								y: number
+								props: { w: number; h: number }
+							}[]
+						}
+					}
+				).editor
+				const s = ed.getCurrentPageShapes().find((v) => v.type === 'image')
+				return s ? { id: s.id, x: s.x, y: s.y, w: s.props.w, h: s.props.h } : null
+			})
+
+		await expect.poll(geometry).not.toBeNull()
+		const before = (await geometry())!
+		// The disc's centre in page space: (120, 90) of a 400×300 image.
+		const discBefore = {
+			x: before.x + (120 / 400) * before.w,
+			y: before.y + (90 / 300) * before.h,
+		}
+
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: { select(id: string): unknown } }).editor.select(id)
+		}, before.id)
+		await page.locator('[data-testid="lb.remove-background"]').click()
+
+		// Trimmed to the disc, which is 120px across in a 400×300 image.
+		await expect.poll(async () => Math.round((await geometry())!.w)).toBeLessThan(150)
+		const after = (await geometry())!
+		expect(after.h).toBeLessThan(150)
+
+		// And the shape moved by exactly what was trimmed, so the disc has not budged. Without the
+		// compensating offset it would jump up and left by the size of the removed margin.
+		const discAfter = { x: after.x + after.w / 2, y: after.y + after.h / 2 }
+		expect(Math.abs(discAfter.x - discBefore.x)).toBeLessThan(2)
+		expect(Math.abs(discAfter.y - discBefore.y)).toBeLessThan(2)
+	})
 })

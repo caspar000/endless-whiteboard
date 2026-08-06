@@ -226,10 +226,58 @@ export function applyBackgroundMask(
 	return { removed: removed / total }
 }
 
+export interface Rect {
+	x: number
+	y: number
+	w: number
+	h: number
+}
+
+/**
+ * The smallest rectangle holding everything still visible, or `null` if nothing is.
+ *
+ * `minAlpha` is above zero on purpose: the mask ramps its edge, so a band of almost-invisible pixels
+ * surrounds the subject. Trimming to alpha > 0 would keep that band and the crop would look like it
+ * had missed by a couple of pixels.
+ */
+export function contentBounds(
+	data: Uint8ClampedArray,
+	width: number,
+	height: number,
+	minAlpha = 8
+): Rect | null {
+	let minX = width
+	let minY = height
+	let maxX = -1
+	let maxY = -1
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			if (data[(y * width + x) * 4 + 3]! < minAlpha) continue
+			if (x < minX) minX = x
+			if (x > maxX) maxX = x
+			if (y < minY) minY = y
+			if (y > maxY) maxY = y
+		}
+	}
+	if (maxX < 0) return null
+	return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+}
+
 export interface RemoveBackgroundResult {
 	blob: Blob
 	/** Fraction of the image made transparent — lets the caller say "nothing to remove" honestly. */
 	removed: number
+	/** Pixel size of the image that was processed, which the caller needs to rescale the shape. */
+	sourceWidth: number
+	sourceHeight: number
+	/** Pixel size of the returned blob. Differs from the source only when it was trimmed. */
+	width: number
+	height: number
+	/**
+	 * Where the returned image sits inside the source, in source pixels — `null` when nothing was
+	 * trimmed away. The caller uses this to keep the subject exactly where it was on the canvas.
+	 */
+	trimmed: Rect | null
 }
 
 /**
@@ -241,7 +289,15 @@ export interface RemoveBackgroundResult {
  */
 export async function removeImageBackground(
 	source: Blob,
-	options: RemoveBackgroundOptions = {}
+	options: RemoveBackgroundOptions & {
+		/**
+		 * Trim the result to what is left, so the image's bounds become the subject's bounds. On by
+		 * default, because a cut-out surrounded by a wide transparent margin still selects and drags
+		 * by that margin, which feels broken. Off when the shape already carries a crop — that crop
+		 * addresses the asset's pixels, and changing the asset's size underneath it would misplace it.
+		 */
+		trim?: boolean
+	} = {}
 ): Promise<RemoveBackgroundResult> {
 	const bitmap = await createImageBitmap(source)
 	try {
@@ -259,8 +315,39 @@ export async function removeImageBackground(
 		const { removed } = applyBackgroundMask(image.data, width, height, options)
 		ctx.putImageData(image, 0, 0)
 
-		const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.92 })
-		return { blob, removed }
+		const base = {
+			removed,
+			sourceWidth: width,
+			sourceHeight: height,
+		}
+
+		const bounds = options.trim === false ? null : contentBounds(image.data, width, height)
+		const trimmed =
+			bounds && (bounds.w !== width || bounds.h !== height || bounds.x !== 0 || bounds.y !== 0)
+				? bounds
+				: null
+
+		if (!trimmed) {
+			const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.92 })
+			return { ...base, blob, width, height, trimmed: null }
+		}
+
+		const cropped = new OffscreenCanvas(trimmed.w, trimmed.h)
+		const croppedCtx = cropped.getContext('2d')
+		if (!croppedCtx) throw new Error('Could not get a 2D context')
+		croppedCtx.drawImage(
+			canvas,
+			trimmed.x,
+			trimmed.y,
+			trimmed.w,
+			trimmed.h,
+			0,
+			0,
+			trimmed.w,
+			trimmed.h
+		)
+		const blob = await cropped.convertToBlob({ type: 'image/webp', quality: 0.92 })
+		return { ...base, blob, width: trimmed.w, height: trimmed.h, trimmed }
 	} finally {
 		bitmap.close()
 	}

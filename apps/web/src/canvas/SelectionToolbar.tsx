@@ -32,9 +32,49 @@ import {
 } from 'tldraw'
 import { hashFromAssetSrc, assetSrcForHash, isManagedAssetSrc } from '../persistence/assetStore'
 import { sha256Hex } from '../persistence/hash'
-import { removeImageBackground } from '../persistence/removeBackground'
+import {
+	removeImageBackground,
+	type RemoveBackgroundResult,
+} from '../persistence/removeBackground'
 import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
+
+/**
+ * Where the shape has to move and how big it has to be so that trimming the transparent margin leaves
+ * the subject exactly where it was on the canvas.
+ *
+ * The image shrinks to its content, so without moving the shape by the same amount the picture would
+ * appear to jump up and left by the size of the margin that was cut.
+ *
+ * Three things make this more than a subtraction:
+ *  - **Flips.** A flipped image is drawn mirrored, so a margin trimmed from the source's left edge is
+ *    on screen at the *right*, and the shape's origin must not move for it.
+ *  - **Rotation.** `x`/`y` live in the parent's space while the trim is measured in the shape's own,
+ *    so the offset is rotated before it is applied. Skipping this sends a rotated cut-out sideways.
+ *  - **Scale.** The shape's size and the asset's pixel size are independent; the offset is in canvas
+ *    units, not pixels.
+ */
+function trimGeometry(shape: TLImageShape, result: RemoveBackgroundResult) {
+	const { trimmed, sourceWidth, sourceHeight } = result
+	if (!trimmed || sourceWidth === 0 || sourceHeight === 0) {
+		return { x: shape.x, y: shape.y, props: {} as Partial<TLImageShape['props']> }
+	}
+
+	const scaleX = shape.props.w / sourceWidth
+	const scaleY = shape.props.h / sourceHeight
+
+	const localX = (shape.props.flipX ? sourceWidth - (trimmed.x + trimmed.w) : trimmed.x) * scaleX
+	const localY = (shape.props.flipY ? sourceHeight - (trimmed.y + trimmed.h) : trimmed.y) * scaleY
+
+	const cos = Math.cos(shape.rotation)
+	const sin = Math.sin(shape.rotation)
+
+	return {
+		x: shape.x + localX * cos - localY * sin,
+		y: shape.y + localX * sin + localY * cos,
+		props: { w: trimmed.w * scaleX, h: trimmed.h * scaleY } as Partial<TLImageShape['props']>,
+	}
+}
 
 /**
  * "Remove background" on a selected image.
@@ -86,11 +126,27 @@ function RemoveBackgroundButton({ shapeId }: { shapeId: TLImageShape['id'] }) {
 				return
 			}
 
-			const { blob, removed } = await removeImageBackground(source)
+			const before = editor.getShape<TLImageShape>(shapeId)
+			if (!before) return
+
+			const result = await removeImageBackground(source, {
+				// A crop addresses the asset's pixels, so resizing the asset underneath one would put it
+				// somewhere else entirely. Background removal itself is fine — it replaces the pixels at
+				// the same size — so only the trim is skipped.
+				trim: before.props.crop === null,
+			})
+			const { blob, removed } = result
+
 			// Below this, the fill found a border colour that matches almost nothing — saying so is
 			// better than writing a new asset identical to the old one and calling it success.
 			if (removed < 0.005) {
 				setNote('Nothing to remove')
+				return
+			}
+			// And above this there would be no picture left. Replacing an image with a transparent
+			// rectangle is never what was wanted, so refuse rather than "succeed".
+			if (removed > 0.995) {
+				setNote('Nothing to keep')
 				return
 			}
 
@@ -108,20 +164,25 @@ function RemoveBackgroundButton({ shapeId }: { shapeId: TLImageShape['id'] }) {
 					...previous.props,
 					src: assetSrcForHash(hash),
 					mimeType: 'image/webp',
+					w: result.width,
+					h: result.height,
 					// Recomputed: the cut-out is a different number of bytes, and the storage panel adds
 					// these up.
 					fileSize: blob.size,
 				},
 			}
 
-			// One `run`, so creating the asset and repointing the shape are a single undo entry.
+			const geometry = trimGeometry(shape, result)
+
+			// One `run`, so creating the asset, resizing and repositioning are a single undo entry.
 			editor.run(() => {
 				editor.markHistoryStoppingPoint('remove background')
 				editor.createAssets([asset])
 				editor.updateShape<TLImageShape>({
 					id: shapeId,
 					type: 'image',
-					props: { assetId: asset.id },
+					...geometry,
+					props: { assetId: asset.id, ...geometry.props },
 				})
 			})
 		} catch (err) {

@@ -82,6 +82,15 @@ export {
 	numericPropertyValue,
 } from './properties/format'
 export {
+	convertAmount,
+	currenciesUsed,
+	mergeRates,
+	normaliseCurrency,
+	rateBetween,
+	type ManualRates,
+	type RateTable,
+} from './properties/rates'
+export {
 	createProperty,
 	deleteProperty,
 	findProperty,

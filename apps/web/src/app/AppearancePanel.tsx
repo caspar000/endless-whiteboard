@@ -1,4 +1,6 @@
-import { Grid2x2, Magnet, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
+import { Grid2x2, Magnet, Monitor, Moon, RefreshCw, Sun, type LucideIcon } from 'lucide-react'
+import { useState } from 'react'
+import { isAutoFetchEnabled, setAutoFetchEnabled } from '../persistence/rateStore'
 import type { CanvasPrefs, GridStyle } from './canvasPrefs'
 import type { Theme } from './useTheme'
 
@@ -141,6 +143,33 @@ export function AppearancePanel({
 					onChange={canvas.setSnapToGrid}
 				/>
 			</div>
+
+			<div className="lb-appearance__card">
+				<ExchangeRateToggle />
+			</div>
 		</section>
+	)
+}
+
+/**
+ * The app's only outbound network call, so it gets a switch.
+ *
+ * Local state rather than a hook: nothing else in the app reacts to this, and the rate store reads the
+ * flag straight from storage when it next needs rates. Switching it off leaves any cached table in
+ * place, so totals keep converting — just with rates that stop moving.
+ */
+function ExchangeRateToggle() {
+	const [enabled, setEnabled] = useState(isAutoFetchEnabled)
+	return (
+		<Toggle
+			label="Update exchange rates"
+			hint="Fetches daily rates to convert between currencies. Nothing about your boards is sent."
+			icon={RefreshCw}
+			checked={enabled}
+			onChange={(next) => {
+				setEnabled(next)
+				setAutoFetchEnabled(next)
+			}}
+		/>
 	)
 }

@@ -24,6 +24,22 @@ export interface KvStore {
 	keys(): Promise<string[]>
 }
 
+/**
+ * A currency rate payload, as the provider gives it.
+ *
+ * Behind the adapter because it is the app's only outbound network call, and the Tauri port has its own
+ * HTTP stack — the same reason storage lives here. `null` means "could not reach it", which is a normal
+ * answer rather than an error: a cached table is used instead and the total says how old it is.
+ */
+export interface RawExchangeRates {
+	base: string
+	rates: Record<string, number>
+	/** When the provider last recalculated, epoch ms. */
+	asOf: number
+	/** When the provider says it will change next, epoch ms — what the cache expires on. */
+	nextUpdate: number
+}
+
 export interface StorageEstimate {
 	usage: number | null
 	quota: number | null
@@ -38,4 +54,6 @@ export interface PlatformAdapter {
 	/** Ask the browser to make storage durable. Resolves to whether it is now persisted. */
 	requestPersistentStorage(): Promise<boolean>
 	estimateStorage(): Promise<StorageEstimate>
+	/** Latest rates against `base`, or `null` when they can't be reached. Never throws. */
+	fetchExchangeRates(base: string): Promise<RawExchangeRates | null>
 }

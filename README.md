@@ -92,6 +92,13 @@ and merging blocks destroys elements. The board still sees exactly one undo entr
 canvas tool, toolbar entry, keyboard shortcut, the double-click create menu, and rollup participation
 all follow from the registry. There is deliberately no per-node-type branching in the UI.
 
+**Frames are outlines, not cards.** `Board.tsx` replaces the built-in `frame` util with
+`FrameShapeUtil.configure({ showColors: true, getCustomDisplayValues })` — the first flag registers the
+frame's existing `color` prop as a real `DefaultColorStyle` style prop (so the border, heading and label
+all derive from it and `setStyleForSelectedShapes` reaches it), the second blanks the fill. Replacing a
+built-in works because `<Tldraw>` merges `shapeUtils` by shape type. No migration: `color` was always in
+the schema, `showColors` only decides whether it is a *style* prop and what renders from it.
+
 **The canvas chrome is customised in three places**, all in `canvas/Board.tsx`: `DottedPaper` replaces
 tldraw's `Background` (rather than enabling grid mode, which would also snap movement), `StylePanel` is
 set to `null`, and `createTextOnCanvasDoubleClick: false` disables the default double-click behaviour

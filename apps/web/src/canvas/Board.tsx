@@ -12,6 +12,7 @@ import {
 } from '@lifeboard/node-kit'
 import { useEffect, useMemo, useState } from 'react'
 import {
+	FrameShapeUtil,
 	Tldraw,
 	createShapeId,
 	type Editor,
@@ -52,6 +53,33 @@ import { RollupDebugBadge } from './RollupDebugBadge'
 // type can never end up with a shape util but no tool (or vice versa) — node-kit registers its
 // built-ins during its own module evaluation, which ESM guarantees happens before this line.
 const nodeShapeUtils: TLAnyShapeUtilConstructor[] = getNodeDefinitions().map(createNodeShapeUtil)
+
+/**
+ * The frame, made a container rather than a card: no fill, a colourable border.
+ *
+ * A frame's default body is opaque, which on a whiteboard is the wrong way round — you group things
+ * with a frame to say "these belong together", not to hide the paper under them. `getCustomDisplayValues`
+ * is tldraw's own merge hook over `getDefaultDisplayValues`, so this replaces the fill and nothing else.
+ *
+ * `showColors: true` is what makes the border colourable at all: it is the flag that registers the
+ * frame's existing `color` prop as a real `DefaultColorStyle` style prop, so `setStyleForSelectedShapes`
+ * reaches it and the border, heading and label all derive from it. The prop is already in the schema
+ * either way (`getDefaultProps` has always returned `color: 'black'`), so turning this on needs no
+ * migration — nothing about what is stored changes.
+ *
+ * Replacing a built-in works because `<Tldraw>` merges by shape type
+ * (`mergeArraysAndReplaceDefaults('type', …)`), so a `frame` util here takes the default's place.
+ */
+const frameShapeUtil = FrameShapeUtil.configure({
+	showColors: true,
+	getCustomDisplayValues: () => ({
+		// Both, because the fill is read from whichever of the two `showColors` selects.
+		fillColor: 'transparent',
+		showColorsFillColor: 'transparent',
+	}),
+})
+
+const shapeUtils: TLAnyShapeUtilConstructor[] = [...nodeShapeUtils, frameShapeUtil]
 
 /**
  * Migrations that rewrite records across types, rather than one shape's props.
@@ -218,7 +246,7 @@ export function Board({
 				key={board.id}
 				persistenceKey={persistenceKeyForBoard(board.id)}
 				{...(restore.snapshot ? { snapshot: restore.snapshot as never } : {})}
-				shapeUtils={nodeShapeUtils}
+				shapeUtils={shapeUtils}
 				// Store-scoped migrations run *before* validation on every load path — the IndexedDB
 				// read, the `snapshot` prop above, and the fixture tests. That ordering is the only
 				// reason a shape type can be retired at all: an unregistered type is a validation

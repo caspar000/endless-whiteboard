@@ -1096,6 +1096,46 @@ button {
 	color: var(--lb-text-dim);
 	justify-self: center;
 }
+/*
+ * The frame border's colour, as rings.
+ *
+ * A ring, not a dot: the frame is an outline round a transparent body, so a filled swatch would
+ * advertise a fill it does not have. The border colour is set inline from tldraw's own theme.
+ */
+.lb-seltb__rings {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0 2px;
+}
+.lb-ring {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2.5px solid currentColor;
+	background: none;
+	padding: 0;
+	cursor: pointer;
+	transition: transform 100ms ease;
+}
+.lb-ring:hover {
+	transform: scale(1.15);
+}
+.lb-ring--active {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+
+/*
+ * A frame's border, thicker than tldraw's 1px default.
+ *
+ * With no fill the border *is* the shape, so it has to hold its own against the dotted paper. Scaled by
+ * `--tl-scale` like tldraw's own rule, so it stays a constant width on screen at any zoom.
+ */
+.tl-frame__body {
+	stroke-width: calc(2.5px * var(--tl-scale));
+}
+
 /* A transient result — "Nothing to remove" — shown in place of a button's icon rather than as a toast. */
 .lb-seltb__note {
 	font-size: 11px;

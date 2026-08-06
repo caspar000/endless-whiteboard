@@ -571,6 +571,59 @@ test.describe('canvas chrome', () => {
 			.toBe('node-markdown')
 	})
 
+	test('a frame is a transparent outline whose border colour can be picked', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		const id = await page.evaluate(() => {
+			const ed = (window as unknown as { editor: EditorLike }).editor
+			const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
+			// In view with room above it: the selection toolbar sits over the shape, and off-screen it is
+			// unclickable.
+			ed.setCamera({ x: 0, y: 0, z: 1 })
+			ed.createShapes([{ type: 'frame', x: 220, y: 320, props: { w: 400, h: 220, name: 'Group' } }])
+			return ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id
+		})
+
+		// No fill: you group things with a frame to say they belong together, not to hide the paper.
+		const body = page.locator('.lb-board-host:not([data-hidden]) .tl-frame__body').first()
+		await expect(body).toHaveAttribute('fill', 'transparent')
+		// And a border thicker than tldraw's 1px default, since with no fill the border *is* the shape.
+		expect(
+			await body.evaluate((el) => Number.parseFloat(getComputedStyle(el).strokeWidth))
+		).toBeGreaterThan(1)
+
+		await page.evaluate((shapeId) => {
+			;(window as unknown as { editor: { select(id: string): unknown } }).editor.select(shapeId)
+		}, id)
+
+		// Rings, not dots: a filled swatch would advertise a fill the shape does not have.
+		const rings = page.locator('.lb-ring')
+		await expect.poll(async () => await rings.count()).toBeGreaterThan(5)
+		expect(
+			await rings.first().evaluate((el) => getComputedStyle(el).backgroundColor)
+		).toBe('rgba(0, 0, 0, 0)')
+
+		await page.locator('.lb-ring[aria-label="Frame colour violet"]').click()
+
+		// The stored style prop follows, and so does the painted border.
+		await expect
+			.poll(() =>
+				page.evaluate((shapeId) => {
+					const ed = (
+						window as unknown as {
+							editor: { getShape(id: string): { props: { color: string } } }
+						}
+					).editor
+					return ed.getShape(shapeId).props.color
+				}, id)
+			)
+			.toBe('violet')
+		const stroke = await body.getAttribute('stroke')
+		expect(stroke).not.toBeNull()
+		expect(stroke).not.toBe('transparent')
+	})
+
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()

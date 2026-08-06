@@ -17,6 +17,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	AssetRecordType,
 	Box,
+	DefaultColorStyle,
+	getColorValue,
 	DefaultImageToolbarContent,
 	DefaultVideoToolbarContent,
 	TldrawUiContextualToolbar,
@@ -38,6 +40,60 @@ import {
 } from '../persistence/removeBackground'
 import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
+
+/**
+ * The frame's border colour, as a row of rings.
+ *
+ * Rings rather than filled swatches because that is what a frame now is: an outline round nothing. A
+ * solid dot would advertise a fill the shape does not have.
+ *
+ * The ring is painted with the *same* value the border will take — `frameStroke` from tldraw's own
+ * theme for that colour and the active colour mode — so the swatch is the thing itself rather than an
+ * approximation of it, and it stays right in both themes.
+ */
+function FrameColorRings({ shapeId }: { shapeId: TLShapeId }) {
+	const editor = useEditor()
+	const frame = useValue(
+		'lb:frame-color',
+		() => {
+			const shape = editor.getShape(shapeId)
+			if (shape?.type !== 'frame') return null
+			return {
+				current: (shape.props as { color: string }).color,
+				colors: editor.getCurrentTheme().colors[editor.getColorMode()],
+			}
+		},
+		[editor, shapeId]
+	)
+	if (!frame) return null
+
+	return (
+		<>
+			<div className="lb-seltb__rings" role="group" aria-label="Frame colour">
+				{DefaultColorStyle.values.map((value) => (
+					<button
+						key={value}
+						className={value === frame.current ? 'lb-ring lb-ring--active' : 'lb-ring'}
+						style={{ borderColor: getColorValue(frame.colors, value, 'frameStroke') }}
+						title={value}
+						aria-label={`Frame colour ${value}`}
+						aria-pressed={value === frame.current}
+						// Keep focus on the canvas so tool shortcuts keep working.
+						onPointerDown={(e) => e.preventDefault()}
+						onClick={() =>
+							// The style-prop API rather than a raw `updateShape`: `color` is a real style prop
+							// once `showColors` is on, so this is what tldraw's own history and multi-select
+							// semantics are built around. Deliberately *not* `setStyleForNextShapes` — that
+							// would repaint the next pen stroke to match a frame, which nobody asked for.
+							editor.setStyleForSelectedShapes(DefaultColorStyle, value)
+						}
+					/>
+				))}
+			</div>
+			<div className="lb-seltb__sep" />
+		</>
+	)
+}
 
 /**
  * Where the shape has to move and how big it has to be so that trimming the transparent margin leaves
@@ -359,6 +415,7 @@ function SelectionToolbarContent({
 
 	return (
 		<>
+			{onlyId && <FrameColorRings shapeId={onlyId} />}
 			{media === 'image' && onlyId && (
 				<>
 					<DefaultImageToolbarContent

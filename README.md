@@ -99,6 +99,13 @@ all derive from it and `setStyleForSelectedShapes` reaches it), the second blank
 built-in works because `<Tldraw>` merges `shapeUtils` by shape type. No migration: `color` was always in
 the schema, `showColors` only decides whether it is a *style* prop and what renders from it.
 
+**Colour is one swatch, for anything that has one.** The selection toolbar shows a single swatch that
+opens a palette above it, mirroring the dock's pen expansion. Which shapes get it comes from tldraw's own
+`getSharedStyles().get(DefaultColorStyle)` rather than a list of types, so a shape we don't know about
+gets the control for free. The swatch is a **ring** when the colour only paints an outline (a frame, a
+`fill: 'none'` rectangle) and a **filled dot** when it paints an area (a sticky) — restricted to `frame`
+and `geo`, because a pen stroke has a `fill` prop too but its colour is ink either way.
+
 **The canvas chrome is customised in three places**, all in `canvas/Board.tsx`: `DottedPaper` replaces
 tldraw's `Background` (rather than enabling grid mode, which would also snap movement), `StylePanel` is
 set to `null`, and `createTextOnCanvasDoubleClick: false` disables the default double-click behaviour

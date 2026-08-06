@@ -29,6 +29,7 @@ import {
 	type Editor,
 	type TLImageAsset,
 	type TLImageShape,
+	type TLShape,
 	type TLShapeId,
 	type TLVideoShape,
 } from 'tldraw'
@@ -42,53 +43,107 @@ import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
 
 /**
- * The frame's border colour, as a row of rings.
+ * Whether the colour paints an *outline* rather than an area, which decides how its swatch is drawn.
  *
- * Rings rather than filled swatches because that is what a frame now is: an outline round nothing. A
- * solid dot would advertise a fill the shape does not have.
- *
- * The ring is painted with the *same* value the border will take — `frameStroke` from tldraw's own
- * theme for that colour and the active colour mode — so the swatch is the thing itself rather than an
- * approximation of it, and it stays right in both themes.
+ * A sticky's colour fills it, so a filled dot is the truth. A frame is an outline round nothing, and an
+ * unfilled rectangle is the same, so a ring is. Restricted to the two shapes where a fill genuinely
+ * decides whether an area exists — a pen stroke has a `fill` prop too, but its colour is ink either way
+ * and a ring for it would just disagree with the dock's own swatches.
  */
-function FrameColorRings({ shapeId }: { shapeId: TLShapeId }) {
+function isOutlineOnly(shape: TLShape): boolean {
+	if (shape.type === 'frame') return true
+	if (shape.type === 'geo') return (shape.props as { fill?: string }).fill === 'none'
+	return false
+}
+
+/**
+ * The colour of whatever is selected: one swatch that opens a palette above it.
+ *
+ * One swatch rather than the whole row, because the row is thirteen buttons wide and the selection
+ * toolbar already carries the shape's own actions. Clicking it opens a floating palette the way the
+ * dock's pen button opens its settings row — same idea, same shape, so there is one gesture to learn.
+ *
+ * Shown for **anything** that has a colour, decided by `getSharedStyles()` rather than a list of shape
+ * types: that is tldraw's own answer to "does this selection have this style", so a shape we have never
+ * heard of — a plugin's, later — gets the control for free and nothing here needs to know about it.
+ *
+ * The swatch is painted with the value the shape will actually take, from tldraw's theme for the active
+ * colour mode, so it is the thing itself rather than an approximation of it.
+ */
+function ShapeColorPicker() {
 	const editor = useEditor()
-	const frame = useValue(
-		'lb:frame-color',
+	const [open, setOpen] = useState(false)
+
+	const state = useValue(
+		'lb:shape-color',
 		() => {
-			const shape = editor.getShape(shapeId)
-			if (shape?.type !== 'frame') return null
+			const shared = editor.getSharedStyles().get(DefaultColorStyle)
+			// `undefined` means nothing selected carries a colour — an image, a table, an embed.
+			if (!shared) return null
+			const shapes = editor.getSelectedShapes()
 			return {
-				current: (shape.props as { color: string }).color,
+				// `null` for a mixed selection: there is no one colour to show.
+				value: shared.type === 'shared' ? shared.value : null,
 				colors: editor.getCurrentTheme().colors[editor.getColorMode()],
+				outline: shapes.length > 0 && shapes.every(isOutlineOnly),
+				// A frame's border is a different value from a shape's stroke, so the swatch has to know.
+				variant: shapes.length > 0 && shapes.every((s) => s.type === 'frame') ? 'frameStroke' : 'solid',
 			}
 		},
-		[editor, shapeId]
+		[editor]
 	)
-	if (!frame) return null
+
+	// Close when the selection changes under it, or the palette outlives what it was editing.
+	useEffect(() => {
+		if (!state) setOpen(false)
+	}, [state])
+
+	if (!state) return null
+
+	const swatchClass = state.outline ? 'lb-swatch lb-swatch--ring' : 'lb-swatch'
+	const paint = (value: string) =>
+		getColorValue(state.colors, value, state.variant as 'solid' | 'frameStroke')
 
 	return (
 		<>
-			<div className="lb-seltb__rings" role="group" aria-label="Frame colour">
-				{DefaultColorStyle.values.map((value) => (
-					<button
-						key={value}
-						className={value === frame.current ? 'lb-ring lb-ring--active' : 'lb-ring'}
-						style={{ borderColor: getColorValue(frame.colors, value, 'frameStroke') }}
-						title={value}
-						aria-label={`Frame colour ${value}`}
-						aria-pressed={value === frame.current}
-						// Keep focus on the canvas so tool shortcuts keep working.
-						onPointerDown={(e) => e.preventDefault()}
-						onClick={() =>
-							// The style-prop API rather than a raw `updateShape`: `color` is a real style prop
-							// once `showColors` is on, so this is what tldraw's own history and multi-select
-							// semantics are built around. Deliberately *not* `setStyleForNextShapes` — that
-							// would repaint the next pen stroke to match a frame, which nobody asked for.
-							editor.setStyleForSelectedShapes(DefaultColorStyle, value)
-						}
-					/>
-				))}
+			<div className="lb-seltb__color">
+				<button
+					className={swatchClass}
+					// A mixed selection has no colour to show, so the swatch is left blank rather than
+					// picking one of them and implying it applies to all.
+					style={state.value ? { [state.outline ? 'borderColor' : 'background']: paint(state.value) } : undefined}
+					title={state.value ? `Colour: ${state.value}` : 'Mixed colours'}
+					aria-label="Colour"
+					aria-expanded={open}
+					data-testid="lb.color"
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => setOpen((v) => !v)}
+				/>
+
+				{open && (
+					<div className="lb-seltb__palette" role="group" aria-label="Colour options">
+						{DefaultColorStyle.values.map((value) => (
+							<button
+								key={value}
+								className={
+									value === state.value ? `${swatchClass} lb-swatch--active` : swatchClass
+								}
+								style={{ [state.outline ? 'borderColor' : 'background']: paint(value) }}
+								title={value}
+								aria-label={`Colour ${value}`}
+								aria-pressed={value === state.value}
+								onPointerDown={(e) => e.preventDefault()}
+								onClick={() => {
+									// The style-prop API, so tldraw owns the history entry and the multi-select
+									// semantics. Deliberately not `setStyleForNextShapes`: recolouring a frame
+									// should not repaint the next pen stroke.
+									editor.setStyleForSelectedShapes(DefaultColorStyle, value)
+									setOpen(false)
+								}}
+							/>
+						))}
+					</div>
+				)}
 			</div>
 			<div className="lb-seltb__sep" />
 		</>
@@ -415,7 +470,7 @@ function SelectionToolbarContent({
 
 	return (
 		<>
-			{onlyId && <FrameColorRings shapeId={onlyId} />}
+			<ShapeColorPicker />
 			{media === 'image' && onlyId && (
 				<>
 					<DefaultImageToolbarContent

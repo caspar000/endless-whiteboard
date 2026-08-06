@@ -571,18 +571,21 @@ test.describe('canvas chrome', () => {
 			.toBe('node-markdown')
 	})
 
-	test('a frame is a transparent outline whose border colour can be picked', async ({ page }) => {
+	test('a frame is a transparent outline, and its colour is one swatch that opens a palette', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
 		const id = await page.evaluate(() => {
 			const ed = (window as unknown as { editor: EditorLike }).editor
 			const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
-			// In view with room above it: the selection toolbar sits over the shape, and off-screen it is
-			// unclickable.
+			// In view with room above: the toolbar and its palette float over the shape.
 			ed.setCamera({ x: 0, y: 0, z: 1 })
-			ed.createShapes([{ type: 'frame', x: 220, y: 320, props: { w: 400, h: 220, name: 'Group' } }])
-			return ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id
+			ed.createShapes([{ type: 'frame', x: 220, y: 380, props: { w: 380, h: 200, name: 'Group' } }])
+			const made = ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id
+			ed.select(made)
+			return made
 		})
 
 		// No fill: you group things with a frame to say they belong together, not to hide the paper.
@@ -593,20 +596,21 @@ test.describe('canvas chrome', () => {
 			await body.evaluate((el) => Number.parseFloat(getComputedStyle(el).strokeWidth))
 		).toBeGreaterThan(1)
 
-		await page.evaluate((shapeId) => {
-			;(window as unknown as { editor: { select(id: string): unknown } }).editor.select(shapeId)
-		}, id)
+		// One swatch, not a row — and a ring, because a frame paints no area.
+		const swatch = page.locator('[data-testid="lb.color"]')
+		await expect(swatch).toBeVisible()
+		expect(await swatch.evaluate((el) => el.className)).toContain('lb-swatch--ring')
 
-		// Rings, not dots: a filled swatch would advertise a fill the shape does not have.
-		const rings = page.locator('.lb-ring')
-		await expect.poll(async () => await rings.count()).toBeGreaterThan(5)
-		expect(
-			await rings.first().evaluate((el) => getComputedStyle(el).backgroundColor)
-		).toBe('rgba(0, 0, 0, 0)')
+		// It opens a palette *above* the bar, the way the dock's pen button opens its settings row.
+		await swatch.click()
+		const palette = page.locator('.lb-seltb__palette')
+		await expect(palette).toBeVisible()
+		expect(await palette.locator('button').count()).toBeGreaterThan(5)
+		const paletteBox = (await palette.boundingBox())!
+		const swatchBox = (await swatch.boundingBox())!
+		expect(paletteBox.y + paletteBox.height).toBeLessThanOrEqual(swatchBox.y + 2)
 
-		await page.locator('.lb-ring[aria-label="Frame colour violet"]').click()
-
-		// The stored style prop follows, and so does the painted border.
+		await palette.locator('button[aria-label="Colour violet"]').click()
 		await expect
 			.poll(() =>
 				page.evaluate((shapeId) => {
@@ -619,9 +623,35 @@ test.describe('canvas chrome', () => {
 				}, id)
 			)
 			.toBe('violet')
-		const stroke = await body.getAttribute('stroke')
-		expect(stroke).not.toBeNull()
-		expect(stroke).not.toBe('transparent')
+		// Picking closes it, so the palette never outlives the choice.
+		await expect(palette).toHaveCount(0)
+	})
+
+	test('the colour swatch is filled for a sticky and absent for a shape with no colour', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		const select = (spec: Record<string, unknown>) =>
+			page.evaluate((shape) => {
+				const ed = (window as unknown as { editor: EditorLike }).editor
+				ed.setCamera({ x: 0, y: 0, z: 1 })
+				const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
+				ed.createShapes([shape])
+				ed.select(ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id)
+			}, spec)
+
+		// A sticky's colour fills it, so a filled dot is the truth rather than a ring.
+		await select({ type: 'note', x: 240, y: 400, props: {} })
+		const swatch = page.locator('[data-testid="lb.color"]')
+		await expect(swatch).toBeVisible()
+		expect(await swatch.evaluate((el) => el.className)).not.toContain('lb-swatch--ring')
+
+		// A table carries no colour style at all, so the control must not appear — that comes from
+		// tldraw's own `getSharedStyles`, not from a list of shape types we maintain.
+		await select({ type: 'node.table', x: 700, y: 400, props: { w: 280, h: 160 } })
+		await expect(page.locator('[data-testid="lb.color"]')).toHaveCount(0)
 	})
 
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {

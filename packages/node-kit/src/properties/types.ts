@@ -15,10 +15,16 @@ import { T } from 'tldraw'
 export const PROPERTY_TYPES = [
 	'text',
 	'number',
-	'currency',
+	// Money: a number plus a currency code. Formerly `'currency'`; boards persisted with the old
+	// name are normalised on read (see `parsePropertyRegistry`), so the old string never needs to
+	// be a member here.
+	'financial',
 	'date',
 	'checkbox',
 	'url',
+	// A titled URL: what you call it, and where it goes. `url` is the bare address; `link` is the pair,
+	// encoded into one string so values stay JSON scalars (see `link.ts`).
+	'link',
 	'select',
 	'multiSelect',
 ] as const
@@ -45,7 +51,7 @@ export interface PropertyDef {
 	id: string
 	name: string
 	type: PropertyType
-	/** ISO-4217-ish code for `currency` ('GEL' → ₾), or a display unit for `number` ('kg'). */
+	/** ISO-4217-ish code for `financial` ('GEL' → ₾), or a display unit for `number` ('kg'). */
 	unit?: string
 	/** Known choices for `select` / `multiSelect`. Not a constraint — a value outside it still shows. */
 	options?: string[]
@@ -118,7 +124,7 @@ export const TAGS_PROPERTY_ID = 'tags'
 export const DEFAULT_CURRENCY = 'GEL'
 
 export function defaultUnitForType(type: PropertyType): string | undefined {
-	return type === 'currency' ? DEFAULT_CURRENCY : undefined
+	return type === 'financial' ? DEFAULT_CURRENCY : undefined
 }
 
 /** The empty value for a type — `false` for a checkbox, an empty list for multiSelect, else `null`. */

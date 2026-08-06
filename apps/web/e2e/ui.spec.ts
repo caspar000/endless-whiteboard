@@ -19,7 +19,7 @@ test.describe('canvas chrome', () => {
 		await page.mouse.dblclick(560, 300)
 
 		// Writing is the default action now — no picker, no text shape.
-		await expect(page.locator('.lb-note--editing')).toBeVisible()
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-note--editing')).toBeVisible()
 		expect(await countByType(page, 'node.markdown')).toBe(1)
 		expect(await countByType(page, 'text')).toBe(0)
 
@@ -56,7 +56,7 @@ test.describe('canvas chrome', () => {
 		// Asserted on the source, because that is what every other feature reads. The markup was hidden,
 		// never removed.
 		expect(await noteMarkdown(page)).toBe('# Chores\nfirst prose line')
-		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveText('Chores')
 	})
 
 	test('list markers auto-continue, and an empty one leaves the list', async ({ page }) => {
@@ -98,9 +98,9 @@ test.describe('canvas chrome', () => {
 		)
 
 		// Three tasks, an ordered list that counted up, and Budget outside the list.
-		await expect(page.locator('.lb-md__body input[type=checkbox]')).toHaveCount(3)
-		await expect(page.locator('.lb-md__body ol li')).toHaveCount(2)
-		await expect(page.locator('.lb-md__body ul strong')).toHaveCount(0)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body input[type=checkbox]')).toHaveCount(3)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body ol li')).toHaveCount(2)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body ul strong')).toHaveCount(0)
 	})
 
 	test('a task shows only its checkbox, and plain bullets keep their marker', async ({ page }) => {
@@ -122,8 +122,8 @@ test.describe('canvas chrome', () => {
 
 		// A checkbox *is* the item's marker, so a bullet beside it reads as two markers for one item. GFM
 		// puts task items and plain bullets in the same <ul>, so this has to be per-item.
-		const task = page.locator('.lb-md__body li.task-list-item')
-		const plain = page.locator('.lb-md__body li:not(.task-list-item)')
+		const task = page.locator('.lb-board-host:not([data-hidden]) .lb-md__body li.task-list-item')
+		const plain = page.locator('.lb-board-host:not([data-hidden]) .lb-md__body li:not(.task-list-item)')
 		await expect(task).toHaveCount(1)
 		await expect(plain).toHaveCount(1)
 		expect(await task.evaluate((el) => getComputedStyle(el).listStyleType)).toBe('none')
@@ -157,7 +157,7 @@ test.describe('canvas chrome', () => {
 						.find((s) => s.type === 'node.markdown')!.props.md
 			)
 
-		const boxes = page.locator('.lb-md__task')
+		const boxes = page.locator('.lb-board-host:not([data-hidden]) .lb-md__task')
 		await expect(boxes).toHaveCount(2)
 
 		await boxes.first().click()
@@ -221,7 +221,7 @@ test.describe('canvas chrome', () => {
 		await page.keyboard.press('ControlOrMeta+Shift+9')
 		await page.keyboard.press('Escape')
 		expect(await noteMarkdown(page)).toBe('- [ ] milk\n- [ ] bread\n- [ ] rug')
-		await expect(page.locator('.lb-md__task')).toHaveCount(3)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__task')).toHaveCount(3)
 	})
 
 	test('Tab indents every line of a selection at once', async ({ page }) => {
@@ -267,8 +267,8 @@ test.describe('canvas chrome', () => {
 
 		expect(await noteMarkdown(page)).toBe('- [ ] rug\n\n**Budget:** 3000 GEL')
 		// And the paragraph really is outside the list.
-		await expect(page.locator('.lb-md__body ul strong')).toHaveCount(0)
-		await expect(page.locator('.lb-md__body > p strong')).toHaveText('Budget:')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body ul strong')).toHaveCount(0)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body > p strong')).toHaveText('Budget:')
 	})
 
 	test('one undo reverts a whole editing session', async ({ page }) => {
@@ -283,7 +283,7 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('# Chores')
 		await page.keyboard.press('Escape')
-		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveText('Chores')
 
 		// Nothing between exiting and undoing: the point is that the *first* press does the work.
 		await page.keyboard.press('ControlOrMeta+z')
@@ -390,7 +390,7 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('!')
 		await page.keyboard.press('Escape')
-		await expect(page.locator('.lb-md__body h1')).toHaveText('Existing note!')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveText('Existing note!')
 	})
 
 	test('a note grows with its content, and a vertical drag pins the height', async ({ page }) => {
@@ -499,7 +499,7 @@ test.describe('canvas chrome', () => {
 	}) => {
 		await gotoFresh(page)
 		// The demo board is full of nodes.
-		await expect(page.locator('.lb-strip').first()).toBeVisible()
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toBeVisible()
 
 		const before = await countByType(page, 'node.markdown')
 		const point = await page.evaluate(() => {
@@ -517,9 +517,63 @@ test.describe('canvas chrome', () => {
 		expect(await countByType(page, 'node.markdown')).toBe(before)
 	})
 
+	test('the sticky note sits between the arrow and the node tools, on n', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		const dock = page.locator('.lb-board-host:not([data-hidden]) .lb-dock')
+		const order = await dock.evaluate((el) =>
+			[...el.children].map((child) =>
+				child.classList.contains('lb-dock__sep')
+					? '|'
+					: (child.getAttribute('data-testid')?.replace('tools.', '') ?? '?')
+			)
+		)
+		// tldraw's sticky is one of its own shapes, so it stays on the arrow's side of the separator and
+		// leaves the group below purely registry-driven.
+		expect(order.slice(0, 7)).toEqual([
+			'select',
+			'hand',
+			'frame',
+			'arrow',
+			'note',
+			'|',
+			'node-markdown',
+		])
+
+		// `n` is tldraw's own shortcut for it. The markdown node used to take that key, which silently
+		// left two tools claiming it; it is `m` now.
+		await page.keyboard.press('n')
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => (window as unknown as { editor: EditorLike }).editor.getCurrentToolId()
+				)
+			)
+			.toBe('note')
+
+		// And it really makes a sticky, not one of our nodes.
+		await page.mouse.move(700, 420)
+		await page.mouse.down()
+		await page.mouse.up()
+		await expect.poll(() => countByType(page, 'note')).toBe(1)
+		await page.keyboard.press('Escape')
+
+		await page.keyboard.press('Escape')
+		await page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.select').click()
+		await page.keyboard.press('m')
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => (window as unknown as { editor: EditorLike }).editor.getCurrentToolId()
+				)
+			)
+			.toBe('node-markdown')
+	})
+
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.tl-canvas')).toBeVisible()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
 		// Dotted paper: rendered as the canvas background so it pans and zooms with the board.
 		const paper = page.locator('.lb-paper')
@@ -539,30 +593,36 @@ test.describe('canvas chrome', () => {
 })
 
 test.describe('home screen', () => {
-	test('shows a sidebar with live counts and filters the grid', async ({ page }) => {
+	test('shows a sidebar with a live count and starred boards under Favourites', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page, 'Second board')
 
 		const sidebar = page.locator('.lb-sidebar')
 		await expect(sidebar.getByRole('button', { name: /All boards 2/ })).toBeVisible()
-		await expect(sidebar.getByRole('button', { name: /Favourites 0/ })).toBeVisible()
 		await expect(page.locator('.lb-card')).toHaveCount(2)
 
-		// Favourites is empty until something is starred, and then contains exactly that board.
-		await sidebar.getByRole('button', { name: /Favourites/ }).click()
-		await expect(page.locator('.lb-card')).toHaveCount(0)
-		await expect(page.getByText('No favourites yet.')).toBeVisible()
+		// The Favourites section only exists once something is starred, and then lists exactly
+		// that board by name.
+		await expect(sidebar.locator('.lb-sidebar__section')).toHaveCount(0)
 
-		await sidebar.getByRole('button', { name: /All boards/ }).click()
 		const card = page.locator('.lb-card', { hasText: 'Second board' })
 		await card.hover()
 		await card.getByRole('button', { name: 'Favourite Second board' }).click()
 
-		await expect(sidebar.getByRole('button', { name: /Favourites 1/ })).toBeVisible()
-		await sidebar.getByRole('button', { name: /Favourites/ }).click()
-		await expect(page.locator('.lb-card')).toHaveCount(1)
-		await expect(page.locator('.lb-card', { hasText: 'Second board' })).toHaveCount(1)
+		const favourites = sidebar.locator('.lb-sidebar__section')
+		await expect(favourites).toBeVisible()
+		await expect(favourites.getByRole('button', { name: 'Second board' })).toBeVisible()
+		await expect(favourites.getByRole('button')).toHaveCount(1)
+
+		// Clicking a favourite opens that board directly.
+		await favourites.getByRole('button', { name: 'Second board' }).click()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(
+			'Second board'
+		)
 	})
 
 	test('favourite state survives a reload', async ({ page }) => {
@@ -572,14 +632,10 @@ test.describe('home screen', () => {
 		const card = page.locator('.lb-card').first()
 		await card.hover()
 		await card.getByRole('button', { name: /^Favourite / }).click()
-		await expect(
-			page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })
-		).toBeVisible()
+		await expect(page.locator('.lb-sidebar__section').getByRole('button')).toHaveCount(1)
 
 		await page.reload()
-		await expect(
-			page.locator('.lb-sidebar').getByRole('button', { name: /Favourites 1/ })
-		).toBeVisible()
+		await expect(page.locator('.lb-sidebar__section').getByRole('button')).toHaveCount(1)
 	})
 
 	test('board cards show a thumbnail of the board once it has been closed', async ({ page }) => {
@@ -598,7 +654,7 @@ test.describe('home screen', () => {
 				},
 			])
 		})
-		await expect(page.locator('.lb-md')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(1)
 		await backToList(page)
 
 		// The thumbnail is captured from the live editor as the board unmounts, so it appears shortly
@@ -625,11 +681,11 @@ test.describe('home screen', () => {
 		expect(await thumbnailBytes(page)).toEqual(bytes)
 	})
 
-	test('the board title can be renamed by double-clicking it on the canvas', async ({ page }) => {
+	test('the board title can be renamed by double-clicking its tab', async ({ page }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.tl-canvas')).toBeVisible()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
-		const title = page.locator('.lb-board__name')
+		const title = page.locator('.lb-tabs__tab--active .lb-tabs__label')
 		await expect(title).toHaveText('Home office shopping')
 		await title.dblclick()
 
@@ -638,23 +694,27 @@ test.describe('home screen', () => {
 		await input.fill('Autumn shopping')
 		await input.press('Enter')
 
-		await expect(page.locator('.lb-board__name')).toHaveText('Autumn shopping')
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(
+			'Autumn shopping'
+		)
 
-		// The rename is persisted, not just local to the chrome.
+		// The rename is persisted, not just local to the tab strip.
 		await backToList(page)
 		await expect(page.locator('.lb-card', { hasText: 'Autumn shopping' })).toHaveCount(1)
 	})
 
-	test('renaming on the canvas can be abandoned with Escape', async ({ page }) => {
+	test('renaming on the tab can be abandoned with Escape', async ({ page }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.tl-canvas')).toBeVisible()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
-		await page.locator('.lb-board__name').dblclick()
+		await page.locator('.lb-tabs__tab--active .lb-tabs__label').dblclick()
 		const input = page.getByLabel('Board name')
 		await input.fill('Discard me')
 		await input.press('Escape')
 
-		await expect(page.locator('.lb-board__name')).toHaveText('Home office shopping')
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(
+			'Home office shopping'
+		)
 	})
 
 	test('an unopened board shows a placeholder rather than a broken image', async ({ page }) => {
@@ -709,6 +769,279 @@ test.describe('home screen', () => {
 	})
 })
 
+test.describe('theme', () => {
+	test('the toggle applies a theme, survives a reload, and re-themes the canvas', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		const html = page.locator('html')
+		await page.getByRole('button', { name: 'Settings' }).click()
+
+		await page.getByRole('button', { name: 'Light' }).click()
+		await expect(html).toHaveAttribute('data-theme', 'light')
+
+		// The preference has to outlive the tab, or the toggle is a per-session curiosity.
+		await page.reload()
+		await expect(html).toHaveAttribute('data-theme', 'light')
+
+		// tldraw follows through its own user preference, not the `colorScheme` prop.
+		await createBoard(page)
+		await expect(page.locator('.tl-container.tl-theme__light')).toBeVisible()
+
+		await backToList(page)
+		await page.getByRole('button', { name: 'Settings' }).click()
+		await page.getByRole('button', { name: 'Dark', exact: true }).click()
+		await expect(html).toHaveAttribute('data-theme', 'dark')
+	})
+
+	test('system follows the OS, without a reload', async ({ page }) => {
+		await page.emulateMedia({ colorScheme: 'light' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		const html = page.locator('html')
+		// 'system' is the default, so the OS preference should already be showing.
+		await expect(html).toHaveAttribute('data-theme', 'light')
+
+		await page.emulateMedia({ colorScheme: 'dark' })
+		await expect(html).toHaveAttribute('data-theme', 'dark')
+
+		// Pinning a theme has to stop the app tracking the OS.
+		await page.getByRole('button', { name: 'Settings' }).click()
+		await page.getByRole('button', { name: 'Light' }).click()
+		await page.emulateMedia({ colorScheme: 'dark' })
+		await expect(html).toHaveAttribute('data-theme', 'light')
+	})
+
+	test('switching theme re-exports open boards and drops the previews it cannot', async ({
+		page,
+	}) => {
+		// Pinned so the switch below is a real change of the *resolved* theme: Playwright emulates a
+		// light OS, so the default 'system' already resolves to light.
+		await page.emulateMedia({ colorScheme: 'light' })
+		await gotoFresh(page)
+		// Leaves the demo board with a preview and its tab closed, so its editor is *not* mounted —
+		// which is exactly the board that cannot be re-exported.
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Still open')
+
+		await openBoard(page, 'Still open')
+		await page.mouse.dblclick(560, 300)
+		await page.locator(NOTE_EDITOR).fill('Something to preview')
+		await backToList(page)
+
+		await expect.poll(() => thumbnailSize(page, 'Still open')).toBeGreaterThan(2_000)
+		await expect.poll(() => thumbnailSize(page, 'Home office shopping')).toBeGreaterThan(2_000)
+		const before = await thumbnailSize(page, 'Still open')
+
+		await page.getByRole('button', { name: 'Settings' }).click()
+		await page.getByRole('button', { name: 'Dark', exact: true }).click()
+
+		// 'Still open' has a mounted (though hidden) editor, so it keeps a real preview, re-exported in
+		// the new theme. Without `withExportableHost` this would silently be blank paper, which is why
+		// the size floor matters as much as the inequality.
+		await expect.poll(() => thumbnailSize(page, 'Still open')).not.toBe(before)
+		expect(await thumbnailSize(page, 'Still open')).toBeGreaterThan(2_000)
+
+		// The demo board has nothing to export from. Keeping its preview would show a light picture in
+		// a dark well, so it goes back to the placeholder until next opened.
+		await expect.poll(() => thumbnailSize(page, 'Home office shopping')).toBe(null)
+	})
+
+	test('re-picking the theme already showing keeps the thumbnails', async ({ page }) => {
+		await page.emulateMedia({ colorScheme: 'light' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.mouse.dblclick(560, 300)
+		await page.locator(NOTE_EDITOR).fill('Something to preview')
+		await backToList(page)
+		const before = await countThumbnails(page)
+		expect(before).toBeGreaterThan(0)
+
+		// 'system' already resolves to light here, so pinning light changes the stored preference but
+		// not a single pixel — throwing away every preview for that would be gratuitous.
+		await page.getByRole('button', { name: 'Settings' }).click()
+		await page.getByRole('button', { name: 'Light' }).click()
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+
+		await expect.poll(() => countThumbnails(page)).toBe(before)
+	})
+})
+
+test.describe('canvas grid', () => {
+	/** Scoped to the visible board: inactive tabs keep their hidden editors, each with its own paper. */
+	const ourPaper = (page: import('@playwright/test').Page) =>
+		page.locator('.lb-board-host:not([data-hidden]) .lb-paper')
+	const nativeGrid = (page: import('@playwright/test').Page) =>
+		page.locator('.lb-board-host:not([data-hidden]) .tl-grid')
+
+	/** Evaluated whole, in-page: the editor itself cannot cross the serialisation boundary. */
+	const gridMode = (page: import('@playwright/test').Page) =>
+		page.evaluate(
+			() =>
+				(
+					window as unknown as { editor: { getInstanceState(): { isGridMode?: boolean } } }
+				).editor.getInstanceState().isGridMode === true
+		)
+
+	async function openSettings(page: import('@playwright/test').Page) {
+		await backToList(page)
+		await page.getByRole('button', { name: 'Settings' }).click()
+	}
+	async function openDemoBoard(page: import('@playwright/test').Page) {
+		await page.getByRole('tab', { name: /Home office/ }).click()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+	}
+
+	test('defaults to our grid, with snapping off', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		await expect(ourPaper(page)).toHaveCount(1)
+		await expect(nativeGrid(page)).toHaveCount(0)
+		expect(await gridMode(page)).toBe(false)
+	})
+
+	test('every open tab paints its own grid, not the first one it finds', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		// Three boards open at once. The shell keeps an editor mounted per tab, so all three papers share
+		// one document — which is what made the SVG pattern ids collide.
+		for (let i = 0; i < 2; i++) {
+			await backToList(page)
+			await page.getByRole('button', { name: 'New board' }).first().click()
+			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		}
+
+		expect(await page.locator('.lb-paper').count()).toBeGreaterThanOrEqual(3)
+
+		// Ids must be unique. A duplicate resolves to whichever copy is first in document order — and
+		// since inactive boards are `visibility: hidden`, its dots paint nothing, so the visible board
+		// silently loses its grid.
+		const ids = await page
+			.locator('pattern[id*="lb-paper-dots"]')
+			.evaluateAll((els) => els.map((el) => el.id))
+		expect(ids.length).toBeGreaterThan(0)
+		expect(new Set(ids).size).toBe(ids.length)
+
+		// And each tab in turn must resolve to a pattern inside its *own* svg, with dots actually painted.
+		const tabs = await page.getByRole('tab').all()
+		for (let i = 1; i < tabs.length; i++) {
+			await tabs[i]!.click()
+			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+			const result = await page.evaluate(() => {
+				const svg = document.querySelector('.lb-board-host:not([data-hidden]) .lb-paper')
+				const ref = svg
+					?.querySelector('rect')
+					?.getAttribute('fill')
+					?.match(/#(.+)\)/)?.[1]
+				const target = ref ? document.getElementById(ref) : null
+				const circle = target?.querySelector('circle')
+				return {
+					ownPattern: target ? svg!.contains(target) : false,
+					visibility: circle ? getComputedStyle(circle).visibility : null,
+				}
+			})
+			expect(result.ownPattern).toBe(true)
+			expect(result.visibility).toBe('visible')
+		}
+	})
+
+	test('grid style, grid visibility and snapping are independent, and persist', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		// Switching to tldraw's grid must not switch snapping on with it — that coupling is the whole
+		// reason the grid is drawn from the Background slot rather than tldraw's own.
+		await openSettings(page)
+		await page.getByRole('button', { name: 'tldraw', exact: true }).click()
+		await openDemoBoard(page)
+		await expect(nativeGrid(page)).toHaveCount(1)
+		await expect(ourPaper(page)).toHaveCount(0)
+		expect(await gridMode(page)).toBe(false)
+
+		// And snapping must not draw a second grid on top of the one already showing.
+		await openSettings(page)
+		await page.getByLabel('Snap to grid').check()
+		await openDemoBoard(page)
+		await expect(nativeGrid(page)).toHaveCount(1)
+		expect(await gridMode(page)).toBe(true)
+
+		// Hiding the grid leaves snapping alone.
+		await openSettings(page)
+		await page.getByLabel('Grid', { exact: true }).uncheck()
+		await openDemoBoard(page)
+		await expect(ourPaper(page)).toHaveCount(0)
+		await expect(nativeGrid(page)).toHaveCount(0)
+		expect(await gridMode(page)).toBe(true)
+
+		// All three are app-wide preferences, so they outlive the tab — unlike tldraw's own per-board
+		// flag, which is what let one board end up with a grid the others did not have.
+		await page.reload()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(ourPaper(page)).toHaveCount(0)
+		await expect(nativeGrid(page)).toHaveCount(0)
+		expect(await gridMode(page)).toBe(true)
+	})
+
+	test('snapping actually snaps a drag to the grid', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		// A plain geo shape drags predictably; a node card's body handles its own text.
+		const id = await page.evaluate(() => {
+			const ed = (window as unknown as { editor: EditorLike }).editor
+			const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
+			ed.createShapes([
+				{ type: 'geo', x: 1400, y: 1400, props: { w: 100, h: 100, geo: 'rectangle', fill: 'solid' } },
+			])
+			ed.setCamera({ x: -1300, y: -1300, z: 1 })
+			return ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id
+		})
+
+		const dragBy = async (dx: number) => {
+			const p = await page.evaluate((shapeId) => {
+				const ed = (window as unknown as { editor: EditorLike }).editor
+				ed.select(shapeId)
+				const b = ed.getShapePageBounds(shapeId)!
+				return ed.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+			}, id)
+			await page.mouse.move(p.x, p.y)
+			await page.mouse.down()
+			await page.mouse.move(p.x + dx, p.y, { steps: 10 })
+			await page.mouse.up()
+		}
+
+		const shapeX = () =>
+			page.evaluate(
+				(shapeId) =>
+					(window as unknown as { editor: { getShape(id: string): { x: number } } }).editor.getShape(
+						shapeId
+					).x,
+				id
+			)
+
+		// 23px is deliberately not a multiple of the 10px grid step.
+		await dragBy(23)
+		const free = await shapeX()
+		expect(free % 10).not.toBe(0)
+
+		await openSettings(page)
+		await page.getByLabel('Snap to grid').check()
+		await openDemoBoard(page)
+
+		await dragBy(23)
+		const snapped = await shapeX()
+		expect(snapped).not.toBe(free)
+		expect(snapped % 10).toBe(0)
+	})
+})
+
 // --- helpers ---------------------------------------------------------------
 
 async function countByType(page: import('@playwright/test').Page, type: string): Promise<number> {
@@ -755,6 +1088,33 @@ async function thumbnailBytes(page: import('@playwright/test').Page): Promise<nu
 	})
 }
 
+/** Byte size of one board's stored thumbnail, by board name, or null if it has none. */
+async function thumbnailSize(
+	page: import('@playwright/test').Page,
+	boardName: string
+): Promise<number | null> {
+	return page.evaluate(async (name) => {
+		const db = await new Promise<IDBDatabase>((resolve) => {
+			const req = indexedDB.open('lifeboard-kv')
+			req.onsuccess = () => resolve(req.result)
+		})
+		const read = <T>(key: string) =>
+			new Promise<T | undefined>((resolve) => {
+				const q = db.transaction('kv', 'readonly').objectStore('kv').get(key)
+				q.onsuccess = () => resolve(q.result)
+			})
+		const boards = (await read<{ id: string; name: string }[]>('boards')) ?? []
+		const board = boards.find((b) => b.name === name)
+		if (!board) {
+			db.close()
+			return null
+		}
+		const blob = await read<Blob>(`thumb:${board.id}`)
+		db.close()
+		return blob instanceof Blob ? blob.size : null
+	}, boardName)
+}
+
 async function countThumbnails(page: import('@playwright/test').Page): Promise<number> {
 	return page.evaluate(async () => {
 		const db = await new Promise<IDBDatabase>((resolve) => {
@@ -779,4 +1139,5 @@ interface EditorLike {
 	createShapes(s: unknown[]): unknown
 	select(...ids: string[]): unknown
 	getSelectedShapeIds(): string[]
+	getCurrentToolId(): string
 }

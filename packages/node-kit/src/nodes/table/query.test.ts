@@ -13,7 +13,7 @@ import {
 } from './spec'
 
 const REGISTRY = new Map<string, PropertyDef>([
-	['price', { id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+	['price', { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }],
 	['category', { id: 'category', name: 'Category', type: 'select' }],
 	['bought', { id: 'bought', name: 'Bought', type: 'checkbox' }],
 	['due', { id: 'due', name: 'Due', type: 'date' }],
@@ -79,14 +79,30 @@ describe('queryTable — rows', () => {
 		expect(result.groups[0]!.rows[0]!.cells).toEqual({ price: 2399 })
 	})
 
-	it('includes a shape that lacks a column property, with that cell simply absent', () => {
-		// Different from the old rollup, which had nothing to say about such a shape. A table is a view,
-		// and a row with one blank cell is still a row.
+	it('excludes a shape that carries none of the column properties', () => {
+		// A board is full of shapes that have nothing to do with the table — drawings, frames, an
+		// intro note. A price table listing them all as "—" rows buries the rows it is about.
 		const facts = new Map([...board(), shape('gift', { category: 'desk' })])
+		const result = run(facts)
+		expect(result.matched).toBe(3)
+		expect(result.groups[0]!.rows.some((r) => r.shapeId === 'gift')).toBe(false)
+	})
+
+	it('keeps a shape whose column property is attached but empty, as a blank cell', () => {
+		// The opposite case: this shape opted into Price and just hasn't got one yet.
+		const facts = new Map([...board(), shape('gift', { price: null })])
 		const result = run(facts)
 		expect(result.matched).toBe(4)
 		const gift = result.groups[0]!.rows.find((r) => r.shapeId === 'gift')!
-		expect('price' in gift.cells).toBe(false)
+		expect('price' in gift.cells).toBe(true)
+		expect(gift.cells.price).toBeNull()
+	})
+
+	it('keeps every match when the table has no property columns at all', () => {
+		// A label-only table is a plain list; with no columns to carry, nothing can be excluded.
+		const facts = new Map([...board(), shape('gift', { category: 'desk' }), shape('plain', {})])
+		const labelOnly = spec({ columns: [{ key: LABEL_COLUMN, summary: 'count', width: 1 }] })
+		expect(run(facts, labelOnly).matched).toBe(5)
 	})
 
 	it('produces no groups at all for an empty selection', () => {
@@ -155,7 +171,7 @@ describe('queryTable — filters', () => {
 	})
 
 	it('filters on emptiness, which applies to every type', () => {
-		const facts = new Map([...board(), shape('gift', { category: 'desk' })])
+		const facts = new Map([...board(), shape('gift', { price: null })])
 		expect(run(facts, withFilter('price', 'isEmpty')).matched).toBe(1)
 		expect(run(facts, withFilter('price', 'isNotEmpty')).matched).toBe(3)
 	})
@@ -168,13 +184,24 @@ describe('queryTable — filters', () => {
 
 	it('filters on dates', () => {
 		const facts = new Map([shape('a', { due: '2026-01-01' }), shape('b', { due: '2026-12-31' })])
-		expect(run(facts, withFilter('due', 'before', '2026-06-01')).matched).toBe(1)
-		expect(run(facts, withFilter('due', 'after', '2026-06-01')).matched).toBe(1)
+		const dueColumns = [
+			{ key: LABEL_COLUMN, summary: 'count', width: 2 },
+			{ key: 'due', summary: null, width: 1 },
+		] as const
+		const before = { ...withFilter('due', 'before', '2026-06-01'), columns: [...dueColumns] }
+		const after = { ...withFilter('due', 'after', '2026-06-01'), columns: [...dueColumns] }
+		expect(run(facts, before).matched).toBe(1)
+		expect(run(facts, after).matched).toBe(1)
 	})
 
 	it('filters on a checkbox', () => {
 		const facts = new Map([shape('a', { bought: true }), shape('b', { bought: false })])
-		expect(run(facts, withFilter('bought', 'is', true)).matched).toBe(1)
+		const boughtColumns = [
+			{ key: LABEL_COLUMN, summary: 'count', width: 2 },
+			{ key: 'bought', summary: null, width: 1 },
+		] as const
+		const props = { ...withFilter('bought', 'is', true), columns: [...boughtColumns] }
+		expect(run(facts, props).matched).toBe(1)
 	})
 
 	it('ANDs multiple filters', () => {
@@ -252,12 +279,19 @@ describe('queryTable — sorting', () => {
 			shape('b', {}, { label: 'Item 10' }),
 			shape('a', {}, { label: 'Item 2' }),
 		])
-		const result = run(facts, spec({ sorts: [{ key: LABEL_COLUMN, dir: 'asc' }] }))
+		// Label-only columns: these shapes carry no properties, and this is a label test.
+		const result = run(
+			facts,
+			spec({
+				columns: [{ key: LABEL_COLUMN, summary: 'count', width: 1 }],
+				sorts: [{ key: LABEL_COLUMN, dir: 'asc' }],
+			})
+		)
 		expect(result.groups[0]!.rows.map((r) => r.label)).toEqual(['Item 2', 'Item 10'])
 	})
 
 	it('sorts empties last regardless of direction, because a blank is missing not small', () => {
-		const facts = new Map([shape('a', { price: 5 }), shape('b', {}), shape('c', { price: 1 })])
+		const facts = new Map([shape('a', { price: 5 }), shape('b', { price: null }), shape('c', { price: 1 })])
 		for (const dir of ['asc', 'desc'] as const) {
 			const result = run(facts, spec({ sorts: [{ key: 'price', dir }] }))
 			expect(result.groups[0]!.rows.at(-1)!.shapeId).toBe('b')
@@ -362,19 +396,19 @@ describe('summarise', () => {
 
 describe('skipped', () => {
 	it('counts matched rows that carry the summarised property with an unusable value', () => {
-		// "3 things have no price yet" — the sentence the footer shows. A shape that never had a price is
-		// not counted here; it simply has a blank cell.
+		// "1 without a value" — the sentence the footer shows. A shape that never had a price is not
+		// counted here, because it is not a row at all.
 		const facts = new Map([...board(), shape('gift', { price: null }), shape('other', {})])
 		const result = run(facts)
-		expect(result.matched).toBe(5)
+		expect(result.matched).toBe(4)
 		expect(result.skipped).toBe(1)
 	})
 })
 
 describe('op gating', () => {
 	it('offers only operators that can match, per property type', () => {
-		expect(filterOpsForType('currency')).toContain('gt')
-		expect(filterOpsForType('currency')).not.toContain('contains')
+		expect(filterOpsForType('financial')).toContain('gt')
+		expect(filterOpsForType('financial')).not.toContain('contains')
 		expect(filterOpsForType('multiSelect')).toContain('contains')
 		expect(filterOpsForType('multiSelect')).not.toContain('gt')
 		expect(filterOpsForType('date')).toContain('before')
@@ -382,7 +416,7 @@ describe('op gating', () => {
 	})
 
 	it('offers numeric summaries only for numeric types, and date ones only for dates', () => {
-		expect(summaryOpsForType('currency')).toContain('sum')
+		expect(summaryOpsForType('financial')).toContain('sum')
 		expect(summaryOpsForType('text')).not.toContain('sum')
 		expect(summaryOpsForType('date')).toContain('earliest')
 		expect(summaryOpsForType('date')).not.toContain('sum')

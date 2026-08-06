@@ -3,16 +3,20 @@ import { fakeEditor, makeShape } from './fakeEditor'
 import { createProperty } from './schema'
 import {
 	attachProperty,
+	orderedPropertyIds,
+	readHiddenPropertyIds,
 	readShapeProperties,
 	readShapePropertyDefs,
 	removeShapeProperty,
+	setShapePropertyHidden,
+	setShapePropertyOrder,
 	shapeCarriesProperty,
 	updateShapeProperties,
 } from './values'
 
 function withPrice() {
 	const f = fakeEditor()
-	createProperty(f.editor, { name: 'Price', type: 'currency', unit: 'GEL' })
+	createProperty(f.editor, { name: 'Price', type: 'financial', unit: 'GEL' })
 	createProperty(f.editor, { name: 'Tags', type: 'multiSelect' })
 	return f
 }
@@ -100,7 +104,7 @@ describe('the definition sidecar', () => {
 		const f = withPrice()
 		updateShapeProperties(f.editor, f.shape(), { price: 2399, tags: ['desk'] })
 		expect(readShapePropertyDefs(f.shape())).toEqual([
-			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+			{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
 			{ id: 'tags', name: 'Tags', type: 'multiSelect' },
 		])
 	})
@@ -125,7 +129,7 @@ describe('the definition sidecar', () => {
 describe('attachProperty', () => {
 	it('adds the property with its empty value', () => {
 		const f = withPrice()
-		attachProperty(f.editor, f.shape(), { id: 'price', name: 'Price', type: 'currency' }, null)
+		attachProperty(f.editor, f.shape(), { id: 'price', name: 'Price', type: 'financial' }, null)
 		expect(readShapeProperties(f.shape())).toEqual({ price: null })
 	})
 
@@ -133,8 +137,72 @@ describe('attachProperty', () => {
 		const f = withPrice()
 		updateShapeProperties(f.editor, f.shape(), { price: 2399 })
 		const before = f.runs
-		attachProperty(f.editor, f.shape(), { id: 'price', name: 'Price', type: 'currency' }, null)
+		attachProperty(f.editor, f.shape(), { id: 'price', name: 'Price', type: 'financial' }, null)
 		expect(readShapeProperties(f.shape())).toEqual({ price: 2399 })
 		expect(f.runs).toBe(before)
+	})
+})
+
+describe('display order', () => {
+	it('defaults to attachment order when nothing is stored', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 1 })
+		updateShapeProperties(f.editor, f.shape(), { tags: ['a'] })
+		expect(orderedPropertyIds(f.shape())).toEqual(['price', 'tags'])
+	})
+
+	it('applies a stored order in one undo entry', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 1, tags: ['a'] })
+		const before = f.runs
+		setShapePropertyOrder(f.editor, f.shape(), ['tags', 'price'])
+		expect(f.runs).toBe(before + 1)
+		expect(orderedPropertyIds(f.shape())).toEqual(['tags', 'price'])
+	})
+
+	it('is self-healing: stale ids are dropped, unlisted ids are appended', () => {
+		const f = withPrice()
+		createProperty(f.editor, { name: 'Note', type: 'text' })
+		updateShapeProperties(f.editor, f.shape(), { price: 1, tags: ['a'] })
+		setShapePropertyOrder(f.editor, f.shape(), ['tags', 'gone', 'price'])
+		// A property attached after the reorder shows up at the end rather than vanishing.
+		updateShapeProperties(f.editor, f.shape(), { note: 'x' })
+		expect(orderedPropertyIds(f.shape())).toEqual(['tags', 'price', 'note'])
+	})
+
+	it('survives malformed stored order', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 1 })
+		const shape = makeShape('shape:x', {
+			'lifeboard:props': { price: 1 },
+			'lifeboard:propOrder': 'nope',
+		})
+		expect(orderedPropertyIds(shape)).toEqual(['price'])
+	})
+})
+
+describe('per-shape visibility', () => {
+	it('round-trips a hidden property', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 1, tags: ['a'] })
+		setShapePropertyHidden(f.editor, f.shape(), 'price', true)
+		expect(readHiddenPropertyIds(f.shape())).toEqual(new Set(['price']))
+		setShapePropertyHidden(f.editor, f.shape(), 'price', false)
+		expect(readHiddenPropertyIds(f.shape())).toEqual(new Set())
+	})
+
+	it('does not write when nothing changes', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 1 })
+		const before = f.runs
+		setShapePropertyHidden(f.editor, f.shape(), 'price', false)
+		expect(f.runs).toBe(before)
+	})
+
+	it('hiding is presentation only — the value itself is untouched', () => {
+		const f = withPrice()
+		updateShapeProperties(f.editor, f.shape(), { price: 2399 })
+		setShapePropertyHidden(f.editor, f.shape(), 'price', true)
+		expect(readShapeProperties(f.shape())).toEqual({ price: 2399 })
 	})
 })

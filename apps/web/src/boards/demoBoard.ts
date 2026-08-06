@@ -51,7 +51,7 @@ export function seedDemoBoard(editor: Editor): void {
 	editor.run(() => {
 		// The registry first: `updateShapeProperties` builds each shape's definition sidecar from it, so
 		// creating shapes before the definitions exist would leave them with empty sidecars.
-		const price = createProperty(editor, { name: 'Price', type: 'currency', unit: 'GEL' })
+		const price = createProperty(editor, { name: 'Price', type: 'financial', unit: 'GEL' })
 		const category = createProperty(editor, {
 			name: 'Category',
 			type: 'select',

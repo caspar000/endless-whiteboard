@@ -54,8 +54,15 @@ export function NodeEditorPopover({
 			const bounds = editor.getShapePageBounds(shape.id)
 			if (!bounds) return null
 			const viewport = editor.getViewportScreenBounds()
-			const shapeTop = editor.pageToScreen({ x: bounds.x, y: bounds.y })
-			const shapeBottom = editor.pageToScreen({ x: bounds.x, y: bounds.y + bounds.h })
+			// `pageToScreen` returns *window* coordinates, but the panel is positioned inside the
+			// editor's container — which no longer sits at the window origin now that the app shell
+			// puts a sidebar and tab strip around it. Subtracting the viewport origin converts to
+			// container coordinates; without this the panel rendered shifted right and down by
+			// exactly the chrome's size.
+			const topScreen = editor.pageToScreen({ x: bounds.x, y: bounds.y })
+			const bottomScreen = editor.pageToScreen({ x: bounds.x, y: bounds.y + bounds.h })
+			const shapeTop = { x: topScreen.x - viewport.x, y: topScreen.y - viewport.y }
+			const shapeBottom = { x: bottomScreen.x - viewport.x, y: bottomScreen.y - viewport.y }
 
 			// Horizontally, nudged inward to stay on screen.
 			const x = Math.max(

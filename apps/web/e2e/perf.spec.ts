@@ -12,9 +12,9 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  */
 const NODE_COUNT = 500
 
-/** The table's displayed total, parsed back out of its formatted "₾1,234" text. */
+/** The table's displayed total, parsed back out of its formatted "₾ 1,234.00" text. */
 async function readRollupTotal(page: import('@playwright/test').Page): Promise<number> {
-	const text = (await page.locator('.lb-table__value').first().textContent()) ?? ''
+	const text = (await page.locator('.lb-board-host:not([data-hidden]) .lb-table__value').first().textContent()) ?? ''
 	return Number(text.replace(/[^\d.-]/g, ''))
 }
 
@@ -110,7 +110,7 @@ test.describe('performance', () => {
 		).toBe(NODE_COUNT + 2)
 
 		// The tables produce a real total over all 500 notes.
-		await expect(page.locator('.lb-table__value').first()).not.toHaveText('₾0')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value').first()).not.toHaveText('₾ 0.00')
 
 		// Zoom out so every node is inside the viewport: culling would otherwise hide the cost this
 		// test is trying to measure.

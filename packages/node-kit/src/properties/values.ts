@@ -20,6 +20,14 @@ import { propertyValueValidator, type PropertyDef, type PropertyValue } from './
  */
 const VALUES_KEY = 'lifeboard:props'
 const DEFS_KEY = 'lifeboard:propDefs'
+/**
+ * Presentation state, split from the values on purpose: display order and visibility are *per
+ * shape* — the same Price property can lead on one card and be tucked away on another — and they
+ * are cosmetic, so aggregation and the facts pipeline never read these keys. Flat top-level keys
+ * for the same one-level-merge reason as above.
+ */
+const ORDER_KEY = 'lifeboard:propOrder'
+const HIDDEN_KEY = 'lifeboard:propHidden'
 
 export type ShapeProperties = Readonly<Record<string, PropertyValue>>
 
@@ -65,6 +73,73 @@ export function readShapeProperties(shape: ShapeWithMeta): ShapeProperties {
 /** Whether the shape carries this property at all — distinct from carrying it with an empty value. */
 export function shapeCarriesProperty(shape: ShapeWithMeta, id: string): boolean {
 	return id in readShapeProperties(shape)
+}
+
+/** A string list from meta, dropping anything malformed — same defensive posture as the values. */
+function readStringList(shape: ShapeWithMeta, key: string): string[] {
+	const raw = shape.meta[key]
+	if (!Array.isArray(raw)) return []
+	return raw.filter((entry): entry is string => typeof entry === 'string')
+}
+
+/**
+ * The shape's property ids in display order.
+ *
+ * The stored order is a preference, not the truth: ids it lists that the shape no longer carries
+ * are dropped, and ids the shape carries that it doesn't list (a property attached after the last
+ * reorder) are appended in attachment order. That makes the order self-healing — it can never hide
+ * a value or show a ghost, no matter how stale it is.
+ */
+export function orderedPropertyIds(shape: ShapeWithMeta): string[] {
+	const ids = Object.keys(readShapeProperties(shape))
+	const stored = readStringList(shape, ORDER_KEY)
+	if (!stored.length) return ids
+
+	const present = new Set(ids)
+	const ordered = stored.filter((id) => present.has(id))
+	const placed = new Set(ordered)
+	for (const id of ids) if (!placed.has(id)) ordered.push(id)
+	return ordered
+}
+
+/** Persists a display order for the shape's properties, in one undo entry. */
+export function setShapePropertyOrder(
+	editor: Editor,
+	shape: TLShape,
+	order: readonly string[]
+): void {
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [ORDER_KEY]: [...order] },
+		} as TLShapePartial)
+	})
+}
+
+/** The ids this shape hides from its on-card strip. Hidden is presentation only — the value stays
+ * attached, editable in the panel, and counted by every rollup and table. */
+export function readHiddenPropertyIds(shape: ShapeWithMeta): ReadonlySet<string> {
+	return new Set(readStringList(shape, HIDDEN_KEY))
+}
+
+export function setShapePropertyHidden(
+	editor: Editor,
+	shape: TLShape,
+	id: string,
+	hidden: boolean
+): void {
+	const current = readStringList(shape, HIDDEN_KEY)
+	// No change — writing anyway would create an empty undo entry.
+	if (hidden === current.includes(id)) return
+	const next = hidden ? [...current, id] : current.filter((entry) => entry !== id)
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [HIDDEN_KEY]: next },
+		} as TLShapePartial)
+	})
 }
 
 /**

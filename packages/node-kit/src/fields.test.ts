@@ -12,21 +12,21 @@ import {
 
 describe('currency formatting', () => {
 	it('renders GEL as ₾ prefix — the driving use case', () => {
-		expect(formatCurrency(2399, 'GEL')).toBe('₾2,399')
+		expect(formatCurrency(2399, 'GEL')).toBe('₾ 2,399.00')
 	})
 
 	it('defaults to GEL when no unit is given', () => {
-		expect(formatCurrency(10)).toBe('₾10')
+		expect(formatCurrency(10)).toBe('₾ 10.00')
 	})
 
 	it('omits decimals for integers and keeps two for fractions', () => {
-		expect(formatCurrency(1200, 'USD')).toBe('$1,200')
-		expect(formatCurrency(1200.5, 'USD')).toBe('$1,200.50')
-		expect(formatCurrency(0.333, 'USD')).toBe('$0.33')
+		expect(formatCurrency(1200, 'USD')).toBe('$ 1,200.00')
+		expect(formatCurrency(1200.5, 'USD')).toBe('$ 1,200.50')
+		expect(formatCurrency(0.333, 'USD')).toBe('$ 0.33')
 	})
 
-	it('suffixes unknown currency codes instead of guessing a symbol', () => {
-		expect(formatCurrency(500, 'XYZ')).toBe('500 XYZ')
+	it('uses the code itself for unknown currencies, still symbol-first', () => {
+		expect(formatCurrency(500, 'XYZ')).toBe('XYZ 500.00')
 	})
 
 	it('is case-insensitive about the code', () => {
@@ -78,7 +78,7 @@ describe('coerceFieldValue', () => {
 
 describe('formatFieldValue', () => {
 	it('formats each type for display', () => {
-		expect(formatFieldValue({ key: 'price', type: 'currency', value: 2399, unit: 'GEL' })).toBe('₾2,399')
+		expect(formatFieldValue({ key: 'price', type: 'currency', value: 2399, unit: 'GEL' })).toBe('₾ 2,399.00')
 		expect(formatFieldValue({ key: 'weight', type: 'number', value: 72.5, unit: 'kg' })).toBe('72.5 kg')
 		expect(formatFieldValue({ key: 'done', type: 'checkbox', value: true })).toBe('✓')
 		expect(formatFieldValue({ key: 'done', type: 'checkbox', value: false })).toBe('—')

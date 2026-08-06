@@ -7,9 +7,11 @@ import { useCallback, useEffect, useState } from 'react'
  */
 export type Route =
 	| { view: 'list' }
+	| { view: 'settings' }
 	| { view: 'board'; boardId: string; seedDemo?: boolean }
 
 function parseHash(hash: string): Route {
+	if (hash === '#/settings') return { view: 'settings' }
 	const match = /^#\/board\/([^?]+)(\?.*)?$/.exec(hash)
 	if (!match) return { view: 'list' }
 	const boardId = decodeURIComponent(match[1]!)
@@ -19,6 +21,7 @@ function parseHash(hash: string): Route {
 
 function toHash(route: Route): string {
 	if (route.view === 'list') return '#/'
+	if (route.view === 'settings') return '#/settings'
 	const suffix = route.seedDemo ? '?demo=1' : ''
 	return `#/board/${encodeURIComponent(route.boardId)}${suffix}`
 }

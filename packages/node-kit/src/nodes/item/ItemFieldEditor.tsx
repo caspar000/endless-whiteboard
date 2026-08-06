@@ -6,6 +6,7 @@ import {
 	defaultUnitForType,
 	fieldKeyLabel,
 	normalizeFieldKey,
+	propertyTypeForField,
 	type FieldType,
 	type NodeField,
 } from '../../fields'
@@ -40,7 +41,7 @@ export function ItemFieldEditor({
 		const normalized = normalizeFieldKey(key)
 		if (!normalized) return
 		if (fields.some((f) => f.key === normalized)) return
-		const unit = defaultUnitForType(type)
+		const unit = defaultUnitForType(propertyTypeForField(type))
 		setFields([
 			...fields,
 			{ key: normalized, type, value: type === 'checkbox' ? false : null, ...(unit ? { unit } : {}) },
@@ -66,7 +67,7 @@ export function ItemFieldEditor({
 							onChange={(e) => {
 								const type = e.currentTarget.value as FieldType
 								const next = [...fields]
-								const unit = defaultUnitForType(type)
+								const unit = defaultUnitForType(propertyTypeForField(type))
 								next[i] = {
 									key: field.key,
 									type,

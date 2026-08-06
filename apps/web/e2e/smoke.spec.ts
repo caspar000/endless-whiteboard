@@ -19,29 +19,29 @@ test.describe('first run', () => {
 
 		// Milestone 10: the first-run board reproduces the driving use case. Since Phase 2 the cards are
 		// notes carrying properties, so what proves the data is there is the property strip on the shape.
-		await expect(page.locator('.tl-canvas')).toBeVisible()
-		await expect(page.locator('.lb-strip').first()).toBeVisible()
-		await expect(page.locator('.lb-strip').first()).toContainText('Price')
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toBeVisible()
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toContainText('Price')
 
 		// Milestone 6 acceptance: a table shows a real total, computed from property values — and with
 		// `shapeTypes: null`, from *anything* carrying a price rather than from one node type.
 		// 2399 + 850 + 240 + 320 + 120 + 480 = 4409
-		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 4,409.00')
 
 		// And the same data as a grid, grouped by category, with each group's own subtotal.
-		const grid = page.locator('.lb-table__grid')
+		const grid = page.locator('.lb-board-host:not([data-hidden]) .lb-table__grid')
 		await expect(grid).toBeVisible()
 		await expect(grid).toContainText('Standing desk')
 		await expect(grid).toContainText('desk')
-		await expect(grid).toContainText('₾3,489')
+		await expect(grid).toContainText('₾ 3,489.00')
 		await expect(grid).toContainText('lighting')
 	})
 
 	test('totals update when a note is deleted', async ({ page }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 4,409.00')
 
-		// Delete the ₾2,399 desk through the store, then assert the derived total followed.
+		// Delete the ₾ 2,399.00 desk through the store, then assert the derived total followed.
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
 			const desk = editor
@@ -54,7 +54,7 @@ test.describe('first run', () => {
 			editor.deleteShapes([desk.id])
 		})
 
-		await expect(page.locator('.lb-table__value')).toHaveText('₾2,010')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 2,010.00')
 	})
 })
 
@@ -66,27 +66,27 @@ test.describe('board CRUD and persistence', () => {
 		await createBoard(page, 'Board A')
 		await openBoard(page, 'Board A')
 		await drawNode(page, 'Note', { x: 400, y: 300 })
-		await expect(page.locator('.lb-md')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(1)
 		await backToList(page)
 
 		await createBoard(page, 'Board B')
 		await openBoard(page, 'Board B')
 		await drawNode(page, 'Table', { x: 400, y: 300 })
 		await drawNode(page, 'Table', { x: 700, y: 300 })
-		await expect(page.locator('.lb-table')).toHaveCount(2)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table')).toHaveCount(2)
 
 		// Reload: tldraw's per-board persistenceKey must bring back exactly this board's content.
 		// Wait for the write to actually land first — tldraw throttles persists by 350 ms and does
 		// not flush on unload, so an immediate reload would legitimately lose the edits.
 		await waitForPersistedShapes(page, 2)
 		await page.reload()
-		await expect(page.locator('.lb-table')).toHaveCount(2)
-		await expect(page.locator('.lb-md')).toHaveCount(0)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table')).toHaveCount(2)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(0)
 
 		await backToList(page)
 		await openBoard(page, 'Board A')
-		await expect(page.locator('.lb-md')).toHaveCount(1)
-		await expect(page.locator('.lb-table')).toHaveCount(0)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table')).toHaveCount(0)
 	})
 
 	test('deleting a board removes its canvas database', async ({ page }) => {
@@ -142,7 +142,7 @@ test.describe('nodes', () => {
 		await createBoard(page)
 
 		await drawNode(page, 'Note', { x: 400, y: 250 }, { w: 360, h: 240 })
-		await expect(page.locator('.lb-md')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(1)
 
 		// Double-click to edit, type markdown, then leave editing. Typed rather than `fill`ed: the
 		// textarea holds a single line now, and Enter is what moves to the next one.
@@ -157,12 +157,12 @@ test.describe('nodes', () => {
 		await page.keyboard.press('Escape')
 
 		// Display mode shows rendered markdown, not source.
-		await expect(page.locator('.lb-md__body h1')).toHaveText('Chores')
-		await expect(page.locator('.lb-md__body li')).toHaveCount(2)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveText('Chores')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body li')).toHaveCount(2)
 
 		// One editing session = one undo entry, so a single undo clears the whole text.
 		await page.keyboard.press('ControlOrMeta+z')
-		await expect(page.locator('.lb-md__body h1')).toHaveCount(0)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveCount(0)
 	})
 
 	test('canvas does not pan while typing in a node', async ({ page }) => {
@@ -215,7 +215,7 @@ test.describe('nodes', () => {
 		})
 
 		await drawNode(page, 'Table', { x: 700, y: 500 }, { w: 280, h: 180 })
-		await expect(page.locator('.lb-table')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table')).toHaveCount(1)
 
 		// A fresh table shows a row count, so configure it through its editing UI: add the Price column
 		// and sum it. The column picker is fed from the board's *registry*, so "Price" is offered because
@@ -228,7 +228,7 @@ test.describe('nodes', () => {
 		await config.getByLabel('Show as').selectOption('value')
 		await page.keyboard.press('Escape')
 
-		await expect(page.locator('.lb-table__value')).toHaveText('₾1,500')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 1,500.00')
 
 		// A meta-only edit must flow through to the total. This is the comparator regression: every
 		// comparator in the pipeline used to look at `props` alone, so this edit was invisible.
@@ -246,7 +246,7 @@ test.describe('nodes', () => {
 				meta: { 'lifeboard:props': { price: 700 } },
 			})
 		})
-		await expect(page.locator('.lb-table__value')).toHaveText('₾1,700')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 1,700.00')
 	})
 
 	test('properties work on a dragged-in image and a sticky note, not just on our own nodes', async ({
@@ -290,7 +290,82 @@ test.describe('nodes', () => {
 		await page.keyboard.press('Escape')
 
 		// 250 + 75 — a sticky and a rectangle, summed by a table that knows nothing about either.
-		await expect(page.locator('.lb-table__value')).toHaveText('₾325')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 325.00')
+	})
+
+	test('a link property takes a title and a URL, and the title opens it in a new tab', async ({
+		page,
+		context,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ type: 'note', x: 200, y: 200 }])
+		})
+
+		await openProperties(page, 'note')
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Docs')
+		await panel.getByLabel('New property type').selectOption('link')
+		await panel.getByRole('button', { name: 'Add' }).click()
+
+		// Two boxes, not one: the value is stored as a single encoded string, which nobody should type.
+		await panel.getByLabel('Title of Docs').fill('Lifeboard docs')
+		// Typed the way people actually type a URL — no scheme.
+		await panel.getByLabel('URL of Docs').fill('lifeboard.app/docs')
+
+		// The panel's own launch button, since the title there is an input and clicking it must edit.
+		await expect(panel.getByLabel('Open Docs')).toHaveAttribute(
+			'href',
+			'https://lifeboard.app/docs'
+		)
+		await page.keyboard.press('Escape')
+
+		// On the card the title *is* the link — that is where clicking to open belongs.
+		const link = page.locator('.lb-board-host:not([data-hidden]) a.lb-strip__link').first()
+		await expect(link).toHaveText('Lifeboard docs')
+		await expect(link).toHaveAttribute('href', 'https://lifeboard.app/docs')
+		await expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+
+		// A new tab, not a navigation: the board has to stay where it is.
+		const boardUrl = page.url()
+		const [opened] = await Promise.all([context.waitForEvent('page'), link.click()])
+		expect(opened.url()).toBe('https://lifeboard.app/docs')
+		expect(page.url()).toBe(boardUrl)
+	})
+
+	test('a link property refuses a URL that would execute script', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ type: 'note', x: 200, y: 200 }])
+		})
+
+		await openProperties(page, 'note')
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Docs')
+		await panel.getByLabel('New property type').selectOption('link')
+		await panel.getByRole('button', { name: 'Add' }).click()
+
+		await panel.getByLabel('Title of Docs').fill('Totally safe')
+		await panel.getByLabel('URL of Docs').fill('javascript:alert(1)')
+
+		// No launch button, because there is no safe href to launch.
+		await expect(panel.getByLabel('Open Docs')).toHaveCount(0)
+		await page.keyboard.press('Escape')
+
+		// The title still shows — it is real data — but never as something clickable.
+		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()
+		await expect(strip).toContainText('Totally safe')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) a.lb-strip__link')).toHaveCount(0)
 	})
 
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
@@ -312,7 +387,7 @@ test.describe('nodes', () => {
 		const panel = page.locator('.lb-props')
 		await panel.getByRole('button', { name: 'New property…' }).click()
 		await panel.getByLabel('New property name').fill('Price')
-		await panel.getByLabel('New property type').selectOption('currency')
+		await panel.getByLabel('New property type').selectOption('financial')
 		await panel.getByRole('button', { name: 'Add' }).click()
 
 		// Defining it attaches it, empty. Filling it in is a separate act — which is the distinction
@@ -322,7 +397,7 @@ test.describe('nodes', () => {
 
 		// The value shows on the sticky itself, because a property is data *about the shape*, not a
 		// hidden annotation.
-		await expect(page.locator('.lb-strip').first()).toContainText('₾420')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toContainText('₾ 420.00')
 
 		await drawNode(page, 'Table', { x: 600, y: 400 }, { w: 280, h: 180 })
 		await dblclickNode(page, 'node.table')
@@ -332,7 +407,7 @@ test.describe('nodes', () => {
 		await config.getByLabel('Show as').selectOption('value')
 		await page.keyboard.press('Escape')
 
-		await expect(page.locator('.lb-table__value')).toHaveText('₾420')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 420.00')
 	})
 
 	test('the properties panel edits any shape and is fully visible above other shapes', async ({
@@ -341,9 +416,9 @@ test.describe('nodes', () => {
 		await gotoFresh(page)
 		// The demo board is deliberately crowded: neighbouring cards are what used to paint over the
 		// panel, and a node's own `overflow: hidden` is what used to clip it to one row.
-		await expect(page.locator('.lb-strip').first()).toBeVisible()
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toBeVisible()
 
-		// The ₾2,399 desk specifically: the demo's intro note is also a `node.markdown` but carries no
+		// The ₾ 2,399.00 desk specifically: the demo's intro note is also a `node.markdown` but carries no
 		// properties, so "the first note" would open an empty panel and prove nothing.
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
@@ -376,7 +451,7 @@ test.describe('nodes', () => {
 		// Editing a price *through the panel* updates the live rollup — the panel is wired to the store,
 		// not just rendered. 4409 - 2399 + 1000 = 3010.
 		await page.locator('.lb-props').getByLabel('Value of Price').fill('1000')
-		await expect(page.locator('.lb-table__value')).toHaveText('₾3,010')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 3,010.00')
 	})
 
 	test('a table filters, groups and sorts shapes, and says what it held back', async ({ page }) => {
@@ -440,27 +515,27 @@ test.describe('nodes', () => {
 		await config.getByLabel('Sort direction').selectOption('desc')
 		await page.keyboard.press('Escape')
 
-		const grid = page.locator('.lb-table__grid')
+		const grid = page.locator('.lb-board-host:not([data-hidden]) .lb-table__grid')
 		// The unpriced poster is filtered out: 2399 + 850 + 240 + 120 + 30 = 3639 over 5 rows.
-		await expect(page.locator('.lb-table__row--summary')).toContainText('₾3,639')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__row--summary')).toContainText('₾ 3,639.00')
 		await expect(grid).not.toContainText('Poster')
 
 		// Each group carries its own subtotal — what the old rollup's grouped mode did.
-		const groups = page.locator('.lb-table__row--group')
+		const groups = page.locator('.lb-board-host:not([data-hidden]) .lb-table__row--group')
 		await expect(groups).toHaveCount(2)
 		await expect(groups.first()).toContainText('desk')
-		await expect(groups.first()).toContainText('₾3,489')
-		await expect(groups.nth(1)).toContainText('₾150')
+		await expect(groups.first()).toContainText('₾ 3,489.00')
+		await expect(groups.nth(1)).toContainText('₾ 150.00')
 
-		// Sorted dearest first. `--data` rows only, so the group headers ("desk 3 ₾3,489") don't count as
+		// Sorted dearest first. `--data` rows only, so the group headers ("desk 3 ₾ 3,489.00") don't count as
 		// rows — which is exactly what a looser locator matched.
-		await expect(page.locator('.lb-table__row--data')).toHaveCount(5)
-		expect(await page.locator('.lb-table__row--data').allTextContents()).toEqual([
-			'Desk₾2,399',
-			'Chair₾850',
-			'Arm₾240',
-			'Lamp₾120',
-			'Bulb₾30',
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__row--data')).toHaveCount(5)
+		expect(await page.locator('.lb-board-host:not([data-hidden]) .lb-table__row--data').allTextContents()).toEqual([
+			'Desk₾ 2,399.00',
+			'Chair₾ 850.00',
+			'Arm₾ 240.00',
+			'Lamp₾ 120.00',
+			'Bulb₾ 30.00',
 		])
 	})
 
@@ -497,8 +572,8 @@ test.describe('nodes', () => {
 		await page.keyboard.press('Escape')
 
 		// 20 rows, 12 shown by default.
-		await expect(page.locator('.lb-table__count')).toHaveText('20 rows')
-		await expect(page.locator('.lb-table__more')).toHaveText('+8 more')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__count')).toHaveText('20 rows')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__more')).toHaveText('+8 more')
 	})
 
 	test('the toolbar comes from the registry, and retired node types are hidden from it', async ({
@@ -549,7 +624,7 @@ test.describe('nodes', () => {
 				},
 			])
 		})
-		await expect(page.locator('.lb-strip')).toContainText('₾99')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip')).toContainText('₾ 99.00')
 
 		// Read the shape back out, then re-create it on a *different* board — the same bytes a clipboard
 		// paste would carry, without depending on headless clipboard permissions.
@@ -578,13 +653,15 @@ test.describe('nodes', () => {
 
 		// The value renders — which it can only do if the target board adopted the definition, since the
 		// strip skips values it has no definition for.
-		await expect(page.locator('.lb-strip')).toContainText('₾99')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip')).toContainText('₾ 99.00')
 		expect(
 			await page.evaluate(() => {
 				const editor = (window as unknown as { editor: EditorHandle }).editor
 				return editor.getDocumentSettings().meta['lifeboard:properties']
 			})
-		).toEqual([{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }])
+		// The sidecar was seeded with the pre-rename 'currency'; adoption reads it through the
+		// normalising parser, so the target board's registry holds the current name.
+		).toEqual([{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }])
 	})
 })
 
@@ -613,11 +690,11 @@ test.describe('backup', () => {
 				},
 			])
 		})
-		await expect(page.locator('.lb-item')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-item')).toHaveCount(1)
 		await backToList(page)
 
 		// The backup controls live in the sidebar's Storage section now, not under the board grid.
-		await page.getByRole('button', { name: 'Storage & backup' }).click()
+		await page.getByRole('button', { name: 'Settings' }).click()
 
 		// Export and capture the zip bytes.
 		const downloadPromise = page.waitForEvent('download')
@@ -634,7 +711,7 @@ test.describe('backup', () => {
 		await expect(page.locator('.lb-list__board', { hasText: 'Backed up' })).toHaveCount(0)
 
 		// Import the zip back.
-		await page.getByRole('button', { name: 'Storage & backup' }).click()
+		await page.getByRole('button', { name: 'Settings' }).click()
 		const fileChooserPromise = page.waitForEvent('filechooser')
 		await page.getByRole('button', { name: 'Import backup' }).click()
 		const fileChooser = await fileChooserPromise
@@ -646,8 +723,8 @@ test.describe('backup', () => {
 
 		// Open the restored board: its content came back through tldraw's snapshot loader.
 		await openBoard(page, 'Backed up')
-		await expect(page.locator('.lb-item')).toHaveCount(1)
-		await expect(page.locator('.lb-item__value--money')).toHaveText('₾1,234')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-item')).toHaveCount(1)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-item__value--money')).toHaveText('₾ 1,234.00')
 	})
 })
 

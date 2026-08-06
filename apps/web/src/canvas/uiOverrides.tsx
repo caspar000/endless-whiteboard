@@ -4,13 +4,9 @@ import {
 	DefaultContextMenuContent,
 	DefaultKeyboardShortcutsDialog,
 	DefaultKeyboardShortcutsDialogContent,
-	DefaultToolbar,
-	DefaultToolbarContent,
 	TldrawUiMenuGroup,
 	TldrawUiMenuItem,
 	useEditor,
-	useIsToolSelected,
-	useTools,
 	useValue,
 	createShapeId,
 	type TLComponents,
@@ -27,12 +23,40 @@ import { openProperties } from './propertiesTarget'
 /**
  * Keyed by node type. These are checked against tldraw's own shortcuts — `r` is the rectangle tool
  * and `g` is an action, so neither is available; `m`, `i` and `s` are free.
+ *
+ * The markdown node is `m`, not `n`: `n` is tldraw's sticky note, which is now in the dock, and taking
+ * its letter meant two tools claimed one key. `m` for "markdown" is the free letter this comment
+ * already pointed at.
  */
 const KBD_BY_TYPE: Record<string, string> = {
-	'node.markdown': 'n',
+	'node.markdown': 'm',
 	'node.item': 'i',
 	'node.rollup': 's',
 }
+
+/**
+ * Numeric shortcuts, `1`–`9` in the dock's own order (see CanvasToolbar). tldraw 5 binds only
+ * letters, but numbers-by-position is the convention every comparable canvas app keeps, so the
+ * dock restores it. The node tools take the numbers after these, assigned in registry order.
+ */
+const NUMBER_KBDS: Record<string, string> = {
+	select: '1',
+	hand: '2',
+	frame: '3',
+	arrow: '4',
+	draw: '7',
+	eraser: '8',
+	text: '9',
+}
+const FIRST_NODE_NUMBER = 5
+/**
+ * The node run stops at 6 because 7–9 are already spoken for above.
+ *
+ * There are more dock buttons than digits — the sticky note, the shapes menu and the image button have
+ * no number either — so a third node type takes its letter and no digit, rather than silently stealing
+ * `7` from the pen.
+ */
+const LAST_NODE_NUMBER = 6
 
 /**
  * A definition's `icon` is a glyph ("M", "▤", "Σ"), not one of tldraw's built-in icon names — a
@@ -58,49 +82,43 @@ export const nodeUiOverrides: TLUiOverrides = {
 				if (selected.length === 1) openProperties(selected[0]!)
 			},
 		}
+		/*
+		 * tldraw's own grid toggle (⌘', and the checkbox in its main menu) is removed.
+		 *
+		 * It writes `isGridMode`, which the app now owns from Settings → Appearance — and tldraw persists
+		 * that flag *per board*, so leaving the shortcut in place is what let one board end up with a grid
+		 * the others did not have. It would also read as a lie: the app re-applies its own value whenever a
+		 * board mounts, so toggling here would appear to work and then silently revert on reload. Deleting
+		 * the action takes the menu item with it — tldraw's menu items render nothing for an action that
+		 * does not exist.
+		 */
+		delete actions['toggle-grid']
 		return actions
 	},
 	tools(editor, tools) {
-		for (const def of getVisibleNodeDefinitions()) {
+		getVisibleNodeDefinitions().forEach((def, index) => {
 			const id = toolIdForNodeType(def.type)
+			const letter = KBD_BY_TYPE[def.type]
+			const position = index + FIRST_NODE_NUMBER
+			const number = position <= LAST_NODE_NUMBER ? String(position) : undefined
+			const kbd = [letter, number].filter(Boolean).join(',')
 			tools[id] = {
 				id,
 				label: def.label,
 				icon: glyphIcon(def.icon),
-				kbd: KBD_BY_TYPE[def.type],
+				...(kbd ? { kbd } : {}),
 				onSelect() {
 					editor.setCurrentTool(id)
 				},
 			}
+		})
+		for (const [id, number] of Object.entries(NUMBER_KBDS)) {
+			const tool = tools[id]
+			if (!tool) continue
+			tool.kbd = tool.kbd ? `${tool.kbd},${number}` : number
 		}
 		return tools
 	},
-}
-
-function NodeToolbarItems() {
-	const tools = useTools()
-	// `useIsToolSelected` is a hook, so it cannot be called inside a loop over a dynamic list
-	// without breaking hook ordering. Each entry is therefore its own component.
-	return (
-		<>
-			{getVisibleNodeDefinitions().map((def) => (
-				<NodeToolbarItem key={def.type} toolId={toolIdForNodeType(def.type)} tools={tools} />
-			))}
-		</>
-	)
-}
-
-function NodeToolbarItem({
-	toolId,
-	tools,
-}: {
-	toolId: string
-	tools: ReturnType<typeof useTools>
-}) {
-	const tool = tools[toolId]
-	const isSelected = useIsToolSelected(tool)
-	if (!tool) return null
-	return <TldrawUiMenuItem {...tool} isSelected={isSelected} />
 }
 
 /**
@@ -179,12 +197,6 @@ export const nodeComponents: TLComponents = {
 			<AddToBoardItems />
 			<DefaultContextMenuContent />
 		</DefaultContextMenu>
-	),
-	Toolbar: (props) => (
-		<DefaultToolbar {...props}>
-			<NodeToolbarItems />
-			<DefaultToolbarContent />
-		</DefaultToolbar>
 	),
 	KeyboardShortcutsDialog: (props) => (
 		<DefaultKeyboardShortcutsDialog {...props}>

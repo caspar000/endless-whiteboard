@@ -1,27 +1,100 @@
+/*
+ * Theming.
+ *
+ * Every colour in this file goes through one of the tokens below, so a theme is a palette swap rather
+ * than a second stylesheet. `:root` holds dark (the app's original and default look) and
+ * `:root[data-theme='light']` overrides it.
+ *
+ * `data-theme` is always a *resolved* value — `light` or `dark`, never `system`. app/useTheme.ts does
+ * the resolving (and index.html re-does it inline, before first paint), which is why there is no
+ * `prefers-color-scheme` query here.
+ */
 :root {
 	--lb-bg: #0c0c0e;
 	--lb-bg-raised: #111114;
 	--lb-surface: #17171a;
+	/* Filled controls — buttons, inputs, chips, hover fills. Not "elevation + 1": in dark mode a
+	   filled control is lighter than its card, in light mode it is darker. Only the values flip. */
 	--lb-surface-2: #1f1f24;
+	--lb-surface-hover: #26262d;
 	--lb-border: #26262c;
 	--lb-border-strong: #3a3a44;
 	--lb-text: #ececed;
 	--lb-text-dim: #9a9aa4;
 	--lb-text-faint: #6b6b75;
 	--lb-accent: #6c8cff;
+	--lb-accent-hover: #7f9bff;
+	/* The accent at low alpha, for the fill behind an active tool or tab. */
+	--lb-accent-tint: rgb(108 140 255 / 16%);
+	/* Text and glyphs sitting *on* an accent fill, which inverts between themes. */
+	--lb-on-accent: #0b0b10;
 	--lb-danger: #e5484d;
+	--lb-danger-tint: rgb(229 72 77 / 12%);
+	--lb-danger-line: rgb(229 72 77 / 35%);
 	--lb-money: #3dd68c;
 	--lb-star: #f5c451;
 	/* The canvas is a shade lighter than the app frame so the board reads as a sheet of paper laid
 	   on the desk, which is what gives the endless canvas a surface at all. */
 	--lb-canvas: #131317;
 	--lb-dot: #4a4a57;
-	/* Thumbnails are exported in the app's own dark theme, so the preview well behind a loading or
+	/* Translucent-over-blur floating chrome (the dock, the selection toolbar) so the canvas reads
+	   through it — the Affine look. */
+	--lb-panel: rgb(23 23 26 / 90%);
+	/* The frosted pill of card actions, over a board thumbnail. */
+	--lb-scrim: rgb(12 12 14 / 78%);
+	/* Opaque-enough backdrop for something floating over arbitrary content. */
+	--lb-overlay: rgb(0 0 0 / 70%);
+	/* Text-selection fill, in the note editor and anywhere else CodeMirror renders. */
+	--lb-selection: rgb(108 140 255 / 35%);
+	/* Two elevations. Dark mode can lean on heavy black; light mode needs far lower alpha or the
+	   shadow reads as dirt. */
+	--lb-shadow-1: 0 10px 34px rgb(0 0 0 / 60%);
+	--lb-shadow-2: 0 12px 36px rgb(0 0 0 / 55%), 0 2px 8px rgb(0 0 0 / 35%);
+	/* Thumbnails are exported in whichever theme is active, so the preview well behind a loading or
 	   letterboxed image matches the paper inside the image. */
 	--lb-thumb-paper: var(--lb-canvas);
 	--lb-radius: 10px;
 	--lb-font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
 	color-scheme: dark;
+}
+
+/*
+ * Light. Each text role is contrast-matched to (or better than) its dark counterpart against the
+ * surface it actually sits on, so nothing gets quietly less legible by switching:
+ * text 17.0:1, text-dim 5.6–6.6:1, accent 4.8–5.7:1, danger 5.5:1, money 5.4:1.
+ */
+:root[data-theme='light'] {
+	--lb-bg: #ebebee;
+	--lb-bg-raised: #f5f5f7;
+	--lb-surface: #ffffff;
+	--lb-surface-2: #f1f1f4;
+	--lb-surface-hover: #e6e6ea;
+	--lb-border: #e0e0e5;
+	--lb-border-strong: #c9c9d1;
+	--lb-text: #1c1c1f;
+	--lb-text-dim: #5c5c66;
+	--lb-text-faint: #85858f;
+	/* Darker than the dark theme's periwinkle: #6c8cff is only ~2.4:1 on white, and this same token
+	   is a link colour, a focus ring and a fill behind --lb-on-accent text. */
+	--lb-accent: #3b5bdb;
+	--lb-accent-hover: #2f4bc4;
+	--lb-accent-tint: rgb(59 91 219 / 12%);
+	--lb-on-accent: #ffffff;
+	--lb-danger: #c92a2a;
+	--lb-danger-tint: rgb(201 42 42 / 8%);
+	--lb-danger-line: rgb(201 42 42 / 28%);
+	--lb-money: #0f7a52;
+	/* Amber has to go a long way down to clear 3:1 on white for a filled glyph. */
+	--lb-star: #b8820a;
+	--lb-canvas: #fbfbfc;
+	--lb-dot: #a9aab8;
+	--lb-panel: rgb(255 255 255 / 92%);
+	--lb-scrim: rgb(255 255 255 / 82%);
+	--lb-overlay: rgb(255 255 255 / 82%);
+	--lb-selection: rgb(59 91 219 / 20%);
+	--lb-shadow-1: 0 8px 24px rgb(20 22 40 / 12%), 0 2px 6px rgb(20 22 40 / 6%);
+	--lb-shadow-2: 0 10px 30px rgb(20 22 40 / 14%), 0 2px 8px rgb(20 22 40 / 8%);
+	color-scheme: light;
 }
 
 * {
@@ -62,7 +135,7 @@ button {
 	transition: background 120ms ease;
 }
 .lb-btn:hover:not(:disabled) {
-	background: #26262d;
+	background: var(--lb-surface-hover);
 }
 .lb-btn:disabled {
 	opacity: 0.5;
@@ -71,11 +144,11 @@ button {
 .lb-btn--primary {
 	background: var(--lb-accent);
 	border-color: var(--lb-accent);
-	color: #0b0b10;
+	color: var(--lb-on-accent);
 	font-weight: 600;
 }
 .lb-btn--primary:hover:not(:disabled) {
-	background: #7f9bff;
+	background: var(--lb-accent-hover);
 }
 .lb-btn--ghost {
 	background: transparent;
@@ -96,14 +169,120 @@ button {
 	border-radius: 6px;
 }
 
-/* ============================================================== home screen */
-/* Freeform's board browser (sidebar + thumbnail card grid) in Affine's darker register. */
+/* ================================================================ app shell */
+/* Affine's layout: a persistent sidebar, a tab strip across the top, content underneath. */
 
-.lb-home {
+.lb-shell {
 	display: grid;
 	grid-template-columns: 248px minmax(0, 1fr);
 	height: 100%;
 	background: var(--lb-bg);
+}
+.lb-shell__body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+.lb-shell__content {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- tab strip */
+
+.lb-tabs {
+	display: flex;
+	align-items: stretch;
+	gap: 4px;
+	padding: 6px 8px;
+	background: var(--lb-bg-raised);
+	border-bottom: 1px solid var(--lb-border);
+	overflow-x: auto;
+	scrollbar-width: none;
+	flex-shrink: 0;
+}
+.lb-tabs::-webkit-scrollbar {
+	display: none;
+}
+.lb-tabs__tab {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 200px;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	color: var(--lb-text-dim);
+	padding: 4px 8px;
+	font-size: 12px;
+	white-space: nowrap;
+	transition: background 100ms ease, color 100ms ease;
+	/* The whole tab is the click target — div and button variants alike. */
+	cursor: pointer;
+	user-select: none;
+}
+.lb-tabs__tab:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-tabs__tab--active {
+	background: var(--lb-surface-2);
+	border-color: var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-tabs__icon {
+	flex-shrink: 0;
+	opacity: 0.8;
+}
+.lb-tabs__label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+	max-width: 150px;
+}
+.lb-tabs__close {
+	display: grid;
+	place-items: center;
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	line-height: 1;
+	padding: 2px;
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+.lb-tabs__close:hover {
+	background: var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-tabs__new {
+	display: grid;
+	place-items: center;
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	padding: 0 8px;
+	border-radius: 7px;
+	flex-shrink: 0;
+}
+.lb-tabs__new:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-tabs__rename input {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12px;
+	padding: 1px 5px;
+	width: 18ch;
+	outline: none;
 }
 
 /* ------------------------------------------------------------------ sidebar */
@@ -130,7 +309,7 @@ button {
 	height: 26px;
 	border-radius: 7px;
 	background: var(--lb-accent);
-	color: #0b0b10;
+	color: var(--lb-on-accent);
 	font-size: 15px;
 	flex-shrink: 0;
 }
@@ -155,7 +334,7 @@ button {
 	transition: background 120ms ease;
 }
 .lb-sidebar__new:hover {
-	background: #26262d;
+	background: var(--lb-surface-hover);
 }
 .lb-sidebar__nav {
 	display: flex;
@@ -197,13 +376,24 @@ button {
 	font-variant-numeric: tabular-nums;
 	color: var(--lb-text-faint);
 }
-.lb-sidebar__footer {
-	margin-top: auto;
-	padding-top: 10px;
-	border-top: 1px solid var(--lb-border);
+.lb-sidebar__section {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: 18px;
+	min-height: 0;
+	overflow-y: auto;
 }
-.lb-sidebar__footer .lb-sidebar__item {
-	grid-template-columns: 20px 1fr;
+.lb-sidebar__section-title {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	padding: 0 10px 4px;
+}
+.lb-sidebar__icon--star {
+	color: var(--lb-star);
+	font-size: 11px;
 }
 
 /* --------------------------------------------------------------- main panel */
@@ -212,6 +402,7 @@ button {
 	overflow-y: auto;
 	padding: 28px 32px 64px;
 	min-width: 0;
+	height: 100%;
 }
 .lb-home__header {
 	display: flex;
@@ -346,7 +537,7 @@ button {
 	gap: 3px;
 	padding: 3px;
 	border-radius: 8px;
-	background: rgb(12 12 14 / 78%);
+	background: var(--lb-scrim);
 	backdrop-filter: blur(6px);
 	/* Out of the way until the card is hovered or something inside it has focus. */
 	opacity: 0;
@@ -445,8 +636,8 @@ button {
 	font-variant-numeric: tabular-nums;
 }
 .lb-settings__warn {
-	background: rgba(229, 72, 77, 0.1);
-	border: 1px solid rgba(229, 72, 77, 0.35);
+	background: var(--lb-danger-tint);
+	border: 1px solid var(--lb-danger-line);
 	border-radius: 8px;
 	padding: 10px 12px;
 	font-size: 13px;
@@ -470,22 +661,171 @@ button {
 	margin: 24px 0 0;
 }
 
+/* --------------------------------------------------------------- appearance */
+
+.lb-appearance {
+	margin-bottom: 28px;
+}
+.lb-appearance__card {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 16px 18px;
+	margin-bottom: 12px;
+}
+.lb-appearance__card:last-child {
+	margin-bottom: 0;
+}
+/* Rows within a card are separated by a rule rather than a gap, so the card reads as one group. */
+.lb-appearance__row + .lb-appearance__row,
+.lb-toggle + .lb-appearance__row,
+.lb-appearance__row + .lb-toggle,
+.lb-toggle + .lb-toggle {
+	border-top: 1px solid var(--lb-border);
+	margin-top: 14px;
+	padding-top: 14px;
+}
+.lb-appearance__label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 9px;
+}
+/* A segmented control, in the same idiom as the canvas dock's option rows. */
+.lb-appearance__seg {
+	display: inline-flex;
+	gap: 3px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 9px;
+	padding: 3px;
+}
+.lb-appearance__opt {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	font-weight: 500;
+	padding: 6px 12px;
+	transition: background 120ms ease, color 120ms ease;
+}
+.lb-appearance__opt:hover {
+	color: var(--lb-text);
+}
+.lb-appearance__opt--active {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-appearance__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+	margin: 10px 0 0;
+}
+
+/* A labelled on/off switch. The whole row is the <label>, so the text is part of the hit target. */
+.lb-toggle {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	cursor: pointer;
+}
+.lb-toggle__icon {
+	color: var(--lb-text-dim);
+	flex-shrink: 0;
+}
+.lb-toggle__text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+.lb-toggle__label {
+	font-size: 13px;
+	font-weight: 500;
+}
+.lb-toggle__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
+/*
+ * The native checkbox, restyled as a switch. `appearance: none` on the input rather than a hidden input
+ * plus a fake track: this keeps it a real checkbox for the keyboard and for screen readers, and
+ * `:focus-visible` still lands on the thing being operated.
+ */
+.lb-toggle__input {
+	appearance: none;
+	-webkit-appearance: none;
+	position: relative;
+	flex-shrink: 0;
+	width: 38px;
+	height: 22px;
+	margin: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border-strong);
+	cursor: pointer;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+.lb-toggle__input::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--lb-text-dim);
+	transition: transform 120ms ease, background 120ms ease;
+}
+.lb-toggle__input:checked {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-toggle__input:checked::after {
+	transform: translateX(16px);
+	background: var(--lb-on-accent);
+}
+.lb-toggle__input:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+
 /* --------------------------------------------------------------------- board */
 
 .lb-board {
-	position: fixed;
+	position: absolute;
+	inset: 0;
+}
+.lb-board-host {
+	position: absolute;
 	inset: 0;
 }
 
 /*
- * A board being drained: still mounted so tldraw's throttled write can land (see DRAIN_MS in
- * app/App.tsx), but invisible and inert so the board list behaves as if it were already gone.
- * `visibility: hidden` rather than `display: none` — the latter would collapse the canvas to zero
- * size and make tldraw recompute its viewport on the way out.
+ * An inactive mounted board: an open tab that isn't the current one, or a closed tab still
+ * draining its pending write (see DRAIN_MS in app/App.tsx). Still mounted so tldraw's throttled
+ * write can land, but invisible and inert. `visibility: hidden` rather than `display: none` — the
+ * latter would collapse the canvas to zero size and make tldraw recompute its viewport.
  */
-.lb-board-host[data-draining] {
+.lb-board-host[data-hidden] {
 	visibility: hidden;
 	pointer-events: none;
+}
+/*
+ * A hidden board being exported for a thumbnail. `visibility: hidden` makes tldraw's exporter drop
+ * every HTML-backed shape — that is, every node — so the image comes out blank; clipping hides the
+ * board just as completely while leaving the shapes' own computed styles intact. Set only for the
+ * duration of the export, by withExportableHost() in persistence/thumbnails.ts.
+ */
+.lb-board-host[data-hidden][data-exporting] {
+	visibility: visible;
+	clip-path: inset(100%);
 }
 .lb-board__loading {
 	display: grid;
@@ -494,62 +834,6 @@ button {
 	color: var(--lb-text-dim);
 	font-size: 14px;
 }
-.lb-board__chrome {
-	position: absolute;
-	top: 8px;
-	left: 50%;
-	transform: translateX(-50%);
-	z-index: 300;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	background: var(--lb-surface);
-	border: 1px solid var(--lb-border);
-	border-radius: 8px;
-	padding: 5px 10px;
-	box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
-	pointer-events: all;
-}
-.lb-board__back {
-	background: none;
-	border: 0;
-	color: var(--lb-text-dim);
-	font-size: 13px;
-	padding: 2px 4px;
-}
-.lb-board__back:hover {
-	color: var(--lb-text);
-}
-.lb-board__name {
-	background: none;
-	border: 0;
-	color: var(--lb-text);
-	font-family: inherit;
-	font-size: 13px;
-	font-weight: 500;
-	max-width: 32ch;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	padding: 2px 4px;
-	border-radius: 5px;
-}
-.lb-board__name:hover {
-	background: var(--lb-surface-2);
-}
-.lb-board__rename input {
-	background: var(--lb-surface-2);
-	border: 1px solid var(--lb-accent);
-	border-radius: 5px;
-	color: var(--lb-text);
-	font: inherit;
-	font-size: 13px;
-	font-weight: 500;
-	padding: 2px 5px;
-	width: 22ch;
-	outline: none;
-}
-
 .lb-debug-badge {
 	position: absolute;
 	bottom: 8px;
@@ -557,7 +841,7 @@ button {
 	z-index: 300;
 	display: flex;
 	gap: 10px;
-	background: rgb(0 0 0 / 70%);
+	background: var(--lb-overlay);
 	border-radius: 6px;
 	padding: 4px 8px;
 	font-size: 11px;
@@ -583,6 +867,261 @@ button {
 	font-weight: 600;
 	line-height: 1;
 	color: currentcolor;
+}
+
+/* ------------------------------------------------------------- bottom dock */
+/*
+ * The custom toolbar (canvas/CanvasToolbar.tsx), replacing tldraw's. Positioned against
+ * `.tlui-layout`, which is the positioned, full-height UI layer the Toolbar slot renders into.
+ */
+.lb-dock-wrap {
+	position: absolute;
+	bottom: 14px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	z-index: 300;
+	pointer-events: none;
+	font-family: var(--lb-font);
+}
+.lb-dock,
+.lb-expand {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	/* Slightly translucent over a blur, so the canvas reads through the chrome — the Affine look. */
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 14px;
+	padding: 6px;
+	box-shadow: var(--lb-shadow-2);
+	pointer-events: all;
+}
+.lb-dock__tool {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	background: none;
+	border: 0;
+	border-radius: 10px;
+	color: var(--lb-text-dim);
+	transition: background 100ms ease, color 100ms ease, transform 100ms ease;
+}
+.lb-dock__tool:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	transform: translateY(-1px);
+}
+.lb-dock__tool--active {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	transform: none;
+}
+.lb-dock__tool svg {
+	display: block;
+}
+.lb-dock__sep,
+.lb-expand__sep {
+	width: 1px;
+	align-self: stretch;
+	margin: 6px 6px;
+	background: var(--lb-border);
+	flex-shrink: 0;
+}
+
+/* The settings row that expands above the dock for the active tool. */
+.lb-expand {
+	padding: 6px 10px;
+	gap: 4px;
+	border-radius: 12px;
+}
+.lb-expand .lb-dock__tool {
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+}
+.lb-expand__group {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+.lb-expand__swatch {
+	width: 21px;
+	height: 21px;
+	border-radius: 50%;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	transition: transform 100ms ease;
+}
+.lb-expand__swatch:hover {
+	transform: scale(1.15);
+}
+.lb-expand__swatch--active {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-expand__size {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+}
+.lb-expand__size:hover {
+	background: var(--lb-surface-2);
+}
+.lb-expand__size--active {
+	background: var(--lb-surface-2);
+	color: var(--lb-accent);
+}
+.lb-expand__dot {
+	display: block;
+	border-radius: 50%;
+	background: currentcolor;
+}
+.lb-expand__label {
+	display: grid;
+	place-items: center;
+	min-width: 30px;
+	height: 30px;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 600;
+	padding: 0 6px;
+}
+.lb-expand__label:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-expand__label--active {
+	background: var(--lb-surface-2);
+	color: var(--lb-accent);
+}
+
+/* -------------------------------------------------------- selection toolbar */
+/*
+ * The floating bar above a selected shape (canvas/SelectionToolbar.tsx). Built on tldraw's
+ * `TldrawUiContextualToolbar` — the same primitive as its image/video bars, whose content
+ * components render inside ours — so positioning and show/hide are tldraw's. These rules restyle
+ * it into the app's own chrome and add the parts tldraw doesn't have: the labelled Properties
+ * button, the `…` dropdown, and the alt-text editor.
+ */
+.lb-seltb .tlui-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	/* tldraw's .tlui-menu sets overflow-y: auto, which would clip the `…` dropdown. */
+	overflow: visible;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 11px;
+	padding: 4px;
+	box-shadow: var(--lb-shadow-2);
+	font-family: var(--lb-font);
+}
+.lb-seltb__sep {
+	width: 1px;
+	align-self: stretch;
+	margin: 5px 4px;
+	background: var(--lb-border);
+	flex-shrink: 0;
+}
+/* The labelled Properties button: icon + text, unlike the icon-only neighbours. */
+.lb-seltb__props {
+	gap: 6px;
+	padding: 0 8px !important;
+	width: auto !important;
+}
+.lb-seltb__props-label {
+	font-size: 12px;
+	font-weight: 500;
+}
+/* Anchors the dropdown to its ⋯ button. */
+.lb-seltb__more {
+	position: relative;
+	display: flex;
+}
+.lb-seltb__menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 190px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	padding: 5px;
+	box-shadow: var(--lb-shadow-1);
+	font-family: var(--lb-font);
+	z-index: 1;
+}
+.lb-seltb__item {
+	display: grid;
+	grid-template-columns: 20px 1fr;
+	align-items: center;
+	gap: 8px;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	color: var(--lb-text);
+	font-size: 13px;
+	text-align: left;
+	padding: 6px 8px;
+}
+.lb-seltb__item:hover {
+	background: var(--lb-surface-2);
+}
+.lb-seltb__item--danger:hover {
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
+}
+.lb-seltb__item svg {
+	color: var(--lb-text-dim);
+	justify-self: center;
+}
+.lb-seltb__item--danger:hover svg {
+	color: var(--lb-danger);
+}
+.lb-seltb__menu-sep {
+	height: 1px;
+	background: var(--lb-border);
+	margin: 4px 6px;
+}
+.lb-seltb__alt {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-seltb__alt-input {
+	width: 240px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	padding: 6px 8px;
+	outline: none;
+}
+.lb-seltb__alt-input:focus {
+	border-color: var(--lb-accent);
 }
 
 /* ------------------------------------------------------------ dotted paper */
@@ -614,7 +1153,7 @@ button {
 	background: var(--lb-surface);
 	border: 1px solid var(--lb-border-strong);
 	border-radius: 10px;
-	box-shadow: 0 12px 38px rgb(0 0 0 / 65%);
+	box-shadow: var(--lb-shadow-1);
 	color: var(--lb-text);
 	font-family: var(--lb-font);
 	pointer-events: all;
@@ -659,7 +1198,7 @@ button {
 }
 .lb-create-menu__item:hover .lb-create-menu__icon {
 	background: var(--lb-accent);
-	color: #0b0b10;
+	color: var(--lb-on-accent);
 }
 .lb-create-menu__name {
 	font-size: 13px;
@@ -915,8 +1454,8 @@ button {
 	cursor: pointer;
 	margin-right: 5px;
 	vertical-align: -1px;
-	/* The dark theme's default checkbox is a light box on a dark card; `accent-color` tints the tick
-	   instead of needing a hand-built control. */
+	/* `accent-color` tints the tick instead of needing a hand-built control. The box itself follows
+	   `color-scheme` on `:root`, so it tracks the theme without any work here. */
 	accent-color: var(--lb-accent);
 }
 /* A read-only preview still shows state, but must not look clickable. */
@@ -1073,7 +1612,10 @@ button {
  */
 .lb-popover {
 	position: absolute;
-	z-index: 400;
+	/* Below tldraw's in-front-of-canvas layer (z 250), where the selection toolbar and its `…`
+	   dropdown live — that layer is a stacking context, so nothing inside it can exceed 250, and
+	   a taller popover would paint over the open menu. */
+	z-index: 240;
 	/* `max-height` is set inline by NodeEditorPopover from the space actually available above or below
 	   the shape; this is only a backstop for a container shorter than the viewport. */
 	max-height: calc(100vh - 32px);
@@ -1082,7 +1624,7 @@ button {
 	border: 1px solid var(--lb-accent);
 	border-radius: 8px;
 	padding: 10px;
-	box-shadow: 0 10px 34px rgb(0 0 0 / 60%);
+	box-shadow: var(--lb-shadow-1);
 	pointer-events: all;
 	color: var(--lb-text);
 	font-family: var(--lb-font);
@@ -1318,7 +1860,7 @@ button {
 .lb-rollup__tag--on {
 	background: var(--lb-accent);
 	border-color: var(--lb-accent);
-	color: #0b0b10;
+	color: var(--lb-on-accent);
 	font-weight: 600;
 }
 .lb-rollup__hint {
@@ -1338,6 +1880,9 @@ button {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
+	/* Explicit, not inherited: strips render via `OnTheCanvas`, inside tldraw's container, so without
+	   this any future child without its own colour would pick up tldraw's theme instead of ours. */
+	color: var(--lb-text);
 }
 .lb-strip__row {
 	display: flex;
@@ -1357,6 +1902,30 @@ button {
 	font-variant-numeric: tabular-nums;
 	flex-shrink: 0;
 	color: var(--lb-text);
+}
+/*
+ * A link property's value, on the card. The shape has `pointer-events: none` in display mode so it
+ * keeps behaving like a shape; a child turning them back on is the documented escape hatch, and is
+ * what makes the title clickable without first opening the panel.
+ */
+.lb-strip__link {
+	color: var(--lb-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	pointer-events: auto;
+	cursor: pointer;
+}
+.lb-strip__link:hover {
+	color: var(--lb-accent-hover);
+}
+
+/* Negative numbers read red, everywhere money and numbers show. */
+.lb-strip__value--neg,
+.lb-table__cell--neg,
+.lb-table__value--neg,
+.lb-props__value--neg,
+.lb-table__row--summary .lb-table__cell--neg {
+	color: var(--lb-danger);
 }
 .lb-strip__tags {
 	display: flex;
@@ -1420,14 +1989,35 @@ button {
 }
 .lb-props__row {
 	display: grid;
-	/* Name, value, remove. The value column takes the slack so long names truncate rather than
-	   squeezing the input someone is typing in. */
-	grid-template-columns: 88px 1fr auto;
+	/* Grip, name, value, visibility, remove. The value column takes the slack so long names
+	   truncate rather than squeezing the input someone is typing in. */
+	grid-template-columns: 14px 80px 1fr auto auto;
 	align-items: center;
 	gap: 6px;
 }
 .lb-props__row--orphan {
 	opacity: 0.65;
+}
+/* Hidden from the card, still real data — the panel shows it dimmed rather than gone. */
+.lb-props__row--hidden .lb-props__name,
+.lb-props__row--hidden .lb-props__value,
+.lb-props__row--hidden .lb-props__list {
+	opacity: 0.5;
+}
+.lb-props__row--dragging {
+	opacity: 0.35;
+}
+.lb-props__grip {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text-faint);
+	cursor: grab;
+}
+.lb-props__grip:active {
+	cursor: grabbing;
+}
+.lb-props__row:hover .lb-props__grip {
+	color: var(--lb-text-dim);
 }
 .lb-props__name {
 	color: var(--lb-text-dim);
@@ -1436,10 +2026,97 @@ button {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+/* The rename affordance: the name is a button, styled as text until hovered. */
+.lb-props__name--btn {
+	background: none;
+	border: 0;
+	padding: 1px 3px;
+	margin: -1px -3px;
+	border-radius: 4px;
+	font-family: inherit;
+	text-align: left;
+	cursor: text;
+}
+.lb-props__name--btn:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-props__name-input {
+	min-width: 0;
+}
+.lb-props__eye {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	background: none;
+	border: none;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	padding: 2px 0;
+}
+button.lb-props__eye:hover {
+	color: var(--lb-text);
+}
+/* A financial value: symbol · amount · currency code, in the row's value cell. */
+.lb-props__money {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__money-symbol {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	flex-shrink: 0;
+	min-width: 12px;
+	text-align: center;
+}
+.lb-props__money-code {
+	width: 44px !important;
+	flex-shrink: 0;
+	text-transform: uppercase;
+	text-align: center;
+}
 .lb-props__orphan-value {
 	font-size: 12px;
 	font-style: italic;
 }
+/*
+ * A link property edits as two stacked boxes — a title and an address — because the value is stored as
+ * one encoded string (`[title](url)`) that nobody should have to type. The launch button opens it
+ * without leaving the panel; on the card the title itself is the link.
+ */
+.lb-props__link {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__link-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__link-open {
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	color: var(--lb-accent);
+	font-size: 12px;
+	line-height: 1;
+	text-decoration: none;
+}
+.lb-props__link-open:hover {
+	border-color: var(--lb-accent);
+	color: var(--lb-accent-hover);
+}
+
 .lb-props input,
 .lb-props select {
 	background: var(--lb-surface-2);
@@ -1872,8 +2549,8 @@ button {
 /*
  * A task's checkbox, live while editing.
  *
- * `accent-color` tints the tick rather than needing a hand-built control, which matters on a dark card
- * where the platform default is a light box.
+ * `accent-color` tints the tick rather than needing a hand-built control; the box follows
+ * `color-scheme` on `:root`, so it tracks the theme on its own.
  */
 .lb-note--cm .lb-cm-task {
 	margin: 0 5px 0 0;

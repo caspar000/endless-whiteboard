@@ -1,99 +1,96 @@
+import { LayoutGrid, PenLine, Plus, Settings, Star } from 'lucide-react'
 import type { BoardMeta } from '../boards/boardIndex'
 
 /**
- * The home screen's left rail. Freeform's structure — sections with live counts — in Affine's darker,
- * quieter register.
+ * The shell's left rail, visible on every screen — Affine's structure: a couple of fixed sections
+ * up top, then favourites as a flat list of documents (boards, here) you can jump straight into.
  *
- * Every section is backed by real data: no placeholder entries for features that don't exist. That is
- * why there is no "Shared" here.
+ * Every entry is backed by real data: the favourites list is the actual favourited boards, not a
+ * placeholder for a feature that doesn't exist.
  */
-export type HomeSection = 'all' | 'recents' | 'favorites' | 'storage'
-
-const SECTIONS: { id: HomeSection; label: string; icon: string }[] = [
-	{ id: 'all', label: 'All boards', icon: '▦' },
-	{ id: 'recents', label: 'Recents', icon: '◷' },
-	{ id: 'favorites', label: 'Favourites', icon: '★' },
-]
-
 export function Sidebar({
-	section,
-	onSelect,
+	view,
+	activeBoardId,
 	boards,
+	onAllBoards,
+	onSettings,
+	onOpenBoard,
 	onNewBoard,
 }: {
-	section: HomeSection
-	onSelect: (section: HomeSection) => void
+	view: 'list' | 'settings' | 'board'
+	activeBoardId: string | null
 	boards: BoardMeta[]
+	onAllBoards: () => void
+	onSettings: () => void
+	onOpenBoard: (board: BoardMeta) => void
 	onNewBoard: () => void
 }) {
-	const counts: Record<HomeSection, number | null> = {
-		all: boards.length,
-		recents: Math.min(boards.length, RECENTS_LIMIT),
-		favorites: boards.filter((b) => b.favorite).length,
-		storage: null,
-	}
+	const favorites = boards.filter((b) => b.favorite)
 
 	return (
 		<aside className="lb-sidebar">
 			<div className="lb-sidebar__brand">
 				<span className="lb-sidebar__mark" aria-hidden="true">
-					◲
+					<PenLine size={14} />
 				</span>
 				<span className="lb-sidebar__name">Lifeboard</span>
 			</div>
 
 			<button className="lb-sidebar__new" onClick={onNewBoard}>
-				<span aria-hidden="true">＋</span> New board
+				<Plus size={15} aria-hidden="true" /> New board
 			</button>
 
-			<nav className="lb-sidebar__nav" aria-label="Boards">
-				{SECTIONS.map((item) => (
-					<button
-						key={item.id}
-						className={
-							section === item.id ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
-						}
-						onClick={() => onSelect(item.id)}
-						aria-current={section === item.id ? 'page' : undefined}
-					>
-						<span className="lb-sidebar__icon" aria-hidden="true">
-							{item.icon}
-						</span>
-						<span className="lb-sidebar__label">{item.label}</span>
-						<span className="lb-sidebar__count">{counts[item.id]}</span>
-					</button>
-				))}
-			</nav>
-
-			<div className="lb-sidebar__footer">
+			<nav className="lb-sidebar__nav" aria-label="Sections">
 				<button
 					className={
-						section === 'storage' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
+						view === 'list' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
 					}
-					onClick={() => onSelect('storage')}
-					aria-current={section === 'storage' ? 'page' : undefined}
+					onClick={onAllBoards}
+					aria-current={view === 'list' ? 'page' : undefined}
 				>
 					<span className="lb-sidebar__icon" aria-hidden="true">
-						⛁
+						<LayoutGrid size={15} />
 					</span>
-					<span className="lb-sidebar__label">Storage &amp; backup</span>
+					<span className="lb-sidebar__label">All boards</span>
+					<span className="lb-sidebar__count">{boards.length}</span>
 				</button>
-			</div>
+				<button
+					className={
+						view === 'settings' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
+					}
+					onClick={onSettings}
+					aria-current={view === 'settings' ? 'page' : undefined}
+				>
+					<span className="lb-sidebar__icon" aria-hidden="true">
+						<Settings size={15} />
+					</span>
+					<span className="lb-sidebar__label">Settings</span>
+				</button>
+			</nav>
+
+			{favorites.length > 0 && (
+				<nav className="lb-sidebar__section" aria-label="Favourites">
+					<div className="lb-sidebar__section-title">Favourites</div>
+					{favorites.map((board) => (
+						<button
+							key={board.id}
+							className={
+								view === 'board' && board.id === activeBoardId
+									? 'lb-sidebar__item lb-sidebar__item--active'
+									: 'lb-sidebar__item'
+							}
+							onClick={() => onOpenBoard(board)}
+							aria-current={view === 'board' && board.id === activeBoardId ? 'page' : undefined}
+							title={board.name}
+						>
+							<span className="lb-sidebar__icon lb-sidebar__icon--star" aria-hidden="true">
+								<Star size={13} fill="currentColor" />
+							</span>
+							<span className="lb-sidebar__label">{board.name}</span>
+						</button>
+					))}
+				</nav>
+			)}
 		</aside>
 	)
-}
-
-export const RECENTS_LIMIT = 6
-
-export function sectionTitle(section: HomeSection): string {
-	switch (section) {
-		case 'all':
-			return 'All boards'
-		case 'recents':
-			return 'Recents'
-		case 'favorites':
-			return 'Favourites'
-		case 'storage':
-			return 'Storage & backup'
-	}
 }

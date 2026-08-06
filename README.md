@@ -137,9 +137,34 @@ port to one new file (`TauriPlatformAdapter`).
   reformats what it doesn't model. It also avoids the two-ProseMirror focus conflict the plan flagged
   as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
   follow-up.
-- **Dark theme only.** Every node component is styled dark; a light theme means restyling them, not
-  flipping a flag. Thumbnails are exported in the same dark theme, so a preview looks like the board
-  you left.
+- **A `link` property type.** A title and a URL, on any shape. Stored as one string in markdown's own
+  link syntax (`[title](url)`) rather than as an object, because property values are bounded to JSON
+  scalars — `areValueRecordsEqual` compares one level deep, and that shallowness is what keeps dragging
+  free of rollup recomputes. The panel edits it as two boxes; on the card the title is a link that opens
+  in a **new tab**, which is what makes it clickable at all, since markdown links inside a note stay
+  inert precisely because navigating away would take the board with it. The URL is scheme-allow-listed
+  (`http`, `https`, `mailto`) in `properties/url.ts` rather than denied, because a `javascript:` or
+  `data:` href built from typed text runs script in the app's own origin. A rejected URL still shows its
+  title — as plain text, never as a link.
+- **Light and dark themes, plus "system".** Settings → Appearance. Dark is the default and the
+  original design. Every colour in `styles.css` goes through a `--lb-*` token, so a theme is a palette
+  swap: `:root` is dark and `:root[data-theme='light']` overrides it, with `data-theme` always a
+  resolved `light` or `dark` (`app/useTheme.ts` does the resolving, and `index.html` repeats it inline
+  so a light-mode load doesn't flash dark). tldraw follows via its user preference rather than the
+  `colorScheme` prop, which would remount every editor. Thumbnails are exported in the active theme,
+  so a preview looks like the board you left. A theme change re-exports every board that still has a
+  mounted editor — including inactive tabs, which needs `data-exporting` to swap their
+  `visibility: hidden` for a clip, because tldraw's exporter drops HTML-backed shapes it considers
+  invisible. Boards with no mounted editor have nothing to export from, so their previews are dropped
+  and rebuilt the next time each is opened.
+- **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
+  draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
+  ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Appearance
+  owns all of it app-wide instead: **Grid** on/off (on by default), **Grid style** (our dotted paper or
+  tldraw's, ours by default), and **Snap to grid** (off by default). The grid is drawn from tldraw's
+  `Background` slot with `Grid: null`, because tldraw only renders its own grid while `isGridMode` is on
+  — going through that slot would re-couple the two. `isGridMode` is therefore used purely as the
+  snapping flag, and tldraw's ⌘' action is removed so it can't drift per board again.
 - **The canvas style panel is removed.** None of the node types have style props, so it only ever
   applied to tldraw's built-in shapes. Their colour and size now come from tldraw's defaults.
 

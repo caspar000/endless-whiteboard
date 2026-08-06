@@ -36,7 +36,7 @@ export function RollupConfig({
 	const properties = useValue('properties', () => readPropertyRegistry(editor), [editor])
 	// Aggregation needs a number, so only numeric properties are offered as the value to roll up.
 	// Grouping works on anything, so `groupBy` gets the full list.
-	const numericProperties = properties.filter((p) => p.type === 'number' || p.type === 'currency')
+	const numericProperties = properties.filter((p) => p.type === 'number' || p.type === 'financial')
 	const tags = useValue(
 		'tags',
 		() => {

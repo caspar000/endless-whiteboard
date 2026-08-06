@@ -59,8 +59,9 @@ export function fieldAsPropertyDef(field: NodeField): PropertyDef {
 	return {
 		id: field.key,
 		name: nameFromPropertyKey(field.key),
-		// `FieldType` is a subset of `PropertyType` — every member is spelled identically.
-		type: field.type satisfies PropertyType,
+		// `FieldType` is a subset of `PropertyType`, except that fields still say `currency` — the
+		// legacy name is persisted in old item nodes, so it maps here rather than being renamed.
+		type: propertyTypeForField(field.type),
 		// Spread, never `unit: field.unit`. A property definition ends up in `shape.meta`, which tldraw
 		// validates as `T.jsonValue` — and `undefined` is not a JSON value, so an explicit
 		// `unit: undefined` on a non-currency field made the whole board fail to load.
@@ -68,9 +69,14 @@ export function fieldAsPropertyDef(field: NodeField): PropertyDef {
 	}
 }
 
+/** A legacy field type as its property-type equivalent — the persisted `currency` maps to `financial`. */
+export function propertyTypeForField(type: FieldType): PropertyType {
+	return type === 'currency' ? 'financial' : type
+}
+
 export function coerceFieldValue(type: FieldType, raw: unknown): FieldValue {
 	// No legacy field type is a list type, so the shared coercion can never return an array here.
-	return coercePropertyValue(type, raw) as FieldValue
+	return coercePropertyValue(propertyTypeForField(type), raw) as FieldValue
 }
 
 export function formatFieldValue(field: NodeField): string {

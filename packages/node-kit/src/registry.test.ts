@@ -22,7 +22,7 @@ describe('registry', () => {
 			ITEM_NODE_TYPE,
 			ROLLUP_NODE_TYPE,
 			TABLE_NODE_TYPE,
-		])
+				])
 	})
 
 	it('is idempotent, so a stray registerBuiltinNodes() call cannot throw or duplicate', () => {

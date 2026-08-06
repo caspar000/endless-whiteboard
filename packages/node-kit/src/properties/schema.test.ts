@@ -10,7 +10,7 @@ import {
 } from './schema'
 import type { PropertyDef } from './types'
 
-const price: Omit<PropertyDef, 'id'> = { name: 'Price', type: 'currency', unit: 'GEL' }
+const price: Omit<PropertyDef, 'id'> = { name: 'Price', type: 'financial', unit: 'GEL' }
 
 describe('parsePropertyRegistry', () => {
 	it('returns nothing for anything that is not an array', () => {
@@ -24,7 +24,7 @@ describe('parsePropertyRegistry', () => {
 		// Meta is untyped JSON that tldraw neither validates nor migrates, so an entry may predate the
 		// current schema or arrive from an imported backup. One bad entry must cost that entry only.
 		const parsed = parsePropertyRegistry([
-			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+			{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
 			{ id: 'broken', name: 'Broken', type: 'not-a-type' },
 			null,
 			'string',
@@ -36,7 +36,7 @@ describe('parsePropertyRegistry', () => {
 
 	it('drops a duplicate id, because an ambiguous id makes values unreadable', () => {
 		const parsed = parsePropertyRegistry([
-			{ id: 'price', name: 'Price', type: 'currency' },
+			{ id: 'price', name: 'Price', type: 'financial' },
 			{ id: 'price', name: 'Cost', type: 'number' },
 		])
 		expect(parsed).toHaveLength(1)
@@ -62,7 +62,7 @@ describe('createProperty', () => {
 		expect(readPropertyRegistry(f.editor)).toHaveLength(1)
 		// And the existing definition wins — creating must never silently retype a property that
 		// shapes already hold values for.
-		expect(readPropertyRegistry(f.editor)[0]!.type).toBe('currency')
+		expect(readPropertyRegistry(f.editor)[0]!.type).toBe('financial')
 	})
 
 	it('refuses a name with nothing usable in it', () => {
@@ -124,14 +124,25 @@ describe('mergeProperties', () => {
 		expect(registry.map((d) => d.id)).toEqual(['price', 'tags'])
 		// An existing definition is never overwritten: this runs on paste, and the target board's own
 		// meaning of "price" has to win over a copy's.
-		expect(registry[0]).toMatchObject({ name: 'Price', type: 'currency' })
+		expect(registry[0]).toMatchObject({ name: 'Price', type: 'financial' })
 	})
 
 	it('is a no-op when everything is already known, so paste stays cheap and undo stays clean', () => {
 		const f = fakeEditor()
 		createProperty(f.editor, price)
 		const runsBefore = f.runs
-		mergeProperties(f.editor, [{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }])
+		mergeProperties(f.editor, [{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }])
 		expect(f.runs).toBe(runsBefore)
+	})
+})
+
+describe('legacy type normalisation', () => {
+	it("reads a pre-rename 'currency' definition as 'financial'", () => {
+		// Registries written before the rename live in untyped meta, so the old string arrives from
+		// old boards, imported backups and pasted shapes alike; read-time is the one choke point.
+		const defs = parsePropertyRegistry([
+			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+		])
+		expect(defs).toEqual([{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }])
 	})
 })

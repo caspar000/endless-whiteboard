@@ -212,8 +212,9 @@ const theme = EditorView.theme({
 	'.cm-gutters': { display: 'none' },
 	// The shape already paints a surface; the editor must not paint a second one over it.
 	'.cm-activeLine': { backgroundColor: 'transparent' },
-	'.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(96, 165, 250, 0.35)' },
-	'&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(96, 165, 250, 0.35)' },
+	// Themed: a literal blue here was a fifth, unrelated one, and it read as a smudge on a light card.
+	'.cm-selectionBackground, ::selection': { backgroundColor: 'var(--lb-selection)' },
+	'&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--lb-selection)' },
 })
 
 export type { Extension }

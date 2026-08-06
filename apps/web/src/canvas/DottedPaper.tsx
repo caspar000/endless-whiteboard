@@ -1,12 +1,11 @@
-import { modulate, useEditor, useValue } from 'tldraw'
+import { modulate, suffixSafeId, useEditor, useUniqueSafeId, useValue } from 'tldraw'
 
 /**
- * The canvas's dotted-paper backdrop.
+ * The default dotted-paper grid — the `lifeboard` grid style (see CanvasBackground.tsx).
  *
- * Implemented as a `Background` component rather than by turning on tldraw's grid mode, which draws a
- * near-identical dot pattern: grid mode also snaps translation and resizing to the grid, and it is a
- * user-facing toggle. Neither belongs in "the paper has texture" — the dots are decoration, not a
- * constraint, and they should not be switchable off by a menu item about snapping.
+ * Drawn here rather than by turning on tldraw's grid mode, which produces a similar dot pattern but
+ * cannot be separated from snapping: one flag does both. Keeping our own means the grid is decoration
+ * and snapping is a choice, which is why they are two settings rather than one.
  *
  * The pattern is anchored in *page* space, so the dots pan and zoom with the board like real paper
  * instead of sliding underneath it. Two densities are drawn, with the finer one fading out as you zoom
@@ -21,6 +20,17 @@ const LAYERS = [
 
 export function DottedPaper() {
 	const editor = useEditor()
+
+	/*
+	 * Unique per instance, and load-bearing.
+	 *
+	 * The shell keeps one editor mounted per open tab, so several of these SVGs share one document. With
+	 * a fixed pattern id they collided: every board's `url(#…)` resolved to whichever copy came first in
+	 * document order, and since inactive boards are hidden with `visibility: hidden`, the circles inside
+	 * that first pattern inherited it and painted nothing. The result was a grid on exactly one board and
+	 * bare paper on all the others — including every newly created one.
+	 */
+	const patternId = useUniqueSafeId('lb-paper-dots')
 
 	// Re-reads on every camera change, exactly as tldraw's own grid does. Cheap: it only recomputes
 	// a handful of numbers and lets the browser tile the pattern.
@@ -46,7 +56,7 @@ export function DottedPaper() {
 					return (
 						<pattern
 							key={i}
-							id={`lb-paper-dots-${i}`}
+							id={suffixSafeId(patternId, String(i))}
 							width={step}
 							height={step}
 							patternUnits="userSpaceOnUse"
@@ -65,7 +75,12 @@ export function DottedPaper() {
 				})}
 			</defs>
 			{LAYERS.map((_, i) => (
-				<rect key={i} width="100%" height="100%" fill={`url(#lb-paper-dots-${i})`} />
+				<rect
+					key={i}
+					width="100%"
+					height="100%"
+					fill={`url(#${suffixSafeId(patternId, String(i))})`}
+				/>
 			))}
 		</svg>
 	)

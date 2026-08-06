@@ -98,9 +98,8 @@ function matchesSource(
 		if (!matchesFilter(facts, filter, properties)) return false
 	}
 
-	// A column's property being absent doesn't exclude the shape — a table is a *view*, and a row with
-	// one blank cell is still a row. That differs from the old rollup, whose single number had nothing
-	// to say about a shape with no value; here the distinction lives in the summaries instead.
+	// Whether the shape carries any of the table's *column* properties is decided in `queryTable`,
+	// where the columns are in hand — a shape that carries none of them is not a row at all.
 	return true
 }
 
@@ -364,6 +363,9 @@ export function queryTable(
 	if (groupBy && groupBy !== LABEL_COLUMN) neededKeys.add(groupBy)
 	for (const sort of sorts) if (sort.key !== LABEL_COLUMN) neededKeys.add(sort.key)
 
+	// The property columns, without the built-in label. What decides row membership below.
+	const columnKeys = columns.filter((c) => c.key !== LABEL_COLUMN).map((c) => c.key)
+
 	const rows: TableRow[] = []
 	for (const [id, shapeFacts] of facts) {
 		if (!matchesSource(shapeFacts, props, selfId, id, properties)) continue
@@ -373,6 +375,13 @@ export function queryTable(
 			const value = shapeFacts.values[key]
 			if (value !== undefined) cells[key] = value
 		}
+
+		// A row must *carry* at least one of the table's column properties. A board is full of
+		// shapes that have nothing to do with this table — drawings, frames, the intro note — and a
+		// row of "—" for each of them buries the rows the table is about. Attached-but-empty is the
+		// opposite case: that shape opted into the property, so its row stays, with a blank cell.
+		// A table with no property columns at all is a plain list of labels and keeps every match.
+		if (columnKeys.length && !columnKeys.some((key) => key in cells)) continue
 
 		rows.push({ shapeId: id, label: shapeFacts.label, cells })
 	}

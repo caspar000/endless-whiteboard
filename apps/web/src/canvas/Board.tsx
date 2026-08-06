@@ -27,13 +27,14 @@ import { touchBoard, type BoardMeta } from '../boards/boardIndex'
 import { seedDemoBoard } from '../boards/demoBoard'
 import { usePlatform } from '../platform/PlatformContext'
 import { createLifeboardAssetStore } from '../persistence/assetStore'
-import { saveBoardThumbnail } from '../persistence/thumbnails'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
 import { clearPendingRestore, takePendingRestore } from '../persistence/pendingRestore'
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
-import { DottedPaper } from './DottedPaper'
+import { CanvasBackground } from './CanvasBackground'
+import { CanvasToolbar } from './CanvasToolbar'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { NodeCreateMenu, type NodeCreatePrompt } from './NodeCreateMenu'
+import { SelectionToolbar } from './SelectionToolbar'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
 import { createNodeTools } from './nodeTools'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
@@ -63,17 +64,27 @@ const nodeTools = createNodeTools()
 
 const canvasComponents: TLComponents = {
 	...nodeComponents,
-	// The dotted-paper backdrop (see DottedPaper.tsx).
-	Background: DottedPaper,
-	// The colour/opacity panel in the top-right is removed: none of the node types have style props,
-	// so for the shapes this app is *about* the panel was always inert.
+	// The paper backdrop, and whichever grid the user has chosen (see CanvasBackground.tsx).
+	Background: CanvasBackground,
+	// tldraw's own grid is drawn only while `isGridMode` is on, and that same flag is what makes
+	// dragging snap. Rendering the grid from `Background` instead is what lets "show a grid" and "snap
+	// to the grid" be two separate settings; this slot must stay empty or tldraw's copy would appear on
+	// top of ours the moment snapping was switched on.
+	Grid: null,
+	// The colour/opacity panel in the top-right is removed: the custom toolbar's expansion row
+	// (CanvasToolbar) is where styles for tldraw's own shapes are set now.
 	StylePanel: null,
+	// Our own bottom dock instead of tldraw's toolbar (see CanvasToolbar.tsx).
+	Toolbar: CanvasToolbar,
+	// The floating bar above a selected shape (see SelectionToolbar.tsx).
+	InFrontOfTheCanvas: SelectionToolbar,
+	// tldraw's separate image/video bars are merged *into* the selection toolbar — their content
+	// components render inside it — so the standalone versions must not also appear.
+	ImageToolbar: null,
+	VideoToolbar: null,
 	// Properties for shapes whose components we don't own. See ForeignPropertyStrips.
 	OnTheCanvas: ForeignPropertyStrips,
 }
-
-/** Longest we'll make someone wait for a preview before leaving anyway. */
-const THUMBNAIL_TIMEOUT_MS = 2_000
 
 const editorOptions: Partial<TldrawOptions> = {
 	createTextOnCanvasDoubleClick: false,
@@ -169,13 +180,12 @@ function PropertiesPanel() {
 export function Board({
 	board,
 	seedDemo = false,
-	onExit,
-	onRename,
+	onEditor,
 }: {
 	board: BoardMeta
 	seedDemo?: boolean
-	onExit: () => void
-	onRename?: (name: string) => void
+	/** Reports the live editor to the shell, which uses it to capture a thumbnail on tab switch. */
+	onEditor?: (editor: Editor | null) => void
 }) {
 	const platform = usePlatform()
 	const [restore, setRestore] = useState<{ ready: boolean; snapshot?: RawBoardSnapshot }>({
@@ -199,32 +209,6 @@ export function Board({
 	// The node picker shown on double-clicking empty canvas (see NodeCreateMenu).
 	const [createPrompt, setCreatePrompt] = useState<NodeCreatePrompt | null>(null)
 	const [editor, setEditor] = useState<Editor | null>(null)
-	const [leaving, setLeaving] = useState(false)
-
-	/**
-	 * Capture the home-screen thumbnail, then leave.
-	 *
-	 * Awaited on purpose: the export has to finish while the board is still mounted *and visible*, so
-	 * it cannot be fired off into the navigation. It takes a fraction of a second, and the button
-	 * shows that it is working.
-	 */
-	const leave = async () => {
-		if (leaving) return
-		setLeaving(true)
-		if (editor) {
-			// Bounded: leaving a board must never be blocked by a thumbnail. `saveBoardThumbnail`
-			// swallows its own errors, but a hung export would otherwise strand the user on "Saving…".
-			await Promise.race([
-				saveBoardThumbnail(platform.kv, board.id, editor),
-				new Promise((resolve) => setTimeout(resolve, THUMBNAIL_TIMEOUT_MS)),
-			])
-		}
-		onExit()
-		// Cleared because the flag only covers the await above. This component is normally about to
-		// unmount — but not always: reopening the board while it is still draining reuses this very
-		// instance, and a stale `true` left the back button reading "Saving…" and refusing to leave.
-		setLeaving(false)
-	}
 
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
@@ -246,10 +230,12 @@ export function Board({
 				// Double-clicking empty canvas asks which kind of node to create instead of silently
 				// making a text shape — in an app about typed nodes, the untyped one is a poor default.
 				options={editorOptions}
-				// The app chrome and every node component are dark (styles.css). Letting tldraw follow
-				// the OS instead put a light canvas and light toolbar around dark node cards. A light
-				// theme is a reasonable follow-up, but it means restyling the nodes too, not just
-				// flipping this flag.
+				// Only the fallback for the frame before `onMount` reports this editor and app/App.tsx sets
+				// its colour-scheme preference, which overrides this. It must stay a literal: the prop is in
+				// the dependency array of the effect that *constructs* the Editor, so binding it to the
+				// app's theme would remount every editor on a switch — and unmounting inside tldraw's
+				// persistence throttle window discards the pending write (see DRAIN_MS in app/App.tsx),
+				// along with the camera, selection and undo history.
 				colorScheme="dark"
 				assets={assets}
 				maxAssetSize={MAX_IMPORT_BYTES}
@@ -268,6 +254,7 @@ export function Board({
 					const w = window as unknown as { editor?: Editor }
 					w.editor = editor
 					setEditor(editor)
+					onEditor?.(editor)
 
 					const stopTracking = trackBoardActivity(
 						editor,
@@ -281,6 +268,7 @@ export function Board({
 						// unmounts *after* the next one has mounted, so an unguarded delete here would
 						// wipe the live editor's handle.
 						if (w.editor === editor) delete w.editor
+						onEditor?.(null)
 						stopWatchingDoubleClicks()
 						stopWatchingPastes()
 						stopTracking()
@@ -303,12 +291,6 @@ export function Board({
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />
 			</Tldraw>
-			<BoardChrome
-				board={board}
-				onExit={() => void leave()}
-				leaving={leaving}
-				onRename={onRename}
-			/>
 			{editor && createPrompt && (
 				<NodeCreateMenu
 					editor={editor}
@@ -340,61 +322,4 @@ function trackBoardActivity(editor: Editor, touch: () => void): () => void {
 		unlisten()
 		touch()
 	}
-}
-
-function BoardChrome({
-	board,
-	onExit,
-	leaving,
-	onRename,
-}: {
-	board: BoardMeta
-	onExit: () => void
-	leaving: boolean
-	onRename?: (name: string) => void
-}) {
-	const [renaming, setRenaming] = useState(false)
-
-	return (
-		<div className="lb-board__chrome">
-			<button className="lb-board__back" onClick={onExit} title="Back to all boards">
-				{leaving ? '← Saving…' : '← Boards'}
-			</button>
-
-			{renaming && onRename ? (
-				<form
-					className="lb-board__rename"
-					onSubmit={(e) => {
-						e.preventDefault()
-						const value = new FormData(e.currentTarget).get('name')
-						if (typeof value === 'string' && value.trim()) onRename(value.trim())
-						setRenaming(false)
-					}}
-				>
-					{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-					<input
-						autoFocus
-						name="name"
-						defaultValue={board.name}
-						aria-label="Board name"
-						onBlur={() => setRenaming(false)}
-						onKeyDown={(e) => {
-							if (e.key === 'Escape') setRenaming(false)
-							// Otherwise the canvas would read these as tool shortcuts.
-							e.stopPropagation()
-						}}
-					/>
-				</form>
-			) : (
-				<button
-					className="lb-board__name"
-					// Double-click to rename, matching how the board name behaves on the home screen.
-					onDoubleClick={() => onRename && setRenaming(true)}
-					title={onRename ? 'Double-click to rename' : board.name}
-				>
-					{board.name}
-				</button>
-			)}
-		</div>
-	)
 }

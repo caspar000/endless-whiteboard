@@ -52,7 +52,7 @@ export function filterOpsForType(type: PropertyType): FilterOp[] {
 	const always: FilterOp[] = ['isNotEmpty', 'isEmpty']
 	switch (type) {
 		case 'number':
-		case 'currency':
+		case 'financial':
 			return [...always, 'is', 'isNot', 'gt', 'gte', 'lt', 'lte']
 		case 'date':
 			return [...always, 'is', 'isNot', 'before', 'after']
@@ -118,7 +118,7 @@ const DATE_SUMMARIES: SummaryOp[] = ['earliest', 'latest', 'range']
 
 /** Which summaries a column can carry, given the property behind it. */
 export function summaryOpsForType(type: PropertyType | null): SummaryOp[] {
-	if (type === 'number' || type === 'currency')
+	if (type === 'number' || type === 'financial')
 		return [...UNIVERSAL_SUMMARIES, ...NUMERIC_SUMMARIES]
 	if (type === 'date') return [...UNIVERSAL_SUMMARIES, ...DATE_SUMMARIES]
 	// `null` is the label column: countable, never summable.
@@ -141,7 +141,7 @@ export function summaryIsPercent(op: SummaryOp): boolean {
  * is why it can't simply be "numeric ops keep the unit".
  */
 export function summaryKeepsUnit(op: SummaryOp, type: PropertyType | null): boolean {
-	if (type !== 'number' && type !== 'currency') return false
+	if (type !== 'number' && type !== 'financial') return false
 	return (
 		op === 'sum' ||
 		op === 'avg' ||

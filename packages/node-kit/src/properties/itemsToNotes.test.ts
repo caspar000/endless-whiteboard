@@ -116,7 +116,7 @@ describe('items → notes migration', () => {
 			)
 		)
 		expect(registryOf(store)).toEqual([
-			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+			{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
 			{ id: 'category', name: 'Category', type: 'select' },
 			{ id: 'tags', name: 'Tags', type: 'multiSelect' },
 			{ id: 'weight', name: 'Weight', type: 'number', unit: 'kg' },
@@ -132,7 +132,7 @@ describe('items → notes migration', () => {
 		const store = up(board(itemShape('shape:desk')))
 		const defs = (store['shape:desk']!.meta as Record<string, unknown>)['lifeboard:propDefs']
 		expect(defs).toEqual([
-			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
+			{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
 			{ id: 'category', name: 'Category', type: 'select' },
 			{ id: 'tags', name: 'Tags', type: 'multiSelect' },
 		])

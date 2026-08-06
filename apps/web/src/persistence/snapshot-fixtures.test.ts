@@ -200,7 +200,9 @@ describe('snapshot fixtures', () => {
 			(document as { meta: Record<string, unknown> }).meta['lifeboard:properties']
 		)
 		expect(registry.find((d) => d.id === 'price')).toMatchObject({
-			type: 'currency',
+			// The fixture predates the `currency` → `financial` rename; the migration writes, and
+			// the registry parser reads, the normalised name.
+			type: 'financial',
 			unit: 'GEL',
 		})
 	})

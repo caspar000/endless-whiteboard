@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { Eye, EyeOff, GripVertical } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useValue, type Editor, type TLShape } from 'tldraw'
 import { NodeEditorPopover } from '../NodeEditorPopover'
 import { shapeLabel } from './labels'
-import { coercePropertyValue, formatPropertyValue } from './format'
-import { createProperty, findProperty, readPropertyRegistry } from './schema'
+import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
+import { encodeLinkValue, linkHref, parseLinkValue, type LinkParts } from './link'
+import { createProperty, findProperty, readPropertyRegistry, updateProperty } from './schema'
 import {
 	PROPERTY_TYPES,
 	defaultUnitForType,
@@ -13,7 +15,15 @@ import {
 	type PropertyType,
 	type PropertyValue,
 } from './types'
-import { readShapeProperties, removeShapeProperty, updateShapeProperties } from './values'
+import {
+	orderedPropertyIds,
+	readHiddenPropertyIds,
+	readShapeProperties,
+	removeShapeProperty,
+	setShapePropertyHidden,
+	setShapePropertyOrder,
+	updateShapeProperties,
+} from './values'
 
 const PANEL_WIDTH = 320
 
@@ -55,12 +65,16 @@ export function PropertiesPopover({
 		() => {
 			const current = editor.getShape(shape.id)
 			if (!current) return null
-			// The panel belongs to the selected shape, so selecting something else closes it rather than
-			// leaving a panel floating over a shape the user has moved on from.
-			if (!editor.getSelectedShapeIds().includes(shape.id)) return null
+			// The panel is per-shape, so it belongs to a *single* selection: it hides when the shape
+			// is deselected (and reopens with the next individual re-select, since the target
+			// persists), and it must never surface inside a multi-selection — properties edited
+			// "through" one shape of many reads as editing the whole selection, which this isn't.
+			if (editor.getOnlySelectedShape()?.id !== shape.id) return null
 			return {
 				shape: current,
 				values: readShapeProperties(current),
+				order: orderedPropertyIds(current),
+				hidden: readHiddenPropertyIds(current),
 				registry: readPropertyRegistry(editor),
 				label: shapeLabel(editor, current),
 			}
@@ -68,12 +82,46 @@ export function PropertiesPopover({
 		[editor, shape.id]
 	)
 
+	/**
+	 * Reordering is local state while the drag is in flight and one store write on drop. Writing on
+	 * every row crossed would spray undo entries and re-render the panel mid-drag; this way one drag
+	 * is one undo entry, like every other edit.
+	 */
+	const [draftOrder, setDraftOrder] = useState<string[] | null>(null)
+	const draggingId = useRef<string | null>(null)
+
 	// The shape was deleted while the panel was open.
 	if (!live) return null
 
-	const { values, registry, label } = live
-	const attached = Object.keys(values)
+	const { values, registry, label, hidden } = live
+	const attached = draftOrder ?? live.order
 	const available = registry.filter((def) => !(def.id in values))
+
+	const startDrag = (id: string) => {
+		draggingId.current = id
+		setDraftOrder(live.order)
+	}
+	const dragOver = (overId: string) => {
+		const dragging = draggingId.current
+		if (!dragging || dragging === overId) return
+		setDraftOrder((current) => {
+			const order = current ?? live.order
+			const from = order.indexOf(dragging)
+			const to = order.indexOf(overId)
+			if (from === -1 || to === -1 || from === to) return order
+			// Take the dragged row out and drop it at the hovered row's index: moving down lands it
+			// after the hovered row, moving up lands it before — the usual list-drag feel.
+			const next = [...order]
+			next.splice(from, 1)
+			next.splice(to, 0, dragging)
+			return next
+		})
+	}
+	const endDrag = () => {
+		if (draftOrder && draggingId.current) setShapePropertyOrder(editor, live.shape, draftOrder)
+		draggingId.current = null
+		setDraftOrder(null)
+	}
 
 	return (
 		<NodeEditorPopover shape={shape} editor={editor} width={PANEL_WIDTH}>
@@ -102,6 +150,11 @@ export function PropertiesPopover({
 							def={findProperty(registry, id)}
 							id={id}
 							value={values[id]!}
+							hidden={hidden.has(id)}
+							dragging={draftOrder !== null && draggingId.current === id}
+							onDragStart={() => startDrag(id)}
+							onDragOver={() => dragOver(id)}
+							onDragEnd={endDrag}
 						/>
 					))}
 				</div>
@@ -113,7 +166,7 @@ export function PropertiesPopover({
 }
 
 /**
- * One property's row.
+ * One property's row: drag handle, name (click to rename), value, visibility toggle, remove.
  *
  * `def` may be missing: deleting a property from the registry deliberately leaves values on shapes
  * (sweeping every shape would be a large unbatchable write, and undo would have to restore them all).
@@ -126,39 +179,145 @@ function PropertyRow({
 	def,
 	id,
 	value,
+	hidden,
+	dragging,
+	onDragStart,
+	onDragOver,
+	onDragEnd,
 }: {
 	editor: Editor
 	shape: TLShape
 	def: PropertyDef | undefined
 	id: string
 	value: PropertyValue
+	hidden: boolean
+	dragging: boolean
+	onDragStart: () => void
+	onDragOver: () => void
+	onDragEnd: () => void
 }) {
 	const remove = () => removeShapeProperty(editor, shape, id)
 
-	if (!def) {
-		return (
-			<div className="lb-props__row lb-props__row--orphan">
+	const classes = [
+		'lb-props__row',
+		def ? '' : 'lb-props__row--orphan',
+		hidden ? 'lb-props__row--hidden' : '',
+		dragging ? 'lb-props__row--dragging' : '',
+	]
+		.filter(Boolean)
+		.join(' ')
+
+	return (
+		<div
+			className={classes}
+			// Draggable via the grip only (see its handlers); the row hosts the drop targets so the
+			// hit area for reordering is the whole row, not the 14px handle.
+			onDragOver={(e) => {
+				e.preventDefault()
+				onDragOver()
+			}}
+			onDrop={(e) => e.preventDefault()}
+		>
+			<span
+				className="lb-props__grip"
+				title="Drag to reorder"
+				aria-label={`Reorder ${def?.name ?? id}`}
+				role="button"
+				draggable
+				onDragStart={(e) => {
+					e.dataTransfer.effectAllowed = 'move'
+					// Some browsers require data for a drag to start at all.
+					e.dataTransfer.setData('text/plain', id)
+					onDragStart()
+				}}
+				onDragEnd={onDragEnd}
+			>
+				<GripVertical size={13} aria-hidden="true" />
+			</span>
+
+			{def ? (
+				<PropertyName editor={editor} def={def} />
+			) : (
 				<span className="lb-props__name" title={`No definition for "${id}"`}>
 					{id}
 				</span>
+			)}
+
+			{def ? (
+				<PropertyValueEditor editor={editor} shape={shape} def={def} value={value} />
+			) : (
 				<span className="lb-props__orphan-value">{String(value ?? '—')}</span>
-				<button className="lb-props__remove" aria-label={`Remove ${id}`} onClick={remove}>
-					×
+			)}
+
+			{def ? (
+				<button
+					className="lb-props__eye"
+					aria-label={hidden ? `Show ${def.name} on the card` : `Hide ${def.name} from the card`}
+					aria-pressed={hidden}
+					title={hidden ? 'Hidden on the card — click to show' : 'Shown on the card — click to hide'}
+					onClick={() => setShapePropertyHidden(editor, shape, id, !hidden)}
+				>
+					{hidden ? <EyeOff size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}
 				</button>
-			</div>
+			) : (
+				// Keeps the grid aligned; an orphan renders nowhere, so visibility is meaningless.
+				<span className="lb-props__eye" aria-hidden="true" />
+			)}
+
+			<button className="lb-props__remove" aria-label={`Remove ${def?.name ?? id}`} onClick={remove}>
+				×
+			</button>
+		</div>
+	)
+}
+
+/**
+ * The property's name — click to rename.
+ *
+ * Renaming edits the board-level definition (the display name every shape and table shows), not
+ * this shape: values are keyed by the property's stable id, so the rename touches no shape data.
+ */
+function PropertyName({ editor, def }: { editor: Editor; def: PropertyDef }) {
+	const [editing, setEditing] = useState(false)
+	const [draft, setDraft] = useState(def.name)
+
+	const commit = () => {
+		const name = draft.trim()
+		if (name && name !== def.name) updateProperty(editor, def.id, { name })
+		setEditing(false)
+	}
+
+	if (!editing) {
+		return (
+			<button
+				className="lb-props__name lb-props__name--btn"
+				title={`${def.name} — click to rename`}
+				onClick={() => {
+					setDraft(def.name)
+					setEditing(true)
+				}}
+			>
+				{def.name}
+			</button>
 		)
 	}
 
 	return (
-		<div className="lb-props__row">
-			<span className="lb-props__name" title={def.name}>
-				{def.name}
-			</span>
-			<PropertyValueEditor editor={editor} shape={shape} def={def} value={value} />
-			<button className="lb-props__remove" aria-label={`Remove ${def.name}`} onClick={remove}>
-				×
-			</button>
-		</div>
+		<input
+			className="lb-props__name-input"
+			aria-label={`Rename ${def.name}`}
+			value={draft}
+			// eslint-disable-next-line jsx-a11y/no-autofocus
+			autoFocus
+			onChange={(e) => setDraft(e.currentTarget.value)}
+			onBlur={commit}
+			onKeyDown={(e) => {
+				if (e.key === 'Enter') commit()
+				if (e.key === 'Escape') setEditing(false)
+				// Otherwise the canvas reads keystrokes as tool shortcuts.
+				e.stopPropagation()
+			}}
+		/>
 	)
 }
 
@@ -209,15 +368,20 @@ function PropertyValueEditor({
 		)
 	}
 
-	const numeric = def.type === 'number' || def.type === 'currency'
+	if (def.type === 'number' || def.type === 'financial') {
+		return <NumericValueEditor editor={editor} shape={shape} def={def} value={value} />
+	}
+
+	if (def.type === 'link') {
+		return <LinkValueEditor def={def} value={value} onChange={set} />
+	}
+
 	return (
 		<>
 			<input
 				className="lb-props__value"
 				aria-label={`Value of ${def.name}`}
 				value={value === null || value === undefined ? '' : String(value)}
-				inputMode={numeric ? 'decimal' : 'text'}
-				placeholder={def.type === 'currency' ? '2399' : ''}
 				list={def.options?.length ? `lb-opts-${def.id}` : undefined}
 				onChange={(e) => set(e.currentTarget.value)}
 				onKeyDown={stop}
@@ -232,6 +396,167 @@ function PropertyValueEditor({
 				</datalist>
 			) : null}
 		</>
+	)
+}
+
+/**
+ * The editor for a `link` value: what it is called, and where it goes.
+ *
+ * Two inputs over one encoded string — the encoding (`[title](url)`) is storage, and making anyone
+ * type it would be a worse version of the two boxes. Both are uncontrolled, so a keystroke re-renders
+ * nothing; the pair is re-encoded and committed on every change, which keeps the card's own link live
+ * as you type.
+ *
+ * The title is an input, so clicking it edits rather than navigates — the launch button beside it is
+ * how you follow a link from in here. On the card itself the title *is* a plain link (see
+ * PropertyStrip), which is where clicking to open belongs.
+ */
+function LinkValueEditor({
+	def,
+	value,
+	onChange,
+}: {
+	def: PropertyDef
+	value: PropertyValue
+	onChange: (next: string | null) => void
+}) {
+	const parts = parseLinkValue(value)
+	const href = linkHref(value)
+	const commit = (next: LinkParts) => onChange(encodeLinkValue(next))
+
+	return (
+		<div className="lb-props__link">
+			<input
+				className="lb-props__value"
+				aria-label={`Title of ${def.name}`}
+				placeholder="Title"
+				value={parts.title}
+				onChange={(e) => commit({ ...parts, title: e.currentTarget.value })}
+				onKeyDown={(e) => e.stopPropagation()}
+			/>
+			<div className="lb-props__link-row">
+				<input
+					className="lb-props__value"
+					aria-label={`URL of ${def.name}`}
+					placeholder="lifeboard.app"
+					inputMode="url"
+					value={parts.url}
+					onChange={(e) => commit({ ...parts, url: e.currentTarget.value })}
+					onKeyDown={(e) => e.stopPropagation()}
+				/>
+				{href ? (
+					<a
+						className="lb-props__link-open"
+						href={href}
+						target="_blank"
+						rel="noreferrer noopener"
+						title={`Open ${href}`}
+						aria-label={`Open ${def.name}`}
+					>
+						↗
+					</a>
+				) : null}
+			</div>
+		</div>
+	)
+}
+
+/**
+ * The editor for `number` and `financial` values.
+ *
+ * The input keeps a local draft while focused, because a controlled input that coerces every
+ * keystroke cannot be typed into: "1." coerces to 1 and re-renders as "1", so the decimal point can
+ * never land, and a leading "-" coerces to empty. The draft is what you see while typing; every
+ * *parseable* state commits to the store live (so the card updates as you type), and blur snaps the
+ * text back to the committed value.
+ *
+ * A `financial` value additionally shows its symbol and an editable currency code — the code edits
+ * the *definition's* unit, so every shape carrying the property switches currency together.
+ */
+function NumericValueEditor({
+	editor,
+	shape,
+	def,
+	value,
+}: {
+	editor: Editor
+	shape: TLShape
+	def: PropertyDef
+	value: PropertyValue
+}) {
+	const [draft, setDraft] = useState<string | null>(null)
+
+	const display = value === null || value === undefined ? '' : String(value)
+	const negative = typeof value === 'number' && value < 0
+
+	const onChange = (raw: string) => {
+		setDraft(raw)
+		// Only parseable states (or a deliberate clear) reach the store; "-" and "1." wait in the
+		// draft until they become numbers.
+		const coerced = coercePropertyValue(def.type, raw)
+		if (raw.trim() === '' || coerced !== null) {
+			updateShapeProperties(editor, shape, { [def.id]: coerced })
+		}
+	}
+
+	const input = (
+		<input
+			className={negative ? 'lb-props__value lb-props__value--neg' : 'lb-props__value'}
+			aria-label={`Value of ${def.name}`}
+			value={draft ?? display}
+			inputMode="decimal"
+			placeholder={def.type === 'financial' ? '1000.00' : ''}
+			onFocus={() => setDraft(display)}
+			onChange={(e) => onChange(e.currentTarget.value)}
+			onBlur={() => setDraft(null)}
+			onKeyDown={(e) => e.stopPropagation()}
+		/>
+	)
+
+	if (def.type !== 'financial') return input
+
+	return (
+		<div className="lb-props__money">
+			<span className="lb-props__money-symbol" aria-hidden="true">
+				{currencySymbol(def.unit)}
+			</span>
+			{input}
+			<CurrencyCodeInput editor={editor} def={def} />
+		</div>
+	)
+}
+
+/**
+ * The currency code beside a financial value — `GEL`, `USD`, anything ISO-4217-ish. Edits the
+ * definition's unit (board-wide, like renaming), which is what keeps a column of prices in one
+ * currency rather than one per shape.
+ */
+function CurrencyCodeInput({ editor, def }: { editor: Editor; def: PropertyDef }) {
+	const [draft, setDraft] = useState<string | null>(null)
+
+	const commit = () => {
+		if (draft === null) return
+		const code = draft.trim().toUpperCase()
+		if (code && code !== def.unit) updateProperty(editor, def.id, { unit: code })
+		setDraft(null)
+	}
+
+	return (
+		<input
+			className="lb-props__money-code"
+			aria-label={`Currency of ${def.name}`}
+			value={draft ?? def.unit ?? ''}
+			placeholder="GEL"
+			maxLength={4}
+			onFocus={() => setDraft(def.unit ?? '')}
+			onChange={(e) => setDraft(e.currentTarget.value)}
+			onBlur={commit}
+			onKeyDown={(e) => {
+				if (e.key === 'Enter') commit()
+				if (e.key === 'Escape') setDraft(null)
+				e.stopPropagation()
+			}}
+		/>
 	)
 }
 

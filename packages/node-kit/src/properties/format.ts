@@ -1,3 +1,4 @@
+import { linkDisplayText, parseLinkValue } from './link'
 import {
 	DEFAULT_CURRENCY,
 	isListType,
@@ -17,9 +18,9 @@ import {
  */
 
 /**
- * Explicit symbol table rather than `Intl.NumberFormat(currency)`, because the driving use case is
- * a Georgian shopping board and `Intl` renders GEL as "GEL 2,399.00" in most locales — the user
- * wants ₾2,399. Unknown codes fall back to the code itself.
+ * The common symbols, spelled out so the board's own money (GEL) never depends on the runtime's
+ * ICU data. Codes not listed here fall through to `Intl`, so any ISO-4217 code — CHF, SEK, KRW —
+ * still resolves to whatever symbol the platform knows; only then does the code itself show.
  */
 const CURRENCY_SYMBOLS: Record<string, string> = {
 	GEL: '₾',
@@ -35,14 +36,29 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 	AZN: '₼',
 }
 
-export function currencySymbol(unit: string | undefined): string {
-	if (!unit) return currencySymbol(DEFAULT_CURRENCY)
-	return CURRENCY_SYMBOLS[unit.toUpperCase()] ?? unit
+const intlSymbolCache = new Map<string, string | null>()
+
+function intlCurrencySymbol(code: string): string | null {
+	if (intlSymbolCache.has(code)) return intlSymbolCache.get(code)!
+	let symbol: string | null = null
+	try {
+		const parts = new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: code,
+			currencyDisplay: 'narrowSymbol',
+		}).formatToParts(1)
+		symbol = parts.find((part) => part.type === 'currency')?.value ?? null
+	} catch {
+		// Not a currency code Intl knows. The caller falls back to showing the code itself.
+	}
+	intlSymbolCache.set(code, symbol)
+	return symbol
 }
 
-/** Symbols that sit before the amount with no space; anything else gets "1 234 CODE". */
-function symbolIsPrefix(symbol: string): boolean {
-	return symbol.length <= 2
+export function currencySymbol(unit: string | undefined): string {
+	if (!unit) return currencySymbol(DEFAULT_CURRENCY)
+	const code = unit.trim().toUpperCase()
+	return CURRENCY_SYMBOLS[code] ?? intlCurrencySymbol(code) ?? unit
 }
 
 /**
@@ -58,19 +74,18 @@ export function formatNumber(value: number, maxFractionDigits = 2): string {
 }
 
 /**
- * Money formatting differs from plain numbers in one way that matters: a fractional amount shows
- * *both* minor units (₾1,200.50, never ₾1,200.5), while a whole amount shows none at all
- * (₾2,399, not ₾2,399.00) because board totals are read at a glance.
+ * Money formatting, fixed shape by design: `{symbol} {amount}` — symbol first, one space, comma
+ * thousands separator, dot decimal point, always exactly two decimals (`₾ 2,399.00`, `$ -1,200.50`).
+ * The uniform two decimals is what lets a column of money line up on the decimal point.
  */
 export function formatCurrency(value: number, unit?: string): string {
 	if (!Number.isFinite(value)) return '—'
 	const symbol = currencySymbol(unit)
-	const fractionDigits = Number.isInteger(value) ? 0 : 2
 	const amount = new Intl.NumberFormat('en-US', {
-		minimumFractionDigits: fractionDigits,
-		maximumFractionDigits: fractionDigits,
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
 	}).format(value)
-	return symbolIsPrefix(symbol) ? `${symbol}${amount}` : `${amount} ${symbol}`
+	return `${symbol} ${amount}`
 }
 
 /**
@@ -102,7 +117,7 @@ export function coercePropertyValue(type: PropertyType, raw: unknown): PropertyV
 
 	switch (type) {
 		case 'number':
-		case 'currency': {
+		case 'financial': {
 			if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
 			// Tolerate the way people actually type prices: "₾2,399", "2 399.50", "$1,200"
 			const cleaned = String(raw).replace(/[^\d.,\-]/g, '')
@@ -131,7 +146,10 @@ export function formatPropertyValue(def: PropertyDef, value: PropertyValue): str
 	if (value === null || value === undefined || value === '') return '—'
 
 	switch (def.type) {
-		case 'currency':
+		// The title, not the stored `[title](url)` — that encoding is storage, never something to read.
+		case 'link':
+			return linkDisplayText(value)
+		case 'financial':
 			return typeof value === 'number' ? formatCurrency(value, def.unit) : String(value)
 		case 'number': {
 			if (typeof value !== 'number') return String(value)
@@ -154,7 +172,7 @@ export function formatPropertyValue(def: PropertyDef, value: PropertyValue): str
  * totals depend on typos.
  */
 export function numericPropertyValue(def: PropertyDef, value: PropertyValue): number | null {
-	if (def.type !== 'number' && def.type !== 'currency') return null
+	if (def.type !== 'number' && def.type !== 'financial') return null
 	return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
@@ -174,5 +192,13 @@ export function groupKeysForValue(def: PropertyDef, value: PropertyValue): strin
 		return Array.isArray(value) ? value.filter((v) => v !== '') : []
 	}
 	if (value === null || value === undefined || value === '') return []
+	// A link groups by its *address*, not by the stored `[title](url)` string: two rows pointing at the
+	// same page belong in one bucket whatever they happen to be called, and a raw encoded value would
+	// make an unreadable bucket label. The URL is the identity here, exactly as the raw value is for
+	// every other type.
+	if (def.type === 'link') {
+		const url = parseLinkValue(value).url
+		return url ? [url] : []
+	}
 	return [String(value)]
 }

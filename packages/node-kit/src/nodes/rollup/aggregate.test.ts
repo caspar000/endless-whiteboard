@@ -11,7 +11,7 @@ const ITEM = 'node.item'
  * and the unit can't disagree with itself across shapes.
  */
 const REGISTRY = new Map<string, PropertyDef>([
-	['price', { id: 'price', name: 'Price', type: 'currency', unit: 'GEL' }],
+	['price', { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }],
 	['category', { id: 'category', name: 'Category', type: 'select' }],
 	['year', { id: 'year', name: 'Year', type: 'number' }],
 	['weight', { id: 'weight', name: 'Weight', type: 'number', unit: 'kg' }],
@@ -245,11 +245,11 @@ describe('aggregate — source scoping', () => {
 
 describe('formatRollupValue', () => {
 	it('formats currency using the rollup unit when set', () => {
-		expect(formatRollupValue(3369, { style: 'currency', unit: 'USD' }, 'GEL')).toBe('$3,369')
+		expect(formatRollupValue(3369, { style: 'currency', unit: 'USD' }, 'GEL')).toBe('$ 3,369.00')
 	})
 
 	it('falls back to the unit inferred from the source items', () => {
-		expect(formatRollupValue(3369, { style: 'currency' }, 'GEL')).toBe('₾3,369')
+		expect(formatRollupValue(3369, { style: 'currency' }, 'GEL')).toBe('₾ 3,369.00')
 	})
 
 	it('formats plain numbers without a symbol', () => {

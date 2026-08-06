@@ -32,7 +32,7 @@ test.describe('PWA', () => {
 
 	test('board content is fully usable with the network offline', async ({ page, context }) => {
 		await gotoFresh(page)
-		await expect(page.locator('.tl-canvas')).toBeVisible()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
 		// Wait for the service worker to take control, so the reload below is served from its cache.
 		//
@@ -43,13 +43,13 @@ test.describe('PWA', () => {
 		await page.evaluate(() => navigator.serviceWorker?.ready)
 		if (await page.evaluate(() => navigator.serviceWorker?.controller === null)) {
 			await page.reload()
-			await expect(page.locator('.tl-canvas')).toBeVisible()
+			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 		}
 		await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, undefined, {
 			timeout: 30_000,
 		})
 
-		await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 4,409.00')
 
 		// Airplane mode.
 		await context.setOffline(true)
@@ -57,11 +57,11 @@ test.describe('PWA', () => {
 			await page.reload()
 
 			// The whole app shell comes from the cache…
-			await expect(page.locator('.tl-canvas')).toBeVisible()
+			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 			// …the board's data comes from IndexedDB…
-			await expect(page.locator('.lb-strip').first()).toBeVisible()
+			await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toBeVisible()
 			// …and the rollup still derives its total, because nothing about it needs a network.
-			await expect(page.locator('.lb-table__value')).toHaveText('₾4,409')
+			await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 4,409.00')
 
 			// Editing works offline too: this is a local-first app, not an online one that degrades.
 			await page.evaluate(() => {
@@ -95,7 +95,7 @@ test.describe('PWA', () => {
 				})
 			})
 			// 4409 - 120 + 1120 = 5409
-			await expect(page.locator('.lb-table__value')).toHaveText('₾5,409')
+			await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 5,409.00')
 		} finally {
 			await context.setOffline(false)
 		}

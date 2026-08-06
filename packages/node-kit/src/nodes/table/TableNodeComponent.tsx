@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { stopEventPropagation, useValue } from 'tldraw'
 import { NodeEditorPopover } from '../../NodeEditorPopover'
-import { formatNumber, formatPropertyValue } from '../../properties/format'
+import { formatNumber, formatPropertyValue, numericPropertyValue } from '../../properties/format'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'
 import type { NodeComponentProps } from '../../registry'
@@ -107,7 +107,7 @@ function Headline({
 	const value = result.summaries[column.key]
 	return (
 		<>
-			<div className="lb-table__value">
+			<div className={negClass('lb-table__value', value)}>
 				{formatSummary(value, column.summary, columnProperty(column.key, properties))}
 			</div>
 			<div className="lb-table__op">
@@ -165,7 +165,10 @@ function Grid({
 			{columns.some((c) => c.summary) && (
 				<div className="lb-table__row lb-table__row--summary">
 					{columns.map((column) => (
-						<span className="lb-table__cell" key={column.key}>
+						<span
+							className={negClass('lb-table__cell', column.summary && result.summaries[column.key])}
+							key={column.key}
+						>
 							{column.summary
 								? formatSummary(
 										result.summaries[column.key],
@@ -202,7 +205,13 @@ function GroupRows({
 				// showed only a row count would have lost what "By category" was for.
 				<div className="lb-table__row lb-table__row--group">
 					{columns.map((column, i) => (
-						<span className="lb-table__cell" key={column.key}>
+						<span
+							className={negClass(
+								'lb-table__cell',
+								i > 0 && column.summary ? group.summaries[column.key] : null
+							)}
+							key={column.key}
+						>
 							{i === 0 ? (
 								<>
 									<span className="lb-table__group-key">{group.key}</span>{' '}
@@ -250,12 +259,34 @@ function Row({
 		// caller, and a test looking for "Desk" matching the group header "desk".
 		<div className="lb-table__row lb-table__row--data">
 			{columns.map((column) => (
-				<span className="lb-table__cell" key={column.key} title={cellText(row, column, properties)}>
+				<span
+					className={negClass('lb-table__cell', cellNumeric(row, column, properties))}
+					key={column.key}
+					title={cellText(row, column, properties)}
+				>
 					{cellText(row, column, properties)}
 				</span>
 			))}
 		</div>
 	)
+}
+
+/** The cell's numeric value, when its column is a numeric property — what the red-negative check reads. */
+function cellNumeric(
+	row: TableRow,
+	column: TableColumn,
+	properties: ReadonlyMap<string, PropertyDef>
+): number | null {
+	if (column.key === LABEL_COLUMN) return null
+	const def = properties.get(column.key)
+	if (!def) return null
+	const value = row.cells[column.key]
+	return value === undefined ? null : numericPropertyValue(def, value)
+}
+
+/** Appends the red-negative modifier when the value behind a cell is a negative number. */
+function negClass(base: string, value: number | null | undefined | false | ''): string {
+	return typeof value === 'number' && value < 0 ? `${base} ${base}--neg` : base
 }
 
 function cellText(

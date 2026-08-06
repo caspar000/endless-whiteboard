@@ -51,7 +51,7 @@ describe('formatPropertyValue', () => {
 
 	it('takes unit from the definition, not from the value', () => {
 		// The point of the registry: a value is just a number, and its meaning lives in one place.
-		expect(formatPropertyValue(def({ type: 'currency', unit: 'GEL' }), 2399)).toBe('₾2,399')
+		expect(formatPropertyValue(def({ type: 'financial', unit: 'GEL' }), 2399)).toBe('₾ 2,399.00')
 		expect(formatPropertyValue(def({ type: 'number', unit: 'kg' }), 72.5)).toBe('72.5 kg')
 	})
 })
@@ -59,7 +59,7 @@ describe('formatPropertyValue', () => {
 describe('numericPropertyValue', () => {
 	it('projects number and currency', () => {
 		expect(numericPropertyValue(def({ type: 'number' }), 5)).toBe(5)
-		expect(numericPropertyValue(def({ type: 'currency' }), 2399)).toBe(2399)
+		expect(numericPropertyValue(def({ type: 'financial' }), 2399)).toBe(2399)
 	})
 
 	it('refuses a numeric-looking text value, so a typo cannot change a total', () => {
@@ -87,7 +87,7 @@ describe('groupKeysForValue', () => {
 	it('groups a scalar by its raw value, because a bucket key is an identity', () => {
 		// Not the display form: formatting a `number` would group a year under "2,026", and two nearby
 		// dates could round to one label. A plainer money label is the price of buckets that don't lie.
-		expect(groupKeysForValue(def({ type: 'currency', unit: 'USD' }), 1200)).toEqual(['1200'])
+		expect(groupKeysForValue(def({ type: 'financial', unit: 'USD' }), 1200)).toEqual(['1200'])
 		expect(groupKeysForValue(def({ type: 'number' }), 2026)).toEqual(['2026'])
 		expect(groupKeysForValue(def({ type: 'date' }), '2026-08-03')).toEqual(['2026-08-03'])
 	})
@@ -121,6 +121,46 @@ describe('emptyValueForType', () => {
 		expect(emptyValueForType('checkbox')).toBe(false)
 		expect(emptyValueForType('multiSelect')).toEqual([])
 		expect(emptyValueForType('text')).toBeNull()
-		expect(emptyValueForType('currency')).toBeNull()
+		expect(emptyValueForType('financial')).toBeNull()
+	})
+})
+
+describe('financial formatting', () => {
+	it('is always "{symbol} {amount}" with two decimals', () => {
+		const price = def({ type: 'financial', unit: 'GEL' })
+		expect(formatPropertyValue(price, 1000)).toBe('₾ 1,000.00')
+		expect(formatPropertyValue(def({ type: 'financial', unit: 'USD' }), 1000)).toBe('$ 1,000.00')
+	})
+
+	it('rounds to two decimals rather than truncating', () => {
+		expect(formatPropertyValue(def({ type: 'financial', unit: 'USD' }), 1234.567)).toBe(
+			'$ 1,234.57'
+		)
+	})
+
+	it('keeps the sign on the amount, so a negative reads "$ -1,000.00"', () => {
+		expect(formatPropertyValue(def({ type: 'financial', unit: 'USD' }), -1000)).toBe(
+			'$ -1,000.00'
+		)
+	})
+
+	it('resolves codes outside the built-in table through Intl', () => {
+		// AUD is not in CURRENCY_SYMBOLS; Intl's narrow symbol for it is "$".
+		expect(formatPropertyValue(def({ type: 'financial', unit: 'AUD' }), 5)).toBe('$ 5.00')
+	})
+})
+
+describe('numeric coercion of what people type', () => {
+	it('accepts negative amounts', () => {
+		expect(coercePropertyValue('financial', '-1,234.56')).toBe(-1234.56)
+		expect(coercePropertyValue('number', '-3.5')).toBe(-3.5)
+	})
+
+	it('accepts floating point without grouping', () => {
+		expect(coercePropertyValue('financial', '1234.56')).toBe(1234.56)
+	})
+
+	it('rejects a bare minus rather than storing garbage', () => {
+		expect(coercePropertyValue('number', '-')).toBeNull()
 	})
 })

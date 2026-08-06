@@ -38,6 +38,45 @@ export function onThumbnailSaved(listener: ThumbnailListener): () => void {
 const THUMB_LONG_EDGE = 600
 const MAX_SHAPES = 400
 
+/**
+ * Lets a board that is currently hidden be exported anyway.
+ *
+ * An inactive mounted board is hidden with `visibility: hidden` (see `.lb-board-host[data-hidden]`),
+ * and tldraw's exporter honours that: every HTML-backed shape — which is every node type — serialises
+ * to nothing, so the image comes out blank. Measured: 23 KB of empty paper against 119 KB for the same
+ * board visible.
+ *
+ * `data-exporting` swaps that for a clip, which hides the board just as completely but leaves the
+ * shapes' own computed styles alone. Verified byte-identical to exporting a fully visible board.
+ *
+ * The attribute is removed again in a `finally`, so a failed export can't leave a board clipped.
+ */
+async function withExportableHost<T>(editor: Editor, run: () => Promise<T>): Promise<T> {
+	const host = editor.getContainer().closest<HTMLElement>('[data-hidden]')
+	if (!host) return run()
+
+	host.setAttribute('data-exporting', 'true')
+	try {
+		await nextPaint()
+		return await run()
+	} finally {
+		host.removeAttribute('data-exporting')
+	}
+}
+
+/**
+ * Two frames, because the export reads computed styles: one for the attribute above to take effect,
+ * one for the resulting style recalculation to land. Bounded by a timer as well — `requestAnimationFrame`
+ * never fires in a background tab, and an OS theme flip can arrive while the app is not on screen.
+ */
+function nextPaint(): Promise<void> {
+	return new Promise((resolve) => {
+		const done = () => resolve()
+		requestAnimationFrame(() => requestAnimationFrame(done))
+		setTimeout(done, 100)
+	})
+}
+
 export async function saveBoardThumbnail(
 	kv: KvStore,
 	boardId: string,
@@ -61,19 +100,22 @@ export async function saveBoardThumbnail(
 
 		const scale = THUMB_LONG_EDGE / Math.max(bounds.width, bounds.height, 1)
 
-		const result = await editor.toImage(shapes, {
-			format: 'webp',
-			quality: 0.7,
-			background: true,
-			// Exported in the app's own theme, so a preview looks like the board you left. (An earlier
-			// version forced light mode to make previews legible — but that was compensating for a
-			// broken export that dropped the node card backgrounds entirely. With the cards rendering,
-			// dark-on-dark reads fine, and matching the app is what Freeform does.)
-			darkMode: true,
-			padding: 32,
-			// Clamped: a board whose content is tiny would otherwise be upscaled enormously.
-			scale: Math.min(scale, 2),
-		})
+		const result = await withExportableHost(editor, () =>
+			editor.toImage(shapes, {
+				format: 'webp',
+				quality: 0.7,
+				background: true,
+				// Exported in the app's own theme, so a preview looks like the board you left — matching the
+				// app is what Freeform does. (An earlier version forced light mode to make previews legible,
+				// but that was compensating for a broken export that dropped the node card backgrounds
+				// entirely. With the cards rendering, either theme reads fine on its own terms.) Read from
+				// the editor rather than passed in: it already resolves `system` against the OS.
+				darkMode: editor.user.getIsDarkMode(),
+				padding: 32,
+				// Clamped: a board whose content is tiny would otherwise be upscaled enormously.
+				scale: Math.min(scale, 2),
+			})
+		)
 
 		await kv.set(`${PREFIX}${boardId}`, result.blob)
 		notify(boardId)
@@ -92,6 +134,26 @@ export async function loadBoardThumbnail(kv: KvStore, boardId: string): Promise<
 
 export async function deleteBoardThumbnail(kv: KvStore, boardId: string): Promise<void> {
 	await kv.delete(`${PREFIX}${boardId}`)
+}
+
+/**
+ * Drops cached thumbnails for every board except those listed, for when the theme changes.
+ *
+ * A thumbnail bakes in the theme it was exported in, so after a switch the survivors would be a mix of
+ * light and dark previews — and the well behind a letterboxed image (`--lb-thumb-paper`) would frame a
+ * dark picture in light. The keep-list is the boards that were just re-exported; the rest are dropped
+ * because they have no mounted editor to export *from*, and a placeholder is at least honest. They come
+ * back the next time each board is opened and left.
+ */
+export async function clearThumbnailsExcept(kv: KvStore, keepIds: string[]): Promise<void> {
+	const keep = new Set(keepIds.map((id) => `${PREFIX}${id}`))
+	const keys = (await kv.keys()).filter((key) => key.startsWith(PREFIX) && !keep.has(key))
+	for (const key of keys) {
+		await kv.delete(key)
+		// Notify per board so cards already on screen swap to the placeholder now, rather than staying
+		// on a stale preview until the next full reload.
+		notify(key.slice(PREFIX.length))
+	}
 }
 
 function notify(boardId: string): void {

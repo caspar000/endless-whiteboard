@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
@@ -54,7 +55,11 @@ export function BoardCard({
 						aria-label={board.favorite ? `Unfavourite ${board.name}` : `Favourite ${board.name}`}
 						aria-pressed={board.favorite === true}
 					>
-						{board.favorite ? '★' : '☆'}
+						<Star
+							size={14}
+							aria-hidden="true"
+							{...(board.favorite ? { fill: 'currentColor' } : {})}
+						/>
 					</button>
 
 					{confirmDelete ? (

@@ -26,6 +26,19 @@ export function readPropertyRegistry(editor: Editor): PropertyDef[] {
 	return parsePropertyRegistry(editor.getDocumentSettings().meta[META_KEY])
 }
 
+/**
+ * A definition written before the `currency` → `financial` rename. Normalised on read rather than
+ * migrated in place: registries live in untyped meta (document *and* shape sidecars), which tldraw
+ * neither validates nor migrates, so read-time is the only choke point that covers every source —
+ * old boards, imported backups, and pasted shapes alike.
+ */
+function normalizeLegacyType(entry: unknown): unknown {
+	if (entry && typeof entry === 'object' && (entry as { type?: unknown }).type === 'currency') {
+		return { ...(entry as object), type: 'financial' }
+	}
+	return entry
+}
+
 /** The pure half of {@link readPropertyRegistry}, so the parsing rules are testable on their own. */
 export function parsePropertyRegistry(raw: unknown): PropertyDef[] {
 	if (!Array.isArray(raw)) return []
@@ -35,7 +48,7 @@ export function parsePropertyRegistry(raw: unknown): PropertyDef[] {
 	for (const entry of raw) {
 		let def: PropertyDef
 		try {
-			def = propertyDefValidator.validate(entry)
+			def = propertyDefValidator.validate(normalizeLegacyType(entry))
 		} catch {
 			continue
 		}

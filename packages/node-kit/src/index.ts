@@ -93,9 +93,13 @@ export {
 } from './properties/schema'
 export {
 	attachProperty,
+	orderedPropertyIds,
+	readHiddenPropertyIds,
 	readShapeProperties,
 	readShapePropertyDefs,
 	removeShapeProperty,
+	setShapePropertyHidden,
+	setShapePropertyOrder,
 	shapeCarriesProperty,
 	updateShapeProperties,
 	type ShapeProperties,
@@ -130,6 +134,7 @@ export {
 	rollupNodeDefinition,
 	type RollupNodeProps,
 } from './nodes/rollup/definition'
+
 
 // The table node: a live, read-only view of the board. Replaces the rollup, and absorbs its big number.
 export {

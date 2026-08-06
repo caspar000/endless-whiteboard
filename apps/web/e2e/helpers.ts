@@ -39,15 +39,19 @@ export async function gotoFresh(page: Page): Promise<void> {
 
 /** Waits for the demo board that first run seeds, then goes back to the board list. */
 export async function skipFirstRunDemo(page: Page): Promise<void> {
-	await expect(page.locator('.tl-canvas')).toBeVisible()
+	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 	await backToList(page)
+	// Close the demo board's tab as well. An open tab keeps its editor mounted (that is what makes
+	// tab switching instant), and the demo board's mounted-but-hidden nodes would otherwise leak
+	// into every "count the shapes on the board" assertion that follows.
+	await page.locator('.lb-tabs__close').click()
+	await expect(page.locator('.lb-board-host')).toHaveCount(0, { timeout: 20_000 })
 }
 
 export async function backToList(page: Page): Promise<void> {
-	await page.getByRole('button', { name: '← Boards' }).click()
-	// The home screen's heading is the *section* name now ("All boards"); the app name lives in the
-	// sidebar. Waiting on the sidebar nav is the stable signal that the home screen is up.
-	await expect(page.locator('.lb-sidebar__nav')).toBeVisible()
+	// The pinned "All boards" tab in the tab strip is the way back to the home screen.
+	await page.getByRole('tab', { name: 'All boards' }).click()
+	await expect(page.locator('.lb-home__header')).toBeVisible()
 }
 
 /**
@@ -55,20 +59,20 @@ export async function backToList(page: Page): Promise<void> {
  *
  * Waiting on `.tl-canvas` alone is not enough: `window.editor` still points at the previously
  * mounted (now disposed) editor until the new `onMount` runs, and shapes created on a disposed
- * editor silently never render. The board name in the chrome only appears once the right board is
- * mounted, so that is the signal.
+ * editor silently never render. The board's tab becoming the active one only happens once the
+ * right board is mounted, so that is the signal.
  */
 export async function openBoard(page: Page, name: string): Promise<void> {
 	await page.locator('.lb-list__board', { hasText: name }).getByText(name).click()
-	await expect(page.locator('.tl-canvas')).toBeVisible()
-	await expect(page.locator('.lb-board__name')).toHaveText(name)
+	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+	await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(name)
 	await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 }
 
 export async function createBoard(page: Page, name?: string): Promise<void> {
 	// 'New board' appears in both the sidebar and the section header on the home screen.
 	await page.getByRole('button', { name: 'New board' }).first().click()
-	await expect(page.locator('.tl-canvas')).toBeVisible()
+	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 	if (name) {
 		await backToList(page)
 		// Target the *untitled* row, not "the first row". The list sorts by `updatedAt`, and leaving
@@ -95,7 +99,9 @@ export async function drawNode(
 	size = { w: 240, h: 260 }
 ): Promise<void> {
 	const toolId = labelToToolId(label)
-	await page.getByTestId(`tools.${toolId}`).click()
+	// Scoped to the visible board: inactive tabs keep their (hidden) editors mounted, each with its
+	// own toolbar, so a page-wide testid lookup can match more than one dock.
+	await page.locator('.lb-board-host:not([data-hidden])').getByTestId(`tools.${toolId}`).click()
 	// Switching tools is asynchronous, and the click resolving is not the same as the tool being
 	// current. Dragging too early is handled by the *select* tool, which draws a marquee and creates
 	// nothing — a failure that looks like the node type being broken.

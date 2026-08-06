@@ -54,11 +54,10 @@ async function importGeneratedImage(
 		await editor.putExternalContent({ type: 'files', files: [file], point: { x: 200, y: 200 } })
 
 		if (leaveBoardImmediately) {
-			const back = [...document.querySelectorAll('button')].find((b) =>
-				b.textContent?.startsWith('←')
-			)
-			if (!back) throw new Error('Could not find the back button to leave the board')
-			back.click()
+			// The pinned "All boards" tab is the first tab in the strip.
+			const home = document.querySelector<HTMLElement>('.lb-tabs__tab')
+			if (!home) throw new Error('Could not find the home tab to leave the board')
+			home.click()
 		}
 		return blob.size
 	}, opts)
@@ -66,7 +65,7 @@ async function importGeneratedImage(
 
 /** tldraw 5 renders image shapes as an <img> inside its generic HTML container. */
 function imageShapes(page: import('@playwright/test').Page) {
-	return page.locator('.tl-shape img')
+	return page.locator('.lb-board-host:not([data-hidden]) .tl-shape img')
 }
 
 /**
@@ -263,13 +262,13 @@ test.describe('asset store', () => {
 		await openBoard(page, 'Keep')
 		await importGeneratedImage(page)
 		await waitForPersistedShapes(page, 1)
-		await page.getByRole('button', { name: '← Boards' }).click()
+		await page.getByRole('tab', { name: 'All boards' }).click()
 
 		await createBoard(page, 'Discard')
 		await openBoard(page, 'Discard')
 		await importGeneratedImage(page)
 		await waitForPersistedShapes(page, 1)
-		await page.getByRole('button', { name: '← Boards' }).click()
+		await page.getByRole('tab', { name: 'All boards' }).click()
 
 		const shared = await readBlobStore(page)
 		expect(shared.hashes).toHaveLength(1)

@@ -137,6 +137,15 @@ port to one new file (`TauriPlatformAdapter`).
   reformats what it doesn't model. It also avoids the two-ProseMirror focus conflict the plan flagged
   as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
   follow-up.
+- **Money is per shape, and conversion is opt-in.** A `financial` value carries its own currency
+  (`lifeboard:propUnits` on the shape); the property definition's unit is only the default a new value
+  inherits. Rates come from open.er-api.com once per provider-update window, cached in KV, and a stale
+  table is used and labelled rather than failing a total — `rateBetween` returns `null` for an unknown
+  currency instead of 1, because treating an unconvertible value as one-to-one is how a total comes out
+  confident and wrong. Per column you choose what to show the total in and which currencies take part;
+  per table you can hand-enter rates that beat the fetched ones. Money is converted *before* it is
+  reduced, sorted or filtered — reduced first, `max` picks the largest number regardless of currency —
+  and grouping by a money column's currency gives a subtotal per currency with nothing converted at all.
 - **A `link` property type.** A title and a URL, on any shape. Stored as one string in markdown's own
   link syntax (`[title](url)`) rather than as an object, because property values are bounded to JSON
   scalars — `areValueRecordsEqual` compares one level deep, and that shallowness is what keeps dragging

@@ -39,6 +39,13 @@ export interface TableFilter {
 	propertyId: string
 	op: FilterOp
 	value: FilterValue
+	/**
+	 * The currency the threshold is stated in, for a money property.
+	 *
+	 * Without it, `price > 100` means a different thing on every row — 100 GEL on one card and 100 USD
+	 * on the next — which is a filter that looks precise and isn't. Absent means the property's default.
+	 */
+	unit?: string
 }
 
 /**
@@ -255,7 +262,8 @@ const filterValueValidator: T.Validatable<FilterValue> = T.jsonValue.refine((v):
 	throw new Error(`A filter value must be a JSON scalar, got ${t}`)
 })
 
-export const tableFilterValidator: T.Validatable<TableFilter> = T.object({
+export const tableFilterValidator = T.object({
+	unit: T.string.optional(),
 	propertyId: T.string,
 	op: T.literalEnum(...FILTER_OPS),
 	value: filterValueValidator,
@@ -293,6 +301,21 @@ export const tableLayoutValidator: T.Validatable<TableLayout> = T.object({
 // ---------------------------------------------------------------------------
 // Defaults & helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * A `groupBy` of `currency:<propertyId>` buckets rows by the currency of that money column.
+ *
+ * A separate namespace rather than a reserved property id, so it can never collide with a real one.
+ * Worth having because it answers "what did I spend in USD" with no rates at all — subtotals per
+ * currency, each in its own, nothing converted and nothing to be stale.
+ */
+export const CURRENCY_GROUP_PREFIX = 'currency:'
+
+/** The property id behind a currency grouping, or `null` if this isn't one. */
+export function currencyGroupProperty(groupBy: string | null): string | null {
+	if (!groupBy?.startsWith(CURRENCY_GROUP_PREFIX)) return null
+	return groupBy.slice(CURRENCY_GROUP_PREFIX.length) || null
+}
 
 export const DEFAULT_MAX_ROWS = 12
 export const DEFAULT_COLUMN_WIDTH = 1

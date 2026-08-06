@@ -4,6 +4,7 @@ import type { RateTable } from '../../properties/rates'
 import type { PropertyDef, PropertyValue } from '../../properties/types'
 import { moneyOutcome, queryTable, summarise, type TableRow } from './query'
 import {
+	CURRENCY_GROUP_PREFIX,
 	LABEL_COLUMN,
 	defaultTableProps,
 	filterOpsForType,
@@ -521,4 +522,113 @@ describe('currency conversion in summaries', () => {
 	})
 
 	void properties
+})
+
+describe('currency-aware sorting, filters and grouping', () => {
+	const priceDef: PropertyDef = { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }
+	const defs = new Map([['price', priceDef]])
+	// One GEL buys 0.4 USD, so 1 USD is 2.5 GEL.
+	const rates: RateTable = { base: 'GEL', rates: { USD: 0.4, GEL: 1 }, asOf: 0, stale: false }
+
+	const facts = (entries: [string, number, string?][]): FactsMap =>
+		new Map(
+			entries.map(([id, price, unit]) => [
+				id,
+				{
+					type: 'note',
+					parentId: null,
+					label: id,
+					values: { price },
+					// Typed explicitly: the conditional widens to `{ price?: undefined }`, which is not a
+					// `Record<string, string>`.
+					units: (unit ? { price: unit } : {}) as Record<string, string>,
+				},
+			])
+		)
+
+	const props = (over: Partial<TableNodeProps> = {}): TableNodeProps => ({
+		...defaultTableProps(),
+		columns: [{ key: 'price', summary: 'sum', width: 1 }],
+		...over,
+	})
+
+	/** 200 GEL is 80 USD, so it must sort *below* 100 USD despite the larger digits. */
+	it('sorts money by converted amount, not by raw number', () => {
+		const result = queryTable(
+			facts([
+				['big-number', 200, 'GEL'],
+				['big-money', 100, 'USD'],
+			]),
+			props({ sorts: [{ key: 'price', dir: 'desc' }] }),
+			'self',
+			defs,
+			rates
+		)
+		expect(result.groups[0]!.rows.map((r) => r.shapeId)).toEqual(['big-money', 'big-number'])
+	})
+
+	it('compares a filter threshold in the currency the threshold is stated in', () => {
+		const board = facts([
+			['gel', 150, 'GEL'],
+			['usd', 100, 'USD'],
+		])
+		// "> 100 USD": the 150 GEL row is 60 USD and must not match.
+		const inUsd = queryTable(
+			board,
+			props({
+				source: { shapeTypes: null, scope: 'page', frameId: null, filters: [{ propertyId: 'price', op: 'gt', value: 99, unit: 'USD' }] },
+			}),
+			'self',
+			defs,
+			rates
+		)
+		expect(inUsd.groups.flatMap((g) => g.rows).map((r) => r.shapeId)).toEqual(['usd'])
+
+		// "> 100 GEL": now the 150 GEL row matches and the 100 USD row (250 GEL) does too.
+		const inGel = queryTable(
+			board,
+			props({
+				source: { shapeTypes: null, scope: 'page', frameId: null, filters: [{ propertyId: 'price', op: 'gt', value: 100, unit: 'GEL' }] },
+			}),
+			'self',
+			defs,
+			rates
+		)
+		expect(inGel.groups.flatMap((g) => g.rows).map((r) => r.shapeId).sort()).toEqual(['gel', 'usd'])
+	})
+
+	it('groups by currency, giving each its own subtotal with nothing converted', () => {
+		const result = queryTable(
+			facts([
+				['a', 100, 'GEL'],
+				['b', 50, 'GEL'],
+				['c', 20, 'USD'],
+			]),
+			props({ groupBy: `${CURRENCY_GROUP_PREFIX}price` }),
+			'self',
+			defs,
+			rates
+		)
+		const byKey = new Map(result.groups.map((g) => [g.key, g]))
+		expect([...byKey.keys()].sort()).toEqual(['GEL', 'USD'])
+		expect(byKey.get('GEL')!.summaries.price).toBe(150)
+		expect(byKey.get('USD')!.summaries.price).toBe(20)
+	})
+
+	it('reports how old the rates behind a conversion were', () => {
+		const stale: RateTable = { ...rates, asOf: 1_700_000_000_000, stale: true }
+		const result = queryTable(
+			facts([
+				['a', 100, 'GEL'],
+				['b', 100, 'USD'],
+			]),
+			props({ columns: [{ key: 'price', summary: 'sum', width: 1, money: { to: 'GEL', include: null } }] }),
+			'self',
+			defs,
+			stale
+		)
+		expect(result.money.price!.converted).toBe(true)
+		expect(result.money.price!.asOf).toBe(1_700_000_000_000)
+		expect(result.money.price!.stale).toBe(true)
+	})
 })

@@ -99,7 +99,9 @@ function areMoneyEqual(
 			x.unit !== y.unit ||
 			x.mixed !== y.mixed ||
 			x.excluded !== y.excluded ||
-			x.converted !== y.converted
+			x.converted !== y.converted ||
+			x.asOf !== y.asOf ||
+			x.stale !== y.stale
 		) {
 			return false
 		}

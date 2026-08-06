@@ -10,6 +10,7 @@ import { isListType, type PropertyDef, type PropertyValue } from '../../properti
 import {
 	LABEL_COLUMN,
 	columnProperty,
+	currencyGroupProperty,
 	type FilterOp,
 	type MoneyConfig,
 	type SummaryOp,
@@ -57,6 +58,10 @@ export interface MoneyOutcome {
 	mixed: boolean
 	excluded: number
 	converted: boolean
+	/** When the rates behind a conversion were last recalculated, so a total can admit its age. */
+	asOf?: number
+	/** True when those rates are past their refresh time — offline, usually. */
+	stale?: boolean
 }
 
 export interface TableGroup {
@@ -109,7 +114,8 @@ function matchesSource(
 	props: TableNodeProps,
 	selfId: string,
 	id: string,
-	properties: ReadonlyMap<string, PropertyDef>
+	properties: ReadonlyMap<string, PropertyDef>,
+	rates: RateTable | null
 ): boolean {
 	// A table never includes itself. Tables contribute no property values at all, so a table-of-tables
 	// cycle is impossible by construction — this is belt to that braces.
@@ -126,7 +132,7 @@ function matchesSource(
 	}
 
 	for (const filter of source.filters) {
-		if (!matchesFilter(facts, filter, properties)) return false
+		if (!matchesFilter(facts, filter, properties, rates)) return false
 	}
 
 	// Whether the shape carries any of the table's *column* properties is decided in `queryTable`,
@@ -137,10 +143,27 @@ function matchesSource(
 export function matchesFilter(
 	facts: ShapeFacts,
 	filter: TableFilter,
-	properties: ReadonlyMap<string, PropertyDef>
+	properties: ReadonlyMap<string, PropertyDef>,
+	rates: RateTable | null = null
 ): boolean {
 	const def = properties.get(filter.propertyId)
-	const value = facts.values[filter.propertyId]
+	let value = facts.values[filter.propertyId]
+
+	/*
+	 * A money threshold is stated in one currency, so the row has to be expressed in that currency
+	 * before the comparison means anything. Without this `price > 100` matched a 100 USD row and a
+	 * 100 GEL row identically, which looks precise and isn't.
+	 *
+	 * A row that cannot be converted drops out rather than being compared at par — the same choice the
+	 * summaries make, for the same reason.
+	 */
+	if (def?.type === 'financial' && typeof value === 'number') {
+		const target = normaliseCurrency(filter.unit) ?? normaliseCurrency(def.unit)
+		const unit = facts.units[filter.propertyId] ?? def.unit
+		const converted = convertAmount(value, unit, target, rates)
+		if (converted === null) return false
+		value = converted
+	}
 	const empty = isEmptyValue(value)
 
 	switch (filter.op) {
@@ -329,7 +352,16 @@ export function moneyOutcome(
 		}
 	}
 
-	if (target) return { unit: target, mixed: false, excluded, converted: true }
+	if (target) {
+		return {
+			unit: target,
+			mixed: false,
+			excluded,
+			converted: true,
+			asOf: money?.rates?.asOf,
+			stale: money?.rates?.stale,
+		}
+	}
 	return { unit: found ? seen : fallback, mixed, excluded, converted: false }
 }
 
@@ -462,10 +494,34 @@ function summariseColumns(
 // Sorting
 // ---------------------------------------------------------------------------
 
-function compareRows(a: TableRow, b: TableRow, sorts: readonly TableSort[]): number {
+function compareRows(
+	a: TableRow,
+	b: TableRow,
+	sorts: readonly TableSort[],
+	properties: ReadonlyMap<string, PropertyDef>,
+	rates: RateTable | null
+): number {
 	for (const sort of sorts) {
-		const av = sort.key === LABEL_COLUMN ? a.label : a.cells[sort.key]
-		const bv = sort.key === LABEL_COLUMN ? b.label : b.cells[sort.key]
+		let av = sort.key === LABEL_COLUMN ? a.label : a.cells[sort.key]
+		let bv = sort.key === LABEL_COLUMN ? b.label : b.cells[sort.key]
+
+		/*
+		 * Money is compared in one currency, not as raw numbers. Sorting a mixed column by its digits
+		 * puts 200 GEL above 100 USD and the order is nonsense — the same trap `max` had.
+		 *
+		 * The rate table's own base is the yardstick: any consistent currency gives the same ordering,
+		 * and it needs no configuration. When a value cannot be converted it keeps its raw number, which
+		 * is a worse answer than converting but a better one than dropping the row out of the table.
+		 */
+		const def = properties.get(sort.key)
+		if (def?.type === 'financial' && rates) {
+			const toBase = (value: Cell, units: Readonly<Record<string, string>>) => {
+				if (typeof value !== 'number') return value
+				return convertAmount(value, units[sort.key] ?? def.unit, rates.base, rates) ?? value
+			}
+			av = toBase(av, a.units)
+			bv = toBase(bv, b.units)
+		}
 
 		// Emptiness is decided *before* the direction is applied, and deliberately so: a blank is not a
 		// small value, it is a missing one, so it belongs at the bottom whichever way the column is
@@ -518,7 +574,11 @@ export function queryTable(
 	// silently do nothing.
 	const neededKeys = new Set<string>()
 	for (const column of columns) if (column.key !== LABEL_COLUMN) neededKeys.add(column.key)
-	if (groupBy && groupBy !== LABEL_COLUMN) neededKeys.add(groupBy)
+	if (groupBy && groupBy !== LABEL_COLUMN) {
+		// A currency grouping needs the money column's *cell* present, since a row with no value for it
+		// belongs in no currency bucket.
+		neededKeys.add(currencyGroupProperty(groupBy) ?? groupBy)
+	}
 	for (const sort of sorts) if (sort.key !== LABEL_COLUMN) neededKeys.add(sort.key)
 
 	// The property columns, without the built-in label. What decides row membership below.
@@ -526,7 +586,7 @@ export function queryTable(
 
 	const rows: TableRow[] = []
 	for (const [id, shapeFacts] of facts) {
-		if (!matchesSource(shapeFacts, props, selfId, id, properties)) continue
+		if (!matchesSource(shapeFacts, props, selfId, id, properties, rates)) continue
 
 		const cells: Record<string, PropertyValue> = {}
 		for (const key of neededKeys) {
@@ -544,7 +604,7 @@ export function queryTable(
 		rows.push({ shapeId: id, label: shapeFacts.label, cells, units: shapeFacts.units })
 	}
 
-	if (sorts.length) rows.sort((a, b) => compareRows(a, b, sorts))
+	if (sorts.length) rows.sort((a, b) => compareRows(a, b, sorts, properties, rates))
 
 	const matched = rows.length
 	const groups: TableGroup[] =
@@ -577,10 +637,27 @@ function buildGroups(
 	properties: ReadonlyMap<string, PropertyDef>,
 	rates: RateTable | null
 ): TableGroup[] {
-	const def = properties.get(groupBy)
+	const currencyOf = currencyGroupProperty(groupBy)
+	const def = properties.get(currencyOf ?? groupBy)
 	const buckets = new Map<string, TableRow[]>()
 
 	for (const row of rows) {
+		// Grouping by currency buckets on the row's *unit* rather than its value, so each bucket totals
+		// its own currency and nothing has to be converted at all.
+		if (currencyOf) {
+			const code =
+				row.cells[currencyOf] === undefined
+					? '—'
+					: (normaliseCurrency(row.units[currencyOf] ?? def?.unit) ?? '—')
+			let bucket = buckets.get(code)
+			if (!bucket) {
+				bucket = []
+				buckets.set(code, bucket)
+			}
+			bucket.push(row)
+			continue
+		}
+
 		const value = groupBy === LABEL_COLUMN ? row.label : row.cells[groupBy]
 		let keys: string[]
 		if (isEmptyValue(value)) {

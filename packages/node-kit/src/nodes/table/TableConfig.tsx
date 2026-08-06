@@ -9,6 +9,7 @@ import {
 	DEFAULT_COLUMN_WIDTH,
 	LABEL_COLUMN,
 	LAYOUT_MODES,
+	CURRENCY_GROUP_PREFIX,
 	TABLE_SCOPES,
 	columnTitle,
 	filterOpNeedsValue,
@@ -280,6 +281,18 @@ export function TableConfig({
 								{columnTitle(key, byId)}
 							</option>
 						))}
+						{/*
+						 * Grouping by a money column's *currency* rather than its value: a subtotal per
+						 * currency, each in its own, with nothing converted and so nothing to be stale.
+						 * Often the honest answer to "what did I spend in USD".
+						 */}
+						{columnKeys
+							.filter((key) => byId.get(key)?.type === 'financial')
+							.map((key) => (
+								<option key={`cur-${key}`} value={`${CURRENCY_GROUP_PREFIX}${key}`}>
+									{columnTitle(key, byId)} currency
+								</option>
+							))}
 					</select>
 				</label>
 

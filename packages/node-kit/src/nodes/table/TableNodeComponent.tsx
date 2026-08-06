@@ -120,6 +120,14 @@ function Headline({
 				<div className="lb-table__note">
 					{[
 						money.converted ? 'converted' : '',
+						// Rates that are past their refresh time say so. A converted total that looks
+						// current when it is a week old is worse than one that admits it.
+						money.converted && money.asOf
+							? `rates ${new Date(money.asOf).toLocaleDateString('en-GB', {
+									day: 'numeric',
+									month: 'short',
+								})}${money.stale ? ' (stale)' : ''}`
+							: '',
 						money.excluded > 0 ? `${money.excluded} excluded` : '',
 					]
 						.filter(Boolean)

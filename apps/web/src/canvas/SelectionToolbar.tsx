@@ -8,12 +8,14 @@ import {
 	Copy,
 	ImageDown,
 	MoreHorizontal,
+	Scissors,
 	SlidersHorizontal,
 	Trash2,
 	X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+	AssetRecordType,
 	Box,
 	DefaultImageToolbarContent,
 	DefaultVideoToolbarContent,
@@ -22,11 +24,131 @@ import {
 	useActions,
 	useEditor,
 	useValue,
+	type Editor,
+	type TLImageAsset,
 	type TLImageShape,
 	type TLShapeId,
 	type TLVideoShape,
 } from 'tldraw'
+import { hashFromAssetSrc, assetSrcForHash, isManagedAssetSrc } from '../persistence/assetStore'
+import { sha256Hex } from '../persistence/hash'
+import { removeImageBackground } from '../persistence/removeBackground'
+import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
+
+/**
+ * "Remove background" on a selected image.
+ *
+ * A flood fill from the image's edges (see `persistence/removeBackground.ts`) — no model, no download,
+ * works offline. It is the right tool for what a whiteboard is mostly full of: screenshots, logos,
+ * diagrams, product shots on white. It is not subject lifting, and on a photographed scene it will
+ * politely do very little, which is what the "nothing to remove" case reports.
+ *
+ * The result becomes a *new* asset record rather than overwriting the old one's `src`. Two reasons:
+ * the same image may be on the board twice and only this copy was asked to change, and leaving the
+ * original asset in the store is what keeps undo safe — GC walks asset records, not shapes, so the
+ * original blob stays reachable and a redo has something to point back at.
+ */
+function RemoveBackgroundButton({ shapeId }: { shapeId: TLImageShape['id'] }) {
+	const editor = useEditor()
+	const platform = usePlatform()
+	const [busy, setBusy] = useState(false)
+	const [note, setNote] = useState<string | null>(null)
+
+	useEffect(() => {
+		if (!note) return
+		const timer = setTimeout(() => setNote(null), 2400)
+		return () => clearTimeout(timer)
+	}, [note])
+
+	// Only for images we actually hold the bytes of. A bookmark's remote preview, or an asset still
+	// uploading, has nothing local to read.
+	const src = useValue(
+		'lb:bg-src',
+		() => {
+			const shape = editor.getShape<TLImageShape>(shapeId)
+			const assetId = shape?.props.assetId
+			if (!assetId) return null
+			const asset = editor.getAsset(assetId)
+			const value = asset?.props.src
+			return typeof value === 'string' && isManagedAssetSrc(value) ? value : null
+		},
+		[editor, shapeId]
+	)
+	if (!src) return null
+
+	const removeBackground = async () => {
+		setBusy(true)
+		try {
+			const source = await platform.blobs.get(hashFromAssetSrc(src))
+			if (!source) {
+				setNote('Image not found')
+				return
+			}
+
+			const { blob, removed } = await removeImageBackground(source)
+			// Below this, the fill found a border colour that matches almost nothing — saying so is
+			// better than writing a new asset identical to the old one and calling it success.
+			if (removed < 0.005) {
+				setNote('Nothing to remove')
+				return
+			}
+
+			const hash = await sha256Hex(blob)
+			await platform.blobs.put(hash, blob)
+
+			const shape = editor.getShape<TLImageShape>(shapeId)
+			const previous = shape?.props.assetId ? editor.getAsset(shape.props.assetId) : undefined
+			if (!shape || previous?.type !== 'image') return
+
+			const asset: TLImageAsset = {
+				...previous,
+				id: AssetRecordType.createId(),
+				props: {
+					...previous.props,
+					src: assetSrcForHash(hash),
+					mimeType: 'image/webp',
+					// Recomputed: the cut-out is a different number of bytes, and the storage panel adds
+					// these up.
+					fileSize: blob.size,
+				},
+			}
+
+			// One `run`, so creating the asset and repointing the shape are a single undo entry.
+			editor.run(() => {
+				editor.markHistoryStoppingPoint('remove background')
+				editor.createAssets([asset])
+				editor.updateShape<TLImageShape>({
+					id: shapeId,
+					type: 'image',
+					props: { assetId: asset.id },
+				})
+			})
+		} catch (err) {
+			console.warn('Lifeboard: could not remove the background', err)
+			setNote('Could not process this image')
+		} finally {
+			setBusy(false)
+		}
+	}
+
+	return (
+		<TldrawUiToolbarButton
+			type="icon"
+			title={note ?? 'Remove background'}
+			data-testid="lb.remove-background"
+			disabled={busy}
+			onClick={() => void removeBackground()}
+		>
+			{note ? (
+				<span className="lb-seltb__note">{note}</span>
+			) : (
+				<Scissors size={16} aria-hidden="true" />
+			)}
+			<span className="lb-sr-only">Remove background</span>
+		</TldrawUiToolbarButton>
+	)
+}
 
 /**
  * The one selection toolbar — Affine's "Display in Page …" bar, merged with tldraw's own
@@ -188,6 +310,7 @@ function SelectionToolbarContent({
 							editor.setCurrentTool('select.idle')
 						}}
 					/>
+					<RemoveBackgroundButton shapeId={onlyId as TLImageShape['id']} />
 					<div className="lb-seltb__sep" />
 				</>
 			)}

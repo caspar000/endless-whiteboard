@@ -294,4 +294,96 @@ test.describe('asset store', () => {
 			.poll(async () => (await readBlobStore(page)).hashes.length)
 			.toBe(0)
 	})
+
+	test('remove background cuts a flat backdrop out of an image', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// A logo-on-white, which is what this is for: a flat backdrop and a solid subject. The noise
+		// image the other tests use has no background to find, by construction.
+		await page.evaluate(async () => {
+			const c = document.createElement('canvas')
+			c.width = 400
+			c.height = 300
+			const x = c.getContext('2d')!
+			x.fillStyle = '#ffffff'
+			x.fillRect(0, 0, 400, 300)
+			x.fillStyle = '#d92b2b'
+			x.beginPath()
+			x.arc(200, 140, 90, 0, Math.PI * 2)
+			x.fill()
+			const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png'))
+			const file = new File([blob], 'logo.png', { type: 'image/png' })
+			await (
+				window as unknown as {
+					editor: { putExternalContent(o: unknown): Promise<void> }
+				}
+			).editor.putExternalContent({ type: 'files', files: [file], point: { x: 300, y: 300 } })
+		})
+
+		const imageInfo = () =>
+			page.evaluate(() => {
+				const ed = (
+					window as unknown as {
+						editor: {
+							getCurrentPageShapes(): { id: string; type: string; props: { assetId?: string } }[]
+							getAsset(id: string): { props: { src?: string; mimeType?: string } } | undefined
+						}
+					}
+				).editor
+				const shape = ed.getCurrentPageShapes().find((s) => s.type === 'image')
+				if (!shape?.props.assetId) return null
+				const asset = ed.getAsset(shape.props.assetId)
+				return {
+					id: shape.id,
+					assetId: shape.props.assetId,
+					src: asset?.props.src ?? null,
+					mimeType: asset?.props.mimeType ?? null,
+				}
+			})
+
+		await expect.poll(imageInfo).not.toBeNull()
+		const before = (await imageInfo())!
+
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: { select(id: string): unknown } }).editor.select(id)
+		}, before.id)
+
+		await page.locator('[data-testid="lb.remove-background"]').click()
+
+		// A *new* asset, so a second copy of the same image on the board is untouched and undo has
+		// something to point back at.
+		await expect.poll(async () => (await imageInfo())?.assetId).not.toBe(before.assetId)
+		const after = (await imageInfo())!
+		expect(after.mimeType).toBe('image/webp')
+
+		// The bytes are what matter: corners transparent, the disc still opaque.
+		const pixels = await page.evaluate(async (src: string) => {
+			const hash = src.slice('asset:'.length)
+			const db = await new Promise<IDBDatabase>((r) => {
+				const q = indexedDB.open('lifeboard')
+				q.onsuccess = () => r(q.result)
+			})
+			const blob = await new Promise<Blob | undefined>((r) => {
+				const q = db.transaction('blobs', 'readonly').objectStore('blobs').get(hash)
+				q.onsuccess = () => r(q.result)
+			})
+			db.close()
+			if (!blob) return null
+			const bmp = await createImageBitmap(blob)
+			const canvas = new OffscreenCanvas(bmp.width, bmp.height)
+			const ctx = canvas.getContext('2d')!
+			ctx.drawImage(bmp, 0, 0)
+			const at = (X: number, Y: number) => [...ctx.getImageData(X, Y, 1, 1).data]
+			return { corner: at(2, 2), centre: at(bmp.width >> 1, bmp.height >> 1) }
+		}, after.src!)
+
+		expect(pixels?.corner[3]).toBe(0)
+		expect(pixels?.centre[3]).toBe(255)
+
+		// One undo entry: creating the asset and repointing the shape happen in a single run.
+		await page.keyboard.press('ControlOrMeta+z')
+		await expect.poll(async () => (await imageInfo())?.assetId).toBe(before.assetId)
+	})
 })

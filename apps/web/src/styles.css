@@ -1096,6 +1096,27 @@ button {
 	color: var(--lb-text-dim);
 	justify-self: center;
 }
+/* A transient result — "Nothing to remove" — shown in place of a button's icon rather than as a toast. */
+.lb-seltb__note {
+	font-size: 11px;
+	white-space: nowrap;
+	padding: 0 4px;
+	color: var(--lb-text-dim);
+}
+
+/*
+ * Visible to screen readers only. An icon button needs a real accessible name; `title` alone is a
+ * tooltip, and here it doubles as the transient result message, which would make the name change under
+ * anyone listening.
+ */
+.lb-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
 .lb-seltb__item--danger:hover svg {
 	color: var(--lb-danger);
 }

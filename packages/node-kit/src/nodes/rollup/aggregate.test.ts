@@ -21,7 +21,7 @@ const REGISTRY = new Map<string, PropertyDef>([
 function item(
 	id: string,
 	values: Record<string, PropertyValue>,
-	opts: { tags?: string[]; parentId?: string | null } = {}
+	opts: { tags?: string[]; parentId?: string | null; units?: Record<string, string> } = {}
 ): [string, ShapeFacts] {
 	return [
 		id,
@@ -30,6 +30,7 @@ function item(
 			parentId: opts.parentId ?? null,
 			label: id,
 			values: opts.tags ? { ...values, tags: opts.tags } : values,
+			units: opts.units ?? {},
 		},
 	]
 }
@@ -254,5 +255,47 @@ describe('formatRollupValue', () => {
 
 	it('formats plain numbers without a symbol', () => {
 		expect(formatRollupValue(3369, { style: 'number' }, 'GEL')).toBe('3,369')
+	})
+})
+
+describe('mixed currencies', () => {
+	const registry = new Map<string, PropertyDef>([
+		['price', { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }],
+	])
+	const run = (facts: FactsMap) => aggregate(facts, pageScope, sumPrice, 'r', registry)
+
+	it('reports the shared unit when every contributor agrees', () => {
+		const result = run(
+			new Map([
+				item('a', { price: 100 }, { units: { price: 'USD' } }),
+				item('b', { price: 200 }, { units: { price: 'USD' } }),
+			])
+		)
+		expect(result.total).toBe(300)
+		expect(result.mixedUnits).toBe(false)
+		expect(result.inferredUnit).toBe('USD')
+	})
+
+	/**
+	 * The point of the flag: a total that is part GEL and part USD has no honest symbol, and printing
+	 * either one is how someone stops trusting the number. Converting is a separate feature.
+	 */
+	it('refuses to name a unit when contributors disagree', () => {
+		const result = run(
+			new Map([
+				item('a', { price: 100 }, { units: { price: 'USD' } }),
+				item('b', { price: 200 }, { units: { price: 'GEL' } }),
+			])
+		)
+		expect(result.total).toBe(300)
+		expect(result.mixedUnits).toBe(true)
+		expect(result.inferredUnit).toBeUndefined()
+	})
+
+	it('treats a shape with no override as being in the definition default', () => {
+		const result = run(
+			new Map([item('a', { price: 100 }), item('b', { price: 200 }, { units: { price: 'USD' } })])
+		)
+		expect(result.mixedUnits).toBe(true)
 	})
 })

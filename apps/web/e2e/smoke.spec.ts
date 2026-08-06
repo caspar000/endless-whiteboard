@@ -368,6 +368,79 @@ test.describe('nodes', () => {
 		await expect(page.locator('.lb-board-host:not([data-hidden]) a.lb-strip__link')).toHaveCount(0)
 	})
 
+	test('currency is per shape, so pricing one node in USD leaves the others alone', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// Side by side, so neither shape's selection toolbar covers the other's panel.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{ type: 'note', x: 150, y: 200 },
+				{ type: 'note', x: 700, y: 200 },
+			])
+		})
+
+		const shapeIds = await page.evaluate(() =>
+			(window as unknown as { editor: EditorHandle }).editor
+				.getCurrentPageShapes()
+				.filter((s) => s.type === 'note')
+				.map((s) => s.id)
+		)
+
+		const openFor = async (id: string) => {
+			await page.evaluate((shapeId) => {
+				;(window as unknown as { editor: { select(id: string): unknown } }).editor.select(shapeId)
+			}, id)
+			await page.keyboard.press('Alt+p')
+			await expect(page.locator('.lb-props')).toBeVisible()
+		}
+
+		// The first note defines Price, in the board's default currency.
+		await openFor(shapeIds[0]!)
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Price')
+		await panel.getByLabel('New property type').selectOption('financial')
+		await panel.getByRole('button', { name: 'Add' }).click()
+		await panel.getByLabel('Value of Price').fill('2399')
+		await page.keyboard.press('Escape')
+
+		// The second carries the same property, priced in USD.
+		await openFor(shapeIds[1]!)
+		await page.evaluate(() => {
+			const attach = [...document.querySelectorAll('.lb-props__attach')].find((b) =>
+				b.textContent?.includes('Price')
+			) as HTMLElement | undefined
+			attach?.click()
+		})
+		await panel.getByLabel('Value of Price').fill('100')
+		await panel.getByLabel('Currency of Price').fill('USD')
+		await panel.getByLabel('Currency of Price').blur()
+		await page.keyboard.press('Escape')
+
+		// The bug: this used to rewrite the board-level definition, dragging every other card with it.
+		const strips = page.locator('.lb-board-host:not([data-hidden]) .lb-strip')
+		await expect.poll(async () => (await strips.allTextContents()).join(' | ')).toContain('$ 100.00')
+		const all = (await strips.allTextContents()).join(' | ')
+		expect(all).toContain('₾ 2,399.00')
+
+		// And the definition still holds GEL, so it stays the default a new value inherits.
+		const registry = await page.evaluate(() =>
+			JSON.stringify(
+				(
+					window as unknown as {
+						editor: { getDocumentSettings(): { meta?: Record<string, unknown> } }
+					}
+				).editor.getDocumentSettings().meta?.['lifeboard:properties']
+			)
+		)
+		expect(registry).toContain('"unit":"GEL"')
+	})
+
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
 		page,
 	}) => {

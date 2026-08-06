@@ -18,6 +18,7 @@ function facts(over: Partial<ShapeFacts> = {}): ShapeFacts {
 		parentId: null,
 		label: 'Desk',
 		values: { price: 2399, category: 'desk', tags: ['furniture'] },
+		units: {},
 		...over,
 	}
 }

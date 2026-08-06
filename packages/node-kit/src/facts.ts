@@ -1,6 +1,6 @@
 import type { PropertyDef, PropertyValue } from './properties/types'
 import { isListType } from './properties/types'
-import type { ShapeProperties } from './properties/values'
+import type { ShapeProperties, ShapePropertyUnits } from './properties/values'
 
 /**
  * What one shape contributes to everything derived from the board (§4.3).
@@ -19,8 +19,15 @@ export interface ShapeFacts {
 	parentId: string | null
 	/** Display name from the `shapeLabel` ladder. `''` when the shape has no name to give. */
 	label: string
-	/** Property values, keyed by property id. Type and unit come from the board's registry. */
+	/** Property values, keyed by property id. Type comes from the board's registry. */
 	values: ShapeProperties
+	/**
+	 * Per-shape unit overrides, keyed by property id — the currency of a money value.
+	 *
+	 * Here rather than left to the registry because a unit is per shape: two cards can carry the same
+	 * `price` property in different currencies, and a table has to render each row in its own.
+	 */
+	units: ShapePropertyUnits
 }
 
 export type FactsMap = ReadonlyMap<string, ShapeFacts>
@@ -62,8 +69,24 @@ export function areFactsEqual(a: ShapeFacts, b: ShapeFacts): boolean {
 		a.type === b.type &&
 		a.parentId === b.parentId &&
 		a.label === b.label &&
-		areValueRecordsEqual(a.values, b.values)
+		areValueRecordsEqual(a.values, b.values) &&
+		areUnitRecordsEqual(a.units, b.units)
 	)
+}
+
+/**
+ * Units compare like values do — one level deep, identity first.
+ *
+ * Deliberately part of `areFactsEqual` rather than left out as "cosmetic": a table renders each row in
+ * its own currency, so changing one shape's currency genuinely changes what is derived from the board.
+ * Leaving it out would make that edit invisible until something else forced a recompute.
+ */
+function areUnitRecordsEqual(a: ShapePropertyUnits, b: ShapePropertyUnits): boolean {
+	if (a === b) return true
+	const aKeys = Object.keys(a)
+	if (aKeys.length !== Object.keys(b).length) return false
+	for (const k of aKeys) if (a[k] !== b[k]) return false
+	return true
 }
 
 /**

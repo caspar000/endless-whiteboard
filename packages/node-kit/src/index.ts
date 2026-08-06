@@ -97,12 +97,16 @@ export {
 	readHiddenPropertyIds,
 	readShapeProperties,
 	readShapePropertyDefs,
+	readShapePropertyUnits,
 	removeShapeProperty,
 	setShapePropertyHidden,
 	setShapePropertyOrder,
+	setShapePropertyUnit,
 	shapeCarriesProperty,
+	unitForShapeProperty,
 	updateShapeProperties,
 	type ShapeProperties,
+	type ShapePropertyUnits,
 } from './properties/values'
 
 // Node definitions
@@ -165,6 +169,7 @@ export {
 export {
 	EMPTY_TABLE,
 	queryTable,
+	sharedUnit,
 	summarise,
 	type TableGroup,
 	type TableResult,

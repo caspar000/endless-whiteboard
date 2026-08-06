@@ -24,7 +24,7 @@ const REGISTRY = new Map<string, PropertyDef>([
 function shape(
 	id: string,
 	values: Record<string, PropertyValue>,
-	opts: { label?: string; type?: string; parentId?: string | null } = {}
+	opts: { label?: string; type?: string; parentId?: string | null; units?: Record<string, string> } = {}
 ): [string, ShapeFacts] {
 	return [
 		id,
@@ -33,6 +33,7 @@ function shape(
 			parentId: opts.parentId ?? null,
 			label: opts.label ?? id,
 			values,
+			units: opts.units ?? {},
 		},
 	]
 }
@@ -323,6 +324,7 @@ describe('summarise', () => {
 			label: `s${i}`,
 			// `undefined` means the shape never carried the property; `null` means it carries it empty.
 			cells: (v === undefined ? {} : { price: v }) as Record<string, PropertyValue>,
+			units: {},
 		}))
 
 	const price = REGISTRY.get('price')!
@@ -339,7 +341,7 @@ describe('summarise', () => {
 
 	it('counts each entry of a list value under countValues', () => {
 		const tags = REGISTRY.get('tags')!
-		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { tags: ['x', 'y'] } }]
+		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { tags: ['x', 'y'] }, units: {} }]
 		expect(summarise('countValues', set, 'tags', tags)).toBe(2)
 		expect(summarise('count', set, 'tags', tags)).toBe(1)
 	})
@@ -363,14 +365,14 @@ describe('summarise', () => {
 
 	it('refuses to sum a column whose registered type is not numeric', () => {
 		const note = REGISTRY.get('note')!
-		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { note: 12 } }]
+		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { note: 12 }, units: {} }]
 		expect(summarise('sum', set, 'note', note)).toBeNull()
 		// …but counting it is still meaningful.
 		expect(summarise('countNotEmpty', set, 'note', note)).toBe(1)
 	})
 
 	it('cannot summarise the label column numerically, only count it', () => {
-		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: {} }]
+		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: {}, units: {} }]
 		expect(summarise('count', set, LABEL_COLUMN, null)).toBe(1)
 		expect(summarise('sum', set, LABEL_COLUMN, null)).toBeNull()
 	})
@@ -378,8 +380,8 @@ describe('summarise', () => {
 	it('summarises dates as earliest, latest and a span in days', () => {
 		const due = REGISTRY.get('due')!
 		const set: TableRow[] = [
-			{ shapeId: 'a', label: 'a', cells: { due: '2026-01-01' } },
-			{ shapeId: 'b', label: 'b', cells: { due: '2026-01-11' } },
+			{ shapeId: 'a', label: 'a', cells: { due: '2026-01-01' }, units: {} },
+			{ shapeId: 'b', label: 'b', cells: { due: '2026-01-11' }, units: {} },
 		]
 		expect(summarise('earliest', set, 'due', due)).toBe(Date.parse('2026-01-01'))
 		expect(summarise('latest', set, 'due', due)).toBe(Date.parse('2026-01-11'))
@@ -389,7 +391,7 @@ describe('summarise', () => {
 
 	it('needs two dates for a range', () => {
 		const due = REGISTRY.get('due')!
-		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { due: '2026-01-01' } }]
+		const set: TableRow[] = [{ shapeId: 'a', label: 'a', cells: { due: '2026-01-01' }, units: {} }]
 		expect(summarise('range', set, 'due', due)).toBeNull()
 	})
 })

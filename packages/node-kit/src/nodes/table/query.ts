@@ -37,6 +37,11 @@ export interface TableRow {
 	label: string
 	/** Cell values by column key, already resolved but not yet formatted. */
 	cells: Readonly<Record<string, PropertyValue>>
+	/**
+	 * The shape's own unit overrides, so a money cell renders in *its* currency rather than the
+	 * column's. Two rows of the same column can legitimately differ.
+	 */
+	units: Readonly<Record<string, string>>
 }
 
 export interface TableGroup {
@@ -211,6 +216,33 @@ function compareDate(op: 'before' | 'after', value: Cell, target: FilterValueLik
  * Returns `null` when the op cannot say anything — a `sum` over a column with no numeric values, say.
  * `null` renders as `—`, which is honest; `0` would claim the total is zero.
  */
+/**
+ * The one unit shared by the rows contributing to a column, or `null` when they disagree.
+ *
+ * Needed because a unit is per shape now: a column of prices can legitimately hold GEL and USD at once,
+ * and printing their sum with either symbol would be a confident lie. The caller shows the number
+ * without a currency instead, and says the currencies are mixed.
+ */
+export function sharedUnit(
+	rows: readonly TableRow[],
+	columnKey: string,
+	fallback: string | undefined
+): string | undefined | null {
+	let seen: string | undefined
+	let found = false
+	for (const row of rows) {
+		if (row.cells[columnKey] === undefined) continue
+		const unit = row.units[columnKey] ?? fallback
+		if (!found) {
+			seen = unit
+			found = true
+		} else if (unit !== seen) {
+			return null
+		}
+	}
+	return found ? seen : fallback
+}
+
 export function summarise(
 	op: SummaryOp,
 	rows: readonly TableRow[],
@@ -383,7 +415,7 @@ export function queryTable(
 		// A table with no property columns at all is a plain list of labels and keeps every match.
 		if (columnKeys.length && !columnKeys.some((key) => key in cells)) continue
 
-		rows.push({ shapeId: id, label: shapeFacts.label, cells })
+		rows.push({ shapeId: id, label: shapeFacts.label, cells, units: shapeFacts.units })
 	}
 
 	if (sorts.length) rows.sort((a, b) => compareRows(a, b, sorts))

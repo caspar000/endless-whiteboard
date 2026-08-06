@@ -28,8 +28,23 @@ const DEFS_KEY = 'lifeboard:propDefs'
  */
 const ORDER_KEY = 'lifeboard:propOrder'
 const HIDDEN_KEY = 'lifeboard:propHidden'
+/**
+ * Per-shape unit overrides — in practice, the currency of a `financial` value.
+ *
+ * A unit used to live only on the *definition*, which made it one answer per board: setting a price to
+ * USD on one card silently reprised every other card in USD. Money is a property of the amount, not of
+ * the column it sits in, so the shape holds it and the definition's `unit` is the default a new value
+ * inherits.
+ *
+ * Its own key rather than folded into the values, because a value must stay a JSON scalar: the facts
+ * equality check is exactly one level deep, and that shallowness is what keeps dragging free of rollup
+ * recomputes. A parallel flat map of strings compares the same cheap way.
+ */
+const UNITS_KEY = 'lifeboard:propUnits'
 
 export type ShapeProperties = Readonly<Record<string, PropertyValue>>
+/** Unit overrides by property id. Absent means "use the definition's". */
+export type ShapePropertyUnits = Readonly<Record<string, string>>
 
 /**
  * The minimum a *read* needs.
@@ -73,6 +88,60 @@ export function readShapeProperties(shape: ShapeWithMeta): ShapeProperties {
 /** Whether the shape carries this property at all — distinct from carrying it with an empty value. */
 export function shapeCarriesProperty(shape: ShapeWithMeta, id: string): boolean {
 	return id in readShapeProperties(shape)
+}
+
+const EMPTY_UNITS: ShapePropertyUnits = Object.freeze({})
+
+/**
+ * The shape's own unit overrides. Same defensive read as the values — meta is untyped JSON — and the
+ * same shared frozen empty, because almost no shape has one and `areFactsEqual` tests identity first.
+ */
+export function readShapePropertyUnits(shape: ShapeWithMeta): ShapePropertyUnits {
+	const raw = shape.meta[UNITS_KEY]
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return EMPTY_UNITS
+
+	let units: Record<string, string> | null = null
+	for (const [id, unit] of Object.entries(raw)) {
+		if (typeof unit !== 'string' || unit === '') continue
+		units ??= {}
+		units[id] = unit
+	}
+	return units ?? EMPTY_UNITS
+}
+
+/**
+ * The unit to show for one value: the shape's own, else the definition's default.
+ *
+ * The single place that resolution happens, so a caller can never accidentally read `def.unit` and
+ * render one shape's money in another's currency.
+ */
+export function unitForShapeProperty(
+	def: Pick<PropertyDef, 'id' | 'unit'>,
+	units: ShapePropertyUnits
+): string | undefined {
+	return units[def.id] ?? def.unit
+}
+
+/** Sets (or with `undefined`, clears) one property's unit on one shape, in a single undo entry. */
+export function setShapePropertyUnit(
+	editor: Editor,
+	shape: TLShape,
+	id: string,
+	unit: string | undefined
+): void {
+	const current = readShapePropertyUnits(shape)
+	const next: Record<string, string> = { ...current }
+	const trimmed = unit?.trim()
+	if (trimmed) next[id] = trimmed
+	else delete next[id]
+
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [UNITS_KEY]: next },
+		} as TLShapePartial)
+	})
 }
 
 /** A string list from meta, dropping anything malformed — same defensive posture as the values. */

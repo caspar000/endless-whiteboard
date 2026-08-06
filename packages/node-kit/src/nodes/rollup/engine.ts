@@ -9,7 +9,7 @@ import {
 import { areFactsEqual, areFactsMapsEqual, type FactsMap, type ShapeFacts } from '../../facts'
 import { shapeLabel } from '../../properties/labels'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
-import { readShapeProperties } from '../../properties/values'
+import { readShapeProperties, readShapePropertyUnits } from '../../properties/values'
 import { getNodeDefinition } from '../../registry'
 import { aggregate, EMPTY_ROLLUP, type RollupResult } from './aggregate'
 import { ROLLUP_NODE_TYPE } from './definition'
@@ -65,6 +65,7 @@ const factsCache = createComputedCache<Editor, ShapeFacts, TLShape>(
 			parentId: shape.parentId ?? null,
 			label: shapeLabel(editor, shape),
 			values: computedValues ? { ...computedValues, ...stored } : stored,
+			units: readShapePropertyUnits(shape),
 		}
 	},
 	{

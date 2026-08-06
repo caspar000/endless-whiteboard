@@ -65,6 +65,15 @@ export interface RollupResult {
 	skipped: number
 	/** Unit inferred from the source data when the rollup itself doesn't pin one. */
 	inferredUnit: string | undefined
+	/**
+	 * The contributing shapes disagreed about the unit.
+	 *
+	 * A unit is per shape, so a total really can be part GEL and part USD. Stamping either symbol on it
+	 * would be a confident lie, and silently wrong totals are the fastest way to make someone stop
+	 * trusting a number. Converting between currencies is a separate feature; this is the honest
+	 * reporting that has to exist either way.
+	 */
+	mixedUnits: boolean
 }
 
 export const EMPTY_ROLLUP: RollupResult = {
@@ -73,6 +82,7 @@ export const EMPTY_ROLLUP: RollupResult = {
 	matched: 0,
 	skipped: 0,
 	inferredUnit: undefined,
+	mixedUnits: false,
 }
 
 function matchesSource(
@@ -140,6 +150,10 @@ export function aggregate(
 	const groups = new Map<string | null, number[]>()
 	let matched = 0
 	let skipped = 0
+	// A sentinel, because `undefined` is a legitimate unit ("this property has none").
+	const UNSET = Symbol('unset')
+	let contributingUnit: string | undefined | typeof UNSET = UNSET
+	let mixedUnits = false
 
 	const valueDef = agg.fieldKey ? properties.get(agg.fieldKey) : undefined
 	const groupDef = agg.groupBy ? properties.get(agg.groupBy) : undefined
@@ -187,6 +201,10 @@ export function aggregate(
 			skipped++
 			continue
 		}
+		// Track the unit of everything that actually contributes, so a mixed total can say so.
+		const unit = shapeFacts.units[agg.fieldKey] ?? valueDef?.unit
+		if (contributingUnit === UNSET) contributingUnit = unit
+		else if (contributingUnit !== unit) mixedUnits = true
 		bucket.push(value)
 	}
 
@@ -208,9 +226,14 @@ export function aggregate(
 		total: reduceOp(agg.op, allValues),
 		matched,
 		skipped,
-		// The unit is a property of the *definition* now, not something inferred by counting which unit
-		// appears most often across shapes. One place to look, and it can't disagree with itself.
-		inferredUnit: valueDef?.unit,
+		// The unit of the shapes that contributed, which is per shape rather than per definition. When
+		// they disagree there is no single answer, so none is offered and `mixedUnits` says why.
+		inferredUnit: mixedUnits
+			? undefined
+			: contributingUnit === UNSET
+				? valueDef?.unit
+				: contributingUnit,
+		mixedUnits,
 	}
 }
 

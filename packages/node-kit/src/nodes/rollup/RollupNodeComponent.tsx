@@ -20,7 +20,12 @@ function RollupNodeComponentImpl({
 	const result = useValue('rollup', () => getRollupResult(editor, shape.id), [editor, shape.id])
 
 	const grouped = agg.groupBy !== null && result.rows.length > 0
-	const valueOf = (n: number) => formatRollupValue(n, format, result.inferredUnit)
+	// With mixed currencies there is no symbol that would be true of the whole total, so the number is
+	// shown bare and marked. See `mixedUnits` in aggregate.ts.
+	const valueOf = (n: number) =>
+		result.mixedUnits && format.style === 'currency'
+			? `${formatRollupValue(n, { ...format, style: 'number' }, undefined)} (mixed)`
+			: formatRollupValue(n, format, result.inferredUnit)
 
 	const body = (
 		<div className="lb-rollup__body">

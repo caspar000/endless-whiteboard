@@ -7,6 +7,8 @@ import {
 	orderedPropertyIds,
 	readHiddenPropertyIds,
 	readShapeProperties,
+	readShapePropertyUnits,
+	unitForShapeProperty,
 	type ShapeWithMeta,
 } from './values'
 
@@ -28,6 +30,7 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 			// Display order and per-shape visibility come from the panel (drag to reorder, eye to
 			// hide). Hidden values stay attached and keep aggregating — they just don't render here.
 			const hidden = readHiddenPropertyIds(shape)
+			const units = readShapePropertyUnits(shape)
 			const ids = orderedPropertyIds(shape).filter((id) => !hidden.has(id))
 			if (!ids.length) return []
 			const registry = readPropertyRegistry(editor)
@@ -40,7 +43,7 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 						id,
 						name: def.name,
 						list: isListType(def.type),
-						text: formatPropertyValue(def, values[id]!),
+						text: formatPropertyValue(def, values[id]!, unitForShapeProperty(def, units)),
 						// `null` for everything that isn't a link, and for a link with no usable address.
 						href: def.type === 'link' ? linkHref(values[id]!) : null,
 						negative: numeric !== null && numeric < 0,

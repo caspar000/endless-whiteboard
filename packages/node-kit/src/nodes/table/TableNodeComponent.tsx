@@ -6,7 +6,7 @@ import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'
 import type { NodeComponentProps } from '../../registry'
 import { getTableResult } from './engine'
-import type { TableGroup, TableResult, TableRow } from './query'
+import { sharedUnit, type TableGroup, type TableResult, type TableRow } from './query'
 import { TableConfig } from './TableConfig'
 import {
 	LABEL_COLUMN,
@@ -105,10 +105,17 @@ function Headline({
 	}
 
 	const value = result.summaries[column.key]
+	const def = columnProperty(column.key, properties)
+	const allRows = result.groups.flatMap((g) => g.rows)
 	return (
 		<>
 			<div className={negClass('lb-table__value', value)}>
-				{formatSummary(value, column.summary, columnProperty(column.key, properties))}
+				{formatSummary(
+					value,
+					column.summary,
+					def,
+					sharedUnit(allRows, column.key, def?.unit)
+				)}
 			</div>
 			<div className="lb-table__op">
 				{column.summary} · {columnTitle(column.key, properties)}
@@ -173,7 +180,12 @@ function Grid({
 								? formatSummary(
 										result.summaries[column.key],
 										column.summary,
-										columnProperty(column.key, properties)
+										columnProperty(column.key, properties),
+										sharedUnit(
+											result.groups.flatMap((g) => g.rows),
+											column.key,
+											columnProperty(column.key, properties)?.unit
+										)
 									)
 								: ''}
 						</span>
@@ -221,7 +233,12 @@ function GroupRows({
 								formatSummary(
 									group.summaries[column.key],
 									column.summary,
-									columnProperty(column.key, properties)
+									columnProperty(column.key, properties),
+									sharedUnit(
+										group.rows,
+										column.key,
+										columnProperty(column.key, properties)?.unit
+									)
 								)
 							) : (
 								''
@@ -299,8 +316,11 @@ function cellText(
 	const value = row.cells[column.key]
 	if (value === undefined) return '—'
 	// With no definition there is no way to format the value truthfully, so it is shown raw rather than
-	// guessed at.
-	return def ? formatPropertyValue(def, value) : String(value ?? '—')
+	// guessed at. The unit comes from the *row*, not the column: money is a property of the amount, so
+	// two rows of one column can be in different currencies.
+	return def
+		? formatPropertyValue(def, value, row.units[column.key] ?? def.unit)
+		: String(value ?? '—')
 }
 
 /**
@@ -315,7 +335,9 @@ export function formatSummary(
 	// it — same meaning as `null`: nothing to show.
 	value: number | null | undefined,
 	op: SummaryOp,
-	def: PropertyDef | null
+	def: PropertyDef | null,
+	// `null` means the contributing rows disagree about the unit; `undefined` means "no unit".
+	unit: string | undefined | null = def?.unit
 ): string {
 	if (value === null || value === undefined) return '—'
 	if (summaryIsPercent(op)) return `${Math.round(value)}%`
@@ -327,7 +349,12 @@ export function formatSummary(
 			year: 'numeric',
 		})
 	}
-	if (def && summaryKeepsUnit(op, def.type)) return formatPropertyValue(def, value)
+	if (def && summaryKeepsUnit(op, def.type)) {
+		// Mixed currencies: show the bare number and say so, rather than stamping one currency's symbol
+		// on a total that is part something else. Converting between them is a separate feature.
+		if (unit === null) return `${formatNumber(value)} (mixed)`
+		return formatPropertyValue(def, value, unit)
+	}
 	return formatNumber(value)
 }
 

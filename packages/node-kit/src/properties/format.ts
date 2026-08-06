@@ -137,8 +137,19 @@ export function coercePropertyValue(type: PropertyType, raw: unknown): PropertyV
 	}
 }
 
-/** Human-readable rendering of one property's value. */
-export function formatPropertyValue(def: PropertyDef, value: PropertyValue): string {
+/**
+ * Human-readable rendering of one property's value.
+ *
+ * `unit` overrides the definition's, because a unit is per *shape*: two cards can carry the same price
+ * property in different currencies. Callers that have a shape resolve it with `unitForShapeProperty`;
+ * omitting it falls back to the definition's default, which is right for a value with no shape behind
+ * it (a summary row, say).
+ */
+export function formatPropertyValue(
+	def: PropertyDef,
+	value: PropertyValue,
+	unit = def.unit
+): string {
 	if (def.type === 'checkbox') return value === true ? '✓' : '—'
 	if (isListType(def.type)) {
 		return Array.isArray(value) && value.length ? value.join(', ') : '—'
@@ -150,10 +161,10 @@ export function formatPropertyValue(def: PropertyDef, value: PropertyValue): str
 		case 'link':
 			return linkDisplayText(value)
 		case 'financial':
-			return typeof value === 'number' ? formatCurrency(value, def.unit) : String(value)
+			return typeof value === 'number' ? formatCurrency(value, unit) : String(value)
 		case 'number': {
 			if (typeof value !== 'number') return String(value)
-			return def.unit ? `${formatNumber(value)} ${def.unit}` : formatNumber(value)
+			return unit ? `${formatNumber(value)} ${unit}` : formatNumber(value)
 		}
 		case 'date': {
 			const d = new Date(String(value))

@@ -19,9 +19,12 @@ import {
 	orderedPropertyIds,
 	readHiddenPropertyIds,
 	readShapeProperties,
+	readShapePropertyUnits,
 	removeShapeProperty,
 	setShapePropertyHidden,
 	setShapePropertyOrder,
+	setShapePropertyUnit,
+	unitForShapeProperty,
 	updateShapeProperties,
 } from './values'
 
@@ -515,29 +518,44 @@ function NumericValueEditor({
 
 	if (def.type !== 'financial') return input
 
+	const unit = unitForShapeProperty(def, readShapePropertyUnits(shape))
+
 	return (
 		<div className="lb-props__money">
 			<span className="lb-props__money-symbol" aria-hidden="true">
-				{currencySymbol(def.unit)}
+				{currencySymbol(unit)}
 			</span>
 			{input}
-			<CurrencyCodeInput editor={editor} def={def} />
+			<CurrencyCodeInput editor={editor} shape={shape} def={def} unit={unit} />
 		</div>
 	)
 }
 
 /**
- * The currency code beside a financial value — `GEL`, `USD`, anything ISO-4217-ish. Edits the
- * definition's unit (board-wide, like renaming), which is what keeps a column of prices in one
- * currency rather than one per shape.
+ * The currency code beside a financial value — `GEL`, `USD`, anything ISO-4217-ish.
+ *
+ * Edits *this shape's* currency, not the board's. It used to write the definition's unit, which meant
+ * pricing one card in USD silently reprised every other card carrying the same property — money is a
+ * property of the amount, not of the column it sits in. The definition's unit survives as the default
+ * a new value inherits, so a board whose prices really are all in one currency still only says so once.
  */
-function CurrencyCodeInput({ editor, def }: { editor: Editor; def: PropertyDef }) {
+function CurrencyCodeInput({
+	editor,
+	shape,
+	def,
+	unit,
+}: {
+	editor: Editor
+	shape: TLShape
+	def: PropertyDef
+	unit: string | undefined
+}) {
 	const [draft, setDraft] = useState<string | null>(null)
 
 	const commit = () => {
 		if (draft === null) return
 		const code = draft.trim().toUpperCase()
-		if (code && code !== def.unit) updateProperty(editor, def.id, { unit: code })
+		if (code !== (unit ?? '')) setShapePropertyUnit(editor, shape, def.id, code)
 		setDraft(null)
 	}
 
@@ -545,10 +563,10 @@ function CurrencyCodeInput({ editor, def }: { editor: Editor; def: PropertyDef }
 		<input
 			className="lb-props__money-code"
 			aria-label={`Currency of ${def.name}`}
-			value={draft ?? def.unit ?? ''}
+			value={draft ?? unit ?? ''}
 			placeholder="GEL"
 			maxLength={4}
-			onFocus={() => setDraft(def.unit ?? '')}
+			onFocus={() => setDraft(unit ?? '')}
 			onChange={(e) => setDraft(e.currentTarget.value)}
 			onBlur={commit}
 			onKeyDown={(e) => {

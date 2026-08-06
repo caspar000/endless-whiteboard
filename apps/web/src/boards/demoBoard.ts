@@ -130,6 +130,7 @@ export function seedDemoBoard(editor: Editor): void {
 			groupBy: null,
 			sorts: [],
 			layout: { mode: 'value', maxRows: DEFAULT_MAX_ROWS },
+			rates: {},
 		}
 		shapes.push({
 			id: createShapeId(),
@@ -153,6 +154,7 @@ export function seedDemoBoard(editor: Editor): void {
 			groupBy: category?.id ?? 'category',
 			sorts: [{ key: priceId, dir: 'desc' }],
 			layout: { mode: 'table', maxRows: DEFAULT_MAX_ROWS },
+			rates: {},
 		}
 		shapes.push({
 			id: createShapeId(),

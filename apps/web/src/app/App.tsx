@@ -16,6 +16,7 @@ import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
 import { useHashRoute } from './useHashRoute'
 import { useTabs } from './useTabs'
+import { useRates } from './useRates'
 import { useTheme } from './useTheme'
 
 /**
@@ -97,6 +98,8 @@ export function App() {
 	}, [platform])
 
 	const { theme, setTheme } = useTheme({ onRepaint: refreshThumbnails })
+	// Tops up the exchange rates aggregations read. Nothing waits on it.
+	useRates()
 
 	/**
 	 * Tells the canvas which colour mode to use.

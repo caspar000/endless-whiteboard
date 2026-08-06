@@ -6,7 +6,7 @@ import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'
 import type { NodeComponentProps } from '../../registry'
 import { getTableResult } from './engine'
-import { sharedUnit, type TableGroup, type TableResult, type TableRow } from './query'
+import { moneyOutcome, type TableGroup, type TableResult, type TableRow } from './query'
 import { TableConfig } from './TableConfig'
 import {
 	LABEL_COLUMN,
@@ -107,16 +107,23 @@ function Headline({
 	const value = result.summaries[column.key]
 	const def = columnProperty(column.key, properties)
 	const allRows = result.groups.flatMap((g) => g.rows)
+	const money = moneyOutcome(allRows, column.key, def, { config: column.money, rates: null })
 	return (
 		<>
 			<div className={negClass('lb-table__value', value)}>
-				{formatSummary(
-					value,
-					column.summary,
-					def,
-					sharedUnit(allRows, column.key, def?.unit)
-				)}
+				{formatSummary(value, column.summary, def, money.mixed ? null : money.unit)}
 			</div>
+			{/* A converted total must never look identical to a native one. */}
+			{(money.converted || money.excluded > 0) && (
+				<div className="lb-table__note">
+					{[
+						money.converted ? 'converted' : '',
+						money.excluded > 0 ? `${money.excluded} excluded` : '',
+					]
+						.filter(Boolean)
+						.join(' · ')}
+				</div>
+			)}
 			<div className="lb-table__op">
 				{column.summary} · {columnTitle(column.key, properties)}
 			</div>
@@ -181,10 +188,10 @@ function Grid({
 										result.summaries[column.key],
 										column.summary,
 										columnProperty(column.key, properties),
-										sharedUnit(
+										summaryUnit(
 											result.groups.flatMap((g) => g.rows),
-											column.key,
-											columnProperty(column.key, properties)?.unit
+											column,
+											properties
 										)
 									)
 								: ''}
@@ -234,11 +241,7 @@ function GroupRows({
 									group.summaries[column.key],
 									column.summary,
 									columnProperty(column.key, properties),
-									sharedUnit(
-										group.rows,
-										column.key,
-										columnProperty(column.key, properties)?.unit
-									)
+									summaryUnit(group.rows, column, properties)
 								)
 							) : (
 								''
@@ -356,6 +359,17 @@ export function formatSummary(
 		return formatPropertyValue(def, value, unit)
 	}
 	return formatNumber(value)
+}
+
+/** The unit a summary is expressed in, or `null` when its rows disagree and nothing converted them. */
+function summaryUnit(
+	rows: readonly TableRow[],
+	column: TableColumn,
+	properties: ReadonlyMap<string, PropertyDef>
+): string | undefined | null {
+	const def = columnProperty(column.key, properties)
+	const money = moneyOutcome(rows, column.key, def, { config: column.money, rates: null })
+	return money.mixed ? null : money.unit
 }
 
 /** Column widths as flex weights, so they hold their proportions as the shape is resized. */

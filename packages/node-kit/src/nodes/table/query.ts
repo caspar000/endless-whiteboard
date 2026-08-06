@@ -1,10 +1,17 @@
 import { isEmptyValue, listValuesOf, type FactsMap, type ShapeFacts } from '../../facts'
 import { numericPropertyValue } from '../../properties/format'
+import {
+	convertAmount,
+	normaliseCurrency,
+	rateBetween,
+	type RateTable,
+} from '../../properties/rates'
 import { isListType, type PropertyDef, type PropertyValue } from '../../properties/types'
 import {
 	LABEL_COLUMN,
 	columnProperty,
 	type FilterOp,
+	type MoneyConfig,
 	type SummaryOp,
 	type TableColumn,
 	type TableFilter,
@@ -243,11 +250,76 @@ export function sharedUnit(
 	return found ? seen : fallback
 }
 
+/** Everything a money column needs to turn a set of amounts into one comparable number. */
+export interface MoneyContext {
+	config?: MoneyConfig
+	rates: RateTable | null
+	/** The property's default currency, used for rows carrying no override of their own. */
+	fallbackUnit?: string
+}
+
+/** Whether a row's currency takes part, per the column's `include` list. */
+function included(unit: string | undefined, config: MoneyConfig | undefined): boolean {
+	if (!config?.include) return true
+	const code = normaliseCurrency(unit)
+	return config.include.some((entry) => normaliseCurrency(entry) === code)
+}
+
+/**
+ * What a money column's summary is, beyond its number: the currency it is in, whether the rows
+ * disagreed, and how many were left out.
+ *
+ * Separate from `summarise` so the number stays a number and the UI still gets what it needs to be
+ * honest about it — a converted total that looks identical to a native one is how people get misled.
+ */
+export function moneyOutcome(
+	rows: readonly TableRow[],
+	columnKey: string,
+	def: PropertyDef | null,
+	money: MoneyContext | undefined
+): { unit: string | undefined; mixed: boolean; excluded: number; converted: boolean } {
+	const fallback = money?.fallbackUnit ?? def?.unit
+	if (def?.type !== 'financial') {
+		return { unit: fallback, mixed: false, excluded: 0, converted: false }
+	}
+
+	const target = normaliseCurrency(money?.config?.to ?? undefined)
+	let excluded = 0
+	let seen: string | undefined
+	let found = false
+	let mixed = false
+
+	for (const row of rows) {
+		if (row.cells[columnKey] === undefined) continue
+		const unit = row.units[columnKey] ?? fallback
+		if (!included(unit, money?.config)) {
+			excluded++
+			continue
+		}
+		if (target) {
+			// Excluded for want of a rate, which is a different sentence from "you chose to leave it out"
+			// but has the same effect on the total, so it is counted the same way.
+			if (rateBetween(money?.rates ?? null, unit, target) === null) excluded++
+			continue
+		}
+		if (!found) {
+			seen = unit
+			found = true
+		} else if (unit !== seen) {
+			mixed = true
+		}
+	}
+
+	if (target) return { unit: target, mixed: false, excluded, converted: true }
+	return { unit: found ? seen : fallback, mixed, excluded, converted: false }
+}
+
 export function summarise(
 	op: SummaryOp,
 	rows: readonly TableRow[],
 	columnKey: string,
-	def: PropertyDef | null
+	def: PropertyDef | null,
+	money?: MoneyContext
 ): number | null {
 	const values = rows.map((row) => row.cells[columnKey])
 	const present = values.filter((v) => !isEmptyValue(v))
@@ -295,9 +367,36 @@ export function summarise(
 	// contributes — the same rule the rollup engine established, for the same reason.
 	if (!def) return null
 	const numbers: number[] = []
-	for (const v of present) {
-		const n = numericPropertyValue(def, v ?? null)
-		if (n !== null) numbers.push(n)
+	if (def.type === 'financial') {
+		/*
+		 * Money is converted *before* it is reduced, not after — and that ordering is the whole point.
+		 * `max` over unconverted amounts picks the largest number regardless of currency, so $100 loses
+		 * to ₾200 and the answer is wrong in a way nobody notices. Same for min, avg, median and range.
+		 *
+		 * Rows are read here rather than the flat `present` list because a currency belongs to a row.
+		 */
+		const fallback = money?.fallbackUnit ?? def.unit
+		const target = normaliseCurrency(money?.config?.to ?? undefined)
+		for (const row of rows) {
+			const raw = row.cells[columnKey]
+			if (isEmptyValue(raw)) continue
+			const n = numericPropertyValue(def, raw ?? null)
+			if (n === null) continue
+			const unit = row.units[columnKey] ?? fallback
+			if (!included(unit, money?.config)) continue
+			if (!target) {
+				numbers.push(n)
+				continue
+			}
+			const converted = convertAmount(n, unit, target, money?.rates ?? null)
+			// No rate: left out rather than counted at par. `moneyOutcome` reports how many.
+			if (converted !== null) numbers.push(converted)
+		}
+	} else {
+		for (const v of present) {
+			const n = numericPropertyValue(def, v ?? null)
+			if (n !== null) numbers.push(n)
+		}
 	}
 	if (!numbers.length) return null
 
@@ -325,17 +424,18 @@ export function summarise(
 function summariseColumns(
 	columns: readonly TableColumn[],
 	rows: readonly TableRow[],
-	properties: ReadonlyMap<string, PropertyDef>
+	properties: ReadonlyMap<string, PropertyDef>,
+	rates: RateTable | null
 ): Record<string, number | null> {
 	const out: Record<string, number | null> = {}
 	for (const column of columns) {
 		if (!column.summary) continue
-		out[column.key] = summarise(
-			column.summary,
-			rows,
-			column.key,
-			columnProperty(column.key, properties)
-		)
+		const def = columnProperty(column.key, properties)
+		out[column.key] = summarise(column.summary, rows, column.key, def, {
+			config: column.money,
+			rates,
+			fallbackUnit: def?.unit,
+		})
 	}
 	return out
 }
@@ -383,7 +483,15 @@ export function queryTable(
 	facts: FactsMap,
 	props: TableNodeProps,
 	selfId: string,
-	properties: ReadonlyMap<string, PropertyDef> = new Map()
+	properties: ReadonlyMap<string, PropertyDef> = new Map(),
+	/**
+	 * Rates are *passed in*, never fetched here.
+	 *
+	 * This runs inside a computed cache whose whole job is to not recompute while a shape is dragged.
+	 * An async fetch in here would make that impossible; taking the table as an input means rates
+	 * arriving invalidates the cache exactly once, and dragging still touches nothing.
+	 */
+	rates: RateTable | null = null
 ): TableResult {
 	const { columns, groupBy, sorts } = props
 
@@ -424,13 +532,13 @@ export function queryTable(
 	const groups: TableGroup[] =
 		groupBy === null
 			? rows.length
-				? [{ key: null, rows, summaries: summariseColumns(columns, rows, properties) }]
+				? [{ key: null, rows, summaries: summariseColumns(columns, rows, properties, rates) }]
 				: []
-			: buildGroups(rows, groupBy, columns, properties)
+			: buildGroups(rows, groupBy, columns, properties, rates)
 
 	return {
 		groups,
-		summaries: summariseColumns(columns, rows, properties),
+		summaries: summariseColumns(columns, rows, properties, rates),
 		matched,
 		skipped: countSkipped(rows, columns, properties),
 	}
@@ -448,7 +556,8 @@ function buildGroups(
 	rows: readonly TableRow[],
 	groupBy: string,
 	columns: readonly TableColumn[],
-	properties: ReadonlyMap<string, PropertyDef>
+	properties: ReadonlyMap<string, PropertyDef>,
+	rates: RateTable | null
 ): TableGroup[] {
 	const def = properties.get(groupBy)
 	const buckets = new Map<string, TableRow[]>()
@@ -480,7 +589,7 @@ function buildGroups(
 			.map(([key, groupRows]) => ({
 				key,
 				rows: groupRows,
-				summaries: summariseColumns(columns, groupRows, properties),
+				summaries: summariseColumns(columns, groupRows, properties, rates),
 			}))
 			// Biggest first — the interesting buckets float to the top — with an alphabetical tiebreak so the
 			// order is stable across recomputes. `—` sorts last: it is an absence, not a category.

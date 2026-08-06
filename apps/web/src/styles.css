@@ -2307,6 +2307,13 @@ button.lb-props__eye:hover {
 	font-variant-numeric: tabular-nums;
 	letter-spacing: -0.02em;
 }
+/* "converted · 2 excluded" under a total — a converted number must not look like a native one. */
+.lb-table__note {
+	font-size: 10px;
+	color: var(--lb-text-faint);
+	letter-spacing: 0.04em;
+	margin-top: 2px;
+}
 .lb-table__op {
 	color: var(--lb-text-dim);
 	font-size: 10px;

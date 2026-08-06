@@ -1,4 +1,5 @@
 import { createComputedCache, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { getCurrentRates, mergeRates, type ManualRates } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import { getPageFacts, rollupStats } from '../rollup/engine'
 import { EMPTY_TABLE, queryTable, type TableGroup, type TableResult, type TableRow } from './query'
@@ -19,7 +20,17 @@ const tableCache = createComputedCache<Editor, TableResult, TLShape>(
 		if (shape.type !== TABLE_NODE_TYPE) return EMPTY_TABLE
 		rollupStats.aggregateRecomputes++
 		const properties = propertyMap(readPropertyRegistry(editor))
-		return queryTable(getPageFacts(editor).get(), shape.props as never, shape.id, properties)
+		// Rates read reactively, so they are a *dependency* of this computed rather than something
+		// fetched inside it: they arrive, this invalidates once, and a drag still recomputes nothing.
+		// The table's own hand-entered rates win — see `mergeRates`.
+		const rates = mergeRates(getCurrentRates(), (shape.props as { rates?: ManualRates }).rates)
+		return queryTable(
+			getPageFacts(editor).get(),
+			shape.props as never,
+			shape.id,
+			properties,
+			rates
+		)
 	},
 	{
 		// Dragging a table rewrites its x/y. Without this the entry would be invalidated and the whole

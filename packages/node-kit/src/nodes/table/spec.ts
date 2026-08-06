@@ -176,6 +176,8 @@ export interface TableColumn {
 	summary: SummaryOp | null
 	/** Relative width. Rendered as a flex-grow weight, so it survives the shape being resized. */
 	width: number
+	/** Currency handling for this column's summary. Absent = don't convert. See {@link MoneyConfig}. */
+	money?: MoneyConfig
 }
 
 export interface TableSort {
@@ -205,6 +207,25 @@ export interface TableLayout {
 	maxRows: number
 }
 
+/**
+ * How a money column's summary handles more than one currency.
+ *
+ * Absent means the old behaviour: don't convert, and say "(mixed)" when the rows disagree. That stays
+ * the default deliberately — converting silently would change what an existing total means.
+ */
+export interface MoneyConfig {
+	/**
+	 * What the answer is expressed in. `null` means don't convert.
+	 */
+	to: string | null
+	/**
+	 * Which source currencies take part. `null` is all of them; a list sums only those and reports the
+	 * rest as excluded, which is what lets you total your USD spend without pretending the GEL is not
+	 * there.
+	 */
+	include: string[] | null
+}
+
 export interface TableNodeProps {
 	title: string
 	source: TableSource
@@ -212,6 +233,15 @@ export interface TableNodeProps {
 	groupBy: string | null
 	sorts: TableSort[]
 	layout: TableLayout
+	/**
+	 * Hand-entered rates for this table, against the display currency, beating anything fetched.
+	 *
+	 * Per table because that is where the question is asked: one board can hold a trip budgeted at the
+	 * rate you actually got and a shopping list at today's. Fetched rates are a shared cache and stay
+	 * out of the document; these are what someone typed, so they are part of the board and travel with
+	 * it in a backup.
+	 */
+	rates: Record<string, number>
 }
 
 // ---------------------------------------------------------------------------
@@ -238,10 +268,16 @@ export const tableSourceValidator: T.Validatable<TableSource> = T.object({
 	filters: T.arrayOf(tableFilterValidator),
 })
 
+export const moneyConfigValidator = T.object({
+	to: T.string.nullable(),
+	include: T.arrayOf(T.string).nullable(),
+})
+
 export const tableColumnValidator: T.Validatable<TableColumn> = T.object({
 	key: T.string,
 	summary: T.literalEnum(...SUMMARY_OPS).nullable(),
 	width: T.positiveNumber,
+	money: moneyConfigValidator.optional(),
 })
 
 export const tableSortValidator: T.Validatable<TableSort> = T.object({
@@ -271,6 +307,7 @@ export function defaultTableProps(): TableNodeProps {
 		groupBy: null,
 		sorts: [],
 		layout: { mode: 'table', maxRows: DEFAULT_MAX_ROWS },
+		rates: {},
 	}
 }
 

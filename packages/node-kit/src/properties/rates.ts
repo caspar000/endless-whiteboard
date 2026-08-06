@@ -10,6 +10,7 @@
  * stored value stays exactly what was typed, in the currency it was typed in. Writing a converted
  * amount back would let a rate change silently rewrite someone's data.
  */
+import { atom } from 'tldraw'
 
 /** A set of rates expressed against one base — `rates[code]` is how many `code` one `base` buys. */
 export interface RateTable {
@@ -102,4 +103,25 @@ export function currenciesUsed(units: readonly (string | undefined)[]): string[]
 		if (code) seen.add(code)
 	}
 	return [...seen]
+}
+
+/**
+ * The rates every aggregation reads, as a reactive value.
+ *
+ * An atom rather than an argument threaded through fifteen call sites, and reactive rather than a
+ * plain module variable, because aggregation lives inside a computed cache whose entire purpose is to
+ * not recompute while a shape is dragged. Reading an atom makes rates a *dependency*: they arrive, the
+ * cache invalidates exactly once, and a drag still touches nothing.
+ *
+ * Set by the app, which owns fetching and caching (node-kit may not touch the network). Null until
+ * something has actually needed rates — a board with no money on it never populates this.
+ */
+const currentRates = atom<RateTable | null>('lifeboard:rates', null)
+
+export function getCurrentRates(): RateTable | null {
+	return currentRates.get()
+}
+
+export function setCurrentRates(table: RateTable | null): void {
+	currentRates.set(table)
 }

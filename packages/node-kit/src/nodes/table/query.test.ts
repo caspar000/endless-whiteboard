@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { FactsMap, ShapeFacts } from '../../facts'
+import type { RateTable } from '../../properties/rates'
 import type { PropertyDef, PropertyValue } from '../../properties/types'
-import { queryTable, summarise, type TableRow } from './query'
+import { moneyOutcome, queryTable, summarise, type TableRow } from './query'
 import {
 	LABEL_COLUMN,
 	defaultTableProps,
@@ -425,4 +426,99 @@ describe('op gating', () => {
 		// The label column has no property, so it can only be counted.
 		expect(summaryOpsForType(null)).toEqual(summaryOpsForType('text'))
 	})
+})
+
+describe('currency conversion in summaries', () => {
+	const priceDef: PropertyDef = { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }
+	const properties = new Map([['price', priceDef]])
+	// One USD buys 2.5 GEL.
+	const rates: RateTable = { base: 'GEL', rates: { USD: 0.4, GEL: 1 }, asOf: 0, stale: false }
+
+	const row = (id: string, price: number, unit?: string): TableRow => ({
+		shapeId: id,
+		label: id,
+		cells: { price },
+		units: unit ? { price: unit } : {},
+	})
+
+	it('sums across currencies once a target is chosen', () => {
+		const rows = [row('a', 100, 'GEL'), row('b', 100, 'USD')]
+		// 100 GEL + (100 USD → 250 GEL)
+		expect(
+			summarise('sum', rows, 'price', priceDef, {
+				config: { to: 'GEL', include: null },
+				rates,
+			})
+		).toBeCloseTo(350, 6)
+	})
+
+	it('leaves the total unconverted, and reports it mixed, when no target is set', () => {
+		const rows = [row('a', 100, 'GEL'), row('b', 100, 'USD')]
+		expect(summarise('sum', rows, 'price', priceDef, { rates })).toBe(200)
+		const outcome = moneyOutcome(rows, 'price', priceDef, { rates })
+		expect(outcome.mixed).toBe(true)
+		expect(outcome.converted).toBe(false)
+	})
+
+	it('sums only the currencies asked for, and says how many it left out', () => {
+		const rows = [row('a', 100, 'GEL'), row('b', 100, 'USD'), row('c', 50, 'USD')]
+		expect(
+			summarise('sum', rows, 'price', priceDef, {
+				config: { to: 'USD', include: ['USD'] },
+				rates,
+			})
+		).toBe(150)
+		const outcome = moneyOutcome(rows, 'price', priceDef, {
+			config: { to: 'USD', include: ['USD'] },
+			rates,
+		})
+		expect(outcome.excluded).toBe(1)
+		expect(outcome.unit).toBe('USD')
+		expect(outcome.converted).toBe(true)
+	})
+
+	/**
+	 * The trap this ordering exists for: reduced before conversion, `max` picks the biggest *number*
+	 * regardless of currency, so 200 GEL (=80 USD) beats 100 USD and the answer is quietly wrong.
+	 */
+	it('converts before comparing, so max is the largest amount and not the largest number', () => {
+		const rows = [row('a', 200, 'GEL'), row('b', 100, 'USD')]
+		expect(
+			summarise('max', rows, 'price', priceDef, { config: { to: 'USD', include: null }, rates })
+		).toBeCloseTo(100, 6)
+		expect(
+			summarise('min', rows, 'price', priceDef, { config: { to: 'USD', include: null }, rates })
+		).toBeCloseTo(80, 6)
+	})
+
+	it('leaves out what it cannot convert rather than counting it at par', () => {
+		const rows = [row('a', 100, 'GEL'), row('b', 100, 'XYZ')]
+		expect(
+			summarise('sum', rows, 'price', priceDef, { config: { to: 'GEL', include: null }, rates })
+		).toBe(100)
+		expect(
+			moneyOutcome(rows, 'price', priceDef, { config: { to: 'GEL', include: null }, rates })
+				.excluded
+		).toBe(1)
+	})
+
+	it('falls back to the definition currency for rows with no override', () => {
+		const rows = [row('a', 100), row('b', 100, 'USD')]
+		// 'a' is GEL by default; 100 USD is 250 GEL.
+		expect(
+			summarise('sum', rows, 'price', priceDef, { config: { to: 'GEL', include: null }, rates })
+		).toBeCloseTo(350, 6)
+	})
+
+	it('does not touch non-money columns', () => {
+		const noteDef: PropertyDef = { id: 'note', name: 'Note', type: 'number' }
+		const rows: TableRow[] = [
+			{ shapeId: 'a', label: 'a', cells: { note: 5 }, units: {}, },
+			{ shapeId: 'b', label: 'b', cells: { note: 7 }, units: {} },
+		]
+		expect(summarise('sum', rows, 'note', noteDef, { config: { to: 'USD', include: null }, rates })).toBe(12)
+		expect(moneyOutcome(rows, 'note', noteDef, { rates }).converted).toBe(false)
+	})
+
+	void properties
 })

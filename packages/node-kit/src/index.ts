@@ -84,9 +84,11 @@ export {
 export {
 	convertAmount,
 	currenciesUsed,
+	getCurrentRates,
 	mergeRates,
 	normaliseCurrency,
 	rateBetween,
+	setCurrentRates,
 	type ManualRates,
 	type RateTable,
 } from './properties/rates'
@@ -169,6 +171,7 @@ export {
 	summaryOpsForType,
 	type FilterOp,
 	type LayoutMode,
+	type MoneyConfig,
 	type SummaryOp,
 	type TableColumn,
 	type TableFilter,
@@ -177,9 +180,11 @@ export {
 } from './nodes/table/spec'
 export {
 	EMPTY_TABLE,
+	moneyOutcome,
 	queryTable,
 	sharedUnit,
 	summarise,
+	type MoneyContext,
 	type TableGroup,
 	type TableResult,
 	type TableRow,

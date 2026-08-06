@@ -109,6 +109,9 @@ export const rollupsToTablesMigrations: MigrationSequence = createMigrationSeque
 						sorts: [],
 						// One big number, as before. See the note at the top.
 						layout: { mode: 'value', maxRows: DEFAULT_MAX_ROWS },
+						// No hand-entered rates: a rollup never had any, and an empty map is what a new
+						// table starts with, so the converted total means the same thing either way.
+						rates: {},
 					}
 
 					record.type = TABLE_NODE_TYPE

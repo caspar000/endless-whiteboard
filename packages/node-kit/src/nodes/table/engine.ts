@@ -2,7 +2,14 @@ import { createComputedCache, type Editor, type TLShape, type TLShapeId } from '
 import { getCurrentRates, mergeRates, type ManualRates } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import { getPageFacts, rollupStats } from '../rollup/engine'
-import { EMPTY_TABLE, queryTable, type TableGroup, type TableResult, type TableRow } from './query'
+import {
+	EMPTY_TABLE,
+	queryTable,
+	type MoneyOutcome,
+	type TableGroup,
+	type TableResult,
+	type TableRow,
+} from './query'
 import { TABLE_NODE_TYPE } from './definition'
 
 /**
@@ -56,6 +63,9 @@ export function areTableResultsEqual(a: TableResult, b: TableResult): boolean {
 	if (a === b) return true
 	if (a.matched !== b.matched || a.skipped !== b.skipped) return false
 	if (!areSummariesEqual(a.summaries, b.summaries)) return false
+	// Compared for the same reason units are, one function down: provenance is rendered, so a change to
+	// it has to invalidate the cache or the note under the total goes stale.
+	if (!areMoneyEqual(a.money, b.money)) return false
 	if (a.groups.length !== b.groups.length) return false
 	for (let i = 0; i < a.groups.length; i++) {
 		if (!areGroupsEqual(a.groups[i]!, b.groups[i]!)) return false
@@ -67,9 +77,44 @@ function areGroupsEqual(a: TableGroup, b: TableGroup): boolean {
 	if (a.key !== b.key) return false
 	if (a.rows.length !== b.rows.length) return false
 	if (!areSummariesEqual(a.summaries, b.summaries)) return false
+	if (!areMoneyEqual(a.money, b.money)) return false
 	for (let i = 0; i < a.rows.length; i++) {
 		if (!areRowsEqual(a.rows[i]!, b.rows[i]!)) return false
 	}
+	return true
+}
+
+function areMoneyEqual(
+	a: Readonly<Record<string, MoneyOutcome>>,
+	b: Readonly<Record<string, MoneyOutcome>>
+): boolean {
+	if (a === b) return true
+	const aKeys = Object.keys(a)
+	if (aKeys.length !== Object.keys(b).length) return false
+	for (const key of aKeys) {
+		const x = a[key]
+		const y = b[key]
+		if (!y || !x) return false
+		if (
+			x.unit !== y.unit ||
+			x.mixed !== y.mixed ||
+			x.excluded !== y.excluded ||
+			x.converted !== y.converted
+		) {
+			return false
+		}
+	}
+	return true
+}
+
+function areUnitsEqual(
+	a: Readonly<Record<string, string>>,
+	b: Readonly<Record<string, string>>
+): boolean {
+	if (a === b) return true
+	const aKeys = Object.keys(a)
+	if (aKeys.length !== Object.keys(b).length) return false
+	for (const key of aKeys) if (a[key] !== b[key]) return false
 	return true
 }
 
@@ -77,6 +122,16 @@ function areRowsEqual(a: TableRow, b: TableRow): boolean {
 	// Row *order* is part of the result — a re-sort is a real change — so rows are compared positionally
 	// rather than as a set.
 	if (a.shapeId !== b.shapeId || a.label !== b.label) return false
+	/*
+	 * Units are part of what is rendered, so they belong in this comparison.
+	 *
+	 * Leaving them out was a real bug and an instructive one: repricing a shape in USD changed nothing
+	 * else about the result, so this returned "equal", the computed cache kept its previous value, and
+	 * the table went on rendering the old currency. The card beside it — which reads the shape directly
+	 * rather than through the cache — updated immediately, which is what made it look like a formatting
+	 * problem rather than a caching one.
+	 */
+	if (!areUnitsEqual(a.units, b.units)) return false
 	const aKeys = Object.keys(a.cells)
 	if (aKeys.length !== Object.keys(b.cells).length) return false
 	for (const key of aKeys) {

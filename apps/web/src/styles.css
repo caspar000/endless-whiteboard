@@ -1145,6 +1145,42 @@ button {
 	border-color: var(--lb-accent);
 }
 
+/* A money column's currency controls, in the table config. */
+.lb-tcfg__money {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin-bottom: 8px;
+}
+/* Which currencies take part. A chip that is off is excluded from the total, and said so. */
+.lb-tcfg__cur {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	padding: 2px 8px;
+}
+.lb-tcfg__cur--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+/* "1 GEL = [0.38] USD" */
+.lb-tcfg__rate {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	margin-top: 4px;
+}
+.lb-tcfg__rate input {
+	width: 88px;
+	flex: none;
+}
+
 /* ------------------------------------------------------------ dotted paper */
 
 /* Fills the canvas background layer; see canvas/DottedPaper.tsx for the camera math. */

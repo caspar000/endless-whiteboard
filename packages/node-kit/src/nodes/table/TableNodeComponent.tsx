@@ -6,7 +6,7 @@ import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'
 import type { NodeComponentProps } from '../../registry'
 import { getTableResult } from './engine'
-import { moneyOutcome, type TableGroup, type TableResult, type TableRow } from './query'
+import type { TableGroup, TableResult, TableRow } from './query'
 import { TableConfig } from './TableConfig'
 import {
 	LABEL_COLUMN,
@@ -107,14 +107,16 @@ function Headline({
 	const value = result.summaries[column.key]
 	const def = columnProperty(column.key, properties)
 	const allRows = result.groups.flatMap((g) => g.rows)
-	const money = moneyOutcome(allRows, column.key, def, { config: column.money, rates: null })
+	// From the query, which has the rates. Recomputing it here with `rates: null` made every
+	// convertible row look unconvertible and reported exclusions that had not happened.
+	const money = result.money[column.key]
 	return (
 		<>
 			<div className={negClass('lb-table__value', value)}>
-				{formatSummary(value, column.summary, def, money.mixed ? null : money.unit)}
+				{formatSummary(value, column.summary, def, money?.mixed ? null : money?.unit)}
 			</div>
 			{/* A converted total must never look identical to a native one. */}
-			{(money.converted || money.excluded > 0) && (
+			{money && (money.converted || money.excluded > 0) && (
 				<div className="lb-table__note">
 					{[
 						money.converted ? 'converted' : '',
@@ -188,11 +190,9 @@ function Grid({
 										result.summaries[column.key],
 										column.summary,
 										columnProperty(column.key, properties),
-										summaryUnit(
-											result.groups.flatMap((g) => g.rows),
-											column,
-											properties
-										)
+										result.money[column.key]?.mixed
+											? null
+											: result.money[column.key]?.unit
 									)
 								: ''}
 						</span>
@@ -241,7 +241,7 @@ function GroupRows({
 									group.summaries[column.key],
 									column.summary,
 									columnProperty(column.key, properties),
-									summaryUnit(group.rows, column, properties)
+									group.money[column.key]?.mixed ? null : group.money[column.key]?.unit
 								)
 							) : (
 								''
@@ -359,17 +359,6 @@ export function formatSummary(
 		return formatPropertyValue(def, value, unit)
 	}
 	return formatNumber(value)
-}
-
-/** The unit a summary is expressed in, or `null` when its rows disagree and nothing converted them. */
-function summaryUnit(
-	rows: readonly TableRow[],
-	column: TableColumn,
-	properties: ReadonlyMap<string, PropertyDef>
-): string | undefined | null {
-	const def = columnProperty(column.key, properties)
-	const money = moneyOutcome(rows, column.key, def, { config: column.money, rates: null })
-	return money.mixed ? null : money.unit
 }
 
 /** Column widths as flex weights, so they hold their proportions as the shape is resized. */

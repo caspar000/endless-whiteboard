@@ -51,18 +51,36 @@ export interface TableRow {
 	units: Readonly<Record<string, string>>
 }
 
+/** What a money summary is, beyond its number. Computed by the query so the view never needs rates. */
+export interface MoneyOutcome {
+	unit: string | undefined
+	mixed: boolean
+	excluded: number
+	converted: boolean
+}
+
 export interface TableGroup {
 	/** `null` for an ungrouped table; `'—'` for shapes with no value for the group property. */
 	key: string | null
 	rows: TableRow[]
 	/** Summary per column key, for this group only. */
 	summaries: Readonly<Record<string, number | null>>
+	/** Currency provenance per column key, for this group only. */
+	money: Readonly<Record<string, MoneyOutcome>>
 }
 
 export interface TableResult {
 	groups: TableGroup[]
 	/** Summary per column key, across every matched row. */
 	summaries: Readonly<Record<string, number | null>>
+	/**
+	 * Currency provenance per column key.
+	 *
+	 * Computed here rather than in the component because the component has no rates — and when it tried
+	 * to work this out for itself with `rates: null`, every convertible row looked unconvertible and the
+	 * total reported five exclusions that had not happened.
+	 */
+	money: Readonly<Record<string, MoneyOutcome>>
 	/** Rows that matched the source. */
 	matched: number
 	/**
@@ -77,6 +95,7 @@ export interface TableResult {
 export const EMPTY_TABLE: TableResult = {
 	groups: [],
 	summaries: {},
+	money: {},
 	matched: 0,
 	skipped: 0,
 }
@@ -277,7 +296,7 @@ export function moneyOutcome(
 	columnKey: string,
 	def: PropertyDef | null,
 	money: MoneyContext | undefined
-): { unit: string | undefined; mixed: boolean; excluded: number; converted: boolean } {
+): MoneyOutcome {
 	const fallback = money?.fallbackUnit ?? def?.unit
 	if (def?.type !== 'financial') {
 		return { unit: fallback, mixed: false, excluded: 0, converted: false }
@@ -426,18 +445,17 @@ function summariseColumns(
 	rows: readonly TableRow[],
 	properties: ReadonlyMap<string, PropertyDef>,
 	rates: RateTable | null
-): Record<string, number | null> {
-	const out: Record<string, number | null> = {}
+): { summaries: Record<string, number | null>; money: Record<string, MoneyOutcome> } {
+	const summaries: Record<string, number | null> = {}
+	const money: Record<string, MoneyOutcome> = {}
 	for (const column of columns) {
 		if (!column.summary) continue
 		const def = columnProperty(column.key, properties)
-		out[column.key] = summarise(column.summary, rows, column.key, def, {
-			config: column.money,
-			rates,
-			fallbackUnit: def?.unit,
-		})
+		const context = { config: column.money, rates, fallbackUnit: def?.unit }
+		summaries[column.key] = summarise(column.summary, rows, column.key, def, context)
+		money[column.key] = moneyOutcome(rows, column.key, def, context)
 	}
-	return out
+	return { summaries, money }
 }
 
 // ---------------------------------------------------------------------------
@@ -532,13 +550,13 @@ export function queryTable(
 	const groups: TableGroup[] =
 		groupBy === null
 			? rows.length
-				? [{ key: null, rows, summaries: summariseColumns(columns, rows, properties, rates) }]
+				? [{ key: null, rows, ...summariseColumns(columns, rows, properties, rates) }]
 				: []
 			: buildGroups(rows, groupBy, columns, properties, rates)
 
 	return {
 		groups,
-		summaries: summariseColumns(columns, rows, properties, rates),
+		...summariseColumns(columns, rows, properties, rates),
 		matched,
 		skipped: countSkipped(rows, columns, properties),
 	}
@@ -589,7 +607,7 @@ function buildGroups(
 			.map(([key, groupRows]) => ({
 				key,
 				rows: groupRows,
-				summaries: summariseColumns(columns, groupRows, properties, rates),
+				...summariseColumns(columns, groupRows, properties, rates),
 			}))
 			// Biggest first — the interesting buckets float to the top — with an alphabetical tiebreak so the
 			// order is stable across recomputes. `—` sorts last: it is an absence, not a category.

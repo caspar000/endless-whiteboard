@@ -1,8 +1,10 @@
 import { useValue, type Editor } from 'tldraw'
-import { readPropertyRegistry } from '../../properties/schema'
+import { currenciesUsed, getCurrentRates, normaliseCurrency } from '../../properties/rates'
+import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'
 import { updateNodeProps, type NodeShape } from '../../registry'
 import { getPageFacts } from '../rollup/engine'
+import { getTableResult } from './engine'
 import {
 	DEFAULT_COLUMN_WIDTH,
 	LABEL_COLUMN,
@@ -14,6 +16,7 @@ import {
 	summaryOpsForType,
 	type FilterOp,
 	type LayoutMode,
+	type MoneyConfig,
 	type SummaryOp,
 	type TableColumn,
 	type TableFilter,
@@ -189,6 +192,8 @@ export function TableConfig({
 					</button>
 				)}
 			</Section>
+
+			<CurrencySection shape={shape} editor={editor} update={update} />
 
 			<Section title="Columns">
 				{columns.map((column, i) => (
@@ -428,4 +433,145 @@ function swap(columns: readonly TableColumn[], a: number, b: number): TableColum
 	next[a] = next[b]!
 	next[b] = tmp
 	return next
+}
+
+/**
+ * Currency handling, per money column.
+ *
+ * Only rendered when the table actually has a summarised money column *and* the rows carry more than
+ * one currency — a board priced entirely in one currency has no question to answer, and a section
+ * offering to convert GEL into GEL is noise.
+ *
+ * The currencies offered are the ones present in the data rather than a list of every ISO code, so an
+ * option that could only ever match nothing cannot be picked. Same principle as the filter operators.
+ */
+function CurrencySection({
+	shape,
+	editor,
+	update,
+}: {
+	shape: NodeShape<TableNodeProps>
+	editor: Editor
+	update: (props: Partial<TableNodeProps>) => void
+}) {
+	const { columns, rates } = shape.props
+	const properties = useValue('properties', () => readPropertyRegistry(editor), [editor])
+	const byId = propertyMap(properties)
+
+	// The currencies actually in the rows this table matches.
+	const result = useValue('table-result', () => getTableResult(editor, shape.id), [editor, shape.id])
+	const moneyColumns = columns.filter(
+		(c) => c.summary && byId.get(c.key)?.type === 'financial'
+	)
+	const present = currenciesUsed(
+		result.groups.flatMap((g) =>
+			g.rows.flatMap((row) =>
+				moneyColumns.map((c) => row.units[c.key] ?? byId.get(c.key)?.unit)
+			)
+		)
+	)
+	if (!moneyColumns.length || present.length < 2) return null
+
+	const base = normaliseCurrency(getCurrentRates()?.base) ?? 'GEL'
+	const setColumn = (key: string, money: MoneyConfig | undefined) =>
+		update({ columns: columns.map((c) => (c.key === key ? { ...c, money } : c)) })
+
+	return (
+		<Section title="Currency">
+			{moneyColumns.map((column) => {
+				const name = columnTitle(column.key, byId)
+				const to = column.money?.to ?? ''
+				const include = column.money?.include
+				return (
+					<div className="lb-tcfg__money" key={column.key}>
+						<div className="lb-tcfg__col">
+							<span className="lb-tcfg__col-name" title={name}>
+								{name}
+							</span>
+							<select
+								aria-label={`Show ${name} in`}
+								value={to}
+								onChange={(e) => {
+									const next = e.currentTarget.value
+									setColumn(
+										column.key,
+										next ? { to: next, include: include ?? null } : undefined
+									)
+								}}
+							>
+								{/* Not converting is a real choice, and the default one. */}
+								<option value="">don't convert</option>
+								{present.map((code) => (
+									<option key={code} value={code}>
+										in {code}
+									</option>
+								))}
+							</select>
+						</div>
+
+						{to && (
+							<div className="lb-tcfg__chips" role="group" aria-label={`Currencies in ${name}`}>
+								{present.map((code) => {
+									const on = !include || include.includes(code)
+									return (
+										<button
+											key={code}
+											className={on ? 'lb-tcfg__cur lb-tcfg__cur--on' : 'lb-tcfg__cur'}
+											aria-pressed={on}
+											onClick={() => {
+												const current = include ?? present
+												const next = on
+													? current.filter((c) => c !== code)
+													: [...current, code]
+												// Everything selected is stored as `null`, so a currency added to the
+												// board later is included by default rather than silently dropped.
+												setColumn(column.key, {
+													to,
+													include: next.length === present.length ? null : next,
+												})
+											}}
+										>
+											{code}
+										</button>
+									)
+								})}
+							</div>
+						)}
+					</div>
+				)
+			})}
+
+			{/*
+			 * Hand-entered rates, which beat the fetched ones. Stated in the same direction the provider
+			 * uses — units of the currency per one base — so what is stored and what is shown agree.
+			 */}
+			{present
+				.filter((code) => code !== base)
+				.map((code) => (
+					<label className="lb-tcfg__rate" key={code}>
+						<span>
+							1 {base} =
+						</span>
+						<input
+							aria-label={`Rate for ${code}`}
+							inputMode="decimal"
+							placeholder={String(getCurrentRates()?.rates[code] ?? '')}
+							value={rates[code] ?? ''}
+							onChange={(e) => {
+								const raw = e.currentTarget.value.trim()
+								const next = { ...rates }
+								const parsed = Number.parseFloat(raw)
+								// Cleared or unparseable falls back to the fetched rate rather than sticking at
+								// the last good number, which would be a rate nobody chose.
+								if (raw && Number.isFinite(parsed) && parsed > 0) next[code] = parsed
+								else delete next[code]
+								update({ rates: next })
+							}}
+							onKeyDown={(e) => e.stopPropagation()}
+						/>
+						<span>{code}</span>
+					</label>
+				))}
+		</Section>
+	)
 }

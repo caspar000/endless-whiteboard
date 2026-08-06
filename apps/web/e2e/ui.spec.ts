@@ -654,6 +654,58 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('[data-testid="lb.color"]')).toHaveCount(0)
 	})
 
+	test('rounded corners reach both frames and images, and can be turned off', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		// On by default at `sm`: a slight radius is the look this exists for.
+		await expect(page.locator('html')).toHaveAttribute('data-roundness', 'sm')
+
+		await page.evaluate(async () => {
+			const ed = (window as unknown as { editor: EditorLike }).editor
+			ed.setCamera({ x: 0, y: 0, z: 1 })
+			ed.createShapes([{ type: 'frame', x: 120, y: 300, props: { w: 300, h: 180, name: 'F' } }])
+			const c = document.createElement('canvas')
+			c.width = 180
+			c.height = 120
+			const x = c.getContext('2d')!
+			x.fillStyle = '#d92b2b'
+			x.fillRect(0, 0, 180, 120)
+			const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png'))
+			await (
+				window as unknown as { editor: { putExternalContent(o: unknown): Promise<void> } }
+			).editor.putExternalContent({
+				type: 'files',
+				files: [new File([blob], 'i.png', { type: 'image/png' })],
+				point: { x: 700, y: 380 },
+			})
+		})
+
+		const frame = page.locator('.lb-board-host:not([data-hidden]) .tl-frame__body').first()
+		const image = page.locator('.lb-board-host:not([data-hidden]) .tl-image-container').first()
+		await expect(image).toBeVisible()
+
+		// `rx` on the frame's rect, `border-radius` on the image's container — one variable reaches both.
+		const radii = () =>
+			Promise.all([
+				frame.evaluate((el) => getComputedStyle(el).rx),
+				image.evaluate((el) => getComputedStyle(el).borderTopLeftRadius),
+				// Clipping as well as rounding, or a photo's own corners poke out of the rounded box.
+				image.evaluate((el) => getComputedStyle(el).overflow),
+			])
+		expect(await radii()).toEqual(['6px', '6px', 'hidden'])
+
+		// The scale moves both together, and `off` is genuinely square.
+		await page.evaluate(() => {
+			document.documentElement.dataset.roundness = 'xl'
+		})
+		expect(await radii()).toEqual(['24px', '24px', 'hidden'])
+		await page.evaluate(() => {
+			document.documentElement.dataset.roundness = 'off'
+		})
+		expect(await radii()).toEqual(['0px', '0px', 'hidden'])
+	})
+
 	test('the canvas has dotted paper and no style panel', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()

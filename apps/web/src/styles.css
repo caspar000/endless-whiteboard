@@ -1103,11 +1103,18 @@ button {
  * paints an area (a sticky). The colour itself is set inline from tldraw's theme, so these rules only
  * describe the shape.
  */
+/*
+ * Sized like one of tldraw's own toolbar buttons (40×40) rather than shrink-wrapped to the swatch.
+ * An 18px dot in a 22px cell sat hard against the bar's edge while every icon beside it looked
+ * comfortably inset — matching the button metrics gives it the same padding for free.
+ */
 .lb-seltb__color {
 	position: relative;
 	display: flex;
 	align-items: center;
-	padding: 0 2px;
+	justify-content: center;
+	min-width: 40px;
+	height: 40px;
 }
 .lb-swatch {
 	width: 18px;
@@ -1156,6 +1163,49 @@ button {
 	border: 1px solid var(--lb-border-strong);
 	box-shadow: var(--lb-shadow-2);
 	z-index: 1;
+}
+
+/*
+ * Rounded corners for frames and images, from Settings → Appearance.
+ *
+ * A CSS variable resolved from an attribute on `<html>`, because the elements that need it belong to
+ * tldraw — the frame's `<rect>` and the image's container — and this reaches both without touching
+ * either component. `rx`/`ry` are SVG geometry properties, settable from CSS in every browser this app
+ * targets.
+ *
+ * Deliberately in shape units, not screen pixels: unlike the border width below, a corner radius is part
+ * of the shape and should grow and shrink with it as you zoom.
+ */
+:root {
+	--lb-shape-radius: 0px;
+}
+:root[data-roundness='xs'] {
+	--lb-shape-radius: 3px;
+}
+:root[data-roundness='sm'] {
+	--lb-shape-radius: 6px;
+}
+:root[data-roundness='md'] {
+	--lb-shape-radius: 10px;
+}
+:root[data-roundness='lg'] {
+	--lb-shape-radius: 16px;
+}
+:root[data-roundness='xl'] {
+	--lb-shape-radius: 24px;
+}
+
+.tl-frame__body {
+	rx: var(--lb-shape-radius);
+	ry: var(--lb-shape-radius);
+}
+/* The container clips as well as rounds, so a photo's own corners are cut rather than poking out. */
+.tl-image-container {
+	border-radius: var(--lb-shape-radius);
+	overflow: hidden;
+}
+.tl-image {
+	border-radius: var(--lb-shape-radius);
 }
 
 /*

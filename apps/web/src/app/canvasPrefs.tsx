@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 /**
  * Canvas appearance preferences: whether the paper has a grid, which grid, and whether it snaps.
@@ -15,18 +15,26 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
  */
 export type GridStyle = 'lifeboard' | 'native'
 
+/** Corner-radius steps for frames and images. `off` is square, which is tldraw's own default. */
+export const ROUNDNESS_STEPS = ['off', 'xs', 'sm', 'md', 'lg', 'xl'] as const
+export type Roundness = (typeof ROUNDNESS_STEPS)[number]
+
 export interface CanvasPrefs {
 	showGrid: boolean
 	gridStyle: GridStyle
 	snapToGrid: boolean
+	/** Corner radius for frames and images, app-wide. */
+	roundness: Roundness
 	setShowGrid: (value: boolean) => void
 	setGridStyle: (value: GridStyle) => void
 	setSnapToGrid: (value: boolean) => void
+	setRoundness: (value: Roundness) => void
 }
 
 const GRID_KEY = 'lifeboard:showGrid'
 const GRID_STYLE_KEY = 'lifeboard:gridStyle'
 const SNAP_KEY = 'lifeboard:snapToGrid'
+const ROUNDNESS_KEY = 'lifeboard:roundness'
 
 function loadFlag(key: string, fallback: boolean): boolean {
 	try {
@@ -45,6 +53,15 @@ function loadGridStyle(): GridStyle {
 	}
 }
 
+function loadRoundness(): Roundness {
+	try {
+		const raw = localStorage.getItem(ROUNDNESS_KEY)
+		return ROUNDNESS_STEPS.includes(raw as Roundness) ? (raw as Roundness) : 'sm'
+	} catch {
+		return 'sm'
+	}
+}
+
 function save(key: string, value: string): void {
 	try {
 		localStorage.setItem(key, value)
@@ -60,6 +77,20 @@ export function useCanvasPrefsState(): CanvasPrefs {
 	const [showGrid, setShowGridState] = useState(() => loadFlag(GRID_KEY, true))
 	const [gridStyle, setGridStyleState] = useState<GridStyle>(loadGridStyle)
 	const [snapToGrid, setSnapToGridState] = useState(() => loadFlag(SNAP_KEY, false))
+	// `sm` rather than `off`: a slight radius is the look this was added for, and it is cosmetic enough
+	// to be the default without surprising anyone.
+	const [roundness, setRoundnessState] = useState<Roundness>(loadRoundness)
+
+	/*
+	 * Applied as an attribute on `<html>` and resolved to a length in CSS, the same way the theme is.
+	 *
+	 * Not a prop threaded to the shapes: the radius belongs to tldraw's own elements — the frame's
+	 * `<rect>` and the image's container — which we do not render. A CSS custom property reaches both
+	 * without touching either component.
+	 */
+	useEffect(() => {
+		document.documentElement.dataset.roundness = roundness
+	}, [roundness])
 
 	const setShowGrid = useCallback((value: boolean) => {
 		setShowGridState(value)
@@ -73,17 +104,32 @@ export function useCanvasPrefsState(): CanvasPrefs {
 		setSnapToGridState(value)
 		save(SNAP_KEY, String(value))
 	}, [])
+	const setRoundness = useCallback((value: Roundness) => {
+		setRoundnessState(value)
+		save(ROUNDNESS_KEY, value)
+	}, [])
 
 	return useMemo(
 		() => ({
 			showGrid,
 			gridStyle,
 			snapToGrid,
+			roundness,
 			setShowGrid,
 			setGridStyle,
 			setSnapToGrid,
+			setRoundness,
 		}),
-		[showGrid, gridStyle, snapToGrid, setShowGrid, setGridStyle, setSnapToGrid]
+		[
+			showGrid,
+			gridStyle,
+			snapToGrid,
+			roundness,
+			setShowGrid,
+			setGridStyle,
+			setSnapToGrid,
+			setRoundness,
+		]
 	)
 }
 

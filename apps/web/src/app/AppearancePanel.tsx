@@ -1,7 +1,7 @@
-import { Grid2x2, Magnet, Monitor, Moon, RefreshCw, Sun, type LucideIcon } from 'lucide-react'
+import { Grid2x2, Magnet, Monitor, Moon, RefreshCw, Squircle, Sun, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { isAutoFetchEnabled, setAutoFetchEnabled } from '../persistence/rateStore'
-import type { CanvasPrefs, GridStyle } from './canvasPrefs'
+import { ROUNDNESS_STEPS, type CanvasPrefs, type GridStyle, type Roundness } from './canvasPrefs'
 import type { Theme } from './useTheme'
 
 /**
@@ -17,6 +17,11 @@ const THEMES: { value: Theme; label: string; icon: LucideIcon }[] = [
 	{ value: 'dark', label: 'Dark', icon: Moon },
 	{ value: 'system', label: 'System', icon: Monitor },
 ]
+
+/** `off` is the toggle's job, so the size row only offers the sizes. */
+const SIZES: { value: Roundness; label: string }[] = ROUNDNESS_STEPS.filter(
+	(step) => step !== 'off'
+).map((step) => ({ value: step, label: step.toUpperCase() }))
 
 const GRID_STYLES: { value: GridStyle; label: string }[] = [
 	{ value: 'lifeboard', label: 'Lifeboard' },
@@ -142,6 +147,26 @@ export function AppearancePanel({
 					checked={canvas.snapToGrid}
 					onChange={canvas.setSnapToGrid}
 				/>
+			</div>
+
+			<div className="lb-appearance__card">
+				<Toggle
+					label="Rounded corners"
+					hint="Softens the corners of frames and images."
+					icon={Squircle}
+					checked={canvas.roundness !== 'off'}
+					// Turning it back on returns to the default step rather than whatever it was before:
+					// remembering a size nobody can see is a worse surprise than a predictable one.
+					onChange={(on) => canvas.setRoundness(on ? 'sm' : 'off')}
+				/>
+				{canvas.roundness !== 'off' && (
+					<Segmented
+						label="Radius"
+						value={canvas.roundness}
+						options={SIZES}
+						onChange={canvas.setRoundness}
+					/>
+				)}
 			</div>
 
 			<div className="lb-appearance__card">

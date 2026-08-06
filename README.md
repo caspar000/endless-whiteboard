@@ -99,6 +99,12 @@ all derive from it and `setStyleForSelectedShapes` reaches it), the second blank
 built-in works because `<Tldraw>` merges `shapeUtils` by shape type. No migration: `color` was always in
 the schema, `showColors` only decides whether it is a *style* prop and what renders from it.
 
+**Rounded corners for frames and images** come from Settings → Appearance, on at `sm` by default. A
+`data-roundness` attribute on `<html>` resolves to `--lb-shape-radius`, which reaches the frame's `<rect>`
+(via the SVG `rx`/`ry` geometry properties) and the image's container. A CSS variable rather than props,
+because both elements belong to tldraw. Deliberately in shape units, not screen pixels: unlike the frame's
+border width, a corner radius is part of the shape and should scale with it.
+
 **Colour is one swatch, for anything that has one.** The selection toolbar shows a single swatch that
 opens a palette above it, mirroring the dock's pen expansion. Which shapes get it comes from tldraw's own
 `getSharedStyles().get(DefaultColorStyle)` rather than a list of types, so a shape we don't know about

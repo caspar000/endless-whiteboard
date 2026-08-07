@@ -27,16 +27,24 @@ export function readPropertyRegistry(editor: Editor): PropertyDef[] {
 }
 
 /**
- * A definition written before the `currency` → `financial` rename. Normalised on read rather than
- * migrated in place: registries live in untyped meta (document *and* shape sidecars), which tldraw
- * neither validates nor migrates, so read-time is the only choke point that covers every source —
- * old boards, imported backups, and pasted shapes alike.
+ * Types that have been renamed or absorbed, mapped to what they are now.
+ *
+ * `url` folded into `link`, which is the same thing with a title — and `parseLinkValue` already reads
+ * a bare address as a title-less link, so every stored value survives the rename untouched.
+ */
+const LEGACY_TYPES: Record<string, string> = { currency: 'financial', url: 'link' }
+
+/**
+ * A definition written under an older type name. Normalised on read rather than migrated in place:
+ * registries live in untyped meta (document *and* shape sidecars), which tldraw neither validates nor
+ * migrates, so read-time is the only choke point that covers every source — old boards, imported
+ * backups, and pasted shapes alike.
  */
 function normalizeLegacyType(entry: unknown): unknown {
-	if (entry && typeof entry === 'object' && (entry as { type?: unknown }).type === 'currency') {
-		return { ...(entry as object), type: 'financial' }
-	}
-	return entry
+	if (!entry || typeof entry !== 'object') return entry
+	const type = (entry as { type?: unknown }).type
+	const replacement = typeof type === 'string' ? LEGACY_TYPES[type] : undefined
+	return replacement ? { ...(entry as object), type: replacement } : entry
 }
 
 /** The pure half of {@link readPropertyRegistry}, so the parsing rules are testable on their own. */

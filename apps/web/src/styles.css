@@ -2117,14 +2117,174 @@ button {
 	gap: 4px;
 	margin-top: 3px;
 }
-.lb-strip__tag {
-	background: var(--lb-surface-2);
+/*
+ * A select / multiSelect option, wherever it appears — on a card, in the properties panel, in the
+ * option menu. The hue arrives as `--lb-opt-h`, hashed from the option's own text (see `options.ts`),
+ * so one class covers every colour and the palette needs no per-option storage.
+ *
+ * Tinted background with a saturated foreground, rather than a solid fill: a filled pill at this size
+ * fights the card's own text for attention, and there can be five of them on one note.
+ */
+.lb-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	background: hsl(var(--lb-opt-h) 65% 50% / 18%);
 	border-radius: 4px;
 	padding: 1px 6px;
 	font-size: 10px;
-	color: var(--lb-text-dim);
+	color: hsl(var(--lb-opt-h) 70% 74%);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	white-space: nowrap;
+}
+/* Same hue, darkened until it reads on a white card rather than glowing off it. */
+:root[data-theme='light'] .lb-chip {
+	background: hsl(var(--lb-opt-h) 65% 45% / 14%);
+	color: hsl(var(--lb-opt-h) 60% 33%);
+}
+.lb-chip__x {
+	background: none;
+	border: 0;
+	color: inherit;
+	cursor: pointer;
+	font-size: 12px;
+	line-height: 1;
+	opacity: 0.6;
+	padding: 0;
+}
+.lb-chip__x:hover {
+	opacity: 1;
+}
+
+/* The select / multiSelect editor: the current value, and an inline menu of the known options. */
+.lb-choice {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-choice__current {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.lb-choice__open {
+	background: var(--lb-surface-2);
+	border: 1px dashed var(--lb-border-strong);
+	border-radius: 4px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 10px;
+	padding: 1px 6px;
+}
+.lb-choice__open:hover {
+	border-color: var(--lb-accent);
+	color: var(--lb-text);
+}
+/* Holding a chip, the button is just the frame around it — the dashed "empty" outline would fight it. */
+.lb-choice__open:has(.lb-chip) {
+	background: none;
+	border-color: transparent;
+	padding: 0;
+}
+.lb-choice__clear {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px;
+	text-align: left;
+}
+.lb-choice__clear:hover {
+	color: var(--lb-danger);
+}
+/*
+ * In flow rather than floating. `.lb-popover` scrolls and is height-capped, so an absolutely
+ * positioned menu would be clipped by the panel it belongs to; pushing the rows below it down is the
+ * one layout that cannot be cut off.
+ */
+.lb-choice__menu {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	padding: 5px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+.lb-choice__search {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px 6px;
+	width: 100%;
+	box-sizing: border-box;
+}
+.lb-choice__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-choice__opt {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	flex: 1;
+	padding: 2px 3px;
+	text-align: left;
+}
+.lb-choice__opt:hover {
+	background: var(--lb-surface-hover);
+}
+/* A tick rather than a highlight: the chip already carries a colour, and two at once reads as noise. */
+.lb-choice__opt--on::after {
+	content: '✓';
+	color: var(--lb-accent);
+	font-size: 11px;
+	margin-left: 5px;
+}
+.lb-choice__forget {
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 0 3px;
+}
+.lb-choice__forget:hover {
+	color: var(--lb-danger);
+}
+.lb-choice__create {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	color: var(--lb-accent);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px;
+	text-align: left;
+}
+.lb-choice__create:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-choice__empty {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	margin: 2px 3px;
 }
 
 /* The properties panel, portalled by NodeEditorPopover (see .lb-popover above). */
@@ -2185,7 +2345,7 @@ button {
 /* Hidden from the card, still real data — the panel shows it dimmed rather than gone. */
 .lb-props__row--hidden .lb-props__name,
 .lb-props__row--hidden .lb-props__value,
-.lb-props__row--hidden .lb-props__list {
+.lb-props__row--hidden .lb-choice {
 	opacity: 0.5;
 }
 .lb-props__row--dragging {
@@ -2320,31 +2480,6 @@ button.lb-props__eye:hover {
 .lb-props input[type='checkbox'] {
 	width: auto;
 	justify-self: start;
-}
-.lb-props__list {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-	align-items: center;
-}
-.lb-props__chip {
-	background: var(--lb-surface-2);
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	color: var(--lb-text-dim);
-	cursor: pointer;
-	font-size: 10px;
-	padding: 1px 5px;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-.lb-props__chip:hover {
-	color: var(--lb-text);
-}
-.lb-props__chip-input {
-	/* Narrow, so chips wrap around it rather than it claiming the whole row. */
-	width: 64px !important;
-	flex: 0 0 auto;
 }
 .lb-props__add {
 	display: flex;

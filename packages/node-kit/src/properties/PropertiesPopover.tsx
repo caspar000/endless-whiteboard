@@ -5,6 +5,7 @@ import { NodeEditorPopover } from '../NodeEditorPopover'
 import { shapeLabel } from './labels'
 import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
 import { encodeLinkValue, linkHref, parseLinkValue, type LinkParts } from './link'
+import { optionStyle } from './options'
 import {
 	createProperty,
 	deleteProperty,
@@ -16,6 +17,7 @@ import {
 	PROPERTY_TYPES,
 	defaultUnitForType,
 	emptyValueForType,
+	isChoiceType,
 	isListType,
 	type PropertyDef,
 	type PropertyType,
@@ -382,8 +384,8 @@ function PropertyValueEditor({
 		)
 	}
 
-	if (isListType(def.type)) {
-		return <ListValueEditor def={def} value={value} onChange={set} />
+	if (isChoiceType(def.type)) {
+		return <ChoiceValueEditor editor={editor} def={def} value={value} onChange={set} />
 	}
 
 	if (def.type === 'date') {
@@ -408,25 +410,13 @@ function PropertyValueEditor({
 	}
 
 	return (
-		<>
-			<input
-				className="lb-props__value"
-				aria-label={`Value of ${def.name}`}
-				value={value === null || value === undefined ? '' : String(value)}
-				list={def.options?.length ? `lb-opts-${def.id}` : undefined}
-				onChange={(e) => set(e.currentTarget.value)}
-				onKeyDown={stop}
-			/>
-			{def.options?.length ? (
-				// A datalist rather than a <select>: a select would make the recorded options a
-				// constraint, and they are explicitly a convenience list you can type past.
-				<datalist id={`lb-opts-${def.id}`}>
-					{def.options.map((opt) => (
-						<option key={opt} value={opt} />
-					))}
-				</datalist>
-			) : null}
-		</>
+		<input
+			className="lb-props__value"
+			aria-label={`Value of ${def.name}`}
+			value={value === null || value === undefined ? '' : String(value)}
+			onChange={(e) => set(e.currentTarget.value)}
+			onKeyDown={stop}
+		/>
 	)
 }
 
@@ -606,58 +596,184 @@ function CurrencyCodeInput({
 	)
 }
 
-/** Chips plus an input, for a multi-select. What tags used to be, now just a property type. */
-function ListValueEditor({
+/**
+ * The editor for `select` and `multiSelect`: a menu of the property's known options.
+ *
+ * One component for both, because they differ only in whether picking replaces or toggles. Before
+ * this they were a text box with a `datalist` attached, which was two problems in one — nothing in the
+ * app ever wrote `options`, so the list was always empty, and a bare text box makes a "choice" out of
+ * whatever you happen to type, which is how you end up with `Doing`, `doing` and `DOING`.
+ *
+ * The menu expands **inline** rather than floating over the panel. `.lb-popover` scrolls and is
+ * height-capped, so an absolutely-positioned menu would be clipped by its own container; pushing the
+ * rows below it down costs a little movement and nothing else.
+ *
+ * Options stay a convenience list rather than a constraint, which is the invariant the rest of the
+ * property system already assumes (see `collectPropertyIds`). A value that isn't in `options` — every
+ * value typed before this existed, for one — still shows, and still appears in the menu so it can be
+ * unpicked.
+ */
+function ChoiceValueEditor({
+	editor,
 	def,
 	value,
 	onChange,
 }: {
+	editor: Editor
 	def: PropertyDef
 	value: PropertyValue
 	onChange: (raw: unknown) => void
 }) {
-	const [draft, setDraft] = useState('')
-	const list = Array.isArray(value) ? value : []
+	const [open, setOpen] = useState(false)
+	const [query, setQuery] = useState('')
 
-	const add = () => {
-		const next = draft.trim()
-		if (!next) return
-		if (!list.includes(next)) onChange([...list, next])
-		setDraft('')
+	const multi = isListType(def.type)
+	const options = def.options ?? []
+	const selected = multi
+		? Array.isArray(value)
+			? value
+			: []
+		: typeof value === 'string' && value !== ''
+			? [value]
+			: []
+
+	// Recorded options first, then anything selected that was never recorded, so a legacy free-text
+	// value is visible in the menu instead of being silently unreachable.
+	const entries = [...options, ...selected.filter((v) => !options.includes(v))]
+	const needle = query.trim().toLowerCase()
+	const shown = needle ? entries.filter((e) => e.toLowerCase().includes(needle)) : entries
+	// Only offered when it would actually add something — an exact match means "pick it", not "make
+	// a second one".
+	const creatable = query.trim() && !entries.some((e) => e.toLowerCase() === needle) ? query.trim() : null
+
+	const pick = (option: string) => {
+		if (!multi) {
+			onChange(option)
+			setOpen(false)
+			setQuery('')
+			return
+		}
+		onChange(selected.includes(option) ? selected.filter((v) => v !== option) : [...selected, option])
 	}
 
+	const create = () => {
+		if (!creatable) return
+		updateProperty(editor, def.id, { options: [...options, creatable] })
+		pick(creatable)
+		setQuery('')
+	}
+
+	/*
+	 * Removing an option takes it off the list without touching any shape, matching what deleting a
+	 * property definition does. Sweeping every shape would be a large unbatchable write that undo
+	 * would have to reverse one by one, and a value left behind still renders — so nothing is lost,
+	 * it just stops being offered.
+	 */
+	const forget = (option: string) =>
+		updateProperty(editor, def.id, { options: options.filter((o) => o !== option) })
+
 	return (
-		<div className="lb-props__list">
-			{list.map((entry) => (
-				<button
-					key={entry}
-					className="lb-props__chip"
-					title={`Remove ${entry}`}
-					onClick={() => onChange(list.filter((v) => v !== entry))}
-				>
-					{entry} ×
-				</button>
-			))}
-			<input
-				className="lb-props__chip-input"
-				aria-label={`Value of ${def.name}`}
-				value={draft}
-				placeholder="add…"
-				list={def.options?.length ? `lb-opts-${def.id}` : undefined}
-				onChange={(e) => setDraft(e.currentTarget.value)}
-				onBlur={add}
-				onKeyDown={(e) => {
-					if (e.key === 'Enter') add()
-					e.stopPropagation()
-				}}
-			/>
-			{def.options?.length ? (
-				<datalist id={`lb-opts-${def.id}`}>
-					{def.options.map((opt) => (
-						<option key={opt} value={opt} />
+		<div className="lb-choice">
+			<div className="lb-choice__current">
+				{/*
+				 * One chosen value is the button itself, so clicking what you see opens the menu — the
+				 * two extra controls a separate trigger would need are worth avoiding on a 1fr column.
+				 * Several values need their own remove buttons, so those chips can't be inside one.
+				 */}
+				{multi &&
+					selected.map((option) => (
+						<span className="lb-chip" key={option} style={optionStyle(option)}>
+							{option}
+							<button
+								className="lb-chip__x"
+								aria-label={`Remove ${option} from ${def.name}`}
+								onClick={() => pick(option)}
+							>
+								×
+							</button>
+						</span>
 					))}
-				</datalist>
-			) : null}
+				<button
+					className="lb-choice__open"
+					aria-label={multi ? `Add to ${def.name}` : `Value of ${def.name}`}
+					aria-expanded={open}
+					onClick={() => setOpen((v) => !v)}
+				>
+					{multi ? (
+						'+'
+					) : selected[0] !== undefined ? (
+						<span className="lb-chip" style={optionStyle(selected[0])}>
+							{selected[0]}
+						</span>
+					) : (
+						'Empty'
+					)}
+				</button>
+			</div>
+
+			{open && (
+				<div className="lb-choice__menu">
+					<input
+						className="lb-choice__search"
+						aria-label={`Search or create an option for ${def.name}`}
+						placeholder="Search or create…"
+						value={query}
+						// eslint-disable-next-line jsx-a11y/no-autofocus
+						autoFocus
+						onChange={(e) => setQuery(e.currentTarget.value)}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter') creatable ? create() : shown[0] && pick(shown[0])
+							if (e.key === 'Escape') setOpen(false)
+							// Otherwise the canvas reads keystrokes as tool shortcuts.
+							e.stopPropagation()
+						}}
+					/>
+					{shown.map((option) => (
+						<div className="lb-choice__row" key={option}>
+							<button
+								className={
+									selected.includes(option) ? 'lb-choice__opt lb-choice__opt--on' : 'lb-choice__opt'
+								}
+								aria-pressed={selected.includes(option)}
+								onClick={() => pick(option)}
+							>
+								<span className="lb-chip" style={optionStyle(option)}>
+									{option}
+								</span>
+							</button>
+							{options.includes(option) && (
+								<button
+									className="lb-choice__forget"
+									aria-label={`Remove ${option} from ${def.name}'s options`}
+									title="Remove from the list of options"
+									onClick={() => forget(option)}
+								>
+									×
+								</button>
+							)}
+						</div>
+					))}
+					{creatable && (
+						<button className="lb-choice__create" onClick={create}>
+							Create “{creatable}”
+						</button>
+					)}
+					{!shown.length && !creatable && (
+						<p className="lb-choice__empty">No options yet. Type to create one.</p>
+					)}
+					{!multi && selected.length > 0 && (
+						<button
+							className="lb-choice__clear"
+							onClick={() => {
+								onChange(null)
+								setOpen(false)
+							}}
+						>
+							Clear
+						</button>
+					)}
+				</div>
+			)}
 		</div>
 	)
 }

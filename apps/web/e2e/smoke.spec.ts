@@ -505,6 +505,90 @@ test.describe('nodes', () => {
 		expect(registryAfter).not.toContain('Price')
 	})
 
+	test('select and multiSelect pick from options you build in the menu', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorHandle }).editor.createShapes([
+				{ type: 'note', x: 200, y: 200 },
+			])
+		})
+		const id = await page.evaluate(
+			() =>
+				(window as unknown as { editor: EditorHandle }).editor
+					.getCurrentPageShapes()
+					.find((s) => s.type === 'note')!.id
+		)
+		await page.evaluate((shapeId) => {
+			;(window as unknown as { editor: EditorHandle }).editor.select(shapeId)
+		}, id)
+		await page.keyboard.press('Alt+p')
+
+		const panel = page.locator('.lb-props')
+		await expect(panel).toBeVisible()
+		const create = async (option: string) => {
+			await panel.getByLabel(/Search or create an option/).fill(option)
+			await panel.getByRole('button', { name: `Create “${option}”` }).click()
+		}
+
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		// `url` is gone from the offered types — `link` is the same thing with a title, and reads a bare
+		// address as a title-less link, so nothing was lost by folding them together.
+		const offered = await panel.getByLabel('New property type').locator('option').allTextContents()
+		expect(offered).not.toContain('url')
+		expect(offered).toContain('link')
+		await panel.getByLabel('New property name').fill('Status')
+		await panel.getByLabel('New property type').selectOption('select')
+		await panel.getByRole('button', { name: 'Add' }).click()
+		await expect(panel.locator('.lb-choice')).toHaveCount(1)
+		await panel.getByLabel('Value of Status').click()
+		await expect(panel.getByText('No options yet. Type to create one.')).toBeVisible()
+		await create('TODO')
+		// Creating from the menu both records the option and picks it — one act, as in Notion.
+		await expect(panel.getByLabel('Value of Status')).toHaveText('TODO')
+
+		// A second option, added to the same list rather than replacing it.
+		await panel.getByLabel('Value of Status').click()
+		await create('DOING')
+		await expect(panel.getByLabel('Value of Status')).toHaveText('DOING')
+		await panel.getByLabel('Value of Status').click()
+		await expect(panel.locator('.lb-choice__opt')).toHaveCount(2)
+		// One choice, so picking replaces rather than accumulates.
+		await panel.locator('.lb-choice__opt', { hasText: 'TODO' }).click()
+		await expect(panel.getByLabel('Value of Status')).toHaveText('TODO')
+
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Tags')
+		await panel.getByLabel('New property type').selectOption('multiSelect')
+		await panel.getByRole('button', { name: 'Add' }).click()
+		// Wait for the row to land: the registry write remounts the panel, and a click sent into the
+		// gap goes nowhere.
+		await expect(panel.locator('.lb-choice')).toHaveCount(2)
+		await panel.getByLabel('Add to Tags').click()
+		await create('design')
+		await create('urgent')
+		// Several choices, so the menu stays open and both stick.
+		await expect(panel.locator('.lb-choice__opt--on')).toHaveCount(2)
+
+		// The options are on the board's definition, so every other shape gets the same menu.
+		const stored = await page.evaluate(() =>
+			JSON.stringify(
+				(window as unknown as { editor: EditorHandle }).editor.getDocumentSettings().meta[
+					'lifeboard:properties'
+				]
+			)
+		)
+		expect(stored).toContain('"options":["TODO","DOING"]')
+		expect(stored).toContain('"options":["design","urgent"]')
+
+		// And the values reach the card as chips.
+		await page.keyboard.press('Escape')
+		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()
+		await expect(strip.locator('.lb-chip')).toHaveCount(3)
+		await expect(strip).toContainText('TODO')
+	})
+
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
 		page,
 	}) => {

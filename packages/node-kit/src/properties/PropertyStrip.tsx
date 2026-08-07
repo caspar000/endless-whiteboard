@@ -1,8 +1,9 @@
 import { useValue, type Editor } from 'tldraw'
 import { formatPropertyValue, numericPropertyValue } from './format'
 import { linkHref } from './link'
+import { optionStyle } from './options'
 import { findProperty, readPropertyRegistry } from './schema'
-import { isListType } from './types'
+import { isChoiceType, isListType } from './types'
 import {
 	orderedPropertyIds,
 	readHiddenPropertyIds,
@@ -43,6 +44,9 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 						id,
 						name: def.name,
 						list: isListType(def.type),
+						// A chosen value is a tag, not free text, so it reads as a coloured pill wherever
+						// it appears. `select` keeps its label — "Status: DOING" is worth the width.
+						choice: isChoiceType(def.type),
 						text: formatPropertyValue(def, values[id]!, unitForShapeProperty(def, units)),
 						// `null` for everything that isn't a link, and for a link with no usable address.
 						href: def.type === 'link' ? linkHref(values[id]!) : null,
@@ -66,7 +70,7 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 						{row.text === '—'
 							? null
 							: row.text.split(', ').map((tag) => (
-									<span className="lb-strip__tag" key={tag}>
+									<span className="lb-chip" key={tag} style={optionStyle(tag)}>
 										{tag}
 									</span>
 								))}
@@ -94,6 +98,10 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 								>
 									{row.text}
 								</a>
+							) : row.choice && row.text !== '—' ? (
+								<span className="lb-chip" style={optionStyle(row.text)}>
+									{row.text}
+								</span>
 							) : (
 								row.text
 							)}

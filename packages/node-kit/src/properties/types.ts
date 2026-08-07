@@ -21,9 +21,9 @@ export const PROPERTY_TYPES = [
 	'financial',
 	'date',
 	'checkbox',
-	'url',
-	// A titled URL: what you call it, and where it goes. `url` is the bare address; `link` is the pair,
-	// encoded into one string so values stay JSON scalars (see `link.ts`).
+	// A titled URL: what you call it, and where it goes, encoded into one string so values stay JSON
+	// scalars (see `link.ts`). Replaces the old bare-address `url` type, which is normalised to this on
+	// read — a title-less link *is* a bare URL, so no value has to change.
 	'link',
 	'select',
 	'multiSelect',
@@ -85,6 +85,11 @@ export const propertyDefValidator: T.Validatable<PropertyDef> = T.object({
 /** Whether this type's values are lists — the one place that distinction is decided. */
 export function isListType(type: PropertyType): boolean {
 	return type === 'multiSelect'
+}
+
+/** Whether this type picks from `options` — one choice or several. */
+export function isChoiceType(type: PropertyType): boolean {
+	return type === 'select' || type === 'multiSelect'
 }
 
 /**

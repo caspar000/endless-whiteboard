@@ -69,9 +69,17 @@ export function fieldAsPropertyDef(field: NodeField): PropertyDef {
 	}
 }
 
-/** A legacy field type as its property-type equivalent — the persisted `currency` maps to `financial`. */
+/**
+ * A legacy field type as its property-type equivalent.
+ *
+ * Two of them have since been renamed out of the property system: the persisted `currency` became
+ * `financial`, and `url` folded into `link` (a bare address is a title-less link, so the value carries
+ * over untouched). Field types themselves stay as they are — they are what old item nodes persist.
+ */
 export function propertyTypeForField(type: FieldType): PropertyType {
-	return type === 'currency' ? 'financial' : type
+	if (type === 'currency') return 'financial'
+	if (type === 'url') return 'link'
+	return type
 }
 
 export function coerceFieldValue(type: FieldType, raw: unknown): FieldValue {

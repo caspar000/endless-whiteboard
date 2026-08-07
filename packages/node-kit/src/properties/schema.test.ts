@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fakeEditor } from './fakeEditor'
+import { parseLinkValue } from './link'
 import {
 	createProperty,
 	deleteProperty,
@@ -144,5 +145,13 @@ describe('legacy type normalisation', () => {
 			{ id: 'price', name: 'Price', type: 'currency', unit: 'GEL' },
 		])
 		expect(defs).toEqual([{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }])
+	})
+
+	it("reads a 'url' definition as a 'link', keeping the bare address as its value", () => {
+		const defs = parsePropertyRegistry([{ id: 'docs', name: 'Docs', type: 'url' }])
+		expect(defs).toEqual([{ id: 'docs', name: 'Docs', type: 'link' }])
+		// The rename costs nothing because a link with no title *is* a bare URL, so every value that
+		// was stored under the old type reads back unchanged.
+		expect(parseLinkValue('https://example.com')).toEqual({ title: '', url: 'https://example.com' })
 	})
 })

@@ -2373,6 +2373,21 @@ button.lb-props__eye:hover {
 .lb-props__new-btn {
 	align-self: flex-start;
 }
+/* Quiet until you reach for it: housekeeping, and it deletes definitions. */
+.lb-props__prune {
+	align-self: flex-start;
+	background: none;
+	border: none;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 2px 0;
+	text-align: left;
+}
+.lb-props__prune:hover {
+	color: var(--lb-danger);
+}
 .lb-props__new {
 	display: grid;
 	grid-template-columns: 1fr auto auto;

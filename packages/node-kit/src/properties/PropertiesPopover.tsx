@@ -5,7 +5,13 @@ import { NodeEditorPopover } from '../NodeEditorPopover'
 import { shapeLabel } from './labels'
 import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
 import { encodeLinkValue, linkHref, parseLinkValue, type LinkParts } from './link'
-import { createProperty, findProperty, readPropertyRegistry, updateProperty } from './schema'
+import {
+	createProperty,
+	deleteProperty,
+	findProperty,
+	readPropertyRegistry,
+	updateProperty,
+} from './schema'
 import {
 	PROPERTY_TYPES,
 	defaultUnitForType,
@@ -73,6 +79,22 @@ export function PropertiesPopover({
 			// persists), and it must never surface inside a multi-selection — properties edited
 			// "through" one shape of many reads as editing the whole selection, which this isn't.
 			if (editor.getOnlySelectedShape()?.id !== shape.id) return null
+			/*
+			 * Which property ids anything on this page actually carries.
+			 *
+			 * Suggestions come from this rather than from the whole registry — a definition whose every
+			 * shape has been deleted isn't a useful thing to offer, and offering it is how the chip row
+			 * fills with the names of things that no longer exist.
+			 *
+			 * Walked here rather than taken from the facts pipeline, which lives in `nodes/rollup/engine`
+			 * — and that already imports this folder, so the two would form a cycle. `useValue` memoises
+			 * it, and it only runs while the panel is open on a single shape.
+			 */
+			const inUse = new Set<string>()
+			for (const other of editor.getCurrentPageShapes()) {
+				for (const id of Object.keys(readShapeProperties(other))) inUse.add(id)
+			}
+
 			return {
 				shape: current,
 				values: readShapeProperties(current),
@@ -80,6 +102,7 @@ export function PropertiesPopover({
 				hidden: readHiddenPropertyIds(current),
 				registry: readPropertyRegistry(editor),
 				label: shapeLabel(editor, current),
+				inUse,
 			}
 		},
 		[editor, shape.id]
@@ -96,9 +119,14 @@ export function PropertiesPopover({
 	// The shape was deleted while the panel was open.
 	if (!live) return null
 
-	const { values, registry, label, hidden } = live
+	const { values, registry, label, hidden, inUse } = live
 	const attached = draftOrder ?? live.order
-	const available = registry.filter((def) => !(def.id in values))
+	// Offered: on the board somewhere, but not yet on *this* shape. Creating a property attaches it
+	// straight away, so one you just made is in use by definition and keeps appearing on other shapes —
+	// which is the suggestion behaviour worth keeping.
+	const available = registry.filter((def) => !(def.id in values) && inUse.has(def.id))
+	// Defined but carried by nothing. Only reachable by deleting every shape that had it.
+	const unused = registry.filter((def) => !inUse.has(def.id))
 
 	const startDrag = (id: string) => {
 		draggingId.current = id
@@ -162,7 +190,7 @@ export function PropertiesPopover({
 					))}
 				</div>
 
-				<AddProperty editor={editor} shape={live.shape} available={available} />
+				<AddProperty editor={editor} shape={live.shape} available={available} unused={unused} />
 			</div>
 		</NodeEditorPopover>
 	)
@@ -645,10 +673,12 @@ function AddProperty({
 	editor,
 	shape,
 	available,
+	unused,
 }: {
 	editor: Editor
 	shape: TLShape
 	available: readonly PropertyDef[]
+	unused: readonly PropertyDef[]
 }) {
 	const [creating, setCreating] = useState(false)
 	const [name, setName] = useState('')
@@ -664,6 +694,21 @@ function AddProperty({
 		attach(def)
 		setName('')
 		setCreating(false)
+	}
+
+	/*
+	 * Explicit rather than automatic, and that is the whole design of it.
+	 *
+	 * Pruning the moment a property loses its last shape would fire on an ordinary delete, and undoing
+	 * that delete would bring the shape back to a board that no longer defines what its values mean —
+	 * the values would survive as orphans. Offering the cleanup instead means the registry only shrinks
+	 * when someone says so.
+	 */
+	const removeUnused = () => {
+		editor.run(() => {
+			editor.markHistoryStoppingPoint('remove unused properties')
+			for (const def of unused) deleteProperty(editor, def.id)
+		})
 	}
 
 	return (
@@ -717,6 +762,11 @@ function AddProperty({
 			) : (
 				<button className="lb-props__new-btn" onClick={() => setCreating(true)}>
 					New property…
+				</button>
+			)}
+			{unused.length > 0 && (
+				<button className="lb-props__prune" onClick={removeUnused}>
+					{`Remove ${unused.length} unused ${unused.length === 1 ? 'property' : 'properties'}`}
 				</button>
 			)}
 		</div>

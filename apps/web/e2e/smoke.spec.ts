@@ -441,6 +441,70 @@ test.describe('nodes', () => {
 		expect(registry).toContain('"unit":"GEL"')
 	})
 
+	test('a property nothing carries stops being suggested, and can be swept up', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{ type: 'note', x: 150, y: 200 },
+				{ type: 'note', x: 700, y: 200 },
+			])
+		})
+		const shapeIds = await page.evaluate(() =>
+			(window as unknown as { editor: EditorHandle }).editor
+				.getCurrentPageShapes()
+				.filter((s) => s.type === 'note')
+				.map((s) => s.id)
+		)
+
+		const panel = page.locator('.lb-props')
+		const openFor = async (id: string) => {
+			await page.evaluate((shapeId) => {
+				;(window as unknown as { editor: EditorHandle }).editor.select(shapeId)
+			}, id)
+			await page.keyboard.press('Alt+p')
+			await expect(panel).toBeVisible()
+		}
+
+		// The first note invents Price. Defining it attaches it, so the note now carries it.
+		await openFor(shapeIds[0]!)
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Price')
+		await panel.getByRole('button', { name: 'Add' }).click()
+		await page.keyboard.press('Escape')
+
+		// The feature worth keeping: the second note is offered it, because something has it.
+		await openFor(shapeIds[1]!)
+		await expect(panel.locator('.lb-props__attach', { hasText: 'Price' })).toHaveCount(1)
+		await expect(panel.getByRole('button', { name: /unused/ })).toHaveCount(0)
+		await page.keyboard.press('Escape')
+
+		// Delete the only note that carries it and the suggestion goes with it, rather than lingering
+		// as the name of something that no longer exists anywhere on the board.
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: EditorHandle }).editor.deleteShapes([id])
+		}, shapeIds[0]!)
+		await openFor(shapeIds[1]!)
+		await expect(panel.locator('.lb-props__attach', { hasText: 'Price' })).toHaveCount(0)
+
+		// And the definition it left behind can be swept up, on purpose rather than automatically.
+		const sweep = panel.getByRole('button', { name: 'Remove 1 unused property' })
+		await expect(sweep).toBeVisible()
+		await sweep.click()
+		await expect(sweep).toHaveCount(0)
+		const registryAfter = await page.evaluate(() =>
+			JSON.stringify(
+				(window as unknown as { editor: EditorHandle }).editor.getDocumentSettings().meta[
+					'lifeboard:properties'
+				]
+			)
+		)
+		expect(registryAfter).not.toContain('Price')
+	})
+
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
 		page,
 	}) => {

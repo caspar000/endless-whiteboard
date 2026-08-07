@@ -682,7 +682,13 @@ test.describe('canvas chrome', () => {
 		})
 
 		const frame = page.locator('.lb-board-host:not([data-hidden]) .tl-frame__body').first()
-		const image = page.locator('.lb-board-host:not([data-hidden]) .tl-image-container').first()
+		// The shape's own container, not the `.tl-image-container` inside it: cropping resizes the inner
+		// one to the whole image, so only this element is the picture you can actually see.
+		const image = page
+			.locator(
+				'.lb-board-host:not([data-hidden]) .tl-shape[data-shape-type="image"] > .tl-html-container'
+			)
+			.first()
 		await expect(image).toBeVisible()
 
 		// `rx` on the frame's rect, `border-radius` on the image's container — one variable reaches both.

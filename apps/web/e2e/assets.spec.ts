@@ -459,4 +459,62 @@ test.describe('asset store', () => {
 		expect(Math.abs(discAfter.x - discBefore.x)).toBeLessThan(2)
 		expect(Math.abs(discAfter.y - discBefore.y)).toBeLessThan(2)
 	})
+
+	test('a cropped image keeps its rounded corners', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Cropped')
+		await openBoard(page, 'Cropped')
+		await importGeneratedImage(page)
+		await expect(imageShapes(page)).toHaveCount(1)
+
+		// Crop away the outer quarter on every side, the way the crop tool does.
+		await page.evaluate(() => {
+			const editor = (
+				window as unknown as {
+					editor: {
+						getCurrentPageShapes(): { id: string; type: string; props: { w: number; h: number } }[]
+						updateShape(shape: unknown): void
+					}
+				}
+			).editor
+			const shape = editor.getCurrentPageShapes().find((s) => s.type === 'image')!
+			const props = shape.props
+			editor.updateShape({
+				id: shape.id,
+				type: 'image',
+				props: {
+					...props,
+					w: props.w / 2,
+					h: props.h / 2,
+					crop: { topLeft: { x: 0.25, y: 0.25 }, bottomRight: { x: 0.75, y: 0.75 } },
+				},
+			})
+		})
+
+		const measured = await page.evaluate(() => {
+			const host = document.querySelector('.lb-board-host:not([data-hidden])')!
+			const rounded = host.querySelector<HTMLElement>(
+				'.tl-shape[data-shape-type="image"] > .tl-html-container'
+			)!
+			const inner = rounded.querySelector<HTMLElement>('.tl-image-container')!
+			const style = getComputedStyle(rounded)
+			return {
+				radius: parseFloat(style.borderRadius),
+				overflow: style.overflow,
+				roundedWidth: rounded.getBoundingClientRect().width,
+				innerWidth: inner.getBoundingClientRect().width,
+			}
+		})
+
+		// The radius has to clip, not merely round — the image inside is a plain rectangle.
+		expect(measured.radius).toBeGreaterThan(0)
+		expect(measured.overflow).toBe('hidden')
+
+		// The point of the test. Cropping sizes `.tl-image-container` to the *uncropped* image and
+		// slides it under the shape with a transform, so a radius applied there rounds corners that
+		// sit outside the visible window and the crop looks square. The rounded element must be the
+		// one you can actually see.
+		expect(measured.innerWidth).toBeGreaterThan(measured.roundedWidth * 1.5)
+	})
 })

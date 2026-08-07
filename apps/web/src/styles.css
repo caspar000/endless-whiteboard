@@ -1199,12 +1199,17 @@ button {
 	rx: var(--lb-shape-radius);
 	ry: var(--lb-shape-radius);
 }
-/* The container clips as well as rounds, so a photo's own corners are cut rather than poking out. */
-.tl-image-container {
-	border-radius: var(--lb-shape-radius);
-	overflow: hidden;
-}
-.tl-image {
+/*
+ * Rounded on the shape's own container rather than on the `.tl-image-container` inside it.
+ *
+ * Cropping sizes that inner element to the *un*cropped image and slides it under the shape with a
+ * transform, so rounding it puts the corners somewhere off-screen and the visible edges stay square.
+ * This element is exactly the shape whether cropped or not, and tldraw already gives it
+ * `overflow: hidden`, so the corners are clipped rather than merely drawn.
+ *
+ * A circular crop sets `border-radius: 50%` inline, which outranks this — as it should.
+ */
+.tl-shape[data-shape-type='image'] > .tl-html-container {
 	border-radius: var(--lb-shape-radius);
 }
 

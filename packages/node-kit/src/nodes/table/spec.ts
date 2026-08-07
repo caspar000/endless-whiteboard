@@ -185,6 +185,15 @@ export interface TableSource {
 	 * kinds of relation at once. Empty or absent follows every arrow.
 	 */
 	edgeLabel?: string | null
+	/**
+	 * For `scope: 'connected'` — treat an arrow's direction as a sign: what points *at* this table
+	 * adds, what it points at subtracts.
+	 *
+	 * Which is what an arrow already looks like it means. Without it, modelling money flowing in and
+	 * out means typing the outgoing amounts as negatives, and a shape then reads as "−2,000" on the
+	 * canvas when what is true is that 2,000 went somewhere.
+	 */
+	signed?: boolean
 	/** ANDed. An OR would need a group structure, which is deferred until something needs it. */
 	filters: TableFilter[]
 }
@@ -293,6 +302,7 @@ export const tableSourceValidator: T.Validatable<TableSource> = T.object({
 	frameId: T.string.nullable(),
 	direction: T.literalEnum(...EDGE_DIRECTIONS).optional(),
 	edgeLabel: T.string.nullable().optional(),
+	signed: T.boolean.optional(),
 	filters: T.arrayOf(tableFilterValidator),
 })
 
@@ -354,16 +364,42 @@ export function defaultTableProps(): TableNodeProps {
 	}
 }
 
+/**
+ * A column reading a property off the **arrow** rather than off the shape it points at.
+ *
+ * This is what a relation with data on it looks like in a table: "this meal uses 200g of that
+ * ingredient" belongs to neither the meal nor the ingredient, it belongs to the pairing — and the
+ * pairing is the arrow. Notion needs a junction database for this; here the arrow is already a shape,
+ * so it already carries properties, and a column only has to say which end to read from.
+ *
+ * A prefix rather than a second list of columns: everything downstream — widths, summaries, sorting,
+ * grouping — is keyed by column key and works unchanged.
+ */
+export const EDGE_COLUMN_PREFIX = 'edge:'
+
+/** The property id an edge column reads, or `null` if this key is an ordinary column. */
+export function edgeColumnProperty(key: string): string | null {
+	return key.startsWith(EDGE_COLUMN_PREFIX) ? key.slice(EDGE_COLUMN_PREFIX.length) : null
+}
+
+export function edgeColumnKey(propertyId: string): string {
+	return `${EDGE_COLUMN_PREFIX}${propertyId}`
+}
+
 /** The property behind a column, or `null` for the label column (and for an unknown id). */
 export function columnProperty(
 	key: string,
 	properties: ReadonlyMap<string, PropertyDef>
 ): PropertyDef | null {
 	if (key === LABEL_COLUMN) return null
-	return properties.get(key) ?? null
+	return properties.get(edgeColumnProperty(key) ?? key) ?? null
 }
 
 export function columnTitle(key: string, properties: ReadonlyMap<string, PropertyDef>): string {
 	if (key === LABEL_COLUMN) return 'Name'
+	const onEdge = edgeColumnProperty(key)
+	// Named for where it comes from, because the same property can appear twice in one table — once
+	// off the shape and once off the arrow — and two identical headings would be unreadable.
+	if (onEdge) return `${properties.get(onEdge)?.name ?? onEdge} (arrow)`
 	return properties.get(key)?.name ?? key
 }

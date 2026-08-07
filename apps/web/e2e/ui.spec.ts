@@ -2,8 +2,9 @@ import { expect, test } from '@playwright/test'
 import {
 	NOTE_EDITOR,
 	backToList,
-	dblclickNode,
 	createBoard,
+	createNote,
+	dblclickNode,
 	gotoFresh,
 	noteMarkdown,
 	openBoard,
@@ -11,24 +12,20 @@ import {
 } from './helpers'
 
 test.describe('canvas chrome', () => {
-	test('double-clicking empty canvas creates a note, already in editing mode', async ({ page }) => {
+	test('double-clicking empty canvas is tldraw\'s again, not a note', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
 		await page.mouse.dblclick(560, 300)
 
-		// Writing is the default action now — no picker, no text shape.
-		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-note--editing')).toBeVisible()
-		expect(await countByType(page, 'node.markdown')).toBe(1)
-		expect(await countByType(page, 'text')).toBe(0)
-
-		// The caret is already in the note, so you can just type.
-		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
-		const editing = await page.evaluate(
-			() => (window as unknown as { editor: EditorLike }).editor.getEditingShapeId() !== null
-		)
-		expect(editing).toBe(true)
+		/*
+		 * The app used to claim this gesture for a markdown note. It reads well in isolation and badly
+		 * in practice: double-click means "act on the thing under the pointer", so every near-miss on a
+		 * shape and every double-click to deselect left a note behind. Notes come from the dock now.
+		 */
+		expect(await countByType(page, 'node.markdown')).toBe(0)
+		await expect.poll(async () => await countByType(page, 'text')).toBe(1)
 	})
 
 	test('markdown renders inline as you leave each line, keeping the source intact', async ({
@@ -38,7 +35,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 260)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('# Chores')
@@ -64,7 +61,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('# Shopping')
@@ -186,7 +183,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		await page.keyboard.type('- milk')
@@ -209,7 +206,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('milk')
 		await page.keyboard.press('Enter')
@@ -257,7 +254,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('- [ ] rug')
 		await page.keyboard.press('Enter')
@@ -279,15 +276,21 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('# Chores')
 		await page.keyboard.press('Escape')
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md__body h1')).toHaveText('Chores')
 
-		// Nothing between exiting and undoing: the point is that the *first* press does the work.
+		/*
+		 * Nothing between exiting and undoing: the point is that the *first* press does the work.
+		 *
+		 * The note itself survives, because drawing it and typing into it are now separate acts — it is
+		 * the whole typing session that collapses to one entry, which is what this is about.
+		 */
 		await page.keyboard.press('ControlOrMeta+z')
-		await expect.poll(async () => countByType(page, 'node.markdown')).toBe(0)
+		await expect.poll(async () => noteMarkdown(page)).toBe('')
+		expect(await countByType(page, 'node.markdown')).toBe(1)
 	})
 
 	test('the caret starts at the end of an existing note, not the beginning', async ({ page }) => {
@@ -370,7 +373,7 @@ test.describe('canvas chrome', () => {
 
 		// Make a note and leave it. Waiting for focus first is not optional: typing before the editor
 		// has the caret sends the keystrokes to the canvas, where letters are tool shortcuts.
-		await page.mouse.dblclick(560, 260)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 		await page.keyboard.type('# Existing note')
 		await page.keyboard.press('Escape')
@@ -398,7 +401,7 @@ test.describe('canvas chrome', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 220)
+		await createNote(page)
 		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
 
 		const readNote = () =>
@@ -422,16 +425,8 @@ test.describe('canvas chrome', () => {
 		// added undo entries — one undo still reverts the whole editing session.
 		const grown = await readNote()
 		await page.keyboard.press('ControlOrMeta+z')
-		await expect
-			.poll(async () =>
-				page.evaluate(
-					() =>
-						(window as unknown as { editor: EditorLike }).editor
-							.getCurrentPageShapes()
-							.filter((s) => s.type === 'node.markdown').length
-				)
-			)
-			.toBe(0)
+		// One press, and every line typed is gone — not one press per height the note passed through.
+		await expect.poll(async () => noteMarkdown(page)).toBe('')
 		await page.keyboard.press('ControlOrMeta+Shift+z')
 		await expect.poll(async () => (await readNote()).h).toBe(grown.h)
 
@@ -969,7 +964,7 @@ test.describe('theme', () => {
 		await createBoard(page, 'Still open')
 
 		await openBoard(page, 'Still open')
-		await page.mouse.dblclick(560, 300)
+		await createNote(page)
 		await page.locator(NOTE_EDITOR).fill('Something to preview')
 		await backToList(page)
 
@@ -997,7 +992,7 @@ test.describe('theme', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
-		await page.mouse.dblclick(560, 300)
+		await createNote(page)
 		await page.locator(NOTE_EDITOR).fill('Something to preview')
 		await backToList(page)
 		const before = await countThumbnails(page)

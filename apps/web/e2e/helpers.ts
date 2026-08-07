@@ -118,6 +118,26 @@ export async function drawNode(
 	await page.mouse.up()
 }
 
+/**
+ * Draws a markdown note and puts the caret in it.
+ *
+ * Most of these tests want "a note I can type into" rather than any particular gesture, and they used
+ * to get one by double-clicking empty canvas. That shortcut is gone — the dock is the way in — so the
+ * intent lives here instead of being spelled out ten times.
+ */
+export async function createNote(
+	page: Page,
+	at = { x: 480, y: 200 },
+	size = { w: 320, h: 200 }
+): Promise<void> {
+	await drawNode(page, 'Note', at, size)
+	// The tool may already have opened the editor; double-clicking again would close it.
+	const editing = await page.evaluate(
+		() => (window as unknown as { editor: EditorLike }).editor.getEditingShapeId() !== null
+	)
+	if (!editing) await dblclickNode(page, 'node.markdown')
+}
+
 function labelToToolId(label: 'Note' | 'Table'): string {
 	// Mirrors toolIdForNodeType(): tldraw tool ids cannot contain dots.
 	return { Note: 'node-markdown', Table: 'node-table' }[label]
@@ -266,6 +286,7 @@ export async function countShapes(page: Page, type: string): Promise<number> {
 }
 
 interface EditorLike {
+	getEditingShapeId(): string | null
 	getCurrentPageShapes(): { type: string; id: string; props: Record<string, unknown> }[]
 	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
 	pageToScreen(p: { x: number; y: number }): { x: number; y: number }

@@ -7,7 +7,9 @@ import { moneyOutcome, queryTable, summarise, type TableRow } from './query'
 import {
 	CURRENCY_GROUP_PREFIX,
 	LABEL_COLUMN,
+	columnTitle,
 	defaultTableProps,
+	edgeColumnKey,
 	filterOpsForType,
 	summaryOpsForType,
 	type FilterOp,
@@ -742,5 +744,135 @@ describe('connected scope', () => {
 			'Holiday',
 			'Rent',
 		])
+	})
+})
+
+describe('signed by direction', () => {
+	/** The flow board: two incomes into the table, two outflows out of it. */
+	function flow(): FactsMap {
+		return new Map([
+			shape('table', {}, { label: 'Balance', type: 'node.table' }),
+			shape('salary', { price: 8000 }, { label: 'UpGaming' }),
+			shape('side', { price: 200 }, { label: 'Side Hustle' }),
+			shape('investing', { price: 2000 }, { label: 'Investing' }),
+			shape('savings', { price: 2000 }, { label: 'Savings' }),
+			shape('a1', {}, { label: '', type: 'arrow' }),
+			shape('a2', {}, { label: '', type: 'arrow' }),
+			shape('a3', {}, { label: '', type: 'arrow' }),
+			shape('a4', {}, { label: '', type: 'arrow' }),
+		])
+	}
+	const EDGES = buildEdgeIndex([
+		{ id: 'a1', from: 'salary', to: 'table' },
+		{ id: 'a2', from: 'side', to: 'table' },
+		{ id: 'a3', from: 'table', to: 'investing' },
+		{ id: 'a4', from: 'table', to: 'savings' },
+	])
+	const spec = (signed: boolean): TableNodeProps => ({
+		...defaultTableProps(),
+		columns: [
+			{ key: LABEL_COLUMN, summary: null, width: 1 },
+			{ key: 'price', summary: 'sum', width: 1 },
+		],
+		source: {
+			...defaultTableProps().source,
+			scope: 'connected',
+			direction: 'either',
+			signed,
+		},
+	})
+
+	it('adds what points at the table and subtracts what it points at', () => {
+		// The whole point: every amount is entered as a positive number on its own shape, and the
+		// arrows say which way it goes. 8000 + 200 − 2000 − 2000.
+		const result = queryTable(flow(), spec(true), 'table', REGISTRY, null, EDGES)
+		expect(result.summaries['price']).toBe(4200)
+	})
+
+	it('shows the sign in the row, so the total adds up in front of you', () => {
+		const rows = queryTable(flow(), spec(true), 'table', REGISTRY, null, EDGES).groups[0]!.rows
+		const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.cells['price']]))
+		expect(byLabel['UpGaming']).toBe(8000)
+		expect(byLabel['Investing']).toBe(-2000)
+		expect(byLabel['Savings']).toBe(-2000)
+	})
+
+	it('leaves the shape alone — the negation is this table\'s view, not the data', () => {
+		const facts = flow()
+		queryTable(facts, spec(true), 'table', REGISTRY, null, EDGES)
+		expect(facts.get('investing')!.values['price']).toBe(2000)
+	})
+
+	it('sums everything positively when the flag is off', () => {
+		const result = queryTable(flow(), spec(false), 'table', REGISTRY, null, EDGES)
+		expect(result.summaries['price']).toBe(12200)
+	})
+
+	it('treats a shape wired both ways as a source, whichever arrow came first', () => {
+		// Ambiguous by nature. Picking "adds" is arbitrary, but a total that silently goes *down*
+		// because of an arrow you also drew back reads as a bug.
+		const both = buildEdgeIndex([
+			{ id: 'a3', from: 'table', to: 'investing' },
+			{ id: 'a5', from: 'investing', to: 'table' },
+		])
+		const result = queryTable(flow(), spec(true), 'table', REGISTRY, null, both)
+		expect(result.summaries['price']).toBe(2000)
+	})
+})
+
+describe('edge-valued columns', () => {
+	/** Two meals wanting flour, in different amounts written on the arrows. */
+	function kitchen(): FactsMap {
+		return new Map([
+			shape('list', {}, { label: 'Shopping', type: 'node.table' }),
+			shape('flour', {}, { label: 'Flour' }),
+			shape('eggs', {}, { label: 'Eggs' }),
+			shape('a1', { qty: 200 }, { label: 'uses', type: 'arrow' }),
+			shape('a2', { qty: 100 }, { label: 'uses', type: 'arrow' }),
+			shape('a3', { qty: 6 }, { label: 'uses', type: 'arrow' }),
+		])
+	}
+	const EDGES = buildEdgeIndex([
+		{ id: 'a1', from: 'flour', to: 'list' },
+		{ id: 'a2', from: 'flour', to: 'list' },
+		{ id: 'a3', from: 'eggs', to: 'list' },
+	])
+	const registry = new Map(REGISTRY).set('qty', {
+		id: 'qty',
+		name: 'Qty',
+		type: 'number',
+	} as PropertyDef)
+	const spec = (): TableNodeProps => ({
+		...defaultTableProps(),
+		columns: [
+			{ key: LABEL_COLUMN, summary: null, width: 1 },
+			{ key: edgeColumnKey('qty'), summary: 'sum', width: 1 },
+		],
+		source: { ...defaultTableProps().source, scope: 'connected' },
+	})
+
+	it('reads the value off the arrow, not off the shape it points at', () => {
+		const rows = queryTable(kitchen(), spec(), 'list', registry, null, EDGES).groups[0]!.rows
+		const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.cells[edgeColumnKey('qty')]]))
+		// 200 + 100: two arrows reach flour, and the shopping list wants one line saying 300.
+		expect(byLabel['Flour']).toBe(300)
+		expect(byLabel['Eggs']).toBe(6)
+	})
+
+	it('summarises like any other column, because it is one', () => {
+		const result = queryTable(kitchen(), spec(), 'list', registry, null, EDGES)
+		expect(result.summaries[edgeColumnKey('qty')]).toBe(306)
+	})
+
+	it('makes a row of a shape that carries nothing itself', () => {
+		// Flour has no properties at all. Without edge columns it would not be a row, because a table
+		// only keeps shapes carrying one of its column properties — the quantity is on the arrow.
+		const result = queryTable(kitchen(), spec(), 'list', registry, null, EDGES)
+		expect(result.matched).toBe(2)
+	})
+
+	it('names the column for the end it reads, so both ends can be shown at once', () => {
+		expect(columnTitle(edgeColumnKey('qty'), registry)).toBe('Qty (arrow)')
+		expect(columnTitle('qty', registry)).toBe('Qty')
 	})
 })

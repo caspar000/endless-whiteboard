@@ -36,8 +36,7 @@ export function BoardList({
 				<div className="lb-list__empty">
 					<p>No boards yet.</p>
 					<p className="lb-list__hint">
-						Create one, then double-click anywhere on the canvas to add an item, a note, or a
-						rollup that totals them up.
+						Create one, then pick a note or a table from the dock at the bottom of the canvas.
 					</p>
 					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
 						New board

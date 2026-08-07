@@ -34,7 +34,6 @@ import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tl
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
-import { NodeCreateMenu, type NodeCreatePrompt } from './NodeCreateMenu'
 import { SelectionToolbar } from './SelectionToolbar'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
 import { createNodeTools } from './nodeTools'
@@ -114,51 +113,14 @@ const canvasComponents: TLComponents = {
 	OnTheCanvas: ForeignPropertyStrips,
 }
 
-const editorOptions: Partial<TldrawOptions> = {
-	createTextOnCanvasDoubleClick: false,
-}
-
-/**
- * Turns a double-click on empty canvas into a request to open the node picker.
+/*
+ * Double-clicking empty canvas is tldraw's again — it makes a text shape.
  *
- * Listens on `'event'` rather than subclassing the select tool: the behaviour we're replacing is
- * already gated behind `createTextOnCanvasDoubleClick`, so with that off the default does nothing and
- * this simply adds ours. `'settle-up'` is the phase after tldraw has decided the gesture really was a
- * double-click and not the start of a triple.
+ * It used to make a markdown note, which read well in isolation and badly in practice: double-click
+ * is the gesture for "act on the thing under the pointer", and claiming it board-wide meant every
+ * near-miss on a shape, every double-click to deselect, and every gesture aimed at a frame's empty
+ * interior left a note behind. Notes are drawn from the dock like every other node instead.
  */
-function watchCanvasDoubleClicks(editor: Editor): () => void {
-	// `editor.on` returns the editor for chaining, not an unsubscribe, so the handler is kept and
-	// removed explicitly.
-	const handler = (info: TLEventInfo) => {
-		if (info.type !== 'click' || info.name !== 'double_click') return
-		if (info.phase !== 'settle-up' || info.target !== 'canvas') return
-		// Don't create on top of an existing shape.
-		if (editor.getShapeAtPoint(editor.inputs.getCurrentPagePoint(), { hitInside: true })) return
-
-		const page = editor.inputs.getCurrentPagePoint()
-		const id = createShapeId()
-
-		editor.run(() => {
-			editor.markHistoryStoppingPoint('create note')
-			editor.createShapes([
-				{
-					id,
-					type: NOTE_NODE_TYPE,
-					// Anchored at the click rather than centred: the note grows downward from here as
-					// you type, so centring an empty one would make it drift up as it fills.
-					x: page.x,
-					y: page.y,
-					props: { w: 360, h: NOTE_MIN_HEIGHT, md: '', autoHeight: true },
-				} as never,
-			])
-			editor.select(id)
-		})
-		// Straight into editing — the whole point is that you double-click and start typing.
-		editor.setEditingShape(id)
-	}
-	editor.on('event', handler)
-	return () => editor.off('event', handler)
-}
 
 /**
  * Adopts the property definitions carried by a pasted shape.
@@ -234,8 +196,6 @@ export function Board({
 
 	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
 
-	// The node picker shown on double-clicking empty canvas (see NodeCreateMenu).
-	const [createPrompt, setCreatePrompt] = useState<NodeCreatePrompt | null>(null)
 	const [editor, setEditor] = useState<Editor | null>(null)
 
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
@@ -257,7 +217,6 @@ export function Board({
 				components={canvasComponents}
 				// Double-clicking empty canvas asks which kind of node to create instead of silently
 				// making a text shape — in an app about typed nodes, the untyped one is a poor default.
-				options={editorOptions}
 				// Only the fallback for the frame before `onMount` reports this editor and app/App.tsx sets
 				// its colour-scheme preference, which overrides this. It must stay a literal: the prop is in
 				// the dependency array of the effect that *constructs* the Editor, so binding it to the
@@ -288,7 +247,6 @@ export function Board({
 						editor,
 						() => void touchBoard(platform.kv, board.id)
 					)
-					const stopWatchingDoubleClicks = watchCanvasDoubleClicks(editor)
 					const stopWatchingPastes = watchPastedProperties(editor)
 
 					return () => {
@@ -297,7 +255,6 @@ export function Board({
 						// wipe the live editor's handle.
 						if (w.editor === editor) delete w.editor
 						onEditor?.(null)
-						stopWatchingDoubleClicks()
 						stopWatchingPastes()
 						stopTracking()
 						// The target is module-scope, so a stale id would make the next board try to open
@@ -319,13 +276,6 @@ export function Board({
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />
 			</Tldraw>
-			{editor && createPrompt && (
-				<NodeCreateMenu
-					editor={editor}
-					prompt={createPrompt}
-					onClose={() => setCreatePrompt(null)}
-				/>
-			)}
 		</div>
 	)
 }

@@ -2832,6 +2832,13 @@ button.lb-props__eye:hover {
 	align-items: center;
 	gap: 8px;
 }
+/* A checkbox shouldn't stretch across the value column the way a select does. */
+.lb-tcfg__row--check > input[type='checkbox'] {
+	justify-self: start;
+	width: 15px;
+	height: 15px;
+	accent-color: var(--lb-accent);
+}
 .lb-tcfg__row > span {
 	color: var(--lb-text-dim);
 	font-size: 12px;

@@ -2,6 +2,7 @@ import {
 	EMPTY_EDGE_INDEX,
 	edgesTouching,
 	otherEnd,
+	type Edge,
 	type EdgeIndex,
 } from '../../edges'
 import { isEmptyValue, listValuesOf, type FactsMap, type ShapeFacts } from '../../facts'
@@ -17,6 +18,7 @@ import {
 	LABEL_COLUMN,
 	columnProperty,
 	currencyGroupProperty,
+	edgeColumnProperty,
 	edgeDirectionOf,
 	type FilterOp,
 	type MoneyConfig,
@@ -124,7 +126,7 @@ function matchesSource(
 	properties: ReadonlyMap<string, PropertyDef>,
 	rates: RateTable | null,
 	/** For `scope: 'connected'`: the shapes the table's arrows reach. `null` for every other scope. */
-	connected: ReadonlySet<string> | null
+	connected: ReadonlyMap<string, unknown> | null
 ): boolean {
 	// A table never includes itself. Tables contribute no property values at all, so a table-of-tables
 	// cycle is impossible by construction — this is belt to that braces.
@@ -567,6 +569,40 @@ function compareValues(a: Cell, b: Cell): number {
 // The query
 // ---------------------------------------------------------------------------
 
+/** How one shape is wired to the table asking about it. */
+interface Connection {
+	/** Every arrow between the two, since a pair can be joined more than once. */
+	edges: Edge[]
+	/** `1` when the arrow points at the table, `-1` when it points away. Only used when signed. */
+	sign: 1 | -1
+}
+
+/**
+ * The value an edge column shows for one row.
+ *
+ * Several arrows can reach the same shape — two meals wanting the same ingredient — so numbers are
+ * summed, which is the answer the shopping list wants. Anything else takes the first value it finds:
+ * joining text across arrows would produce a cell that means nothing.
+ */
+function edgeCellValue(
+	facts: FactsMap,
+	connection: Connection | undefined,
+	propertyId: string,
+	properties: ReadonlyMap<string, PropertyDef>
+): PropertyValue | undefined {
+	if (!connection) return undefined
+	const def = properties.get(propertyId)
+	let total: number | null = null
+	for (const edge of connection.edges) {
+		const value = facts.get(edge.id)?.values[propertyId]
+		if (value === undefined || value === null) continue
+		const numeric = def ? numericPropertyValue(def, value) : null
+		if (numeric === null) return value
+		total = (total ?? 0) + numeric
+	}
+	return total ?? undefined
+}
+
 export function queryTable(
 	facts: FactsMap,
 	props: TableNodeProps,
@@ -596,16 +632,26 @@ export function queryTable(
 	 * comes from the facts map, so it costs nothing extra — arrows are shapes, and the pipeline has
 	 * always read every shape.
 	 */
-	let connected: ReadonlySet<string> | null = null
+	let connected: ReadonlyMap<string, Connection> | null = null
 	if (props.source.scope === 'connected') {
 		const wanted = props.source.edgeLabel?.trim().toLowerCase()
-		const set = new Set<string>()
+		const found = new Map<string, Connection>()
 		for (const edge of edgesTouching(edges, selfId, edgeDirectionOf(props.source))) {
 			if (wanted && facts.get(edge.id)?.label.trim().toLowerCase() !== wanted) continue
-			set.add(otherEnd(edge, selfId))
+			const other = otherEnd(edge, selfId)
+			const existing = found.get(other)
+			if (existing) {
+				existing.edges.push(edge)
+				// Fed *and* drained by the same shape: it is a source on balance, so it adds. Arbitrary
+				// either way, but silently picking the negative reads as a bug when a total goes down.
+				if (edge.to === selfId) existing.sign = 1
+			} else {
+				found.set(other, { edges: [edge], sign: edge.to === selfId ? 1 : -1 })
+			}
 		}
-		connected = set
+		connected = found
 	}
+	const signed = props.source.scope === 'connected' && props.source.signed === true
 
 	// Every property a row needs, not just the visible columns: grouping and sorting by a property you
 	// have chosen *not* to show is a normal thing to want, and reading only the columns made both
@@ -626,10 +672,19 @@ export function queryTable(
 	for (const [id, shapeFacts] of facts) {
 		if (!matchesSource(shapeFacts, props, selfId, id, properties, rates, connected)) continue
 
+		const connection = connected?.get(id)
 		const cells: Record<string, PropertyValue> = {}
 		for (const key of neededKeys) {
-			const value = shapeFacts.values[key]
-			if (value !== undefined) cells[key] = value
+			const onEdge = edgeColumnProperty(key)
+			const value = onEdge
+				? edgeCellValue(facts, connection, onEdge, properties)
+				: shapeFacts.values[key]
+			if (value === undefined) continue
+			// A negated cell is the shape's contribution *to this table*, not a claim about the shape:
+			// the note still says 2,000 on the canvas. Showing the sign in the row is what makes the
+			// total below it add up in front of you rather than by assertion.
+			cells[key] =
+				signed && connection?.sign === -1 && typeof value === 'number' ? -value : value
 		}
 
 		// A row must *carry* at least one of the table's column properties. A board is full of

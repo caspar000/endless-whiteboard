@@ -16,6 +16,7 @@ import {
 	LAYOUT_MODES,
 	CURRENCY_GROUP_PREFIX,
 	TABLE_SCOPES,
+	edgeColumnKey,
 	edgeDirectionOf,
 	columnTitle,
 	filterOpNeedsValue,
@@ -79,8 +80,18 @@ export function TableConfig({
 	)
 
 	const byId = new Map(properties.map((p) => [p.id, p]))
-	/** Every column key that can be chosen: the shape's own name, plus each defined property. */
-	const columnKeys = [LABEL_COLUMN, ...properties.map((p) => p.id)]
+	/**
+	 * Every column key that can be chosen: the shape's own name, each defined property, and — once the
+	 * table is following arrows — the same properties read off the *arrow* instead.
+	 *
+	 * Offered only for a connected table because an edge column has nothing to read anywhere else, and
+	 * a chip that silently produces a column of dashes is worse than no chip.
+	 */
+	const columnKeys = [
+		LABEL_COLUMN,
+		...properties.map((p) => p.id),
+		...(source.scope === 'connected' ? properties.map((p) => edgeColumnKey(p.id)) : []),
+	]
 	const unusedKeys = columnKeys.filter((key) => !columns.some((c) => c.key === key))
 
 	return (
@@ -169,6 +180,20 @@ export function TableConfig({
 									</option>
 								))}
 							</select>
+						</label>
+						<label className="lb-tcfg__row lb-tcfg__row--check">
+							<span>Direction signs</span>
+							{/*
+							 * What an arrow already looks like it means. Without it, money flowing out has to
+							 * be typed as a negative, and the shape then reads "−2,000" on the canvas when
+							 * what is true is that 2,000 went somewhere.
+							 */}
+							<input
+								type="checkbox"
+								aria-label="Outgoing arrows subtract"
+								checked={source.signed === true}
+								onChange={(e) => update({ source: { ...source, signed: e.currentTarget.checked } })}
+							/>
 						</label>
 						<label className="lb-tcfg__row">
 							<span>Labelled</span>

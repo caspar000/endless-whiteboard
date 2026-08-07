@@ -1,3 +1,9 @@
+import {
+	EMPTY_EDGE_INDEX,
+	edgesTouching,
+	otherEnd,
+	type EdgeIndex,
+} from '../../edges'
 import { isEmptyValue, listValuesOf, type FactsMap, type ShapeFacts } from '../../facts'
 import { numericPropertyValue } from '../../properties/format'
 import {
@@ -11,6 +17,7 @@ import {
 	LABEL_COLUMN,
 	columnProperty,
 	currencyGroupProperty,
+	edgeDirectionOf,
 	type FilterOp,
 	type MoneyConfig,
 	type SummaryOp,
@@ -115,7 +122,9 @@ function matchesSource(
 	selfId: string,
 	id: string,
 	properties: ReadonlyMap<string, PropertyDef>,
-	rates: RateTable | null
+	rates: RateTable | null,
+	/** For `scope: 'connected'`: the shapes the table's arrows reach. `null` for every other scope. */
+	connected: ReadonlySet<string> | null
 ): boolean {
 	// A table never includes itself. Tables contribute no property values at all, so a table-of-tables
 	// cycle is impossible by construction — this is belt to that braces.
@@ -130,6 +139,11 @@ function matchesSource(
 	if (source.scope === 'frame') {
 		if (source.frameId === null || facts.parentId !== source.frameId) return false
 	}
+
+	// Membership rather than a per-shape test, because "connected" is a property of the *pair* and the
+	// set is one walk of this table's own edges — cheaper than asking every shape on the board whether
+	// an arrow reaches it.
+	if (source.scope === 'connected' && !connected?.has(id)) return false
 
 	for (const filter of source.filters) {
 		if (!matchesFilter(facts, filter, properties, rates)) return false
@@ -565,9 +579,33 @@ export function queryTable(
 	 * An async fetch in here would make that impossible; taking the table as an input means rates
 	 * arriving invalidates the cache exactly once, and dragging still touches nothing.
 	 */
-	rates: RateTable | null = null
+	rates: RateTable | null = null,
+	/**
+	 * The board's arrows. Passed in for the same reason rates are: this runs inside a computed cache,
+	 * and reaching for the editor here would tie a pure function to a live store.
+	 */
+	edges: EdgeIndex = EMPTY_EDGE_INDEX
 ): TableResult {
 	const { columns, groupBy, sorts } = props
+
+	/*
+	 * The shapes this table's arrows reach, resolved once.
+	 *
+	 * Filtered by the arrow's own *label* when one is asked for, which is what lets a single board hold
+	 * "blocks" and "pays for" as separate relations without either knowing about the other. The label
+	 * comes from the facts map, so it costs nothing extra — arrows are shapes, and the pipeline has
+	 * always read every shape.
+	 */
+	let connected: ReadonlySet<string> | null = null
+	if (props.source.scope === 'connected') {
+		const wanted = props.source.edgeLabel?.trim().toLowerCase()
+		const set = new Set<string>()
+		for (const edge of edgesTouching(edges, selfId, edgeDirectionOf(props.source))) {
+			if (wanted && facts.get(edge.id)?.label.trim().toLowerCase() !== wanted) continue
+			set.add(otherEnd(edge, selfId))
+		}
+		connected = set
+	}
 
 	// Every property a row needs, not just the visible columns: grouping and sorting by a property you
 	// have chosen *not* to show is a normal thing to want, and reading only the columns made both
@@ -586,7 +624,7 @@ export function queryTable(
 
 	const rows: TableRow[] = []
 	for (const [id, shapeFacts] of facts) {
-		if (!matchesSource(shapeFacts, props, selfId, id, properties, rates)) continue
+		if (!matchesSource(shapeFacts, props, selfId, id, properties, rates, connected)) continue
 
 		const cells: Record<string, PropertyValue> = {}
 		for (const key of neededKeys) {

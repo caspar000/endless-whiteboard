@@ -1,4 +1,5 @@
 import { T } from 'tldraw'
+import { EDGE_DIRECTIONS, type EdgeDirection } from '../../edges'
 import { isNumericType, type PropertyDef, type PropertyType } from '../../properties/types'
 
 /**
@@ -162,7 +163,7 @@ export function summaryKeepsUnit(op: SummaryOp, type: PropertyType | null): bool
 // The spec
 // ---------------------------------------------------------------------------
 
-export const TABLE_SCOPES = ['page', 'frame'] as const
+export const TABLE_SCOPES = ['page', 'frame', 'connected'] as const
 export type TableScope = (typeof TABLE_SCOPES)[number]
 
 export interface TableSource {
@@ -171,8 +172,26 @@ export interface TableSource {
 	scope: TableScope
 	/** Frame *parenting*, never geometric containment — see `query.ts`. */
 	frameId: string | null
+	/**
+	 * For `scope: 'connected'` — which way an arrow must point to count.
+	 *
+	 * Optional because every table persisted before this existed has no value for it, and tldraw
+	 * validates props on load: a required field would turn every one of those into a broken shape.
+	 * Read through {@link edgeDirectionOf}, never directly.
+	 */
+	direction?: EdgeDirection
+	/**
+	 * For `scope: 'connected'` — only follow arrows with this label, so one board can carry several
+	 * kinds of relation at once. Empty or absent follows every arrow.
+	 */
+	edgeLabel?: string | null
 	/** ANDed. An OR would need a group structure, which is deferred until something needs it. */
 	filters: TableFilter[]
+}
+
+/** Arrows point *at* the table by default: "what feeds this" is the question people draw. */
+export function edgeDirectionOf(source: Pick<TableSource, 'direction'>): EdgeDirection {
+	return source.direction ?? 'in'
 }
 
 export interface TableColumn {
@@ -272,6 +291,8 @@ export const tableSourceValidator: T.Validatable<TableSource> = T.object({
 	shapeTypes: T.arrayOf(T.string).nullable(),
 	scope: T.literalEnum(...TABLE_SCOPES),
 	frameId: T.string.nullable(),
+	direction: T.literalEnum(...EDGE_DIRECTIONS).optional(),
+	edgeLabel: T.string.nullable().optional(),
 	filters: T.arrayOf(tableFilterValidator),
 })
 

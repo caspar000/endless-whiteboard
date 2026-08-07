@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildEdgeIndex } from '../../edges'
 import type { FactsMap, ShapeFacts } from '../../facts'
 import type { RateTable } from '../../properties/rates'
 import type { PropertyDef, PropertyValue } from '../../properties/types'
@@ -630,5 +631,116 @@ describe('currency-aware sorting, filters and grouping', () => {
 		expect(result.money.price!.converted).toBe(true)
 		expect(result.money.price!.asOf).toBe(1_700_000_000_000)
 		expect(result.money.price!.stale).toBe(true)
+	})
+})
+
+describe('connected scope', () => {
+	/*
+	 * A budget table with two expenses drawn into it, and one expense that is merely nearby.
+	 *
+	 * The arrows are shapes too, so they sit in the facts map alongside everything else — which is what
+	 * makes filtering by an arrow's *label* free rather than a second lookup.
+	 */
+	function wired(): FactsMap {
+		return new Map([
+			shape('budget', {}, { label: 'August budget', type: 'node.table' }),
+			shape('rent', { price: 1200 }, { label: 'Rent' }),
+			shape('food', { price: 400 }, { label: 'Food' }),
+			shape('holiday', { price: 900 }, { label: 'Holiday' }),
+			shape('a1', {}, { label: 'pays for', type: 'arrow' }),
+			shape('a2', {}, { label: 'pays for', type: 'arrow' }),
+			shape('a3', {}, { label: 'someday', type: 'arrow' }),
+		])
+	}
+	const EDGES = buildEdgeIndex([
+		{ id: 'a1', from: 'rent', to: 'budget' },
+		{ id: 'a2', from: 'food', to: 'budget' },
+		{ id: 'a3', from: 'holiday', to: 'budget' },
+	])
+	/** Ungrouped, so there is exactly one group and its rows are the whole answer. */
+	const labelsOf = (result: ReturnType<typeof queryTable>): string[] =>
+		(result.groups[0]?.rows ?? []).map((r) => r.label).sort()
+
+	const spec = (source: Partial<TableNodeProps['source']>): TableNodeProps => ({
+		...defaultTableProps(),
+		columns: [
+			{ key: LABEL_COLUMN, summary: null, width: 1 },
+			{ key: 'price', summary: 'sum', width: 1 },
+		],
+		source: { ...defaultTableProps().source, scope: 'connected', ...source },
+	})
+
+	it('takes the shapes the table\'s own arrows reach, and nothing else', () => {
+		expect(labelsOf(queryTable(wired(), spec({}), 'budget', REGISTRY, null, EDGES))).toEqual([
+			'Food',
+			'Holiday',
+			'Rent',
+		])
+	})
+
+	it('is empty without the edge index, rather than falling back to the whole board', () => {
+		// The failure mode worth pinning: a scope that silently means "everything" when its input is
+		// missing would show a plausible, wrong total.
+		expect(queryTable(wired(), spec({}), 'budget', REGISTRY, null).groups).toEqual([])
+	})
+
+	it('follows only arrows with the label asked for', () => {
+		const result = queryTable(
+			wired(),
+			spec({ edgeLabel: 'pays for' }),
+			'budget',
+			REGISTRY,
+			null,
+			EDGES
+		)
+		expect(labelsOf(result)).toEqual(['Food', 'Rent'])
+		// Which is the point: one board can hold two relations without either seeing the other.
+		expect(result.summaries['price']).toBe(1600)
+	})
+
+	it('matches an arrow label regardless of case or stray spacing', () => {
+		const result = queryTable(
+			wired(),
+			spec({ edgeLabel: '  Pays For ' }),
+			'budget',
+			REGISTRY,
+			null,
+			EDGES
+		)
+		expect(result.groups[0]!.rows).toHaveLength(2)
+	})
+
+	it('respects direction, so "what feeds this" and "what this feeds" differ', () => {
+		const both = buildEdgeIndex([
+			{ id: 'a1', from: 'rent', to: 'budget' },
+			{ id: 'a4', from: 'budget', to: 'savings' },
+		])
+		const facts = new Map([...wired(), shape('savings', { price: 50 }, { label: 'Savings' })])
+		expect(labelsOf(queryTable(facts, spec({ direction: 'in' }), 'budget', REGISTRY, null, both))).toEqual([
+			'Rent',
+		])
+		expect(
+			labelsOf(queryTable(facts, spec({ direction: 'out' }), 'budget', REGISTRY, null, both))
+		).toEqual(['Savings'])
+		expect(
+			labelsOf(queryTable(facts, spec({ direction: 'either' }), 'budget', REGISTRY, null, both))
+		).toEqual(['Rent', 'Savings'])
+	})
+
+	it('defaults to arrows pointing at the table', () => {
+		// Every table saved before this scope existed has no `direction`, and "what feeds this" is the
+		// question people draw — so the absent value has to mean `in`, not nothing.
+		expect(queryTable(wired(), spec({}), 'budget', REGISTRY, null, EDGES).groups[0]!.rows).toHaveLength(
+			3
+		)
+	})
+
+	it('still applies filters and column membership on top of the connection', () => {
+		const props = spec({})
+		props.source.filters = [{ propertyId: 'price', op: 'gt', value: 500 }]
+		expect(labelsOf(queryTable(wired(), props, 'budget', REGISTRY, null, EDGES))).toEqual([
+			'Holiday',
+			'Rent',
+		])
 	})
 })

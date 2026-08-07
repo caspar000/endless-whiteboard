@@ -691,6 +691,103 @@ test.describe('nodes', () => {
 		expect(summable).toContain('progress')
 	})
 
+	test('a table can follow the arrows drawn into it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// Three priced notes and a table, laid out so nothing overlaps and every drag is unambiguous.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }],
+				},
+			})
+			editor.createShapes([
+				{ type: 'geo', x: 100, y: 100, props: { w: 120, h: 80 }, meta: { 'lifeboard:props': { price: 1200 }, 'lifeboard:propOrder': ['price'] } },
+				{ type: 'geo', x: 100, y: 260, props: { w: 120, h: 80 }, meta: { 'lifeboard:props': { price: 400 }, 'lifeboard:propOrder': ['price'] } },
+				{ type: 'geo', x: 100, y: 420, props: { w: 120, h: 80 }, meta: { 'lifeboard:props': { price: 900 }, 'lifeboard:propOrder': ['price'] } },
+				{
+					type: 'node.table',
+					x: 500,
+					y: 220,
+					props: {
+						w: 240,
+						h: 160,
+						title: 'Connected',
+						source: { shapeTypes: null, scope: 'connected', frameId: null, filters: [] },
+						columns: [{ key: 'price', summary: 'sum', width: 1 }],
+						groupBy: null,
+						sorts: [],
+						layout: { mode: 'value', maxRows: 12 },
+					},
+				},
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+
+		const host = page.locator('.lb-board-host:not([data-hidden])')
+		const total = host.locator('.lb-table__value').first()
+		const count = host.locator('.lb-table__count').first()
+		// Nothing is wired up yet, so a connected table is empty rather than quietly showing the whole
+		// board — three priced shapes are sitting right there for it to have got wrong.
+		await expect(count).toHaveText('0 rows')
+
+		/*
+		 * Draw the arrows the way a person does — pick the arrow tool and drag from the shape to the
+		 * table — rather than fabricating binding records. The binding is the entire premise of the
+		 * feature, so the test has to prove tldraw really makes one from an ordinary drag.
+		 */
+		const drawArrow = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+			await page.keyboard.press('a')
+			await page.mouse.move(from.x, from.y)
+			await page.mouse.down()
+			await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 5 })
+			await page.mouse.move(to.x, to.y, { steps: 5 })
+			await page.mouse.up()
+			await page.keyboard.press('Escape')
+		}
+		// Screen coordinates: the camera is at the origin with zoom 1, and the canvas is offset by the
+		// sidebar and tab strip, so read the offset back rather than guessing it.
+		const origin = await page.evaluate(() => {
+			const box = document
+				.querySelector('.lb-board-host:not([data-hidden]) .tl-container')!
+				.getBoundingClientRect()
+			return { x: box.x, y: box.y }
+		})
+		const at = (x: number, y: number) => ({ x: origin.x + x, y: origin.y + y })
+
+		await drawArrow(at(160, 140), at(620, 300))
+		await expect(count).toHaveText('1 row')
+		await expect(total).toContainText('1,200')
+
+		await drawArrow(at(160, 300), at(620, 300))
+		await expect(count).toHaveText('2 rows')
+		await expect(total).toContainText('1,600')
+
+		// The third shape is never wired, so it never counts — which is the whole distinction between
+		// this and a page-scoped table.
+		const wired = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			return editor.getCurrentPageShapes().filter((s) => s.type === 'arrow').length
+		})
+		expect(wired).toBe(2)
+
+		// An arrow drawn across empty space is a drawing, not a relation: no binding, no row.
+		await drawArrow(at(300, 600), at(420, 640))
+		await expect(count).toHaveText('2 rows')
+
+		// Deleting an arrow takes its row with it — the graph is live, not a snapshot.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const arrow = editor.getCurrentPageShapes().find((s) => s.type === 'arrow')!
+			editor.deleteShapes([arrow.id])
+		})
+		await expect(count).toHaveText('1 row')
+	})
+
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
 		page,
 	}) => {
@@ -1059,6 +1156,7 @@ interface EditorHandle {
 		meta: Record<string, unknown>
 	}[]
 	getCamera(): { x: number; y: number; z: number }
+	setCamera(camera: { x: number; y: number; z: number }): void
 	createShapes(shapes: unknown[]): void
 	updateShape(shape: unknown): void
 	deleteShapes(ids: string[]): void

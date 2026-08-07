@@ -206,4 +206,162 @@ test.describe('performance', () => {
 		}))
 		expect(afterEdit.aggregateRecomputes).toBeGreaterThan(afterDrag.aggregateRecomputes)
 	})
+
+	/*
+	 * The same tripwire, aimed at the one thing the arrow graph could plausibly break.
+	 *
+	 * Dragging a shape that arrows are bound to moves those arrows, so the edge index is rebuilt on
+	 * every pointer move — unavoidably, since it reads page shapes. What must not happen is that
+	 * rebuild reaching the query: `areEdgeIndexesEqual` compares topology, and dragging changes none
+	 * of it. Without that comparator this test goes red, which is the point of writing it.
+	 */
+	test('a table following arrows does not re-query while a wired shape is dragged', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (
+				window as never as {
+					editor: {
+						createShapes(shapes: unknown[]): void
+						createBindings(bindings: unknown[]): void
+						getCurrentPageShapes(): { id: string; type: string }[]
+						updateDocumentSettings(s: unknown): void
+						run(fn: () => void): void
+					}
+				}
+			).editor
+			editor.run(() => {
+				editor.updateDocumentSettings({
+					meta: {
+						'lifeboard:properties': [
+							{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+						],
+					},
+				})
+				const shapes: unknown[] = [
+					{
+						type: 'node.table',
+						x: 600,
+						y: 0,
+						props: {
+							w: 280,
+							h: 200,
+							title: 'Wired',
+							source: { shapeTypes: null, scope: 'connected', frameId: null, filters: [] },
+							columns: [{ key: 'price', summary: 'sum', width: 1 }],
+							groupBy: null,
+							sorts: [],
+							layout: { mode: 'value', maxRows: 12 },
+						},
+					},
+				]
+				// Enough arrows that a per-frame re-query would be obvious rather than marginal.
+				for (let i = 0; i < 40; i++) {
+					shapes.push({
+						type: 'node.markdown',
+						x: 0,
+						y: i * 120,
+						props: { w: 200, h: 90, md: `Item ${i}`, autoHeight: false },
+						meta: {
+							'lifeboard:props': { price: 100 + i },
+							'lifeboard:propOrder': ['price'],
+						},
+					})
+				}
+				editor.createShapes(shapes)
+			})
+
+			// Bind each item to the table with an arrow, the same records the arrow tool writes.
+			const all = editor.getCurrentPageShapes()
+			const table = all.find((s) => s.type === 'node.table')!
+			const items = all.filter((s) => s.type === 'node.markdown')
+			editor.run(() => {
+				const arrows = items.map((_, i) => ({
+					type: 'arrow',
+					x: 250,
+					y: i * 120,
+					props: { start: { x: 0, y: 0 }, end: { x: 300, y: 0 } },
+				}))
+				editor.createShapes(arrows)
+				const drawn = editor.getCurrentPageShapes().filter((s) => s.type === 'arrow')
+				const bindings: unknown[] = []
+				drawn.forEach((arrow, i) => {
+					const anchor = { normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false }
+					bindings.push({
+						type: 'arrow',
+						fromId: arrow.id,
+						toId: items[i]!.id,
+						props: { terminal: 'start', ...anchor },
+					})
+					bindings.push({
+						type: 'arrow',
+						fromId: arrow.id,
+						toId: table.id,
+						props: { terminal: 'end', ...anchor },
+					})
+				})
+				editor.createBindings(bindings)
+			})
+		})
+
+		// The table really is reading the graph — otherwise "no recomputes" would be trivially true.
+		const count = page.locator('.lb-board-host:not([data-hidden]) .lb-table__count').first()
+		await expect(count).toHaveText('40 rows')
+
+		const baseline = await page.evaluate(
+			() =>
+				({
+					...(window as never as { __rollupStats: { aggregateRecomputes: number } })
+						.__rollupStats,
+				}) as { aggregateRecomputes: number }
+		)
+
+		const start = await page.evaluate(() => {
+			const editor = (
+				window as never as {
+					editor: {
+						getCurrentPageShapes(): { id: string; type: string }[]
+						getShapePageBounds(id: string): { x: number; y: number; w: number; h: number }
+						pageToScreen(p: { x: number; y: number }): { x: number; y: number }
+					}
+				}
+			).editor
+			const item = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			const b = editor.getShapePageBounds(item.id)
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+		})
+
+		await page.mouse.move(start.x, start.y)
+		await page.mouse.down()
+		for (let i = 1; i <= 30; i++) await page.mouse.move(start.x + i * 4, start.y + i * 3)
+		await page.mouse.up()
+
+		const after = await page.evaluate(
+			() =>
+				({
+					...(window as never as { __rollupStats: { aggregateRecomputes: number } })
+						.__rollupStats,
+				}) as { aggregateRecomputes: number }
+		)
+		expect(after.aggregateRecomputes - baseline.aggregateRecomputes).toBe(0)
+
+		// And rewiring *is* a change: unbind one arrow and the table must notice.
+		await page.evaluate(() => {
+			const editor = (
+				window as never as {
+					editor: {
+						getCurrentPageShapes(): { id: string; type: string }[]
+						deleteShapes(ids: string[]): void
+					}
+				}
+			).editor
+			const arrow = editor.getCurrentPageShapes().find((s) => s.type === 'arrow')!
+			editor.deleteShapes([arrow.id])
+		})
+		await expect(count).toHaveText('39 rows')
+	})
 })

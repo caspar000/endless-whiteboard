@@ -6,6 +6,12 @@ import {
 	type TLShape,
 	type TLShapeId,
 } from 'tldraw'
+import {
+	areEdgeIndexesEqual,
+	buildEdgeIndex,
+	type Edge,
+	type EdgeIndex,
+} from '../../edges'
 import { areFactsEqual, areFactsMapsEqual, type FactsMap, type ShapeFacts } from '../../facts'
 import { shapeLabel } from '../../properties/labels'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
@@ -41,10 +47,12 @@ export const rollupStats = {
 	factsRecomputes: 0,
 	shapeFactsRecomputes: 0,
 	aggregateRecomputes: 0,
+	edgeRecomputes: 0,
 	reset() {
 		this.factsRecomputes = 0
 		this.shapeFactsRecomputes = 0
 		this.aggregateRecomputes = 0
+		this.edgeRecomputes = 0
 	},
 }
 
@@ -110,6 +118,48 @@ export function getPageFacts(editor: Editor): Computed<FactsMap> {
 
 	factsByEditor.set(editor, facts)
 	return facts
+}
+
+const edgesByEditor = new WeakMap<Editor, Computed<EdgeIndex>>()
+
+/**
+ * The page's arrows as a graph, alongside the facts map and on the same terms.
+ *
+ * Rebuilt whenever any shape changes — a drag included, since moving a shape moves the arrows bound
+ * to it — and guarded by `areEdgeIndexesEqual`, which compares topology and nothing else. So the
+ * rebuild is a cheap walk of the arrows and the query behind it never notices.
+ *
+ * Read *only* by tables scoped to `connected`. Everything else avoids the call and so never takes the
+ * dependency at all, which keeps the common case exactly as cheap as it was.
+ */
+export function getPageEdges(editor: Editor): Computed<EdgeIndex> {
+	const existing = edgesByEditor.get(editor)
+	if (existing) return existing
+
+	const edges = computed<EdgeIndex>(
+		'lifeboard:pageEdges',
+		() => {
+			rollupStats.edgeRecomputes++
+			const found: Edge[] = []
+			for (const shape of editor.getCurrentPageShapes()) {
+				if (shape.type !== 'arrow') continue
+				let from: string | undefined
+				let to: string | undefined
+				for (const binding of editor.getBindingsFromShape(shape, 'arrow')) {
+					if (binding.props.terminal === 'start') from = binding.toId
+					else to = binding.toId
+				}
+				// Both ends bound, and not a loop. A loose end means someone drew a line, not a relation;
+				// a self-arrow is decoration on a single shape and would only ever match itself.
+				if (from && to && from !== to) found.push({ id: shape.id, from, to })
+			}
+			return buildEdgeIndex(found)
+		},
+		{ isEqual: areEdgeIndexesEqual }
+	)
+
+	edgesByEditor.set(editor, edges)
+	return edges
 }
 
 /**

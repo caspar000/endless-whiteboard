@@ -212,9 +212,21 @@ export {
 	type RollupSource,
 	type SourceScope,
 } from './nodes/rollup/aggregate'
-export { getPageFacts, getRollupResult, rollupStats } from './nodes/rollup/engine'
+export { getPageEdges, getPageFacts, getRollupResult, rollupStats } from './nodes/rollup/engine'
 export { shapeLabel } from './properties/labels'
 export { ITEMS_TO_NOTES_MIGRATION_ID, itemsToNotesMigrations } from './properties/itemsToNotes'
+export {
+	EDGE_DIRECTIONS,
+	EDGE_DIRECTION_LABELS,
+	EMPTY_EDGE_INDEX,
+	areEdgeIndexesEqual,
+	buildEdgeIndex,
+	edgesTouching,
+	otherEnd,
+	type Edge,
+	type EdgeDirection,
+	type EdgeIndex,
+} from './edges'
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyStrip } from './properties/PropertyStrip'
 

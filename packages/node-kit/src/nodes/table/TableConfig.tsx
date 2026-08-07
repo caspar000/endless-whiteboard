@@ -1,3 +1,8 @@
+import {
+	EDGE_DIRECTIONS,
+	EDGE_DIRECTION_LABELS,
+	type EdgeDirection,
+} from '../../edges'
 import { useValue, type Editor } from 'tldraw'
 import { currenciesUsed, getCurrentRates, normaliseCurrency } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
@@ -11,6 +16,7 @@ import {
 	LAYOUT_MODES,
 	CURRENCY_GROUP_PREFIX,
 	TABLE_SCOPES,
+	edgeDirectionOf,
 	columnTitle,
 	filterOpNeedsValue,
 	filterOpsForType,
@@ -24,6 +30,13 @@ import {
 	type TableNodeProps,
 	type TableScope,
 } from './spec'
+
+/** Named where they are shown; the scope ids themselves are storage, not prose. */
+const SCOPE_LABELS: Record<TableScope, string> = {
+	page: 'whole board',
+	frame: 'inside frame',
+	connected: 'connected by arrows',
+}
 
 /**
  * The table's configuration: Source, Columns, Group and Sort.
@@ -111,7 +124,7 @@ export function TableConfig({
 					>
 						{TABLE_SCOPES.map((scope) => (
 							<option key={scope} value={scope}>
-								{scope === 'page' ? 'whole board' : 'inside frame'}
+								{SCOPE_LABELS[scope]}
 							</option>
 						))}
 					</select>
@@ -135,6 +148,46 @@ export function TableConfig({
 							))}
 						</select>
 					</label>
+				)}
+
+				{source.scope === 'connected' && (
+					<>
+						<label className="lb-tcfg__row">
+							<span>Arrows</span>
+							<select
+								aria-label="Arrow direction"
+								value={edgeDirectionOf(source)}
+								onChange={(e) =>
+									update({
+										source: { ...source, direction: e.currentTarget.value as EdgeDirection },
+									})
+								}
+							>
+								{EDGE_DIRECTIONS.map((direction) => (
+									<option key={direction} value={direction}>
+										{EDGE_DIRECTION_LABELS[direction]}
+									</option>
+								))}
+							</select>
+						</label>
+						<label className="lb-tcfg__row">
+							<span>Labelled</span>
+							{/*
+							 * An arrow's own text is what names the relation, so one board can hold "blocks"
+							 * and "pays for" without either knowing the other exists. Blank follows every
+							 * arrow, which is what you want before you have bothered to label any.
+							 */}
+							<input
+								aria-label="Arrow label"
+								placeholder="any arrow"
+								value={source.edgeLabel ?? ''}
+								onChange={(e) =>
+									update({ source: { ...source, edgeLabel: e.currentTarget.value || null } })
+								}
+								onKeyDown={(e) => e.stopPropagation()}
+							/>
+						</label>
+					</>
 				)}
 
 				<label className="lb-tcfg__row">

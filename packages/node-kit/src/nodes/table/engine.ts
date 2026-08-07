@@ -1,7 +1,8 @@
 import { createComputedCache, type Editor, type TLShape, type TLShapeId } from 'tldraw'
 import { getCurrentRates, mergeRates, type ManualRates } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
-import { getPageFacts, rollupStats } from '../rollup/engine'
+import { EMPTY_EDGE_INDEX } from '../../edges'
+import { getPageEdges, getPageFacts, rollupStats } from '../rollup/engine'
 import {
 	EMPTY_TABLE,
 	queryTable,
@@ -31,12 +32,19 @@ const tableCache = createComputedCache<Editor, TableResult, TLShape>(
 		// fetched inside it: they arrive, this invalidates once, and a drag still recomputes nothing.
 		// The table's own hand-entered rates win — see `mergeRates`.
 		const rates = mergeRates(getCurrentRates(), (shape.props as { rates?: ManualRates }).rates)
+		// Read only when the table actually follows arrows. Taking the dependency unconditionally would
+		// wake every table on the board whenever an arrow was drawn anywhere on it.
+		const edges =
+			(shape.props as { source?: { scope?: string } }).source?.scope === 'connected'
+				? getPageEdges(editor).get()
+				: EMPTY_EDGE_INDEX
 		return queryTable(
 			getPageFacts(editor).get(),
 			shape.props as never,
 			shape.id,
 			properties,
-			rates
+			rates,
+			edges
 		)
 	},
 	{

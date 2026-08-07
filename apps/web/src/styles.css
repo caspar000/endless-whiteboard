@@ -2129,19 +2129,19 @@ button {
 	display: inline-flex;
 	align-items: center;
 	gap: 3px;
-	background: hsl(var(--lb-opt-h) 65% 50% / 18%);
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 50% / 18%);
 	border-radius: 4px;
 	padding: 1px 6px;
 	font-size: 10px;
-	color: hsl(var(--lb-opt-h) 70% 74%);
+	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 74%);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	white-space: nowrap;
 }
 /* Same hue, darkened until it reads on a white card rather than glowing off it. */
 :root[data-theme='light'] .lb-chip {
-	background: hsl(var(--lb-opt-h) 65% 45% / 14%);
-	color: hsl(var(--lb-opt-h) 60% 33%);
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 45% / 14%);
+	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 60%) 33%);
 }
 .lb-chip__x {
 	background: none;
@@ -2155,6 +2155,72 @@ button {
 }
 .lb-chip__x:hover {
 	opacity: 1;
+}
+
+/* Five stars, in the panel. On a card the same value is plain text — a star is a star at any size. */
+.lb-rating {
+	display: flex;
+	gap: 1px;
+}
+.lb-rating__star {
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-size: 15px;
+	line-height: 1;
+	padding: 0 1px;
+}
+.lb-rating__star--on {
+	color: var(--lb-star);
+}
+
+/* A slider and its readout. The number is fixed-width so dragging doesn't reflow the row. */
+.lb-progress {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.lb-progress__range {
+	accent-color: var(--lb-accent);
+	flex: 1;
+	min-width: 0;
+}
+.lb-progress__pct {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	min-width: 34px;
+	text-align: right;
+}
+
+/*
+ * The same value on a card: a bar with the number beside it.
+ *
+ * Beside rather than inside. A row on a card is narrow, and 9px text laid over a 12px bar has to read
+ * against both the filled and the unfilled half — which it does at neither. The bar carries the value
+ * at a glance and the digits carry it exactly; neither has to do the other's job.
+ */
+.lb-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 90px;
+}
+.lb-bar__track {
+	background: var(--lb-surface-2);
+	border-radius: 3px;
+	flex: 1;
+	height: 6px;
+	min-width: 28px;
+	overflow: hidden;
+}
+.lb-bar__fill {
+	display: block;
+	background: var(--lb-accent);
+	border-radius: 3px;
+	height: 100%;
 }
 
 /* The select / multiSelect editor: the current value, and an inline menu of the known options. */
@@ -2235,6 +2301,41 @@ button {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+}
+/* Status options sit under their stage; every other choice type is one flat list with no heading. */
+.lb-choice__group + .lb-choice__group {
+	margin-top: 4px;
+}
+.lb-choice__stage {
+	color: var(--lb-text-faint);
+	font-size: 9px;
+	letter-spacing: 0.06em;
+	padding: 2px 3px 1px;
+	text-transform: uppercase;
+}
+.lb-choice__dot {
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 55%);
+	border: 0;
+	border-radius: 50%;
+	cursor: pointer;
+	flex: 0 0 auto;
+	height: 8px;
+	padding: 0;
+	width: 8px;
+}
+.lb-choice__dot:hover {
+	box-shadow: 0 0 0 3px hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 55% / 25%);
+}
+.lb-choice__creates {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 3px;
+	padding-top: 2px;
+}
+.lb-choice__createlabel {
+	color: var(--lb-text-dim);
+	font-size: 11px;
 }
 .lb-choice__opt {
 	background: none;

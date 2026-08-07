@@ -11,6 +11,8 @@
  * apart at a glance, not to mean anything.
  */
 
+import type { PropertyDef, StatusStage } from './types'
+
 /**
  * Hues spaced far enough apart to stay distinguishable as chips, skipping the muddy yellow-greens.
  * Ten is enough that a realistic option list rarely collides, and a collision is cosmetic anyway.
@@ -37,4 +39,36 @@ export function optionHue(option: string): number {
 /** The inline style that paints a chip its option's colour. See `.lb-chip` in the stylesheet. */
 export function optionStyle(option: string): Record<string, string> {
 	return { '--lb-opt-h': String(optionHue(option)) }
+}
+
+/**
+ * `status` colours come from the stage, not from the label — that is the whole difference between a
+ * status and a select. Two boards spelling "done" as `Shipped` and `Closed` should still look alike,
+ * and a hash would give them nothing in common.
+ *
+ * Grey / blue / green, which is what Notion, ClickUp and Linear all landed on independently: unstarted
+ * work should recede, and finished work should read as finished without being read.
+ */
+const STAGE_COLOURS: Record<StatusStage, { h: number; s: number }> = {
+	todo: { h: 225, s: 9 },
+	active: { h: 210, s: 70 },
+	done: { h: 150, s: 55 },
+}
+
+export function stageStyle(stage: StatusStage): Record<string, string> {
+	const { h, s } = STAGE_COLOURS[stage]
+	return { '--lb-opt-h': String(h), '--lb-opt-s': `${s}%` }
+}
+
+/** Which stage an option sits in. Unlisted means `todo`, so `stages` can stay absent until it matters. */
+export function stageForOption(def: Pick<PropertyDef, 'stages'>, option: string): StatusStage {
+	return def.stages?.[option] ?? 'todo'
+}
+
+/** The style for one option of any choice type — stage-coloured for a status, hashed otherwise. */
+export function choiceStyle(
+	def: Pick<PropertyDef, 'type' | 'stages'>,
+	option: string
+): Record<string, string> {
+	return def.type === 'status' ? stageStyle(stageForOption(def, option)) : optionStyle(option)
 }

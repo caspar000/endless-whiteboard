@@ -26,7 +26,15 @@ export const PROPERTY_TYPES = [
 	// read — a title-less link *is* a bare URL, so no value has to change.
 	'link',
 	'select',
+	// Like `select`, but its options sit in one of three stages, which is what lets a board answer
+	// "how much of this is done?" — a plain select can only answer "how many say DONE".
+	'status',
 	'multiSelect',
+	// 1–5 stars. Numeric underneath, so it sums and averages like any other number.
+	'rating',
+	// 0–100. Also numeric, and the one property type that reads at a glance from across a zoomed-out
+	// board, because a part-filled bar has a shape and a number doesn't.
+	'progress',
 ] as const
 
 export type PropertyType = (typeof PROPERTY_TYPES)[number]
@@ -53,8 +61,28 @@ export interface PropertyDef {
 	type: PropertyType
 	/** ISO-4217-ish code for `financial` ('GEL' → ₾), or a display unit for `number` ('kg'). */
 	unit?: string
-	/** Known choices for `select` / `multiSelect`. Not a constraint — a value outside it still shows. */
+	/** Known choices for `select` / `status` / `multiSelect`. Not a constraint — a value outside it still shows. */
 	options?: string[]
+	/**
+	 * For `status`: which stage each option belongs to. Anything unlisted counts as `todo`, so a
+	 * status property is usable the moment it has options and this can stay absent until it matters.
+	 */
+	stages?: Record<string, StatusStage>
+}
+
+/**
+ * The three stages a `status` option can sit in — Notion's To-do / In progress / Complete, and
+ * ClickUp's Open / Active / Closed. Three rather than a free list because the point is a *fixed*
+ * vocabulary every board agrees on: two boards both having a "Done" bucket is what would make a
+ * cross-board "what's outstanding" query possible later, and a per-board list would not.
+ */
+export const STATUS_STAGES = ['todo', 'active', 'done'] as const
+export type StatusStage = (typeof STATUS_STAGES)[number]
+
+export const STAGE_LABELS: Record<StatusStage, string> = {
+	todo: 'To-do',
+	active: 'In progress',
+	done: 'Done',
 }
 
 export const propertyValueValidator: T.Validatable<PropertyValue> = T.jsonValue.refine(
@@ -80,6 +108,7 @@ export const propertyDefValidator: T.Validatable<PropertyDef> = T.object({
 	type: T.literalEnum(...PROPERTY_TYPES),
 	unit: T.string.optional(),
 	options: T.arrayOf(T.string).optional(),
+	stages: T.dict(T.string, T.literalEnum(...STATUS_STAGES)).optional(),
 })
 
 /** Whether this type's values are lists — the one place that distinction is decided. */
@@ -89,7 +118,17 @@ export function isListType(type: PropertyType): boolean {
 
 /** Whether this type picks from `options` — one choice or several. */
 export function isChoiceType(type: PropertyType): boolean {
-	return type === 'select' || type === 'multiSelect'
+	return type === 'select' || type === 'status' || type === 'multiSelect'
+}
+
+/**
+ * Whether this type's values are numbers that may be summed, averaged and compared.
+ *
+ * The gate for aggregation, and deliberately a *type* question rather than a value one: a `text`
+ * property holding "12" must never contribute to a total, or totals would depend on typos.
+ */
+export function isNumericType(type: PropertyType): boolean {
+	return type === 'number' || type === 'financial' || type === 'rating' || type === 'progress'
 }
 
 /**
@@ -131,6 +170,10 @@ export const DEFAULT_CURRENCY = 'GEL'
 export function defaultUnitForType(type: PropertyType): string | undefined {
 	return type === 'financial' ? DEFAULT_CURRENCY : undefined
 }
+
+/** How many stars a `rating` holds. Fixed rather than per-property: five is the universal scale, and a
+ * configurable maximum would make two boards' ratings incomparable for the sake of a rare preference. */
+export const RATING_MAX = 5
 
 /** The empty value for a type — `false` for a checkbox, an empty list for multiSelect, else `null`. */
 export function emptyValueForType(type: PropertyType): PropertyValue {

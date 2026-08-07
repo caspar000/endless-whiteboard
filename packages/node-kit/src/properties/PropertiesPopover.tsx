@@ -5,7 +5,7 @@ import { NodeEditorPopover } from '../NodeEditorPopover'
 import { shapeLabel } from './labels'
 import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
 import { encodeLinkValue, linkHref, parseLinkValue, type LinkParts } from './link'
-import { optionStyle } from './options'
+import { choiceStyle, stageForOption } from './options'
 import {
 	createProperty,
 	deleteProperty,
@@ -15,6 +15,9 @@ import {
 } from './schema'
 import {
 	PROPERTY_TYPES,
+	RATING_MAX,
+	STAGE_LABELS,
+	STATUS_STAGES,
 	defaultUnitForType,
 	emptyValueForType,
 	isChoiceType,
@@ -22,6 +25,7 @@ import {
 	type PropertyDef,
 	type PropertyType,
 	type PropertyValue,
+	type StatusStage,
 } from './types'
 import {
 	orderedPropertyIds,
@@ -401,6 +405,14 @@ function PropertyValueEditor({
 		)
 	}
 
+	if (def.type === 'rating') {
+		return <RatingValueEditor def={def} value={value} onChange={set} />
+	}
+
+	if (def.type === 'progress') {
+		return <ProgressValueEditor def={def} value={value} onChange={set} />
+	}
+
 	if (def.type === 'number' || def.type === 'financial') {
 		return <NumericValueEditor editor={editor} shape={shape} def={def} value={value} />
 	}
@@ -597,6 +609,75 @@ function CurrencyCodeInput({
 }
 
 /**
+ * Five stars, clickable.
+ *
+ * Clicking the star you are already on clears the rating rather than re-setting it — without that
+ * there is no way back to "unrated" from a control made only of stars, and an empty rating has to
+ * stay reachable or the value can never be undone.
+ */
+function RatingValueEditor({
+	def,
+	value,
+	onChange,
+}: {
+	def: PropertyDef
+	value: PropertyValue
+	onChange: (raw: unknown) => void
+}) {
+	const current = typeof value === 'number' ? value : 0
+	return (
+		<div className="lb-rating" role="group" aria-label={`Value of ${def.name}`}>
+			{Array.from({ length: RATING_MAX }, (_, i) => i + 1).map((star) => (
+				<button
+					key={star}
+					className={star <= current ? 'lb-rating__star lb-rating__star--on' : 'lb-rating__star'}
+					aria-label={`${star} of ${RATING_MAX}`}
+					aria-pressed={star <= current}
+					onClick={() => onChange(star === current ? null : star)}
+				>
+					{star <= current ? '★' : '☆'}
+				</button>
+			))}
+		</div>
+	)
+}
+
+/**
+ * A 0–100 slider with the number beside it.
+ *
+ * Both controls, not one: the slider is how you set a rough value quickly, and the box is how you say
+ * exactly 33. `onInput` rather than `onChange` on the range would write to the store on every pixel of
+ * the drag, which is a store write per frame and an undo entry per frame with it.
+ */
+function ProgressValueEditor({
+	def,
+	value,
+	onChange,
+}: {
+	def: PropertyDef
+	value: PropertyValue
+	onChange: (raw: unknown) => void
+}) {
+	const current = typeof value === 'number' ? value : 0
+	return (
+		<div className="lb-progress">
+			<input
+				className="lb-progress__range"
+				type="range"
+				min={0}
+				max={100}
+				step={1}
+				aria-label={`Value of ${def.name}`}
+				value={current}
+				onChange={(e) => onChange(Number(e.currentTarget.value))}
+				onKeyDown={(e) => e.stopPropagation()}
+			/>
+			<span className="lb-progress__pct">{value === null ? '—' : `${current}%`}</span>
+		</div>
+	)
+}
+
+/**
  * The editor for `select` and `multiSelect`: a menu of the property's known options.
  *
  * One component for both, because they differ only in whether picking replaces or toggles. Before
@@ -644,7 +725,20 @@ function ChoiceValueEditor({
 	const shown = needle ? entries.filter((e) => e.toLowerCase().includes(needle)) : entries
 	// Only offered when it would actually add something — an exact match means "pick it", not "make
 	// a second one".
-	const creatable = query.trim() && !entries.some((e) => e.toLowerCase() === needle) ? query.trim() : null
+	const creatable =
+		query.trim() && !entries.some((e) => e.toLowerCase() === needle) ? query.trim() : null
+
+	/*
+	 * A status lists its options under stage headings; every other choice type is one flat list.
+	 * Modelled as "groups, sometimes only one" so the rendering below has a single shape.
+	 */
+	const status = def.type === 'status'
+	const groups: { stage: StatusStage | null; entries: string[] }[] = status
+		? STATUS_STAGES.map((stage) => ({
+				stage,
+				entries: shown.filter((option) => stageForOption(def, option) === stage),
+			})).filter((group) => group.entries.length > 0)
+		: [{ stage: null, entries: shown }]
 
 	const pick = (option: string) => {
 		if (!multi) {
@@ -656,11 +750,27 @@ function ChoiceValueEditor({
 		onChange(selected.includes(option) ? selected.filter((v) => v !== option) : [...selected, option])
 	}
 
-	const create = () => {
+	const create = (stage?: StatusStage) => {
 		if (!creatable) return
-		updateProperty(editor, def.id, { options: [...options, creatable] })
+		updateProperty(editor, def.id, {
+			options: [...options, creatable],
+			...(stage ? { stages: { ...def.stages, [creatable]: stage } } : {}),
+		})
 		pick(creatable)
 		setQuery('')
+	}
+
+	/*
+	 * Clicking an option's stage dot moves it on to the next stage, wrapping round.
+	 *
+	 * A cycler rather than a drag between sections or a submenu: there are exactly three stages, so
+	 * every one of them is at most two clicks away, and the dot is already the thing that shows which
+	 * stage the option is in. Dragging would be the right answer for a longer list; for three it is
+	 * more machinery than the problem has.
+	 */
+	const cycleStage = (option: string) => {
+		const next = STATUS_STAGES[(STATUS_STAGES.indexOf(stageForOption(def, option)) + 1) % 3]!
+		updateProperty(editor, def.id, { stages: { ...def.stages, [option]: next } })
 	}
 
 	/*
@@ -682,7 +792,7 @@ function ChoiceValueEditor({
 				 */}
 				{multi &&
 					selected.map((option) => (
-						<span className="lb-chip" key={option} style={optionStyle(option)}>
+						<span className="lb-chip" key={option} style={choiceStyle(def, option)}>
 							{option}
 							<button
 								className="lb-chip__x"
@@ -702,7 +812,7 @@ function ChoiceValueEditor({
 					{multi ? (
 						'+'
 					) : selected[0] !== undefined ? (
-						<span className="lb-chip" style={optionStyle(selected[0])}>
+						<span className="lb-chip" style={choiceStyle(def, selected[0])}>
 							{selected[0]}
 						</span>
 					) : (
@@ -728,36 +838,71 @@ function ChoiceValueEditor({
 							e.stopPropagation()
 						}}
 					/>
-					{shown.map((option) => (
-						<div className="lb-choice__row" key={option}>
-							<button
-								className={
-									selected.includes(option) ? 'lb-choice__opt lb-choice__opt--on' : 'lb-choice__opt'
-								}
-								aria-pressed={selected.includes(option)}
-								onClick={() => pick(option)}
-							>
-								<span className="lb-chip" style={optionStyle(option)}>
-									{option}
-								</span>
-							</button>
-							{options.includes(option) && (
-								<button
-									className="lb-choice__forget"
-									aria-label={`Remove ${option} from ${def.name}'s options`}
-									title="Remove from the list of options"
-									onClick={() => forget(option)}
-								>
-									×
-								</button>
-							)}
+					{groups.map(({ stage, entries }) => (
+						<div className="lb-choice__group" key={stage ?? 'all'}>
+							{stage && <div className="lb-choice__stage">{STAGE_LABELS[stage]}</div>}
+							{entries.map((option) => (
+								<div className="lb-choice__row" key={option}>
+									{stage && (
+										<button
+											className="lb-choice__dot"
+											style={choiceStyle(def, option)}
+											aria-label={`Move ${option} out of ${STAGE_LABELS[stage]}`}
+											title="Click to move to the next stage"
+											onClick={() => cycleStage(option)}
+										/>
+									)}
+									<button
+										className={
+											selected.includes(option)
+												? 'lb-choice__opt lb-choice__opt--on'
+												: 'lb-choice__opt'
+										}
+										aria-pressed={selected.includes(option)}
+										onClick={() => pick(option)}
+									>
+										<span className="lb-chip" style={choiceStyle(def, option)}>
+											{option}
+										</span>
+									</button>
+									{options.includes(option) && (
+										<button
+											className="lb-choice__forget"
+											aria-label={`Remove ${option} from ${def.name}'s options`}
+											title="Remove from the list of options"
+											onClick={() => forget(option)}
+										>
+											×
+										</button>
+									)}
+								</div>
+							))}
 						</div>
 					))}
-					{creatable && (
-						<button className="lb-choice__create" onClick={create}>
-							Create “{creatable}”
-						</button>
-					)}
+					{creatable &&
+						(status ? (
+							// Where a new status option belongs is a real question with three answers, so it is
+							// asked rather than guessed. Everything else has one place to go.
+							<div className="lb-choice__creates">
+								<span className="lb-choice__createlabel">Create “{creatable}” in</span>
+								{STATUS_STAGES.map((stage) => (
+									<button
+										key={stage}
+										className="lb-choice__create"
+										// The visible text is only the stage, because the label beside it already
+										// says what is being created; the accessible name has to stand alone.
+										aria-label={`Create “${creatable}” in ${STAGE_LABELS[stage]}`}
+										onClick={() => create(stage)}
+									>
+										{STAGE_LABELS[stage]}
+									</button>
+								))}
+							</div>
+						) : (
+							<button className="lb-choice__create" onClick={() => create()}>
+								Create “{creatable}”
+							</button>
+						))}
 					{!shown.length && !creatable && (
 						<p className="lb-choice__empty">No options yet. Type to create one.</p>
 					)}

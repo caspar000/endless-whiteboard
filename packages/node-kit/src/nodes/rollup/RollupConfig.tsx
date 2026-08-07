@@ -1,7 +1,7 @@
 import { useValue, type Editor } from 'tldraw'
 import { listValuesOf } from '../../facts'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
-import { isListType } from '../../properties/types'
+import { isListType, isNumericType } from '../../properties/types'
 import { updateNodeProps, type NodeShape } from '../../registry'
 import {
 	AGG_OPS,
@@ -36,7 +36,7 @@ export function RollupConfig({
 	const properties = useValue('properties', () => readPropertyRegistry(editor), [editor])
 	// Aggregation needs a number, so only numeric properties are offered as the value to roll up.
 	// Grouping works on anything, so `groupBy` gets the full list.
-	const numericProperties = properties.filter((p) => p.type === 'number' || p.type === 'financial')
+	const numericProperties = properties.filter((p) => isNumericType(p.type))
 	const tags = useValue(
 		'tags',
 		() => {

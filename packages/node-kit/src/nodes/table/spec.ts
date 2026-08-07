@@ -1,5 +1,5 @@
 import { T } from 'tldraw'
-import type { PropertyDef, PropertyType } from '../../properties/types'
+import { isNumericType, type PropertyDef, type PropertyType } from '../../properties/types'
 
 /**
  * The table node's spec: what it selects, what it shows, how it summarises.
@@ -125,8 +125,7 @@ const DATE_SUMMARIES: SummaryOp[] = ['earliest', 'latest', 'range']
 
 /** Which summaries a column can carry, given the property behind it. */
 export function summaryOpsForType(type: PropertyType | null): SummaryOp[] {
-	if (type === 'number' || type === 'financial')
-		return [...UNIVERSAL_SUMMARIES, ...NUMERIC_SUMMARIES]
+	if (type && isNumericType(type)) return [...UNIVERSAL_SUMMARIES, ...NUMERIC_SUMMARIES]
 	if (type === 'date') return [...UNIVERSAL_SUMMARIES, ...DATE_SUMMARIES]
 	// `null` is the label column: countable, never summable.
 	return UNIVERSAL_SUMMARIES

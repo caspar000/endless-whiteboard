@@ -589,6 +589,108 @@ test.describe('nodes', () => {
 		await expect(strip).toContainText('TODO')
 	})
 
+	test('rating, progress and status carry their own controls and reach the card', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorHandle }).editor.createShapes([
+				{ type: 'note', x: 200, y: 200 },
+			])
+		})
+		const id = await page.evaluate(
+			() =>
+				(window as unknown as { editor: EditorHandle }).editor
+					.getCurrentPageShapes()
+					.find((s) => s.type === 'note')!.id
+		)
+		await page.evaluate((shapeId) => {
+			;(window as unknown as { editor: EditorHandle }).editor.select(shapeId)
+		}, id)
+		await page.keyboard.press('Alt+p')
+
+		const panel = page.locator('.lb-props')
+		await expect(panel).toBeVisible()
+		const define = async (name: string, type: string) => {
+			await panel.getByRole('button', { name: 'New property…' }).click()
+			await panel.getByLabel('New property name').fill(name)
+			await panel.getByLabel('New property type').selectOption(type)
+			await panel.getByRole('button', { name: 'Add' }).click()
+		}
+
+		// Rating: five stars, and clicking the one you are on clears it — the only route back to unrated.
+		await define('Quality', 'rating')
+		const stars = panel.getByRole('group', { name: 'Value of Quality' })
+		await stars.getByLabel('4 of 5').click()
+		await expect(stars.locator('.lb-rating__star--on')).toHaveCount(4)
+		await stars.getByLabel('4 of 5').click()
+		await expect(stars.locator('.lb-rating__star--on')).toHaveCount(0)
+		await stars.getByLabel('3 of 5').click()
+
+		await define('Built', 'progress')
+		await panel.getByLabel('Value of Built').fill('65')
+
+		// Status: options live in stages, and creating one asks which — there is no sensible default.
+		await define('Stage', 'status')
+		await panel.getByLabel('Value of Stage').click()
+		for (const [option, stage] of [
+			['BACKLOG', 'To-do'],
+			['IN REVIEW', 'In progress'],
+			['SHIPPED', 'Done'],
+		]) {
+			await panel.getByLabel(/Search or create an option/).fill(option!)
+			await panel.getByLabel(`Create “${option}” in ${stage}`).click()
+			await panel.getByLabel('Value of Stage').click()
+		}
+		await expect(panel.locator('.lb-choice__stage')).toHaveCount(3)
+
+		/*
+		 * A status option's colour comes from its stage rather than from its own text, which is the
+		 * whole difference between a status and a select: two boards spelling "done" differently should
+		 * still look alike. Asserted through the hue variable, since that is what the rule reads. Taken
+		 * while the menu is still open — picking a single choice closes it.
+		 */
+		const hues = await panel.evaluate((el) =>
+			[...el.querySelectorAll<HTMLElement>('.lb-choice__row .lb-chip')].map((chip) =>
+				chip.style.getPropertyValue('--lb-opt-h')
+			)
+		)
+		expect(new Set(hues).size).toBe(3)
+
+		await panel.locator('.lb-choice__opt', { hasText: 'IN REVIEW' }).click()
+		await expect(panel.getByLabel('Value of Stage')).toHaveText('IN REVIEW')
+
+		// Stored on the definition, so every other shape on the board inherits the same vocabulary.
+		const stored = await page.evaluate(() =>
+			JSON.stringify(
+				(window as unknown as { editor: EditorHandle }).editor.getDocumentSettings().meta[
+					'lifeboard:properties'
+				]
+			)
+		)
+		expect(stored).toContain('"SHIPPED":"done"')
+		expect(stored).toContain('"IN REVIEW":"active"')
+
+		// On the card: stars as text, a bar for progress, a stage-coloured chip for the status.
+		await page.keyboard.press('Escape')
+		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()
+		await expect(strip).toContainText('★★★☆☆')
+		await expect(strip.locator('.lb-bar__fill')).toHaveCSS('width', /.+/)
+		await expect(strip.locator('.lb-bar')).toContainText('65%')
+		await expect(strip.locator('.lb-chip')).toHaveText('IN REVIEW')
+
+		// And both numeric newcomers aggregate, because "numeric" is one question asked in one place.
+		const summable = await page.evaluate(() => {
+			const meta = (window as unknown as { editor: EditorHandle }).editor.getDocumentSettings()
+				.meta['lifeboard:properties'] as { id: string; type: string }[]
+			return meta.map((d) => d.type)
+		})
+		expect(summable).toContain('rating')
+		expect(summable).toContain('progress')
+	})
+
 	test('a property can be defined and filled in through the panel, on a shape tldraw owns', async ({
 		page,
 	}) => {

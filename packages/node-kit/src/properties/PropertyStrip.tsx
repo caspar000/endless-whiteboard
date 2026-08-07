@@ -1,7 +1,7 @@
 import { useValue, type Editor } from 'tldraw'
 import { formatPropertyValue, numericPropertyValue } from './format'
 import { linkHref } from './link'
-import { optionStyle } from './options'
+import { choiceStyle } from './options'
 import { findProperty, readPropertyRegistry } from './schema'
 import { isChoiceType, isListType } from './types'
 import {
@@ -42,6 +42,9 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 				return [
 					{
 						id,
+						// Carried through because two of the renderers below need to ask the definition a
+						// question: which stage an option is in, and whether it is a status at all.
+						def,
 						name: def.name,
 						list: isListType(def.type),
 						// A chosen value is a tag, not free text, so it reads as a coloured pill wherever
@@ -50,6 +53,9 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 						text: formatPropertyValue(def, values[id]!, unitForShapeProperty(def, units)),
 						// `null` for everything that isn't a link, and for a link with no usable address.
 						href: def.type === 'link' ? linkHref(values[id]!) : null,
+						// A bar reads at a zoom where digits have stopped being legible, which is the one
+						// thing a canvas needs from a progress value that a table doesn't.
+						percent: def.type === 'progress' && typeof numeric === 'number' ? numeric : null,
 						negative: numeric !== null && numeric < 0,
 					},
 				]
@@ -70,7 +76,7 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 						{row.text === '—'
 							? null
 							: row.text.split(', ').map((tag) => (
-									<span className="lb-chip" key={tag} style={optionStyle(tag)}>
+									<span className="lb-chip" key={tag} style={choiceStyle(row.def, tag)}>
 										{tag}
 									</span>
 								))}
@@ -98,8 +104,15 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
 								>
 									{row.text}
 								</a>
+							) : row.percent !== null ? (
+								<span className="lb-bar">
+									<span className="lb-bar__track">
+										<span className="lb-bar__fill" style={{ width: `${row.percent}%` }} />
+									</span>
+									{row.text}
+								</span>
 							) : row.choice && row.text !== '—' ? (
-								<span className="lb-chip" style={optionStyle(row.text)}>
+								<span className="lb-chip" style={choiceStyle(row.def, row.text)}>
 									{row.text}
 								</span>
 							) : (

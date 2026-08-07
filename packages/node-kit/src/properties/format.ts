@@ -1,7 +1,9 @@
 import { linkDisplayText, parseLinkValue } from './link'
 import {
 	DEFAULT_CURRENCY,
+	RATING_MAX,
 	isListType,
+	isNumericType,
 	type PropertyDef,
 	type PropertyType,
 	type PropertyValue,
@@ -116,6 +118,18 @@ export function coercePropertyValue(type: PropertyType, raw: unknown): PropertyV
 	if (typeof raw === 'string' && raw.trim() === '') return null
 
 	switch (type) {
+		// Bounded whole numbers. Clamped rather than rejected, because the controls that produce them
+		// (five stars, a slider) can only ever be out of range if a value arrives from somewhere else —
+		// an import, a paste, a hand-edited backup — and a clamped 5 is better than a dropped value.
+		case 'rating':
+		case 'progress': {
+			const n = typeof raw === 'number' ? raw : Number.parseFloat(String(raw).replace(/[^\d.\-]/g, ''))
+			if (!Number.isFinite(n)) return null
+			const max = type === 'rating' ? RATING_MAX : 100
+			const clamped = Math.min(max, Math.max(0, Math.round(n)))
+			// Zero means "not rated" for stars, which is the only way to clear one by clicking.
+			return type === 'rating' && clamped === 0 ? null : clamped
+		}
 		case 'number':
 		case 'financial': {
 			if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
@@ -160,6 +174,15 @@ export function formatPropertyValue(
 		// The title, not the stored `[title](url)` — that encoding is storage, never something to read.
 		case 'link':
 			return linkDisplayText(value)
+		// Stars as text, so a table cell and a card agree and neither needs a special renderer to be
+		// readable. Filled and empty both drawn, because "★★★" alone doesn't say out of how many.
+		case 'rating': {
+			if (typeof value !== 'number') return String(value)
+			const filled = Math.min(RATING_MAX, Math.max(0, Math.round(value)))
+			return '★'.repeat(filled) + '☆'.repeat(RATING_MAX - filled)
+		}
+		case 'progress':
+			return typeof value === 'number' ? `${Math.round(value)}%` : String(value)
 		case 'financial':
 			return typeof value === 'number' ? formatCurrency(value, unit) : String(value)
 		case 'number': {
@@ -183,7 +206,7 @@ export function formatPropertyValue(
  * totals depend on typos.
  */
 export function numericPropertyValue(def: PropertyDef, value: PropertyValue): number | null {
-	if (def.type !== 'number' && def.type !== 'financial') return null
+	if (!isNumericType(def.type)) return null
 	return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 

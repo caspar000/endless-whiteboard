@@ -1088,6 +1088,89 @@ test.describe('canvas grid', () => {
 		}
 	})
 
+	test('input reaches only the board you can see, not every open tab', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		// A shape on the first board, made while it is the visible one.
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorLike }).editor.createShapes([
+				{ type: 'geo', x: 120, y: 120 },
+			])
+		})
+
+		await backToList(page)
+		await page.getByRole('button', { name: 'New board' }).first().click()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(page.locator('.lb-board-host')).toHaveCount(2)
+
+		/*
+		 * tldraw binds its clipboard listeners, keyboard shortcuts and document events to the
+		 * *document*, gated on one flag: `isFocused`. `autoFocus` defaults to true, so every mounted
+		 * tab set that flag on its own instance and nothing ever cleared it — a hidden board is never
+		 * blurred by anything. One ⌘V pasted into every open board, and one ⌘Z undid all of them.
+		 */
+		expect(
+			await page.evaluate(() => document.querySelectorAll('.tl-container__focused').length)
+		).toBe(1)
+
+		await page.evaluate(async () => {
+			const c = document.createElement('canvas')
+			c.width = 40
+			c.height = 40
+			const ctx = c.getContext('2d')!
+			ctx.fillStyle = '#f00'
+			ctx.fillRect(0, 0, 40, 40)
+			const blob: Blob = await new Promise((r) => c.toBlob((b) => r(b!), 'image/png'))
+			const data = new DataTransfer()
+			data.items.add(new File([blob], 'x.png', { type: 'image/png' }))
+			document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }))
+		})
+
+		// One image, in the visible board — the second host, whose tab was opened last.
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					[...document.querySelectorAll('.lb-board-host')].map(
+						(h) => h.querySelectorAll('.tl-shape img').length
+					)
+				)
+			)
+			.toEqual([0, 1])
+
+		// And undo, pressed here, must not reach back into the board behind this one.
+		const hiddenGeo = () =>
+			page.evaluate(
+				() =>
+					document.querySelectorAll(
+						'.lb-board-host[data-hidden] .tl-shape[data-shape-type="geo"]'
+					).length
+			)
+		expect(await hiddenGeo()).toBe(1)
+		await page.keyboard.press('ControlOrMeta+z')
+		// The visible board loses its paste…
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						document.querySelectorAll('.lb-board-host:not([data-hidden]) .tl-shape img').length
+				)
+			)
+			.toBe(0)
+		// …and the hidden one keeps everything it had.
+		expect(await hiddenGeo()).toBe(1)
+
+		// `window.editor` follows the board you are looking at, so a console or a test never drives an
+		// invisible one. Before this it was whichever board mounted last, which on a restored session
+		// is not the board on screen.
+		const handleIsVisible = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: { getContainer(): HTMLElement } }).editor
+			return editor.getContainer().closest('.lb-board-host')?.hasAttribute('data-hidden') === false
+		})
+		expect(handleIsVisible).toBe(true)
+	})
+
 	test('grid style, grid visibility and snapping are independent, and persist', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()

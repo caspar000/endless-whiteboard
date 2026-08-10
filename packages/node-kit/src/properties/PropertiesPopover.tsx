@@ -68,11 +68,13 @@ export function PropertiesPopover({
 	// bubble a keydown to this element.
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') onClose()
+			// Only the board you can see answers. Every open tab keeps its editor — and its panel —
+			// mounted, so without this one Escape closes panels on boards nobody is looking at.
+			if (e.key === 'Escape' && editor.getIsFocused()) onClose()
 		}
 		window.addEventListener('keydown', onKeyDown)
 		return () => window.removeEventListener('keydown', onKeyDown)
-	}, [onClose])
+	}, [onClose, editor])
 
 	// Read reactively: the panel stays open across edits, and an edit replaces the shape record.
 	const live = useValue(

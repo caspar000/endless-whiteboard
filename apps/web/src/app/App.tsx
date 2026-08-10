@@ -144,6 +144,36 @@ export function App() {
 		}
 	}, [canvasPrefs.snapToGrid])
 
+	/**
+	 * Only the board you can see may take input.
+	 *
+	 * Every open tab keeps its editor mounted, and tldraw's `autoFocus` defaults to true — so each one
+	 * sets `isFocused` on its own instance and nothing ever clears it, because a hidden board is never
+	 * blurred by anything. That flag is the single gate on tldraw's clipboard listeners, its keyboard
+	 * shortcuts *and* its document events, all of which bind to the **document** rather than to a
+	 * container. With three tabs open, one ⌘V pasted three times, one ⌘Z undid three boards, and Delete
+	 * reached shapes nobody was looking at.
+	 *
+	 * `focus({ focusContainer: false })` sets the flag without taking DOM focus: stealing it on every
+	 * tab switch would yank the caret out of the tab-rename box, and tldraw reads keys off the document
+	 * anyway. The blur side keeps its default, which also calls `editor.complete()` — a board being
+	 * hidden mid-gesture should not keep a half-drawn arrow live.
+	 */
+	const focusOnly = (activeId: string | null) => {
+		for (const [id, editor] of editors.current) {
+			if (id !== activeId) {
+				editor.blur()
+				continue
+			}
+			editor.focus({ focusContainer: false })
+			// The console/e2e handle follows the board you are looking at, not whichever mounted last.
+			// A board mounts asynchronously, so "last to mount" could be a tab restored behind this one
+			// — and a handle pointing at an invisible board makes every command land where nobody sees
+			// it. Left in place when you leave for the home screen: nothing has replaced it yet.
+			;(window as unknown as { editor?: Editor }).editor = editor
+		}
+	}
+
 	// Ask for durable storage once, at startup. Chrome grants it silently based on engagement;
 	// Safari grants it to installed PWAs. Either way, asking early is free (§4.4).
 	useEffect(() => {
@@ -314,6 +344,15 @@ export function App() {
 	const listApi = { ...api, remove: removeBoard }
 
 	const activeBoardId = route.view === 'board' ? route.boardId : null
+	// A board mounting is asynchronous — it waits on its own restore — so registration below has to
+	// apply this too, and needs the *current* active board rather than the one at its render.
+	const activeBoardIdRef = useRef(activeBoardId)
+	activeBoardIdRef.current = activeBoardId
+	useEffect(() => {
+		focusOnly(activeBoardId)
+		// Leaving the board view for the home screen blurs everything, which is right: a keystroke
+		// aimed at the board list must not reach a board that happens to still be mounted behind it.
+	})
 	if (activeBoardId) warm.current.add(activeBoardId)
 
 	const routedBoard = activeBoardId
@@ -379,6 +418,7 @@ export function App() {
 								onEditor={(editor) => {
 									if (editor) {
 										editors.current.set(board.id, editor)
+										focusOnly(activeBoardIdRef.current)
 										// A board can mount long after these were chosen — on a restored tab, or the
 										// first time an already-open tab is shown.
 										editor.user.updateUserPreferences({ colorScheme: themeRef.current })

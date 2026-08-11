@@ -174,7 +174,7 @@ export async function openProperties(page: Page, shapeType: string): Promise<voi
  * read immediately after creating one are stale. Clicking a point computed from them lands outside the
  * now-shorter shape and silently does nothing — which showed up as a config panel that never opened.
  */
-async function waitForStableHeight(page: Page, shapeType: string): Promise<void> {
+export async function waitForStableHeight(page: Page, shapeType: string): Promise<void> {
 	let last = -1
 	for (let i = 0; i < 40; i++) {
 		const h = await page.evaluate((type) => {

@@ -1,6 +1,12 @@
 import { memo } from 'react'
+import { useValue } from 'tldraw'
 import { CollectionStrip } from '../../collections/CollectionStrip'
+import { renderExpressions } from '../../collections/expressions'
+import { getPageEdges, getPageFacts } from '../rollup/engine'
 import { PropertyStrip } from '../../properties/PropertyStrip'
+import { getCurrentRates } from '../../properties/rates'
+import { propertyMap, readPropertyRegistry } from '../../properties/schema'
+import { readShapeProperties, readShapePropertyUnits } from '../../properties/values'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import { toggleTaskAt } from './tasks'
 import type { NoteNodeProps } from './definition'
@@ -15,6 +21,32 @@ import { NoteEditor } from './NoteEditor'
  */
 function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<NoteNodeProps>) {
 	const { md } = shape.props
+
+	/*
+	 * `{…}` resolved for display only — the source keeps the expression.
+	 *
+	 * That asymmetry is the feature: you edit `{sum price}` and read ₾1,540. It also means the editor
+	 * below never sees a substitution, so typing is never fighting a value that rewrites itself.
+	 *
+	 * Cheap when there is nothing to do: `renderExpressions` returns the string untouched if it holds
+	 * no brace at all, which is almost every note.
+	 */
+	const rendered = useValue(
+		'lifeboard:note-expressions',
+		() =>
+			renderExpressions(md, {
+				facts: getPageFacts(editor).get(),
+				edges: getPageEdges(editor).get(),
+				properties: propertyMap(readPropertyRegistry(editor)),
+				rates: getCurrentRates(),
+				selfId: shape.id,
+				values: readShapeProperties(shape),
+				units: readShapePropertyUnits(shape),
+			}),
+		// `shape.meta` rather than `shape`: auto-height rewrites the record on every measurement, and
+		// depending on the whole thing would re-run this mid-render for a value that cannot have moved.
+		[editor, md, shape.id, shape.meta]
+	)
 
 	if (isEditing) {
 		return (
@@ -36,10 +68,12 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 		<div className="lb-note lb-md">
 			{md.trim() ? (
 				<MarkdownView
-					md={md}
+					md={rendered}
 					// Checkboxes are live in display mode: ticking something off a list is the most common
 					// thing anyone does to a checklist, and needing to enter an editor first to do it is the
 					// difference between a note and a document.
+					// Against the *source*, never the rendered text: expressions never change the line
+					// structure, so the indices agree.
 					onToggleTask={(index) => {
 						const next = toggleTaskAt(md, index)
 						// `null` means nothing matched, which must not cost an undo entry.

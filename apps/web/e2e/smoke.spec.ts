@@ -10,6 +10,7 @@ import {
 	openBoard,
 	openProperties,
 	skipFirstRunDemo,
+	waitForStableHeight,
 	waitForPersistedShapes,
 } from './helpers'
 
@@ -698,6 +699,97 @@ test.describe('nodes', () => {
 		expect(stillANote).toBe(4)
 	})
 
+	test('a note can put a live total in the middle of a sentence', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		const source = 'In: **{sum price in}** from {count in}\n\nFree: **{sum price either}**'
+		await page.evaluate((md) => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+					],
+				},
+			})
+			const priced = (value: number) => ({
+				'lifeboard:props': { price: value },
+				'lifeboard:propOrder': ['price'],
+			})
+			editor.createShapes([
+				{ type: 'note', x: 60, y: 40, meta: priced(8000) },
+				{ type: 'note', x: 400, y: 40, meta: priced(200) },
+				{ type: 'note', x: 740, y: 40, meta: priced(2000) },
+				{
+					type: 'node.markdown',
+					x: 250,
+					y: 350,
+					props: { w: 460, h: 180, autoHeight: true, md },
+				},
+			])
+			// The arrows below are drawn with the mouse, so every shape has to be on screen — a new
+			// board does not guarantee the camera is where the shapes were put.
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		}, source)
+
+		/*
+		 * The note auto-heights, and it shrinks: created at 180 it settles near 90 once its content is
+		 * measured. Reading bounds before that lands the arrows below the shape, where they bind to
+		 * nothing and every expression reports an honest zero.
+		 */
+		await waitForStableHeight(page, 'node.markdown')
+		const geometry = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const stickies = editor.getCurrentPageShapes().filter((s) => s.type === 'note')
+			const note = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			const centre = (id: string) => {
+				const b = editor.getShapePageBounds(id)!
+				return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+			}
+			return {
+				a: centre(stickies[0]!.id),
+				b: centre(stickies[1]!.id),
+				out: centre(stickies[2]!.id),
+				note: centre(note.id),
+			}
+		})
+		const draw = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+			await page.keyboard.press('a')
+			await page.mouse.move(from.x, from.y)
+			await page.mouse.down()
+			await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 5 })
+			await page.mouse.move(to.x, to.y, { steps: 5 })
+			await page.mouse.up()
+			await page.keyboard.press('Escape')
+		}
+		await draw(geometry.a, geometry.note)
+		await draw(geometry.b, geometry.note)
+		await draw(geometry.note, geometry.out)
+
+		// 8000 + 200 in, 2000 out, and the balance of the three.
+		const body = page.locator('.lb-board-host:not([data-hidden]) .lb-md__body').first()
+		await expect(body).toContainText('In: ₾ 8,200.00 from 2')
+		await expect(body).toContainText('Free: ₾ 6,200.00')
+
+		/*
+		 * The *source* keeps the expression. That asymmetry is the feature — you edit `{sum price in}`
+		 * and read ₾8,200 — and it is also what keeps the editor from fighting a value that rewrites
+		 * itself while you type in it.
+		 */
+		const stored = await page.evaluate(
+			() =>
+				(
+					(window as unknown as { editor: EditorHandle }).editor
+						.getCurrentPageShapes()
+						.find((s) => s.type === 'node.markdown')!.props as { md: string }
+				).md
+		)
+		expect(stored).toBe(source)
+	})
+
 	test('rating, progress and status carry their own controls and reach the card', async ({
 		page,
 	}) => {
@@ -1265,6 +1357,7 @@ interface EditorHandle {
 		meta: Record<string, unknown>
 	}[]
 	getCamera(): { x: number; y: number; z: number }
+	setCamera(camera: { x: number; y: number; z: number }): void
 	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
 	pageToScreen(point: { x: number; y: number }): { x: number; y: number }
 	setCamera(camera: { x: number; y: number; z: number }): void

@@ -252,6 +252,7 @@ export {
 	type CollectionResult,
 	type CollectionRow,
 } from './collections/engine'
+export { renderExpressions, type ExpressionContext } from './collections/expressions'
 
 import { itemNodeDefinition } from './nodes/item/definition'
 import { markdownNodeDefinition } from './nodes/markdown/definition'

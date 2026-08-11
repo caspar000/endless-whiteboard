@@ -1,0 +1,356 @@
+{
+  "store": {
+    "shape:t8fdqyDr8_5WlJ-s0MZT7": {
+      "x": 580,
+      "y": 140,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:t8fdqyDr8_5WlJ-s0MZT7",
+      "type": "node.item",
+      "props": {
+        "title": "Monitor arm",
+        "imageAssetId": null,
+        "tags": [
+          "furniture"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 240,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "desk"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a4wnA",
+      "typeName": "shape"
+    },
+    "shape:mOU3SynsPRHXo0Xwz0Q3R": {
+      "x": 330,
+      "y": 140,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:mOU3SynsPRHXo0Xwz0Q3R",
+      "type": "node.item",
+      "props": {
+        "title": "Desk chair",
+        "imageAssetId": null,
+        "tags": [
+          "furniture"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 850,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "desk"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a3zr9",
+      "typeName": "shape"
+    },
+    "shape:O1kAQHvcNrsGcMIt1vWrf": {
+      "x": 80,
+      "y": 140,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:O1kAQHvcNrsGcMIt1vWrf",
+      "type": "node.item",
+      "props": {
+        "title": "Standing desk",
+        "imageAssetId": null,
+        "tags": [
+          "furniture"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 2399,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "desk"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a2a46",
+      "typeName": "shape"
+    },
+    "shape:J9lfeDWpfgns277XklhEP": {
+      "x": 880,
+      "y": 330,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:J9lfeDWpfgns277XklhEP",
+      "type": "node.rollup",
+      "props": {
+        "title": "By category",
+        "source": {
+          "scope": "page",
+          "frameId": null,
+          "tags": [],
+          "nodeType": "node.item"
+        },
+        "agg": {
+          "op": "sum",
+          "fieldKey": "price",
+          "groupBy": "category"
+        },
+        "format": {
+          "style": "currency",
+          "unit": "GEL"
+        },
+        "w": 280,
+        "h": 230
+      },
+      "parentId": "page:page",
+      "index": "a9jXn",
+      "typeName": "shape"
+    },
+    "shape:2uy1tXDvbumi0WJAv6bi0": {
+      "x": 80,
+      "y": 440,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:2uy1tXDvbumi0WJAv6bi0",
+      "type": "node.item",
+      "props": {
+        "title": "Floor lamp",
+        "imageAssetId": null,
+        "tags": [
+          "decor"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 320,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "lighting"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a5gXU",
+      "typeName": "shape"
+    },
+    "shape:Fpavwb2IfTxFQ9Asy4RGY": {
+      "x": 880,
+      "y": 140,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:Fpavwb2IfTxFQ9Asy4RGY",
+      "type": "node.rollup",
+      "props": {
+        "title": "Total spend",
+        "source": {
+          "scope": "page",
+          "frameId": null,
+          "tags": [],
+          "nodeType": "node.item"
+        },
+        "agg": {
+          "op": "sum",
+          "fieldKey": "price",
+          "groupBy": null
+        },
+        "format": {
+          "style": "currency",
+          "unit": "GEL"
+        },
+        "w": 280,
+        "h": 150
+      },
+      "parentId": "page:page",
+      "index": "a89dn",
+      "typeName": "shape"
+    },
+    "page:page": {
+      "meta": {},
+      "id": "page:page",
+      "name": "Page 1",
+      "index": "a1",
+      "typeName": "page"
+    },
+    "document:document": {
+      "gridSize": 10,
+      "name": "",
+      "meta": {},
+      "id": "document:document",
+      "typeName": "document"
+    },
+    "shape:CHHPbOogAOSS1s8uKwTH2": {
+      "x": 330,
+      "y": 440,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:CHHPbOogAOSS1s8uKwTH2",
+      "type": "node.item",
+      "props": {
+        "title": "Desk lamp",
+        "imageAssetId": null,
+        "tags": [
+          "decor"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 120,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "lighting"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a6OpM",
+      "typeName": "shape"
+    },
+    "user:dEHq4j0zFua6b7p2MZKCU": {
+      "name": "",
+      "color": "#11B3A3",
+      "imageUrl": "",
+      "meta": {},
+      "id": "user:dEHq4j0zFua6b7p2MZKCU",
+      "typeName": "user"
+    },
+    "shape:okduMYimiCJZa7dJmX7dP": {
+      "x": 80,
+      "y": -120,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:okduMYimiCJZa7dJmX7dP",
+      "type": "node.markdown",
+      "props": {
+        "md": "# Home office shopping\n\nEvery card below is an **item node** — a record with typed fields, not just a picture.\n\n- Double-click an item to edit its title, fields and tags\n- The **Σ rollup** nodes on the right total them live\n- Delete an impulse buy and the totals follow",
+        "w": 480,
+        "h": 200
+      },
+      "parentId": "page:page",
+      "index": "a1PUq",
+      "typeName": "shape"
+    },
+    "shape:yGt2KoYe_eOskcBT6FV2s": {
+      "x": 580,
+      "y": 440,
+      "rotation": 0,
+      "isLocked": false,
+      "opacity": 1,
+      "meta": {},
+      "id": "shape:yGt2KoYe_eOskcBT6FV2s",
+      "type": "node.item",
+      "props": {
+        "title": "Rug",
+        "imageAssetId": null,
+        "tags": [
+          "decor"
+        ],
+        "fields": [
+          {
+            "key": "price",
+            "type": "currency",
+            "value": 480,
+            "unit": "GEL"
+          },
+          {
+            "key": "category",
+            "type": "select",
+            "value": "soft"
+          }
+        ],
+        "w": 220,
+        "h": 260
+      },
+      "parentId": "page:page",
+      "index": "a752j",
+      "typeName": "shape"
+    }
+  },
+  "schema": {
+    "schemaVersion": 2,
+    "sequences": {
+      "com.tldraw.store": 5,
+      "com.tldraw.asset": 1,
+      "com.tldraw.camera": 1,
+      "com.tldraw.document": 2,
+      "com.tldraw.instance": 26,
+      "com.tldraw.instance_page_state": 5,
+      "com.tldraw.page": 1,
+      "com.tldraw.instance_presence": 6,
+      "com.tldraw.pointer": 1,
+      "com.tldraw.shape": 4,
+      "com.tldraw.user": 1,
+      "com.tldraw.asset.image": 6,
+      "com.tldraw.asset.video": 5,
+      "com.tldraw.asset.bookmark": 2,
+      "com.tldraw.shape.group": 0,
+      "com.tldraw.shape.text": 4,
+      "com.tldraw.shape.bookmark": 2,
+      "com.tldraw.shape.draw": 5,
+      "com.tldraw.shape.geo": 11,
+      "com.tldraw.shape.note": 13,
+      "com.tldraw.shape.line": 5,
+      "com.tldraw.shape.frame": 1,
+      "com.tldraw.shape.arrow": 8,
+      "com.tldraw.shape.highlight": 4,
+      "com.tldraw.shape.embed": 4,
+      "com.tldraw.shape.image": 5,
+      "com.tldraw.shape.video": 4,
+      "com.tldraw.shape.node.markdown": 0,
+      "com.tldraw.shape.node.item": 0,
+      "com.tldraw.shape.node.rollup": 0,
+      "com.tldraw.binding.arrow": 1
+    }
+  }
+}

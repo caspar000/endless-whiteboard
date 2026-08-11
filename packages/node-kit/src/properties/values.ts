@@ -1,0 +1,281 @@
+import type { Editor, JsonObject, TLShape, TLShapePartial } from 'tldraw'
+import { parsePropertyRegistry, propertyMap, readPropertyRegistry } from './schema'
+import { propertyValueValidator, type PropertyDef, type PropertyValue } from './types'
+
+/**
+ * Property *values* live on `shape.meta` — the one field tldraw gives every shape, its own built-ins
+ * included. That is precisely why properties can be universal: a dragged-in image and a sticky note
+ * carry a price the same way an item node does, with no shape-type cooperation at all.
+ *
+ * ### Why two flat, colon-namespaced keys and not one nested object
+ *
+ * `Editor.updateShape` merges `meta` exactly *one* level deep (`next.meta = {...prev.meta,
+ * ...partial.meta}`). A nested `meta.lifeboard` would therefore be **wholly replaced** on every write,
+ * silently clobbering its siblings — so a write of a property value would destroy the sidecar, and a
+ * write from anywhere else would destroy the values. Flat top-level keys merge correctly, and match
+ * the precedent already set on document meta.
+ *
+ * Within a key there is no merging: `lifeboard:props` is replaced atomically, which is why every write
+ * here is read-modify-write.
+ */
+const VALUES_KEY = 'lifeboard:props'
+const DEFS_KEY = 'lifeboard:propDefs'
+/**
+ * Presentation state, split from the values on purpose: display order and visibility are *per
+ * shape* — the same Price property can lead on one card and be tucked away on another — and they
+ * are cosmetic, so aggregation and the facts pipeline never read these keys. Flat top-level keys
+ * for the same one-level-merge reason as above.
+ */
+const ORDER_KEY = 'lifeboard:propOrder'
+const HIDDEN_KEY = 'lifeboard:propHidden'
+/**
+ * Per-shape unit overrides — in practice, the currency of a `financial` value.
+ *
+ * A unit used to live only on the *definition*, which made it one answer per board: setting a price to
+ * USD on one card silently reprised every other card in USD. Money is a property of the amount, not of
+ * the column it sits in, so the shape holds it and the definition's `unit` is the default a new value
+ * inherits.
+ *
+ * Its own key rather than folded into the values, because a value must stay a JSON scalar: the facts
+ * equality check is exactly one level deep, and that shallowness is what keeps dragging free of rollup
+ * recomputes. A parallel flat map of strings compares the same cheap way.
+ */
+const UNITS_KEY = 'lifeboard:propUnits'
+
+export type ShapeProperties = Readonly<Record<string, PropertyValue>>
+/** Unit overrides by property id. Absent means "use the definition's". */
+export type ShapePropertyUnits = Readonly<Record<string, string>>
+
+/**
+ * The minimum a *read* needs.
+ *
+ * Not `TLShape`, on purpose: node components hold the structural `NodeShape<Props>` whose `type` is
+ * `string`, which tldraw's closed `TLShape` union rejects (see `registry.tsx`). Asking only for what is
+ * actually read means both kinds of caller work without a cast, and the type says something true.
+ */
+export interface ShapeWithMeta {
+	meta: JsonObject
+}
+
+const EMPTY: ShapeProperties = Object.freeze({})
+
+/**
+ * The values a shape carries, keyed by property id.
+ *
+ * Pure and cheap on purpose: this runs for every shape on the board inside the facts pipeline. Unknown
+ * or malformed entries are dropped — meta is untyped JSON that tldraw neither validates nor migrates.
+ */
+export function readShapeProperties(shape: ShapeWithMeta): ShapeProperties {
+	const raw = shape.meta[VALUES_KEY]
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return EMPTY
+
+	let values: Record<string, PropertyValue> | null = null
+	for (const [id, value] of Object.entries(raw)) {
+		let parsed: PropertyValue
+		try {
+			parsed = propertyValueValidator.validate(value)
+		} catch {
+			continue
+		}
+		values ??= {}
+		values[id] = parsed
+	}
+	// The shared frozen empty object matters: `areFactsEqual`'s fast path is reference equality, and
+	// the overwhelming majority of shapes on a board carry no properties at all.
+	return values ?? EMPTY
+}
+
+/** Whether the shape carries this property at all — distinct from carrying it with an empty value. */
+export function shapeCarriesProperty(shape: ShapeWithMeta, id: string): boolean {
+	return id in readShapeProperties(shape)
+}
+
+const EMPTY_UNITS: ShapePropertyUnits = Object.freeze({})
+
+/**
+ * The shape's own unit overrides. Same defensive read as the values — meta is untyped JSON — and the
+ * same shared frozen empty, because almost no shape has one and `areFactsEqual` tests identity first.
+ */
+export function readShapePropertyUnits(shape: ShapeWithMeta): ShapePropertyUnits {
+	const raw = shape.meta[UNITS_KEY]
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return EMPTY_UNITS
+
+	let units: Record<string, string> | null = null
+	for (const [id, unit] of Object.entries(raw)) {
+		if (typeof unit !== 'string' || unit === '') continue
+		units ??= {}
+		units[id] = unit
+	}
+	return units ?? EMPTY_UNITS
+}
+
+/**
+ * The unit to show for one value: the shape's own, else the definition's default.
+ *
+ * The single place that resolution happens, so a caller can never accidentally read `def.unit` and
+ * render one shape's money in another's currency.
+ */
+export function unitForShapeProperty(
+	def: Pick<PropertyDef, 'id' | 'unit'>,
+	units: ShapePropertyUnits
+): string | undefined {
+	return units[def.id] ?? def.unit
+}
+
+/** Sets (or with `undefined`, clears) one property's unit on one shape, in a single undo entry. */
+export function setShapePropertyUnit(
+	editor: Editor,
+	shape: TLShape,
+	id: string,
+	unit: string | undefined
+): void {
+	const current = readShapePropertyUnits(shape)
+	const next: Record<string, string> = { ...current }
+	const trimmed = unit?.trim()
+	if (trimmed) next[id] = trimmed
+	else delete next[id]
+
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [UNITS_KEY]: next },
+		} as TLShapePartial)
+	})
+}
+
+/** A string list from meta, dropping anything malformed — same defensive posture as the values. */
+function readStringList(shape: ShapeWithMeta, key: string): string[] {
+	const raw = shape.meta[key]
+	if (!Array.isArray(raw)) return []
+	return raw.filter((entry): entry is string => typeof entry === 'string')
+}
+
+/**
+ * The shape's property ids in display order.
+ *
+ * The stored order is a preference, not the truth: ids it lists that the shape no longer carries
+ * are dropped, and ids the shape carries that it doesn't list (a property attached after the last
+ * reorder) are appended in attachment order. That makes the order self-healing — it can never hide
+ * a value or show a ghost, no matter how stale it is.
+ */
+export function orderedPropertyIds(shape: ShapeWithMeta): string[] {
+	const ids = Object.keys(readShapeProperties(shape))
+	const stored = readStringList(shape, ORDER_KEY)
+	if (!stored.length) return ids
+
+	const present = new Set(ids)
+	const ordered = stored.filter((id) => present.has(id))
+	const placed = new Set(ordered)
+	for (const id of ids) if (!placed.has(id)) ordered.push(id)
+	return ordered
+}
+
+/** Persists a display order for the shape's properties, in one undo entry. */
+export function setShapePropertyOrder(
+	editor: Editor,
+	shape: TLShape,
+	order: readonly string[]
+): void {
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [ORDER_KEY]: [...order] },
+		} as TLShapePartial)
+	})
+}
+
+/** The ids this shape hides from its on-card strip. Hidden is presentation only — the value stays
+ * attached, editable in the panel, and counted by every rollup and table. */
+export function readHiddenPropertyIds(shape: ShapeWithMeta): ReadonlySet<string> {
+	return new Set(readStringList(shape, HIDDEN_KEY))
+}
+
+export function setShapePropertyHidden(
+	editor: Editor,
+	shape: TLShape,
+	id: string,
+	hidden: boolean
+): void {
+	const current = readStringList(shape, HIDDEN_KEY)
+	// No change — writing anyway would create an empty undo entry.
+	if (hidden === current.includes(id)) return
+	const next = hidden ? [...current, id] : current.filter((entry) => entry !== id)
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: { [HIDDEN_KEY]: next },
+		} as TLShapePartial)
+	})
+}
+
+/**
+ * The definitions a shape carries a copy of, for the ids in its values map.
+ *
+ * A self-describing sidecar, so that **pasting a shape into another board is self-healing**: without
+ * it, the pasted values would be unrecoverable id → value pairs with no name, type or unit. Read only
+ * by the paste path (`mergeProperties`), never by the facts pipeline — it is redundant data, and the
+ * registry is the source of truth wherever one exists.
+ */
+export function readShapePropertyDefs(shape: ShapeWithMeta): PropertyDef[] {
+	// Reuses the registry parser, so the sidecar can never be more trusted than the registry itself.
+	return parsePropertyRegistry(shape.meta[DEFS_KEY])
+}
+
+/**
+ * Writes property values on any shape, in one undo entry.
+ *
+ * `undefined` for a value **removes** that property from the shape; `null` keeps it attached but
+ * empty. Those are genuinely different states — an attached-but-empty property is what "add Price,
+ * fill it in later" produces, and aggregation counts it as *skipped* rather than *not matched*.
+ */
+export function updateShapeProperties(
+	editor: Editor,
+	shape: TLShape,
+	patch: Readonly<Record<string, PropertyValue | undefined>>
+): void {
+	const current = readShapeProperties(shape)
+	const next: Record<string, PropertyValue> = { ...current }
+	for (const [id, value] of Object.entries(patch)) {
+		if (value === undefined) delete next[id]
+		else next[id] = value
+	}
+
+	const registry = propertyMap(readPropertyRegistry(editor))
+	// The sidecar is rebuilt from the registry on every write rather than patched, so a renamed or
+	// retyped property propagates to copies instead of leaving stale definitions behind.
+	const defs: PropertyDef[] = []
+	for (const id of Object.keys(next)) {
+		const def = registry.get(id)
+		if (def) defs.push(def)
+	}
+
+	editor.run(() => {
+		editor.updateShape({
+			id: shape.id,
+			type: shape.type,
+			meta: {
+				[VALUES_KEY]: next as unknown as JsonObject,
+				[DEFS_KEY]: defs as unknown as JsonObject,
+			},
+		} as TLShapePartial)
+	})
+}
+
+/** Attaches a property with its type's empty value, if the shape doesn't already carry it. */
+export function attachProperty(
+	editor: Editor,
+	shape: TLShape,
+	def: PropertyDef,
+	empty: PropertyValue
+): void {
+	if (shapeCarriesProperty(shape, def.id)) return
+	updateShapeProperties(editor, shape, { [def.id]: empty })
+}
+
+export function removeShapeProperty(editor: Editor, shape: TLShape, id: string): void {
+	if (!shapeCarriesProperty(shape, id)) return
+	updateShapeProperties(editor, shape, { [id]: undefined })
+}

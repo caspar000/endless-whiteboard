@@ -1,0 +1,11 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["node", "vite/client", "vite-plugin-pwa/client"]
+	},
+	// No project reference to node-kit: it is consumed as TypeScript source (its package `main`
+	// points at src/index.ts), so both Vite and tsc follow it through normal node resolution. That
+	// also means the module augmentation in node-kit/src/shape-types.ts applies here.
+	"include": ["src", "vite.config.ts", "e2e"]
+}

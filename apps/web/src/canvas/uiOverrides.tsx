@@ -1,0 +1,206 @@
+import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
+import {
+	DefaultContextMenu,
+	DefaultContextMenuContent,
+	DefaultKeyboardShortcutsDialog,
+	DefaultKeyboardShortcutsDialogContent,
+	TldrawUiMenuGroup,
+	TldrawUiMenuItem,
+	useEditor,
+	useValue,
+	createShapeId,
+	type TLComponents,
+	type TLUiOverrides,
+} from 'tldraw'
+import { toolIdForNodeType } from './nodeTools'
+import { openProperties } from './propertiesTarget'
+
+/**
+ * Toolbar and shortcut entries for the node types, generated from the registry (§7: "Registry-driven
+ * UI — no per-node-type hardcoding in toolbar/menus"). Adding a node type — or, later, installing a
+ * plugin that supplies one — puts it in the toolbar with no change here.
+ */
+/**
+ * Keyed by node type. These are checked against tldraw's own shortcuts — `r` is the rectangle tool
+ * and `g` is an action, so neither is available; `m`, `i` and `s` are free.
+ *
+ * The markdown node is `m`, not `n`: `n` is tldraw's sticky note, which is now in the dock, and taking
+ * its letter meant two tools claimed one key. `m` for "markdown" is the free letter this comment
+ * already pointed at.
+ */
+const KBD_BY_TYPE: Record<string, string> = {
+	'node.markdown': 'm',
+	'node.item': 'i',
+	'node.rollup': 's',
+}
+
+/**
+ * Numeric shortcuts, `1`–`9` in the dock's own order (see CanvasToolbar). tldraw 5 binds only
+ * letters, but numbers-by-position is the convention every comparable canvas app keeps, so the
+ * dock restores it. The node tools take the numbers after these, assigned in registry order.
+ */
+const NUMBER_KBDS: Record<string, string> = {
+	select: '1',
+	hand: '2',
+	frame: '3',
+	arrow: '4',
+	draw: '7',
+	eraser: '8',
+	text: '9',
+}
+const FIRST_NODE_NUMBER = 5
+/**
+ * The node run stops at 6 because 7–9 are already spoken for above.
+ *
+ * There are more dock buttons than digits — the sticky note, the shapes menu and the image button have
+ * no number either — so a third node type takes its letter and no digit, rather than silently stealing
+ * `7` from the pen.
+ */
+const LAST_NODE_NUMBER = 6
+
+/**
+ * A definition's `icon` is a glyph ("M", "▤", "Σ"), not one of tldraw's built-in icon names — a
+ * registry entry (and later a plugin) has no way to know those. Passing the string straight through
+ * made tldraw look up a non-existent icon and render three identical "?" buttons, so the glyph is
+ * wrapped as JSX instead, which `TLUiIconJsx` explicitly supports.
+ */
+function glyphIcon(glyph: string) {
+	return <div className="lb-tool-icon">{glyph}</div>
+}
+
+export const nodeUiOverrides: TLUiOverrides = {
+	actions(editor, actions) {
+		// `alt+p` is free in tldraw's own set (`cmd+p` is print, `alt+r`/`alt+f`/`alt+t` are taken).
+		actions['lifeboard-properties'] = {
+			id: 'lifeboard-properties',
+			label: 'Properties',
+			kbd: 'alt+p',
+			onSelect() {
+				const selected = editor.getSelectedShapeIds()
+				// One shape only: properties are per-shape, and a panel that silently edited several at
+				// once would be a different feature with different undo semantics.
+				if (selected.length === 1) openProperties(selected[0]!)
+			},
+		}
+		/*
+		 * tldraw's own grid toggle (⌘', and the checkbox in its main menu) is removed.
+		 *
+		 * It writes `isGridMode`, which the app now owns from Settings → Appearance — and tldraw persists
+		 * that flag *per board*, so leaving the shortcut in place is what let one board end up with a grid
+		 * the others did not have. It would also read as a lie: the app re-applies its own value whenever a
+		 * board mounts, so toggling here would appear to work and then silently revert on reload. Deleting
+		 * the action takes the menu item with it — tldraw's menu items render nothing for an action that
+		 * does not exist.
+		 */
+		delete actions['toggle-grid']
+		return actions
+	},
+	tools(editor, tools) {
+		getVisibleNodeDefinitions().forEach((def, index) => {
+			const id = toolIdForNodeType(def.type)
+			const letter = KBD_BY_TYPE[def.type]
+			const position = index + FIRST_NODE_NUMBER
+			const number = position <= LAST_NODE_NUMBER ? String(position) : undefined
+			const kbd = [letter, number].filter(Boolean).join(',')
+			tools[id] = {
+				id,
+				label: def.label,
+				icon: glyphIcon(def.icon),
+				...(kbd ? { kbd } : {}),
+				onSelect() {
+					editor.setCurrentTool(id)
+				},
+			}
+		})
+		for (const [id, number] of Object.entries(NUMBER_KBDS)) {
+			const tool = tools[id]
+			if (!tool) continue
+			tool.kbd = tool.kbd ? `${tool.kbd},${number}` : number
+		}
+		return tools
+	},
+}
+
+/**
+ * "Properties" on a shape's context menu.
+ *
+ * Right-click is the primary way in, because **⌘-click is not available**: tldraw's select tool already
+ * uses `accelKey` on a shape click (selecting inside a group), so taking it would fight the editor. The
+ * plan called for ⌘-click; `alt+p` is the accelerator instead.
+ *
+ * Deliberately *not* double-click, which keeps meaning "edit the content" — that separation is what
+ * lets a note be both prose and a row of data.
+ */
+function PropertiesMenuItem() {
+	const editor = useEditor()
+	const selectedIds = useValue('lifeboard:selected', () => editor.getSelectedShapeIds(), [editor])
+	if (selectedIds.length !== 1) return null
+	return (
+		<TldrawUiMenuGroup id="lifeboard-properties-group">
+			<TldrawUiMenuItem
+				id="lifeboard-properties"
+				label="Properties"
+				icon={glyphIcon('◫')}
+				kbd="alt+p"
+				onSelect={() => openProperties(selectedIds[0]!)}
+			/>
+		</TldrawUiMenuGroup>
+	)
+}
+
+/**
+ * "Add to board" on the canvas context menu.
+ *
+ * Double-clicking empty canvas now creates a note outright — which is what makes writing the default
+ * action, but it also means nothing surfaces the other node types any more. Right-click keeps them
+ * discoverable, and stays registry-driven so a new type (or a plugin's) appears here for free.
+ */
+function AddToBoardItems() {
+	const editor = useEditor()
+	return (
+		<TldrawUiMenuGroup id="lifeboard-add">
+			{getVisibleNodeDefinitions().map((def) => (
+				<TldrawUiMenuItem
+					key={def.type}
+					id={`lifeboard-add-${def.type}`}
+					label={`Add ${def.label.toLowerCase()}`}
+					icon={glyphIcon(def.icon)}
+					onSelect={() => {
+						// The right-click point: where the user was pointing when the menu opened.
+						const point = editor.inputs.getCurrentPagePoint()
+						const id = createShapeId()
+						editor.run(() => {
+							editor.markHistoryStoppingPoint('create node')
+							editor.createShapes([
+								{
+									id,
+									type: def.type,
+									x: point.x - def.defaultSize.w / 2,
+									y: point.y - def.defaultSize.h / 2,
+								} as never,
+							])
+							editor.select(id)
+						})
+						const shape = editor.getShape(id)
+						if (shape && editor.canEditShape(shape)) editor.setEditingShape(id)
+					}}
+				/>
+			))}
+		</TldrawUiMenuGroup>
+	)
+}
+
+export const nodeComponents: TLComponents = {
+	ContextMenu: (props) => (
+		<DefaultContextMenu {...props}>
+			<PropertiesMenuItem />
+			<AddToBoardItems />
+			<DefaultContextMenuContent />
+		</DefaultContextMenu>
+	),
+	KeyboardShortcutsDialog: (props) => (
+		<DefaultKeyboardShortcutsDialog {...props}>
+			<DefaultKeyboardShortcutsDialogContent />
+		</DefaultKeyboardShortcutsDialog>
+	),
+}

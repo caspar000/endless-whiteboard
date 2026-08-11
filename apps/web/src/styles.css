@@ -1,0 +1,3235 @@
+/*
+ * Theming.
+ *
+ * Every colour in this file goes through one of the tokens below, so a theme is a palette swap rather
+ * than a second stylesheet. `:root` holds dark (the app's original and default look) and
+ * `:root[data-theme='light']` overrides it.
+ *
+ * `data-theme` is always a *resolved* value — `light` or `dark`, never `system`. app/useTheme.ts does
+ * the resolving (and index.html re-does it inline, before first paint), which is why there is no
+ * `prefers-color-scheme` query here.
+ */
+:root {
+	--lb-bg: #0c0c0e;
+	--lb-bg-raised: #111114;
+	--lb-surface: #17171a;
+	/* Filled controls — buttons, inputs, chips, hover fills. Not "elevation + 1": in dark mode a
+	   filled control is lighter than its card, in light mode it is darker. Only the values flip. */
+	--lb-surface-2: #1f1f24;
+	--lb-surface-hover: #26262d;
+	--lb-border: #26262c;
+	--lb-border-strong: #3a3a44;
+	--lb-text: #ececed;
+	--lb-text-dim: #9a9aa4;
+	--lb-text-faint: #6b6b75;
+	--lb-accent: #6c8cff;
+	--lb-accent-hover: #7f9bff;
+	/* The accent at low alpha, for the fill behind an active tool or tab. */
+	--lb-accent-tint: rgb(108 140 255 / 16%);
+	/* Text and glyphs sitting *on* an accent fill, which inverts between themes. */
+	--lb-on-accent: #0b0b10;
+	--lb-danger: #e5484d;
+	--lb-danger-tint: rgb(229 72 77 / 12%);
+	--lb-danger-line: rgb(229 72 77 / 35%);
+	--lb-money: #3dd68c;
+	--lb-star: #f5c451;
+	/* The canvas is a shade lighter than the app frame so the board reads as a sheet of paper laid
+	   on the desk, which is what gives the endless canvas a surface at all. */
+	--lb-canvas: #131317;
+	--lb-dot: #4a4a57;
+	/* Translucent-over-blur floating chrome (the dock, the selection toolbar) so the canvas reads
+	   through it — the Affine look. */
+	--lb-panel: rgb(23 23 26 / 90%);
+	/* The frosted pill of card actions, over a board thumbnail. */
+	--lb-scrim: rgb(12 12 14 / 78%);
+	/* Opaque-enough backdrop for something floating over arbitrary content. */
+	--lb-overlay: rgb(0 0 0 / 70%);
+	/* Text-selection fill, in the note editor and anywhere else CodeMirror renders. */
+	--lb-selection: rgb(108 140 255 / 35%);
+	/* Two elevations. Dark mode can lean on heavy black; light mode needs far lower alpha or the
+	   shadow reads as dirt. */
+	--lb-shadow-1: 0 10px 34px rgb(0 0 0 / 60%);
+	--lb-shadow-2: 0 12px 36px rgb(0 0 0 / 55%), 0 2px 8px rgb(0 0 0 / 35%);
+	/* Thumbnails are exported in whichever theme is active, so the preview well behind a loading or
+	   letterboxed image matches the paper inside the image. */
+	--lb-thumb-paper: var(--lb-canvas);
+	--lb-radius: 10px;
+	--lb-font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+	color-scheme: dark;
+}
+
+/*
+ * Light. Each text role is contrast-matched to (or better than) its dark counterpart against the
+ * surface it actually sits on, so nothing gets quietly less legible by switching:
+ * text 17.0:1, text-dim 5.6–6.6:1, accent 4.8–5.7:1, danger 5.5:1, money 5.4:1.
+ */
+:root[data-theme='light'] {
+	--lb-bg: #ebebee;
+	--lb-bg-raised: #f5f5f7;
+	--lb-surface: #ffffff;
+	--lb-surface-2: #f1f1f4;
+	--lb-surface-hover: #e6e6ea;
+	--lb-border: #e0e0e5;
+	--lb-border-strong: #c9c9d1;
+	--lb-text: #1c1c1f;
+	--lb-text-dim: #5c5c66;
+	--lb-text-faint: #85858f;
+	/* Darker than the dark theme's periwinkle: #6c8cff is only ~2.4:1 on white, and this same token
+	   is a link colour, a focus ring and a fill behind --lb-on-accent text. */
+	--lb-accent: #3b5bdb;
+	--lb-accent-hover: #2f4bc4;
+	--lb-accent-tint: rgb(59 91 219 / 12%);
+	--lb-on-accent: #ffffff;
+	--lb-danger: #c92a2a;
+	--lb-danger-tint: rgb(201 42 42 / 8%);
+	--lb-danger-line: rgb(201 42 42 / 28%);
+	--lb-money: #0f7a52;
+	/* Amber has to go a long way down to clear 3:1 on white for a filled glyph. */
+	--lb-star: #b8820a;
+	--lb-canvas: #fbfbfc;
+	--lb-dot: #a9aab8;
+	--lb-panel: rgb(255 255 255 / 92%);
+	--lb-scrim: rgb(255 255 255 / 82%);
+	--lb-overlay: rgb(255 255 255 / 82%);
+	--lb-selection: rgb(59 91 219 / 20%);
+	--lb-shadow-1: 0 8px 24px rgb(20 22 40 / 12%), 0 2px 6px rgb(20 22 40 / 6%);
+	--lb-shadow-2: 0 10px 30px rgb(20 22 40 / 14%), 0 2px 8px rgb(20 22 40 / 8%);
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--lb-bg);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	-webkit-font-smoothing: antialiased;
+	/* The canvas handles its own gestures; letting the page bounce would fight panning on iOS. */
+	overscroll-behavior: none;
+}
+
+button {
+	font-family: inherit;
+	font-size: inherit;
+	cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+.lb-btn {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 7px 12px;
+	font-size: 13px;
+	transition: background 120ms ease;
+}
+.lb-btn:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+}
+.lb-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.lb-btn--primary {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-weight: 600;
+}
+.lb-btn--primary:hover:not(:disabled) {
+	background: var(--lb-accent-hover);
+}
+.lb-btn--ghost {
+	background: transparent;
+	color: var(--lb-text-dim);
+}
+.lb-btn--ghost:hover:not(:disabled) {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-btn--danger {
+	background: var(--lb-danger);
+	border-color: var(--lb-danger);
+	color: #fff;
+}
+.lb-btn--tiny {
+	padding: 3px 7px;
+	font-size: 11px;
+	border-radius: 6px;
+}
+
+/* ================================================================ app shell */
+/* Affine's layout: a persistent sidebar, a tab strip across the top, content underneath. */
+
+.lb-shell {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 1fr);
+	height: 100%;
+	background: var(--lb-bg);
+}
+.lb-shell__body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+.lb-shell__content {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- tab strip */
+
+.lb-tabs {
+	display: flex;
+	align-items: stretch;
+	gap: 4px;
+	padding: 6px 8px;
+	background: var(--lb-bg-raised);
+	border-bottom: 1px solid var(--lb-border);
+	overflow-x: auto;
+	scrollbar-width: none;
+	flex-shrink: 0;
+}
+.lb-tabs::-webkit-scrollbar {
+	display: none;
+}
+.lb-tabs__tab {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 200px;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	color: var(--lb-text-dim);
+	padding: 4px 8px;
+	font-size: 12px;
+	white-space: nowrap;
+	transition: background 100ms ease, color 100ms ease;
+	/* The whole tab is the click target — div and button variants alike. */
+	cursor: pointer;
+	user-select: none;
+}
+.lb-tabs__tab:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-tabs__tab--active {
+	background: var(--lb-surface-2);
+	border-color: var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-tabs__icon {
+	flex-shrink: 0;
+	opacity: 0.8;
+}
+.lb-tabs__label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+	max-width: 150px;
+}
+.lb-tabs__close {
+	display: grid;
+	place-items: center;
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	line-height: 1;
+	padding: 2px;
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+.lb-tabs__close:hover {
+	background: var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-tabs__new {
+	display: grid;
+	place-items: center;
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	padding: 0 8px;
+	border-radius: 7px;
+	flex-shrink: 0;
+}
+.lb-tabs__new:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-tabs__rename input {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12px;
+	padding: 1px 5px;
+	width: 18ch;
+	outline: none;
+}
+
+/* ------------------------------------------------------------------ sidebar */
+
+.lb-sidebar {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 14px 10px;
+	border-right: 1px solid var(--lb-border);
+	background: var(--lb-bg-raised);
+	min-height: 0;
+}
+.lb-sidebar__brand {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 4px 8px 14px;
+}
+.lb-sidebar__mark {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-size: 15px;
+	flex-shrink: 0;
+}
+.lb-sidebar__name {
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+.lb-sidebar__new {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	width: 100%;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	color: var(--lb-text);
+	padding: 8px 10px;
+	font-size: 13px;
+	font-weight: 500;
+	margin-bottom: 10px;
+	transition: background 120ms ease;
+}
+.lb-sidebar__new:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-sidebar__nav {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.lb-sidebar__item {
+	display: grid;
+	grid-template-columns: 20px 1fr auto;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	padding: 7px 10px;
+	font-size: 13px;
+	text-align: left;
+	transition: background 100ms ease, color 100ms ease;
+}
+.lb-sidebar__item:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-sidebar__item--active {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-weight: 500;
+}
+.lb-sidebar__icon {
+	display: grid;
+	place-items: center;
+	font-size: 13px;
+	opacity: 0.85;
+}
+.lb-sidebar__count {
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-faint);
+}
+.lb-sidebar__section {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: 18px;
+	min-height: 0;
+	overflow-y: auto;
+}
+.lb-sidebar__section-title {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	padding: 0 10px 4px;
+}
+.lb-sidebar__icon--star {
+	color: var(--lb-star);
+	font-size: 11px;
+}
+
+/* --------------------------------------------------------------- main panel */
+
+.lb-home__main {
+	overflow-y: auto;
+	padding: 28px 32px 64px;
+	min-width: 0;
+	height: 100%;
+}
+.lb-home__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 24px;
+}
+.lb-home__header h1 {
+	/* Freeform's oversized, accent-coloured section title. */
+	font-size: 30px;
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	color: var(--lb-accent);
+	margin: 0;
+}
+
+.lb-list__empty {
+	padding: 56px 0;
+	color: var(--lb-text-dim);
+	text-align: center;
+}
+.lb-list__hint {
+	font-size: 13px;
+	max-width: 46ch;
+	margin: 8px auto 18px;
+	line-height: 1.65;
+}
+
+/* ---------------------------------------------------------------- card grid */
+
+.lb-grid {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+	gap: 20px;
+}
+
+.lb-card {
+	display: flex;
+	flex-direction: column;
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	transition: border-color 120ms ease, transform 120ms ease;
+}
+.lb-card:hover {
+	border-color: var(--lb-border-strong);
+	transform: translateY(-2px);
+}
+.lb-card__media {
+	position: relative;
+	/* Establishes the containing block for the hover actions overlaid on the thumbnail. */
+}
+.lb-card__preview {
+	display: block;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	padding: 0;
+	border: 0;
+	background: var(--lb-thumb-paper);
+	overflow: hidden;
+}
+.lb-card__image {
+	width: 100%;
+	height: 100%;
+	/* `contain`, not `cover`: the point of the preview is recognising the whole board's layout at a
+	   glance, and cropping to fill throws away exactly that. */
+	object-fit: contain;
+	object-position: center;
+	display: block;
+}
+/* No thumbnail yet (board never opened): same dotted paper as the canvas, so an empty card still
+   looks like a board rather than a broken image. */
+.lb-card__placeholder {
+	width: 100%;
+	height: 100%;
+	display: grid;
+	place-items: center;
+	background-color: var(--lb-thumb-paper);
+	background-image: radial-gradient(var(--lb-dot) 1px, transparent 1px);
+	background-size: 14px 14px;
+	color: var(--lb-text-faint);
+	font-size: 22px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+}
+.lb-card__footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 11px;
+	border-top: 1px solid var(--lb-border);
+	background: var(--lb-surface);
+	min-height: 46px;
+}
+.lb-card__title {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	background: none;
+	border: 0;
+	color: inherit;
+	text-align: left;
+	padding: 0;
+}
+.lb-list__title {
+	font-size: 13px;
+	font-weight: 500;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-card__date,
+.lb-list__meta {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+.lb-card__actions {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 3px;
+	border-radius: 8px;
+	background: var(--lb-scrim);
+	backdrop-filter: blur(6px);
+	/* Out of the way until the card is hovered or something inside it has focus. */
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.lb-card:hover .lb-card__actions,
+.lb-card:focus-within .lb-card__actions {
+	opacity: 1;
+}
+/*
+ * A favourited board keeps its star visible even when the card isn't hovered — that is the whole
+ * point of the marker. Only the star, though: the surrounding pill and the rename/delete buttons stay
+ * hidden, so an idle grid shows bare stars rather than a row of floating toolbars.
+ */
+.lb-card:not(:hover):not(:focus-within) .lb-card__actions:has(.lb-card__fav--on) {
+	opacity: 1;
+	background: none;
+	backdrop-filter: none;
+}
+.lb-card:not(:hover):not(:focus-within) .lb-card__actions:has(.lb-card__fav--on) .lb-btn {
+	display: none;
+}
+.lb-card__fav {
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	font-size: 14px;
+	line-height: 1;
+	padding: 3px 4px;
+	border-radius: 6px;
+}
+.lb-card__fav:hover {
+	color: var(--lb-text);
+	background: var(--lb-surface-2);
+}
+.lb-card__fav--on {
+	color: var(--lb-star);
+	text-shadow: 0 1px 3px rgb(0 0 0 / 65%);
+}
+.lb-list__rename {
+	flex: 1;
+	min-width: 0;
+}
+.lb-list__rename input {
+	width: 100%;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 6px;
+	color: var(--lb-text);
+	padding: 5px 7px;
+	font: inherit;
+	font-size: 13px;
+	outline: none;
+}
+
+/* ------------------------------------------------------------------ settings */
+
+/*
+ * The settings column: a reading width, centred in whatever space the shell gives it.
+ *
+ * Left-aligned it read as a panel someone forgot to lay out — the controls are all short, so on a wide
+ * screen two thirds of the page was empty and the eye had nowhere to go.
+ */
+.lb-settings-page {
+	max-width: 640px;
+	margin-inline: auto;
+}
+.lb-settings + .lb-settings {
+	margin-top: 30px;
+}
+/*
+ * Section headings are visible again.
+ *
+ * They were hidden on the reasoning that the sidebar already says "Settings". That held while this was
+ * one panel; it stopped the moment there were several, because a card with no heading belongs to
+ * whatever sits above it — which is how a currency switch came to read as part of the theme.
+ */
+.lb-settings h2 {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-dim);
+	margin: 0 0 10px;
+}
+.lb-settings__stats,
+.lb-settings__warn,
+.lb-settings__actions {
+	background: var(--lb-surface);
+}
+.lb-settings__stats {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 16px 18px;
+}
+.lb-settings__stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 32px;
+	margin: 0 0 16px;
+}
+.lb-settings__stats dt {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 3px;
+}
+.lb-settings__stats dd {
+	margin: 0;
+	font-size: 14px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-settings__warn {
+	background: var(--lb-danger-tint);
+	border: 1px solid var(--lb-danger-line);
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 13px;
+	line-height: 1.55;
+	margin: 0 0 12px;
+}
+.lb-settings__actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	background: none;
+}
+.lb-settings__message {
+	font-size: 13px;
+	color: var(--lb-text-dim);
+	margin: 12px 0 0;
+}
+.lb-settings__version {
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	margin: 24px 0 0;
+}
+
+/* --------------------------------------------------------------- appearance */
+
+.lb-appearance__card {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 16px 18px;
+	margin-bottom: 12px;
+}
+.lb-appearance__card:last-child {
+	margin-bottom: 0;
+}
+/* Rows within a card are separated by a rule rather than a gap, so the card reads as one group. */
+.lb-appearance__row + .lb-appearance__row,
+.lb-toggle + .lb-appearance__row,
+.lb-appearance__row + .lb-toggle,
+.lb-toggle + .lb-toggle {
+	border-top: 1px solid var(--lb-border);
+	margin-top: 14px;
+	padding-top: 14px;
+}
+.lb-appearance__label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 9px;
+}
+/* A segmented control, in the same idiom as the canvas dock's option rows. */
+.lb-appearance__seg {
+	display: inline-flex;
+	gap: 3px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 9px;
+	padding: 3px;
+}
+.lb-appearance__opt {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	font-weight: 500;
+	padding: 6px 12px;
+	transition: background 120ms ease, color 120ms ease;
+}
+.lb-appearance__opt:hover {
+	color: var(--lb-text);
+}
+.lb-appearance__opt--active {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-appearance__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+	margin: 10px 0 0;
+}
+
+/* A labelled on/off switch. The whole row is the <label>, so the text is part of the hit target. */
+.lb-toggle {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	cursor: pointer;
+}
+.lb-toggle__icon {
+	color: var(--lb-text-dim);
+	flex-shrink: 0;
+}
+.lb-toggle__text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+.lb-toggle__label {
+	font-size: 13px;
+	font-weight: 500;
+}
+.lb-toggle__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
+/*
+ * The native checkbox, restyled as a switch. `appearance: none` on the input rather than a hidden input
+ * plus a fake track: this keeps it a real checkbox for the keyboard and for screen readers, and
+ * `:focus-visible` still lands on the thing being operated.
+ */
+.lb-toggle__input {
+	appearance: none;
+	-webkit-appearance: none;
+	position: relative;
+	flex-shrink: 0;
+	width: 38px;
+	height: 22px;
+	margin: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border-strong);
+	cursor: pointer;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+.lb-toggle__input::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--lb-text-dim);
+	transition: transform 120ms ease, background 120ms ease;
+}
+.lb-toggle__input:checked {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-toggle__input:checked::after {
+	transform: translateX(16px);
+	background: var(--lb-on-accent);
+}
+.lb-toggle__input:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------- board */
+
+.lb-board {
+	position: absolute;
+	inset: 0;
+}
+.lb-board-host {
+	position: absolute;
+	inset: 0;
+}
+
+/*
+ * An inactive mounted board: an open tab that isn't the current one, or a closed tab still
+ * draining its pending write (see DRAIN_MS in app/App.tsx). Still mounted so tldraw's throttled
+ * write can land, but invisible and inert. `visibility: hidden` rather than `display: none` — the
+ * latter would collapse the canvas to zero size and make tldraw recompute its viewport.
+ */
+.lb-board-host[data-hidden] {
+	visibility: hidden;
+	pointer-events: none;
+}
+/*
+ * A hidden board being exported for a thumbnail. `visibility: hidden` makes tldraw's exporter drop
+ * every HTML-backed shape — that is, every node — so the image comes out blank; clipping hides the
+ * board just as completely while leaving the shapes' own computed styles intact. Set only for the
+ * duration of the export, by withExportableHost() in persistence/thumbnails.ts.
+ */
+.lb-board-host[data-hidden][data-exporting] {
+	visibility: visible;
+	clip-path: inset(100%);
+}
+.lb-board__loading {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	color: var(--lb-text-dim);
+	font-size: 14px;
+}
+.lb-debug-badge {
+	position: absolute;
+	bottom: 8px;
+	left: 8px;
+	z-index: 300;
+	display: flex;
+	gap: 10px;
+	background: var(--lb-overlay);
+	border-radius: 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+	pointer-events: none;
+}
+.lb-debug-badge__ok {
+	color: var(--lb-money);
+}
+.lb-debug-badge__warn {
+	color: var(--lb-danger);
+}
+
+/* Glyph icons for the registry-driven toolbar buttons (see canvas/uiOverrides.tsx). Sized to match
+   tldraw's own 18px icons so the row stays visually even. */
+.lb-tool-icon {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
+	color: currentcolor;
+}
+
+/* ------------------------------------------------------------- bottom dock */
+/*
+ * The custom toolbar (canvas/CanvasToolbar.tsx), replacing tldraw's. Positioned against
+ * `.tlui-layout`, which is the positioned, full-height UI layer the Toolbar slot renders into.
+ */
+.lb-dock-wrap {
+	position: absolute;
+	bottom: 14px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	z-index: 300;
+	pointer-events: none;
+	font-family: var(--lb-font);
+}
+.lb-dock,
+.lb-expand {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	/* Slightly translucent over a blur, so the canvas reads through the chrome — the Affine look. */
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 14px;
+	padding: 6px;
+	box-shadow: var(--lb-shadow-2);
+	pointer-events: all;
+}
+.lb-dock__tool {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	background: none;
+	border: 0;
+	border-radius: 10px;
+	color: var(--lb-text-dim);
+	transition: background 100ms ease, color 100ms ease, transform 100ms ease;
+}
+.lb-dock__tool:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	transform: translateY(-1px);
+}
+.lb-dock__tool--active {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	transform: none;
+}
+.lb-dock__tool svg {
+	display: block;
+}
+.lb-dock__sep,
+.lb-expand__sep {
+	width: 1px;
+	align-self: stretch;
+	margin: 6px 6px;
+	background: var(--lb-border);
+	flex-shrink: 0;
+}
+
+/* The settings row that expands above the dock for the active tool. */
+.lb-expand {
+	padding: 6px 10px;
+	gap: 4px;
+	border-radius: 12px;
+}
+.lb-expand .lb-dock__tool {
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+}
+.lb-expand__group {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+.lb-expand__swatch {
+	width: 21px;
+	height: 21px;
+	border-radius: 50%;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	transition: transform 100ms ease;
+}
+.lb-expand__swatch:hover {
+	transform: scale(1.15);
+}
+.lb-expand__swatch--active {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-expand__size {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+}
+.lb-expand__size:hover {
+	background: var(--lb-surface-2);
+}
+.lb-expand__size--active {
+	background: var(--lb-surface-2);
+	color: var(--lb-accent);
+}
+.lb-expand__dot {
+	display: block;
+	border-radius: 50%;
+	background: currentcolor;
+}
+.lb-expand__label {
+	display: grid;
+	place-items: center;
+	min-width: 30px;
+	height: 30px;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 600;
+	padding: 0 6px;
+}
+.lb-expand__label:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-expand__label--active {
+	background: var(--lb-surface-2);
+	color: var(--lb-accent);
+}
+
+/* -------------------------------------------------------- selection toolbar */
+/*
+ * The floating bar above a selected shape (canvas/SelectionToolbar.tsx). Built on tldraw's
+ * `TldrawUiContextualToolbar` — the same primitive as its image/video bars, whose content
+ * components render inside ours — so positioning and show/hide are tldraw's. These rules restyle
+ * it into the app's own chrome and add the parts tldraw doesn't have: the labelled Properties
+ * button, the `…` dropdown, and the alt-text editor.
+ */
+.lb-seltb .tlui-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	/* tldraw's .tlui-menu sets overflow-y: auto, which would clip the `…` dropdown. */
+	overflow: visible;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 11px;
+	padding: 4px;
+	box-shadow: var(--lb-shadow-2);
+	font-family: var(--lb-font);
+}
+.lb-seltb__sep {
+	width: 1px;
+	align-self: stretch;
+	margin: 5px 4px;
+	background: var(--lb-border);
+	flex-shrink: 0;
+}
+/* The labelled Properties button: icon + text, unlike the icon-only neighbours. */
+.lb-seltb__props {
+	gap: 6px;
+	padding: 0 8px !important;
+	width: auto !important;
+}
+.lb-seltb__props-label {
+	font-size: 12px;
+	font-weight: 500;
+}
+/* Anchors the dropdown to its ⋯ button. */
+.lb-seltb__more {
+	position: relative;
+	display: flex;
+}
+.lb-seltb__menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 190px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	padding: 5px;
+	box-shadow: var(--lb-shadow-1);
+	font-family: var(--lb-font);
+	z-index: 1;
+}
+.lb-seltb__item {
+	display: grid;
+	grid-template-columns: 20px 1fr;
+	align-items: center;
+	gap: 8px;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	color: var(--lb-text);
+	font-size: 13px;
+	text-align: left;
+	padding: 6px 8px;
+}
+.lb-seltb__item:hover {
+	background: var(--lb-surface-2);
+}
+.lb-seltb__item--danger:hover {
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
+}
+.lb-seltb__item svg {
+	color: var(--lb-text-dim);
+	justify-self: center;
+}
+/*
+ * The selected shape's colour: one swatch that opens a palette above it.
+ *
+ * A ring when the colour is only an outline (a frame, an unfilled rectangle) and a filled dot when it
+ * paints an area (a sticky). The colour itself is set inline from tldraw's theme, so these rules only
+ * describe the shape.
+ */
+/*
+ * Sized like one of tldraw's own toolbar buttons (40×40) rather than shrink-wrapped to the swatch.
+ * An 18px dot in a 22px cell sat hard against the bar's edge while every icon beside it looked
+ * comfortably inset — matching the button metrics gives it the same padding for free.
+ */
+.lb-seltb__color {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 40px;
+	height: 40px;
+}
+.lb-swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	/* The blank state of a mixed selection: an outline with nothing in it. */
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
+	transition: transform 100ms ease;
+}
+.lb-swatch:hover {
+	transform: scale(1.15);
+}
+.lb-swatch--ring {
+	background: none;
+	border: 2.5px solid var(--lb-border-strong);
+	box-shadow: none;
+}
+.lb-swatch--active {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+
+/*
+ * The palette, floating above the bar — the same gesture and the same look as the dock's pen expansion.
+ *
+ * Absolutely positioned inside the toolbar rather than portalled, which is what the `…` dropdown already
+ * does: the in-front-of-canvas layer is a stacking context, so nothing inside it can escape anyway.
+ */
+.lb-seltb__palette {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 7px 9px;
+	border-radius: 12px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	box-shadow: var(--lb-shadow-2);
+	z-index: 1;
+}
+
+/*
+ * Rounded corners for frames and images, from Settings → Appearance.
+ *
+ * A CSS variable resolved from an attribute on `<html>`, because the elements that need it belong to
+ * tldraw — the frame's `<rect>` and the image's container — and this reaches both without touching
+ * either component. `rx`/`ry` are SVG geometry properties, settable from CSS in every browser this app
+ * targets.
+ *
+ * Deliberately in shape units, not screen pixels: unlike the border width below, a corner radius is part
+ * of the shape and should grow and shrink with it as you zoom.
+ */
+:root {
+	--lb-shape-radius: 0px;
+}
+:root[data-roundness='xs'] {
+	--lb-shape-radius: 3px;
+}
+:root[data-roundness='sm'] {
+	--lb-shape-radius: 6px;
+}
+:root[data-roundness='md'] {
+	--lb-shape-radius: 10px;
+}
+:root[data-roundness='lg'] {
+	--lb-shape-radius: 16px;
+}
+:root[data-roundness='xl'] {
+	--lb-shape-radius: 24px;
+}
+
+.tl-frame__body {
+	rx: var(--lb-shape-radius);
+	ry: var(--lb-shape-radius);
+}
+/*
+ * Rounded on the shape's own container rather than on the `.tl-image-container` inside it.
+ *
+ * Cropping sizes that inner element to the *un*cropped image and slides it under the shape with a
+ * transform, so rounding it puts the corners somewhere off-screen and the visible edges stay square.
+ * This element is exactly the shape whether cropped or not, and tldraw already gives it
+ * `overflow: hidden`, so the corners are clipped rather than merely drawn.
+ *
+ * A circular crop sets `border-radius: 50%` inline, which outranks this — as it should.
+ */
+.tl-shape[data-shape-type='image'] > .tl-html-container {
+	border-radius: var(--lb-shape-radius);
+}
+
+/*
+ * A frame's border, thicker than tldraw's 1px default.
+ *
+ * With no fill the border *is* the shape, so it has to hold its own against the dotted paper. Scaled by
+ * `--tl-scale` like tldraw's own rule, so it stays a constant width on screen at any zoom.
+ */
+.tl-frame__body {
+	stroke-width: calc(2.5px * var(--tl-scale));
+}
+
+/* A transient result — "Nothing to remove" — shown in place of a button's icon rather than as a toast. */
+.lb-seltb__note {
+	font-size: 11px;
+	white-space: nowrap;
+	padding: 0 4px;
+	color: var(--lb-text-dim);
+}
+
+/*
+ * Visible to screen readers only. An icon button needs a real accessible name; `title` alone is a
+ * tooltip, and here it doubles as the transient result message, which would make the name change under
+ * anyone listening.
+ */
+.lb-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+.lb-seltb__item--danger:hover svg {
+	color: var(--lb-danger);
+}
+.lb-seltb__menu-sep {
+	height: 1px;
+	background: var(--lb-border);
+	margin: 4px 6px;
+}
+.lb-seltb__alt {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-seltb__alt-input {
+	width: 240px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	padding: 6px 8px;
+	outline: none;
+}
+.lb-seltb__alt-input:focus {
+	border-color: var(--lb-accent);
+}
+
+/* A money column's currency controls, in the table config. */
+.lb-tcfg__money {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin-bottom: 8px;
+}
+/* Which currencies take part. A chip that is off is excluded from the total, and said so. */
+.lb-tcfg__cur {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	padding: 2px 8px;
+}
+.lb-tcfg__cur--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+/* "1 GEL = [0.38] USD" */
+.lb-tcfg__rate {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	margin-top: 4px;
+}
+.lb-tcfg__rate input {
+	width: 88px;
+	flex: none;
+}
+
+/* ------------------------------------------------------------ dotted paper */
+
+/* Fills the canvas background layer; see canvas/DottedPaper.tsx for the camera math. */
+.lb-paper {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+.lb-paper__dot {
+	fill: var(--lb-dot);
+}
+/* tldraw paints the canvas background colour itself; override it so the paper tone is ours. */
+.tl-background {
+	background-color: var(--lb-canvas) !important;
+}
+
+/* -------------------------------------------------------- node create menu */
+
+.lb-create-menu {
+	position: absolute;
+	z-index: 500;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 6px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	box-shadow: var(--lb-shadow-1);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	pointer-events: all;
+}
+.lb-create-menu__label {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	padding: 4px 8px 6px;
+}
+.lb-create-menu__item {
+	display: grid;
+	grid-template-columns: 22px 1fr;
+	grid-template-rows: auto auto;
+	align-items: center;
+	gap: 0 9px;
+	background: none;
+	border: 0;
+	border-radius: 7px;
+	color: var(--lb-text);
+	padding: 7px 8px;
+	text-align: left;
+	transition: background 100ms ease;
+}
+.lb-create-menu__item:hover,
+.lb-create-menu__item:focus-visible {
+	background: var(--lb-surface-2);
+	outline: none;
+}
+.lb-create-menu__icon {
+	grid-row: 1 / span 2;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 600;
+}
+.lb-create-menu__item:hover .lb-create-menu__icon {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+}
+.lb-create-menu__name {
+	font-size: 13px;
+	font-weight: 500;
+}
+.lb-create-menu__hint {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+
+/* ================================================================== nodes  */
+/* Node components live inside tldraw's HTMLContainer. They are laid out in
+   shape space, so tldraw's transform scales them with the camera. */
+
+.lb-md,
+.lb-item,
+.lb-rollup {
+	width: 100%;
+	height: 100%;
+	background: var(--lb-surface);
+	/*
+	 * `color` and `font-family` are set explicitly, not inherited. Node components render inside
+	 * tldraw's container, so they inherit *its* theme — which meant node titles and markdown body
+	 * text came out near-black on our dark cards, effectively invisible. Elements with an explicit
+	 * colour (field labels, money values) looked fine, which made the bug easy to miss.
+	 */
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/*
+ * While editing, a node must not clip its own children: the item field editor and the rollup config
+ * are popovers anchored below the card, and the `overflow: hidden` above silently swallowed them —
+ * the elements were in the DOM and reported as "visible", just painted nowhere.
+ */
+.lb-md--editing,
+.lb-item--editing,
+.lb-rollup--editing,
+.lb-table--editing {
+	overflow: visible;
+}
+
+/* ------------------------------------------------------------- note node */
+/*
+ * The measured element for auto-height. Its height is intrinsic when auto-height is on (set inline by
+ * the factory), which is what the ResizeObserver reads.
+ */
+.lb-node__content {
+	display: block;
+}
+
+.lb-note {
+	width: 100%;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	font-size: 13px;
+	line-height: 1.55;
+	padding: 10px 13px;
+	/* Auto-height notes size to content, so no fixed height and nothing to clip. */
+	height: auto;
+	min-height: var(--lb-note-min-h, 44px);
+	overflow: visible;
+	display: flex;
+	flex-direction: column;
+}
+
+.lb-note--editing {
+	border-color: var(--lb-accent);
+	cursor: text;
+}
+
+/* The rendered markdown above and below the line being edited. */
+.lb-note__rendered {
+	cursor: text;
+}
+.lb-note__rendered > :first-child {
+	margin-top: 0;
+}
+.lb-note__rendered > :last-child {
+	margin-bottom: 0;
+}
+/*
+ * The rendered sides and the raw line sit in one vertical flow, so their block margins must not
+ * collapse differently on either side of the caret — that would make the note twitch by a few pixels
+ * as the caret moves between lines.
+ */
+.lb-note__rendered p,
+.lb-note__rendered ul,
+.lb-note__rendered ol {
+	margin: 0 0 8px;
+}
+
+/*
+ * The active block's textarea.
+ *
+ * Every one of these declarations exists so that raw source and rendered markdown occupy the same
+ * space: if the two differ in font, size, weight or line-height, the note visibly jumps each time the
+ * caret crosses a block boundary and reads as broken rather than as a mode change. The per-block-type
+ * modifiers below match the heading and code styles in `.lb-md__body`.
+ */
+.lb-note__input {
+	width: 100%;
+	display: block;
+	background: transparent;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	resize: none;
+	overflow: hidden;
+	outline: none;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 13px;
+	line-height: 1.55;
+	caret-color: var(--lb-accent);
+}
+.lb-note__input::placeholder {
+	color: var(--lb-text-faint);
+	font-style: italic;
+}
+.lb-note__input--body {
+	margin: 0 0 8px;
+}
+.lb-note__input--h1 {
+	font-size: 19px;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	margin: 14px 0 6px;
+}
+.lb-note__input--h2 {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.3;
+	margin: 14px 0 6px;
+}
+.lb-note__input--h3,
+.lb-note__input--h4,
+.lb-note__input--h5,
+.lb-note__input--h6 {
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.3;
+	margin: 14px 0 6px;
+}
+.lb-note__input--code {
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	background: var(--lb-surface-2);
+	border-radius: 6px;
+	padding: 8px 10px;
+	margin: 0 0 8px;
+}
+
+/* ---------------------------------------------------------- markdown node */
+
+.lb-md {
+	padding: 12px 14px;
+}
+.lb-md--editing {
+	padding: 0;
+	border-color: var(--lb-accent);
+}
+.lb-md__body {
+	overflow-y: auto;
+	/* Editing is what enables interaction; in display mode the factory sets pointer-events: none
+	   on the container so scroll wheel reaches the canvas as zoom. */
+}
+.lb-md__textarea {
+	width: 100%;
+	height: 100%;
+	background: transparent;
+	border: 0;
+	resize: none;
+	color: var(--lb-text);
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	padding: 12px 14px;
+	outline: none;
+	tab-size: 2;
+}
+.lb-md__placeholder {
+	color: var(--lb-text-dim);
+	font-style: italic;
+	margin: 0;
+}
+.lb-md__body > :first-child {
+	margin-top: 0;
+}
+.lb-md__body > :last-child {
+	margin-bottom: 0;
+}
+.lb-md__body h1 {
+	font-size: 19px;
+	letter-spacing: -0.01em;
+}
+.lb-md__body h2 {
+	font-size: 16px;
+}
+.lb-md__body h3 {
+	font-size: 14px;
+}
+.lb-md__body h1,
+.lb-md__body h2,
+.lb-md__body h3 {
+	margin: 14px 0 6px;
+	line-height: 1.3;
+}
+.lb-md__body p,
+.lb-md__body ul,
+.lb-md__body ol {
+	margin: 0 0 8px;
+}
+.lb-md__body ul,
+.lb-md__body ol {
+	padding-left: 20px;
+}
+.lb-md__body li {
+	margin-bottom: 2px;
+}
+
+/*
+ * A task item's checkbox *is* its marker, so the bullet has to go — a square next to a disc reads as two
+ * markers for one item.
+ *
+ * Targeted at `li.task-list-item` rather than at the list, because GFM puts task items and plain bullets
+ * in the *same* `<ul>` when the source mixes them: styling the list would strip the plain bullets too.
+ * The negative indent pulls the checkbox out to where the bullet was, so mixed lists still align.
+ */
+.lb-md__body li.task-list-item,
+.lb-md__bare li.task-list-item {
+	list-style: none;
+	margin-left: -18px;
+}
+
+/*
+ * Interactive in display mode. The shape container sets `pointer-events: none` there — otherwise a node
+ * stops behaving like a shape — and a child re-enabling them is exactly the documented escape hatch.
+ */
+.lb-md__task {
+	pointer-events: auto;
+	cursor: pointer;
+	margin-right: 5px;
+	vertical-align: -1px;
+	/* `accent-color` tints the tick instead of needing a hand-built control. The box itself follows
+	   `color-scheme` on `:root`, so it tracks the theme without any work here. */
+	accent-color: var(--lb-accent);
+}
+/* A read-only preview still shows state, but must not look clickable. */
+.lb-md__body input[type='checkbox']:disabled {
+	margin-right: 5px;
+	vertical-align: -1px;
+}
+.lb-md__body code {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 0.9em;
+}
+.lb-md__body pre {
+	background: var(--lb-surface-2);
+	border-radius: 6px;
+	padding: 8px 10px;
+	overflow-x: auto;
+	margin: 0 0 8px;
+}
+.lb-md__body pre code {
+	background: none;
+	padding: 0;
+}
+.lb-md__body blockquote {
+	margin: 0 0 8px;
+	padding-left: 10px;
+	border-left: 2px solid var(--lb-border);
+	color: var(--lb-text-dim);
+}
+.lb-md__body hr {
+	border: 0;
+	border-top: 1px solid var(--lb-border);
+	margin: 12px 0;
+}
+.lb-md__body table {
+	border-collapse: collapse;
+	margin-bottom: 8px;
+}
+.lb-md__body th,
+.lb-md__body td {
+	border: 1px solid var(--lb-border);
+	padding: 3px 7px;
+	text-align: left;
+}
+.lb-md__link {
+	color: var(--lb-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* -------------------------------------------------------------- item node */
+
+.lb-item {
+	position: relative;
+}
+.lb-item--editing {
+	border-color: var(--lb-accent);
+}
+.lb-item__image {
+	width: 100%;
+	flex: 1;
+	min-height: 0;
+	object-fit: cover;
+	display: block;
+	background: var(--lb-surface-2);
+}
+.lb-item__image--empty,
+.lb-item__image--loading {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text-dim);
+	font-size: 22px;
+}
+.lb-item__text {
+	padding: 8px 10px 10px;
+	flex-shrink: 0;
+}
+.lb-item__title {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.35;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-item__title--empty {
+	color: var(--lb-text-dim);
+	font-weight: 400;
+	font-style: italic;
+}
+.lb-item__title--editing {
+	width: 100%;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-accent);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-weight: 600;
+	padding: 3px 5px;
+	outline: none;
+}
+.lb-item__fields {
+	margin: 5px 0 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.lb-item__field {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+}
+.lb-item__field dt {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-item__value {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	flex-shrink: 0;
+}
+.lb-item__value--money {
+	color: var(--lb-money);
+	font-weight: 600;
+}
+.lb-item__tags {
+	list-style: none;
+	margin: 7px 0 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-item__tags li {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 6px;
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------- editor popovers */
+/*
+ * Positioned by NodeEditorPopover, which portals the panel into tldraw's container: inside the shape
+ * it was painted under later shapes, and scaled to illegibility at low zoom. Here it sits above the
+ * canvas at a fixed size.
+ */
+.lb-popover {
+	position: absolute;
+	/* Below tldraw's in-front-of-canvas layer (z 250), where the selection toolbar and its `…`
+	   dropdown live — that layer is a stacking context, so nothing inside it can exceed 250, and
+	   a taller popover would paint over the open menu. */
+	z-index: 240;
+	/* `max-height` is set inline by NodeEditorPopover from the space actually available above or below
+	   the shape; this is only a backstop for a container shorter than the viewport. */
+	max-height: calc(100vh - 32px);
+	overflow-y: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-accent);
+	border-radius: 8px;
+	padding: 10px;
+	box-shadow: var(--lb-shadow-1);
+	pointer-events: all;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 13px;
+}
+
+.lb-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-fields__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.lb-fields__row {
+	display: grid;
+	grid-template-columns: 1fr 84px 1fr 46px 22px;
+	gap: 4px;
+	align-items: center;
+}
+.lb-fields__key {
+	font-size: 11px;
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-fields input,
+.lb-fields select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 11px;
+	padding: 3px 5px;
+	min-width: 0;
+	outline: none;
+}
+.lb-fields input:focus,
+.lb-fields select:focus {
+	border-color: var(--lb-accent);
+}
+.lb-fields input[type='checkbox'] {
+	width: 14px;
+	height: 14px;
+	justify-self: start;
+}
+.lb-fields__remove {
+	background: none;
+	border: 0;
+	color: var(--lb-text-dim);
+	font-size: 15px;
+	line-height: 1;
+	padding: 0;
+}
+.lb-fields__remove:hover {
+	color: var(--lb-danger);
+}
+.lb-fields__add {
+	display: grid;
+	grid-template-columns: 1fr 78px auto;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-fields__add-btn,
+.lb-fields__save-template,
+.lb-fields__template,
+.lb-fields__tag {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-size: 11px;
+	padding: 3px 7px;
+}
+.lb-fields__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.lb-fields__tag-input {
+	flex: 1;
+	min-width: 110px;
+}
+.lb-fields__templates {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
+}
+
+/* ------------------------------------------------------------ rollup node */
+
+.lb-rollup {
+	position: relative;
+}
+.lb-rollup--editing {
+	border-color: var(--lb-accent);
+}
+.lb-rollup__body {
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+.lb-rollup__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 8px;
+	flex-shrink: 0;
+}
+.lb-rollup__title {
+	font-weight: 600;
+	font-size: 13px;
+}
+.lb-rollup__op {
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	white-space: nowrap;
+}
+.lb-rollup__value {
+	font-size: 30px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--lb-money);
+	font-variant-numeric: tabular-nums;
+	margin: auto 0;
+}
+.lb-rollup__table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin-top: 8px;
+	overflow-y: auto;
+	display: block;
+	min-height: 0;
+}
+.lb-rollup__table td {
+	padding: 3px 0;
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-rollup__group {
+	color: var(--lb-text-dim);
+	/* Without this the group name and the count collide — "lighting2" instead of "lighting  2". */
+	padding-right: 10px !important;
+	max-width: 12ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-rollup__count {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	text-align: right;
+	padding-right: 10px !important;
+	font-variant-numeric: tabular-nums;
+}
+.lb-rollup__cell {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
+.lb-rollup__total-row td {
+	border-bottom: 0;
+	padding-top: 6px !important;
+	font-weight: 650;
+	color: var(--lb-money);
+}
+.lb-rollup__total-row .lb-rollup__group {
+	color: var(--lb-text);
+}
+.lb-rollup__meta {
+	font-size: 10px;
+	color: var(--lb-text-dim);
+	margin-top: 6px;
+	flex-shrink: 0;
+}
+
+.lb-rollup__config {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-rollup__row {
+	display: grid;
+	grid-template-columns: 82px 1fr;
+	gap: 8px;
+	align-items: center;
+	font-size: 11px;
+}
+.lb-rollup__row > span:first-child {
+	color: var(--lb-text-dim);
+}
+.lb-rollup__config input,
+.lb-rollup__config select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 11px;
+	padding: 3px 5px;
+	min-width: 0;
+	outline: none;
+}
+.lb-rollup__config input:focus,
+.lb-rollup__config select:focus {
+	border-color: var(--lb-accent);
+}
+.lb-rollup__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-rollup__tag {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	padding: 2px 6px;
+}
+.lb-rollup__tag--on {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-weight: 600;
+}
+.lb-rollup__hint {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+}
+
+/* ------------------------------------------------------- properties */
+/*
+ * The property strip: a shape's values, on the shape.
+ *
+ * Deliberately styled like the old item card's field list, because that is what it replaces — the
+ * difference is that any shape can wear it now, not just one node type.
+ */
+.lb-strip {
+	margin: 7px 0 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	/* Explicit, not inherited: strips render via `OnTheCanvas`, inside tldraw's container, so without
+	   this any future child without its own colour would pick up tldraw's theme instead of ours. */
+	color: var(--lb-text);
+}
+.lb-strip__row {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+}
+.lb-strip__name {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-strip__value {
+	margin: 0;
+	/* Tabular figures so a column of prices lines up on the decimal point. */
+	font-variant-numeric: tabular-nums;
+	flex-shrink: 0;
+	color: var(--lb-text);
+}
+/*
+ * A link property's value, on the card. The shape has `pointer-events: none` in display mode so it
+ * keeps behaving like a shape; a child turning them back on is the documented escape hatch, and is
+ * what makes the title clickable without first opening the panel.
+ */
+.lb-strip__link {
+	color: var(--lb-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	pointer-events: auto;
+	cursor: pointer;
+}
+.lb-strip__link:hover {
+	color: var(--lb-accent-hover);
+}
+
+/* Negative numbers read red, everywhere money and numbers show. */
+.lb-strip__value--neg,
+.lb-table__cell--neg,
+.lb-table__value--neg,
+.lb-props__value--neg,
+.lb-table__row--summary .lb-table__cell--neg {
+	color: var(--lb-danger);
+}
+.lb-strip__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 3px;
+}
+/*
+ * A select / multiSelect option, wherever it appears — on a card, in the properties panel, in the
+ * option menu. The hue arrives as `--lb-opt-h`, hashed from the option's own text (see `options.ts`),
+ * so one class covers every colour and the palette needs no per-option storage.
+ *
+ * Tinted background with a saturated foreground, rather than a solid fill: a filled pill at this size
+ * fights the card's own text for attention, and there can be five of them on one note.
+ */
+.lb-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 50% / 18%);
+	border-radius: 4px;
+	padding: 1px 6px;
+	font-size: 10px;
+	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 74%);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+}
+/* Same hue, darkened until it reads on a white card rather than glowing off it. */
+:root[data-theme='light'] .lb-chip {
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 45% / 14%);
+	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 60%) 33%);
+}
+.lb-chip__x {
+	background: none;
+	border: 0;
+	color: inherit;
+	cursor: pointer;
+	font-size: 12px;
+	line-height: 1;
+	opacity: 0.6;
+	padding: 0;
+}
+.lb-chip__x:hover {
+	opacity: 1;
+}
+
+/* Five stars, in the panel. On a card the same value is plain text — a star is a star at any size. */
+.lb-rating {
+	display: flex;
+	gap: 1px;
+}
+.lb-rating__star {
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-size: 15px;
+	line-height: 1;
+	padding: 0 1px;
+}
+.lb-rating__star--on {
+	color: var(--lb-star);
+}
+
+/* A slider and its readout. The number is fixed-width so dragging doesn't reflow the row. */
+.lb-progress {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+.lb-progress__range {
+	accent-color: var(--lb-accent);
+	flex: 1;
+	min-width: 0;
+}
+.lb-progress__pct {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	min-width: 34px;
+	text-align: right;
+}
+
+/*
+ * The same value on a card: a bar with the number beside it.
+ *
+ * Beside rather than inside. A row on a card is narrow, and 9px text laid over a 12px bar has to read
+ * against both the filled and the unfilled half — which it does at neither. The bar carries the value
+ * at a glance and the digits carry it exactly; neither has to do the other's job.
+ */
+.lb-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 90px;
+}
+.lb-bar__track {
+	background: var(--lb-surface-2);
+	border-radius: 3px;
+	flex: 1;
+	height: 6px;
+	min-width: 28px;
+	overflow: hidden;
+}
+.lb-bar__fill {
+	display: block;
+	background: var(--lb-accent);
+	border-radius: 3px;
+	height: 100%;
+}
+
+/*
+ * An expression, in the editor and in the rendered note.
+ *
+ * Tinted rather than outlined, so a `{…}` reads as one object at a glance without drawing a box round
+ * every sentence that contains one. Notion shades its property tokens grey for the same reason; the
+ * accent is used here because on a whiteboard the thing worth spotting is "this number is derived".
+ */
+.lb-expr-token {
+	background: var(--lb-accent-tint);
+	border-radius: 3px;
+	padding: 1px 0;
+}
+
+/*
+ * The `{…}` menu — one popup, for both editors.
+ *
+ * The note used to render CodeMirror's built-in completion widget restyled to look like this one.
+ * Same words, same order, and still not the same thing: different DOM, different key handling,
+ * different filtering. Both editors render this now.
+ *
+ * Fixed to the viewport and mounted in the body: inside a shape it would be scaled by the canvas zoom
+ * and clipped by the shape's own bounds.
+ */
+.lb-suggest {
+	position: fixed;
+	z-index: 400;
+	min-width: 190px;
+	max-height: 220px;
+	overflow-y: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	box-shadow: var(--lb-shadow-1);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	padding: 3px;
+}
+.lb-suggest__row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	padding: 4px 8px;
+}
+.lb-suggest__row--on {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+}
+.lb-suggest__label {
+	font-weight: 500;
+}
+.lb-suggest__detail {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	margin-left: auto;
+	white-space: nowrap;
+}
+.lb-suggest__row--on .lb-suggest__detail {
+	color: var(--lb-on-accent);
+	opacity: 0.78;
+}
+
+/*
+ * The `{…}` menu — one popup, for both editors.
+ *
+ * The note used to render CodeMirror's built-in completion widget restyled to look like this one.
+ * Same words, same order, and still not the same thing: different DOM, different key handling,
+ * different filtering. Both editors render this now.
+ *
+ * Fixed to the viewport and mounted in the body: inside a shape it would be scaled by the canvas zoom
+ * and clipped by the shape's own bounds.
+ */
+.lb-suggest {
+	position: fixed;
+	z-index: 400;
+	min-width: 190px;
+	max-height: 220px;
+	overflow-y: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	box-shadow: var(--lb-shadow-1);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	padding: 3px;
+}
+.lb-suggest__row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	padding: 4px 8px;
+}
+.lb-suggest__row--on {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+}
+.lb-suggest__label {
+	font-weight: 500;
+}
+.lb-suggest__detail {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	margin-left: auto;
+	white-space: nowrap;
+}
+.lb-suggest__row--on .lb-suggest__detail {
+	color: var(--lb-on-accent);
+	opacity: 0.78;
+}
+
+/* The select / multiSelect editor: the current value, and an inline menu of the known options. */
+.lb-choice {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-choice__current {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.lb-choice__open {
+	background: var(--lb-surface-2);
+	border: 1px dashed var(--lb-border-strong);
+	border-radius: 4px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 10px;
+	padding: 1px 6px;
+}
+.lb-choice__open:hover {
+	border-color: var(--lb-accent);
+	color: var(--lb-text);
+}
+/* Holding a chip, the button is just the frame around it — the dashed "empty" outline would fight it. */
+.lb-choice__open:has(.lb-chip) {
+	background: none;
+	border-color: transparent;
+	padding: 0;
+}
+.lb-choice__clear {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px;
+	text-align: left;
+}
+.lb-choice__clear:hover {
+	color: var(--lb-danger);
+}
+/*
+ * In flow rather than floating. `.lb-popover` scrolls and is height-capped, so an absolutely
+ * positioned menu would be clipped by the panel it belongs to; pushing the rows below it down is the
+ * one layout that cannot be cut off.
+ */
+.lb-choice__menu {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	padding: 5px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+.lb-choice__search {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px 6px;
+	width: 100%;
+	box-sizing: border-box;
+}
+.lb-choice__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+/* Status options sit under their stage; every other choice type is one flat list with no heading. */
+.lb-choice__group + .lb-choice__group {
+	margin-top: 4px;
+}
+.lb-choice__stage {
+	color: var(--lb-text-faint);
+	font-size: 9px;
+	letter-spacing: 0.06em;
+	padding: 2px 3px 1px;
+	text-transform: uppercase;
+}
+.lb-choice__dot {
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 55%);
+	border: 0;
+	border-radius: 50%;
+	cursor: pointer;
+	flex: 0 0 auto;
+	height: 8px;
+	padding: 0;
+	width: 8px;
+}
+.lb-choice__dot:hover {
+	box-shadow: 0 0 0 3px hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 55% / 25%);
+}
+.lb-choice__creates {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 3px;
+	padding-top: 2px;
+}
+.lb-choice__createlabel {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+}
+.lb-choice__opt {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	cursor: pointer;
+	flex: 1;
+	padding: 2px 3px;
+	text-align: left;
+}
+.lb-choice__opt:hover {
+	background: var(--lb-surface-hover);
+}
+/* A tick rather than a highlight: the chip already carries a colour, and two at once reads as noise. */
+.lb-choice__opt--on::after {
+	content: '✓';
+	color: var(--lb-accent);
+	font-size: 11px;
+	margin-left: 5px;
+}
+.lb-choice__forget {
+	background: none;
+	border: 0;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 0 3px;
+}
+.lb-choice__forget:hover {
+	color: var(--lb-danger);
+}
+.lb-choice__create {
+	background: none;
+	border: 0;
+	border-radius: 4px;
+	color: var(--lb-accent);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px;
+	text-align: left;
+}
+.lb-choice__create:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-choice__empty {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	margin: 2px 3px;
+}
+
+/*
+ * What a shape gathers, drawn under what it is.
+ *
+ * Reads as a footer rather than as content: a rule above it, the number given weight, and the count
+ * beside it in the dim colour. The count is not decoration — a total nobody can size up is a total
+ * nobody checks.
+ */
+.lb-collect {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px solid var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-collect__value {
+	font-size: 15px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+.lb-collect__count {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+.lb-collect__list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 6px 0 0;
+	padding-top: 6px;
+	border-top: 1px solid var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-collect__line {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+}
+.lb-collect__line dt {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-collect__line dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* The "gathers" half of the properties panel, below a rule from the "is" half. */
+.lb-collect-edit {
+	border-top: 1px solid var(--lb-border);
+	padding-top: 8px;
+}
+.lb-collect-edit__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-collect-edit__head input {
+	accent-color: var(--lb-accent);
+	width: 15px;
+	height: 15px;
+}
+.lb-collect-edit__body {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin-top: 8px;
+}
+.lb-collect-edit__row {
+	display: grid;
+	grid-template-columns: 42px 1fr;
+	align-items: center;
+	gap: 8px;
+}
+.lb-collect-edit__row > span {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-collect-edit__row select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 3px 5px;
+	width: 100%;
+}
+
+/* The properties panel, portalled by NodeEditorPopover (see .lb-popover above). */
+.lb-props {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-props__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	border-bottom: 1px solid var(--lb-border);
+	padding-bottom: 6px;
+}
+.lb-props__title {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-props__close,
+.lb-props__remove {
+	background: none;
+	border: none;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	padding: 2px 4px;
+}
+.lb-props__close:hover,
+.lb-props__remove:hover {
+	color: var(--lb-text);
+}
+.lb-props__empty {
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-props__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+.lb-props__row {
+	display: grid;
+	/* Grip, name, value, visibility, remove. The value column takes the slack so long names
+	   truncate rather than squeezing the input someone is typing in. */
+	grid-template-columns: 14px 80px 1fr auto auto;
+	align-items: center;
+	gap: 6px;
+}
+.lb-props__row--orphan {
+	opacity: 0.65;
+}
+/* Hidden from the card, still real data — the panel shows it dimmed rather than gone. */
+.lb-props__row--hidden .lb-props__name,
+.lb-props__row--hidden .lb-props__value,
+.lb-props__row--hidden .lb-choice {
+	opacity: 0.5;
+}
+.lb-props__row--dragging {
+	opacity: 0.35;
+}
+.lb-props__grip {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text-faint);
+	cursor: grab;
+}
+.lb-props__grip:active {
+	cursor: grabbing;
+}
+.lb-props__row:hover .lb-props__grip {
+	color: var(--lb-text-dim);
+}
+.lb-props__name {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* The rename affordance: the name is a button, styled as text until hovered. */
+.lb-props__name--btn {
+	background: none;
+	border: 0;
+	padding: 1px 3px;
+	margin: -1px -3px;
+	border-radius: 4px;
+	font-family: inherit;
+	text-align: left;
+	cursor: text;
+}
+.lb-props__name--btn:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-props__name-input {
+	min-width: 0;
+}
+.lb-props__eye {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	background: none;
+	border: none;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	padding: 2px 0;
+}
+button.lb-props__eye:hover {
+	color: var(--lb-text);
+}
+/* A financial value: symbol · amount · currency code, in the row's value cell. */
+.lb-props__money {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__money-symbol {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	flex-shrink: 0;
+	min-width: 12px;
+	text-align: center;
+}
+.lb-props__money-code {
+	width: 44px !important;
+	flex-shrink: 0;
+	text-transform: uppercase;
+	text-align: center;
+}
+.lb-props__orphan-value {
+	font-size: 12px;
+	font-style: italic;
+}
+/*
+ * A link property edits as two stacked boxes — a title and an address — because the value is stored as
+ * one encoded string (`[title](url)`) that nobody should have to type. The launch button opens it
+ * without leaving the panel; on the card the title itself is the link.
+ */
+.lb-props__link {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__link-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-props__link-open {
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	color: var(--lb-accent);
+	font-size: 12px;
+	line-height: 1;
+	text-decoration: none;
+}
+.lb-props__link-open:hover {
+	border-color: var(--lb-accent);
+	color: var(--lb-accent-hover);
+}
+
+.lb-props input,
+.lb-props select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 3px 6px;
+	min-width: 0;
+	width: 100%;
+}
+.lb-props input:focus,
+.lb-props select:focus {
+	outline: 1px solid var(--lb-accent);
+}
+.lb-props input[type='checkbox'] {
+	width: auto;
+	justify-self: start;
+}
+.lb-props__add {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	border-top: 1px solid var(--lb-border);
+	padding-top: 8px;
+}
+.lb-props__available {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-props__attach,
+.lb-props__new-btn,
+.lb-props__create {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px 7px;
+}
+.lb-props__attach:hover,
+.lb-props__new-btn:hover,
+.lb-props__create:hover {
+	border-color: var(--lb-accent);
+}
+.lb-props__new-btn {
+	align-self: flex-start;
+}
+/* Quiet until you reach for it: housekeeping, and it deletes definitions. */
+.lb-props__prune {
+	align-self: flex-start;
+	background: none;
+	border: none;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 2px 0;
+	text-align: left;
+}
+.lb-props__prune:hover {
+	color: var(--lb-danger);
+}
+.lb-props__new {
+	display: grid;
+	grid-template-columns: 1fr auto auto;
+	gap: 5px;
+	align-items: center;
+}
+
+/*
+ * A property strip drawn under a shape tldraw owns (see ForeignPropertyStrips).
+ *
+ * `position: absolute` inside `OnTheCanvas`, which is already camera-transformed, so these coordinates
+ * are page coordinates. Pointer events stay off: the strip is a read-out, and swallowing clicks here
+ * would break dragging the shape it belongs to.
+ */
+.lb-foreign-strip {
+	position: absolute;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+	padding: 2px 4px 0;
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+}
+.lb-foreign-strip .lb-strip {
+	margin-top: 3px;
+}
+
+/* An image inside a note — from `![](asset:…)`, which the item→note migration writes. */
+.lb-md__img {
+	display: block;
+	max-width: 100%;
+	border-radius: 6px;
+	margin: 6px 0;
+}
+
+/* ------------------------------------------------------- table node */
+/*
+ * The table: a live, read-only view of the board. Shares the card treatment with every other node —
+ * `color` and `font-family` set explicitly, because a node renders inside tldraw's container and would
+ * otherwise inherit its near-black text onto our dark cards.
+ */
+.lb-table {
+	position: relative;
+	width: 100%;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	overflow: hidden;
+	font-size: 13px;
+	line-height: 1.5;
+}
+.lb-table__body {
+	padding: 10px 12px 11px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-table__header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+}
+.lb-table__title {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-table__count,
+.lb-table__meta {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	flex-shrink: 0;
+}
+.lb-table__empty {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	padding: 6px 0;
+}
+
+/* `value` mode — the single big number the rollup node used to be. */
+.lb-table__value {
+	color: var(--lb-money);
+	font-size: 34px;
+	font-weight: 650;
+	line-height: 1.15;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+}
+/* "converted · 2 excluded" under a total — a converted number must not look like a native one. */
+.lb-table__note {
+	font-size: 10px;
+	color: var(--lb-text-faint);
+	letter-spacing: 0.04em;
+	margin-top: 2px;
+}
+.lb-table__op {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+/*
+ * The grid. CSS grid rather than a <table>: column widths are flex weights so they hold their
+ * proportions as the shape is resized, and a grid lets group headers and the summary row span the
+ * whole width without colspan arithmetic.
+ */
+.lb-table__grid {
+	display: grid;
+	/* `grid-template-columns` comes from the column widths, set inline by the component. */
+	column-gap: 8px;
+	font-size: 11px;
+}
+.lb-table__row {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: inherit;
+	column-gap: inherit;
+	align-items: baseline;
+	padding: 2px 0;
+}
+.lb-table__row--head {
+	border-bottom: 1px solid var(--lb-border);
+	padding-bottom: 3px;
+	margin-bottom: 2px;
+}
+.lb-table__cell {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.lb-table__cell--head {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+/* Numbers read right-aligned; only the first column is a name, so everything after it is a value. */
+.lb-table__cell:not(:first-child) {
+	text-align: right;
+}
+/*
+ * A group header is a real grid row, not a flex bar: its summaries have to line up under the columns
+ * they belong to, which is the whole point of showing them.
+ */
+.lb-table__row--group {
+	margin-top: 5px;
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	letter-spacing: 0.05em;
+}
+.lb-table__group-key {
+	text-transform: uppercase;
+}
+.lb-table__group-count {
+	opacity: 0.65;
+}
+.lb-table__row--summary {
+	border-top: 1px solid var(--lb-border);
+	margin-top: 3px;
+	padding-top: 3px;
+	font-weight: 600;
+	color: var(--lb-money);
+}
+.lb-table__row--more {
+	display: block;
+}
+.lb-table__more {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	font-style: italic;
+}
+
+/* ------------------------------------------------------- table config */
+.lb-tcfg {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-tcfg__section {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	border-top: 1px solid var(--lb-border);
+	padding-top: 7px;
+}
+.lb-tcfg__section-title {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+.lb-tcfg__row {
+	display: grid;
+	grid-template-columns: 72px 1fr;
+	align-items: center;
+	gap: 8px;
+}
+/* A checkbox shouldn't stretch across the value column the way a select does. */
+.lb-tcfg__row--check > input[type='checkbox'] {
+	justify-self: start;
+	width: 15px;
+	height: 15px;
+	accent-color: var(--lb-accent);
+}
+.lb-tcfg__row > span {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-tcfg input,
+.lb-tcfg select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 3px 6px;
+	min-width: 0;
+	width: 100%;
+}
+.lb-tcfg input:focus,
+.lb-tcfg select:focus {
+	outline: 1px solid var(--lb-accent);
+}
+/* Property · operator · value · remove. */
+.lb-tcfg__filter {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr auto;
+	gap: 4px;
+	align-items: center;
+}
+/* Name · summary · left · right · remove. */
+.lb-tcfg__col {
+	display: grid;
+	grid-template-columns: 1fr 1fr auto auto auto;
+	gap: 4px;
+	align-items: center;
+}
+.lb-tcfg__col-name {
+	font-size: 12px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-tcfg__remove,
+.lb-tcfg__move {
+	background: none;
+	border: none;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 2px 3px;
+}
+.lb-tcfg__remove:hover:not(:disabled),
+.lb-tcfg__move:hover:not(:disabled) {
+	color: var(--lb-text);
+}
+.lb-tcfg__move:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+.lb-tcfg__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-tcfg__chip,
+.lb-tcfg__add {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px 7px;
+}
+.lb-tcfg__chip:hover,
+.lb-tcfg__add:hover {
+	border-color: var(--lb-accent);
+}
+.lb-tcfg__add {
+	align-self: flex-start;
+}
+
+/* ------------------------------------------------------- note editor (CodeMirror) */
+/*
+ * The editor must *grow to its content*, not scroll inside a box.
+ *
+ * A note's height is derived by `useAutoHeight` from the rendered content, but CodeMirror is built to be a
+ * viewport onto a long document. Left at its defaults the note collapses to a few lines with an inner
+ * scrollbar — and worse, sizing the editor from its container while the container is measured from the
+ * editor is circular, which latched the note at whatever height it happened to start with.
+ */
+.lb-note--cm .cm-editor,
+.lb-note--cm .cm-scroller {
+	height: auto;
+	max-height: none;
+	overflow: visible;
+}
+.lb-note--cm .cm-content {
+	min-height: 0;
+	padding: 0;
+}
+.lb-note--cm .cm-editor.cm-focused {
+	outline: none;
+}
+.lb-note--cm .cm-editor,
+.lb-note--cm .cm-gutters {
+	background: transparent;
+}
+
+/*
+ * Live preview (see `livePreview.ts`).
+ *
+ * These have to match `.lb-md__body`'s rendered typography as closely as possible: the whole point is that
+ * entering the editor changes what you can *do*, not what the note looks like. A heading that resizes when
+ * the caret arrives reads as the editor being broken.
+ */
+.lb-note--cm .cm-line.lb-cm-h1 {
+	font-size: 19px;
+	font-weight: 650;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+}
+.lb-note--cm .cm-line.lb-cm-h2 {
+	font-size: 16px;
+	font-weight: 640;
+	line-height: 1.3;
+}
+.lb-note--cm .cm-line.lb-cm-h3,
+.lb-note--cm .cm-line.lb-cm-h4,
+.lb-note--cm .cm-line.lb-cm-h5,
+.lb-note--cm .cm-line.lb-cm-h6 {
+	font-size: 14px;
+	font-weight: 640;
+	line-height: 1.3;
+}
+.lb-note--cm .lb-cm-strong {
+	font-weight: 660;
+}
+.lb-note--cm .lb-cm-em {
+	font-style: italic;
+}
+.lb-note--cm .lb-cm-strike {
+	text-decoration: line-through;
+	opacity: 0.65;
+}
+.lb-note--cm .lb-cm-code {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 0.9em;
+}
+/* The bullet a `-` becomes once the caret leaves its line. */
+.lb-note--cm .lb-cm-bullet {
+	color: var(--lb-text-dim);
+}
+/*
+ * A task's checkbox, live while editing.
+ *
+ * `accent-color` tints the tick rather than needing a hand-built control; the box follows
+ * `color-scheme` on `:root`, so it tracks the theme on its own.
+ */
+.lb-note--cm .lb-cm-task {
+	margin: 0 5px 0 0;
+	vertical-align: -1px;
+	cursor: pointer;
+	accent-color: var(--lb-accent);
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lifeboard">
+	<rect width="64" height="64" rx="14" fill="#101012" />
+	<!-- An endless board: three typed nodes and a rollup total. -->
+	<rect x="12" y="13" width="17" height="20" rx="3" fill="#6c8cff" />
+	<rect x="34" y="13" width="17" height="12" rx="3" fill="#3f4557" />
+	<rect x="34" y="29" width="17" height="4" rx="2" fill="#3f4557" />
+	<rect x="12" y="38" width="39" height="4" rx="2" fill="#3f4557" />
+	<path
+		d="M17 47h13l-6.5 4L30 55H17"
+		fill="none"
+		stroke="#3dd68c"
+		stroke-width="3"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+	/>
+	<rect x="35" y="49" width="16" height="4" rx="2" fill="#3dd68c" />
+</svg>

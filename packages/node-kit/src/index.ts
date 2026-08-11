@@ -253,6 +253,13 @@ export {
 	type CollectionRow,
 } from './collections/engine'
 export { renderExpressions, type ExpressionContext } from './collections/expressions'
+export { expressionSuggestExtension } from './collections/suggestExtension'
+export {
+	expressionBodyAt,
+	expressionSuggestions,
+	type Suggestion,
+	type SuggestionKind,
+} from './collections/suggest'
 export {
 	useExpressionShape,
 	substituteRichText,

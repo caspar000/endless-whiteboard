@@ -2243,10 +2243,62 @@ button {
  * every sentence that contains one. Notion shades its property tokens grey for the same reason; the
  * accent is used here because on a whiteboard the thing worth spotting is "this number is derived".
  */
-.lb-cm-expr {
+.lb-cm-expr,
+.lb-expr-token {
 	background: var(--lb-accent-tint);
 	border-radius: 3px;
 	padding: 1px 0;
+}
+
+/*
+ * The same menu, for the editors tldraw owns.
+ *
+ * Its own DOM rather than CodeMirror's, because the two editors are different libraries — but the
+ * rules behind both come from one place (`suggest.ts`), so only the markup differs and the two are
+ * styled to look like the single thing they are.
+ *
+ * Fixed to the viewport and mounted in the body: inside a shape it would be scaled by the canvas zoom
+ * and clipped by the shape's own bounds.
+ */
+.lb-suggest {
+	position: fixed;
+	z-index: 400;
+	min-width: 190px;
+	max-height: 220px;
+	overflow-y: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	box-shadow: var(--lb-shadow-1);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	padding: 3px;
+}
+.lb-suggest__row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	padding: 4px 8px;
+}
+.lb-suggest__row--on {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+}
+.lb-suggest__label {
+	font-weight: 500;
+}
+.lb-suggest__detail {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	margin-left: auto;
+	white-space: nowrap;
+}
+.lb-suggest__row--on .lb-suggest__detail {
+	color: var(--lb-on-accent);
+	opacity: 0.78;
 }
 
 /* The completion menu, restyled from CodeMirror's default to match the app's panels. */

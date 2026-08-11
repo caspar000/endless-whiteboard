@@ -370,6 +370,75 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('.cm-content .lb-cm-expr')).toHaveText('{sum Price either}')
 	})
 
+	test('the same helper works inside a sticky, not just the note', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+						{ id: 'quality', name: 'Quality', type: 'rating' },
+					],
+				},
+			})
+			editor.createShapes([{ type: 'note', x: 260, y: 200 }])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		const at = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			const note = editor.getCurrentPageShapes().find((s) => s.type === 'note')!
+			const b = editor.getShapePageBounds(note.id)!
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+		})
+		await page.mouse.dblclick(at.x, at.y)
+
+		await page.keyboard.type('Total ')
+		await page.keyboard.type('{')
+
+		/*
+		 * A different editor entirely — the note is CodeMirror, this is tldraw's own ProseMirror — but
+		 * the rules come from one shared module, so the menu is the same menu in the same order.
+		 */
+		const menu = page.locator('.lb-suggest')
+		await expect(menu).toBeVisible()
+		const labels = () => menu.locator('.lb-suggest__label').allTextContents()
+		expect(await labels()).toEqual(['sum', 'count', 'avg', 'min', 'max', 'median', 'Price', 'Quality'])
+
+		/*
+		 * Driven by keyboard. Clicking a row works but is not yet reliable — the pointer-down blurs the
+		 * editor, ProseMirror reports no selection while blurred, and the menu (whose state is derived
+		 * from where the caret is) shuts for a frame before focus returns. Typing is the path this
+		 * asserts because it is the one that is solid; the click path is a known rough edge.
+		 */
+		await page.keyboard.press('Enter')
+		await expect.poll(labels).toEqual(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
+		await page.keyboard.press('Enter')
+		await expect.poll(labels).toEqual(['in', 'out', 'either', 'frame', 'page'])
+
+		// The terminal step closes the expression, and the menu goes with it — the caret is past the
+		// brace, so there is no open expression left to complete.
+		await page.keyboard.press('ArrowDown')
+		await page.keyboard.press('ArrowDown')
+		await page.keyboard.press('Enter')
+		await expect(menu).toBeHidden()
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const editor = (window as unknown as { editor: EditorLike }).editor
+					const note = editor.getCurrentPageShapes().find((s) => s.type === 'note')!
+					return JSON.stringify(note.props.richText)
+				})
+			)
+			.toContain('Total {sum Price either}')
+
+		// And the finished token is tinted here too.
+		await expect(page.locator('.lb-expr-token')).toHaveText('{sum Price either}')
+	})
+
 	test('markdown markers hide once the caret leaves their line', async ({ page }) => {
 		// The live-preview contract: the document is never transformed, only decorated — so the markers are
 		// hidden from view while remaining in the source.

@@ -9,8 +9,10 @@ import {
 	rollupsToTablesMigrations,
 	itemsToNotesMigrations,
 	rollupStats,
+	expressionSuggestExtension,
+	readPropertyRegistry,
 } from '@lifeboard/node-kit'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
 	FrameShapeUtil,
 	Tldraw,
@@ -22,6 +24,8 @@ import {
 	type TLEventInfo,
 	useEditor,
 	useValue,
+	tipTapDefaultExtensions,
+	type TLTextOptions,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
@@ -217,6 +221,30 @@ export function Board({
 
 	const [editor, setEditor] = useState<Editor | null>(null)
 
+	/**
+	 * The `{…}` helper, for every text editor tldraw draws itself — sticky, text shape, geo label,
+	 * arrow label. One TipTap config serves all four.
+	 *
+	 * Built once per board and never rebuilt: a new extension list would tear down and recreate the
+	 * editor inside whatever shape is being edited, taking the caret with it. The registry is read
+	 * through a ref rather than captured, because this is assembled before the editor exists and a
+	 * property invented in a panel has to be offered here without leaving edit mode.
+	 */
+	const editorRef = useRef<Editor | null>(null)
+	const textOptions = useMemo<TLTextOptions>(
+		() => ({
+			tipTapConfig: {
+				extensions: [
+					...tipTapDefaultExtensions,
+					expressionSuggestExtension(() =>
+						editorRef.current ? readPropertyRegistry(editorRef.current) : []
+					),
+				],
+			},
+		}),
+		[]
+	)
+
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
 	return (
@@ -234,6 +262,14 @@ export function Board({
 				tools={nodeTools}
 				overrides={nodeUiOverrides}
 				components={canvasComponents}
+				/*
+				 * One TipTap config serves every text editor tldraw owns — sticky, text shape, geo
+				 * label, arrow label — so the `{…}` helper reaches all four from here.
+				 *
+				 * Built once at module scope. Rebuilding the extension list on each render would tear
+				 * down and recreate the editor inside every shape being edited, losing the caret.
+				 */
+				textOptions={textOptions}
 				// Double-clicking empty canvas asks which kind of node to create instead of silently
 				// making a text shape — in an app about typed nodes, the untyped one is a poor default.
 				// Only the fallback for the frame before `onMount` reports this editor and app/App.tsx sets
@@ -257,6 +293,7 @@ export function Board({
 					// scraping the DOM, and makes the console usable when diagnosing a board.
 					// Cleared on unmount — leaving a disposed editor here is worse than leaving
 					// nothing, because writes to it are silently dropped.
+					editorRef.current = editor
 					const w = window as unknown as { editor?: Editor }
 					w.editor = editor
 					setEditor(editor)
@@ -272,6 +309,7 @@ export function Board({
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
 						// unmounts *after* the next one has mounted, so an unguarded delete here would
 						// wipe the live editor's handle.
+						editorRef.current = null
 						if (w.editor === editor) delete w.editor
 						onEditor?.(null)
 						stopWatchingPastes()

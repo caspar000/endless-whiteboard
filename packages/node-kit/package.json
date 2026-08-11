@@ -41,6 +41,8 @@
 		"@lezer/common": "^1.5.2",
 		"@lezer/highlight": "^1.2.3",
 		"@lezer/markdown": "^1.7.2",
+		"@tiptap/core": "^3.12.1",
+		"@tiptap/pm": "^3.12.1",
 		"lucide-react": "^1.28.0",
 		"react-markdown": "^10.1.0",
 		"remark-breaks": "^4.0.0",

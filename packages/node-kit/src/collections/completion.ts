@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view'
 import { RangeSetBuilder, type Extension } from '@codemirror/state'
 import type { PropertyDef } from '../properties/types'
-import { EXPRESSION_OPS } from './expressions'
+import { expressionBodyAt, expressionSuggestions, type Suggestion } from './suggest'
 
 /**
  * The helper for writing `{…}`.
@@ -45,78 +45,29 @@ function closeBrace(): Extension {
 	})
 }
 
-/** Where the caret sits inside an unclosed `{`, or `null` when it is not in one at all. */
-function expressionAt(context: CompletionContext): { open: number; body: string } | null {
-	const line = context.state.doc.lineAt(context.pos)
-	const before = line.text.slice(0, context.pos - line.from)
-	const open = before.lastIndexOf('{')
-	if (open === -1) return null
-	// A closed expression before the caret is finished business, not something to complete.
-	if (before.slice(open).includes('}')) return null
-	return { open: line.from + open, body: before.slice(open + 1) }
-}
-
-/*
- * What the menu offers, listed rather than derived from the parser's vocabulary.
- *
- * The parser accepts aliases — `total` for `sum`, `average` for `avg`, `board` for `page` — because
- * someone typing from memory should not have to remember which spelling won. Offering both would put
- * the same verb in the menu twice and make a short list look like a long one, so the menu names one
- * of each and the alias stays a thing that works when typed.
- *
- * Declaration order is the menu order, held there by a descending boost. Left to itself CodeMirror
- * sorts equal scores alphabetically, which puts `avg` above `sum` and `either` above `in` — the rare
- * answer above the common one in both cases.
- */
-const OFFERED_OPS: [string, string][] = [
-	['sum', 'add them up'],
-	['count', 'how many'],
-	['avg', 'the average'],
-	['min', 'the smallest'],
-	['max', 'the largest'],
-	['median', 'the middle one'],
-]
-
-const OFFERED_SOURCES: [string, string][] = [
-	['in', 'arrows pointing at this'],
-	['out', 'arrows pointing away'],
-	['either', 'both ways — in adds, out subtracts'],
-	['frame', 'shapes in this frame'],
-	['page', 'everything on this board'],
-]
-
-/** Keeps a list in the order it was written. Higher sorts first; the offset lifts a whole group. */
-function ranked(index: number, length: number, offset = 0): number {
-	return offset + (length - index)
-}
-
 /**
- * Re-opens the menu after inserting, so one choice leads to the next.
+ * Re-opens the menu after a non-terminal choice, so one step leads to the next.
  *
  * This is what turns the helper into something you can drive with a mouse: pick a verb, the
- * properties appear; pick a property, the places appear. Without it every step would need the `{`
- * dance again.
+ * properties appear; pick a property, the places appear.
  */
-function chain(insert: string): Completion['apply'] {
+function applyOf(suggestion: Suggestion): Completion['apply'] {
 	return (view, _completion, from, to) => {
+		if (!suggestion.terminal) {
+			view.dispatch({
+				changes: { from, to, insert: suggestion.insert },
+				selection: { anchor: from + suggestion.insert.length },
+				userEvent: 'input.complete',
+			})
+			queueMicrotask(() => startCompletion(view))
+			return
+		}
+		// The closing brace is already there — typing `{` wrote it — so this steps past rather than
+		// adding a second one.
+		const closed = view.state.doc.sliceString(to, to + 1) === '}'
 		view.dispatch({
-			changes: { from, to, insert },
-			selection: { anchor: from + insert.length },
-			userEvent: 'input.complete',
-		})
-		queueMicrotask(() => startCompletion(view))
-	}
-}
-
-/** The last step closes the expression and steps over the brace, because there is nothing left to say. */
-function finish(insert: string): Completion['apply'] {
-	return (view, _completion, from, to) => {
-		// The closing brace is already there — `{` wrote it — so this steps past rather than adding one.
-		const after = view.state.doc.sliceString(to, to + 1)
-		const closing = after === '}' ? 1 : 0
-		view.dispatch({
-			changes: { from, to, insert: closing ? insert : `${insert}}` },
-			selection: { anchor: from + insert.length + 1 },
+			changes: { from, to, insert: closed ? suggestion.insert : `${suggestion.insert}}` },
+			selection: { anchor: from + suggestion.insert.length + 1 },
 			userEvent: 'input.complete',
 		})
 	}
@@ -124,73 +75,25 @@ function finish(insert: string): Completion['apply'] {
 
 function expressionSource(properties: () => readonly PropertyDef[]) {
 	return (context: CompletionContext): CompletionResult | null => {
-		const found = expressionAt(context)
+		const line = context.state.doc.lineAt(context.pos)
+		const found = expressionBodyAt(line.text, context.pos - line.from)
 		if (!found) return null
-
-		const words = found.body.split(/\s+/)
-		const typing = words[words.length - 1] ?? ''
-		const settled = words.slice(0, -1).filter(Boolean)
-		const from = context.pos - typing.length
-		const defs = properties()
-
-		const propertyOptions = (apply: (label: string) => Completion['apply']): Completion[] =>
-			defs.map((def) => ({
-				label: def.name,
-				type: 'property',
-				detail: def.type,
-				apply: apply(def.name),
-			}))
-
-		// Nothing settled yet: either a verb, or a bare property for this shape's own value.
-		if (settled.length === 0) {
-			return {
-				from,
-				options: [
-					...OFFERED_OPS.map(
-						([op, detail], i): Completion => ({
-							label: op,
-							type: 'keyword',
-							detail,
-							// Above the bare properties: asking a question about the board is the common
-							// case, and reading this shape's own value back to itself is the rare one.
-							boost: ranked(i, OFFERED_OPS.length, 10),
-							apply: chain(`${op} `),
-						})
-					),
-					...propertyOptions((label) => finish(label)),
-				],
-				validFor: /^[\w ]*$/,
-			}
-		}
-
-		// A verb is settled. The second word is the property; anything after it is the place to look.
-		const isOp = settled[0]!.toLowerCase() in EXPRESSION_OPS
-		if (!isOp) return null
-
-		const sourceOptions = OFFERED_SOURCES.map(
-			([key, detail], i): Completion => ({
-				label: key,
-				type: 'keyword',
-				detail,
-				boost: ranked(i, OFFERED_SOURCES.length),
-				apply: finish(key),
-			})
-		)
+		const result = expressionSuggestions(found.body, properties())
+		if (!result) return null
 
 		return {
-			from,
-			options:
-				settled.length === 1
-					? // Property first: a verb is nearly always followed by what it acts on, and the
-						// places to look are still there for `{count in}`, which needs no property.
-						[
-							...propertyOptions((label) => chain(`${label} `)).map((option) => ({
-								...option,
-								boost: 10,
-							})),
-							...sourceOptions,
-						]
-					: sourceOptions,
+			from: line.from + found.start + result.from,
+			// CodeMirror sorts equal scores alphabetically, which would undo the ordering the shared
+			// core went to the trouble of choosing. A descending boost pins the order it returned.
+			options: result.items.map(
+				(item, i): Completion => ({
+					label: item.label,
+					detail: item.detail,
+					type: item.kind === 'property' ? 'property' : 'keyword',
+					boost: result.items.length - i,
+					apply: applyOf(item),
+				})
+			),
 			validFor: /^[\w ]*$/,
 		}
 	}

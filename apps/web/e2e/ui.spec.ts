@@ -318,6 +318,58 @@ test.describe('canvas chrome', () => {
 		expect(await noteMarkdown(page)).toBe('# Existing note!')
 	})
 
+	test('typing { opens a helper that builds the whole expression by mouse', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorLike }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+						{ id: 'quality', name: 'Quality', type: 'rating' },
+					],
+				},
+			})
+		})
+
+		await createNote(page)
+		await expect(page.locator(NOTE_EDITOR)).toBeFocused()
+		await page.keyboard.type('Total: ')
+		await page.keyboard.type('{')
+
+		/*
+		 * The brace is the only key you have to know. It writes its own closer, opens the menu, and
+		 * every step after it is clickable — which is what lets an expression be built with the mouse
+		 * and typed straight through by anyone who has learnt it.
+		 */
+		const menu = page.locator('.cm-tooltip-autocomplete')
+		await expect(menu).toBeVisible()
+		const labels = () => menu.locator('.cm-completionLabel').allTextContents()
+
+		// First step: the verbs, then this shape's own properties.
+		// Declaration order, not alphabetical: `sum` above `avg`, and `in` above `either` below.
+		expect(await labels()).toEqual(['sum', 'count', 'avg', 'min', 'max', 'median', 'Price', 'Quality'])
+
+		await menu.locator('li', { hasText: 'sum' }).first().click()
+		// Second step: the property it acts on, ahead of the places to look.
+		await expect.poll(labels).toEqual(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
+
+		await menu.locator('li', { hasText: 'Price' }).first().click()
+		// Third step: only the places are left.
+		await expect.poll(labels).toEqual(['in', 'out', 'either', 'frame', 'page'])
+
+		await menu.locator('li', { hasText: 'either' }).first().click()
+		await expect
+			.poll(() => page.evaluate(() => document.querySelector('.cm-content')?.textContent))
+			.toBe('Total: {sum Price either}')
+
+		// And the finished expression is tinted, so it reads as one object rather than punctuation.
+		await expect(page.locator('.cm-content .lb-cm-expr')).toHaveText('{sum Price either}')
+	})
+
 	test('markdown markers hide once the caret leaves their line', async ({ page }) => {
 		// The live-preview contract: the document is never transformed, only decorated — so the markers are
 		// hidden from view while remaining in the source.
@@ -1354,6 +1406,8 @@ interface EditorLike {
 	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
 	pageToScreen(p: { x: number; y: number }): { x: number; y: number }
 	getEditingShapeId(): string | null
+	getDocumentSettings(): { meta: Record<string, unknown> }
+	updateDocumentSettings(settings: { meta: Record<string, unknown> }): void
 	setCamera(c: { x: number; y: number; z: number }): unknown
 	createShapes(s: unknown[]): unknown
 	select(...ids: string[]): unknown

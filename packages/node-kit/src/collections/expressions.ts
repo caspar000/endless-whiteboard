@@ -29,7 +29,7 @@ import { defaultCollection, type Collection } from './spec'
  */
 
 /** Ops reachable from an expression. A deliberately short list — the panel has the long one. */
-const OPS: Record<string, Collection['op']> = {
+export const EXPRESSION_OPS: Record<string, Collection['op']> = {
 	sum: 'sum',
 	total: 'sum',
 	count: 'count',
@@ -41,7 +41,7 @@ const OPS: Record<string, Collection['op']> = {
 }
 
 /** The trailing keyword that says where to look. Absent means the arrows pointing in. */
-const SOURCES: Record<string, { scope: 'page' | 'frame' | 'connected'; direction?: string }> = {
+export const EXPRESSION_SOURCES: Record<string, { scope: 'page' | 'frame' | 'connected'; direction?: string }> = {
 	in: { scope: 'connected', direction: 'in' },
 	out: { scope: 'connected', direction: 'out' },
 	either: { scope: 'connected', direction: 'either' },
@@ -125,7 +125,7 @@ function evaluate(body: string, context: ExpressionContext): string | null {
 	const tokens = body.trim().split(/\s+/).filter(Boolean)
 	if (!tokens.length) return null
 
-	const op = OPS[tokens[0]!.toLowerCase()]
+	const op = EXPRESSION_OPS[tokens[0]!.toLowerCase()]
 	if (!op) {
 		// No op, so this is the shape's own value — the `{price}` form.
 		const def = findProperty(tokens.join(' '), context.properties)
@@ -136,7 +136,7 @@ function evaluate(body: string, context: ExpressionContext): string | null {
 	const rest = tokens.slice(1)
 	// The *last* token decides the source, so a property called "page" loses to the keyword. Rare
 	// enough to accept, and the alternative — guessing from the middle — is worse to explain.
-	const tail = rest.length ? SOURCES[rest[rest.length - 1]!.toLowerCase()] : undefined
+	const tail = rest.length ? EXPRESSION_SOURCES[rest[rest.length - 1]!.toLowerCase()] : undefined
 	const nameTokens = tail ? rest.slice(0, -1) : rest
 	const def = nameTokens.length ? findProperty(nameTokens.join(' '), context.properties) : undefined
 	// A named property that matches nothing is a typo, not a count. Leaving it visible says so.

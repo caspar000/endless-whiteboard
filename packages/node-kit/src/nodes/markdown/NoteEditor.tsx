@@ -4,6 +4,8 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { stopEventPropagation, type Editor as TldrawEditor } from 'tldraw'
+import { expressionHelper } from '../../collections/completion'
+import { readPropertyRegistry } from '../../properties/schema'
 import { editingKeymap } from './editingKeymap'
 import { livePreview } from './livePreview'
 
@@ -109,6 +111,10 @@ export function NoteEditor({
 					// GFM: task lists, strikethrough and tables are what real notes contain.
 					markdown({ base: markdownLanguage }),
 					livePreview(),
+					// `{…}`: opens on the brace, suggests as the expression takes shape, tints the result.
+					// The registry is read lazily so a property invented elsewhere shows up without
+					// reopening the note.
+					expressionHelper(() => readPropertyRegistry(editor)),
 					history(),
 					EditorView.lineWrapping,
 					// Ours first so Enter, Tab and the formatting chords beat the defaults.

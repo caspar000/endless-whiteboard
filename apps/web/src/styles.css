@@ -2236,6 +2236,61 @@ button {
 	height: 100%;
 }
 
+/*
+ * An expression, in the editor and in the rendered note.
+ *
+ * Tinted rather than outlined, so a `{…}` reads as one object at a glance without drawing a box round
+ * every sentence that contains one. Notion shades its property tokens grey for the same reason; the
+ * accent is used here because on a whiteboard the thing worth spotting is "this number is derived".
+ */
+.lb-cm-expr {
+	background: var(--lb-accent-tint);
+	border-radius: 3px;
+	padding: 1px 0;
+}
+
+/* The completion menu, restyled from CodeMirror's default to match the app's panels. */
+.cm-tooltip.cm-tooltip-autocomplete {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	box-shadow: var(--lb-shadow-1);
+	overflow: hidden;
+}
+/* Specific enough to beat CodeMirror's own base theme, which is injected after this stylesheet and
+   otherwise wins on monospace labels and italic hints. */
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+	font-family: var(--lb-font);
+	font-size: 12px;
+	max-height: 220px;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+	align-items: baseline;
+	color: var(--lb-text);
+	display: flex;
+	gap: 10px;
+	padding: 4px 10px;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+}
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionLabel {
+	font-family: var(--lb-font);
+	font-weight: 500;
+}
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+	color: var(--lb-text-faint);
+	font-family: var(--lb-font);
+	font-style: normal;
+	font-size: 11px;
+	margin-left: auto;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail {
+	color: var(--lb-on-accent);
+	opacity: 0.78;
+}
+
 /* The select / multiSelect editor: the current value, and an inline menu of the known options. */
 .lb-choice {
 	display: flex;

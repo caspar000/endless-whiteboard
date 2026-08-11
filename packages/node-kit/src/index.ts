@@ -260,6 +260,7 @@ export {
 	type Suggestion,
 	type SuggestionKind,
 } from './collections/suggest'
+export { SuggestMenu, stepSelection } from './collections/suggestMenu'
 export {
 	useExpressionShape,
 	substituteRichText,

@@ -3,6 +3,7 @@ import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/s
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import type { PropertyDef } from '../properties/types'
 import { expressionBodyAt, expressionSuggestions, type Suggestion } from './suggest'
+import { SuggestMenu, stepSelection } from './suggestMenu'
 
 /**
  * The `{…}` helper for every text editor tldraw owns — stickies, text shapes, shape labels, arrow
@@ -95,72 +96,6 @@ function accept(view: EditorView, menu: MenuState, item: Suggestion): void {
 }
 
 /**
- * The popup, as plain DOM in the body.
- *
- * Not a React portal: this lives inside a ProseMirror plugin view whose lifecycle is not React's, and
- * mounting it in the body rather than in the editor keeps it clear of the canvas transform — a menu
- * inside a shape would be scaled by the zoom and clipped by the shape's own bounds.
- */
-class MenuView {
-	private readonly dom: HTMLElement
-	private items: Suggestion[] = []
-
-	constructor(
-		private readonly view: EditorView,
-		private readonly onPick: (item: Suggestion) => void
-	) {
-		this.dom = document.createElement('div')
-		this.dom.className = 'lb-suggest'
-		this.dom.setAttribute('role', 'listbox')
-		this.dom.style.display = 'none'
-		// Pointer-down rather than click: the editor blurs on mousedown, and a blurred editor has no
-		// selection to insert into.
-		this.dom.addEventListener('pointerdown', (event) => {
-			event.preventDefault()
-			event.stopPropagation()
-			const row = (event.target as HTMLElement).closest<HTMLElement>('[data-index]')
-			if (!row) return
-			const item = this.items[Number(row.dataset.index)]
-			if (item) this.onPick(item)
-		})
-		document.body.appendChild(this.dom)
-	}
-
-	render(menu: MenuState | null): void {
-		if (!menu) {
-			this.dom.style.display = 'none'
-			return
-		}
-		this.items = menu.items
-		this.dom.replaceChildren(
-			...menu.items.map((item, i) => {
-				const row = document.createElement('div')
-				row.className = i === menu.selected ? 'lb-suggest__row lb-suggest__row--on' : 'lb-suggest__row'
-				row.dataset.index = String(i)
-				row.setAttribute('role', 'option')
-				row.setAttribute('aria-selected', String(i === menu.selected))
-				const label = document.createElement('span')
-				label.className = 'lb-suggest__label'
-				label.textContent = item.label
-				const detail = document.createElement('span')
-				detail.className = 'lb-suggest__detail'
-				detail.textContent = item.detail
-				row.append(label, detail)
-				return row
-			})
-		)
-		const caret = this.view.coordsAtPos(menu.to)
-		this.dom.style.display = 'block'
-		this.dom.style.left = `${Math.round(caret.left)}px`
-		this.dom.style.top = `${Math.round(caret.bottom + 4)}px`
-	}
-
-	destroy(): void {
-		this.dom.remove()
-	}
-}
-
-/**
  * @param properties Read lazily — the board's registry changes while a shape is open, and a property
  *   invented in a panel should be offered here without leaving edit mode.
  */
@@ -221,8 +156,7 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 							}
 							if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
 								const delta = event.key === 'ArrowDown' ? 1 : -1
-								const selected =
-									(menu.selected + delta + menu.items.length) % menu.items.length
+								const selected = stepSelection(menu.selected, delta, menu.items.length)
 								view.dispatch(
 									view.state.tr.setMeta(KEY, { type: 'select', selected } as MenuMeta)
 								)
@@ -238,27 +172,32 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 						},
 					},
 					view: (view) => {
-						const menuView = new MenuView(view, (item) => {
-							/*
-							 * Focus first, then insert.
-							 *
-							 * Clicking the menu blurs the editor however hard the pointer handler tries to
-							 * prevent it, and a blurred ProseMirror reports no selection — so the menu state,
-							 * which is derived entirely from where the caret is, went null and the menu shut
-							 * itself mid-sequence. Reclaiming focus before dispatching means the transaction
-							 * lands in an editor that still knows where it was.
-							 */
+						/*
+						 * The last state we *drew*, which is what a click has to be answered from.
+						 *
+						 * Clicking blurs the editor however hard the pointer handler tries to prevent it,
+						 * and a blurred ProseMirror reports no selection — so asking it where the
+						 * expression was, at click time, asks the wrong moment and the menu shut itself
+						 * mid-sequence. This is by definition the state the person was looking at.
+						 */
+						let drawn: MenuState | null = null
+						const menuView = new SuggestMenu((item) => {
 							view.focus()
-							const menu = KEY.getState(view.state)
-							if (menu) accept(view, menu, item)
+							if (drawn) accept(view, drawn, item)
 						})
-						const visible = (state: EditorState) => {
+						const paint = (state: EditorState) => {
 							const menu = KEY.getState(state)
-							return menu && !menu.dismissed ? menu : null
+							drawn = menu && !menu.dismissed ? menu : null
+							const rect = drawn ? view.coordsAtPos(drawn.to) : null
+							menuView.render(
+								drawn && rect
+									? { items: drawn.items, selected: drawn.selected, caret: rect }
+									: null
+							)
 						}
-						menuView.render(visible(view.state))
+						paint(view.state)
 						return {
-							update: (updated) => menuView.render(visible(updated.state)),
+							update: (updated) => paint(updated.state),
 							destroy: () => menuView.destroy(),
 						}
 					},

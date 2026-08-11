@@ -2243,7 +2243,6 @@ button {
  * every sentence that contains one. Notion shades its property tokens grey for the same reason; the
  * accent is used here because on a whiteboard the thing worth spotting is "this number is derived".
  */
-.lb-cm-expr,
 .lb-expr-token {
 	background: var(--lb-accent-tint);
 	border-radius: 3px;
@@ -2251,11 +2250,11 @@ button {
 }
 
 /*
- * The same menu, for the editors tldraw owns.
+ * The `{…}` menu — one popup, for both editors.
  *
- * Its own DOM rather than CodeMirror's, because the two editors are different libraries — but the
- * rules behind both come from one place (`suggest.ts`), so only the markup differs and the two are
- * styled to look like the single thing they are.
+ * The note used to render CodeMirror's built-in completion widget restyled to look like this one.
+ * Same words, same order, and still not the same thing: different DOM, different key handling,
+ * different filtering. Both editors render this now.
  *
  * Fixed to the viewport and mounted in the body: inside a shape it would be scaled by the canvas zoom
  * and clipped by the shape's own bounds.
@@ -2301,44 +2300,53 @@ button {
 	opacity: 0.78;
 }
 
-/* The completion menu, restyled from CodeMirror's default to match the app's panels. */
-.cm-tooltip.cm-tooltip-autocomplete {
+/*
+ * The `{…}` menu — one popup, for both editors.
+ *
+ * The note used to render CodeMirror's built-in completion widget restyled to look like this one.
+ * Same words, same order, and still not the same thing: different DOM, different key handling,
+ * different filtering. Both editors render this now.
+ *
+ * Fixed to the viewport and mounted in the body: inside a shape it would be scaled by the canvas zoom
+ * and clipped by the shape's own bounds.
+ */
+.lb-suggest {
+	position: fixed;
+	z-index: 400;
+	min-width: 190px;
+	max-height: 220px;
+	overflow-y: auto;
 	background: var(--lb-surface);
 	border: 1px solid var(--lb-border);
 	border-radius: 8px;
 	box-shadow: var(--lb-shadow-1);
-	overflow: hidden;
-}
-/* Specific enough to beat CodeMirror's own base theme, which is injected after this stylesheet and
-   otherwise wins on monospace labels and italic hints. */
-.cm-tooltip.cm-tooltip-autocomplete > ul {
 	font-family: var(--lb-font);
 	font-size: 12px;
-	max-height: 220px;
+	padding: 3px;
 }
-.cm-tooltip.cm-tooltip-autocomplete > ul > li {
-	align-items: baseline;
-	color: var(--lb-text);
+.lb-suggest__row {
 	display: flex;
+	align-items: baseline;
 	gap: 10px;
-	padding: 4px 10px;
+	border-radius: 5px;
+	color: var(--lb-text);
+	cursor: pointer;
+	padding: 4px 8px;
 }
-.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+.lb-suggest__row--on {
 	background: var(--lb-accent);
 	color: var(--lb-on-accent);
 }
-.cm-tooltip.cm-tooltip-autocomplete .cm-completionLabel {
-	font-family: var(--lb-font);
+.lb-suggest__label {
 	font-weight: 500;
 }
-.cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+.lb-suggest__detail {
 	color: var(--lb-text-faint);
-	font-family: var(--lb-font);
-	font-style: normal;
 	font-size: 11px;
 	margin-left: auto;
+	white-space: nowrap;
 }
-.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail {
+.lb-suggest__row--on .lb-suggest__detail {
 	color: var(--lb-on-accent);
 	opacity: 0.78;
 }

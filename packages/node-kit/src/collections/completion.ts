@@ -1,121 +1,75 @@
-import {
-	autocompletion,
-	startCompletion,
-	type Completion,
-	type CompletionContext,
-	type CompletionResult,
-} from '@codemirror/autocomplete'
+import { Prec, RangeSetBuilder, type Extension } from '@codemirror/state'
 import {
 	Decoration,
 	EditorView,
 	ViewPlugin,
+	keymap,
 	type DecorationSet,
 	type ViewUpdate,
 } from '@codemirror/view'
-import { RangeSetBuilder, type Extension } from '@codemirror/state'
 import type { PropertyDef } from '../properties/types'
 import { expressionBodyAt, expressionSuggestions, type Suggestion } from './suggest'
+import { SuggestMenu, stepSelection } from './suggestMenu'
 
 /**
- * The helper for writing `{…}`.
+ * The `{…}` helper for the note's CodeMirror editor.
  *
- * Formula editors converged on the same three things and this does all of them: a menu that opens on
- * the character that starts an expression, suggestions that narrow as the expression takes shape, and
- * a tint on the finished token so it reads as one object rather than as punctuation you typed. Notion
- * calls the last one a property token and shades it grey; Sheets and Airtable do the argument hints.
+ * Deliberately **not** `@codemirror/autocomplete`. That widget is perfectly good, and it is not the
+ * one every other shape on the board uses — different DOM, different key handling, different
+ * filtering — so the note's menu felt subtly unlike the sticky's however closely the two were styled.
+ * Both now render `SuggestMenu` and ask `suggest.ts`, so they are the same menu rather than two menus
+ * that agree.
  *
- * The menu is **positional**, which is what makes it teachable: what it offers depends on how far
- * into the expression you are, so `{` shows the verbs, a verb shows the properties, and a property
- * shows the places to look. Every step is clickable, so an expression can be built with the mouse
- * from the `{` onwards — and typed straight through by anyone who has learnt it, which is faster.
+ * What is left here is the adapter: find the expression under the caret, turn offsets into document
+ * positions, dispatch the insert.
  */
 
-/** Opening a brace writes the closing one, so the menu has a complete expression to sit inside. */
-function closeBrace(): Extension {
-	return EditorView.inputHandler.of((view, from, to, text) => {
-		if (text !== '{') return false
-		view.dispatch({
-			changes: { from, to, insert: '{}' },
-			selection: { anchor: from + 1 },
-			userEvent: 'input.type',
-		})
-		// Straight into the menu: the whole point is that `{` is the only key you must know.
-		queueMicrotask(() => startCompletion(view))
-		return true
+interface MenuState {
+	/** Document positions of the word being typed. */
+	from: number
+	to: number
+	items: Suggestion[]
+	selected: number
+	dismissed: boolean
+}
+
+/** The menu implied by wherever the caret is, or `null` for "no menu". */
+function stateFor(view: EditorView, properties: readonly PropertyDef[]): MenuState | null {
+	const { main } = view.state.selection
+	// A menu over a range would have to guess which end is being typed at.
+	if (!main.empty) return null
+	const line = view.state.doc.lineAt(main.head)
+	const found = expressionBodyAt(line.text, main.head - line.from)
+	if (!found) return null
+	const result = expressionSuggestions(found.body, properties)
+	if (!result || result.items.length === 0) return null
+	return {
+		from: line.from + found.start + result.from,
+		to: main.head,
+		items: result.items,
+		selected: 0,
+		dismissed: false,
+	}
+}
+
+function accept(view: EditorView, menu: MenuState, item: Suggestion): void {
+	// The closing brace is already there — typing `{` wrote it — so a terminal step writes past it
+	// rather than adding a second one, and lands the caret outside the expression. That is what closes
+	// the menu: the next recompute finds no open brace.
+	const closed = view.state.doc.sliceString(menu.to, menu.to + 1) === '}'
+	const insert = item.terminal && !closed ? `${item.insert}}` : item.insert
+	view.dispatch({
+		changes: { from: menu.from, to: menu.to, insert },
+		selection: { anchor: menu.from + item.insert.length + (item.terminal ? 1 : 0) },
+		userEvent: 'input.complete',
 	})
-}
-
-/**
- * Re-opens the menu after a non-terminal choice, so one step leads to the next.
- *
- * This is what turns the helper into something you can drive with a mouse: pick a verb, the
- * properties appear; pick a property, the places appear.
- */
-function applyOf(suggestion: Suggestion): Completion['apply'] {
-	return (view, _completion, from, to) => {
-		if (!suggestion.terminal) {
-			view.dispatch({
-				changes: { from, to, insert: suggestion.insert },
-				selection: { anchor: from + suggestion.insert.length },
-				userEvent: 'input.complete',
-			})
-			queueMicrotask(() => startCompletion(view))
-			return
-		}
-		// The closing brace is already there — typing `{` wrote it — so this steps past rather than
-		// adding a second one.
-		const closed = view.state.doc.sliceString(to, to + 1) === '}'
-		view.dispatch({
-			changes: { from, to, insert: closed ? suggestion.insert : `${suggestion.insert}}` },
-			selection: { anchor: from + suggestion.insert.length + 1 },
-			userEvent: 'input.complete',
-		})
-	}
-}
-
-function expressionSource(properties: () => readonly PropertyDef[]) {
-	return (context: CompletionContext): CompletionResult | null => {
-		const line = context.state.doc.lineAt(context.pos)
-		const found = expressionBodyAt(line.text, context.pos - line.from)
-		if (!found) return null
-		const result = expressionSuggestions(found.body, properties())
-		if (!result) return null
-
-		return {
-			from: line.from + found.start + result.from,
-			// CodeMirror sorts equal scores alphabetically, which would undo the ordering the shared
-			// core went to the trouble of choosing. A descending boost pins the order it returned.
-			options: result.items.map(
-				(item, i): Completion => ({
-					label: item.label,
-					detail: item.detail,
-					type: item.kind === 'property' ? 'property' : 'keyword',
-					boost: result.items.length - i,
-					apply: applyOf(item),
-				})
-			),
-			validFor: /^[\w ]*$/,
-		}
-	}
+	view.focus()
 }
 
 /** A tint over every complete `{…}`, so a finished expression reads as one object. */
-const EXPRESSION_MARK = Decoration.mark({ class: 'lb-cm-expr' })
+const EXPRESSION_MARK = Decoration.mark({ class: 'lb-expr-token' })
 
-const highlightExpressions = ViewPlugin.fromClass(
-	class {
-		decorations: DecorationSet
-		constructor(view: EditorView) {
-			this.decorations = build(view)
-		}
-		update(update: ViewUpdate) {
-			if (update.docChanged || update.viewportChanged) this.decorations = build(update.view)
-		}
-	},
-	{ decorations: (value) => value.decorations }
-)
-
-function build(view: EditorView): DecorationSet {
+function decorate(view: EditorView): DecorationSet {
 	const builder = new RangeSetBuilder<Decoration>()
 	// Visible ranges only: a long note should not pay for decorating what is scrolled off.
 	for (const { from, to } of view.visibleRanges) {
@@ -132,15 +86,155 @@ function build(view: EditorView): DecorationSet {
  *   invented in another shape's panel should be offered here without reopening the editor.
  */
 export function expressionHelper(properties: () => readonly PropertyDef[]): Extension {
+	/*
+	 * One editor's worth of state, held by the closure.
+	 *
+	 * `expressionHelper()` is called once per note editor, so this is per-instance despite looking
+	 * global — the same shape as the ProseMirror plugin's state, kept here rather than in a
+	 * `StateField` because the menu is view furniture and never belongs in the document's history.
+	 */
+	let current: MenuState | null = null
+	let menu: SuggestMenu | null = null
+	let repaint = () => {}
+
+	const plugin = ViewPlugin.fromClass(
+		class {
+			constructor(private readonly view: EditorView) {
+				menu = new SuggestMenu((item) => {
+					// Answered from what was on screen, not from the editor: the click has already
+					// blurred it, and a blurred editor's caret is not where the person was looking.
+					if (current) accept(this.view, current, item)
+				})
+				repaint = () => this.paint()
+				this.sync()
+			}
+			update(update: ViewUpdate) {
+				if (update.docChanged || update.selectionSet || update.viewportChanged) this.sync()
+			}
+			sync() {
+				const next = stateFor(this.view, properties())
+				// Escape sticks while the caret stays in the same expression, and resets by leaving:
+				// `next` is null there, so there is nothing to remember.
+				const same = current !== null && next !== null && current.from === next.from
+				current = next
+					? {
+							...next,
+							selected: same ? Math.min(current!.selected, next.items.length - 1) : 0,
+							dismissed: same ? current!.dismissed : false,
+						}
+					: null
+				this.paint()
+			}
+			/*
+			 * Positioning needs the caret's rectangle, and reading layout is forbidden while CodeMirror
+			 * is updating — it throws, the plugin is torn down, and the menu never appears again for
+			 * that editor. `requestMeasure` is the sanctioned way to ask: read in the measure phase,
+			 * write in the one after it.
+			 */
+			paint() {
+				if (!menu) return
+				const state = current && !current.dismissed ? current : null
+				if (!state) {
+					menu.render(null)
+					return
+				}
+				this.view.requestMeasure({
+					key: this,
+					read: (view) => view.coordsAtPos(state.to),
+					write: (rect) => {
+						if (rect && menu) {
+							menu.render({ items: state.items, selected: state.selected, caret: rect })
+						}
+					},
+				})
+			}
+			destroy() {
+				menu?.destroy()
+				menu = null
+				current = null
+				repaint = () => {}
+			}
+		}
+	)
+
+	const highlight = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet
+			constructor(view: EditorView) {
+				this.decorations = decorate(view)
+			}
+			update(update: ViewUpdate) {
+				if (update.docChanged || update.viewportChanged) this.decorations = decorate(update.view)
+			}
+		},
+		{ decorations: (value) => value.decorations }
+	)
+
+	/** Every binding refuses when the menu is closed, so nothing the note needs is ever stolen. */
+	const whenOpen = (run: (view: EditorView, menu: MenuState) => boolean) => (view: EditorView) =>
+		current && !current.dismissed ? run(view, current) : false
+
 	return [
-		closeBrace(),
-		autocompletion({
-			override: [expressionSource(properties)],
-			// Ours is the only source, and it already refuses to fire outside `{…}`.
-			activateOnTyping: true,
-			closeOnBlur: false,
-			icons: false,
+		// Opening a brace writes the closing one, so the menu has a complete expression to sit inside
+		// and `{` is the only key anyone has to know.
+		EditorView.inputHandler.of((view, from, to, text) => {
+			if (text !== '{') return false
+			view.dispatch({
+				changes: { from, to, insert: '{}' },
+				selection: { anchor: from + 1 },
+				userEvent: 'input.type',
+			})
+			return true
 		}),
-		highlightExpressions,
+		plugin,
+		highlight,
+		// Highest, so the menu claims Enter and the arrows ahead of the note's own list handling, and
+		// Escape ahead of the binding that leaves the shape.
+		Prec.highest(
+			keymap.of([
+				{
+					key: 'ArrowDown',
+					run: whenOpen((_view, state) => {
+						current = { ...state, selected: stepSelection(state.selected, 1, state.items.length) }
+						repaint()
+						return true
+					}),
+				},
+				{
+					key: 'ArrowUp',
+					run: whenOpen((_view, state) => {
+						current = { ...state, selected: stepSelection(state.selected, -1, state.items.length) }
+						repaint()
+						return true
+					}),
+				},
+				{
+					key: 'Escape',
+					run: whenOpen((_view, state) => {
+						current = { ...state, dismissed: true }
+						repaint()
+						return true
+					}),
+				},
+				{
+					key: 'Enter',
+					run: whenOpen((view, state) => {
+						const item = state.items[state.selected]
+						if (!item) return false
+						accept(view, state, item)
+						return true
+					}),
+				},
+				{
+					key: 'Tab',
+					run: whenOpen((view, state) => {
+						const item = state.items[state.selected]
+						if (!item) return false
+						accept(view, state, item)
+						return true
+					}),
+				},
+			])
+		),
 	]
 }

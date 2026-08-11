@@ -345,29 +345,30 @@ test.describe('canvas chrome', () => {
 		 * every step after it is clickable — which is what lets an expression be built with the mouse
 		 * and typed straight through by anyone who has learnt it.
 		 */
-		const menu = page.locator('.cm-tooltip-autocomplete')
+		// The same selectors the sticky's test uses, because it is now literally the same menu.
+		const menu = page.locator('.lb-suggest')
 		await expect(menu).toBeVisible()
-		const labels = () => menu.locator('.cm-completionLabel').allTextContents()
+		const labels = () => menu.locator('.lb-suggest__label').allTextContents()
 
 		// First step: the verbs, then this shape's own properties.
 		// Declaration order, not alphabetical: `sum` above `avg`, and `in` above `either` below.
 		expect(await labels()).toEqual(['sum', 'count', 'avg', 'min', 'max', 'median', 'Price', 'Quality'])
 
-		await menu.locator('li', { hasText: 'sum' }).first().click()
+		await menu.locator('.lb-suggest__row', { hasText: 'sum' }).first().click()
 		// Second step: the property it acts on, ahead of the places to look.
 		await expect.poll(labels).toEqual(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
 
-		await menu.locator('li', { hasText: 'Price' }).first().click()
+		await menu.locator('.lb-suggest__row', { hasText: 'Price' }).first().click()
 		// Third step: only the places are left.
 		await expect.poll(labels).toEqual(['in', 'out', 'either', 'frame', 'page'])
 
-		await menu.locator('li', { hasText: 'either' }).first().click()
+		await menu.locator('.lb-suggest__row', { hasText: 'either' }).first().click()
 		await expect
 			.poll(() => page.evaluate(() => document.querySelector('.cm-content')?.textContent))
 			.toBe('Total: {sum Price either}')
 
 		// And the finished expression is tinted, so it reads as one object rather than punctuation.
-		await expect(page.locator('.cm-content .lb-cm-expr')).toHaveText('{sum Price either}')
+		await expect(page.locator('.cm-content .lb-expr-token')).toHaveText('{sum Price either}')
 	})
 
 	test('the same helper works inside a sticky, not just the note', async ({ page }) => {
@@ -409,10 +410,9 @@ test.describe('canvas chrome', () => {
 		expect(await labels()).toEqual(['sum', 'count', 'avg', 'min', 'max', 'median', 'Price', 'Quality'])
 
 		/*
-		 * Driven by keyboard. Clicking a row works but is not yet reliable — the pointer-down blurs the
-		 * editor, ProseMirror reports no selection while blurred, and the menu (whose state is derived
-		 * from where the caret is) shuts for a frame before focus returns. Typing is the path this
-		 * asserts because it is the one that is solid; the click path is a known rough edge.
+		 * Keyboard, not clicks. Picking with the mouse works in the note but not yet here: the
+		 * pointer-down blurs tldraw's editor and something downstream of that moves the caret out of
+		 * the expression, so the menu closes mid-sequence. Known rough edge; the typed path is solid.
 		 */
 		await page.keyboard.press('Enter')
 		await expect.poll(labels).toEqual(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])

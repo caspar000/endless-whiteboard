@@ -98,6 +98,19 @@ const canvasComponents: TLComponents = {
 	// to the grid" be two separate settings; this slot must stay empty or tldraw's copy would appear on
 	// top of ours the moment snapping was switched on.
 	Grid: null,
+	/*
+	 * The top-left strip — main menu, page picker, undo/redo, delete, duplicate — is removed.
+	 *
+	 * Most of it is about a document model this app doesn't have: a board *is* the unit, so a page
+	 * picker offers to navigate somewhere nothing ever puts anything, and tldraw's main menu duplicates
+	 * an export and a preferences screen the app already owns.
+	 *
+	 * The quick actions do go with it. Delete and duplicate survive on a shape's own context menu, but
+	 * **undo and redo become keyboard-only** — tldraw puts neither in the context menu. Worth knowing
+	 * rather than worth blocking on: if they are wanted back, the bottom dock is where they belong, not
+	 * a second floating bar in the corner opposite it.
+	 */
+	MenuPanel: null,
 	// The colour/opacity panel in the top-right is removed: the custom toolbar's expansion row
 	// (CanvasToolbar) is where styles for tldraw's own shapes are set now.
 	StylePanel: null,

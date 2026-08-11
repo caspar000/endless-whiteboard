@@ -111,68 +111,86 @@ export function AppearancePanel({
 	onThemeChange: (theme: Theme) => void
 	canvas: CanvasPrefs
 }) {
+	/*
+	 * Three sections rather than one stack of cards.
+	 *
+	 * The headings used to be hidden, on the reasoning that the sidebar already said "Settings". That
+	 * held while this was one panel; it stopped holding the moment there were several, because a card
+	 * with no heading above it belongs to whatever happens to be above it — which is how a currency
+	 * switch ended up reading as part of the theme.
+	 */
 	return (
-		<section className="lb-settings lb-appearance">
-			<h2>Appearance</h2>
+		<>
+			<section className="lb-settings">
+				<h2>Appearance</h2>
 
-			<div className="lb-appearance__card">
-				<Segmented label="Theme" value={theme} options={THEMES} onChange={onThemeChange} />
-				<p className="lb-appearance__hint">
-					{theme === 'system'
-						? 'Following your system appearance.'
-						: `Always ${theme}, whatever your system is set to.`}
-				</p>
-			</div>
+				<div className="lb-appearance__card">
+					<Segmented label="Theme" value={theme} options={THEMES} onChange={onThemeChange} />
+					<p className="lb-appearance__hint">
+						{theme === 'system'
+							? 'Following your system appearance.'
+							: `Always ${theme}, whatever your system is set to.`}
+					</p>
+				</div>
 
-			<div className="lb-appearance__card">
-				<Toggle
-					label="Grid"
-					hint="The dotted paper behind every board."
-					icon={Grid2x2}
-					checked={canvas.showGrid}
-					onChange={canvas.setShowGrid}
-				/>
-				{canvas.showGrid && (
-					<Segmented
-						label="Grid style"
-						value={canvas.gridStyle}
-						options={GRID_STYLES}
-						onChange={canvas.setGridStyle}
+				<div className="lb-appearance__card">
+					<Toggle
+						label="Rounded corners"
+						hint="Softens the corners of frames and images."
+						icon={Squircle}
+						checked={canvas.roundness !== 'off'}
+						// Turning it back on returns to the default step rather than whatever it was before:
+						// remembering a size nobody can see is a worse surprise than a predictable one.
+						onChange={(on) => canvas.setRoundness(on ? 'sm' : 'off')}
 					/>
-				)}
-				<Toggle
-					label="Snap to grid"
-					hint="Dragging and resizing land on grid steps. Hold ⌘ to override."
-					icon={Magnet}
-					checked={canvas.snapToGrid}
-					onChange={canvas.setSnapToGrid}
-				/>
-			</div>
+					{canvas.roundness !== 'off' && (
+						<Segmented
+							label="Radius"
+							value={canvas.roundness}
+							options={SIZES}
+							onChange={canvas.setRoundness}
+						/>
+					)}
+				</div>
+			</section>
 
-			<div className="lb-appearance__card">
-				<Toggle
-					label="Rounded corners"
-					hint="Softens the corners of frames and images."
-					icon={Squircle}
-					checked={canvas.roundness !== 'off'}
-					// Turning it back on returns to the default step rather than whatever it was before:
-					// remembering a size nobody can see is a worse surprise than a predictable one.
-					onChange={(on) => canvas.setRoundness(on ? 'sm' : 'off')}
-				/>
-				{canvas.roundness !== 'off' && (
-					<Segmented
-						label="Radius"
-						value={canvas.roundness}
-						options={SIZES}
-						onChange={canvas.setRoundness}
+			<section className="lb-settings">
+				<h2>Canvas</h2>
+
+				<div className="lb-appearance__card">
+					<Toggle
+						label="Grid"
+						hint="The dotted paper behind every board."
+						icon={Grid2x2}
+						checked={canvas.showGrid}
+						onChange={canvas.setShowGrid}
 					/>
-				)}
-			</div>
+					{canvas.showGrid && (
+						<Segmented
+							label="Grid style"
+							value={canvas.gridStyle}
+							options={GRID_STYLES}
+							onChange={canvas.setGridStyle}
+						/>
+					)}
+					<Toggle
+						label="Snap to grid"
+						hint="Dragging and resizing land on grid steps. Hold ⌘ to override."
+						icon={Magnet}
+						checked={canvas.snapToGrid}
+						onChange={canvas.setSnapToGrid}
+					/>
+				</div>
+			</section>
 
-			<div className="lb-appearance__card">
-				<ExchangeRateToggle />
-			</div>
-		</section>
+			<section className="lb-settings">
+				<h2>Currency</h2>
+
+				<div className="lb-appearance__card">
+					<ExchangeRateToggle />
+				</div>
+			</section>
+		</>
 	)
 }
 

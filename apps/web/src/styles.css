@@ -595,17 +595,33 @@ button {
 
 /* ------------------------------------------------------------------ settings */
 
-.lb-settings {
-	max-width: 620px;
+/*
+ * The settings column: a reading width, centred in whatever space the shell gives it.
+ *
+ * Left-aligned it read as a panel someone forgot to lay out — the controls are all short, so on a wide
+ * screen two thirds of the page was empty and the eye had nowhere to go.
+ */
+.lb-settings-page {
+	max-width: 640px;
+	margin-inline: auto;
 }
-/* The section heading is now the sidebar's job, so the panel's own <h2> is a screen-reader label. */
+.lb-settings + .lb-settings {
+	margin-top: 30px;
+}
+/*
+ * Section headings are visible again.
+ *
+ * They were hidden on the reasoning that the sidebar already says "Settings". That held while this was
+ * one panel; it stopped the moment there were several, because a card with no heading belongs to
+ * whatever sits above it — which is how a currency switch came to read as part of the theme.
+ */
 .lb-settings h2 {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-dim);
+	margin: 0 0 10px;
 }
 .lb-settings__stats,
 .lb-settings__warn,
@@ -663,9 +679,6 @@ button {
 
 /* --------------------------------------------------------------- appearance */
 
-.lb-appearance {
-	margin-bottom: 28px;
-}
 .lb-appearance__card {
 	background: var(--lb-surface);
 	border: 1px solid var(--lb-border);

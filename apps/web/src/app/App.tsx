@@ -453,11 +453,16 @@ export function App() {
 
 					{route.view === 'settings' && (
 						<main className="lb-home__main">
-							<header className="lb-home__header">
-								<h1>Settings</h1>
-							</header>
-							<AppearancePanel theme={theme} onThemeChange={setTheme} canvas={canvasPrefs} />
-							<SettingsPanel api={api} onImported={() => void goHome()} />
+							{/* A column, centred. Settings is a reading width of controls, not a grid that
+							    wants the whole window — pinned to the left edge of a wide screen it reads
+							    as a panel someone forgot to lay out. */}
+							<div className="lb-settings-page">
+								<header className="lb-home__header">
+									<h1>Settings</h1>
+								</header>
+								<AppearancePanel theme={theme} onThemeChange={setTheme} canvas={canvasPrefs} />
+								<SettingsPanel api={api} onImported={() => void goHome()} />
+							</div>
 						</main>
 					)}
 					</div>

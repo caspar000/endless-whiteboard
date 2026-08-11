@@ -230,6 +230,29 @@ export {
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyStrip } from './properties/PropertyStrip'
 
+/**
+ * Collections: what a shape *gathers*, as opposed to what it *is*.
+ *
+ * A table used to be a node type; this makes it a thing any shape can do.
+ */
+export { CollectionStrip } from './collections/CollectionStrip'
+export { CollectionEditor } from './collections/CollectionEditor'
+export {
+	COLLECTION_VIEWS,
+	defaultCollection,
+	hasCollection,
+	readCollection,
+	setCollection,
+	type Collection,
+	type CollectionView,
+} from './collections/spec'
+export {
+	runCollection,
+	EMPTY_COLLECTION_RESULT,
+	type CollectionResult,
+	type CollectionRow,
+} from './collections/engine'
+
 import { itemNodeDefinition } from './nodes/item/definition'
 import { markdownNodeDefinition } from './nodes/markdown/definition'
 import { getNodeDefinition, registerNode, type NodeDefinition } from './registry'

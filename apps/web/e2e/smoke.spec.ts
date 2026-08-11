@@ -589,6 +589,96 @@ test.describe('nodes', () => {
 		await expect(strip).toContainText('TODO')
 	})
 
+	test('any shape can gather, so a plain sticky totals what points at it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+					],
+				},
+			})
+			const priced = (value: number) => ({
+				'lifeboard:props': { price: value },
+				'lifeboard:propOrder': ['price'],
+			})
+			editor.createShapes([
+				{ type: 'note', x: 80, y: 30, meta: priced(1200) },
+				{ type: 'note', x: 420, y: 30, meta: priced(340) },
+				{ type: 'note', x: 760, y: 30, meta: priced(89) },
+				// The collector: an ordinary sticky, carrying nothing of its own.
+				{ type: 'note', x: 420, y: 330 },
+			])
+		})
+		const geometry = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const notes = editor.getCurrentPageShapes().filter((s) => s.type === 'note')
+			const centre = (id: string) => {
+				const b = editor.getShapePageBounds(id)!
+				return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+			}
+			return {
+				sources: notes.slice(0, 3).map((s) => centre(s.id)),
+				target: centre(notes[3]!.id),
+				targetId: notes[3]!.id,
+			}
+		})
+		for (const from of geometry.sources) {
+			await page.keyboard.press('a')
+			await page.mouse.move(from.x, from.y)
+			await page.mouse.down()
+			await page.mouse.move((from.x + geometry.target.x) / 2, (from.y + geometry.target.y) / 2, {
+				steps: 5,
+			})
+			await page.mouse.move(geometry.target.x, geometry.target.y, { steps: 5 })
+			await page.mouse.up()
+			await page.keyboard.press('Escape')
+		}
+
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: EditorHandle }).editor.select(id)
+		}, geometry.targetId)
+		await page.keyboard.press('Alt+p')
+		const panel = page.locator('.lb-props')
+		await expect(panel).toBeVisible()
+
+		/*
+		 * The flow, in full: switch Collects on, say which property, say what to do with it. No table
+		 * node, no dock button, no column editor — the shape was a sticky before and still is one.
+		 *
+		 * `force` because the selection toolbar floats over the panel; that overlap is pre-existing and
+		 * unrelated to what this is testing.
+		 */
+		await panel.getByLabel('Collects').check()
+		await panel.getByLabel('Collect property').selectOption('price', { force: true })
+		await panel.getByLabel('Collect show').selectOption('sum', { force: true })
+
+		// Property before summary is not cosmetic: which summaries exist depends on the property's
+		// type, so asking for the summary first could only ever offer the ones needing no property.
+		const offered = await panel.getByLabel('Collect show').locator('option').allTextContents()
+		expect(offered).toContain('the total')
+
+		await page.keyboard.press('Escape')
+		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-collect')
+		await expect(strip.locator('.lb-collect__value')).toHaveText('₾ 1,629.00')
+		await expect(strip.locator('.lb-collect__count')).toHaveText('3 items')
+
+		// Alongside, never instead of: the sticky keeps whatever it was, and the total is a footer.
+		const stillANote = await page.evaluate(
+			() =>
+				(window as unknown as { editor: EditorHandle }).editor
+					.getCurrentPageShapes()
+					.filter((s) => s.type === 'note').length
+		)
+		expect(stillANote).toBe(4)
+	})
+
 	test('rating, progress and status carry their own controls and reach the card', async ({
 		page,
 	}) => {
@@ -1156,6 +1246,8 @@ interface EditorHandle {
 		meta: Record<string, unknown>
 	}[]
 	getCamera(): { x: number; y: number; z: number }
+	getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } | undefined
+	pageToScreen(point: { x: number; y: number }): { x: number; y: number }
 	setCamera(camera: { x: number; y: number; z: number }): void
 	createShapes(shapes: unknown[]): void
 	updateShape(shape: unknown): void

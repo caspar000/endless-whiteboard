@@ -21,6 +21,7 @@ import {
 	columnTitle,
 	filterOpNeedsValue,
 	filterOpsForType,
+	summaryLabel,
 	summaryOpsForType,
 	type FilterOp,
 	type LayoutMode,
@@ -296,7 +297,7 @@ export function TableConfig({
 							<option value="">no summary</option>
 							{summaryOpsForType(byId.get(column.key)?.type ?? null).map((op) => (
 								<option key={op} value={op}>
-									{op}
+									{summaryLabel(op)}
 								</option>
 							))}
 						</select>

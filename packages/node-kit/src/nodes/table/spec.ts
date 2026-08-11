@@ -110,6 +110,30 @@ export const SUMMARY_OPS = [
 
 export type SummaryOp = (typeof SUMMARY_OPS)[number]
 
+/**
+ * What a summary is called in a menu.
+ *
+ * `countNotEmpty` is a fine identifier and a poor thing to read in a dropdown. Only the ones whose
+ * camel case hides the meaning need an entry; the rest are already words.
+ */
+const SUMMARY_LABELS: Partial<Record<SummaryOp, string>> = {
+	count: 'the count',
+	countValues: 'values',
+	countUnique: 'unique values',
+	countEmpty: 'empty',
+	countNotEmpty: 'filled in',
+	percentEmpty: 'percent empty',
+	percentNotEmpty: 'percent filled in',
+	sum: 'the total',
+	avg: 'the average',
+	min: 'the smallest',
+	max: 'the largest',
+}
+
+export function summaryLabel(op: SummaryOp): string {
+	return SUMMARY_LABELS[op] ?? op
+}
+
 const UNIVERSAL_SUMMARIES: SummaryOp[] = [
 	'count',
 	'countValues',

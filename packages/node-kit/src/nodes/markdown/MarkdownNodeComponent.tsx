@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { CollectionStrip } from '../../collections/CollectionStrip'
 import { PropertyStrip } from '../../properties/PropertyStrip'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import { toggleTaskAt } from './tasks'
@@ -49,6 +50,7 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 				<p className="lb-md__placeholder">Double-click to write</p>
 			)}
 			<PropertyStrip shape={shape} editor={editor} />
+			<CollectionStrip shape={shape} editor={editor} />
 		</div>
 	)
 }

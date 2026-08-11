@@ -1,4 +1,4 @@
-import { PropertyStrip, isNodeType } from '@lifeboard/node-kit'
+import { CollectionStrip, PropertyStrip, hasCollection, isNodeType } from '@lifeboard/node-kit'
 import { useEditor, useValue } from 'tldraw'
 
 /**
@@ -27,8 +27,8 @@ export function ForeignPropertyStrips() {
 				// Our own nodes draw their properties themselves.
 				if (isNodeType(shape.type)) continue
 				// Cheap pre-filter before asking for bounds, which is the expensive part: the
-				// overwhelming majority of shapes on a board carry no properties.
-				if (!shape.meta['lifeboard:props']) continue
+				// overwhelming majority of shapes on a board carry neither.
+				if (!shape.meta['lifeboard:props'] && !hasCollection(shape)) continue
 				const bounds = editor.getShapePageBounds(shape.id)
 				if (!bounds) continue
 				out.push({ id: shape.id, x: bounds.x, y: bounds.y + bounds.h, w: bounds.w })
@@ -74,6 +74,7 @@ function ForeignStrip({
 			}}
 		>
 			<PropertyStrip shape={shape} editor={editor} />
+			<CollectionStrip shape={shape} editor={editor} />
 		</div>
 	)
 }

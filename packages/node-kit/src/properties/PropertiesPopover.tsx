@@ -1,6 +1,8 @@
 import { Eye, EyeOff, GripVertical } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useValue, type Editor, type TLShape } from 'tldraw'
+import { CollectionEditor } from '../collections/CollectionEditor'
+import { readCollection } from '../collections/spec'
 import { NodeEditorPopover } from '../NodeEditorPopover'
 import { shapeLabel } from './labels'
 import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
@@ -105,6 +107,7 @@ export function PropertiesPopover({
 
 			return {
 				shape: current,
+				collection: readCollection(current),
 				values: readShapeProperties(current),
 				order: orderedPropertyIds(current),
 				hidden: readHiddenPropertyIds(current),
@@ -176,7 +179,8 @@ export function PropertiesPopover({
 
 				{attached.length === 0 && (
 					<p className="lb-props__empty">
-						No properties yet. Add one to make this shape part of a rollup.
+						Nothing on this shape yet. Add a property, or switch on Collects below to gather from
+						the shapes wired to it.
 					</p>
 				)}
 
@@ -199,6 +203,15 @@ export function PropertiesPopover({
 				</div>
 
 				<AddProperty editor={editor} shape={live.shape} available={available} unused={unused} />
+
+				{/* What the shape *gathers*, below a rule from what it *is*. Two different kinds of
+				    statement, deliberately not one list. */}
+				<CollectionEditor
+					editor={editor}
+					shape={live.shape}
+					collection={live.collection}
+					registry={registry}
+				/>
 			</div>
 		</NodeEditorPopover>
 	)

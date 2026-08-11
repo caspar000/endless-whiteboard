@@ -132,6 +132,36 @@ describe('collections', () => {
 		])
 	})
 
+	it('reads both directions as a balance, not a pile', () => {
+		/*
+		 * Two shapes feeding a collector and one draining it is a flow, and the arrows already say which
+		 * way each one goes. Adding all three together would report a number matching nothing anyone
+		 * drew: 1200 + 340 − 89, not 1629.
+		 */
+		const drained = new Map(board())
+		const withOutflow = buildEdgeIndex([
+			{ id: 'a1', from: 'rent', to: 'total' },
+			{ id: 'a2', from: 'food', to: 'total' },
+			{ id: 'a3', from: 'total', to: 'bus' },
+		])
+		const either = collection({
+			op: 'sum',
+			property: 'price',
+			source: { ...defaultCollection().source, direction: 'either', signed: true },
+		})
+		const result = runCollection(drained, either, 'total', REGISTRY, null, withOutflow)
+		expect(result.value).toBe(1451)
+		// All three still count as items — the sign is about the total, not about membership.
+		expect(result.matched).toBe(3)
+	})
+
+	it('needs no sign when every arrow runs the same way', () => {
+		// One direction puts every row on the same side, so signing it would be a no-op dressed up as
+		// a choice — which is why only `either` carries it.
+		const inbound = collection({ op: 'sum', property: 'price' })
+		expect(runCollection(board(), inbound, 'total', REGISTRY, null, EDGES).value).toBe(1629)
+	})
+
 	it('says nothing rather than zero when there is nothing to summarise', () => {
 		// A zero looks like an answer. An empty collection has not answered.
 		const lonely = new Map([shape('total', {}, { label: 'October' })])

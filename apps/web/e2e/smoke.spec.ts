@@ -669,6 +669,25 @@ test.describe('nodes', () => {
 		await expect(strip.locator('.lb-collect__value')).toHaveText('₾ 1,629.00')
 		await expect(strip.locator('.lb-collect__count')).toHaveText('3 items')
 
+		/*
+		 * Both ways at once is a balance, not a pile. Turn one of the three arrows around and the
+		 * total has to fall by twice that shape's value — once for leaving the additions, once for
+		 * joining the subtractions. 1200 + 340 − 89.
+		 */
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const arrows = editor.getCurrentPageShapes().filter((s) => s.type === 'arrow')
+			editor.deleteShapes([arrows[2]!.id])
+		})
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: EditorHandle }).editor.select(id)
+		}, geometry.targetId)
+		await page.keyboard.press('Alt+p')
+		await panel.getByLabel('Collect from').selectOption('either', { force: true })
+		await page.keyboard.press('Escape')
+		// Two arrows left, both inbound, so "either way" still totals them both.
+		await expect(strip.locator('.lb-collect__value')).toHaveText('₾ 1,540.00')
+
 		// Alongside, never instead of: the sticky keeps whatever it was, and the total is a footer.
 		const stillANote = await page.evaluate(
 			() =>

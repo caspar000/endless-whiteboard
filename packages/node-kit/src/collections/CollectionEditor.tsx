@@ -76,7 +76,7 @@ export function CollectionEditor({
 						>
 							<option value="in">arrows pointing in</option>
 							<option value="out">arrows pointing out</option>
-							<option value="either">arrows either way</option>
+							<option value="either">arrows either way (in − out)</option>
 							<option value="frame">shapes in this frame</option>
 							<option value="page">everything on this board</option>
 						</select>
@@ -148,5 +148,14 @@ function sourceFor(collection: Collection, key: string): Collection['source'] {
 		...collection.source,
 		scope: 'connected',
 		direction: key as 'in' | 'out' | 'either',
+		/*
+		 * Both ways at once means a balance, not a pile.
+		 *
+		 * If you have wired two shapes into a collector and one out of it, you have drawn a flow, and
+		 * the only reading of the arrows that respects what you drew is that what points in adds and
+		 * what points away subtracts. Adding all three together would give a number matching nothing on
+		 * the board. One direction on its own needs no sign — every row is on the same side of it.
+		 */
+		signed: key === 'either',
 	}
 }

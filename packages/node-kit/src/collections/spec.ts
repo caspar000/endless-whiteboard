@@ -37,6 +37,9 @@ export interface Collection {
 	/**
 	 * Which shapes are in scope. The same selector a table uses — page, frame, arrows in or out, plus
 	 * filters — because "what counts" is one question whatever you do with the answer.
+	 *
+	 * `direction: 'either'` carries `signed: true`, which is what makes a collector fed by two shapes
+	 * and drained by a third report the balance rather than the pile.
 	 */
 	source: TableSource
 	view: CollectionView

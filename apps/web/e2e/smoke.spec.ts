@@ -790,6 +790,98 @@ test.describe('nodes', () => {
 		expect(stored).toBe(source)
 	})
 
+	test('expressions work in a sticky, a text shape and a shape label too', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.updateDocumentSettings({
+				meta: {
+					...editor.getDocumentSettings().meta,
+					'lifeboard:properties': [
+						{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+					],
+				},
+			})
+			const priced = (value: number) => ({
+				'lifeboard:props': { price: value },
+				'lifeboard:propOrder': ['price'],
+			})
+			const rich = (text: string) => ({
+				type: 'doc',
+				content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+			})
+			editor.createShapes([
+				{ type: 'note', x: 60, y: 40, meta: priced(1200) },
+				{ type: 'note', x: 400, y: 40, meta: priced(340) },
+				// The collector is a plain sticky whose *text* holds the expression.
+				{ type: 'note', x: 230, y: 360, props: { richText: rich('Total {sum price in}') } },
+				{
+					type: 'geo',
+					x: 620,
+					y: 460,
+					props: { w: 240, h: 90, richText: rich('Board: {sum price page}') },
+				},
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+
+		const geometry = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const notes = editor.getCurrentPageShapes().filter((s) => s.type === 'note')
+			const centre = (id: string) => {
+				const b = editor.getShapePageBounds(id)!
+				return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+			}
+			return { a: centre(notes[0]!.id), b: centre(notes[1]!.id), hub: centre(notes[2]!.id) }
+		})
+		for (const from of [geometry.a, geometry.b]) {
+			await page.keyboard.press('a')
+			await page.mouse.move(from.x, from.y)
+			await page.mouse.down()
+			await page.mouse.move((from.x + geometry.hub.x) / 2, (from.y + geometry.hub.y) / 2, {
+				steps: 5,
+			})
+			await page.mouse.move(geometry.hub.x, geometry.hub.y, { steps: 5 })
+			await page.mouse.up()
+			await page.keyboard.press('Escape')
+		}
+
+		const canvasText = () =>
+			page.evaluate(() =>
+				[
+					...document.querySelectorAll(
+						'.lb-board-host:not([data-hidden]) .tl-shape[data-shape-type="note"], .lb-board-host:not([data-hidden]) .tl-shape[data-shape-type="geo"]'
+					),
+				]
+					.map((el) => (el as HTMLElement).innerText.replace(/\s+/g, ' ').trim())
+					.filter(Boolean)
+			)
+
+		// The sticky's own text, and a rectangle's label, both evaluated — neither renderer is ours.
+		await expect.poll(canvasText).toContain('Total ₾ 1,540.00')
+		expect(await canvasText()).toContain('Board: ₾ 1,540.00')
+
+		/*
+		 * Editing shows the source. Without that the caret would sit in text rewriting itself as you
+		 * type — you would go to fix `{sum pric` and find a number under your hands.
+		 */
+		await page.mouse.dblclick(geometry.hub.x, geometry.hub.y)
+		await expect.poll(canvasText).toContain('Total {sum price in}')
+		await page.keyboard.press('Escape')
+		await expect.poll(canvasText).toContain('Total ₾ 1,540.00')
+
+		// And nothing was written: the store still holds the expression.
+		const stored = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const note = editor.getCurrentPageShapes().filter((s) => s.type === 'note')[2]!
+			return JSON.stringify(note.props.richText)
+		})
+		expect(stored).toContain('{sum price in}')
+	})
+
 	test('rating, progress and status carry their own controls and reach the card', async ({
 		page,
 	}) => {

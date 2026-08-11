@@ -253,6 +253,11 @@ export {
 	type CollectionRow,
 } from './collections/engine'
 export { renderExpressions, type ExpressionContext } from './collections/expressions'
+export {
+	useExpressionShape,
+	substituteRichText,
+	type ShapeWithRichText,
+} from './collections/shapeText'
 
 import { itemNodeDefinition } from './nodes/item/definition'
 import { markdownNodeDefinition } from './nodes/markdown/definition'

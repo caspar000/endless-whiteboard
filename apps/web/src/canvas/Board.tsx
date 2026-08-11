@@ -33,6 +33,7 @@ import { clearPendingRestore, takePendingRestore } from '../persistence/pendingR
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
+import { expressionShapeUtils } from './expressionShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
@@ -78,7 +79,12 @@ const frameShapeUtil = FrameShapeUtil.configure({
 	}),
 })
 
-const shapeUtils: TLAnyShapeUtilConstructor[] = [...nodeShapeUtils, frameShapeUtil]
+const shapeUtils: TLAnyShapeUtilConstructor[] = [
+	...nodeShapeUtils,
+	frameShapeUtil,
+	// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
+	...expressionShapeUtils,
+]
 
 /**
  * Migrations that rewrite records across types, rather than one shape's props.

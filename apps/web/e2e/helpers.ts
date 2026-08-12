@@ -70,9 +70,15 @@ export async function openBoard(page: Page, name: string): Promise<void> {
 }
 
 export async function createBoard(page: Page, name?: string): Promise<void> {
+	// Some callers get here immediately after clicking "All boards". That navigation first exports a
+	// thumbnail, so the click can resolve while the previous board is still visible. Starting another
+	// async create during that transition lets the two navigations race and can leave us on the canvas
+	// with no corresponding card rendered on the home screen.
+	await expect(page.locator('.lb-home__header')).toBeVisible()
 	// 'New board' appears in both the sidebar and the section header on the home screen.
 	await page.getByRole('button', { name: 'New board' }).first().click()
 	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+	await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Untitled board')
 	if (name) {
 		await backToList(page)
 		// Target the *untitled* row, not "the first row". The list sorts by `updatedAt`, and leaving
@@ -80,6 +86,7 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 		// sometimes rename a previously-created board instead, silently making the rest of the test
 		// operate on the wrong board.
 		const row = page.locator('.lb-list__board', { hasText: 'Untitled board' }).first()
+		await expect(row).toBeVisible()
 		await row.getByRole('button', { name: 'Rename' }).click()
 		// Resolved globally, not within `row`: clicking Rename swaps that row's title button for the
 		// input, so the row no longer contains the text "Untitled board" and a row-scoped locator

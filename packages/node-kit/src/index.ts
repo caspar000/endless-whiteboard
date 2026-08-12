@@ -14,19 +14,41 @@ import './shape-types'
 export {
 	clearNodeRegistry,
 	createNodeShapeUtil,
+	getDisabledExtensionIds,
+	getDisabledExtensions,
 	getNodeDefinition,
 	getNodeDefinitions,
-	isNodeType,
 	getVisibleNodeDefinitions,
+	isExtensionEnabled,
+	isNodeType,
+	isNodeTypeEnabled,
 	registerNode,
+	setDisabledExtensionIds,
+	setExtensionEnabled,
+	subscribeToNodeDefinitions,
 	updateNodeProps,
 	type NodeBaseProps,
 	type NodeComponentProps,
 	type NodeDefinition,
 	type NodeShape,
+	type NodeToolbarIcon,
 } from './registry'
 
-export { emptyPropsMigrations } from './migrations'
+// Extensions: the unit the app composes at startup, users toggle in Settings, and plugins ship as.
+export {
+	clearExtensionRegistry,
+	defineNode,
+	getExtension,
+	getExtensions,
+	registerExtension,
+	type Extension,
+} from './extensions'
+
+export {
+	createShapePropsMigrationIds,
+	createShapePropsMigrationSequence,
+	emptyPropsMigrations,
+} from './migrations'
 export { NodeEditorPopover } from './NodeEditorPopover'
 
 // Field & facts contracts
@@ -120,18 +142,8 @@ export {
 	type ShapePropertyUnits,
 } from './properties/values'
 
-// Node definitions
-export {
-	MARKDOWN_NODE_TYPE,
-	NOTE_MIN_HEIGHT,
-	NOTE_NODE_TYPE,
-	markdownNodeDefinition,
-	markdownTitle,
-	noteNodeDefinition,
-	noteTitle,
-	type MarkdownNodeProps,
-	type NoteNodeProps,
-} from './nodes/markdown/definition'
+// Node definitions. The markdown note lives in `@lifeboard/note-markdown` — the first extracted
+// extension package; item and rollup stay here as deprecated, schema-only legacy types.
 export {
 	ITEM_NODE_TYPE,
 	itemNodeDefinition,
@@ -156,6 +168,7 @@ export {
 	TABLE_MIN_HEIGHT,
 	TABLE_NODE_TYPE,
 	tableNodeDefinition,
+	tablesExtension,
 	type TableNodeProps,
 } from './nodes/table/definition'
 export {
@@ -253,6 +266,9 @@ export {
 	type CollectionRow,
 } from './collections/engine'
 export { renderExpressions, type ExpressionContext } from './collections/expressions'
+// The `{…}` helper for CodeMirror-based editors — how an extension's own editor (the markdown
+// note's, say) offers the same expression completion tldraw's text editors get.
+export { expressionHelper } from './collections/completion'
 export { expressionSuggestExtension } from './collections/suggestExtension'
 export {
 	expressionBodyAt,
@@ -268,13 +284,13 @@ export {
 } from './collections/shapeText'
 
 import { itemNodeDefinition } from './nodes/item/definition'
-import { markdownNodeDefinition } from './nodes/markdown/definition'
 import { getNodeDefinition, registerNode, type NodeDefinition } from './registry'
 import { rollupNodeDefinition } from './nodes/rollup/definition'
-import { tableNodeDefinition } from './nodes/table/definition'
 
 /**
- * Registers the built-in node types.
+ * Registers the built-in **legacy** node types — item and rollup, both deprecated and both rewritten
+ * away by store migrations. They are not extensions: they exist only so boards that predate their
+ * migrations still validate, so they are core schema, unconditionally registered, never toggleable.
  *
  * Idempotent, and — importantly — **invoked below at module load**. The registry is the single
  * source of truth for shape utils, tools and toolbar entries, and consumers legitimately read it at
@@ -283,15 +299,12 @@ import { tableNodeDefinition } from './nodes/table/definition'
  * this imperatively was a real bug: `createNodeTools()` ran at import time, saw an empty registry,
  * and the node tools silently never existed while shape utils — read from a separate array — did.)
  *
- * Plugin-supplied definitions will later arrive through the same `registerNode` door.
+ * The *live* node types arrive as extensions through `registerExtension`, from the app's composition
+ * root — which must therefore be imported before any module that reads the registry at module scope
+ * (the app's `extensions.ts` is imported first by `Board.tsx` for exactly this reason).
  */
 export function registerBuiltinNodes(): void {
-	for (const def of [
-		markdownNodeDefinition,
-		itemNodeDefinition,
-		rollupNodeDefinition,
-		tableNodeDefinition,
-	]) {
+	for (const def of [itemNodeDefinition, rollupNodeDefinition]) {
 		if (!getNodeDefinition(def.type)) registerNode(def as unknown as NodeDefinition<never>)
 	}
 }

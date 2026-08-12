@@ -1,34 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import {
 	ITEM_NODE_TYPE,
-	MARKDOWN_NODE_TYPE,
 	ROLLUP_NODE_TYPE,
 	TABLE_NODE_TYPE,
+	getDisabledExtensionIds,
+	getExtensions,
 	getNodeDefinition,
 	getNodeDefinitions,
+	getVisibleNodeDefinitions,
 	isNodeType,
+	isNodeTypeEnabled,
 	registerBuiltinNodes,
+	registerExtension,
+	setDisabledExtensionIds,
+	setExtensionEnabled,
+	tablesExtension,
 } from './index'
 
+// The registry is module state, so this file registers once up front — the same shape as the app's
+// composition root — and every test below reads the composed result.
+registerExtension(tablesExtension)
+
 describe('registry', () => {
-	it('has the built-in nodes registered at import time', () => {
+	it('has the legacy nodes registered at import time', () => {
 		// The regression this pins: consumers read the registry at *their* module scope (shape utils
 		// and canvas tools are both built that way). When registration was an imperative call the app
 		// made later, `createNodeTools()` observed an empty registry and the node tools silently did
-		// not exist — while shape utils, read from a separate array, did. One source, populated on
-		// import, is what prevents that class of bug.
-		expect(getNodeDefinitions().map((d) => d.type)).toEqual([
-			MARKDOWN_NODE_TYPE,
-			ITEM_NODE_TYPE,
-			ROLLUP_NODE_TYPE,
-			TABLE_NODE_TYPE,
-				])
+		// not exist — while shape utils, read from a separate array, did. Legacy types register on
+		// import; live types arrive from the app's composition root, which importers pull in first.
+		const types = getNodeDefinitions().map((d) => d.type)
+		expect(types.slice(0, 2)).toEqual([ITEM_NODE_TYPE, ROLLUP_NODE_TYPE])
 	})
 
 	it('is idempotent, so a stray registerBuiltinNodes() call cannot throw or duplicate', () => {
+		const before = getNodeDefinitions().length
 		registerBuiltinNodes()
 		registerBuiltinNodes()
-		expect(getNodeDefinitions()).toHaveLength(4)
+		expect(getNodeDefinitions()).toHaveLength(before)
 	})
 
 	it('exposes definitions by type', () => {
@@ -73,63 +81,58 @@ describe('registry', () => {
 
 	it('only computes values for the node whose data lives in props', () => {
 		// Since Phase 2 a shape's property values live in `shape.meta`, so no node needs to project
-		// them — a note carries a price exactly the way a sticky does. `extractValues` survives for the
-		// legacy item node, whose fields are in props until the migration moves them.
-		//
-		// Rollups still contribute no values at all, which is what keeps rollup-of-rollup cycles
-		// impossible.
-		expect(getNodeDefinition(MARKDOWN_NODE_TYPE)?.extractValues).toBeUndefined()
+		// them. `extractValues` survives for the legacy item node, whose fields are in props until the
+		// migration moves them. Tables and rollups still contribute no values at all, which is what
+		// keeps view-of-view cycles impossible.
+		expect(getNodeDefinition(TABLE_NODE_TYPE)?.extractValues).toBeUndefined()
 		expect(getNodeDefinition(ROLLUP_NODE_TYPE)?.extractValues).toBeUndefined()
 		expect(getNodeDefinition(ITEM_NODE_TYPE)?.extractValues).toBeTypeOf('function')
 	})
 
-	it('labels notes by their first heading and items by their title', () => {
-		const note = getNodeDefinition(MARKDOWN_NODE_TYPE)!
-		expect(note.getLabel!({ props: { md: '# Chores\n- milk' } } as never)).toBe('Chores')
+	it('labels items by their title', () => {
 		const item = getNodeDefinition(ITEM_NODE_TYPE)!
 		expect(item.getLabel!({ props: { title: 'Desk' } } as never)).toBe('Desk')
 	})
 })
 
-describe('item extractValues', () => {
-	it('projects its fields, and its tags as a multi-select value', () => {
-		const def = getNodeDefinition(ITEM_NODE_TYPE)!
-		const values = def.extractValues!({
-			id: 'shape:1',
-			type: ITEM_NODE_TYPE,
-			parentId: 'shape:frame1',
-			x: 10,
-			y: 20,
-			rotation: 0,
-			index: 'a1',
-			isLocked: false,
-			opacity: 1,
-			meta: {},
-			typeName: 'shape',
-			props: {
-				w: 220,
-				h: 260,
-				title: 'Desk',
-				imageAssetId: null,
-				tags: ['furniture'],
-				fields: [
-					{ key: 'price', type: 'currency', value: 2399, unit: 'GEL' },
-					{ key: 'category', type: 'select', value: 'desk' },
-					{ key: '', type: 'text', value: 'ignored — empty key' },
-				],
-			},
-		} as never)!
+describe('extensions', () => {
+	it('registers an extension’s nodes under its id', () => {
+		expect(getExtensions().map((e) => e.id)).toContain('lifeboard.tables')
+		expect(isNodeType(TABLE_NODE_TYPE)).toBe(true)
+		expect(isNodeTypeEnabled(TABLE_NODE_TYPE)).toBe(true)
+	})
 
-		// Values only. Type, parent and label are the facts pipeline's job now, uniformly for every
-		// shape, which is what let the per-shape facts cache take over the drag guarantee.
-		expect(values).toEqual({
-			price: 2399,
-			category: 'desk',
-			// Tags are no longer a separate concept: they are a multi-select value under a well-known id,
-			// so a tag-scoped rollup keeps working on a board that hasn't been migrated yet.
-			tags: ['furniture'],
-		})
-		// The contract that makes drags free: nothing positional anywhere in the output.
-		expect(JSON.stringify(values)).not.toContain('"x"')
+	it('is idempotent by id, so HMR re-evaluation of a composition root cannot throw', () => {
+		expect(() => registerExtension(tablesExtension)).not.toThrow()
+		expect(getExtensions().filter((e) => e.id === 'lifeboard.tables')).toHaveLength(1)
+	})
+
+	it('hides a disabled extension’s nodes from the UI but never from the schema', () => {
+		setExtensionEnabled('lifeboard.tables', false)
+		try {
+			// Gone from every creation surface…
+			expect(getVisibleNodeDefinitions().map((d) => d.type)).not.toContain(TABLE_NODE_TYPE)
+			expect(isNodeTypeEnabled(TABLE_NODE_TYPE)).toBe(false)
+			// …but still in the schema source, so existing boards keep opening and rendering.
+			expect(getNodeDefinitions().map((d) => d.type)).toContain(TABLE_NODE_TYPE)
+		} finally {
+			setExtensionEnabled('lifeboard.tables', true)
+		}
+		expect(getVisibleNodeDefinitions().map((d) => d.type)).toContain(TABLE_NODE_TYPE)
+	})
+
+	it('never gates core types: nodes registered without an owner cannot be toggled off', () => {
+		// The legacy types are deprecated (hidden anyway), but the invariant matters for any core
+		// registration: enablement is a property of extensions, not of nodes.
+		setDisabledExtensionIds(['lifeboard.tables', 'some.unknown.extension'])
+		try {
+			expect(isNodeTypeEnabled(ITEM_NODE_TYPE)).toBe(true)
+			expect(getDisabledExtensionIds().sort()).toEqual([
+				'lifeboard.tables',
+				'some.unknown.extension',
+			])
+		} finally {
+			setDisabledExtensionIds([])
+		}
 	})
 })

@@ -1,4 +1,6 @@
+import { Table } from 'lucide-react'
 import { T } from 'tldraw'
+import { defineNode, type Extension } from '../../extensions'
 import { createShapePropsMigrationIds, createShapePropsMigrationSequence } from '../../migrations'
 import type { NodeDefinition } from '../../registry'
 import { TableNodeComponent } from './TableNodeComponent'
@@ -34,6 +36,7 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 	type: TABLE_NODE_TYPE,
 	label: 'Table',
 	icon: '▦',
+	toolbarIcon: Table,
 	props: {
 		title: T.string,
 		source: tableSourceValidator,
@@ -76,4 +79,19 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 	getLabel: (shape) => shape.props.title,
 	// No `extractValues`: a view contributes no values, which is what makes table-of-table cycles
 	// impossible.
+}
+
+/**
+ * The table, packaged as an extension so it is toggleable like any other. Exported from node-kit
+ * (rather than wrapped app-side) because the definition lives here; the app still decides whether to
+ * register it — node-kit self-registers nothing but the deprecated legacy types.
+ */
+export const tablesExtension: Extension = {
+	id: 'lifeboard.tables',
+	name: 'Tables',
+	description: 'A live, read-only table view of the shapes on the board — grouping, filters and totals.',
+	icon: Table,
+	version: '0.1.0',
+	author: 'Lifeboard',
+	nodes: [defineNode(tableNodeDefinition)],
 }

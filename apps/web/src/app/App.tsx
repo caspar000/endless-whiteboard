@@ -8,6 +8,7 @@ import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { AppearancePanel } from './AppearancePanel'
 import { BoardList } from './BoardList'
+import { ExtensionsPanel } from './ExtensionsPanel'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
 import { HelpPage } from './HelpPage'
 import { SettingsPanel } from './SettingsPanel'
@@ -468,6 +469,7 @@ export function App() {
 									<h1>Settings</h1>
 								</header>
 								<AppearancePanel theme={theme} onThemeChange={setTheme} canvas={canvasPrefs} />
+								<ExtensionsPanel />
 								<SettingsPanel api={api} onImported={() => void goHome()} />
 							</div>
 						</main>

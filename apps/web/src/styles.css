@@ -677,6 +677,90 @@ button {
 	margin: 24px 0 0;
 }
 
+/* --------------------------------------------------------------- extensions */
+
+.lb-settings__hint {
+	font-size: 13px;
+	line-height: 1.55;
+	color: var(--lb-text-dim);
+	margin: 0 0 12px;
+}
+/*
+ * The extension market: cards in the visual language of Obsidian's and Logseq's plugin lists.
+ * Two-up inside the settings column; single column once the viewport squeezes the page.
+ */
+.lb-extmarket {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 12px;
+}
+.lb-extmarket__card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 14px 16px;
+	transition: border-color 120ms ease;
+}
+.lb-extmarket__card:hover {
+	border-color: var(--lb-border-strong);
+}
+.lb-extmarket__head {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+.lb-extmarket__icon {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	flex-shrink: 0;
+	border-radius: 8px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	color: var(--lb-accent);
+}
+.lb-extmarket__name {
+	flex: 1;
+	min-width: 0;
+	font-size: 14px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-extmarket__desc {
+	margin: 0;
+	font-size: 12.5px;
+	line-height: 1.55;
+	color: var(--lb-text-dim);
+	/* The card grid keeps rows even; a runaway description gets clamped, not the layout. */
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+.lb-extmarket__meta {
+	margin-top: auto;
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+/* An off extension reads as dormant — body dimmed, switch at full strength so the way back never fades. */
+.lb-extmarket__card[data-off] .lb-extmarket__icon,
+.lb-extmarket__card[data-off] .lb-extmarket__name,
+.lb-extmarket__card[data-off] .lb-extmarket__desc {
+	opacity: 0.45;
+}
+.lb-extmarket__card[data-off] .lb-extmarket__icon {
+	color: var(--lb-text-dim);
+}
+
 /* --------------------------------------------------------------- appearance */
 
 .lb-appearance__card {

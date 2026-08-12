@@ -1,6 +1,7 @@
+// The extension composition root. Must be evaluated before this module's body: the shape utils and
+// tools below are built at module scope from the registry the root populates.
+import '../extensions'
 import {
-	NOTE_MIN_HEIGHT,
-	NOTE_NODE_TYPE,
 	createNodeShapeUtil,
 	PropertiesPopover,
 	getNodeDefinitions,

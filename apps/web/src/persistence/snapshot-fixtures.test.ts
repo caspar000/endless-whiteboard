@@ -1,3 +1,7 @@
+// The composition root, for its registrations: the store built below must carry exactly the schema
+// the app applies to a user's board, which since the extension split means every registered
+// extension's types too — not just node-kit's built-ins.
+import '../extensions'
 import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,13 +12,13 @@ import {
 	itemsToNotesMigrations,
 	rollupsToTablesMigrations,
 	ITEM_NODE_TYPE,
-	NOTE_NODE_TYPE,
 	ROLLUP_NODE_TYPE,
 	TABLE_NODE_TYPE,
 	parsePropertyRegistry,
 	readShapeProperties,
 	type TableNodeProps,
 } from '@lifeboard/node-kit'
+import { NOTE_NODE_TYPE } from '@lifeboard/note-markdown'
 import {
 	createTLStore,
 	defaultBindingUtils,

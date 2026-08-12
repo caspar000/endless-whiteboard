@@ -1,7 +1,9 @@
 # Lifeboard
 
 An infinite-canvas whiteboard where **every element is a typed node** — not just stickies and images,
-but markdown documents, structured item records, and live computed rollups over them.
+but markdown notes, properties on any shape, and live table views computed over them. Node types
+arrive as **extensions** (toggleable in Settings, each its own package), so the set of things a board
+can hold is open-ended by design.
 
 Think Notion-style databases on an endless whiteboard, local-first and fast.
 
@@ -15,7 +17,7 @@ pnpm dev          # http://localhost:5173
 | `pnpm dev` | Vite dev server |
 | `pnpm build` | Production build (also writes `apps/web/stats.html` for bundle inspection) |
 | `pnpm typecheck` | `tsc --noEmit` across the workspace |
-| `pnpm test` | Vitest units (rollup aggregation, fields, facts, registry, snapshot fixtures) |
+| `pnpm test` | Vitest units (properties, facts, table queries, collections, registry, snapshot fixtures) |
 | `pnpm test:e2e` | Playwright, against the **production build** |
 | `pnpm --filter @lifeboard/web gen:icons` | Regenerate PWA icons from `public/favicon.svg` |
 
@@ -26,71 +28,104 @@ board cards, modelled on Freeform's board browser. Each card's preview is that b
 captured from the live editor as the board is closed; boards never opened show a dotted-paper
 placeholder. Star a board to pin it to Favourites.
 
-**Board** — the endless canvas on dotted paper, with a registry-driven toolbar. Double-clicking empty
-canvas creates a **note** and puts the caret in it; right-click offers the other node types. Double-
-clicking the board's name in the top bar renames it.
+**Board** — the endless canvas on dotted paper, with a registry-driven toolbar (the bottom dock).
+Nodes are drawn from the dock like every other tool; right-click offers "Add to board" for placing
+one at the pointer. Double-clicking empty canvas is tldraw's default action. Double-clicking the
+board's name in the tab strip renames it.
 
-## The three node types
+## Nodes & extensions
 
-| Node | What it holds | Toolbar |
-|---|---|---|
-| **Note** (`node.markdown`) | Markdown, rendered live block by block as you write. Grows with its content. | `N` / <kbd>n</kbd> |
-| **Item** (`node.item`) | Title, image, tags, and typed fields (`price: ₾2399`, `category: desk`). | `▤` / <kbd>i</kbd> |
-| **Rollup** (`node.rollup`) | A live aggregate over other nodes — sum/count/avg/min/max, optionally grouped. | `Σ` / <kbd>s</kbd> |
+The live node types ship as extensions — each a bag of node definitions the app registers at startup
+and the user can toggle in **Settings → Extensions**:
 
-Rollups are **pure derivations**: never written to the store, so undo history stays clean and there
-are no feedback loops.
+| Extension | Node | What it holds | Toolbar |
+|---|---|---|---|
+| **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
+| **Tables** (in node-kit) | `node.table` | A live, read-only table view of the board — grouping, filters, totals, or a single big number. | — |
+
+Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
+boards and keep rendering**, because enablement hides types from creation UI without ever touching
+the schema. Any shape — ours or tldraw's — can carry typed properties (`price: ₾2399`); tables are
+pure derivations, computed from the board and never written back to it, so undo history stays clean
+and there are no feedback loops.
+
+Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
+them into notes-with-properties and tables the first time an old board loads.
 
 ## Layout
 
 ```
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
-  src/app/                routing, home screen (sidebar + card grid), storage panel
+  src/app/                routing, home screen (sidebar + card grid), settings panels
   src/boards/             board index, delete sequencing, first-run demo
   src/canvas/             <Board> wrapper, dotted paper, node create menu, toolbar, debug badge
+  src/extensions.ts       the composition root — which extensions this build ships, and their toggles
   src/platform/           PlatformAdapter (the entire future Tauri port surface)
   src/persistence/        asset store, downscaling, thumbnails, backup zip, tldraw-internals wrapper
-packages/node-kit/        @lifeboard/node-kit — the smart-node system
+packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK)
   src/registry.tsx        NodeDefinition + registry + createNodeShapeUtil  ← the load-bearing seam
+  src/extensions.ts       Extension: the unit the app composes, users toggle, and plugins ship as
   src/fields.ts           field types, coercion, currency formatting
   src/facts.ts            the "what data does this node expose" contract
-  src/nodes/*/            markdown, item, rollup (definition + components + engine)
+  src/nodes/*/            item, rollup (legacy, schema-only), table (+ its extension)
+packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```
 
 `node-kit` is a package, not a folder, because it is exactly the code that becomes the plugin SDK,
 gets reused by a future sync server for schema/validation, and ships unchanged into a Tauri build.
+`note-markdown` is the first extension extracted through that SDK: it reaches the host only through
+node-kit's public barrel, which is what proves the SDK surface is sufficient for an extension
+written outside the host.
+
+## How extensions work
+
+An `Extension` is a named bag of contributions — today, node definitions — with an id, a display
+name, an icon and a version for the Settings card:
+
+- **Composing.** `apps/web/src/extensions.ts` is the composition root: one `registerExtension` line
+  per extension this build ships. `Board.tsx` imports it first, so the registry is populated before
+  any module reads it at module scope.
+- **Toggling.** Settings → Extensions renders a card per extension (Obsidian-style, with a switch).
+  Off means *stop offering*: the dock button, context-menu entry and shortcut disappear — live, no
+  board remount — but the extension's shape types stay registered with the schema, so existing
+  boards keep opening and its shapes keep rendering. The disabled set persists in localStorage.
+- **Reactivity.** The registry owns its own tiny store (`subscribeToNodeDefinitions` +
+  `useSyncExternalStore`), deliberately not a tldraw atom: under Vite's dev prebundling the SDK and
+  the app can hold two copies of tldraw's signal library, and dependency tracking never crosses
+  that boundary.
+- **Writing one.** A new package with a `NodeDefinition` (props validators, migrations from v1, a
+  component, an icon, optionally a `kbd` letter), wrapped in an `Extension`, plus a
+  `TLGlobalShapePropsMap` augmentation for its type. Everything else — shape util, tool, dock
+  button, menus, properties, tables — follows from the registry.
 
 ## The note's live preview
 
-Writing is the default action, so the note is worth understanding. `nodes/markdown/blocks.ts` splits
-the markdown into blocks using **mdast node positions** — the same parser `react-markdown` renders
-with, so block boundaries provably agree with what you see. The block holding the caret renders as a
-`<textarea>`; every other block is rendered markdown. Pressing Enter therefore renders what you just
-wrote.
+Writing is the default action, so the note is worth understanding. The editor is **CodeMirror 6**
+with our own live-preview decorations (`@lifeboard/note-markdown`, `livePreview.ts`): markdown
+renders in place, and the raw syntax appears only on the lines the selection touches — hiding
+markers under the caret would mean typing into characters you cannot see.
 
-Three things about it are load-bearing:
+Two things about it are load-bearing:
 
-- **Editing is byte-exact.** Whitespace between blocks belongs to no block, so an edit is
-  `source.slice(0, start) + next + source.slice(end)`. `blocks.test.ts` pins this as a property over
-  a corpus of documents a line-scanner would get wrong (fenced code with blank lines, loose lists,
-  setext headings, GFM tables, CRLF).
-- **The block's live extent is tracked separately from the stored layout.** Blocks are deliberately
-  not re-derived on every keystroke — that would re-render the textarea mid-typing — so the stored
-  block's `end` is stale the moment you type. Splicing against it corrupted the document; `extentRef`
-  is advanced on every change instead.
-- **mdast has no node for an empty block**, so `splitBlocks` synthesises a trailing one when the
-  source ends in a blank line. Without it, Enter at the end of a note produced a separator with
-  nowhere to type.
+- **The document is never transformed.** It stays the markdown string, byte for byte — which the
+  property system, the table pipeline, backup export and the note's props migrations all rely on.
+  Decorations are presentation only: marker characters are `Decoration.replace`d, delimited spans
+  get a class, a task's `[ ]` becomes a real checkbox widget. (This is also why CodeMirror over a
+  block editor: BlockSuite/Lexical/ProseMirror make markdown a lossy serialisation of their own
+  document model.)
+- **One editing session is one undo entry.** The session owns the text and commits to `props.md`
+  once, so board-level undo never steps through keystrokes.
 
-Session undo (`sessionHistory.ts`) is not optional: a textarea's native undo belongs to its element,
-and merging blocks destroys elements. The board still sees exactly one undo entry per editing session.
+Display mode renders through `react-markdown` + GFM (no raw HTML — there is no injection surface to
+sanitise), with `remark-breaks` so Enter always starts a visible new line.
 
 ## Things worth knowing before you change something
 
-**Adding a node type** means adding a `NodeDefinition` and registering it — nothing else. Shape util,
-canvas tool, toolbar entry, keyboard shortcut, the double-click create menu, and rollup participation
-all follow from the registry. There is deliberately no per-node-type branching in the UI.
+**Adding a node type** means writing a `NodeDefinition`, wrapping it in an `Extension`, and adding
+one `registerExtension` line to the composition root — nothing else. Shape util, canvas tool, dock
+button, keyboard shortcut, context-menu entry, the Settings card and table participation all follow
+from the registry. There is deliberately no per-node-type branching in the UI.
 
 **Frames are outlines, not cards.** `Board.tsx` replaces the built-in `frame` util with
 `FrameShapeUtil.configure({ showColors: true, getCustomDisplayValues })` — the first flag registers the
@@ -112,21 +147,23 @@ gets the control for free. The swatch is a **ring** when the colour only paints 
 `fill: 'none'` rectangle) and a **filled dot** when it paints an area (a sticky) — restricted to `frame`
 and `geo`, because a pen stroke has a `fill` prop too but its colour is ink either way.
 
-**The canvas chrome is customised in three places**, all in `canvas/Board.tsx`: `DottedPaper` replaces
-tldraw's `Background` (rather than enabling grid mode, which would also snap movement), `StylePanel` is
-set to `null`, and `createTextOnCanvasDoubleClick: false` disables the default double-click behaviour
-so `NodeCreateMenu` can offer the node types instead.
+**The canvas chrome is customised through `canvasComponents` in `canvas/Board.tsx`**: our paper
+replaces tldraw's `Background` (rather than enabling grid mode, which would also snap movement), the
+bottom dock replaces its `Toolbar`, the selection toolbar renders `InFrontOfTheCanvas`, and the
+`MenuPanel`/`StylePanel`/`Grid` slots are removed — each removal has a comment in the file saying
+why. Double-click on empty canvas is deliberately tldraw's own again: claiming it board-wide meant
+every near-miss left a note behind.
 
 **Board thumbnails are captured when you press "← Boards", not on unmount** — and that timing is
 load-bearing. Exporting from the editor's unmount path runs while the board host is
 `visibility: hidden` for the persistence drain, and tldraw's exporter then produces an image with every
 node background and font missing: previews looked correct for about a second and then decayed into
-serif text on white. `leave()` in `canvas/Board.tsx` captures while the board is still on screen, and
-awaits it (bounded by a timeout) so navigation can't outrun the export.
+serif text on white. `captureActiveThumbnail` in `app/App.tsx` captures while the board is still on
+screen, and awaits it (bounded by a timeout) so navigation can't outrun the export.
 
 **The shape type id is `node.markdown`, but the product calls it a Note.** Renaming a persisted type
-id needs a store-scoped migration rewriting every record, for a cosmetic gain. `NOTE_NODE_TYPE` is the
-name to use in code; the old exports remain as deprecated aliases.
+id needs a store-scoped migration rewriting every record, for a cosmetic gain. `NOTE_NODE_TYPE`
+(exported by `@lifeboard/note-markdown`) is the name to use in code.
 
 **Changing a node's props requires a migration.** `apps/web/src/persistence/snapshot-fixtures.test.ts`
 loads a real snapshot from every released schema and fails if a migration is missing — verified to
@@ -136,9 +173,9 @@ catch it. See `src/persistence/fixtures/README.md` for how to add a fixture.
 IndexedDB naming in `persistence/tldrawLocalDb.ts` (pinned by a test that reads tldraw's own source)
 and the API notes in `docs/`. Re-read both before upgrading.
 
-**Rollups must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero re-aggregations
-during a drag on a 500-node board. In dev, a badge in the bottom-left shows the counters live. If that
-number starts climbing during drags, the facts `isEqual` stage has been broken.
+**Aggregations must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero
+re-aggregations during a drag on a 500-node board. In dev, a badge in the bottom-left shows the
+counters live. If that number starts climbing during drags, the facts `isEqual` stage has been broken.
 
 **tldraw persists on a 350 ms throttle and does not flush on unload.** Two consequences the app works
 around: leaving a board keeps its editor mounted briefly so the write lands (`DRAIN_MS` in
@@ -152,11 +189,11 @@ port to one new file (`TauriPlatformAdapter`).
 
 - **tldraw 5.2.5, not v4.** v4 was current when the plan was written. Every API the plan relies on
   exists in 5.x; the deltas are recorded in `docs/tldraw-api-notes.md`.
-- **Markdown editing is source-based (a textarea), not TipTap.** Markdown is the source of truth, so
-  editing the string is lossless — a rich-text editor round-trips through its own AST and quietly
-  reformats what it doesn't model. It also avoids the two-ProseMirror focus conflict the plan flagged
-  as a risk. Display still uses `react-markdown` + GFM as planned. WYSIWYG remains a possible
-  follow-up.
+- **Markdown editing is source-based (CodeMirror 6 with live-preview decorations), not TipTap.**
+  Markdown is the source of truth, so editing the string is lossless — a rich-text editor
+  round-trips through its own AST and quietly reformats what it doesn't model. It also avoids the
+  two-ProseMirror focus conflict the plan flagged as a risk. Display still uses `react-markdown` +
+  GFM as planned.
 - **Money is per shape, and conversion is opt-in.** A `financial` value carries its own currency
   (`lifeboard:propUnits` on the shape); the property definition's unit is only the default a new value
   inherits. Rates come from open.er-api.com once per provider-update window, cached in KV, and a stale
@@ -199,13 +236,15 @@ port to one new file (`TauriPlatformAdapter`).
 
 ## Status
 
-MVP milestones 1–10 are implemented and verified: 69 unit tests, 25 Playwright specs covering board
-CRUD, per-board persistence, node editing and undo granularity, live rollups, image
-downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute guarantee, the
-double-click create menu, dotted paper, and board thumbnails.
+MVP milestones 1–10 are implemented and verified, plus the property system, tables, collections,
+inline expressions and the extension split: ~400 unit tests across three packages, and Playwright
+suites covering board CRUD, per-board persistence, note editing and undo granularity, live
+aggregation, image downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute
+guarantee, dotted paper, and board thumbnails.
 
-Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, table/chart nodes, live API
-nodes, the sandboxed plugin runtime.
+Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, chart nodes, live API nodes,
+the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system
+is in; sandboxing and a placeholder shape util for uninstalled plugins are what remain).
 
 A free tldraw hobby licence key is still needed before any production deploy; the "made with tldraw"
 watermark stays.

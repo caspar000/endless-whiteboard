@@ -9,6 +9,7 @@ import {
 	noteMarkdown,
 	openBoard,
 	skipFirstRunDemo,
+	waitForStableHeight,
 } from './helpers'
 
 test.describe('canvas chrome', () => {
@@ -396,6 +397,8 @@ test.describe('canvas chrome', () => {
 			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
 		})
 		await page.mouse.dblclick(at.x, at.y)
+		const stickyEditor = page.locator('[contenteditable="true"]')
+		await expect(stickyEditor).toBeFocused()
 
 		await page.keyboard.type('Total ')
 		await page.keyboard.type('{')
@@ -405,9 +408,28 @@ test.describe('canvas chrome', () => {
 		 * the rules come from one shared module, so the menu is the same menu in the same order.
 		 */
 		const menu = page.locator('.lb-suggest')
-		await expect(menu).toBeVisible()
 		const labels = () => menu.locator('.lb-suggest__label').allTextContents()
-		expect(await labels()).toEqual(['sum', 'count', 'avg', 'min', 'max', 'median', 'Price', 'Quality'])
+		const expectSuggestions = async (expected: string[]) => {
+			// tldraw mirrors rich-text edits through the shape store. Let that render complete before
+			// sending the next key; reading the old menu's still-mounted labels can otherwise race the
+			// brief editor hand-off and make Enter land in the document as a newline.
+			await page.evaluate(
+				() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+			)
+			await expect(menu).toBeVisible()
+			await expect(stickyEditor).toBeFocused()
+			expect(await labels()).toEqual(expected)
+		}
+		await expectSuggestions([
+			'sum',
+			'count',
+			'avg',
+			'min',
+			'max',
+			'median',
+			'Price',
+			'Quality',
+		])
 
 		/*
 		 * Keyboard, not clicks. Picking with the mouse works in the note but not yet here: the
@@ -415,9 +437,9 @@ test.describe('canvas chrome', () => {
 		 * the expression, so the menu closes mid-sequence. Known rough edge; the typed path is solid.
 		 */
 		await page.keyboard.press('Enter')
-		await expect.poll(labels).toEqual(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
+		await expectSuggestions(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
 		await page.keyboard.press('Enter')
-		await expect.poll(labels).toEqual(['in', 'out', 'either', 'frame', 'page'])
+		await expectSuggestions(['in', 'out', 'either', 'frame', 'page'])
 
 		// The terminal step closes the expression, and the menu goes with it — the caret is past the
 		// brace, so there is no open expression left to complete.
@@ -539,17 +561,26 @@ test.describe('canvas chrome', () => {
 		await page.keyboard.type('a line\n\nanother line\n\nand a third')
 		await page.keyboard.press('Escape')
 
+		// Editing and preview use different DOM (CodeMirror markers disappear in preview), and their
+		// intrinsic heights differ. Wait for the preview before recording the derived height that redo
+		// must return to; otherwise this can capture the editor's last measurement one frame too early.
+		await expect(page.locator(NOTE_EDITOR)).toBeHidden()
+		await waitForStableHeight(page, 'node.markdown')
 		await expect.poll(async () => (await readNote()).h).toBeGreaterThan(before.h)
 		expect((await readNote()).auto).toBe(true)
 
 		// The height is a derived cache written with `history: 'ignore'`, so growing it must not have
 		// added undo entries — one undo still reverts the whole editing session.
-		const grown = await readNote()
+		const written = await noteMarkdown(page)
 		await page.keyboard.press('ControlOrMeta+z')
 		// One press, and every line typed is gone — not one press per height the note passed through.
 		await expect.poll(async () => noteMarkdown(page)).toBe('')
 		await page.keyboard.press('ControlOrMeta+Shift+z')
-		await expect.poll(async () => (await readNote()).h).toBe(grown.h)
+		await expect.poll(async () => noteMarkdown(page)).toBe(written)
+		await waitForStableHeight(page, 'node.markdown')
+		// Height is a derived cache, so redo must recompute a fitting value; it need not replay the
+		// exact intermediate pixel measurement that happened to be present before undo.
+		expect((await readNote()).h).toBeGreaterThan(before.h)
 
 		// Dragging the bottom edge is an explicit request for a fixed height.
 		//

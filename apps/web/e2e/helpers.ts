@@ -17,24 +17,17 @@ export async function gotoFresh(page: Page): Promise<void> {
 		.first()
 		.waitFor({ state: 'visible' })
 
-	await page.evaluate(async () => {
-		localStorage.clear()
-		const dbs = (await indexedDB.databases?.()) ?? []
-		await Promise.all(
-			dbs.map(
-				(db) =>
-					new Promise<void>((resolve) => {
-						if (!db.name) return resolve()
-						const req = indexedDB.deleteDatabase(db.name)
-						req.addEventListener('success', () => resolve())
-						req.addEventListener('error', () => resolve())
-						req.addEventListener('blocked', () => resolve())
-					})
-			)
-		)
-	})
+	const origin = new URL(page.url()).origin
+	const cdp = await page.context().newCDPSession(page)
+	// A live tldraw editor owns an IndexedDB connection. `deleteDatabase()` reports `blocked` while
+	// that connection is open; treating that event as completion let its delayed persistence and
+	// ResizeObserver work run into the freshly loaded app. A real cross-document navigation tears down
+	// the React tree, editor, and module-scope atoms first. CDP can then clear the now-uncontended origin
+	// atomically (this suite's only configured project is Chromium).
+	await page.goto('about:blank')
+	await cdp.send('Storage.clearDataForOrigin', { origin, storageTypes: 'all' })
+	await cdp.detach()
 	await page.goto('/#/')
-	await page.reload()
 }
 
 /** Waits for the demo board that first run seeds, then goes back to the board list. */
@@ -183,13 +176,21 @@ export async function openProperties(page: Page, shapeType: string): Promise<voi
  */
 export async function waitForStableHeight(page: Page, shapeType: string): Promise<void> {
 	let last = -1
+	let unchanged = 0
 	for (let i = 0; i < 40; i++) {
 		const h = await page.evaluate((type) => {
 			const editor = (window as unknown as { editor: EditorLike }).editor
 			const shape = editor.getCurrentPageShapes().find((s) => s.type === type)
 			return shape ? Math.round((shape.props as { h?: number }).h ?? 0) : -1
 		}, shapeType)
-		if (h === last) return
+		if (h === last) {
+			unchanged += 1
+			// One equal pair can straddle the editor → preview hand-off while the new ResizeObserver
+			// has not fired yet. Three quiet intervals cover that render and its deferred rAF write.
+			if (unchanged === 3) return
+		} else {
+			unchanged = 0
+		}
 		last = h
 		await page.waitForTimeout(50)
 	}

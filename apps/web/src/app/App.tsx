@@ -9,6 +9,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import { AppearancePanel } from './AppearancePanel'
 import { BoardList } from './BoardList'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
+import { HelpPage } from './HelpPage'
 import { SettingsPanel } from './SettingsPanel'
 import { Sidebar } from './Sidebar'
 import { TabStrip } from './TabStrip'
@@ -293,6 +294,11 @@ export function App() {
 		navigate({ view: 'settings' })
 	}, [captureActiveThumbnail, navigate])
 
+	const goHelp = useCallback(async () => {
+		await captureActiveThumbnail()
+		navigate({ view: 'help' })
+	}, [captureActiveThumbnail, navigate])
+
 	const createAndOpen = useCallback(async () => {
 		const board = await api.create()
 		await openBoard(board)
@@ -384,6 +390,7 @@ export function App() {
 				boards={api.boards}
 				onAllBoards={() => void goHome()}
 				onSettings={() => void goSettings()}
+				onHelp={() => void goHelp()}
 				onOpenBoard={(board) => void openBoard(board)}
 				onNewBoard={() => void createAndOpen()}
 			/>
@@ -462,6 +469,17 @@ export function App() {
 								</header>
 								<AppearancePanel theme={theme} onThemeChange={setTheme} canvas={canvasPrefs} />
 								<SettingsPanel api={api} onImported={() => void goHome()} />
+							</div>
+						</main>
+					)}
+
+					{route.view === 'help' && (
+						<main className="lb-home__main">
+							<div className="lb-help-page">
+								<header className="lb-home__header">
+									<h1>Help</h1>
+								</header>
+								<HelpPage />
 							</div>
 						</main>
 					)}

@@ -3233,3 +3233,592 @@ button.lb-props__eye:hover {
 	cursor: pointer;
 	accent-color: var(--lb-accent);
 }
+
+/* --------------------------------------------------------------------- help */
+
+/*
+ * The help page (app/HelpPage.tsx). Wider than settings: settings is a column of short controls,
+ * but the demos here are little stages that need room to act on.
+ */
+.lb-help-page {
+	max-width: 720px;
+	margin-inline: auto;
+}
+.lb-help__intro {
+	font-size: 14px;
+	line-height: 1.65;
+	color: var(--lb-text-dim);
+	max-width: 60ch;
+	margin: -6px 0 36px;
+}
+.lb-help__section {
+	margin-bottom: 42px;
+}
+.lb-help__section h2 {
+	font-size: 16px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	margin: 0 0 8px;
+}
+.lb-help__section p {
+	font-size: 13px;
+	line-height: 1.65;
+	color: var(--lb-text-dim);
+	max-width: 64ch;
+	margin: 0 0 14px;
+}
+.lb-help__section p strong {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-help__section code {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 0.9em;
+	color: var(--lb-text);
+}
+
+/* A keycap. New primitive — nothing in the app rendered keys as keys before this page. */
+.lb-kbd {
+	display: inline-block;
+	min-width: 17px;
+	padding: 1px 5px 2px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border-strong);
+	border-bottom-width: 2px;
+	border-radius: 5px;
+	font-family: var(--lb-font);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	text-align: center;
+	color: var(--lb-text-dim);
+}
+.lb-help__keys {
+	white-space: nowrap;
+}
+.lb-help__keysep {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+
+/* ------------------------------------------------------------- help: the dock */
+
+.lb-help-dockdemo {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
+	padding: 22px 16px 18px;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-canvas);
+}
+/* The real dock floats over the canvas; this replica sits in flow, so no absolute positioning. */
+.lb-help-dockdemo__dock {
+	flex-wrap: wrap;
+	justify-content: center;
+}
+.lb-help-dockdemo__group {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+}
+.lb-help-dockdemo__info {
+	min-height: 74px;
+	max-width: 46ch;
+	text-align: center;
+}
+.lb-help-dockdemo__name {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+.lb-help-dockdemo__info p {
+	font-size: 12.5px;
+	line-height: 1.6;
+	color: var(--lb-text-dim);
+	margin: 0;
+}
+
+/* ------------------------------------------------------------- help: demo stage */
+
+/*
+ * A looping demonstration: dotted paper like the canvas, mock shapes styled from the same tokens
+ * as the real ones. Steps are driven from React (useDemo); this file only knows how each state
+ * looks and how to travel between two of them.
+ */
+.lb-demo {
+	position: relative;
+	height: 240px;
+	margin: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+	overflow: hidden;
+	user-select: none;
+}
+.lb-demo--short {
+	height: 200px;
+}
+/*
+ * A fixed 640px stage inside the stretchy card, so every demo positions in known pixels — the
+ * arrow SVG's coordinates and the cards it connects must agree, and they can't if one scales with
+ * the page and the other doesn't. On a narrow window the edges clip; the action is in the middle.
+ */
+.lb-demo__scene {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	width: 640px;
+	height: 100%;
+	transform: translateX(-50%);
+}
+.lb-demo__hint {
+	position: absolute;
+	inset-inline: 0;
+	bottom: 10px;
+	text-align: center;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+.lb-demo__cursor {
+	position: absolute;
+	z-index: 5;
+	color: var(--lb-text);
+	filter: drop-shadow(0 1px 2px rgb(0 0 0 / 40%));
+	transition: left 650ms cubic-bezier(0.35, 0.7, 0.25, 1), top 650ms cubic-bezier(0.35, 0.7, 0.25, 1),
+		opacity 250ms ease;
+	pointer-events: none;
+}
+.lb-demo__caret {
+	display: inline-block;
+	width: 1.5px;
+	height: 1em;
+	margin-left: 1px;
+	vertical-align: -2px;
+	background: var(--lb-accent);
+	animation: lb-demo-blink 1s steps(1) infinite;
+}
+@keyframes lb-demo-blink {
+	50% {
+		opacity: 0;
+	}
+}
+/* Something that arrives: hidden at rest, popped in by its `--in` modifier. */
+.lb-demo__pop {
+	opacity: 0;
+	transform: scale(0.92);
+	transition: opacity 250ms ease, transform 250ms ease;
+}
+.lb-demo__pop--in {
+	opacity: 1;
+	transform: none;
+}
+@keyframes lb-demo-pulse {
+	30% {
+		transform: scale(1.09);
+	}
+}
+.lb-demo__bump {
+	animation: lb-demo-pulse 500ms ease;
+}
+
+/* The mock markdown note. */
+.lb-demo__note {
+	position: absolute;
+	left: 36px;
+	top: 34px;
+	width: 220px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	padding: 12px 14px;
+	font-size: 13px;
+	line-height: 1.7;
+	box-shadow: var(--lb-shadow-1);
+	transition: box-shadow 200ms ease, outline-color 200ms ease;
+	outline: 2px solid transparent;
+}
+.lb-demo__note--editing {
+	outline-color: var(--lb-accent);
+}
+.lb-demo__note--wide {
+	width: 280px;
+	top: 40px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+.lb-demo__source {
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	color: var(--lb-text);
+	white-space: pre-wrap;
+}
+.lb-demo__tasks {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.lb-demo__task {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	transition: color 250ms ease, opacity 250ms ease;
+}
+.lb-demo__task--done {
+	opacity: 0.6;
+	text-decoration: line-through;
+}
+.lb-demo__box {
+	display: grid;
+	place-items: center;
+	width: 14px;
+	height: 14px;
+	border: 1.5px solid var(--lb-border-strong);
+	border-radius: 4px;
+	font-size: 10px;
+	color: var(--lb-on-accent);
+	flex-shrink: 0;
+	transition: background 200ms ease, border-color 200ms ease;
+}
+.lb-demo__task--done .lb-demo__box {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-demo__money {
+	color: var(--lb-money);
+	font-variant-numeric: tabular-nums;
+}
+
+/* The mock sticky — a fixed yellow in both themes, so it reads as "a sticky" instantly. */
+.lb-demo__stickywrap {
+	position: absolute;
+	left: 200px;
+	top: 52px;
+	width: 130px;
+}
+.lb-demo__stickywrap--left {
+	left: 84px;
+}
+.lb-demo__sticky {
+	background: #f2d15f;
+	color: #2a2415;
+	border-radius: 8px;
+	padding: 14px 12px 20px;
+	font-size: 13px;
+	font-weight: 600;
+	box-shadow: var(--lb-shadow-1);
+}
+/* The property strip beneath a shape, as ForeignPropertyStrips draws it. */
+.lb-demo__strip {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 7px;
+	font-size: 12px;
+	opacity: 0;
+	transform: translateY(-3px);
+	transition: opacity 250ms ease, transform 250ms ease;
+}
+.lb-demo__strip.lb-demo__pop--in {
+	opacity: 1;
+	transform: none;
+}
+.lb-demo__stripname {
+	color: var(--lb-text-dim);
+}
+.lb-demo__stripvalue {
+	font-variant-numeric: tabular-nums;
+}
+.lb-demo__stickywrap--left .lb-demo__strip {
+	opacity: 1;
+	transform: none;
+}
+
+/* The mock properties panel. */
+.lb-demo__panel {
+	position: absolute;
+	left: 356px;
+	top: 44px;
+	width: 176px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	padding: 10px 12px;
+	box-shadow: var(--lb-shadow-2);
+	font-size: 12px;
+	opacity: 0;
+	transform: translateY(5px) scale(0.97);
+	transition: opacity 220ms ease, transform 220ms ease;
+	z-index: 4;
+}
+.lb-demo__panel--open {
+	opacity: 1;
+	transform: none;
+}
+.lb-demo__panelhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 9px;
+}
+.lb-demo__panelrow {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 5px 0;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-demo__panelrow--faint {
+	color: var(--lb-text-faint);
+}
+.lb-demo__panelvalue {
+	font-variant-numeric: tabular-nums;
+	min-width: 40px;
+	text-align: right;
+}
+
+/* The arrow that becomes a relation. */
+.lb-demo__wire {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+.lb-demo__wirepath {
+	fill: none;
+	stroke: var(--lb-text-dim);
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	transition: stroke-dashoffset 750ms ease-in-out, stroke 300ms ease;
+}
+.lb-demo__wirepath--drawn,
+.lb-demo__wirepath--bound {
+	stroke-dashoffset: 0;
+}
+.lb-demo__wirepath--bound {
+	stroke: var(--lb-accent);
+}
+.lb-demo__wirehead {
+	fill: none;
+	stroke: var(--lb-accent);
+	stroke-width: 2;
+	stroke-linecap: round;
+	opacity: 0;
+	transition: opacity 250ms ease;
+}
+.lb-demo__wirehead--on {
+	opacity: 1;
+}
+/* tldraw's binding highlight, loosely: a ring where the arrow found a home. */
+.lb-demo__bindring {
+	fill: none;
+	stroke: var(--lb-accent);
+	stroke-width: 2;
+	opacity: 0;
+	transition: opacity 250ms ease;
+}
+.lb-demo__bindring--on {
+	opacity: 0.55;
+}
+
+/* The collector card the arrow lands on. */
+.lb-demo__collector {
+	position: absolute;
+	right: 68px;
+	top: 66px;
+	width: 148px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	padding: 11px 13px;
+	font-size: 13px;
+	box-shadow: var(--lb-shadow-1);
+}
+.lb-demo__collectortitle {
+	font-weight: 600;
+}
+.lb-demo__collect {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 7px;
+	padding-top: 7px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-demo__collectvalue {
+	font-size: 15px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-money);
+}
+.lb-demo__collectcount {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+
+/* The `{` suggestion menu, in the suggest popover's clothes. */
+.lb-demo__suggest {
+	position: absolute;
+	left: 50%;
+	top: 112px;
+	transform: translateX(-50%);
+	width: 210px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 9px;
+	padding: 4px;
+	box-shadow: var(--lb-shadow-2);
+	font-size: 12px;
+	z-index: 4;
+}
+.lb-demo__row {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 5px 8px;
+	border-radius: 6px;
+}
+.lb-demo__row--on {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-demo__rowdetail {
+	color: var(--lb-text-faint);
+}
+.lb-demo__row--on .lb-demo__rowdetail {
+	color: inherit;
+	opacity: 0.75;
+}
+
+/* The live-table demo: mini cards on the left, the table that watches them on the right. */
+.lb-demo__minis {
+	position: absolute;
+	left: 36px;
+	top: 36px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.lb-demo__mini {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	width: 128px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 8px 11px;
+	font-size: 12px;
+	font-weight: 600;
+	box-shadow: var(--lb-shadow-1);
+}
+.lb-demo__minivalue {
+	font-weight: 400;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+}
+.lb-demo__table {
+	position: absolute;
+	right: 40px;
+	top: 32px;
+	width: 220px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	padding: 10px 13px;
+	font-size: 12px;
+	box-shadow: var(--lb-shadow-1);
+}
+.lb-demo__tablehead {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 6px;
+}
+.lb-demo__tablerow,
+.lb-demo__tablesum {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 4px 0;
+	font-variant-numeric: tabular-nums;
+}
+.lb-demo__tablerow + .lb-demo__tablerow,
+.lb-demo__tablesum {
+	border-top: 1px solid var(--lb-border);
+}
+.lb-demo__tablesum {
+	font-weight: 600;
+	color: var(--lb-money);
+}
+
+/* ------------------------------------------------------------- help: shortcuts */
+
+.lb-help__keygroups {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 12px;
+}
+.lb-help__keygroup {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 14px 16px;
+}
+.lb-help__keygroup h3 {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-dim);
+	margin: 0 0 10px;
+}
+.lb-help__keyrow {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	font-size: 12.5px;
+	color: var(--lb-text-dim);
+	padding: 4px 0;
+}
+.lb-help__keyrow .lb-help__keys {
+	min-width: 76px;
+	flex-shrink: 0;
+}
+
+/*
+ * Reduced motion: the demos hold their final frame (useDemo pins the step), so nothing here should
+ * travel either — the outcome is shown, the journey is skipped.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.lb-demo *,
+	.lb-demo__cursor {
+		transition-duration: 1ms !important;
+		animation: none !important;
+	}
+}

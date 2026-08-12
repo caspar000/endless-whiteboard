@@ -21,7 +21,7 @@ export function TabStrip({
 }: {
 	boards: BoardMeta[]
 	tabs: string[]
-	view: 'list' | 'settings' | 'board'
+	view: 'list' | 'settings' | 'help' | 'board'
 	activeBoardId: string | null
 	onHome: () => void
 	onSelect: (board: BoardMeta) => void

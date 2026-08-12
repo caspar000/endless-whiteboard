@@ -63,9 +63,14 @@ export {
 // The property system: definitions per board, values per shape. Any shape may carry any property.
 export {
 	PROPERTY_TYPES,
+	RATING_MAX,
+	STAGE_LABELS,
+	STATUS_STAGES,
 	defaultUnitForType as defaultUnitForPropertyType,
 	emptyValueForType,
+	isChoiceType,
 	isListType,
+	isNumericType,
 	nameFromPropertyKey,
 	propertyDefValidator,
 	propertyIdFromName,
@@ -74,7 +79,14 @@ export {
 	type PropertyDef,
 	type PropertyType,
 	type PropertyValue,
+	type StatusStage,
 } from './properties/types'
+/**
+ * Option colouring. Exported because the *help page* renders mock cards and has to paint their chips
+ * the same colour the real card would — a help page that invents its own palette is a help page that
+ * stops matching the app the first time this hash changes.
+ */
+export { choiceStyle, optionHue, optionStyle, stageForOption, stageStyle } from './properties/options'
 export {
 	coercePropertyValue,
 	formatPropertyValue,
@@ -168,6 +180,10 @@ export {
 	columnTitle,
 	defaultTableProps,
 	filterOpsForType,
+	summaryIsCount,
+	summaryIsPercent,
+	summaryKeepsUnit,
+	summaryLabel,
 	summaryOpsForType,
 	type FilterOp,
 	type LayoutMode,

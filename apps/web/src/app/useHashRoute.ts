@@ -8,12 +8,24 @@ import { useCallback, useEffect, useState } from 'react'
 export type Route =
 	| { view: 'list' }
 	| { view: 'settings' }
-	| { view: 'help' }
+	/**
+	 * `section` is the help page's inner sidebar selection (`#/help/properties`).
+	 *
+	 * In the route rather than in component state so a section is a **link**: "read the Properties page"
+	 * is a thing worth being able to send someone, and going back after clicking a cross-reference
+	 * should return you to where you were. Optional, because `#/help` is the overview — and because
+	 * every existing `#/help` link has to keep working.
+	 */
+	| { view: 'help'; section?: string }
 	| { view: 'board'; boardId: string; seedDemo?: boolean }
 
 function parseHash(hash: string): Route {
 	if (hash === '#/settings') return { view: 'settings' }
 	if (hash === '#/help') return { view: 'help' }
+	// Validated by the help page against its own section list, not here: the router has no business
+	// knowing what the sections are, and an unknown one simply falls back to the overview.
+	const help = /^#\/help\/([a-z-]+)$/.exec(hash)
+	if (help) return { view: 'help', section: help[1]! }
 	const match = /^#\/board\/([^?]+)(\?.*)?$/.exec(hash)
 	if (!match) return { view: 'list' }
 	const boardId = decodeURIComponent(match[1]!)
@@ -24,7 +36,7 @@ function parseHash(hash: string): Route {
 function toHash(route: Route): string {
 	if (route.view === 'list') return '#/'
 	if (route.view === 'settings') return '#/settings'
-	if (route.view === 'help') return '#/help'
+	if (route.view === 'help') return route.section ? `#/help/${route.section}` : '#/help'
 	const suffix = route.seedDemo ? '?demo=1' : ''
 	return `#/board/${encodeURIComponent(route.boardId)}${suffix}`
 }

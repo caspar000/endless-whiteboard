@@ -9,7 +9,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import { AppearancePanel } from './AppearancePanel'
 import { BoardList } from './BoardList'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
-import { HelpPage } from './HelpPage'
+import { HelpPage } from './help/HelpPage'
 import { SettingsPanel } from './SettingsPanel'
 import { Sidebar } from './Sidebar'
 import { TabStrip } from './TabStrip'
@@ -473,15 +473,13 @@ export function App() {
 						</main>
 					)}
 
+					{/* Owns its own layout and scrolling, unlike the other views: the section rail has to
+					    stay put while the section beside it scrolls. */}
 					{route.view === 'help' && (
-						<main className="lb-home__main">
-							<div className="lb-help-page">
-								<header className="lb-home__header">
-									<h1>Help</h1>
-								</header>
-								<HelpPage />
-							</div>
-						</main>
+						<HelpPage
+							section={route.section}
+							onSection={(section) => navigate({ view: 'help', section })}
+						/>
 					)}
 					</div>
 				</div>

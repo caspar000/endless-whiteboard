@@ -3237,19 +3237,122 @@ button.lb-props__eye:hover {
 /* --------------------------------------------------------------------- help */
 
 /*
- * The help page (app/HelpPage.tsx). Wider than settings: settings is a column of short controls,
- * but the demos here are little stages that need room to act on.
+ * The help page (app/help/). Its own two-pane layout rather than a column inside `.lb-home__main`,
+ * because the section rail must stay put while the section beside it scrolls — one shared scroller
+ * would take the rail with it and leave you unable to switch pages without scrolling back up.
  */
-.lb-help-page {
-	max-width: 720px;
+.lb-help {
+	display: grid;
+	grid-template-columns: 218px minmax(0, 1fr);
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+.lb-help__nav {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	border-right: 1px solid var(--lb-border);
+	padding: 26px 12px 40px;
+	overflow-y: auto;
+}
+.lb-help__navgroup {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+/* Matches the shell sidebar's own section labels: this is the same idea one level in. */
+.lb-help__navtitle {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	padding: 0 10px 4px;
+}
+.lb-help__navitem {
+	display: grid;
+	grid-template-columns: 20px 1fr;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	background: none;
+	border: 0;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	padding: 7px 10px;
+	font-size: 13px;
+	text-align: left;
+	transition: background 100ms ease, color 100ms ease;
+}
+.lb-help__navitem:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-help__navitem--active {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	font-weight: 500;
+}
+.lb-help__navicon {
+	display: grid;
+	place-items: center;
+	opacity: 0.85;
+}
+.lb-help__main {
+	overflow-y: auto;
+	padding: 28px 32px 72px;
+	min-width: 0;
+}
+/*
+ * A reading width for the prose, but the demos are little stages that need room to act on — hence
+ * wider than settings' 640.
+ */
+.lb-help__page {
+	max-width: 760px;
 	margin-inline: auto;
 }
-.lb-help__intro {
+.lb-help__lede {
 	font-size: 14px;
 	line-height: 1.65;
 	color: var(--lb-text-dim);
-	max-width: 60ch;
-	margin: -6px 0 36px;
+	max-width: 62ch;
+	margin: -10px 0 34px;
+}
+/*
+ * Narrow window: the rail becomes a row above the content. Kept scrollable rather than wrapped into
+ * three lines, so the page below it doesn't start halfway down the screen.
+ */
+@media (max-width: 900px) {
+	.lb-help {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	.lb-help__nav {
+		flex-direction: row;
+		gap: 10px;
+		border-right: 0;
+		border-bottom: 1px solid var(--lb-border);
+		padding: 10px 16px;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+	.lb-help__navgroup {
+		flex-direction: row;
+		gap: 4px;
+	}
+	.lb-help__navtitle {
+		display: none;
+	}
+	.lb-help__navitem {
+		grid-template-columns: auto;
+		white-space: nowrap;
+	}
+	.lb-help__navicon {
+		display: none;
+	}
+	.lb-help__main {
+		padding: 22px 20px 64px;
+	}
 }
 .lb-help__section {
 	margin-bottom: 42px;
@@ -3812,13 +3915,911 @@ button.lb-props__eye:hover {
 }
 
 /*
+ * The caption, inside an interactive widget rather than an animated stage.
+ *
+ * `.lb-demo__hint` is absolutely positioned because a demo stage is a fixed-height box with room set
+ * aside at the bottom for it. These widgets size to their content instead, so the same caption has to
+ * sit in flow — left absolute it either lands on top of the controls or, with no positioned ancestor,
+ * escapes to the bottom of the page.
+ */
+.lb-rel > .lb-demo__hint,
+.lb-tb > .lb-demo__hint,
+.lb-lp > .lb-demo__hint {
+	position: static;
+	margin-top: 12px;
+	text-align: center;
+}
+
+/* ------------------------------------------------------ help: prose furniture */
+
+/* A parenthetical: true, worth knowing, not on the critical path. */
+.lb-help__aside {
+	border-left: 2px solid var(--lb-border-strong);
+	padding-left: 12px;
+	font-size: 12.5px !important;
+	color: var(--lb-text-faint) !important;
+	margin-top: 14px !important;
+}
+/* An inline cross-reference. A button, because these navigate the inner sidebar, not the document. */
+.lb-help__jump {
+	background: none;
+	border: 0;
+	padding: 0;
+	font: inherit;
+	color: var(--lb-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+.lb-help__jump:hover {
+	color: var(--lb-accent-hover);
+}
+
+/* The overview's three numbered ideas, each a way into the section that explains it. */
+.lb-help__ideas {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 10px;
+}
+.lb-help__idea {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 14px 16px 16px;
+	text-align: left;
+	cursor: pointer;
+	transition: border-color 120ms ease, background 120ms ease;
+}
+.lb-help__idea:hover {
+	border-color: var(--lb-border-strong);
+	background: var(--lb-surface-2);
+}
+.lb-help__ideanum {
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	font-size: 11px;
+	font-weight: 700;
+}
+.lb-help__ideatitle {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--lb-text);
+}
+.lb-help__ideabody {
+	font-size: 12.5px;
+	line-height: 1.55;
+	color: var(--lb-text-dim);
+}
+
+/* Four short truths that don't each deserve a demo. */
+.lb-help__facts {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 10px;
+}
+.lb-help__fact {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 13px 15px 15px;
+}
+.lb-help__fact h3 {
+	font-size: 12.5px;
+	font-weight: 640;
+	color: var(--lb-text);
+	margin: 0 0 5px;
+}
+.lb-help__fact p {
+	font-size: 12.5px !important;
+	line-height: 1.55;
+	margin: 0 !important;
+	max-width: none !important;
+}
+
+/* The tab bar the interactive demos share. */
+.lb-help__tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 10px;
+}
+.lb-help__tab {
+	background: var(--lb-surface-2);
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	padding: 6px 12px;
+	font-size: 12.5px;
+	cursor: pointer;
+	transition: background 120ms ease, color 120ms ease;
+}
+.lb-help__tab:hover {
+	color: var(--lb-text);
+}
+.lb-help__tab--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+	font-weight: 500;
+}
+.lb-help__tabhint {
+	margin-left: 6px;
+	opacity: 0.7;
+	font-size: 11px;
+}
+
+/* What you type → what you get. */
+.lb-help__syntax {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 2px 18px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 12px 16px;
+}
+.lb-help__syntaxrow {
+	display: grid;
+	grid-template-columns: 150px 1fr;
+	align-items: baseline;
+	gap: 12px;
+	padding: 4px 0;
+	font-size: 12.5px;
+	color: var(--lb-text-dim);
+}
+.lb-help__syntaxrow code {
+	font-size: 11.5px;
+	white-space: nowrap;
+}
+
+/* --------------------------------------------------- help: the type gallery */
+
+.lb-gallery {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	overflow: hidden;
+}
+.lb-gallery__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 12px;
+	border-bottom: 1px solid var(--lb-border);
+	background: var(--lb-bg-raised);
+}
+.lb-gallery__chip {
+	background: var(--lb-surface-2);
+	border: 1px solid transparent;
+	border-radius: 6px;
+	color: var(--lb-text-dim);
+	padding: 4px 9px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 11.5px;
+	cursor: pointer;
+	transition: background 120ms ease, color 120ms ease;
+}
+.lb-gallery__chip:hover {
+	color: var(--lb-text);
+	background: var(--lb-surface-hover);
+}
+.lb-gallery__chip--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-gallery__body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 200px;
+	gap: 18px;
+	padding: 16px;
+}
+.lb-gallery__lead h3 {
+	font-size: 14px;
+	font-weight: 640;
+	color: var(--lb-text);
+	margin: 0 0 6px;
+}
+.lb-gallery__lead p {
+	font-size: 12.5px !important;
+	line-height: 1.6;
+	margin: 0 !important;
+	max-width: none !important;
+}
+/* The sample renders through the real strip classes, so it needs the card behind it to be a card. */
+.lb-gallery__sample {
+	background: var(--lb-canvas);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 10px 12px;
+	align-self: start;
+}
+.lb-gallery__samplehead {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+}
+.lb-gallery__sample .lb-strip {
+	margin-top: 4px;
+}
+.lb-gallery__answers {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 10px;
+	margin: 0;
+	padding-top: 14px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-gallery__answers dt {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	margin-bottom: 3px;
+}
+.lb-gallery__answers dd {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.55;
+	color: var(--lb-text-dim);
+}
+
+/* ------------------------------------------------ help: the two-domain example */
+
+.lb-ex {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 14px;
+	background: var(--lb-surface);
+}
+.lb-ex__blurb {
+	font-size: 12.5px;
+	line-height: 1.6;
+	color: var(--lb-text-dim);
+	margin: 0 0 14px;
+}
+/* Dotted paper, because these cards are meant to read as being on the board. */
+.lb-ex__board {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 216px;
+	gap: 14px;
+	padding: 14px;
+	border-radius: 8px;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+}
+.lb-ex__cards {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-width: 0;
+}
+.lb-ex__card {
+	display: block;
+	/* Capped rather than filling the column: a card the width of the page reads as a table row, and
+	   the point of drawing it here is that it is a *shape* on a board. */
+	width: 100%;
+	max-width: 260px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	padding: 10px 12px;
+	text-align: left;
+	box-shadow: var(--lb-shadow-1);
+	outline: 2px solid transparent;
+	cursor: pointer;
+	transition: outline-color 150ms ease, transform 150ms ease;
+}
+.lb-ex__card:hover {
+	transform: translateY(-1px);
+}
+.lb-ex__card--on {
+	outline-color: var(--lb-accent);
+}
+.lb-ex__cardname {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--lb-text);
+}
+/*
+ * A sticky's colour is on its title rather than the whole card: the real strip is drawn *below* the
+ * shape, and on a yellow fill its dim label text would be unreadable — which would make the mock
+ * wrong in the one way that matters, since the strip is what the example is about.
+ */
+.lb-ex__card--sticky .lb-ex__cardname {
+	background: #f2d15f;
+	color: #2a2415;
+	border-radius: 6px;
+	padding: 7px 9px;
+	margin: -2px -2px 2px;
+}
+.lb-ex__photo {
+	display: grid;
+	place-items: center;
+	height: 44px;
+	margin-bottom: 7px;
+	border-radius: 6px;
+	background: linear-gradient(135deg, var(--lb-surface-2), var(--lb-surface-hover));
+	color: var(--lb-text-faint);
+}
+/* The properties panel, in the floating chrome the real one uses. */
+.lb-ex__panel {
+	align-self: start;
+	background: var(--lb-panel);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	padding: 10px 12px;
+	box-shadow: var(--lb-shadow-2);
+	font-size: 12px;
+}
+.lb-ex__panelhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+.lb-ex__paneltitle {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-ex__panelrow {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 5px 0;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-ex__panelrow--faint {
+	color: var(--lb-text-faint);
+}
+.lb-ex__panelname {
+	display: flex;
+	flex-direction: column;
+	color: var(--lb-text-dim);
+}
+.lb-ex__paneltype {
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 9.5px;
+	color: var(--lb-text-faint);
+}
+.lb-ex__panelvalue {
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+	min-width: 0;
+	color: var(--lb-text);
+}
+.lb-ex__panelfoot {
+	margin-top: 9px;
+	padding-top: 9px;
+	border-top: 1px solid var(--lb-border);
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--lb-text-faint);
+}
+.lb-ex__ask {
+	margin-top: 14px;
+}
+.lb-ex__asklabel {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	margin-bottom: 6px;
+}
+.lb-ex__askrow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.lb-ex__askbtn {
+	background: var(--lb-surface-2);
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	padding: 6px 11px;
+	font-size: 12.5px;
+	cursor: pointer;
+	transition: background 120ms ease, color 120ms ease;
+}
+.lb-ex__askbtn:hover {
+	color: var(--lb-text);
+	background: var(--lb-surface-hover);
+}
+.lb-ex__askbtn--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-ex__answer {
+	margin-top: 12px;
+	padding: 14px 16px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-bg-raised);
+}
+.lb-ex__answervalue {
+	font-size: 22px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-money);
+}
+.lb-ex__answernote {
+	margin-top: 5px;
+	font-size: 12px;
+	line-height: 1.55;
+	color: var(--lb-text-dim);
+}
+.lb-ex__answerexpr {
+	margin-top: 8px;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+/*
+ * The side-by-side widgets stack on their **own** width, not the window's.
+ *
+ * A media query is the wrong instrument here: how much room these have depends on the app sidebar, the
+ * help rail, and whether that rail has collapsed into a row — so the same window width can leave the
+ * board anywhere from 430px to 700px, and any breakpoint picked from the viewport is wrong at least
+ * half the time. This measures the thing that actually decides.
+ */
+.lb-ex,
+.lb-gallery,
+.lb-ask,
+.lb-rel {
+	container-type: inline-size;
+}
+@container (max-width: 520px) {
+	.lb-ex__board,
+	.lb-gallery__body,
+	.lb-ask {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.lb-ex__card {
+		max-width: none;
+	}
+}
+
+/* ------------------------------------------------ help: which arrows count */
+
+.lb-rel {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	padding: 14px;
+}
+.lb-rel__pick {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 14px;
+}
+.lb-rel__btn {
+	background: var(--lb-surface-2);
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	padding: 6px 11px;
+	font-size: 12.5px;
+	cursor: pointer;
+}
+.lb-rel__btn:hover {
+	color: var(--lb-text);
+}
+.lb-rel__btn--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-rel__graph {
+	display: grid;
+	grid-template-columns: 1fr auto auto auto 1fr;
+	align-items: center;
+	gap: 10px;
+	padding: 16px 12px;
+	border-radius: 8px;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+}
+.lb-rel__side {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+	transition: opacity 180ms ease, filter 180ms ease;
+}
+/* Not counted: still there, visibly not being read. */
+.lb-rel__side--off,
+.lb-rel__arrows--off {
+	opacity: 0.32;
+	filter: grayscale(1);
+}
+.lb-rel__node {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 7px 10px;
+	font-size: 12px;
+	box-shadow: var(--lb-shadow-1);
+}
+.lb-rel__amount {
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+	white-space: nowrap;
+}
+.lb-rel__arrows {
+	color: var(--lb-accent);
+	font-size: 15px;
+	line-height: 1.5;
+	text-align: center;
+	transition: opacity 180ms ease;
+}
+.lb-rel__hub {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-accent);
+	border-radius: 10px;
+	padding: 10px 14px;
+	text-align: center;
+	box-shadow: var(--lb-shadow-1);
+}
+.lb-rel__hubtitle {
+	font-size: 11px;
+	color: var(--lb-text-dim);
+}
+.lb-rel__hubvalue {
+	font-size: 17px;
+	font-weight: 650;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-money);
+	margin: 2px 0;
+}
+.lb-rel__hubop {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-faint);
+}
+@container (max-width: 520px) {
+	.lb-rel__graph {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.lb-rel__arrows {
+		transform: rotate(90deg);
+	}
+}
+
+/* --------------------------------------------------- help: the ask builder */
+
+.lb-ask {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 200px;
+	gap: 14px;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	padding: 14px;
+}
+.lb-ask__form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-ask__row {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr);
+	align-items: center;
+	gap: 10px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-ask__row select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 5px 6px;
+	width: 100%;
+}
+.lb-ask__row select:focus {
+	border-color: var(--lb-accent);
+	outline: none;
+}
+/* What the shape carrying the collection would draw — the collector card, roughly. */
+.lb-ask__out {
+	background: var(--lb-canvas);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 10px 12px;
+	align-self: start;
+}
+.lb-ask__outhead {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	margin-bottom: 6px;
+}
+.lb-ask__value {
+	font-size: 20px;
+	font-weight: 650;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-money);
+}
+.lb-ask__count,
+.lb-ask__empty {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+.lb-ask__list {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+.lb-ask__line {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	font-size: 11.5px;
+	color: var(--lb-text-dim);
+}
+.lb-ask__line dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text);
+}
+.lb-ask__expr {
+	grid-column: 1 / -1;
+	padding-top: 12px;
+	border-top: 1px solid var(--lb-border);
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-ask__exprnote {
+	color: var(--lb-text-faint);
+}
+
+/* ------------------------------------------------- help: the table builder */
+
+.lb-tb {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	padding: 14px;
+}
+.lb-tb__controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.lb-tb__controls select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 5px 7px;
+}
+.lb-tb__controls select:focus {
+	border-color: var(--lb-accent);
+	outline: none;
+}
+.lb-tb__toggle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-tb__toggle input {
+	accent-color: var(--lb-accent);
+}
+.lb-tb__table {
+	background: var(--lb-canvas);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 4px 12px 8px;
+	font-size: 12px;
+}
+.lb-tb__head,
+.lb-tb__row,
+.lb-tb__sum,
+.lb-tb__total {
+	display: grid;
+	grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 110px;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 0;
+}
+.lb-tb__head {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-tb__row {
+	border-top: 1px solid var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-tb__group:first-of-type .lb-tb__row:first-of-type {
+	border-top: 0;
+}
+.lb-tb__grouphead {
+	margin-top: 8px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--lb-text-dim);
+}
+.lb-tb__num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.lb-tb__sum {
+	border-top: 1px solid var(--lb-border);
+	color: var(--lb-text-dim);
+	font-size: 11.5px;
+}
+.lb-tb__sum .lb-tb__num,
+.lb-tb__total .lb-tb__num {
+	font-weight: 600;
+	color: var(--lb-money);
+}
+.lb-tb__total {
+	border-top: 1px solid var(--lb-border-strong);
+	margin-top: 4px;
+	font-weight: 600;
+}
+/* Value mode: the whole table collapsed to the one number it produced. */
+.lb-tb__value {
+	background: var(--lb-canvas);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 26px 18px;
+	text-align: center;
+}
+.lb-tb__valuenum {
+	font-size: 30px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-money);
+}
+.lb-tb__valuelabel {
+	margin-top: 4px;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-faint);
+}
+
+/* ------------------------------------------------- help: live preview, clickable */
+
+.lb-lp {
+	position: relative;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+	padding: 22px 22px 18px;
+}
+.lb-lp__note {
+	max-width: 360px;
+	margin-inline: auto;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	padding: 10px 6px;
+	box-shadow: var(--lb-shadow-1);
+	/* The editing outline, since this note always has a caret in it. */
+	outline: 2px solid var(--lb-accent);
+}
+.lb-lp__line {
+	display: block;
+	width: 100%;
+	background: none;
+	border: 0;
+	border-radius: 5px;
+	padding: 3px 8px;
+	font: inherit;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--lb-text);
+	text-align: left;
+	cursor: text;
+}
+.lb-lp__line:hover {
+	background: var(--lb-surface-2);
+}
+.lb-lp__line--on {
+	background: var(--lb-surface-2);
+}
+.lb-lp__raw {
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	color: var(--lb-text);
+}
+.lb-lp__h {
+	font-size: 16px;
+	font-weight: 640;
+	letter-spacing: -0.01em;
+}
+.lb-lp__code {
+	background: var(--lb-surface-2);
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 0.9em;
+}
+.lb-lp__task {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+}
+.lb-lp__task--done {
+	opacity: 0.6;
+	text-decoration: line-through;
+}
+.lb-lp__task--done .lb-demo__box {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-lp__quote {
+	display: block;
+	border-left: 2px solid var(--lb-border-strong);
+	padding-left: 10px;
+	color: var(--lb-text-dim);
+}
+
+/*
  * Reduced motion: the demos hold their final frame (useDemo pins the step), so nothing here should
- * travel either — the outcome is shown, the journey is skipped.
+ * travel either — the outcome is shown, the journey is skipped. The interactive widgets are listed
+ * too: they move only in response to a click, but a hover that lifts a card is still motion someone
+ * asked not to have.
  */
 @media (prefers-reduced-motion: reduce) {
 	.lb-demo *,
-	.lb-demo__cursor {
+	.lb-demo__cursor,
+	.lb-ex *,
+	.lb-rel *,
+	.lb-gallery *,
+	.lb-help__idea {
 		transition-duration: 1ms !important;
 		animation: none !important;
+	}
+	.lb-ex__card:hover {
+		transform: none;
+	}
+	.lb-help__idea:hover {
+		transform: none;
 	}
 }

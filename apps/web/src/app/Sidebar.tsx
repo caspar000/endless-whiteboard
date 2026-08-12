@@ -1,4 +1,4 @@
-import { LayoutGrid, PenLine, Plus, Settings, Star } from 'lucide-react'
+import { CircleHelp, LayoutGrid, PenLine, Plus, Settings, Star } from 'lucide-react'
 import type { BoardMeta } from '../boards/boardIndex'
 
 /**
@@ -14,14 +14,16 @@ export function Sidebar({
 	boards,
 	onAllBoards,
 	onSettings,
+	onHelp,
 	onOpenBoard,
 	onNewBoard,
 }: {
-	view: 'list' | 'settings' | 'board'
+	view: 'list' | 'settings' | 'help' | 'board'
 	activeBoardId: string | null
 	boards: BoardMeta[]
 	onAllBoards: () => void
 	onSettings: () => void
+	onHelp: () => void
 	onOpenBoard: (board: BoardMeta) => void
 	onNewBoard: () => void
 }) {
@@ -65,6 +67,18 @@ export function Sidebar({
 						<Settings size={15} />
 					</span>
 					<span className="lb-sidebar__label">Settings</span>
+				</button>
+				<button
+					className={
+						view === 'help' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
+					}
+					onClick={onHelp}
+					aria-current={view === 'help' ? 'page' : undefined}
+				>
+					<span className="lb-sidebar__icon" aria-hidden="true">
+						<CircleHelp size={15} />
+					</span>
+					<span className="lb-sidebar__label">Help</span>
 				</button>
 			</nav>
 

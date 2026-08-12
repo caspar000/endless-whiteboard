@@ -2,8 +2,14 @@ import { createMigrationIds, createMigrationSequence } from '@tldraw/store'
 import type { MigrationSequence } from '@tldraw/store'
 import { fieldAsPropertyDef, type NodeField } from '../fields'
 import { ITEM_NODE_TYPE } from '../nodes/item/definition'
-import { NOTE_NODE_TYPE } from '../nodes/markdown/definition'
 import { ROLLUP_NODE_TYPE } from '../nodes/rollup/definition'
+
+/**
+ * The persisted type id this migration writes. A string literal, not an import from the markdown
+ * extension: the id is a stable data contract (migrations must keep producing it forever), and
+ * node-kit must not depend on an extension package — the dependency points the other way.
+ */
+const NOTE_NODE_TYPE = 'node.markdown'
 import { parsePropertyRegistry } from './schema'
 import {
 	nameFromPropertyKey,

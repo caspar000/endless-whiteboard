@@ -42,6 +42,15 @@ export interface NodeComponentProps<Props extends object> {
 }
 
 /**
+ * A lucide-style icon component, typed structurally so a definition (or extension) doesn't have to
+ * use lucide at all — anything rendering an inline glyph from `size` fits.
+ */
+export type NodeToolbarIcon = ComponentType<{
+	size?: number | string
+	'aria-hidden'?: boolean | 'true' | 'false'
+}>
+
+/**
  * The single interface every smart node implements — and, unchanged, the future plugin SDK surface
  * (§4.1). A plugin is just something that supplies `NodeDefinition`s; the host already consumes
  * this interface, so adding a sandboxed runtime later needs no host refactor.
@@ -53,6 +62,17 @@ export interface NodeDefinition<Props extends object = object> {
 	label: string
 	/** Single character or short glyph for the toolbar button. */
 	icon: string
+	/**
+	 * Optional richer toolbar icon (the app chrome uses lucide). The `icon` glyph is the fallback, so
+	 * a definition without one — a plugin's, say — still gets a legible button.
+	 */
+	toolbarIcon?: NodeToolbarIcon
+	/**
+	 * Optional letter shortcut for this node's tool. The definition owns it — not an app-side map keyed
+	 * by type — so an extension's node arrives with its shortcut. The app is still what merges it with
+	 * tldraw's bindings; a clash means the letter silently does something else, so check before taking one.
+	 */
+	kbd?: string
 	/** tldraw validators for this node's own props. JSON scalars only. `w`/`h` are injected. */
 	props: { [K in keyof Props]: T.Validatable<Props[K]> }
 	/** REQUIRED from v1 — every props change ships one (§7). */
@@ -265,11 +285,96 @@ export function createNodeShapeUtil<Props extends object>(
 
 const registry = new Map<string, NodeDefinition<never>>()
 
-export function registerNode<Props extends object>(def: NodeDefinition<Props>): void {
+/** Which extension registered each type. Types with no owner are core and cannot be toggled off. */
+const ownerByType = new Map<string, string>()
+
+/**
+ * Extension enablement, stored as the *disabled* set: an id nobody has ever toggled is enabled, so a
+ * newly installed extension needs no persisted record to appear.
+ *
+ * Reactivity is the registry's own — a listener set consumed through React's `useSyncExternalStore`
+ * — and deliberately **not** a tldraw atom. It was one first, and the toggles silently did nothing:
+ * under Vite's dev prebundling this package's `atom` and the app's `useValue` can come from two
+ * copies of tldraw's signal library, and dependency tracking never crosses that boundary. An SDK's
+ * own state must not hinge on sharing a reactivity instance with its host.
+ *
+ * Enablement is deliberately **not** consulted by `getNodeDefinitions()`: it hides an extension's
+ * types from creation UI, it never removes them from the schema. A board containing a disabled
+ * extension's shapes must keep opening, validating and rendering — "off" means "stop offering",
+ * not "stop working".
+ */
+let disabledExtensionIds: ReadonlySet<string> = new Set()
+
+const registryListeners = new Set<() => void>()
+
+/**
+ * The visible list, cached so it is a *stable snapshot* between changes. `useSyncExternalStore`
+ * demands this: a getSnapshot that builds a fresh array every call re-renders forever.
+ */
+let visibleCache: NodeDefinition<never>[] | null = null
+
+function invalidateVisible(): void {
+	visibleCache = null
+	for (const listener of registryListeners) listener()
+}
+
+/**
+ * Notifies on any change to what the UI should offer — a registration or an enablement flip.
+ * Subscribe via `useSyncExternalStore` with `getVisibleNodeDefinitions` or `getDisabledExtensions`
+ * as the snapshot; both keep stable identities between changes.
+ */
+export function subscribeToNodeDefinitions(listener: () => void): () => void {
+	registryListeners.add(listener)
+	return () => {
+		registryListeners.delete(listener)
+	}
+}
+
+/** The live disabled set — a stable reference between changes, replaced wholesale on each one. */
+export function getDisabledExtensions(): ReadonlySet<string> {
+	return disabledExtensionIds
+}
+
+export function isExtensionEnabled(id: string): boolean {
+	return !disabledExtensionIds.has(id)
+}
+
+export function setExtensionEnabled(id: string, enabled: boolean): void {
+	if (enabled !== disabledExtensionIds.has(id)) return
+	const next = new Set(disabledExtensionIds)
+	if (enabled) next.delete(id)
+	else next.add(id)
+	disabledExtensionIds = next
+	invalidateVisible()
+}
+
+/** For persistence: the app saves this on toggle and replays it via `setDisabledExtensionIds` at startup. */
+export function getDisabledExtensionIds(): string[] {
+	return [...disabledExtensionIds]
+}
+
+export function setDisabledExtensionIds(ids: readonly string[]): void {
+	disabledExtensionIds = new Set(ids)
+	invalidateVisible()
+}
+
+/** Whether the extension owning this type is enabled. Core types (no owner) are always enabled. */
+export function isNodeTypeEnabled(type: string): boolean {
+	const owner = ownerByType.get(type)
+	return owner === undefined || isExtensionEnabled(owner)
+}
+
+export function registerNode<Props extends object>(
+	def: NodeDefinition<Props>,
+	/** The extension this node arrived with; registrations without one are core and always enabled. */
+	owner?: string
+): void {
 	if (registry.has(def.type)) {
 		throw new Error(`Node type "${def.type}" is already registered`)
 	}
 	registry.set(def.type, def as unknown as NodeDefinition<never>)
+	if (owner !== undefined) ownerByType.set(def.type, owner)
+	invalidateVisible()
 }
 
 export function getNodeDefinition(type: string): NodeDefinition<never> | undefined {
@@ -288,11 +393,19 @@ export function getNodeDefinitions(): NodeDefinition<never>[] {
  * The definitions a user should be offered: toolbar, canvas tools, create menu.
  *
  * Separate from `getNodeDefinitions()` because those two audiences genuinely differ the moment a type
- * is deprecated — it must remain in the schema (or boards containing it fail validation and won't
- * open) while disappearing from the UI. One function serving both is a latent bug.
+ * is deprecated or its extension is toggled off — it must remain in the schema (or boards containing
+ * it fail validation and won't open) while disappearing from the UI. One function serving both is a
+ * latent bug.
+ *
+ * A stable snapshot between changes (see `visibleCache`), so it can be handed straight to
+ * `useSyncExternalStore` with `subscribeToNodeDefinitions` — which is how the dock and the create
+ * menu follow extension toggles live.
  */
 export function getVisibleNodeDefinitions(): NodeDefinition<never>[] {
-	return [...registry.values()].filter((def) => !def.deprecated)
+	visibleCache ??= [...registry.values()].filter(
+		(def) => !def.deprecated && isNodeTypeEnabled(def.type)
+	)
+	return visibleCache
 }
 
 export function isNodeType(type: string): boolean {
@@ -302,4 +415,7 @@ export function isNodeType(type: string): boolean {
 /** Used by tests to get a clean registry. */
 export function clearNodeRegistry(): void {
 	registry.clear()
+	ownerByType.clear()
+	disabledExtensionIds = new Set()
+	invalidateVisible()
 }

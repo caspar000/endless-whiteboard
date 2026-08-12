@@ -1,4 +1,5 @@
-import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
+import { getVisibleNodeDefinitions, subscribeToNodeDefinitions } from '@lifeboard/node-kit'
+import { useSyncExternalStore } from 'react'
 import {
 	Circle,
 	Diamond,
@@ -9,13 +10,11 @@ import {
 	Highlighter,
 	Image,
 	MousePointer2,
-	NotepadText,
 	Pen,
 	Shapes,
 	Spline,
 	Square,
 	StickyNote,
-	Table,
 	Triangle,
 	Type,
 	type LucideIcon,
@@ -86,18 +85,6 @@ const GEO_KINDS: { value: GeoValue; icon: LucideIcon }[] = [
 	{ value: 'triangle', icon: Triangle },
 	{ value: 'hexagon', icon: Hexagon },
 ]
-
-/**
- * Node types the app ships get a lucide icon so the dock reads as one set; anything else (a
- * plugin's type, say) falls back to the registry's own glyph, so the mapping never gates what can
- * appear in the toolbar.
- */
-const NODE_ICONS: Record<string, LucideIcon> = {
-	// A written page, not a sticky — the sticky-note glyph belongs to tldraw's own sticky tool, which now
-	// sits two buttons to the left. Two identical icons side by side made the pair unreadable.
-	'node.markdown': NotepadText,
-	'node.table': Table,
-}
 
 const ICON_SIZE = 19
 
@@ -313,7 +300,10 @@ function TextSettings() {
 export function CanvasToolbar() {
 	const editor = useEditor()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
-	const nodeDefs = getVisibleNodeDefinitions()
+	// Subscribed to the registry's own store, so flipping a toggle in Settings adds/removes dock
+	// buttons on the spot. Not tldraw's `useValue`: the registry deliberately owns its reactivity
+	// (see node-kit's registry.tsx for the dual-signal-instance bug that forced this).
+	const nodeDefs = useSyncExternalStore(subscribeToNodeDefinitions, getVisibleNodeDefinitions)
 
 	return (
 		<div className="lb-dock-wrap">
@@ -359,10 +349,13 @@ export function CanvasToolbar() {
 
 				<div className="lb-dock__sep" />
 
-				{/* The node types — registry-driven, so a new type (or a plugin's) appears for free. */}
+				{/* The node types — registry-driven, so a new type (or a plugin's) appears for free.
+				    A definition brings its own lucide-style icon (`toolbarIcon`) so the dock reads as
+				    one set; without one it falls back to the registry glyph, so the icon never gates
+				    what can appear here. */}
 				{nodeDefs.map((def) => {
 					const toolId = toolIdForNodeType(def.type)
-					const Icon = NODE_ICONS[def.type]
+					const Icon = def.toolbarIcon
 					return (
 						<ToolButton
 							key={def.type}

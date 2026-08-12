@@ -1,5 +1,5 @@
 import { BaseBoxShapeTool, type TLStateNodeConstructor } from 'tldraw'
-import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
+import { getNodeDefinitions } from '@lifeboard/node-kit'
 
 /**
  * One click-and-drag tool per registered node type, generated from the registry — never hardcoded
@@ -22,13 +22,19 @@ export function toolIdForNodeType(nodeType: string): string {
 }
 
 export function createNodeTools(): TLStateNodeConstructor[] {
-	return getVisibleNodeDefinitions().map((def) => {
-		class NodeBoxTool extends BaseBoxShapeTool {
-			static override id = toolIdForNodeType(def.type)
-			// `shapeType` is typed against tldraw's closed union of box shapes; a registry entry's
-			// type is a plain string (it may come from a plugin). Same boundary as in the factory.
-			override shapeType = def.type as BaseBoxShapeTool['shapeType']
-		}
-		return NodeBoxTool as unknown as TLStateNodeConstructor
-	})
+	// Every non-deprecated type gets a tool, *including* ones whose extension is currently disabled:
+	// tldraw's tools are fixed at mount, so a tool that only exists while its extension is enabled
+	// would need a board remount to come back. An always-registered tool is inert — nothing shows it
+	// and its shortcut is gated (see uiOverrides) — so toggling stays a pure UI change.
+	return getNodeDefinitions()
+		.filter((def) => !def.deprecated)
+		.map((def) => {
+			class NodeBoxTool extends BaseBoxShapeTool {
+				static override id = toolIdForNodeType(def.type)
+				// `shapeType` is typed against tldraw's closed union of box shapes; a registry entry's
+				// type is a plain string (it may come from a plugin). Same boundary as in the factory.
+				override shapeType = def.type as BaseBoxShapeTool['shapeType']
+			}
+			return NodeBoxTool as unknown as TLStateNodeConstructor
+		})
 }

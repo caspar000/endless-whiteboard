@@ -1,5 +1,4 @@
 import type { ItemNodeProps } from './nodes/item/definition'
-import type { MarkdownNodeProps } from './nodes/markdown/definition'
 import type { NodeBaseProps } from './registry'
 import type { RollupNodeProps } from './nodes/rollup/definition'
 import type { TableNodeProps } from './nodes/table/spec'
@@ -12,6 +11,9 @@ import type { TableNodeProps } from './nodes/table/spec'
  * Doing so buys real safety in app code: `editor.updateShape({ type: 'node.item', props: … })`
  * checks its props, and `shape.type === 'node.rollup'` narrows `shape.props` to `RollupNodeProps`.
  *
+ * Each extension package augments this map for its own types the same way — `@lifeboard/note-markdown`
+ * declares `node.markdown` — which works because module augmentation is compile-time and additive.
+ *
  * Note the boundary this creates for the future plugin SDK (§4.1): a *runtime*-loaded plugin cannot
  * augment a compile-time interface, so plugin-supplied definitions will work through the generic
  * `NodeShape<Props>` structural type instead. That is exactly why `createNodeShapeUtil` is written
@@ -22,7 +24,6 @@ import type { TableNodeProps } from './nodes/table/spec'
  */
 declare module '@tldraw/tlschema' {
 	interface TLGlobalShapePropsMap {
-		'node.markdown': MarkdownNodeProps & NodeBaseProps
 		'node.item': ItemNodeProps & NodeBaseProps
 		'node.rollup': RollupNodeProps & NodeBaseProps
 		'node.table': TableNodeProps & NodeBaseProps

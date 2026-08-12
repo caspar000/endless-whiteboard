@@ -1,4 +1,10 @@
-import { getVisibleNodeDefinitions } from '@lifeboard/node-kit'
+import {
+	getNodeDefinitions,
+	getVisibleNodeDefinitions,
+	isNodeTypeEnabled,
+	subscribeToNodeDefinitions,
+} from '@lifeboard/node-kit'
+import { useSyncExternalStore } from 'react'
 import {
 	DefaultContextMenu,
 	DefaultContextMenuContent,
@@ -20,20 +26,6 @@ import { openProperties } from './propertiesTarget'
  * UI — no per-node-type hardcoding in toolbar/menus"). Adding a node type — or, later, installing a
  * plugin that supplies one — puts it in the toolbar with no change here.
  */
-/**
- * Keyed by node type. These are checked against tldraw's own shortcuts — `r` is the rectangle tool
- * and `g` is an action, so neither is available; `m`, `i` and `s` are free.
- *
- * The markdown node is `m`, not `n`: `n` is tldraw's sticky note, which is now in the dock, and taking
- * its letter meant two tools claimed one key. `m` for "markdown" is the free letter this comment
- * already pointed at.
- */
-const KBD_BY_TYPE: Record<string, string> = {
-	'node.markdown': 'm',
-	'node.item': 'i',
-	'node.rollup': 's',
-}
-
 /**
  * Numeric shortcuts, `1`–`9` in the dock's own order (see CanvasToolbar). tldraw 5 binds only
  * letters, but numbers-by-position is the convention every comparable canvas app keeps, so the
@@ -96,18 +88,25 @@ export const nodeUiOverrides: TLUiOverrides = {
 		return actions
 	},
 	tools(editor, tools) {
-		getVisibleNodeDefinitions().forEach((def, index) => {
+		// Every non-deprecated type gets an entry — matching createNodeTools — because this map is
+		// fixed at mount and a disabled extension can be re-enabled mid-session. The gate is in
+		// `onSelect`: entries stay registered, but a disabled extension's shortcut does nothing, and
+		// the dock only *shows* enabled types (CanvasToolbar reads the visible list reactively).
+		const defs = getNodeDefinitions().filter((def) => !def.deprecated)
+		defs.forEach((def, index) => {
 			const id = toolIdForNodeType(def.type)
-			const letter = KBD_BY_TYPE[def.type]
+			// The letter is the definition's own (`kbd`), so an extension's node arrives with its
+			// shortcut — checked by its author against tldraw's bindings (`r` and `g` are taken).
 			const position = index + FIRST_NODE_NUMBER
 			const number = position <= LAST_NODE_NUMBER ? String(position) : undefined
-			const kbd = [letter, number].filter(Boolean).join(',')
+			const kbd = [def.kbd, number].filter(Boolean).join(',')
 			tools[id] = {
 				id,
 				label: def.label,
 				icon: glyphIcon(def.icon),
 				...(kbd ? { kbd } : {}),
 				onSelect() {
+					if (!isNodeTypeEnabled(def.type)) return
 					editor.setCurrentTool(id)
 				},
 			}
@@ -157,9 +156,12 @@ function PropertiesMenuItem() {
  */
 function AddToBoardItems() {
 	const editor = useEditor()
+	// Subscribed to the registry's own store so the menu tracks extension toggles — same seam as
+	// the dock (see CanvasToolbar).
+	const defs = useSyncExternalStore(subscribeToNodeDefinitions, getVisibleNodeDefinitions)
 	return (
 		<TldrawUiMenuGroup id="lifeboard-add">
-			{getVisibleNodeDefinitions().map((def) => (
+			{defs.map((def) => (
 				<TldrawUiMenuItem
 					key={def.type}
 					id={`lifeboard-add-${def.type}`}

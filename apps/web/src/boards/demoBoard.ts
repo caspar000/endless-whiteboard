@@ -1,7 +1,6 @@
 import {
 	DEFAULT_MAX_ROWS,
 	LABEL_COLUMN,
-	NOTE_NODE_TYPE,
 	TABLE_NODE_TYPE,
 	TAGS_PROPERTY_ID,
 	createProperty,
@@ -9,6 +8,7 @@ import {
 	type PropertyValue,
 	type TableNodeProps,
 } from '@lifeboard/node-kit'
+import { NOTE_NODE_TYPE } from '@lifeboard/note-markdown'
 import type { Editor, TLShapeId, TLShapePartial } from 'tldraw'
 import { createShapeId } from 'tldraw'
 

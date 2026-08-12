@@ -1,13 +1,19 @@
+import {
+	CollectionStrip,
+	PropertyStrip,
+	getCurrentRates,
+	getPageEdges,
+	getPageFacts,
+	propertyMap,
+	readPropertyRegistry,
+	readShapeProperties,
+	readShapePropertyUnits,
+	renderExpressions,
+	updateNodeProps,
+	type NodeComponentProps,
+} from '@lifeboard/node-kit'
 import { memo } from 'react'
 import { useValue } from 'tldraw'
-import { CollectionStrip } from '../../collections/CollectionStrip'
-import { renderExpressions } from '../../collections/expressions'
-import { getPageEdges, getPageFacts } from '../rollup/engine'
-import { PropertyStrip } from '../../properties/PropertyStrip'
-import { getCurrentRates } from '../../properties/rates'
-import { propertyMap, readPropertyRegistry } from '../../properties/schema'
-import { readShapeProperties, readShapePropertyUnits } from '../../properties/values'
-import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import { toggleTaskAt } from './tasks'
 import type { NoteNodeProps } from './definition'
 import { MarkdownView } from './MarkdownView'

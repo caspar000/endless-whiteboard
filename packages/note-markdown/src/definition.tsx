@@ -1,6 +1,10 @@
+import {
+	createShapePropsMigrationIds,
+	createShapePropsMigrationSequence,
+	type NodeDefinition,
+} from '@lifeboard/node-kit'
+import { NotepadText } from 'lucide-react'
 import { T } from 'tldraw'
-import { createShapePropsMigrationIds, createShapePropsMigrationSequence } from '../../migrations'
-import type { NodeDefinition } from '../../registry'
 import { MarkdownNodeComponent } from './MarkdownNodeComponent'
 
 /**
@@ -13,9 +17,6 @@ import { MarkdownNodeComponent } from './MarkdownNodeComponent'
  */
 export const NOTE_NODE_TYPE = 'node.markdown'
 
-/** @deprecated Use {@link NOTE_NODE_TYPE}. Kept so existing imports keep compiling. */
-export const MARKDOWN_NODE_TYPE = NOTE_NODE_TYPE
-
 export interface NoteNodeProps {
 	/** Source of truth is the markdown *string* — portable, diffable, plugin/AI-friendly (§4.6). */
 	md: string
@@ -27,9 +28,6 @@ export interface NoteNodeProps {
 	autoHeight: boolean
 }
 
-/** @deprecated Use {@link NoteNodeProps}. */
-export type MarkdownNodeProps = NoteNodeProps
-
 export const NOTE_MIN_HEIGHT = 44
 
 const versions = createShapePropsMigrationIds('node.markdown', { AddAutoHeight: 1 })
@@ -38,6 +36,11 @@ export const noteNodeDefinition: NodeDefinition<NoteNodeProps> = {
 	type: NOTE_NODE_TYPE,
 	label: 'Note',
 	icon: 'N',
+	// A written page, not a sticky — the sticky-note glyph belongs to tldraw's own sticky tool.
+	toolbarIcon: NotepadText,
+	// `m` for "markdown": `n` is tldraw's sticky note, and taking its letter meant two tools claimed
+	// one key. Checked against tldraw's own bindings (`r` and `g` are taken too).
+	kbd: 'm',
 	props: {
 		md: T.string,
 		autoHeight: T.boolean,
@@ -72,9 +75,6 @@ export const noteNodeDefinition: NodeDefinition<NoteNodeProps> = {
 	// like every other shape's, which is the whole point of the property system.
 }
 
-/** @deprecated Use {@link noteNodeDefinition}. */
-export const markdownNodeDefinition = noteNodeDefinition
-
 /** First heading or line of prose. Used for the board's node list and a11y labels. */
 export function noteTitle(md: string): string {
 	for (const line of md.split('\n')) {
@@ -88,6 +88,3 @@ export function noteTitle(md: string): string {
 	}
 	return ''
 }
-
-/** @deprecated Use {@link noteTitle}. */
-export const markdownTitle = noteTitle

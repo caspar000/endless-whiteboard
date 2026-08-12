@@ -78,10 +78,17 @@ function expressionDecorations(state: EditorState): DecorationSet {
 	return DecorationSet.create(state.doc, found)
 }
 
-function accept(view: EditorView, menu: MenuState, item: Suggestion): void {
+function accept(
+	view: EditorView,
+	menu: MenuState,
+	item: Suggestion,
+	onContinue: (caret: number) => void
+): void {
 	const { state } = view
 	if (!item.terminal) {
+		const caret = menu.from + item.insert.length
 		view.dispatch(state.tr.insertText(item.insert, menu.from, menu.to))
+		onContinue(caret)
 		return
 	}
 	// The closing brace is already there — typing `{` wrote it — so this steps past rather than
@@ -100,6 +107,37 @@ function accept(view: EditorView, menu: MenuState, item: Suggestion): void {
  *   invented in a panel should be offered here without leaving edit mode.
  */
 export function expressionSuggestExtension(properties: () => readonly PropertyDef[]) {
+	/*
+	 * tldraw mirrors each rich-text edit through the shape store and may replace the TipTap view in
+	 * the process. Remember a non-terminal acceptance outside the individual ProseMirror plugin view,
+	 * so the replacement can put the caret back inside the expression and keep the advanced menu open.
+	 * The closing brace validates the position, and the short lifetime prevents an old edit from being
+	 * resumed if a genuinely new editor appears later.
+	 */
+	let resume: { caret: number; until: number } | null = null
+	const pick = (view: EditorView, menu: MenuState, item: Suggestion) => {
+		if (item.terminal) resume = null
+		accept(view, menu, item, (caret) => {
+			resume = { caret, until: performance.now() + 500 }
+		})
+	}
+	const restore = (view: EditorView) => {
+		if (!resume) return
+		if (performance.now() > resume.until) {
+			resume = null
+			return
+		}
+		const { caret } = resume
+		if (!view.dom.isConnected || caret > view.state.doc.content.size) return
+		if (view.state.doc.textBetween(caret, Math.min(caret + 1, view.state.doc.content.size)) !== '}') {
+			return
+		}
+		if (!KEY.getState(view.state)) {
+			view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(caret))))
+		}
+		view.focus()
+	}
+
 	return Extension.create({
 		name: 'lifeboardExpressionSuggest',
 		addProseMirrorPlugins() {
@@ -165,7 +203,7 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 							if (event.key === 'Enter' || event.key === 'Tab') {
 								const item = menu.items[menu.selected]
 								if (!item) return false
-								accept(view, menu, item)
+								pick(view, menu, item)
 								return true
 							}
 							return false
@@ -183,7 +221,7 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 						let drawn: MenuState | null = null
 						const menuView = new SuggestMenu((item) => {
 							view.focus()
-							if (drawn) accept(view, drawn, item)
+							if (drawn) pick(view, drawn, item)
 						})
 						const paint = (state: EditorState) => {
 							const menu = KEY.getState(state)
@@ -196,8 +234,12 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 							)
 						}
 						paint(view.state)
+						requestAnimationFrame(() => restore(view))
 						return {
-							update: (updated) => paint(updated.state),
+							update: (updated) => {
+								paint(updated.state)
+								requestAnimationFrame(() => restore(updated))
+							},
 							destroy: () => menuView.destroy(),
 						}
 					},

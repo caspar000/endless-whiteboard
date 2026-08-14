@@ -86,6 +86,7 @@ export {
 	type RegisteredOperation,
 } from './operations'
 
+export { createNodeShape, textPropFor } from './nodes/insert'
 
 // The board-capability seam operations run against — installed by the app, like the other bridges.
 export {
@@ -338,6 +339,8 @@ export {
 	type EdgeDirection,
 	type EdgeIndex,
 } from './edges'
+// Writing relations, next to reading them — one definition of what an edge is.
+export { connectShapes, disconnectShapes, type ConnectOptions } from './relations'
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyStrip } from './properties/PropertyStrip'
 

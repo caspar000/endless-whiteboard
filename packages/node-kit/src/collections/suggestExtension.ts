@@ -115,11 +115,13 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 	 * resumed if a genuinely new editor appears later.
 	 */
 	let resume: { caret: number; until: number } | null = null
+	/** Remember a caret that belongs *inside* an open `{…}`, for `restore` to put back. */
+	const armRestore = (caret: number) => {
+		resume = { caret, until: performance.now() + 500 }
+	}
 	const pick = (view: EditorView, menu: MenuState, item: Suggestion) => {
 		if (item.terminal) resume = null
-		accept(view, menu, item, (caret) => {
-			resume = { caret, until: performance.now() + 500 }
-		})
+		accept(view, menu, item, armRestore)
 	}
 	const restore = (view: EditorView) => {
 		if (!resume) return
@@ -132,6 +134,13 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 		if (view.state.doc.textBetween(caret, Math.min(caret + 1, view.state.doc.content.size)) !== '}') {
 			return
 		}
+		/*
+		 * Deliberately *not* disarmed once the caret looks right. At the moment of arming it already
+		 * does — this code set it — and the displacement it exists to undo arrives later, on tldraw's
+		 * schedule. Disarming on "looks correct" throws the rescue away before the thing it rescues
+		 * from has happened, which puts the menu back to closing on the very first `{` (measured:
+		 * every run). The deadline is what ends an arming; nothing else can tell the two states apart.
+		 */
 		if (!KEY.getState(view.state)) {
 			view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(caret))))
 		}
@@ -181,6 +190,15 @@ export function expressionSuggestExtension(properties: () => readonly PropertyDe
 							const tr = view.state.tr.insertText('{}', from, to)
 							tr.setSelection(TextSelection.near(tr.doc.resolve(from + 1)))
 							view.dispatch(tr)
+							/*
+							 * Opening an expression needs the same rescue as accepting a suggestion, and for the
+							 * same reason: tldraw mirrors the edit through the shape store and puts the caret
+							 * back at the *end* of the text — one character past the brace just written, where
+							 * there is no open expression, so the menu closes the instant it appeared. Without
+							 * this the first `{` flashed a menu and lost it, and every later step was
+							 * unreachable because the plugin no longer had a menu to act on.
+							 */
+							armRestore(from + 1)
 							return true
 						},
 						handleKeyDown: (view, event) => {

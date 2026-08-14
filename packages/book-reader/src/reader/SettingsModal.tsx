@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { stopEventPropagation } from 'tldraw'
 import { Colour, HuePicker, Range, Select, Switch } from './controls'
 import { BOOK_FONTS } from './fonts'
+import { typingElsewhere } from './keys'
 import type { HighlightTag } from '../quote/definition'
 import {
 	clampTo,
@@ -58,12 +59,15 @@ export function SettingsModal({
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== 'Escape') return
+			// A surface over this one — the command palette — owns its own Escape. Checked before the
+			// `stopPropagation` below, which would otherwise swallow the key on its way there.
+			if (typingElsewhere(container)) return
 			event.stopPropagation()
 			onClose()
 		}
 		window.addEventListener('keydown', onKeyDown, { capture: true })
 		return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-	}, [onClose])
+	}, [onClose, container])
 
 	const applies = (control: ReaderControl) =>
 		(control.engine === null || control.engine === engine) &&

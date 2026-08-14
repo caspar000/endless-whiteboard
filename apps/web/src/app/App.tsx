@@ -164,11 +164,19 @@ export function App() {
 	 * tab switch would yank the caret out of the tab-rename box, and tldraw reads keys off the document
 	 * anyway. The blur side keeps its default, which also calls `editor.complete()` — a board being
 	 * hidden mid-gesture should not keep a half-drawn arrow live.
+	 *
+	 * `keepEditing` is the exception, and the palette is what needs it. `blur()` is two things at once:
+	 * clearing the flag, and completing the current interaction — which in the editing state means
+	 * `setEditingShape(null)`. That is right for a board being hidden and wrong for one merely being
+	 * talked over: opening the palette would end whatever was being edited underneath it, and a node
+	 * whose editor is a whole surface — the book reader — would vanish at ⌘K. Only the flag gates
+	 * tldraw's document listeners, so clearing just the flag is the whole of what the palette needs.
 	 */
-	const focusOnly = (activeId: string | null) => {
+	const focusOnly = (activeId: string | null, keepEditing = false) => {
 		for (const [id, editor] of editors.current) {
 			if (id !== activeId) {
-				editor.blur()
+				if (keepEditing) editor.updateInstanceState({ isFocused: false })
+				else editor.blur()
 				continue
 			}
 			editor.focus({ focusContainer: false })
@@ -391,7 +399,8 @@ export function App() {
 		// story: tldraw reads keys off the *document* and gates them on `isFocused`, so without the
 		// blur every letter typed into the palette would also switch the canvas tool underneath it.
 		// Closing restores focus by itself — this effect runs on every render, including that one.
-		focusOnly(paletteOpen ? null : activeBoardId)
+		// `keepEditing`, because the palette is a thing you open *over* your work, not instead of it.
+		focusOnly(paletteOpen ? null : activeBoardId, paletteOpen)
 		// Leaving the board view for the home screen blurs everything, which is right: a keystroke
 		// aimed at the board list must not reach a board that happens to still be mounted behind it.
 	})

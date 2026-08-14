@@ -32,6 +32,7 @@ import {
 import { READING_PROGRESS_PROPERTY, type BookNodeProps } from '../definition'
 import { addQuoteToBoard, type NewQuote } from '../quote/createQuote'
 import { highlightProperty, QUOTE_NODE_TYPE, type QuoteNodeProps } from '../quote/definition'
+import { typingElsewhere } from './keys'
 import { SettingsModal, type SettingsGroup } from './SettingsModal'
 import { SettingsPanel } from './SettingsPanel'
 import {
@@ -318,6 +319,8 @@ export function BookReaderOverlay({
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== 'Escape') return
+			// Not ours if something over the reader has the caret — the command palette, say.
+			if (typingElsewhere(editor.getContainer())) return
 			editor.markEventAsHandled(event)
 			// Escape backs out one layer at a time, rather than always closing the book.
 			if (customizing) setCustomizing(null)

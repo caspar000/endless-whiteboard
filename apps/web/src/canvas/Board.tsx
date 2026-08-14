@@ -5,6 +5,8 @@ import {
 	createNodeShapeUtil,
 	PropertiesPopover,
 	getNodeDefinitions,
+	getNodeTypesVersion,
+	subscribeToNodeDefinitions,
 	mergeProperties,
 	readShapePropertyDefs,
 	rollupsToTablesMigrations,
@@ -13,7 +15,7 @@ import {
 	expressionSuggestExtension,
 	readPropertyRegistry,
 } from '@lifeboard/node-kit'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
 	FrameShapeUtil,
 	Tldraw,
@@ -38,6 +40,7 @@ import { clearPendingRestore, takePendingRestore } from '../persistence/pendingR
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
+import { FileImportHandler } from './FileImportHandler'
 import { expressionShapeUtils } from './expressionShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -53,11 +56,21 @@ import { RollupDebugBadge } from './RollupDebugBadge'
  * between them.
  */
 
-// Built once at module scope: rebuilding shape utils on every render would recreate every shape's
-// class identity and defeat tldraw's caching. Both lists come from the same registry, so a node
-// type can never end up with a shape util but no tool (or vice versa) — node-kit registers its
-// built-ins during its own module evaluation, which ESM guarantees happens before this line.
-const nodeShapeUtils: TLAnyShapeUtilConstructor[] = getNodeDefinitions().map(createNodeShapeUtil)
+/**
+ * Built per *schema version*, not per render: rebuilding shape utils on every render would recreate
+ * every shape's class identity and defeat tldraw's caching. Both lists come from the same registry,
+ * so a node type can never end up with a shape util but no tool (or vice versa).
+ *
+ * Keyed on `getNodeTypesVersion()` rather than computed once at module scope, because a type that
+ * appears *after* this module is evaluated would otherwise never get a util — the editor would then
+ * throw "No shape util found for type …" the moment anything created one, taking the board down.
+ * That happens whenever vite HMR re-evaluates an extension, and it is exactly what a runtime-loaded
+ * plugin will do on purpose. In a production build the version never changes after startup, so this
+ * is computed once there too.
+ */
+function buildShapeUtils(): TLAnyShapeUtilConstructor[] {
+	return getNodeDefinitions().map(createNodeShapeUtil)
+}
 
 /**
  * The frame, made a container rather than a card: no fill, a colourable border.
@@ -84,12 +97,14 @@ const frameShapeUtil = FrameShapeUtil.configure({
 	}),
 })
 
-const shapeUtils: TLAnyShapeUtilConstructor[] = [
-	...nodeShapeUtils,
-	frameShapeUtil,
-	// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
-	...expressionShapeUtils,
-]
+function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
+	return [
+		...buildShapeUtils(),
+		frameShapeUtil,
+		// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
+		...expressionShapeUtils,
+	]
+}
 
 /**
  * Migrations that rewrite records across types, rather than one shape's props.
@@ -98,7 +113,6 @@ const shapeUtils: TLAnyShapeUtilConstructor[] = [
  * them in dependency order makes the intent readable.
  */
 const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations]
-const nodeTools = createNodeTools()
 
 const canvasComponents: TLComponents = {
 	...nodeComponents,
@@ -206,6 +220,15 @@ export function Board({
 		ready: false,
 	})
 
+	/**
+	 * The registered node types *are* the editor's schema, so a change to them has to rebuild the
+	 * shape utils and tools — and remount the editor, since `<Tldraw>` reads both once. Constant in a
+	 * production build; it moves when HMR re-evaluates an extension, or when a plugin is loaded later.
+	 */
+	const schemaVersion = useSyncExternalStore(subscribeToNodeDefinitions, getNodeTypesVersion)
+	const shapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
+	const nodeTools = useMemo(createNodeTools, [schemaVersion])
+
 	// An imported board carries its snapshot in KV until first open; handing it to <Tldraw> is what
 	// makes tldraw run migrations on it (see persistence/pendingRestore.ts).
 	useEffect(() => {
@@ -251,7 +274,9 @@ export function Board({
 	return (
 		<div className="lb-board">
 			<Tldraw
-				key={board.id}
+				// The schema version is part of the editor's identity: new node types mean new shape
+				// utils, which `<Tldraw>` only reads on mount.
+				key={`${board.id}:${schemaVersion}`}
 				persistenceKey={persistenceKeyForBoard(board.id)}
 				{...(restore.snapshot ? { snapshot: restore.snapshot as never } : {})}
 				shapeUtils={shapeUtils}
@@ -333,6 +358,9 @@ export function Board({
 				{/* Rendered inside <Tldraw> so it can portal into the editor's own container and track
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />
+				{/* Must be a child of <Tldraw>: it needs the toast context, and mounting after tldraw's
+				    own handler registration is what lets it take over the `files` content type. */}
+				<FileImportHandler />
 			</Tldraw>
 		</div>
 	)

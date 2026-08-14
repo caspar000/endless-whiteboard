@@ -54,4 +54,39 @@ describe('collectAssetRefs', () => {
 			collectAssetRefs(snapshot(null, 'not-a-record', 42, { typeName: 'asset' }, {}))
 		).not.toThrow()
 	})
+
+	it('collects asset srcs held in shape props, where extension nodes keep them', () => {
+		// A book node references its file and cover directly from props — no asset record exists.
+		// GC and backup export must see those hashes or they would sweep a book's bytes.
+		const refs = collectAssetRefs(
+			snapshot({
+				typeName: 'shape',
+				type: 'node.book',
+				props: { fileSrc: 'asset:facade', coverSrc: 'asset:cafe', title: 'Dune', pageCount: 412 },
+			})
+		)
+		expect([...refs.hashes].sort()).toEqual(['cafe', 'facade'])
+		expect(refs.pending).toBe(false)
+	})
+
+	it('finds srcs nested inside shape prop objects and arrays', () => {
+		const refs = collectAssetRefs(
+			snapshot({
+				typeName: 'shape',
+				type: 'node.future',
+				props: { gallery: [{ src: 'asset:aaa' }, { src: 'asset:bbb' }] },
+			})
+		)
+		expect([...refs.hashes].sort()).toEqual(['aaa', 'bbb'])
+	})
+
+	it('does not treat shape props as pending, and ignores non-asset strings in them', () => {
+		const refs = collectAssetRefs(
+			snapshot({ typeName: 'shape', type: 'node.book', props: { fileSrc: '', title: 'asset-ish' } })
+		)
+		expect(refs.hashes.size).toBe(0)
+		// Extension nodes store bytes *before* creating the shape, so an empty src means "no file",
+		// never "upload in flight" — unlike an asset record's empty src.
+		expect(refs.pending).toBe(false)
+	})
 })

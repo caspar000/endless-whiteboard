@@ -1,3 +1,4 @@
+import { bookReaderExtension } from '@lifeboard/book-reader'
 import {
 	getDisabledExtensionIds,
 	registerExtension,
@@ -18,6 +19,7 @@ import { registerNodeCommands } from './canvas/insertNode'
  */
 registerExtension(markdownNoteExtension)
 registerExtension(tablesExtension)
+registerExtension(bookReaderExtension)
 
 // Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
 // After the registrations above, deliberately: it reads what they just put there.

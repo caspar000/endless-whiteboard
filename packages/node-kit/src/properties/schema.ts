@@ -102,8 +102,42 @@ export function createProperty(
 	const def: PropertyDef = { id, name, type: spec.type }
 	if (spec.unit) def.unit = spec.unit
 	if (spec.options?.length) def.options = spec.options
+	if (spec.optionHues && Object.keys(spec.optionHues).length) def.optionHues = spec.optionHues
 	writePropertyRegistry(editor, [...existing, def])
 	return def
+}
+
+/**
+ * Brings an existing property's option list and colours up to date.
+ *
+ * `createProperty` deliberately leaves a property it finds alone — it is called on every write and
+ * must not undo a rename someone made in the properties panel. But a list that is *configured*
+ * elsewhere, like a reader's highlight tags, has to be able to push its changes through, and this
+ * is the narrow seam for that: options and colours only, never the name or the type.
+ */
+export function syncPropertyOptions(
+	editor: Editor,
+	id: string,
+	options: string[],
+	optionHues?: Record<string, number>
+): PropertyDef | null {
+	const registry = readPropertyRegistry(editor)
+	const found = findProperty(registry, id)
+	if (!found) return null
+
+	const same =
+		JSON.stringify(found.options ?? []) === JSON.stringify(options) &&
+		JSON.stringify(found.optionHues ?? {}) === JSON.stringify(optionHues ?? {})
+	if (same) return found
+
+	const next: PropertyDef = { ...found, options }
+	if (optionHues && Object.keys(optionHues).length) next.optionHues = optionHues
+	else delete next.optionHues
+	writePropertyRegistry(
+		editor,
+		registry.map((def) => (def.id === id ? next : def))
+	)
+	return next
 }
 
 /** Renames or retypes a property. Values are keyed by id, so a rename touches no shapes. */

@@ -64,6 +64,15 @@ export interface PropertyDef {
 	/** Known choices for `select` / `status` / `multiSelect`. Not a constraint — a value outside it still shows. */
 	options?: string[]
 	/**
+	 * A chosen hue for particular options, overriding the hash.
+	 *
+	 * Absent for almost every property, and deliberately so — see `optionHue`, where deriving the
+	 * colour from the label is the default precisely so that nobody has to maintain one. This exists
+	 * for the case where the colour *means* something the label cannot say: a reader's highlight
+	 * tags, where yellow-for-important is a convention older than the software.
+	 */
+	optionHues?: Record<string, number>
+	/**
 	 * For `status`: which stage each option belongs to. Anything unlisted counts as `todo`, so a
 	 * status property is usable the moment it has options and this can stay absent until it matters.
 	 */
@@ -109,6 +118,7 @@ export const propertyDefValidator: T.Validatable<PropertyDef> = T.object({
 	unit: T.string.optional(),
 	options: T.arrayOf(T.string).optional(),
 	stages: T.dict(T.string, T.literalEnum(...STATUS_STAGES)).optional(),
+	optionHues: T.dict(T.string, T.number).optional(),
 })
 
 /** Whether this type's values are lists — the one place that distinction is decided. */

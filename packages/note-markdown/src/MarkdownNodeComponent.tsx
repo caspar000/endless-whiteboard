@@ -1,6 +1,5 @@
 import {
-	CollectionStrip,
-	PropertyStrip,
+	NodeStrips,
 	getCurrentRates,
 	getPageEdges,
 	getPageFacts,
@@ -89,8 +88,7 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 			) : (
 				<p className="lb-md__placeholder">Double-click to write</p>
 			)}
-			<PropertyStrip shape={shape} editor={editor} />
-			<CollectionStrip shape={shape} editor={editor} />
+			<NodeStrips shape={shape} editor={editor} />
 		</div>
 	)
 }

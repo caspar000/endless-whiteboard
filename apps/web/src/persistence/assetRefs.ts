@@ -27,20 +27,38 @@ export function collectAssetRefs(snapshot: RawBoardSnapshot): AssetRefs {
 	for (const record of Object.values(snapshot.store)) {
 		if (!record || typeof record !== 'object') continue
 		const rec = record as { typeName?: unknown; props?: unknown }
-		if (rec.typeName !== 'asset') continue
-		const props = rec.props
-		if (!props || typeof props !== 'object') continue
-		const src = (props as { src?: unknown }).src
-		if (typeof src === 'string' && isManagedAssetSrc(src)) {
-			hashes.add(hashFromAssetSrc(src))
-		} else if (!src) {
-			// Empty or missing `src`: either an upload that hasn't landed yet, or one that was lost
-			// when the board unmounted mid-upload. Both mean "unknown", never "nothing".
-			pending = true
+		if (rec.typeName === 'asset') {
+			const props = rec.props
+			if (!props || typeof props !== 'object') continue
+			const src = (props as { src?: unknown }).src
+			if (typeof src === 'string' && isManagedAssetSrc(src)) {
+				hashes.add(hashFromAssetSrc(src))
+			} else if (!src) {
+				// Empty or missing `src`: either an upload that hasn't landed yet, or one that was lost
+				// when the board unmounted mid-upload. Both mean "unknown", never "nothing".
+				pending = true
+			}
+			// A non-empty foreign `src` (a bookmark's remote image, say) references no blob of ours.
+		} else if (rec.typeName === 'shape') {
+			// Extension nodes hold `asset:` srcs in their own props (a book's file and cover) rather
+			// than in asset records — those blobs are stored *before* the shape is created (see
+			// `createAssetBridge`), so a shape reference is never pending.
+			collectSrcStrings(rec.props, hashes)
 		}
-		// A non-empty foreign `src` (a bookmark's remote image, say) references no blob of ours.
 	}
 	return { hashes, pending }
+}
+
+/** Walks an untyped JSON value for `asset:` src strings, depth-first. */
+function collectSrcStrings(value: unknown, hashes: Set<string>): void {
+	if (typeof value === 'string') {
+		if (isManagedAssetSrc(value)) hashes.add(hashFromAssetSrc(value))
+		return
+	}
+	if (!value || typeof value !== 'object') return
+	for (const entry of Array.isArray(value) ? value : Object.values(value)) {
+		collectSrcStrings(entry, hashes)
+	}
 }
 
 /** The hashes only — for callers that have no use for the pending signal. */

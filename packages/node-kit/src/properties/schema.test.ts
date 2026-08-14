@@ -5,11 +5,13 @@ import {
 	createProperty,
 	deleteProperty,
 	mergeProperties,
+	findProperty,
 	parsePropertyRegistry,
 	readPropertyRegistry,
+	syncPropertyOptions,
 	updateProperty,
 } from './schema'
-import type { PropertyDef } from './types'
+import { propertyIdFromName, type PropertyDef } from './types'
 
 const price: Omit<PropertyDef, 'id'> = { name: 'Price', type: 'financial', unit: 'GEL' }
 
@@ -153,5 +155,49 @@ describe('legacy type normalisation', () => {
 		// The rename costs nothing because a link with no title *is* a bare URL, so every value that
 		// was stored under the old type reads back unchanged.
 		expect(parseLinkValue('https://example.com')).toEqual({ title: '', url: 'https://example.com' })
+	})
+})
+
+describe('syncPropertyOptions', () => {
+	it('brings an existing property’s options and colours up to date', () => {
+		const f = fakeEditor()
+		const editor = f.editor
+		createProperty(editor, { name: 'Highlight', type: 'select', options: ['Key'] })
+		const id = propertyIdFromName('Highlight')
+		syncPropertyOptions(editor, id, ['Important', 'Later'], { Important: 55 })
+		const def = findProperty(readPropertyRegistry(editor), id)
+		expect(def?.options).toEqual(['Important', 'Later'])
+		expect(def?.optionHues).toEqual({ Important: 55 })
+	})
+
+	it('leaves the name and the type alone — it only knows about options', () => {
+		const f = fakeEditor()
+		const editor = f.editor
+		createProperty(editor, { name: 'Highlight', type: 'select', options: ['Key'] })
+		const id = propertyIdFromName('Highlight')
+		syncPropertyOptions(editor, id, ['Other'])
+		const def = findProperty(readPropertyRegistry(editor), id)
+		expect(def?.name).toBe('Highlight')
+		expect(def?.type).toBe('select')
+	})
+
+	it('drops colours that are no longer chosen', () => {
+		const f = fakeEditor()
+		const editor = f.editor
+		createProperty(editor, {
+			name: 'Highlight',
+			type: 'select',
+			options: ['Key'],
+			optionHues: { Key: 42 },
+		})
+		const id = propertyIdFromName('Highlight')
+		syncPropertyOptions(editor, id, ['Key'])
+		expect(findProperty(readPropertyRegistry(editor), id)?.optionHues).toBeUndefined()
+	})
+
+	it('does nothing for a property that is not there', () => {
+		const f = fakeEditor()
+		const editor = f.editor
+		expect(syncPropertyOptions(editor, 'nope', ['a'])).toBeNull()
 	})
 })

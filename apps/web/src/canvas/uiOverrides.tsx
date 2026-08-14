@@ -1,4 +1,5 @@
 import {
+	actionsForShape,
 	getNodeDefinitions,
 	getVisibleNodeDefinitions,
 	isNodeTypeEnabled,
@@ -148,6 +149,50 @@ function PropertiesMenuItem() {
 }
 
 /**
+ * Whatever the enabled extensions can do to the selected shape (see `ShapeAction`).
+ *
+ * Registry-driven like everything else here, so an extension's verb — "find this book's details" —
+ * appears without the host knowing what it means, and disappears when the extension is switched
+ * off. Only for a single selection: these act on one shape, and an action that silently applied to
+ * the first of eleven would be worse than no action at all.
+ */
+function ExtensionActionItems() {
+	const editor = useEditor()
+	const shape = useValue(
+		'lifeboard:action-target',
+		() => {
+			const ids = editor.getSelectedShapeIds()
+			return ids.length === 1 ? (editor.getShape(ids[0]!) ?? null) : null
+		},
+		[editor]
+	)
+	if (!shape) return null
+	const actions = actionsForShape(shape)
+	if (!actions.length) return null
+
+	return (
+		<TldrawUiMenuGroup id="lifeboard-extension-actions">
+			{actions.map((action) => (
+				<TldrawUiMenuItem
+					key={action.id}
+					id={action.id}
+					label={action.label}
+					{...(action.icon ? { icon: glyphIcon('✦') } : {})}
+					onSelect={() => {
+						try {
+							action.run({ editor, shape })
+						} catch (error) {
+							// One extension's bad action must not take the menu — or the board — down.
+							console.error(`Extension action "${action.id}" failed`, error)
+						}
+					}}
+				/>
+			))}
+		</TldrawUiMenuGroup>
+	)
+}
+
+/**
  * "Add to board" on the canvas context menu.
  *
  * Double-clicking empty canvas now creates a note outright — which is what makes writing the default
@@ -182,6 +227,7 @@ export const nodeComponents: TLComponents = {
 	ContextMenu: (props) => (
 		<DefaultContextMenu {...props}>
 			<PropertiesMenuItem />
+			<ExtensionActionItems />
 			<AddToBoardItems />
 			<DefaultContextMenuContent />
 		</DefaultContextMenu>

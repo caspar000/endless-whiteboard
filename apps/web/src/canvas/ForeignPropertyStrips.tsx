@@ -1,14 +1,20 @@
-import { CollectionStrip, PropertyStrip, hasCollection, isNodeType } from '@lifeboard/node-kit'
+import { NodeStrips, hasCollection, hasStripsBelow } from '@lifeboard/node-kit'
 import { useEditor, useValue } from 'tldraw'
 
 /**
- * Property strips for shapes that can't render their own.
+ * Property strips drawn *under* a shape rather than inside its card.
  *
- * Our node types put their properties inside the card, where they belong in the layout and where
- * auto-height measures them. tldraw's own shapes — stickies, photos, rectangles, text — render
- * components we don't control, so a shape you gave a price to would carry invisible data: it would
- * total correctly in a rollup while showing nothing at all. That is the worst of both worlds, so the
- * app draws the strip underneath them instead.
+ * Two kinds of shape need this, and they get the identical treatment (`hasStripsBelow`):
+ *
+ *  - **tldraw's own** — stickies, photos, rectangles, text — whose components we don't control, so a
+ *    shape you gave a price to would otherwise carry invisible data: it would total correctly in a
+ *    rollup while showing nothing at all.
+ *  - **Our nodes that declare `strips: 'below'`** — a book, whose card is a cover image. Rows drawn
+ *    on top of the artwork read as part of the jacket; below it they read as the shape's data, which
+ *    is what they are.
+ *
+ * Text-surface nodes (the note, the table) still render their own strips inline, where they belong
+ * in the layout and where auto-height measures them.
  *
  * Rendered through `OnTheCanvas`, which is inside the camera transform — so a strip pans, zooms and
  * moves with its shape without any of it being computed here.
@@ -24,8 +30,8 @@ export function ForeignPropertyStrips() {
 		() => {
 			const out: { id: string; x: number; y: number; w: number }[] = []
 			for (const shape of editor.getCurrentPageShapes()) {
-				// Our own nodes draw their properties themselves.
-				if (isNodeType(shape.type)) continue
+				// Nodes that draw their properties inside their own card are not ours to place.
+				if (!hasStripsBelow(shape.type)) continue
 				// Cheap pre-filter before asking for bounds, which is the expensive part: the
 				// overwhelming majority of shapes on a board carry neither.
 				if (!shape.meta['lifeboard:props'] && !hasCollection(shape)) continue
@@ -73,8 +79,7 @@ function ForeignStrip({
 				width: target.w,
 			}}
 		>
-			<PropertyStrip shape={shape} editor={editor} />
-			<CollectionStrip shape={shape} editor={editor} />
+			<NodeStrips shape={shape} editor={editor} />
 		</div>
 	)
 }

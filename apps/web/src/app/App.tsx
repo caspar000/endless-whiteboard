@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from 'tldraw'
 import { markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
@@ -6,8 +7,10 @@ import { assetUploadActivityAt } from '../persistence/assetStore'
 import { clearThumbnailsExcept, saveBoardThumbnail } from '../persistence/thumbnails'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
+import { setAppCommandApi } from './appCommands'
 import { AppearancePanel } from './AppearancePanel'
 import { BoardList } from './BoardList'
+import { CommandPalette } from './CommandPalette'
 import { ExtensionsPanel } from './ExtensionsPanel'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
 import { HelpPage } from './help/HelpPage'
@@ -51,6 +54,7 @@ export function App() {
 	const [route, navigate] = useHashRoute()
 	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)
 	const [seeding, setSeeding] = useState(false)
+	const [paletteOpen, setPaletteOpen] = useState(false)
 
 	/** Boards kept mounted purely to let a closed tab's pending write flush. */
 	const [draining, setDraining] = useState<BoardMeta[]>([])
@@ -175,6 +179,26 @@ export function App() {
 			;(window as unknown as { editor?: Editor }).editor = editor
 		}
 	}
+
+	/**
+	 * ⌘K opens the palette from anywhere.
+	 *
+	 * A window listener in the capture phase, deliberately **not** a tldraw action: tldraw binds its
+	 * shortcuts to the document but gates them on `editor.getIsFocused()`, and `focusOnly` above blurs
+	 * every editor the moment you leave the board view — so an override would be dead on the home
+	 * screen, Settings and Help, which is most of where you want it. Capture plus `stopPropagation`
+	 * also means tldraw and CodeMirror never see the keystroke at all.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return
+			event.preventDefault()
+			event.stopPropagation()
+			setPaletteOpen((open) => !open)
+		}
+		window.addEventListener('keydown', onKeyDown, { capture: true })
+		return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+	}, [])
 
 	// Ask for durable storage once, at startup. Chrome grants it silently based on engagement;
 	// Safari grants it to installed PWAs. Either way, asking early is free (§4.4).
@@ -348,6 +372,13 @@ export function App() {
 		[cancelDrainFor, closeTab, api]
 	)
 
+	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
+	// why the commands themselves register at module scope instead of here). No dependency array on
+	// purpose: the callbacks are recreated across renders, and a stale set would run dead closures.
+	useEffect(() => {
+		setAppCommandApi({ createAndOpen, goHome, goSettings, goHelp, setTheme })
+	})
+
 	const listApi = { ...api, remove: removeBoard }
 
 	const activeBoardId = route.view === 'board' ? route.boardId : null
@@ -356,11 +387,27 @@ export function App() {
 	const activeBoardIdRef = useRef(activeBoardId)
 	activeBoardIdRef.current = activeBoardId
 	useEffect(() => {
-		focusOnly(activeBoardId)
+		// An open palette counts as "no board has focus", and this is the whole of the palette's focus
+		// story: tldraw reads keys off the *document* and gates them on `isFocused`, so without the
+		// blur every letter typed into the palette would also switch the canvas tool underneath it.
+		// Closing restores focus by itself — this effect runs on every render, including that one.
+		focusOnly(paletteOpen ? null : activeBoardId)
 		// Leaving the board view for the home screen blurs everything, which is right: a keystroke
 		// aimed at the board list must not reach a board that happens to still be mounted behind it.
 	})
 	if (activeBoardId) warm.current.add(activeBoardId)
+
+	/**
+	 * What a command runs against, read at the moment of invocation rather than captured — the
+	 * editors map is a ref, so anything stored would be stale the next time a tab changed.
+	 */
+	const getCommandContext = useCallback(
+		(): CommandContext => ({
+			editor: activeBoardId ? (editors.current.get(activeBoardId) ?? null) : null,
+			view: route.view,
+		}),
+		[activeBoardId, route.view]
+	)
 
 	const routedBoard = activeBoardId
 		? api.boards.find((b) => b.id === activeBoardId)
@@ -384,6 +431,13 @@ export function App() {
 
 	return (
 		<CanvasPrefsProvider value={canvasPrefs}>
+			<CommandPalette
+				open={paletteOpen}
+				onClose={() => setPaletteOpen(false)}
+				getContext={getCommandContext}
+				boards={api.boards}
+				onOpenBoard={(board) => void openBoard(board)}
+			/>
 			<div className="lb-shell">
 			<Sidebar
 				view={route.view}

@@ -29,7 +29,8 @@ against a hardcoded list; put the data on `Command` and render it.**
 - `apps/web/src/app/appCommands.ts` — app + canvas commands registered at module scope
   (composition-root pattern, StrictMode-safe). App capability flows through
   `setAppCommandApi(...)`, which `App.tsx` re-points at its live callbacks in a no-deps `useEffect`.
-  Registered so far: `board.new`, `view.home`, `view.settings`, `view.help`, `view.theme.*`,
+  Registered so far: `board.new`, `view.home`, `view.settings`, `view.extensions`, `view.help`,
+  `view.theme.*`,
   `edit.undo`, `edit.redo`, `view.zoom-fit`, `view.zoom-reset` (canvas ones gated
   `when: ctx => ctx.editor !== null`).
 

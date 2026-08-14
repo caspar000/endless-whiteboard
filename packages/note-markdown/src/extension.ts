@@ -16,6 +16,11 @@ export const markdownNoteExtension: Extension = {
 	id: 'lifeboard.note-markdown',
 	name: 'Markdown notes',
 	description: 'Prose notes written in markdown — headings, lists, tasks, images and inline expressions.',
+	details: [
+		'Adds the note: a card you write prose in. It is markdown all the way down — headings, lists, task boxes, links, quotes and images — and what you type is what is stored, so a note is portable text rather than a proprietary blob.',
+		'Notes carry properties like any other shape, so a note can hold a price, a date or a rating and be counted by a table without being copied anywhere. Type `{` in a note to drop in an inline expression that stays live.',
+		'Turning this off removes the note tool and its menu entries. Notes already on your boards keep rendering and stay editable.',
+	],
 	icon: NotepadText,
 	version: '0.1.0',
 	author: 'Lifeboard',

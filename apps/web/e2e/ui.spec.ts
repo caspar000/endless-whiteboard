@@ -8,6 +8,7 @@ import {
 	gotoFresh,
 	noteMarkdown,
 	openBoard,
+	openSettings,
 	skipFirstRunDemo,
 	waitForStableHeight,
 } from './helpers'
@@ -1065,7 +1066,7 @@ test.describe('theme', () => {
 		await skipFirstRunDemo(page)
 
 		const html = page.locator('html')
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Appearance')
 
 		await page.getByRole('button', { name: 'Light' }).click()
 		await expect(html).toHaveAttribute('data-theme', 'light')
@@ -1079,7 +1080,7 @@ test.describe('theme', () => {
 		await expect(page.locator('.tl-container.tl-theme__light')).toBeVisible()
 
 		await backToList(page)
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Dark', exact: true }).click()
 		await expect(html).toHaveAttribute('data-theme', 'dark')
 	})
@@ -1097,7 +1098,7 @@ test.describe('theme', () => {
 		await expect(html).toHaveAttribute('data-theme', 'dark')
 
 		// Pinning a theme has to stop the app tracking the OS.
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Light' }).click()
 		await page.emulateMedia({ colorScheme: 'dark' })
 		await expect(html).toHaveAttribute('data-theme', 'light')
@@ -1124,7 +1125,7 @@ test.describe('theme', () => {
 		await expect.poll(() => thumbnailSize(page, 'Home office shopping')).toBeGreaterThan(2_000)
 		const before = await thumbnailSize(page, 'Still open')
 
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Dark', exact: true }).click()
 
 		// 'Still open' has a mounted (though hidden) editor, so it keeps a real preview, re-exported in
@@ -1152,11 +1153,67 @@ test.describe('theme', () => {
 
 		// 'system' already resolves to light here, so pinning light changes the stored preference but
 		// not a single pixel — throwing away every preview for that would be gratuitous.
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Light' }).click()
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 
 		await expect.poll(() => countThumbnails(page)).toBe(before)
+	})
+})
+
+test.describe('extensions', () => {
+	test('a card opens the extension’s own page, and the switch there reaches the dock', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		await openSettings(page, 'Extensions')
+		await expect(page.locator('.lb-extmarket__card')).toHaveCount(3)
+
+		// The card is the way in — the switch alone can't answer "what is this?".
+		await page.getByRole('button', { name: 'Markdown notes', exact: true }).click()
+		await expect(page).toHaveURL(/#\/settings\/extensions\/lifeboard\.note-markdown$/)
+		await expect(page.getByRole('heading', { level: 1, name: 'Markdown notes' })).toBeVisible()
+		// Derived from the manifest, not written twice: the node type it contributes.
+		await expect(page.locator('.lb-extpage__item', { hasText: 'Note' })).toHaveCount(1)
+
+		await page.getByRole('checkbox', { name: 'Enable Markdown notes' }).uncheck()
+
+		// The point of the switch: the tool leaves every creation surface.
+		await backToList(page)
+		await createBoard(page)
+		await expect(
+			page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.node-markdown')
+		).toHaveCount(0)
+
+		// And the preference outlives the tab, like every other one.
+		await page.reload()
+		await backToList(page)
+		await openSettings(page, 'Extensions')
+		const card = page.locator('.lb-extmarket__card', { hasText: 'Markdown notes' })
+		await expect(card).toHaveAttribute('data-off', 'true')
+
+		await card.getByRole('checkbox').check()
+		await expect(card).not.toHaveAttribute('data-off', 'true')
+	})
+
+	test('an extension page links back to the list, and a dead id says so', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		await page.goto('/#/settings/extensions/lifeboard.book-reader')
+		await expect(page.getByRole('heading', { level: 1, name: 'Books' })).toBeVisible()
+		// The file types it claims, straight off its manifest.
+		await expect(page.locator('.lb-extpage__item', { hasText: '.epub' })).toHaveCount(1)
+
+		await page.getByRole('button', { name: 'All extensions' }).click()
+		await expect(page).toHaveURL(/#\/settings\/extensions$/)
+		await expect(page.locator('.lb-extmarket__card')).toHaveCount(3)
+
+		// A link from a build that had an extension this one doesn't must not render a blank page.
+		await page.goto('/#/settings/extensions/someone.else')
+		await expect(page.getByText('No extension with the id')).toBeVisible()
 	})
 })
 
@@ -1176,9 +1233,9 @@ test.describe('canvas grid', () => {
 				).editor.getInstanceState().isGridMode === true
 		)
 
-	async function openSettings(page: import('@playwright/test').Page) {
+	async function openCanvasSettings(page: import('@playwright/test').Page) {
 		await backToList(page)
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Canvas')
 	}
 	async function openDemoBoard(page: import('@playwright/test').Page) {
 		await page.getByRole('tab', { name: /Home office/ }).click()
@@ -1329,7 +1386,7 @@ test.describe('canvas grid', () => {
 
 		// Switching to tldraw's grid must not switch snapping on with it — that coupling is the whole
 		// reason the grid is drawn from the Background slot rather than tldraw's own.
-		await openSettings(page)
+		await openCanvasSettings(page)
 		await page.getByRole('button', { name: 'tldraw', exact: true }).click()
 		await openDemoBoard(page)
 		await expect(nativeGrid(page)).toHaveCount(1)
@@ -1337,14 +1394,14 @@ test.describe('canvas grid', () => {
 		expect(await gridMode(page)).toBe(false)
 
 		// And snapping must not draw a second grid on top of the one already showing.
-		await openSettings(page)
+		await openCanvasSettings(page)
 		await page.getByLabel('Snap to grid').check()
 		await openDemoBoard(page)
 		await expect(nativeGrid(page)).toHaveCount(1)
 		expect(await gridMode(page)).toBe(true)
 
 		// Hiding the grid leaves snapping alone.
-		await openSettings(page)
+		await openCanvasSettings(page)
 		await page.getByLabel('Grid', { exact: true }).uncheck()
 		await openDemoBoard(page)
 		await expect(ourPaper(page)).toHaveCount(0)
@@ -1402,7 +1459,7 @@ test.describe('canvas grid', () => {
 		const free = await shapeX()
 		expect(free % 10).not.toBe(0)
 
-		await openSettings(page)
+		await openCanvasSettings(page)
 		await page.getByLabel('Snap to grid').check()
 		await openDemoBoard(page)
 

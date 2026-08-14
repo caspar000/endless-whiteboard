@@ -9,6 +9,7 @@ import {
 	gotoFresh,
 	openBoard,
 	openProperties,
+	openSettings,
 	skipFirstRunDemo,
 	waitForStableHeight,
 	waitForPersistedShapes,
@@ -1406,8 +1407,8 @@ test.describe('backup', () => {
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-item')).toHaveCount(1)
 		await backToList(page)
 
-		// The backup controls live in the sidebar's Storage section now, not under the board grid.
-		await page.getByRole('button', { name: 'Settings' }).click()
+		// The backup controls live on Settings → Storage now, not under the board grid.
+		await openSettings(page, 'Storage')
 
 		// Export and capture the zip bytes.
 		const downloadPromise = page.waitForEvent('download')
@@ -1424,7 +1425,7 @@ test.describe('backup', () => {
 		await expect(page.locator('.lb-list__board', { hasText: 'Backed up' })).toHaveCount(0)
 
 		// Import the zip back.
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await openSettings(page, 'Storage')
 		const fileChooserPromise = page.waitForEvent('filechooser')
 		await page.getByRole('button', { name: 'Import backup' }).click()
 		const fileChooser = await fileChooserPromise

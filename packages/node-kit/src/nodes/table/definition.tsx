@@ -90,6 +90,11 @@ export const tablesExtension: Extension = {
 	id: 'lifeboard.tables',
 	name: 'Tables',
 	description: 'A live, read-only table view of the shapes on the board — grouping, filters and totals.',
+	details: [
+		'Adds the table: a card that asks the board a question and shows the answer as rows. It reads the shapes that are already there — nothing is copied into it, so a table can never drift out of date with what it describes.',
+		'Choose the columns from the board’s properties, filter and group the rows, and put a total at the foot of any numeric column. Narrow it down far enough and a table becomes one big number, which is often all you wanted.',
+		'Turning this off removes the table tool and its menu entries. Tables already on your boards keep rendering and stay live.',
+	],
 	icon: Table,
 	version: '0.1.0',
 	author: 'Lifeboard',

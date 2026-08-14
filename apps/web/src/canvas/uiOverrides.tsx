@@ -78,7 +78,7 @@ export const nodeUiOverrides: TLUiOverrides = {
 		/*
 		 * tldraw's own grid toggle (⌘', and the checkbox in its main menu) is removed.
 		 *
-		 * It writes `isGridMode`, which the app now owns from Settings → Appearance — and tldraw persists
+		 * It writes `isGridMode`, which the app now owns from Settings → Canvas — and tldraw persists
 		 * that flag *per board*, so leaving the shortcut in place is what let one board end up with a grid
 		 * the others did not have. It would also read as a lie: the app re-applies its own value whenever a
 		 * board mounts, so toggling here would appear to work and then silently revert on reload. Deleting

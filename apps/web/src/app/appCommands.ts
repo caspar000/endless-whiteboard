@@ -6,6 +6,7 @@ import {
 	CANVAS_GROUP,
 	NAVIGATE_GROUP,
 } from './paletteItems'
+import { EXTENSIONS_TAB } from './settings/sections'
 import type { Theme } from './useTheme'
 
 /**
@@ -22,7 +23,8 @@ import type { Theme } from './useTheme'
 export interface AppCommandApi {
 	createAndOpen(): Promise<void>
 	goHome(): Promise<void>
-	goSettings(): Promise<void>
+	/** `tab` is a settings tab id (`sections.tsx`); omitted means the first one. */
+	goSettings(tab?: string): Promise<void>
 	goHelp(): Promise<void>
 	setTheme(theme: Theme): void
 }
@@ -53,6 +55,13 @@ registerCommand({
 	title: 'Open settings',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goSettings(),
+})
+
+registerCommand({
+	id: 'view.extensions',
+	title: 'Manage extensions',
+	group: NAVIGATE_GROUP,
+	run: () => void api?.goSettings(EXTENSIONS_TAB),
 })
 
 registerCommand({

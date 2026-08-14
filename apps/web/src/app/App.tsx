@@ -8,13 +8,12 @@ import { clearThumbnailsExcept, saveBoardThumbnail } from '../persistence/thumbn
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAppCommandApi } from './appCommands'
-import { AppearancePanel } from './AppearancePanel'
 import { BoardList } from './BoardList'
 import { CommandPalette } from './CommandPalette'
-import { ExtensionsPanel } from './ExtensionsPanel'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
 import { HelpPage } from './help/HelpPage'
-import { SettingsPanel } from './SettingsPanel'
+import { SettingsPage } from './settings/SettingsPage'
+import { EXTENSIONS_TAB } from './settings/sections'
 import { Sidebar } from './Sidebar'
 import { TabStrip } from './TabStrip'
 import { startDrain } from './drainSchedule'
@@ -322,10 +321,15 @@ export function App() {
 		void api.refresh()
 	}, [captureActiveThumbnail, navigate, api])
 
-	const goSettings = useCallback(async () => {
-		await captureActiveThumbnail()
-		navigate({ view: 'settings' })
-	}, [captureActiveThumbnail, navigate])
+	// The tab is optional so "Open settings" keeps meaning the front of settings, while a command that
+	// is *about* something (extensions) can land on it directly.
+	const goSettings = useCallback(
+		async (tab?: string) => {
+			await captureActiveThumbnail()
+			navigate(tab ? { view: 'settings', tab } : { view: 'settings' })
+		},
+		[captureActiveThumbnail, navigate]
+	)
 
 	const goHelp = useCallback(async () => {
 		await captureActiveThumbnail()
@@ -522,24 +526,28 @@ export function App() {
 							<BoardList api={listApi} onOpen={(board) => void openBoard(board)} />
 						))}
 
+					{/* Settings and Help own their layout and scrolling, unlike the other views: their rail
+					    has to stay put while the page beside it scrolls. */}
 					{route.view === 'settings' && (
-						<main className="lb-home__main">
-							{/* A column, centred. Settings is a reading width of controls, not a grid that
-							    wants the whole window — pinned to the left edge of a wide screen it reads
-							    as a panel someone forgot to lay out. */}
-							<div className="lb-settings-page">
-								<header className="lb-home__header">
-									<h1>Settings</h1>
-								</header>
-								<AppearancePanel theme={theme} onThemeChange={setTheme} canvas={canvasPrefs} />
-								<ExtensionsPanel />
-								<SettingsPanel api={api} onImported={() => void goHome()} />
-							</div>
-						</main>
+						<SettingsPage
+							tab={route.tab}
+							extensionId={route.extensionId}
+							onTab={(tab) => navigate({ view: 'settings', tab })}
+							onExtension={(id) =>
+								navigate(
+									id
+										? { view: 'settings', tab: EXTENSIONS_TAB, extensionId: id }
+										: { view: 'settings', tab: EXTENSIONS_TAB }
+								)
+							}
+							theme={theme}
+							onThemeChange={setTheme}
+							canvas={canvasPrefs}
+							api={api}
+							onImported={() => void goHome()}
+						/>
 					)}
 
-					{/* Owns its own layout and scrolling, unlike the other views: the section rail has to
-					    stay put while the section beside it scrolls. */}
 					{route.view === 'help' && (
 						<HelpPage
 							section={route.section}

@@ -38,29 +38,27 @@ export function HelpPage({
 	}, [active.id])
 
 	return (
-		<div className="lb-help">
-			<nav className="lb-help__nav" aria-label="Help sections">
+		<div className="lb-pane">
+			<nav className="lb-rail" aria-label="Help sections">
 				{HELP_GROUPS.map((group) => {
 					const inGroup = HELP_SECTIONS.filter((s) => s.group === group)
 					if (!inGroup.length) return null
 					return (
-						<div className="lb-help__navgroup" key={group}>
-							<div className="lb-help__navtitle">{group}</div>
+						<div className="lb-rail__group" key={group}>
+							<div className="lb-rail__title">{group}</div>
 							{inGroup.map((s) => (
 								<button
 									key={s.id}
 									className={
-										s.id === active.id
-											? 'lb-help__navitem lb-help__navitem--active'
-											: 'lb-help__navitem'
+										s.id === active.id ? 'lb-rail__item lb-rail__item--active' : 'lb-rail__item'
 									}
 									aria-current={s.id === active.id ? 'page' : undefined}
 									onClick={() => onSection(s.id)}
 								>
-									<span className="lb-help__navicon" aria-hidden="true">
+									<span className="lb-rail__icon" aria-hidden="true">
 										{s.icon}
 									</span>
-									<span className="lb-help__navlabel">{s.label}</span>
+									<span>{s.label}</span>
 								</button>
 							))}
 						</div>
@@ -68,7 +66,7 @@ export function HelpPage({
 				})}
 			</nav>
 
-			<main className="lb-help__main" ref={main}>
+			<main className="lb-pane__main" ref={main}>
 				{/* Keyed so a section change remounts the body: the demos hold step and selection state,
 				    and a table builder inheriting the flat-hunt selection from another page would be
 				    showing a configuration nobody chose. */}

@@ -173,6 +173,257 @@ button {
 	font-size: 11px;
 	border-radius: 6px;
 }
+/* A button carrying an icon beside its label, rather than a label alone. */
+.lb-btn--icon {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* ----------------------------------------------------------------- controls */
+/*
+ * The form controls, in one place: a slider, a menu, a switch, a colour.
+ *
+ * Every panel that asks a question reaches for these rather than for a native control, because a
+ * native range and a native checkbox are drawn by the OS in the OS's own blue and at the OS's own
+ * size — which is what made the reader's settings read as a different application from the board
+ * behind them.
+ */
+
+/*
+ * A slider. The filled half is painted into the track from `--lb-range-fill`, a percentage the caller
+ * sets from the value: Firefox has `::-moz-range-progress` and WebKit has no counterpart, so the one
+ * thing both can draw is a gradient stop.
+ */
+.lb-range {
+	appearance: none;
+	-webkit-appearance: none;
+	flex: 1;
+	min-width: 0;
+	/* Taller than the track, so the grab area is a finger rather than four pixels. */
+	height: 18px;
+	margin: 0;
+	background: none;
+	cursor: pointer;
+}
+.lb-range::-webkit-slider-runnable-track {
+	height: 4px;
+	border-radius: 2px;
+	background: linear-gradient(
+		to right,
+		var(--lb-accent) var(--lb-range-fill, 0%),
+		var(--lb-border-strong) var(--lb-range-fill, 0%)
+	);
+}
+.lb-range::-webkit-slider-thumb {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 12px;
+	height: 12px;
+	/* Centres the thumb on a 4px track. */
+	margin-top: -4px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--lb-accent);
+	box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+}
+.lb-range::-moz-range-track {
+	height: 4px;
+	border-radius: 2px;
+	background: var(--lb-border-strong);
+}
+.lb-range::-moz-range-progress {
+	height: 4px;
+	border-radius: 2px;
+	background: var(--lb-accent);
+}
+.lb-range::-moz-range-thumb {
+	width: 12px;
+	height: 12px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--lb-accent);
+}
+.lb-range:focus-visible {
+	outline: none;
+}
+.lb-range:focus-visible::-webkit-slider-thumb {
+	box-shadow: 0 0 0 3px var(--lb-accent-tint);
+}
+.lb-range:focus-visible::-moz-range-thumb {
+	box-shadow: 0 0 0 3px var(--lb-accent-tint);
+}
+
+/* A menu, with our own caret: the native arrow is a different grey and a different size on every
+   platform, and it is the one part of a `<select>` that cannot be themed. */
+.lb-select {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+.lb-select select {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 100%;
+	min-width: 0;
+	padding: 6px 28px 6px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	cursor: pointer;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+.lb-select select:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-select select:focus-visible {
+	outline: none;
+	border-color: var(--lb-accent);
+}
+.lb-select__caret {
+	position: absolute;
+	right: 9px;
+	color: var(--lb-text-faint);
+	pointer-events: none;
+}
+
+/*
+ * The native checkbox, restyled as a switch. `appearance: none` on the input rather than a hidden
+ * input plus a fake track: this keeps it a real checkbox for the keyboard and for screen readers, and
+ * `:focus-visible` still lands on the thing being operated. (`.lb-toggle`, the labelled row it sits
+ * in on the settings page, is under "appearance" below.)
+ */
+.lb-switch,
+.lb-toggle__input {
+	appearance: none;
+	-webkit-appearance: none;
+	position: relative;
+	flex-shrink: 0;
+	width: 38px;
+	height: 22px;
+	margin: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border-strong);
+	cursor: pointer;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+.lb-switch::after,
+.lb-toggle__input::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--lb-text-dim);
+	transition: transform 120ms ease, background 120ms ease;
+}
+.lb-switch:checked,
+.lb-toggle__input:checked {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-switch:checked::after,
+.lb-toggle__input:checked::after {
+	transform: translateX(16px);
+	background: var(--lb-on-accent);
+}
+.lb-switch:focus-visible,
+.lb-toggle__input:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+/* The panel it lives in is narrow, so the switch is drawn a size down there. */
+.lb-switch--sm {
+	width: 32px;
+	height: 19px;
+}
+.lb-switch--sm::after {
+	width: 13px;
+	height: 13px;
+}
+.lb-switch--sm:checked::after {
+	transform: translateX(13px);
+}
+
+/*
+ * A colour. The swatch is the control and the native picker sits invisibly on top of it, so choosing
+ * a colour stays the OS's job while looking at one is ours — a bordered `<input type="color">` is a
+ * grey box with a stripe in it, at a size no stylesheet can change.
+ */
+.lb-colour {
+	position: relative;
+	display: inline-block;
+	flex: none;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	/* Two rings: one inside, so a pale colour still has an edge; one outside, so a dark one does. */
+	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 18%), 0 0 0 1px var(--lb-border-strong);
+	cursor: pointer;
+}
+.lb-colour input {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+/*
+ * A hue, chosen the way a shape's colour is: one swatch, and a palette under it. The swatch is drawn
+ * in exactly the ink the highlight will be — same hue, same alpha as `.lb-reader__mark` — because the
+ * question it answers is "what will this look like in the book?".
+ */
+.lb-hue {
+	position: relative;
+	display: inline-flex;
+}
+.lb-hue__swatch {
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 1px solid hsl(var(--lb-opt-h) 55% 45%);
+	border-radius: 50%;
+	background: hsl(var(--lb-opt-h) 85% 55% / 55%);
+	cursor: pointer;
+	transition: transform 100ms ease;
+}
+.lb-hue__swatch:hover {
+	transform: scale(1.12);
+}
+.lb-hue__swatch--on {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+/* Above the swatch and aligned to its left edge, not centred on it: the list this opens from is the
+   last thing on its page and sits against the left margin, so a palette dropped downwards would open
+   into the bottom of the scroll area and a centred one would hang off the side. */
+.lb-hue__palette {
+	position: absolute;
+	z-index: 5;
+	bottom: calc(100% + 9px);
+	left: 0;
+	display: grid;
+	grid-template-columns: repeat(6, 20px);
+	gap: 7px;
+	padding: 9px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
+	background: var(--lb-surface);
+	box-shadow: var(--lb-shadow-1);
+}
 
 /* ================================================================ app shell */
 /* Affine's layout: a persistent sidebar, a tab strip across the top, content underneath. */
@@ -855,48 +1106,7 @@ button {
 	font-size: 12px;
 	color: var(--lb-text-faint);
 }
-/*
- * The native checkbox, restyled as a switch. `appearance: none` on the input rather than a hidden input
- * plus a fake track: this keeps it a real checkbox for the keyboard and for screen readers, and
- * `:focus-visible` still lands on the thing being operated.
- */
-.lb-toggle__input {
-	appearance: none;
-	-webkit-appearance: none;
-	position: relative;
-	flex-shrink: 0;
-	width: 38px;
-	height: 22px;
-	margin: 0;
-	border-radius: 999px;
-	background: var(--lb-surface-2);
-	border: 1px solid var(--lb-border-strong);
-	cursor: pointer;
-	transition: background 120ms ease, border-color 120ms ease;
-}
-.lb-toggle__input::after {
-	content: '';
-	position: absolute;
-	top: 2px;
-	left: 2px;
-	width: 16px;
-	height: 16px;
-	border-radius: 50%;
-	background: var(--lb-text-dim);
-	transition: transform 120ms ease, background 120ms ease;
-}
-.lb-toggle__input:checked {
-	background: var(--lb-accent);
-	border-color: var(--lb-accent);
-}
-.lb-toggle__input:checked::after {
-	transform: translateX(16px);
-	background: var(--lb-on-accent);
-}
-.lb-toggle__input:focus-visible {
-	outline: 2px solid var(--lb-accent);
-	outline-offset: 2px;
-}
+/* The switch itself is `.lb-switch`, under "controls" at the top of this file. */
 
 /* --------------------------------------------------------------------- board */
 
@@ -5200,9 +5410,15 @@ button.lb-props__eye:hover {
 	max-width: var(--lb-page-w);
 	max-height: var(--lb-page-h);
 	/* All four come from the theme, set on `.lb-reader__book` by the reader. */
-	background: var(--lb-page-colour, #f6f2e9);
+	background: var(--lb-page-colour, #fff);
 	border-radius: var(--lb-page-radius, 2px);
 	box-shadow: var(--lb-page-shadow, var(--lb-shadow-2));
+	/*
+	 * The corner is only a corner if what is printed on the sheet is cut to it. The renderer paints
+	 * its own background across the whole of this box — square — so without the clip the radius was
+	 * set on a colour nothing ever sees, and the page kept its right angles at every value.
+	 */
+	overflow: hidden;
 }
 
 /* The frame is the paper; the view is what is printed on it. */
@@ -5495,7 +5711,8 @@ button.lb-props__eye:hover {
 	flex-direction: column;
 	border: 1px solid var(--lb-border);
 	border-radius: 8px;
-	background: #f6f2e9;
+	/* The note is a fragment of the book, so it is printed on the book's own paper. */
+	background: var(--lb-page-colour, #fff);
 	box-shadow: var(--lb-shadow-3, 0 8px 30px rgb(0 0 0 / 45%));
 	overflow: hidden;
 }
@@ -5792,14 +6009,15 @@ button.lb-props__eye:hover {
 	color: var(--lb-accent);
 }
 
-/* The view-mode group reads as one control, so its buttons sit together in a well. */
+/* The view-mode group reads as one control, so its buttons sit together in a well — the same well the
+   appearance settings put their segmented control in. */
 .lb-reader__modes {
 	flex: none;
 	display: flex;
 	gap: 2px;
 	padding: 2px;
 	border-radius: 8px;
-	background: var(--lb-surface);
+	background: var(--lb-surface-2);
 }
 
 /* Says what clip mode expects of you — a mode you can't see is a mode you can't use. */
@@ -5858,117 +6076,225 @@ button.lb-props__eye:hover {
 
 /* ----------------------------------------------------- reader settings */
 
-/* The mirror of the outline panel, on the other side — navigation on the left, presentation on
-   the right, and the page keeps the middle. */
+/*
+ * The panel: the questions worth answering without leaving the page, and a way through to the rest.
+ * The mirror of the outline panel on the other side — navigation left, presentation right, and the
+ * page keeps the middle.
+ *
+ * Flat throughout. A 248px column is too narrow to carry cards, and the cards it used to carry — a
+ * bordered well around three buttons, a bordered button beneath each — turned three questions into
+ * nine boxes.
+ */
 .lb-reader__settings {
 	flex: none;
 	order: 1;
-	width: 240px;
-	overflow-y: auto;
-	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	width: 248px;
+	min-height: 0;
 	border-left: 1px solid var(--lb-border);
 	background: var(--lb-bg-raised);
 	font-size: 12px;
 }
 
 .lb-reader__settings-head {
+	flex: none;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 10px;
+	height: 40px;
+	padding: 0 14px;
+	border-bottom: 1px solid var(--lb-border);
+	font-size: 12px;
 	font-weight: 600;
 	color: var(--lb-text);
 }
 
-.lb-reader__settings-reset {
+.lb-reader__settings-body {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	padding: 14px 12px 18px;
+}
+
+.lb-reader__settings-title {
+	margin: 0 0 8px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--lb-text-faint);
+}
+
+/*
+ * The way through to this section's page of the settings proper — a row of its own beneath the
+ * section it opens, which is where it reads as "and the rest of this".
+ *
+ * Borderless, unlike the three outlined buttons it replaces: at this width a bordered button under
+ * every heading turned three questions into a stack of boxes, and there is nothing here to separate
+ * from its surroundings — the label and the icon are the whole control.
+ */
+.lb-reader__customize {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 22px;
-	height: 22px;
+	gap: 6px;
+	width: 100%;
+	margin-top: 8px;
+	padding: 6px 0;
 	border: none;
-	border-radius: 5px;
+	border-radius: 7px;
 	background: transparent;
 	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 11.5px;
 	cursor: pointer;
+	transition: background 100ms ease, color 100ms ease;
 }
 
-.lb-reader__settings-reset:hover:not(:disabled) {
-	background: var(--lb-surface-hover);
+.lb-reader__customize:hover {
+	background: var(--lb-surface-2);
 	color: var(--lb-text);
 }
 
-.lb-reader__settings-reset:disabled {
-	opacity: 0.3;
-	cursor: default;
+/* Three answers, side by side and legible at a glance — "how should this look?" is a question best
+   answered with a picture. */
+.lb-reader__tiles {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 4px;
 }
 
-.lb-reader__setting {
-	display: block;
+.lb-reader__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 58px;
+	padding: 0 2px;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 10px;
+	line-height: 1.1;
+	text-align: center;
+	cursor: pointer;
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.lb-reader__tile:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+
+/* The app's own active fill — the same one the dock puts behind the selected tool. */
+.lb-reader__tile[aria-pressed='true'] {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+
+/*
+ * A theme tile is painted in the colours it applies, so it cannot also carry the accent fill that
+ * marks the others as chosen. It takes the ring instead — the same one a selected colour swatch
+ * wears everywhere else in the app, which is exactly what this is.
+ */
+.lb-reader__tile--theme {
+	border-radius: 8px;
+}
+
+.lb-reader__tile--theme[aria-pressed='true'] {
+	background: inherit;
+	outline: 2px solid var(--lb-accent);
+	outline-offset: -1px;
+}
+
+.lb-reader__tile-aa {
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1;
+	font-family: Literata, Georgia, serif;
+}
+
+/* A setting answered in the panel itself rather than behind Customize. */
+.lb-reader__field {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
 	margin-bottom: 12px;
 }
 
-.lb-reader__setting-label {
-	display: flex;
-	justify-content: space-between;
-	margin-bottom: 4px;
+.lb-reader__field-label {
+	font-size: 11px;
 	color: var(--lb-text-dim);
 }
 
-.lb-reader__setting-label output {
-	color: var(--lb-text);
-	font-variant-numeric: tabular-nums;
+.lb-reader__swatches {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
-.lb-reader__setting input[type='range'] {
-	width: 100%;
-	accent-color: var(--lb-accent);
+/* No tag at all, as a swatch: an empty circle with a line through it. */
+.lb-reader__none {
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 50%;
+	background:
+		linear-gradient(
+			to top right,
+			transparent calc(50% - 0.5px),
+			var(--lb-text-faint) calc(50% - 0.5px),
+			var(--lb-text-faint) calc(50% + 0.5px),
+			transparent calc(50% + 0.5px)
+		),
+		var(--lb-surface-2);
+	cursor: pointer;
+	transition: transform 100ms ease;
 }
 
-/* Paper-coloured, because it is a preview of the page and not of the panel. */
-.lb-reader__setting-sample {
-	margin: 6px 0 4px;
-	padding: 7px 9px;
-	border-radius: 5px;
-	background: #f6f2e9;
-	color: #1a1a1a;
-	font-size: 14px;
-	line-height: 1.4;
+.lb-reader__none:hover {
+	transform: scale(1.12);
 }
 
-.lb-reader__setting-note {
-	margin: 0;
-	color: var(--lb-text-faint);
-	font-size: 11px;
-	line-height: 1.35;
+.lb-reader__none--on {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
 }
 
-.lb-reader__setting-select {
-	width: 100%;
-	padding: 4px 6px;
-	border: 1px solid var(--lb-border);
-	border-radius: 6px;
-	background: var(--lb-surface);
-	color: var(--lb-text);
-	font-family: var(--lb-font);
+/* An on/off setting: the label is the hit target, the switch is at the end of the row. */
+.lb-reader__switch-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	cursor: pointer;
+	color: var(--lb-text-dim);
 	font-size: 12px;
+}
+
+.lb-reader__switch-row + .lb-reader__switch-row {
+	margin-top: 10px;
+}
+
+.lb-reader__switch-row:hover {
+	color: var(--lb-text);
+}
+
+.lb-reader__settings-foot {
+	flex: none;
+	padding: 10px 12px;
+	border-top: 1px solid var(--lb-border);
 }
 
 .lb-reader__settings-done {
 	width: 100%;
-	padding: 5px 0;
-	border: 1px solid var(--lb-border);
-	border-radius: 6px;
-	background: transparent;
-	color: var(--lb-text-dim);
-	font-family: var(--lb-font);
-	font-size: 12px;
-	cursor: pointer;
-}
-
-.lb-reader__settings-done:hover {
-	background: var(--lb-surface-hover);
-	color: var(--lb-text);
 }
 
 /* --------------------------------------------------- book details lookup */
@@ -5984,12 +6310,13 @@ button.lb-props__eye:hover {
 	gap: 6px;
 }
 
+/* The same field the tag names are typed into — one text input for the whole extension. */
 .lb-lookup__input {
 	flex: 1;
 	min-width: 0;
-	padding: 5px 8px;
-	border: 1px solid var(--lb-border-strong);
-	border-radius: 6px;
+	padding: 6px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
 	background: var(--lb-surface-2);
 	color: var(--lb-text);
 	font-family: var(--lb-font);
@@ -6005,9 +6332,9 @@ button.lb-props__eye:hover {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
+	width: 32px;
 	border: none;
-	border-radius: 6px;
+	border-radius: 7px;
 	background: var(--lb-accent);
 	color: var(--lb-on-accent);
 	cursor: pointer;
@@ -6107,7 +6434,8 @@ button.lb-props__eye:hover {
 	background: hsl(var(--lb-mark-h, 224) 85% 55% / 55%);
 }
 
-/* The selection bar: take the quote, or take it as something in particular. */
+/* The selection bar: take the quote, or take it as something in particular. Floating chrome, so it
+   wears the same border and shadow as the dock and the selection toolbar. */
 .lb-reader__quote-bar {
 	position: fixed;
 	transform: translateX(-50%);
@@ -6116,43 +6444,34 @@ button.lb-props__eye:hover {
 	align-items: center;
 	gap: 6px;
 	padding: 4px;
-	border-radius: 9px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 10px;
 	background: var(--lb-surface);
 	box-shadow: var(--lb-shadow-1);
 }
 
 .lb-reader__tags {
 	display: flex;
-	gap: 4px;
-	padding-right: 2px;
+	gap: 5px;
+	padding-right: 3px;
 }
 
+/* The tag swatch, drawn exactly as `.lb-hue__swatch` is in the settings — the same colour, chosen the
+   same way, in the two places it appears. */
 .lb-reader__tag {
-	width: 18px;
-	height: 18px;
+	width: 20px;
+	height: 20px;
 	padding: 0;
-	border: 1px solid hsl(var(--lb-opt-h) 60% 45%);
+	border: 1px solid hsl(var(--lb-opt-h) 55% 45%);
 	border-radius: 50%;
-	background: hsl(var(--lb-opt-h) 85% 55% / 45%);
+	background: hsl(var(--lb-opt-h) 85% 55% / 55%);
 	cursor: pointer;
+	transition: transform 100ms ease;
 }
 
 .lb-reader__tag:hover {
+	transform: scale(1.12);
 	background: hsl(var(--lb-opt-h) 85% 55% / 85%);
-}
-
-/* An on/off setting in the reader panel. */
-.lb-reader__toggle {
-	display: flex;
-	align-items: center;
-	gap: 7px;
-	margin-bottom: 9px;
-	color: var(--lb-text-dim);
-	cursor: pointer;
-}
-
-.lb-reader__toggle input {
-	accent-color: var(--lb-accent);
 }
 
 /*
@@ -6170,191 +6489,6 @@ button.lb-props__eye:hover {
 /* A curl is not a slide; the leaves stay where they are and the canvas does the moving. */
 .lb-reader__stage[data-turn='curl'] .lb-reader__leaf {
 	animation: none !important;
-}
-
-/* The Advanced disclosure, and what it opens onto. */
-
-
-.lb-reader__settings-more:hover {
-	color: var(--lb-text);
-}
-
-
-
-/* ------------------------------------------------ reader settings cards */
-
-.lb-reader__settings-title {
-	margin: 4px 0 7px;
-	font-size: 11px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: var(--lb-text-dim);
-}
-
-/* Three choices, side by side and legible at a glance — the answer to "how should this look?"
-   should be a picture, not a menu. */
-.lb-reader__cards {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 6px;
-	margin-bottom: 8px;
-}
-
-.lb-reader__card {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 5px;
-	padding: 10px 2px 7px;
-	border: 1px solid var(--lb-border);
-	border-radius: 7px;
-	background: var(--lb-surface);
-	color: var(--lb-text-dim);
-	font-family: var(--lb-font);
-	font-size: 10px;
-	cursor: pointer;
-}
-
-.lb-reader__card:hover {
-	border-color: var(--lb-text-faint);
-}
-
-.lb-reader__card[aria-pressed='true'] {
-	border-color: var(--lb-accent);
-	box-shadow: inset 0 0 0 1px var(--lb-accent);
-	color: var(--lb-text);
-}
-
-/* A theme card is painted in its own colours, so the label is on the paper it describes. */
-.lb-reader__card-aa {
-	font-size: 17px;
-	font-weight: 600;
-	line-height: 1;
-}
-
-.lb-reader__setting--colour {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-}
-
-.lb-reader__setting--colour input {
-	width: 34px;
-	height: 22px;
-	padding: 0;
-	border: 1px solid var(--lb-border);
-	border-radius: 5px;
-	background: none;
-	cursor: pointer;
-}
-
-.lb-reader__setting--colour .lb-reader__setting-label {
-	margin: 0;
-}
-
-/* ---------------------------------------------------- reader settings UI */
-
-.lb-reader__settings-title {
-	margin: 16px 0 8px;
-	font-size: 10px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	color: var(--lb-text-faint);
-}
-
-.lb-reader__settings-title:first-of-type {
-	margin-top: 2px;
-}
-
-.lb-reader__settings-blurb {
-	margin: 0 0 8px;
-	font-size: 11px;
-	line-height: 1.45;
-	color: var(--lb-text-faint);
-}
-
-/*
- * Three choices side by side. Squared off rather than rounded, and separated by hairlines rather
- * than by gaps — the denser, flatter register the rest of the app reads in, and the one Logseq and
- * AFFiNE both settle on: chrome that recedes and content that does not.
- */
-.lb-reader__cards {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	margin-bottom: 8px;
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	overflow: hidden;
-}
-
-.lb-reader__card {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 6px;
-	height: 58px;
-	padding: 0 2px;
-	border: none;
-	border-right: 1px solid var(--lb-border);
-	background: transparent;
-	color: var(--lb-text-dim);
-	font-family: var(--lb-font);
-	font-size: 10px;
-	line-height: 1.1;
-	text-align: center;
-	cursor: pointer;
-}
-
-.lb-reader__card:last-child {
-	border-right: none;
-}
-
-.lb-reader__card:hover {
-	background: var(--lb-surface-hover);
-	color: var(--lb-text);
-}
-
-.lb-reader__card[aria-pressed='true'] {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
-	box-shadow: inset 0 -2px 0 var(--lb-accent);
-}
-
-.lb-reader__card--theme {
-	border-right-color: rgb(0 0 0 / 15%);
-}
-
-.lb-reader__card-aa {
-	font-size: 17px;
-	font-weight: 600;
-	line-height: 1;
-	font-family: Literata, Georgia, serif;
-}
-
-.lb-reader__customize {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 6px;
-	width: 100%;
-	padding: 6px 0;
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	background: transparent;
-	color: var(--lb-text-dim);
-	font-family: var(--lb-font);
-	font-size: 11px;
-	cursor: pointer;
-}
-
-.lb-reader__customize:hover {
-	background: var(--lb-surface-hover);
-	color: var(--lb-text);
 }
 
 .lb-reader__sr {
@@ -6376,20 +6510,97 @@ button.lb-props__eye:hover {
 	align-items: center;
 	justify-content: center;
 	padding: 32px;
-	background: rgb(0 0 0 / 55%);
+	/* A scrim rather than `--lb-overlay`: that token goes white in the light theme, which over a page
+	   of a book is a wash rather than a dimming. */
+	background: rgb(0 0 0 / 45%);
 	pointer-events: all;
 }
 
+/*
+ * A settings window: a rail of sections down the left, one page of rows on the right, and the two
+ * buttons that end the conversation along the bottom.
+ *
+ * The rail is on the left rather than across the top because that is where a settings window keeps
+ * its sections — Obsidian, Notion and AFFiNE all agree — and because a list of them grows downwards,
+ * which a tab strip cannot.
+ */
 .lb-modal__sheet {
+	display: grid;
+	grid-template-columns: 176px minmax(0, 1fr);
+	/* `minmax(0, …)`, not `1fr`: a grid item's automatic minimum is its content, so without this the
+	   page pushes the sheet taller than its own height and the footer lands off the bottom of it. */
+	grid-template-rows: minmax(0, 1fr);
+	width: min(780px, 100%);
+	height: min(560px, 100%);
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+	box-shadow: var(--lb-shadow-2);
+	overflow: hidden;
+}
+
+.lb-modal__rail {
 	display: flex;
 	flex-direction: column;
-	width: min(720px, 100%);
-	max-height: min(600px, 100%);
-	border: 1px solid var(--lb-border-strong);
-	border-radius: 6px;
-	background: var(--lb-bg-raised);
-	box-shadow: 0 16px 48px rgb(0 0 0 / 55%);
-	overflow: hidden;
+	gap: 2px;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 14px 8px;
+	border-right: 1px solid var(--lb-border);
+	background: var(--lb-bg);
+}
+
+.lb-modal__rail-title {
+	margin: 0 0 12px;
+	padding: 0 10px;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--lb-text);
+}
+
+/* The sidebar's own item, because that is what it is. */
+.lb-modal__tab {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	border: 0;
+	border-radius: 8px;
+	background: none;
+	padding: 7px 10px;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+	transition: background 100ms ease, color 100ms ease;
+}
+
+.lb-modal__tab:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+
+.lb-modal__tab[aria-selected='true'] {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-weight: 500;
+}
+
+.lb-modal__tab svg {
+	flex: none;
+	color: var(--lb-text-faint);
+}
+
+.lb-modal__tab[aria-selected='true'] svg {
+	color: var(--lb-text-dim);
+}
+
+.lb-modal__main {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
 }
 
 .lb-modal__bar {
@@ -6397,14 +6608,14 @@ button.lb-props__eye:hover {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 8px 0 16px;
-	height: 42px;
+	padding: 0 10px 0 20px;
+	height: 48px;
 	border-bottom: 1px solid var(--lb-border);
 }
 
 .lb-modal__title {
 	margin: 0;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--lb-text);
 }
@@ -6416,173 +6627,109 @@ button.lb-props__eye:hover {
 	width: 26px;
 	height: 26px;
 	border: none;
-	border-radius: 4px;
+	border-radius: 6px;
 	background: transparent;
 	color: var(--lb-text-faint);
 	cursor: pointer;
 }
 
 .lb-modal__close:hover {
-	background: var(--lb-surface-hover);
+	background: var(--lb-surface-2);
 	color: var(--lb-text);
-}
-
-.lb-modal__body {
-	flex: 1;
-	min-height: 0;
-	display: grid;
-	grid-template-rows: auto 1fr;
-}
-
-/* Plain tabs with an underline, not a stack of cards. */
-.lb-modal__tabs {
-	display: flex;
-	gap: 2px;
-	padding: 0 12px;
-	border-bottom: 1px solid var(--lb-border);
-	background: var(--lb-bg);
-}
-
-.lb-modal__tab {
-	position: relative;
-	padding: 9px 12px 8px;
-	border: none;
-	background: transparent;
-	color: var(--lb-text-faint);
-	font-family: var(--lb-font);
-	font-size: 12px;
-	cursor: pointer;
-}
-
-.lb-modal__tab:hover {
-	color: var(--lb-text-dim);
-}
-
-.lb-modal__tab[aria-selected='true'] {
-	color: var(--lb-text);
-	box-shadow: inset 0 -2px 0 var(--lb-accent);
 }
 
 .lb-modal__page {
-	padding: 4px 20px 20px;
+	flex: 1;
+	min-height: 0;
+	padding: 2px 20px 20px;
 	overflow-y: auto;
 }
 
 .lb-modal__section {
-	padding: 14px 0;
-	border-bottom: 1px solid var(--lb-border);
+	padding: 16px 0;
 }
 
-.lb-modal__section:last-child {
-	border-bottom: none;
+/* A rule between sections rather than under each, so the last one doesn't trail a line. */
+.lb-modal__section + .lb-modal__section {
+	border-top: 1px solid var(--lb-border);
 }
 
 .lb-modal__heading {
-	margin: 0 0 10px;
+	margin: 0 0 12px;
 	font-size: 10px;
 	font-weight: 600;
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.07em;
 	color: var(--lb-text-faint);
 }
 
 .lb-modal__rows {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 16px;
 }
 
-/* Name on the left, control on the right, note underneath and out of the way. */
+/*
+ * Name and explanation on the left, the control on the right — the settings row every one of these
+ * apps writes. The note belongs beneath the *name*, not beneath the control: it says what the
+ * setting means, and reading it should not mean crossing the row.
+ */
 .lb-modal__row {
 	display: grid;
-	grid-template-columns: 156px 1fr;
+	grid-template-columns: minmax(0, 1fr) 232px;
 	align-items: center;
-	gap: 3px 16px;
+	gap: 6px 20px;
+}
+
+.lb-modal__row-text {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
 }
 
 .lb-modal__row-label {
-	font-size: 12px;
+	font-size: 13px;
 	color: var(--lb-text);
 }
 
 .lb-modal__row-control {
 	display: flex;
 	align-items: center;
+	justify-content: flex-end;
 	gap: 12px;
-	justify-self: stretch;
-}
-
-.lb-modal__row[data-kind='toggle'] .lb-modal__row-control,
-.lb-modal__row[data-kind='colour'] .lb-modal__row-control {
-	justify-self: start;
-}
-
-.lb-modal__row input[type='range'] {
-	flex: 1;
-	min-width: 0;
-	accent-color: var(--lb-accent);
 }
 
 .lb-modal__value {
 	flex: none;
-	width: 78px;
+	min-width: 46px;
 	text-align: right;
 	font-size: 11px;
 	font-variant-numeric: tabular-nums;
-	color: var(--lb-text-faint);
-}
-
-.lb-modal__select {
-	flex: 1;
-	min-width: 0;
-	padding: 4px 8px;
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	background: var(--lb-surface);
-	color: var(--lb-text);
-	font-family: var(--lb-font);
-	font-size: 12px;
-}
-
-.lb-modal__colour {
-	width: 46px;
-	height: 24px;
-	padding: 0;
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	background: none;
-	cursor: pointer;
-}
-
-.lb-modal__switch {
-	width: 32px;
-	height: 18px;
-	accent-color: var(--lb-accent);
-	cursor: pointer;
+	color: var(--lb-text-dim);
 }
 
 .lb-modal__note {
-	grid-column: 2;
 	margin: 0;
-	font-size: 10.5px;
+	font-size: 11.5px;
 	line-height: 1.45;
 	color: var(--lb-text-faint);
 }
 
 .lb-modal__specimen {
-	grid-column: 2;
-	margin: 3px 0 0;
-	padding: 9px 11px;
-	border-radius: 4px;
+	grid-column: 1 / -1;
+	margin: 2px 0 0;
+	padding: 12px 14px;
+	border-radius: 8px;
 	font-size: 15px;
-	line-height: 1.4;
+	line-height: 1.45;
 }
 
 .lb-modal__empty {
 	margin: 0;
-	padding: 14px 0;
-	font-size: 12px;
-	line-height: 1.5;
+	padding: 16px 0;
+	font-size: 12.5px;
+	line-height: 1.55;
 	color: var(--lb-text-faint);
 }
 
@@ -6591,109 +6738,38 @@ button.lb-props__eye:hover {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 48px;
-	padding: 0 12px 0 16px;
+	gap: 10px;
+	padding: 12px 16px;
 	border-top: 1px solid var(--lb-border);
-	background: var(--lb-bg);
-}
-
-.lb-modal__reset {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 9px;
-	border: 1px solid transparent;
-	border-radius: 4px;
-	background: transparent;
-	color: var(--lb-text-faint);
-	font-family: var(--lb-font);
-	font-size: 11px;
-	cursor: pointer;
-}
-
-.lb-modal__reset:hover:not(:disabled) {
-	border-color: var(--lb-border);
-	color: var(--lb-text);
-}
-
-.lb-modal__reset:disabled {
-	opacity: 0.4;
-	cursor: default;
-}
-
-.lb-modal__done {
-	padding: 6px 16px;
-	border: none;
-	border-radius: 4px;
-	background: var(--lb-accent);
-	color: #fff;
-	font-family: var(--lb-font);
-	font-size: 12px;
-	cursor: pointer;
-}
-
-.lb-modal__done:hover {
-	background: var(--lb-accent-hover);
 }
 
 /* ---------------------------------------------------------- tag editor */
 
+/*
+ * A tag is a colour and a name: the swatch says what it will look like in the book, the field says
+ * what it means. The colour is picked from a palette rather than dragged out of a hue slider — a
+ * highlight is one of a handful of conventional colours, not a point on a spectrum, and this is the
+ * same gesture as recolouring a shape.
+ */
 .lb-tags {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .lb-tags__row {
 	display: grid;
-	grid-template-columns: 96px 118px 1fr 28px;
+	grid-template-columns: 20px minmax(0, 1fr) 26px;
 	align-items: center;
-	gap: 10px;
-}
-
-/* The slider *is* the spectrum: its track carries the hues it selects between. */
-.lb-tags__hue {
-	width: 100%;
-	height: 6px;
-	appearance: none;
-	border-radius: 3px;
-	background: linear-gradient(
-		90deg,
-		hsl(0 70% 55%),
-		hsl(60 70% 55%),
-		hsl(120 70% 55%),
-		hsl(180 70% 55%),
-		hsl(240 70% 55%),
-		hsl(300 70% 55%),
-		hsl(359 70% 55%)
-	);
-	cursor: pointer;
-}
-
-.lb-tags__hue::-webkit-slider-thumb {
-	appearance: none;
-	width: 12px;
-	height: 12px;
-	border: 2px solid #fff;
-	border-radius: 50%;
-	background: hsl(var(--lb-opt-h) 70% 55%);
-	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
-}
-
-.lb-tags__chip {
-	justify-self: start;
-	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	gap: 12px;
 }
 
 .lb-tags__name {
 	min-width: 0;
-	padding: 4px 8px;
+	padding: 6px 10px;
 	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	background: var(--lb-surface);
+	border-radius: 7px;
+	background: var(--lb-surface-2);
 	color: var(--lb-text);
 	font-family: var(--lb-font);
 	font-size: 12px;
@@ -6711,14 +6787,14 @@ button.lb-props__eye:hover {
 	width: 26px;
 	height: 26px;
 	border: none;
-	border-radius: 4px;
+	border-radius: 6px;
 	background: transparent;
 	color: var(--lb-text-faint);
 	cursor: pointer;
 }
 
 .lb-tags__remove:hover:not(:disabled) {
-	background: var(--lb-surface-hover);
+	background: var(--lb-surface-2);
 	color: var(--lb-text);
 }
 
@@ -6729,26 +6805,9 @@ button.lb-props__eye:hover {
 
 .lb-tags__add {
 	align-self: start;
-	display: flex;
-	align-items: center;
-	gap: 6px;
 	margin-top: 2px;
-	padding: 5px 10px;
-	border: 1px solid var(--lb-border);
-	border-radius: 4px;
-	background: transparent;
-	color: var(--lb-text-dim);
-	font-family: var(--lb-font);
-	font-size: 11px;
-	cursor: pointer;
-}
-
-.lb-tags__add:hover {
-	background: var(--lb-surface-hover);
-	color: var(--lb-text);
 }
 
 .lb-tags__note {
-	grid-column: 1;
 	margin-top: 4px;
 }

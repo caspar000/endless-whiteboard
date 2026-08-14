@@ -80,12 +80,13 @@ export interface ReaderSettings {
 	pageSeam: boolean
 	pageSeamColor: string
 	pageSeamStrength: number
-	/** The blank border left and right of the text, in pixels. Reflowable books only. */
+	/**
+	 * The blank border left and right of the text, in pixels — and, in a spread, the gutter between
+	 * the two columns, which the renderer draws as the same measure. Reflowable books only.
+	 */
 	marginX: number
 	/** The blank border above and below the text, in pixels. Reflowable books only. */
 	marginY: number
-	/** The gap between columns of a spread, as a percentage. Reflowable books only. */
-	columnGap: number
 	/** Justify body text to both margins. Reflowable books only. */
 	justify: boolean
 	/** Let the browser hyphenate, which is what makes justified text bearable. Reflowable only. */
@@ -134,7 +135,9 @@ export const READER_THEMES: readonly ReaderTheme[] = [
 	{
 		id: 'default',
 		label: 'Default',
-		pageColor: '#f6f2e9',
+		// White paper, and only this theme is: the tint belongs to Paper, which is the theme whose
+		// whole point is that it is not white.
+		pageColor: '#ffffff',
 		textColor: '#1a1a1a',
 		pageShadowColor: '#000000',
 		pageSeamColor: '#000000',
@@ -177,7 +180,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
 	textScale: 100,
 	textColor: '#1a1a1a',
 	lineHeight: 1.5,
-	pageColor: '#f6f2e9',
+	pageColor: '#ffffff',
 	pageWidth: 620,
 	// Paperback proportions off the default width (620 × 1.55 ≈ 961), landed on the slider's own
 	// step so that the default is a value the control can actually express.
@@ -189,9 +192,10 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
 	pageSeam: true,
 	pageSeamColor: '#000000',
 	pageSeamStrength: 4,
-	marginX: 48,
-	marginY: 48,
-	columnGap: 7,
+	// Tighter than the renderer's own 48: at this page width a 48px border either side costs a line
+	// most of its length, and the sheet reads as a column floating on a card rather than as a page.
+	marginX: 32,
+	marginY: 32,
 	justify: false,
 	hyphenate: true,
 
@@ -504,6 +508,7 @@ export const READER_CONTROLS: readonly ReaderControl[] = [
 		max: 160,
 		step: 4,
 		format: (value) => `${value} px`,
+		note: 'The blank border either side of the text, and the gutter between two facing pages — one measure, the way a book is set. At zero the text runs to the edge of the paper.',
 	},
 	{
 		key: 'marginY',
@@ -516,19 +521,6 @@ export const READER_CONTROLS: readonly ReaderControl[] = [
 		max: 160,
 		step: 4,
 		format: (value) => `${value} px`,
-	},
-	{
-		key: 'columnGap',
-		label: 'Column gap',
-		kind: 'slider',
-		group: 'theme',
-		section: 'Margins',
-		engine: 'reflowable',
-		viewMode: 'spread',
-		min: 2,
-		max: 16,
-		step: 1,
-		format: (value) => `${value}%`,
 	},
 	{ key: 'justify', label: 'Justify text', kind: 'toggle', group: 'theme',
 		section: 'Text', engine: 'reflowable' },

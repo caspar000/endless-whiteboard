@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { CanvasPrefs } from '../canvasPrefs'
 import type { BoardsApi } from '../useBoards'
 import type { Theme } from '../useTheme'
+import { AgentsPanel } from './AgentsPanel'
 import { AppearancePanel } from './AppearancePanel'
 import { CanvasPanel } from './CanvasPanel'
 import { ExtensionDetail } from './ExtensionDetail'
@@ -109,6 +110,7 @@ export function SettingsPage({
 							{active.id === 'canvas' && <CanvasPanel canvas={canvas} />}
 							{active.id === 'storage' && <StoragePanel api={api} onImported={onImported} />}
 							{active.id === EXTENSIONS_TAB && <ExtensionsPanel onOpen={onExtension} />}
+							{active.id === 'agents' && <AgentsPanel />}
 						</>
 					)}
 				</div>

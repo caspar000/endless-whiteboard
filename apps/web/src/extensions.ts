@@ -1,11 +1,15 @@
 import { bookReaderExtension } from '@lifeboard/book-reader'
 import {
 	getDisabledExtensionIds,
+	registerCoreOperations,
 	registerExtension,
 	setDisabledExtensionIds,
 	tablesExtension,
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
+// Imported for its side effect: installs the app's `BoardBridge` at module scope, which the
+// operations registered below cannot run without.
+import './agent/boardBridge'
 import { registerNodeCommands } from './canvas/insertNode'
 
 /**
@@ -24,6 +28,15 @@ registerExtension(bookReaderExtension)
 // Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
 // After the registrations above, deliberately: it reads what they just put there.
 registerNodeCommands()
+
+/*
+ * The agent operation surface. After the board bridge is installed (the import above) and after the
+ * extensions, so `node.insert` can offer every registered type.
+ *
+ * Registering them is not the same as exposing them: nothing can call an operation until the bridge
+ * in Settings → Agents is switched on. This only means the table is populated if it is.
+ */
+registerCoreOperations()
 
 /**
  * Which extensions the user has switched off — app-wide, like every other preference (see

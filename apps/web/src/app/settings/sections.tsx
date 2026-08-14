@@ -1,4 +1,4 @@
-import { Blocks, Grid2x2, HardDrive, Palette, SlidersHorizontal } from 'lucide-react'
+import { Blocks, Bot, Grid2x2, HardDrive, Palette, SlidersHorizontal } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 /**
@@ -56,6 +56,12 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		label: 'Extensions',
 		group: 'Add-ons',
 		icon: <Blocks size={15} />,
+	},
+	{
+		id: 'agents',
+		label: 'Agents',
+		group: 'Add-ons',
+		icon: <Bot size={15} />,
 	},
 ]
 

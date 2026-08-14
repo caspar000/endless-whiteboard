@@ -18,6 +18,7 @@ export {
 	getDisabledExtensions,
 	getNodeDefinition,
 	getNodeDefinitions,
+	getNodeOwner,
 	getVisibleNodeDefinitions,
 	isExtensionEnabled,
 	isNodeType,
@@ -33,6 +34,20 @@ export {
 	type NodeShape,
 	type NodeToolbarIcon,
 } from './registry'
+
+// Commands: the second load-bearing seam. One table of user-invokable actions that every command
+// surface — the ⌘K palette first; Help, keymaps, generated overrides later — reads as a view.
+export {
+	clearCommandRegistry,
+	getCommand,
+	getCommands,
+	getVisibleCommands,
+	registerCommand,
+	subscribeToCommands,
+	type Command,
+	type CommandContext,
+	type CommandView,
+} from './commands'
 
 // Extensions: the unit the app composes at startup, users toggle in Settings, and plugins ship as.
 export {

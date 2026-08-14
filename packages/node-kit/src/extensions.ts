@@ -1,3 +1,4 @@
+import { registerCommand, type Command } from './commands'
 import { isNodeType, registerNode, type NodeDefinition, type NodeToolbarIcon } from './registry'
 
 /**
@@ -24,6 +25,12 @@ export interface Extension {
 	version?: string
 	author?: string
 	nodes: readonly NodeDefinition<never>[]
+	/**
+	 * Commands this extension contributes — to the ⌘K palette and every other command surface, since
+	 * they all read the one registry. Disabling the extension hides them (`getVisibleCommands`),
+	 * the same "stop offering, never stop working" rule as its nodes.
+	 */
+	commands?: readonly Command[]
 }
 
 /**
@@ -40,7 +47,7 @@ export function defineNode<Props extends object>(def: NodeDefinition<Props>): No
 const extensions = new Map<string, Extension>()
 
 /**
- * Registers an extension and every node it contributes.
+ * Registers an extension and every node and command it contributes.
  *
  * Idempotent by id — a second registration is ignored, not an error — for the same reason
  * `registerBuiltinNodes` guards per node: module re-evaluation (vite HMR, a test importing two
@@ -52,6 +59,7 @@ export function registerExtension(ext: Extension): void {
 	for (const def of ext.nodes) {
 		if (!isNodeType(def.type)) registerNode(def, ext.id)
 	}
+	for (const cmd of ext.commands ?? []) registerCommand(cmd, ext.id)
 }
 
 /** Registration order, which is also toolbar order for their nodes. */

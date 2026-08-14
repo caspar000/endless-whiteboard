@@ -14,10 +14,10 @@ import {
 	TldrawUiMenuItem,
 	useEditor,
 	useValue,
-	createShapeId,
 	type TLComponents,
 	type TLUiOverrides,
 } from 'tldraw'
+import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
 import { openProperties } from './propertiesTarget'
 
@@ -168,23 +168,9 @@ function AddToBoardItems() {
 					label={`Add ${def.label.toLowerCase()}`}
 					icon={glyphIcon(def.icon)}
 					onSelect={() => {
-						// The right-click point: where the user was pointing when the menu opened.
-						const point = editor.inputs.getCurrentPagePoint()
-						const id = createShapeId()
-						editor.run(() => {
-							editor.markHistoryStoppingPoint('create node')
-							editor.createShapes([
-								{
-									id,
-									type: def.type,
-									x: point.x - def.defaultSize.w / 2,
-									y: point.y - def.defaultSize.h / 2,
-								} as never,
-							])
-							editor.select(id)
-						})
-						const shape = editor.getShape(id)
-						if (shape && editor.canEditShape(shape)) editor.setEditingShape(id)
+						// The right-click point: where the user was pointing when the menu opened. The
+						// palette's "Add …" command runs the same `insertNode` at the viewport centre.
+						insertNode(editor, def, editor.inputs.getCurrentPagePoint())
 					}}
 				/>
 			))}

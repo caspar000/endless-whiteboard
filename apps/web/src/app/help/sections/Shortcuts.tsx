@@ -1,11 +1,28 @@
+import { getVisibleCommands, subscribeToCommands } from '@lifeboard/node-kit'
+import { useSyncExternalStore } from 'react'
+import { OTHER_GROUP, formatKbd, groupInOrder, isMacPlatform } from '../../paletteItems'
 import { Keys, Section } from '../kit'
+
+type ShortcutGroup = { title: string; rows: [string[], string][] }
 
 /**
  * The reference page. Deliberately the one place in this help that is a flat list rather than an
  * explanation — the sections that explain these keys are also the sections you have to *read*, and
  * someone who just needs the chord for a checklist should not have to.
+ *
+ * The bound *commands* are not listed here; they come from the command registry below, so a binding
+ * is documented by the command existing rather than by someone remembering to add a row. What stays
+ * written out is everything that genuinely is not a command: tool keys (tldraw's), gestures, and the
+ * two editors' own keymaps.
  */
-const GROUPS: { title: string; rows: [string[], string][] }[] = [
+const GROUPS: ShortcutGroup[] = [
+	{
+		title: 'Anywhere',
+		rows: [
+			[['⌘K'], 'The command palette — jump to a board, or type > for commands'],
+			[['⌘/'], "The canvas's own shortcut list, on a board"],
+		],
+	},
 	{
 		title: 'Reaching a tool',
 		rows: [
@@ -21,14 +38,13 @@ const GROUPS: { title: string; rows: [string[], string][] }[] = [
 			[['T', '9'], 'Text'],
 		],
 	},
+]
+
+/** Everything after the generated section: gestures, then the two editors' own keymaps. */
+const GROUPS_AFTER: ShortcutGroup[] = [
 	{
-		title: 'On the canvas',
+		title: 'With the pointer',
 		rows: [
-			[['⌘Z'], 'Undo'],
-			[['⇧⌘Z'], 'Redo'],
-			[['⌥P'], 'Properties of the selected shape'],
-			[['⌘D'], 'Duplicate'],
-			[['⌫'], 'Delete'],
 			[['⌘', 'drag'], 'Ignore grid snapping for this move'],
 			[['Esc'], 'Stop editing, then deselect'],
 			[['double-click'], 'Edit the content — or, on empty paper, start a note'],
@@ -61,17 +77,57 @@ const GROUPS: { title: string; rows: [string[], string][] }[] = [
 	},
 ]
 
+/**
+ * Section titles for the generated groups. The palette wants short headers in a narrow list; this
+ * page reads as prose, so `Canvas` becomes the sentence fragment the rest of the page is written in.
+ * An unmapped group (an extension's own) simply keeps its name.
+ */
+const HELP_TITLES: Record<string, string> = { Canvas: 'On the canvas' }
+
+/**
+ * The bound commands, straight from the registry.
+ *
+ * `when` is deliberately not applied. It answers "can this run right now", and this is a reference —
+ * Undo belongs on the page even though you are reading it from a screen with no board open.
+ */
+function useCommandShortcuts(): ShortcutGroup[] {
+	const commands = useSyncExternalStore(subscribeToCommands, getVisibleCommands)
+	const mac = isMacPlatform()
+	// `flatMap` rather than `filter`, so `kbd` narrows to a string instead of needing an assertion.
+	const bound = commands.flatMap((command) =>
+		command.kbd
+			? [{ group: command.group ?? OTHER_GROUP, kbd: command.kbd, title: command.title }]
+			: []
+	)
+
+	const groups: ShortcutGroup[] = []
+	for (const command of groupInOrder(bound)) {
+		const title = HELP_TITLES[command.group] ?? command.group
+		let group = groups.at(-1)
+		// `groupInOrder` guarantees each group is one contiguous run, so a change of title starts a section.
+		if (group?.title !== title) {
+			group = { title, rows: [] }
+			groups.push(group)
+		}
+		group.rows.push([[formatKbd(command.kbd, mac)], command.title])
+	}
+	return groups
+}
+
 export function Shortcuts() {
+	const generated = useCommandShortcuts()
+	const groups = [...GROUPS, ...generated, ...GROUPS_AFTER]
 	return (
 		<>
 			<Section title="Everything worth memorising">
 				<p>
 					Undo and redo have no button anywhere — they are <kbd className="lb-kbd">⌘Z</kbd> and{' '}
 					<kbd className="lb-kbd">⇧⌘Z</kbd>, deliberately. Tool keys come in pairs, a letter and a
-					digit, so your hand never has to leave either side of the keyboard.
+					digit, so your hand never has to leave either side of the keyboard. Anything with a
+					binding is also in the palette, on <kbd className="lb-kbd">⌘K</kbd>.
 				</p>
 				<div className="lb-help__keygroups">
-					{GROUPS.map((group) => (
+					{groups.map((group) => (
 						<div key={group.title} className="lb-help__keygroup">
 							<h3>{group.title}</h3>
 							{group.rows.map(([keys, what]) => (

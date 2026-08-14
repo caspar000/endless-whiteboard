@@ -97,6 +97,9 @@ test.describe('command palette', () => {
 		await page.locator(INPUT).fill('help')
 		await page.keyboard.press('Enter')
 
+		// The help page shows one section at a time, and the shortcuts are not the landing one.
+		await page.getByRole('button', { name: 'Keyboard shortcuts' }).click()
+
 		// Generated from the registry: "Zoom to fit" has no hand-written row anywhere on the page.
 		const row = page.locator('.lb-help__keyrow', { hasText: 'Zoom to fit' })
 		await expect(row).toHaveCount(1)

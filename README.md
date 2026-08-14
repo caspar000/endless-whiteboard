@@ -58,6 +58,7 @@ them into notes-with-properties and tables the first time an old board loads.
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/app/                routing, home screen (sidebar + card grid)
   src/app/settings/       the settings page: its rail of tabs, and the extension pages under one
+  src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
@@ -69,11 +70,13 @@ apps/web/                 the app (Vite + React 19 + TS strict, PWA)
 packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK)
   src/registry.tsx        NodeDefinition + registry + createNodeShapeUtil  ← the load-bearing seam
   src/commands.ts         Command + registry — every command surface reads this one table
+  src/operations.ts       Operation + registry — the parameterised table agents drive the app through
   src/extensions.ts       Extension: the unit the app composes, users toggle, and plugins ship as
   src/fields.ts           field types, coercion, currency formatting
   src/facts.ts            the "what data does this node expose" contract
   src/nodes/*/            item, rollup (legacy, schema-only), table (+ its extension)
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
+packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```
 
@@ -93,8 +96,9 @@ an id, a display name, an icon and a version for the Settings card:
   any module reads it at module scope.
 - **Toggling.** Settings is a rail of tabs (Obsidian's shape), one of which is Extensions: a card
   per extension with a switch, and each card opens the extension's own page — long description, the
-  switch again, and a "what it adds" list *derived from the manifest* (node types, commands, file
-  types it opens, context-menu actions), so a third-party extension gets the same page for free.
+  switch again, and a "what it adds" list *derived from the manifest* (node types, commands, agent
+  operations, file types it opens, context-menu actions), so a third-party extension gets the same
+  page for free.
   Off means *stop offering*: the dock button, context-menu entry and shortcut disappear — live, no
   board remount — but the extension's shape types stay registered with the schema, so existing
   boards keep opening and its shapes keep rendering. The disabled set persists in localStorage.
@@ -106,6 +110,30 @@ an id, a display name, an icon and a version for the Settings card:
   component, an icon, optionally a `kbd` letter), wrapped in an `Extension`, plus a
   `TLGlobalShapePropsMap` augmentation for its type. Everything else — shape util, tool, dock
   button, menus, properties, tables — follows from the registry.
+
+## Agents (MCP)
+
+A coding agent can drive a board — create boards, add nodes, set properties, draw relations, query
+— through `@lifeboard/mcp-server`. Off by default; see that package's README for setup.
+
+- **Two tables, not one.** A `Command` is a *button*: `run(ctx)` takes no arguments and returns
+  nothing, which is right for a palette row and wrong for an agent. Operations
+  (`packages/node-kit/src/operations.ts`) are its sibling — named parameters in, a structured answer
+  out, a readable failure when something is wrong. `commandFromOperation` projects a zero-argument
+  operation onto a command, so capability both a person and an agent should have is authored once.
+- **The schema is generated.** `ParamSpec` declares arguments as data; the TypeScript type `run`
+  receives *and* the JSON Schema the agent is shown both come from it, so they cannot drift.
+- **It runs in the live editor.** The app connects out to the server (a tab cannot listen on a
+  port), and operations act on the mounted tldraw editor — so the property sidecar, store
+  migrations, auto-height and rendering all behave exactly as they do by hand, and you watch it
+  happen. One `markHistoryStoppingPoint` per operation means ⌘Z takes an agent back one action at a
+  time. `board.delete` is the exception and asks for confirmation: it is the only operation with no
+  undo entry to return to.
+- **Nothing is hardcoded.** The MCP server holds no list of tools — the tab reports what it offers
+  and the server projects it, so an extension that contributes an operation contributes a tool.
+- **Consent and reach.** Loopback only, token *and* `Origin` checked, off by default, with a
+  read-only mode that withholds every operation that would change anything. See the package README
+  for what each gate is actually worth.
 
 ## The note's live preview
 
@@ -266,10 +294,11 @@ port to one new file (`TauriPlatformAdapter`).
 ## Status
 
 MVP milestones 1–10 are implemented and verified, plus the property system, tables, collections,
-inline expressions and the extension split: ~400 unit tests across three packages, and Playwright
-suites covering board CRUD, per-board persistence, note editing and undo granularity, live
-aggregation, image downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute
-guarantee, dotted paper, and board thumbnails.
+inline expressions, the extension split, the command registry and ⌘K palette, and the agent/MCP
+surface: ~690 unit tests across four packages, and Playwright suites covering board CRUD, per-board
+persistence, note editing and undo granularity, live aggregation, image downscaling/dedupe/GC,
+backup round-trip, offline operation, the zero-recompute guarantee, dotted paper, board thumbnails,
+the palette, and an agent building a board end to end over the real bridge.
 
 Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system

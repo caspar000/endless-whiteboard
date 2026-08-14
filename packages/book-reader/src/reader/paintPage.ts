@@ -30,6 +30,65 @@ export interface PaintedPage {
 	height: number
 }
 
+/** A rectangle in the page's own coordinates: the paper's top-left corner is the origin. */
+export interface PaintWindow {
+	left: number
+	top: number
+	right: number
+	bottom: number
+}
+
+/**
+ * The part of the paper the renderer actually shows, which is not all of it.
+ *
+ * A reflowable chapter is one long strip of columns, and the renderer shows one window onto it by
+ * clipping — the columns either side of the one you are reading are still laid out, still in the
+ * document, and merely hidden. That clip is *inside* the paper: the renderer insets its own text
+ * area by the margin, so the band between the text and the edge of the sheet belongs to no page at
+ * all. Painting the whole sheet therefore paints the neighbouring columns into that band, which is
+ * what put slivers of the previous page down the left edge of a curling sheet.
+ *
+ * Found by measuring rather than by arithmetic: the inset is the renderer's business — three nested
+ * elements, one of them in a shadow root, with a grid and a percentage gap between them — and any
+ * copy of that sum here would be wrong the first time it changed. Every ancestor that clips is
+ * intersected instead, which is by construction what the eye is shown.
+ */
+export function visibleWindow(doc: Document, frame: Element): PaintWindow | null {
+	const iframe = doc.defaultView?.frameElement
+	if (!iframe) return null
+
+	const box = frame.getBoundingClientRect()
+	let left = box.left
+	let top = box.top
+	let right = box.right
+	let bottom = box.bottom
+
+	for (let node: Element | null = iframe; node && node !== frame; node = parentOf(node)) {
+		const style = getComputedStyle(node)
+		// Axis by axis: a scrolling column clips its sides without clipping its ends.
+		if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+		const rect = node.getBoundingClientRect()
+		if (style.overflowX !== 'visible') {
+			left = Math.max(left, rect.left)
+			right = Math.min(right, rect.right)
+		}
+		if (style.overflowY !== 'visible') {
+			top = Math.max(top, rect.top)
+			bottom = Math.min(bottom, rect.bottom)
+		}
+	}
+
+	if (right - left < 1 || bottom - top < 1) return null
+	return { left: left - box.left, top: top - box.top, right: right - box.left, bottom: bottom - box.top }
+}
+
+/** The next element up, stepping out of a shadow root when the tree runs out. */
+function parentOf(node: Element): Element | null {
+	if (node.parentElement) return node.parentElement
+	const root = node.getRootNode()
+	return root instanceof ShadowRoot ? root.host : null
+}
+
 /**
  * Paints what is visible in `doc` onto a canvas of the given size.
  *
@@ -51,11 +110,18 @@ export function paintPage(
 	 * of the chapter. Painting the window `[0, width]` of that space therefore paints the chapter's
 	 * first page, wherever you actually are — which is exactly the bug this argument exists to fix.
 	 */
-	offset: { x: number; y: number }
+	offset: { x: number; y: number },
+	/**
+	 * The part of the sheet the renderer shows, from `visibleWindow`. Nothing is painted outside it,
+	 * because everything outside it is a column belonging to another page. The whole sheet, when the
+	 * caller has no better answer.
+	 */
+	clip?: PaintWindow | null
 ): PaintedPage | null {
 	const body = doc.body
 	const view = doc.defaultView
 	if (!body || !view || width < 2 || height < 2) return null
+	const visible: PaintWindow = clip ?? { left: 0, top: 0, right: width, bottom: height }
 
 	const dpr = Math.min(2, view.devicePixelRatio || 1)
 	const texture = document.createElement('canvas')
@@ -64,16 +130,21 @@ export function paintPage(
 	const ctx = texture.getContext('2d')
 	if (!ctx) return null
 	ctx.scale(dpr, dpr)
+	// The paper is the whole sheet — the margin band around the text is part of the page, and blank.
 	ctx.fillStyle = paper
 	ctx.fillRect(0, 0, width, height)
 	ctx.textBaseline = 'alphabetic'
+	// A word straddling the edge of the window is cut there, the way the renderer cuts it.
+	ctx.beginPath()
+	ctx.rect(visible.left, visible.top, visible.right - visible.left, visible.bottom - visible.top)
+	ctx.clip()
 
 	/** Whether any of a run's boxes fall on the page we are painting. */
 	const onPage = (rect: DOMRect) =>
-		rect.right + offset.x > 0 &&
-		rect.left + offset.x < width &&
-		rect.bottom + offset.y > 0 &&
-		rect.top + offset.y < height
+		rect.right + offset.x > visible.left &&
+		rect.left + offset.x < visible.right &&
+		rect.bottom + offset.y > visible.top &&
+		rect.top + offset.y < visible.bottom
 
 	const range = doc.createRange()
 	let budget = WORD_BUDGET

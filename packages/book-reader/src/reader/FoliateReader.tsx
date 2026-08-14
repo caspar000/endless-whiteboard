@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FoliateLocation, View } from 'foliate-js/view.js'
 import { FootnotePopover, type NoteAnchor } from './FootnotePopover'
 import { PageCurl } from './PageCurl'
-import { paintPage, type PaintedPage } from './paintPage'
+import { paintPage, visibleWindow, type PaintedPage } from './paintPage'
 import { ReaderFooter } from './ReaderFooter'
 import { fontFaceCss, fontStack } from './fonts'
 import { animatesPageTurns, withAlpha, type ReaderSettings } from './settings'
@@ -223,16 +223,23 @@ export function FoliateReader({
 		const settings = settingsRef.current
 		if (settings.pageTurn === 'curl' && animatesPageTurns(settings)) {
 			const doc = view.renderer.getContents?.()[0]?.doc
-			const box = frameRef.current?.getBoundingClientRect()
+			const frame = frameRef.current
+			const box = frame?.getBoundingClientRect()
 			// Where the chapter's own origin sits relative to the page. The renderer scrolls a
 			// container *around* the iframe rather than the iframe itself, so the iframe's position
 			// is how far into the chapter we are — and without it every turn paints page one.
 			const inner = doc?.defaultView?.frameElement?.getBoundingClientRect()
-			if (doc && box && inner) {
-				const painted = paintPage(doc, box.width, box.height, settings.pageColor, {
-					x: inner.left - box.left,
-					y: inner.top - box.top,
-				})
+			if (doc && frame && box && inner) {
+				const painted = paintPage(
+					doc,
+					box.width,
+					box.height,
+					settings.pageColor,
+					{ x: inner.left - box.left, y: inner.top - box.top },
+					// The columns either side of this page are laid out in the sheet's margins and
+					// merely hidden; without this they are painted into the picture that curls away.
+					visibleWindow(doc, frame)
+				)
 				if (painted) setCurl({ ...painted, back: direction < 0 })
 			}
 		}
@@ -428,15 +435,26 @@ export function FoliateReader({
 		if (!renderer) return
 		renderer.setAttribute('flow', viewMode === 'scroll' ? 'scrolled' : 'paginated')
 		renderer.setAttribute('max-column-count', viewMode === 'spread' ? '2' : '1')
-		// The page element is already this wide (see the paper below), so this tells the renderer to
-		// fill it with one column rather than apply a narrower cap of its own — and, in a spread,
-		// where to split the two.
-		// The text column is the page less its side margins, which is how "margin X" is expressed
-		// to a renderer that only knows how wide to let the text run.
-		const column = Math.max(120, settings.pageWidth - settings.marginX * 2)
-		renderer.setAttribute('max-inline-size', `${column}px`)
+		/*
+		 * Where the text sits on the paper.
+		 *
+		 * `max-inline-size` is one page exactly — the width the paper already is — so the renderer
+		 * fills the sheet with one column rather than applying a narrower cap of its own, and knows
+		 * where to split a spread into two.
+		 *
+		 * The side margin is then the renderer's `gap`, which is the only thing it has: a percentage
+		 * of the sheet, half of which it puts at each outer edge as padding and half of which it puts
+		 * between two columns, so that the two spacings come out even. Asking instead for a *column*
+		 * narrower than the page — which is how this used to say "margin" — leaves that padding
+		 * standing on top of the narrowing, which is why a margin of zero still had a border round
+		 * the text, and why the number never matched what was on screen.
+		 */
+		const paper = settings.pageWidth * (viewMode === 'spread' ? 2 : 1)
+		renderer.setAttribute('max-inline-size', `${settings.pageWidth}px`)
 		renderer.setAttribute('margin', `${settings.marginY}px`)
-		renderer.setAttribute('gap', `${settings.columnGap}%`)
+		// Changing this resizes the renderer's own container, which is what makes it lay the page out
+		// again — the attribute alone only moves a custom property.
+		renderer.setAttribute('gap', `${((100 * settings.marginX) / paper).toFixed(4)}%`)
 		/*
 		 * The slide, which the renderer already knows how to do: with `animated` set it eases the
 		 * column scroll over 300ms instead of jumping, and skips the settling delay it otherwise

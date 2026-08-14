@@ -1,8 +1,8 @@
-import { RotateCcw, X } from 'lucide-react'
+import { Highlighter, LayoutTemplate, Palette, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { stopEventPropagation } from 'tldraw'
-import { Plus, Trash2 } from 'lucide-react'
+import { Colour, HuePicker, Range, Select, Switch } from './controls'
 import { BOOK_FONTS } from './fonts'
 import type { HighlightTag } from '../quote/definition'
 import {
@@ -17,18 +17,19 @@ import type { ViewMode } from './types'
 
 export type SettingsGroup = 'layout' | 'theme' | 'tools'
 
-const GROUPS: readonly { id: SettingsGroup; label: string }[] = [
-	{ id: 'layout', label: 'Layout' },
-	{ id: 'theme', label: 'Theme' },
-	{ id: 'tools', label: 'Tools' },
+const GROUPS: readonly { id: SettingsGroup; label: string; icon: typeof Palette }[] = [
+	{ id: 'layout', label: 'Layout', icon: LayoutTemplate },
+	{ id: 'theme', label: 'Theme', icon: Palette },
+	{ id: 'tools', label: 'Tools', icon: Highlighter },
 ]
 
 /**
  * Everything the reader can be told, laid out properly.
  *
- * A modal rather than a drawer in the side panel, because these settings are wide: a colour beside
- * its strength, a slider beside its value, notes that are worth reading. Squeezing them into a
- * 240px column is what made the first attempt feel like a form rather than a control room.
+ * A settings window rather than a drawer in the side panel, because these settings are wide: a
+ * colour beside its strength, a slider beside its value, notes that are worth reading. Squeezing
+ * them into a 248px column is what made the first attempt feel like a form rather than a control
+ * room.
  *
  * The rail on the left is the same three questions the side panel asks — layout, theme, tools — so
  * opening "Customize" under one of them lands you on that page rather than at the top of a list.
@@ -83,6 +84,7 @@ export function SettingsModal({
 
 	const mine = READER_CONTROLS.filter((c) => c.group === page && applies(c))
 	const changed = mine.some((c) => settings[c.key] !== DEFAULT_SETTINGS[c.key])
+	const title = GROUPS.find((g) => g.id === page)?.label ?? ''
 
 	return createPortal(
 		<div
@@ -94,33 +96,35 @@ export function SettingsModal({
 			onWheel={stopEventPropagation}
 		>
 			<div className="lb-modal__sheet" role="dialog" aria-modal="true" aria-label="Reading settings">
-				<header className="lb-modal__bar">
-					<h2 className="lb-modal__title">Reading settings</h2>
-					<button type="button" className="lb-modal__close" onClick={onClose} aria-label="Close">
-						<X size={16} aria-hidden />
-					</button>
-				</header>
+				<nav className="lb-modal__rail" role="tablist" aria-label="Sections">
+					<h2 className="lb-modal__rail-title">Reading</h2>
+					{GROUPS.map((option) => (
+						<button
+							key={option.id}
+							type="button"
+							role="tab"
+							className="lb-modal__tab"
+							aria-selected={page === option.id}
+							onClick={() => setPage(option.id)}
+						>
+							<option.icon size={15} aria-hidden />
+							{option.label}
+						</button>
+					))}
+				</nav>
 
-				<div className="lb-modal__body">
-					<nav className="lb-modal__tabs" role="tablist" aria-label="Sections">
-						{GROUPS.map((option) => (
-							<button
-								key={option.id}
-								type="button"
-								role="tab"
-								className="lb-modal__tab"
-								aria-selected={page === option.id}
-								onClick={() => setPage(option.id)}
-							>
-								{option.label}
-							</button>
-						))}
-					</nav>
+				<div className="lb-modal__main">
+					<header className="lb-modal__bar">
+						<h3 className="lb-modal__title">{title}</h3>
+						<button type="button" className="lb-modal__close" onClick={onClose} aria-label="Close">
+							<X size={16} aria-hidden />
+						</button>
+					</header>
 
 					<div className="lb-modal__page">
 						{sections.map(([heading, controls]) => (
 							<section key={heading} className="lb-modal__section">
-								<h3 className="lb-modal__heading">{heading}</h3>
+								<h4 className="lb-modal__heading">{heading}</h4>
 								<div className="lb-modal__rows">
 									{controls.map((control) => (
 										<Row
@@ -135,7 +139,7 @@ export function SettingsModal({
 						))}
 						{page === 'tools' && (
 							<section className="lb-modal__section">
-								<h3 className="lb-modal__heading">Highlight tags</h3>
+								<h4 className="lb-modal__heading">Highlight tags</h4>
 								<TagEditor tags={settings.tags} onChange={onChange} />
 							</section>
 						)}
@@ -146,27 +150,27 @@ export function SettingsModal({
 							</p>
 						)}
 					</div>
-				</div>
 
-				<footer className="lb-modal__foot">
-					<button
-						type="button"
-						className="lb-modal__reset"
-						disabled={!changed}
-						onClick={() => {
-							const patch: Partial<ReaderSettings> = {}
-							for (const c of mine) patch[c.key] = DEFAULT_SETTINGS[c.key] as never
-							if (page === 'theme') patch.theme = DEFAULT_SETTINGS.theme
-							onChange(patch)
-						}}
-					>
-						<RotateCcw size={13} aria-hidden />
-						Reset {GROUPS.find((g) => g.id === page)?.label.toLowerCase()}
-					</button>
-					<button type="button" className="lb-modal__done" onClick={onClose}>
-						Done
-					</button>
-				</footer>
+					<footer className="lb-modal__foot">
+						<button
+							type="button"
+							className="lb-btn lb-btn--ghost lb-btn--icon"
+							disabled={!changed}
+							onClick={() => {
+								const patch: Partial<ReaderSettings> = {}
+								for (const c of mine) patch[c.key] = DEFAULT_SETTINGS[c.key] as never
+								if (page === 'theme') patch.theme = DEFAULT_SETTINGS.theme
+								onChange(patch)
+							}}
+						>
+							<RotateCcw size={13} aria-hidden />
+							Reset {title.toLowerCase()}
+						</button>
+						<button type="button" className="lb-btn lb-btn--primary" onClick={onClose}>
+							Done
+						</button>
+					</footer>
+				</div>
 			</div>
 		</div>,
 		container
@@ -179,7 +183,8 @@ export function SettingsModal({
  * Names and colours both, which is a departure: everywhere else in the app an option's colour is
  * hashed from its label so that nobody has to maintain one. Here the colour *is* the meaning —
  * yellow-for-important is a convention older than the software — so the property carries chosen
- * hues (`optionHues`), and the chip on the card and the mark in the book read the same value.
+ * hues (`optionHues`), and the swatch here, the chip on the card and the mark in the book all read
+ * the same value.
  */
 function TagEditor({
 	tags,
@@ -196,24 +201,11 @@ function TagEditor({
 		<div className="lb-tags">
 			{tags.map((tag, index) => (
 				<div className="lb-tags__row" key={index}>
-					{/*
-					 * A hue rather than a hex: chips, swatches and marks are all built from one number
-					 * and their own lightness, so a tag stays legible as a pale highlight *and* as a
-					 * solid chip without anyone picking two colours.
-					 */}
-					<input
-						type="range"
-						className="lb-tags__hue"
-						min={0}
-						max={359}
-						value={tag.hue}
-						aria-label={`${tag.label} colour`}
-						style={{ ['--lb-opt-h' as string]: String(tag.hue) }}
-						onChange={(event) => edit(index, { hue: event.target.valueAsNumber })}
+					<HuePicker
+						hue={tag.hue}
+						label={tag.label || 'Untitled'}
+						onChange={(hue) => edit(index, { hue })}
 					/>
-					<span className="lb-chip lb-tags__chip" style={{ ['--lb-opt-h' as string]: String(tag.hue) }}>
-						{tag.label || 'Untitled'}
-					</span>
 					<input
 						type="text"
 						className="lb-tags__name"
@@ -236,7 +228,7 @@ function TagEditor({
 
 			<button
 				type="button"
-				className="lb-tags__add"
+				className="lb-btn lb-btn--ghost lb-btn--icon lb-tags__add"
 				onClick={() => set([...tags, { label: 'New tag', hue: (tags.length * 47 + 20) % 360 }])}
 			>
 				<Plus size={13} aria-hidden />
@@ -269,7 +261,7 @@ function tagOptions(tags: readonly HighlightTag[]): readonly { id: string; label
 	return [{ id: '', label: 'None' }, ...tags.map((tag) => ({ id: tag.label, label: tag.label }))]
 }
 
-/** One setting: its name on the left, the thing that changes it on the right, a note beneath. */
+/** One setting: its name and what it means on the left, the thing that changes it on the right. */
 function Row({
 	control,
 	settings,
@@ -287,23 +279,23 @@ function Row({
 
 	return (
 		<div className="lb-modal__row" data-kind={control.kind}>
-			<label className="lb-modal__row-label" htmlFor={id}>
-				{control.label}
-			</label>
+			<div className="lb-modal__row-text">
+				<label className="lb-modal__row-label" htmlFor={id}>
+					{control.label}
+				</label>
+				{control.note && <p className="lb-modal__note">{control.note}</p>}
+			</div>
 
 			<div className="lb-modal__row-control">
 				{control.kind === 'slider' && (
 					<>
-						<input
+						<Range
 							id={id}
-							type="range"
-							min={control.min}
-							max={control.max}
-							step={control.step}
 							value={value as number}
-							onChange={(event) =>
-								set({ [control.key]: clampTo(control, event.target.valueAsNumber) })
-							}
+							min={control.min ?? 0}
+							max={control.max ?? 100}
+							step={control.step ?? 1}
+							onChange={(next) => set({ [control.key]: clampTo(control, next) })}
 						/>
 						<output className="lb-modal__value">
 							{control.format?.(value as number) ?? String(value)}
@@ -312,44 +304,31 @@ function Row({
 				)}
 
 				{control.kind === 'toggle' && (
-					<input
+					<Switch
 						id={id}
-						type="checkbox"
-						className="lb-modal__switch"
 						checked={value as boolean}
-						onChange={(event) => set({ [control.key]: event.target.checked })}
+						onChange={(checked) => set({ [control.key]: checked })}
 					/>
 				)}
 
 				{control.kind === 'colour' && (
-					<input
+					<Colour
 						id={id}
-						type="color"
-						className="lb-modal__colour"
 						value={value as string}
-						onChange={(event) => set({ [control.key]: event.target.value })}
+						label={control.label}
+						onChange={(next) => set({ [control.key]: next })}
 					/>
 				)}
 
 				{control.kind === 'select' && (
-					<select
+					<Select
 						id={id}
-						className="lb-modal__select"
 						value={value as string}
-						onChange={(event) => set({ [control.key]: event.target.value })}
-					>
-						{(control.key === 'quoteTag' ? tagOptions(settings.tags) : optionsFor(control)).map(
-							(option) => (
-								<option key={option.id} value={option.id}>
-									{option.label}
-								</option>
-							)
-						)}
-					</select>
+						options={control.key === 'quoteTag' ? tagOptions(settings.tags) : optionsFor(control)}
+						onChange={(next) => set({ [control.key]: next })}
+					/>
 				)}
 			</div>
-
-			{control.note && <p className="lb-modal__note">{control.note}</p>}
 
 			{/*
 			 * A line set in the face itself, because no one can choose a reading font from its name —

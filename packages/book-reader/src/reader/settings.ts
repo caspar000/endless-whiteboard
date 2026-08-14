@@ -24,6 +24,7 @@ export const SCROLL_BASE_WIDTH = 900
 export const PAGE_TURNS: readonly { id: string; label: string }[] = [
 	{ id: 'none', label: 'None' },
 	{ id: 'slide', label: 'Slide' },
+	{ id: 'peel', label: 'Peel' },
 	{ id: 'curl', label: 'Curl' },
 ]
 
@@ -288,7 +289,7 @@ export const READER_CONTROLS: readonly ReaderControl[] = [
 		max: 900,
 		step: 20,
 		format: (value) => `${value} ms`,
-		note: 'Reflowable books slide at the renderer’s own pace; a curl obeys this everywhere.',
+		note: 'Slide uses the renderer’s pace; Peel and Curl obey this setting.',
 	},
 	{
 		key: 'curlAngle',

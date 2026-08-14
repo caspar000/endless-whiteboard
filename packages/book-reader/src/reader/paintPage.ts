@@ -17,8 +17,9 @@
  * and shed a stray letter onto the next line, and an off-by-one at a break cascaded into whole
  * lines going missing. Words have no such seam.
  *
- * The alternative was a DOM-to-canvas library, which re-renders the page from scratch: several
- * times the cost, a dependency of its own, and its own set of things it gets wrong.
+ * A full-page DOM-to-canvas clone is not used for prose: laying a fragmented EPUB out twice can
+ * choose a different column break. The hybrid compositor reserves that machinery for bounded
+ * atomic visuals and keeps these live rectangles authoritative for every surrounding word.
  */
 
 /** A page of prose is a few hundred words; beyond this something pathological is going on. */
@@ -36,6 +37,13 @@ export interface PaintWindow {
 	top: number
 	right: number
 	bottom: number
+}
+
+export interface PaintPageOptions {
+	/** The hybrid compositor fills the shared sheet once and asks each document for a clear layer. */
+	fillPaper?: boolean
+	/** Atomic visuals captured separately; their descendant text and images must not be painted twice. */
+	omit?: ReadonlySet<Element>
 }
 
 /**
@@ -116,7 +124,8 @@ export function paintPage(
 	 * because everything outside it is a column belonging to another page. The whole sheet, when the
 	 * caller has no better answer.
 	 */
-	clip?: PaintWindow | null
+	clip?: PaintWindow | null,
+	options: PaintPageOptions = {}
 ): PaintedPage | null {
 	const body = doc.body
 	const view = doc.defaultView
@@ -130,9 +139,11 @@ export function paintPage(
 	const ctx = texture.getContext('2d')
 	if (!ctx) return null
 	ctx.scale(dpr, dpr)
-	// The paper is the whole sheet — the margin band around the text is part of the page, and blank.
-	ctx.fillStyle = paper
-	ctx.fillRect(0, 0, width, height)
+	if (options.fillPaper !== false) {
+		// The paper is the whole sheet — the margin band around the text is part of the page, and blank.
+		ctx.fillStyle = paper
+		ctx.fillRect(0, 0, width, height)
+	}
 	ctx.textBaseline = 'alphabetic'
 	// A word straddling the edge of the window is cut there, the way the renderer cuts it.
 	ctx.beginPath()
@@ -148,9 +159,20 @@ export function paintPage(
 
 	const range = doc.createRange()
 	let budget = WORD_BUDGET
+	const omitted = options.omit
+	const isOmitted = (node: Node) => {
+		if (!omitted?.size) return false
+		let element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
+		for (; element; element = element.parentElement) {
+			if (omitted.has(element)) return true
+			if (element === body) return false
+		}
+		return false
+	}
 
 	const walker = doc.createTreeWalker(body, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT)
 	for (let node = walker.nextNode(); node && budget > 0; node = walker.nextNode()) {
+		if (isOmitted(node)) continue
 		if (node.nodeType === Node.ELEMENT_NODE) {
 			const element = node as Element
 			if (element.tagName === 'IMG' || element.tagName === 'IMAGE') {

@@ -2,11 +2,17 @@
 import { ChevronLeft, ChevronRight, Undo2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FoliateLocation, View } from 'foliate-js/view.js'
+import {
+	captureEpubPage,
+	createEpubPageCaptureCache,
+	epubPageCaptureTarget,
+} from './epubPageCapture'
 import { FootnotePopover, type NoteAnchor } from './FootnotePopover'
 import { PageCurl } from './PageCurl'
 import { paintPage, visibleWindow, type PaintedPage } from './paintPage'
 import { ReaderFooter } from './ReaderFooter'
 import { fontFaceCss, fontStack } from './fonts'
+import { startLayeredPageTurn, supportsLayeredPageTurn } from './layeredPageTurn'
 import { animatesPageTurns, withAlpha, type ReaderSettings } from './settings'
 import type { Highlight, ReaderApi, ReaderSelection, TocItem, ViewMode } from './types'
 
@@ -160,7 +166,9 @@ export function FoliateReader({
 	/** Whether a page turn is in flight — see the gutter, which cannot be drawn across one. */
 	const [turning, setTurning] = useState(false)
 	/** The page being left, painted, while it curls away. */
-	const [curl, setCurl] = useState<(PaintedPage & { back: boolean }) | null>(null)
+	const [curl, setCurl] = useState<(PaintedPage & { back: boolean; id: number }) | null>(null)
+	/** Bumped when a late image or font changes pixels without causing a React render of its own. */
+	const [captureRevision, setCaptureRevision] = useState(0)
 
 	// Refs, not deps: none of these may re-run the mount effect — reopening the book loses the
 	// reader's place and re-parses the file for nothing.
@@ -193,6 +201,18 @@ export function FoliateReader({
 	const frameRef = useRef<HTMLDivElement | null>(null)
 	const noteHostRef = useRef<HTMLDivElement | null>(null)
 	const noteViewRef = useRef<View | null>(null)
+	/** A document-level View Transition is exclusive; subsequent Peel turns are drained in order. */
+	const layeredTurnRef = useRef(false)
+	const layeredTransitionRef = useRef<ViewTransition | null>(null)
+	const queuedLayeredTurnsRef = useRef<(-1 | 1)[]>([])
+	const turnRef = useRef<(direction: -1 | 1) => void>(() => undefined)
+	const curlTurnIdRef = useRef(0)
+	const pageCaptureCacheRef = useRef(createEpubPageCaptureCache())
+	const invalidatePageCaptureRef = useRef<() => void>(() => undefined)
+	invalidatePageCaptureRef.current = () => {
+		pageCaptureCacheRef.current.clear()
+		setCaptureRevision((revision) => revision + 1)
+	}
 
 	const closeNote = useCallback(() => {
 		noteViewRef.current?.close()
@@ -213,17 +233,81 @@ export function FoliateReader({
 	const turn = useCallback((direction: -1 | 1) => {
 		const view = viewRef.current
 		if (!view) return
+		if (layeredTurnRef.current) {
+			queuedLayeredTurnsRef.current.push(direction)
+			// View Transitions cannot overlap. Finish this visual generation immediately; cleanup
+			// starts the queued navigation, so rapid taps remain responsive without losing pages.
+			try {
+				layeredTransitionRef.current?.skipTransition()
+			} catch {
+				// An engine already finishing the transition will drain the queue in onFinished.
+			}
+			return
+		}
 		setTurning(true)
 		/*
-		 * A curl needs the page as pixels, and a reflowable page has none to hand — so it is painted
-		 * here, from the layout the browser has already done (see `paintPage`), before the renderer
-		 * is allowed to move. The renderer then jumps straight to the next page underneath, and the
-		 * picture curls off the top of it.
+		 * Curl consumes a prepared hybrid sheet when it matches the current EPUB layout: prose is
+		 * positioned from the live document and bounded visuals are composited separately. If idle
+		 * preparation has not finished, the synchronous prose/image painter keeps navigation immediate.
 		 */
 		const settings = settingsRef.current
-		if (settings.pageTurn === 'curl' && animatesPageTurns(settings)) {
-			const doc = view.renderer.getContents?.()[0]?.doc
+		const navigate = () => (direction < 0 ? view.goLeft() : view.goRight())
+		if (settings.pageTurn === 'peel' && animatesPageTurns(settings)) {
+			/*
+			 * Mature View Transition implementations can snapshot the whole frame with the browser's
+			 * compositor. That is the exact texture an EPUB otherwise cannot provide: publisher CSS,
+			 * shaped text, images, SVG and annotations all come along. The live renderer jumps beneath
+			 * that snapshot while CSS peels it away. Older engines fall back to Foliate's slide.
+			 */
 			const frame = frameRef.current
+			if (reflowable && frame) {
+				layeredTurnRef.current = true
+				const started = startLayeredPageTurn({
+					frame,
+					direction,
+					paper: settings.pageColor,
+					duration: settings.turnMs,
+					curlAngle: settings.curlAngle,
+					curlRadius: settings.curlRadius,
+					navigate,
+					onStarted: (transition) => {
+						layeredTransitionRef.current = transition
+						if (queuedLayeredTurnsRef.current.length) transition.skipTransition()
+					},
+					onFinished: () => {
+						layeredTransitionRef.current = null
+						layeredTurnRef.current = false
+						setTurning(false)
+						const next = queuedLayeredTurnsRef.current.shift()
+						if (next) void Promise.resolve().then(() => turnRef.current(next))
+					},
+				})
+				if (started) return
+				layeredTransitionRef.current = null
+				layeredTurnRef.current = false
+			}
+		}
+		if (settings.pageTurn === 'curl' && animatesPageTurns(settings)) {
+			const frame = frameRef.current
+			const contents = view.renderer.getContents?.() ?? []
+			const target =
+				frame && reflowable
+					? epubPageCaptureTarget(
+							contents.map(({ doc }) => doc),
+							frame,
+							settings.pageColor
+						)
+					: null
+			const prepared = target ? pageCaptureCacheRef.current.get(target) : undefined
+			if (prepared) {
+				setCurl({ ...prepared, back: direction < 0, id: ++curlTurnIdRef.current })
+				void navigate()
+				return
+			}
+
+			// A turn immediately after opening or reflowing may beat the idle capture. Preserve the
+			// physical curl with the existing layout-based painter instead of delaying navigation.
+			const doc = view.renderer.getContents?.()[0]?.doc
 			const box = frame?.getBoundingClientRect()
 			// Where the chapter's own origin sits relative to the page. The renderer scrolls a
 			// container *around* the iframe rather than the iframe itself, so the iframe's position
@@ -240,11 +324,14 @@ export function FoliateReader({
 					// merely hidden; without this they are painted into the picture that curls away.
 					visibleWindow(doc, frame)
 				)
-				if (painted) setCurl({ ...painted, back: direction < 0 })
+				if (painted) {
+					setCurl({ ...painted, back: direction < 0, id: ++curlTurnIdRef.current })
+				}
 			}
 		}
-		void (direction < 0 ? view.goLeft() : view.goRight())
-	}, [])
+		void navigate()
+	}, [reflowable])
+	turnRef.current = turn
 
 	useEffect(() => {
 		if (!turning) return
@@ -252,11 +339,62 @@ export function FoliateReader({
 		return () => clearTimeout(timer)
 	}, [turning])
 
+	/**
+	 * Prepare the hybrid outgoing EPUB sheet while the reader is idle. A turn never awaits this:
+	 * when preparation loses the race, `paintPage` above supplies the immediate physical fallback.
+	 */
+	useEffect(() => {
+		const cache = pageCaptureCacheRef.current
+		cache.clear()
+		if (!reflowable || viewMode === 'scroll' || settings.pageTurn !== 'curl' || !position) return
+
+		let cancelled = false
+		let idle: number | undefined
+		const timer = window.setTimeout(() => {
+			const prepare = () => {
+				const view = viewRef.current
+				const frame = frameRef.current
+				const contents = view?.renderer.getContents?.() ?? []
+				const target = frame
+					? epubPageCaptureTarget(
+							contents.map(({ doc }) => doc),
+							frame,
+							settings.pageColor
+						)
+					: null
+				if (!target) return
+				void captureEpubPage(target)
+					.then((captured) => {
+						if (!cancelled && captured) cache.put(target, captured)
+					})
+					.catch(() => {
+						// Capture is progressive enhancement; the synchronous painter remains available.
+					})
+			}
+			if (typeof window.requestIdleCallback === 'function') {
+				idle = window.requestIdleCallback(prepare, { timeout: 700 })
+			} else {
+				prepare()
+			}
+		}, 120)
+
+		return () => {
+			cancelled = true
+			clearTimeout(timer)
+			if (idle !== undefined && typeof window.cancelIdleCallback === 'function') {
+				window.cancelIdleCallback(idle)
+			}
+		}
+	}, [position, reflowable, viewMode, settings, highlights, toc, captureRevision])
+
 	useEffect(() => {
 		const host = hostRef.current
 		if (!host) return
 		let disposed = false
 		let view: View | null = null
+		const invalidateCapture = () => {
+			if (!disposed) invalidatePageCaptureRef.current()
+		}
 		void (async () => {
 			try {
 				// Importing the module registers the custom element; formats load lazily inside it.
@@ -373,6 +511,19 @@ export function FoliateReader({
 					const doc = detail?.doc
 					if (!doc || typeof detail?.index !== 'number') return
 					const index = detail.index
+					// A late resource changes pixels without relocating. Throw away the prepared sheet so
+					// the next idle pass includes it rather than curling an old placeholder.
+					doc.addEventListener(
+						'load',
+						(resourceEvent) => {
+							const node = resourceEvent.target as Element | null
+							if (node?.localName === 'img' || node?.localName === 'image') {
+								invalidateCapture()
+							}
+						},
+						{ capture: true }
+					)
+					doc.fonts?.addEventListener('loadingdone', invalidateCapture)
 					doc.addEventListener('pointerup', () => {
 						const selected = doc.getSelection()
 						const text = selected?.toString().trim() ?? ''
@@ -419,6 +570,10 @@ export function FoliateReader({
 		})()
 		return () => {
 			disposed = true
+			pageCaptureCacheRef.current.clear()
+			queuedLayeredTurnsRef.current = []
+			layeredTransitionRef.current = null
+			layeredTurnRef.current = false
 			viewRef.current = null
 			view?.close()
 			view?.remove()
@@ -460,13 +615,18 @@ export function FoliateReader({
 		 * column scroll over 300ms instead of jumping, and skips the settling delay it otherwise
 		 * needs. Turning pages is the one animation a reader has, so it is the one worth having.
 		 */
-		if (animatesPageTurns(settings) && settings.pageTurn !== 'curl') {
+		const peelUsesRenderer =
+			settings.pageTurn === 'peel' && (!reflowable || !supportsLayeredPageTurn())
+		if (
+			animatesPageTurns(settings) &&
+			(settings.pageTurn === 'slide' || peelUsesRenderer)
+		) {
 			renderer.setAttribute('animated', '')
 		} else {
 			// A curl draws the turn itself, over a renderer that has already jumped.
 			renderer.removeAttribute('animated')
 		}
-	}, [viewMode, toc, settings])
+	}, [viewMode, toc, settings, reflowable])
 
 	/**
 	 * Typography, re-applied live. `setStyles` restyles the section on screen without re-laying the
@@ -561,6 +721,7 @@ export function FoliateReader({
 				)}
 				{curl && (
 					<PageCurl
+						key={curl.id}
 						texture={curl.texture}
 						textureWidth={curl.texture.width}
 						textureHeight={curl.texture.height}

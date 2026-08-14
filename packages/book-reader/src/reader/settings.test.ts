@@ -275,6 +275,15 @@ describe('PAGE_TURNS', () => {
 	it('offers a way to turn the animation off', () => {
 		expect(PAGE_TURNS.map((t) => t.id)).toContain('none')
 	})
+
+	it('keeps the compositor peel separate from the physically deformed curl', () => {
+		expect(PAGE_TURNS).toEqual(
+			expect.arrayContaining([
+				{ id: 'peel', label: 'Peel' },
+				{ id: 'curl', label: 'Curl' },
+			])
+		)
+	})
 })
 
 describe('toggles', () => {

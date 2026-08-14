@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from 'tldraw'
-import { markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
+import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { assetUploadActivityAt } from '../persistence/assetStore'
 import { clearThumbnailsExcept, saveBoardThumbnail } from '../persistence/thumbnails'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
+import { setAgentBoardApi } from '../agent/boardBridge'
+import { setAgentEditorSource, startAgentBridge, stopAgentBridge } from '../agent/bridge'
+import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
 import { setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
 import { CommandPalette } from './CommandPalette'
@@ -327,14 +330,19 @@ export function App() {
 		])
 	}, [route, platform])
 
-	const openBoard = useCallback(
-		async (board: BoardMeta) => {
-			if (route.view === 'board' && route.boardId === board.id) return
-			openTab(board.id)
+	const openBoardById = useCallback(
+		async (id: string) => {
+			if (route.view === 'board' && route.boardId === id) return
+			openTab(id)
 			await captureActiveThumbnail()
-			navigate({ view: 'board', boardId: board.id })
+			navigate({ view: 'board', boardId: id })
 		},
 		[route, openTab, captureActiveThumbnail, navigate]
+	)
+
+	const openBoard = useCallback(
+		async (board: BoardMeta) => openBoardById(board.id),
+		[openBoardById]
 	)
 
 	const goHome = useCallback(async () => {
@@ -413,6 +421,45 @@ export function App() {
 		setAppCommandApi({ createAndOpen, goHome, goSettings, goHelp, setTheme })
 	})
 
+	/**
+	 * The same arrangement for the agent bridge's board capability (see agent/boardBridge.ts).
+	 *
+	 * `remove` is `removeBoard`, not `api.remove`: deleting a mounted board blocks its own delete,
+	 * because the editor holds the database open. An agent must go through the same close-then-delete
+	 * sequence the UI does.
+	 */
+	/**
+	 * The agent bridge's connection, owned here rather than by the Settings panel that configures it:
+	 * the panel unmounts the moment you navigate to a board, which is precisely when you want an agent
+	 * still connected. Restarts on any preference change, which is what makes editing the token or
+	 * port take effect.
+	 */
+	const agentPrefs = useSyncExternalStore(subscribeToAgentPrefs, getAgentPrefs)
+	useEffect(() => {
+		startAgentBridge(agentPrefs)
+		return () => stopAgentBridge()
+	}, [agentPrefs])
+
+	useEffect(() => {
+		setAgentBoardApi({
+			// Read through to the store rather than handing over `api.boards`: that array is one render
+			// stale for the whole of any operation that just wrote to the index (see the interface's
+			// doc comment — a `board.create` could not find the board it had just made).
+			list: () => listBoards(platform.kv),
+			create: api.create,
+			rename: api.rename,
+			remove: removeBoard,
+			open: async (id) => {
+				const known = await listBoards(platform.kv)
+				if (!known.some((board) => board.id === id)) return false
+				await openBoardById(id)
+				return true
+			},
+			editorFor: (id) => editors.current.get(id) ?? null,
+		})
+	})
+
+
 	const listApi = { ...api, remove: removeBoard }
 
 	const activeBoardId = route.view === 'board' ? route.boardId : null
@@ -420,6 +467,15 @@ export function App() {
 	// apply this too, and needs the *current* active board rather than the one at its render.
 	const activeBoardIdRef = useRef(activeBoardId)
 	activeBoardIdRef.current = activeBoardId
+
+	// The board an operation acts on when it is given no boardId — read at invoke time through the
+	// ref, never captured, for the same reason `getCommandContext` is a callback rather than a value.
+	useEffect(() => {
+		setAgentEditorSource(() =>
+			activeBoardIdRef.current ? (editors.current.get(activeBoardIdRef.current) ?? null) : null
+		)
+	}, [])
+
 	useEffect(() => {
 		// An open palette counts as "no board has focus", and this is the whole of the palette's focus
 		// story: tldraw reads keys off the *document* and gates them on `isFocused`, so without the

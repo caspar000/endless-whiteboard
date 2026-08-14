@@ -1,0 +1,25 @@
+{
+	"name": "@lifeboard/mcp-server",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"lifeboard-mcp": "./dist/index.js"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run",
+		"start": "node dist/index.js"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"ws": "^8.21.3"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.2",
+		"@types/ws": "^8.18.1",
+		"typescript": "5.9.3",
+		"vitest": "^4.1.10"
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		// NodeNext rather than the workspace's `bundler`: this is the one package that is *run* by
+		// Node rather than bundled by vite, so it has to resolve and emit the way Node does.
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"lib": ["ES2022"],
+		"outDir": "dist",
+		"rootDir": "src",
+		"noEmit": false,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src"]
+}

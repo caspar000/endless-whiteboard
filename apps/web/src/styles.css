@@ -954,6 +954,7 @@ button {
 	gap: 12px;
 }
 .lb-extmarket__card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -965,6 +966,26 @@ button {
 }
 .lb-extmarket__card:hover {
 	border-color: var(--lb-border-strong);
+}
+/* The whole card opens the extension's page, but only the name is the button — see the comment in
+   ExtensionsPanel.tsx. The ::after does the stretching; the switch sits above it. */
+.lb-extmarket__open::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: var(--lb-radius);
+}
+.lb-extmarket__switch {
+	position: relative;
+	z-index: 1;
+}
+/* The card's focus ring belongs to the card, since that is what the button covers. */
+.lb-extmarket__card:has(.lb-extmarket__open:focus-visible) {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-extmarket__open:focus-visible {
+	outline: none;
 }
 .lb-extmarket__head {
 	display: flex;
@@ -982,11 +1003,16 @@ button {
 	border: 1px solid var(--lb-border);
 	color: var(--lb-accent);
 }
-.lb-extmarket__name {
+.lb-extmarket__open {
 	flex: 1;
 	min-width: 0;
+	background: none;
+	border: 0;
+	padding: 0;
+	color: inherit;
 	font-size: 14px;
 	font-weight: 600;
+	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1009,12 +1035,135 @@ button {
 }
 /* An off extension reads as dormant — body dimmed, switch at full strength so the way back never fades. */
 .lb-extmarket__card[data-off] .lb-extmarket__icon,
-.lb-extmarket__card[data-off] .lb-extmarket__name,
+.lb-extmarket__card[data-off] .lb-extmarket__open,
 .lb-extmarket__card[data-off] .lb-extmarket__desc {
 	opacity: 0.45;
 }
 .lb-extmarket__card[data-off] .lb-extmarket__icon {
 	color: var(--lb-text-dim);
+}
+
+/* ------------------------------------------------------- an extension's page */
+
+/*
+ * Settings → Extensions → one of them. Wider than a card and laid out like a product page, because
+ * this is where the decision to switch something on is actually made — the grid is for finding it.
+ */
+.lb-extpage__back {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: 0;
+	border-radius: 7px;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	padding: 5px 9px 5px 5px;
+	margin: 0 0 14px -5px;
+	transition: background 100ms ease, color 100ms ease;
+}
+.lb-extpage__back:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-extpage__head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 16px;
+}
+.lb-extpage__icon {
+	display: grid;
+	place-items: center;
+	width: 46px;
+	height: 46px;
+	flex-shrink: 0;
+	border-radius: 12px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	color: var(--lb-accent);
+}
+.lb-extpage__ident {
+	flex: 1;
+	min-width: 0;
+}
+.lb-extpage__name {
+	font-size: 22px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	margin: 0;
+}
+.lb-extpage__meta {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+	margin: 3px 0 0;
+}
+/* The switch and its state read together, so the word is part of the control rather than a caption. */
+.lb-extpage__switch {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	flex-shrink: 0;
+	font-size: 13px;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-extpage__lede {
+	font-size: 14px;
+	line-height: 1.65;
+	color: var(--lb-text);
+	max-width: 62ch;
+	margin: 0 0 14px;
+}
+.lb-extpage__para {
+	font-size: 13.5px;
+	line-height: 1.7;
+	color: var(--lb-text-dim);
+	max-width: 62ch;
+	margin: 0 0 12px;
+}
+.lb-extpage__group + .lb-extpage__group {
+	border-top: 1px solid var(--lb-border);
+	margin-top: 14px;
+	padding-top: 14px;
+}
+.lb-extpage__grouptitle {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-dim);
+	margin-bottom: 9px;
+}
+.lb-extpage__items {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+.lb-extpage__item {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	font-size: 13px;
+}
+.lb-extpage__itemicon {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	flex-shrink: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+}
+.lb-extpage__itemlabel {
+	flex: 1;
+	min-width: 0;
+}
+.lb-extpage__id {
+	font-size: 12.5px;
+	color: var(--lb-text-dim);
+	user-select: all;
 }
 
 /* --------------------------------------------------------------- appearance */
@@ -1078,6 +1227,11 @@ button {
 	font-size: 12px;
 	color: var(--lb-text-faint);
 	margin: 10px 0 0;
+}
+/* A read-only row value — the version, and whatever else settings ends up only reporting. */
+.lb-appearance__value {
+	font-size: 14px;
+	font-variant-numeric: tabular-nums;
 }
 
 /* A labelled on/off switch. The whole row is the <label>, so the text is part of the hit target. */
@@ -3596,21 +3750,25 @@ button.lb-props__eye:hover {
 	accent-color: var(--lb-accent);
 }
 
-/* --------------------------------------------------------------------- help */
+/* ----------------------------------------------------------- rail + two-pane */
 
 /*
- * The help page (app/help/). Its own two-pane layout rather than a column inside `.lb-home__main`,
- * because the section rail must stay put while the section beside it scrolls — one shared scroller
- * would take the rail with it and leave you unable to switch pages without scrolling back up.
+ * The two-pane layout Help and Settings share: a rail of destinations on the left, one page at a time
+ * on the right. Its own scroller per pane rather than a column inside `.lb-home__main`, because the
+ * rail must stay put while the page beside it scrolls — one shared scroller would take the rail with
+ * it and leave you unable to switch pages without scrolling back up.
+ *
+ * Shared rather than copied: the two rails are the same control, and a settings rail that drifted a
+ * pixel from the help one would read as a different app one click away.
  */
-.lb-help {
+.lb-pane {
 	display: grid;
 	grid-template-columns: 218px minmax(0, 1fr);
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
 }
-.lb-help__nav {
+.lb-rail {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -3618,20 +3776,20 @@ button.lb-props__eye:hover {
 	padding: 26px 12px 40px;
 	overflow-y: auto;
 }
-.lb-help__navgroup {
+.lb-rail__group {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 }
 /* Matches the shell sidebar's own section labels: this is the same idea one level in. */
-.lb-help__navtitle {
+.lb-rail__title {
 	font-size: 10px;
 	text-transform: uppercase;
 	letter-spacing: 0.07em;
 	color: var(--lb-text-faint);
 	padding: 0 10px 4px;
 }
-.lb-help__navitem {
+.lb-rail__item {
 	display: grid;
 	grid-template-columns: 20px 1fr;
 	align-items: center;
@@ -3646,25 +3804,63 @@ button.lb-props__eye:hover {
 	text-align: left;
 	transition: background 100ms ease, color 100ms ease;
 }
-.lb-help__navitem:hover {
+.lb-rail__item:hover {
 	background: var(--lb-surface-2);
 	color: var(--lb-text);
 }
-.lb-help__navitem--active {
+.lb-rail__item--active {
 	background: var(--lb-accent-tint);
 	color: var(--lb-accent);
 	font-weight: 500;
 }
-.lb-help__navicon {
+.lb-rail__icon {
 	display: grid;
 	place-items: center;
 	opacity: 0.85;
 }
-.lb-help__main {
+.lb-pane__main {
 	overflow-y: auto;
 	padding: 28px 32px 72px;
 	min-width: 0;
 }
+/*
+ * Narrow window: the rail becomes a row above the content. Kept scrollable rather than wrapped into
+ * three lines, so the page below it doesn't start halfway down the screen.
+ */
+@media (max-width: 900px) {
+	.lb-pane {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	.lb-rail {
+		flex-direction: row;
+		gap: 10px;
+		border-right: 0;
+		border-bottom: 1px solid var(--lb-border);
+		padding: 10px 16px;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+	.lb-rail__group {
+		flex-direction: row;
+		gap: 4px;
+	}
+	.lb-rail__title {
+		display: none;
+	}
+	.lb-rail__item {
+		grid-template-columns: auto;
+		white-space: nowrap;
+	}
+	.lb-rail__icon {
+		display: none;
+	}
+	.lb-pane__main {
+		padding: 22px 20px 64px;
+	}
+}
+
+/* --------------------------------------------------------------------- help */
 /*
  * A reading width for the prose, but the demos are little stages that need room to act on — hence
  * wider than settings' 640.
@@ -3679,42 +3875,6 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-dim);
 	max-width: 62ch;
 	margin: -10px 0 34px;
-}
-/*
- * Narrow window: the rail becomes a row above the content. Kept scrollable rather than wrapped into
- * three lines, so the page below it doesn't start halfway down the screen.
- */
-@media (max-width: 900px) {
-	.lb-help {
-		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: auto minmax(0, 1fr);
-	}
-	.lb-help__nav {
-		flex-direction: row;
-		gap: 10px;
-		border-right: 0;
-		border-bottom: 1px solid var(--lb-border);
-		padding: 10px 16px;
-		overflow-x: auto;
-		overflow-y: hidden;
-	}
-	.lb-help__navgroup {
-		flex-direction: row;
-		gap: 4px;
-	}
-	.lb-help__navtitle {
-		display: none;
-	}
-	.lb-help__navitem {
-		grid-template-columns: auto;
-		white-space: nowrap;
-	}
-	.lb-help__navicon {
-		display: none;
-	}
-	.lb-help__main {
-		padding: 22px 20px 64px;
-	}
 }
 .lb-help__section {
 	margin-bottom: 42px;

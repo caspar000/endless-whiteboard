@@ -56,7 +56,8 @@ them into notes-with-properties and tables the first time an old board loads.
 
 ```
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
-  src/app/                routing, home screen (sidebar + card grid), settings panels
+  src/app/                routing, home screen (sidebar + card grid)
+  src/app/settings/       the settings page: its rail of tabs, and the extension pages under one
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
@@ -90,7 +91,10 @@ an id, a display name, an icon and a version for the Settings card:
 - **Composing.** `apps/web/src/extensions.ts` is the composition root: one `registerExtension` line
   per extension this build ships. `Board.tsx` imports it first, so the registry is populated before
   any module reads it at module scope.
-- **Toggling.** Settings → Extensions renders a card per extension (Obsidian-style, with a switch).
+- **Toggling.** Settings is a rail of tabs (Obsidian's shape), one of which is Extensions: a card
+  per extension with a switch, and each card opens the extension's own page — long description, the
+  switch again, and a "what it adds" list *derived from the manifest* (node types, commands, file
+  types it opens, context-menu actions), so a third-party extension gets the same page for free.
   Off means *stop offering*: the dock button, context-menu entry and shortcut disappear — live, no
   board remount — but the extension's shape types stay registered with the schema, so existing
   boards keep opening and its shapes keep rendering. The disabled set persists in localStorage.
@@ -250,7 +254,7 @@ port to one new file (`TauriPlatformAdapter`).
   and rebuilt the next time each is opened.
 - **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
   draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
-  ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Appearance
+  ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Canvas
   owns all of it app-wide instead: **Grid** on/off (on by default), **Grid style** (our dotted paper or
   tldraw's, ours by default), and **Snap to grid** (off by default). The grid is drawn from tldraw's
   `Background` slot with `Grid: null`, because tldraw only renders its own grid while `isGridMode` is on

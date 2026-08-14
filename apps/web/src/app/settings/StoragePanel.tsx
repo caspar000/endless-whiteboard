@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getLastBackupAt } from '../boards/boardIndex'
-import { backupFileName, exportBackup, importBackup } from '../persistence/backup'
-import { usePlatform } from '../platform/PlatformContext'
-import type { StorageEstimate } from '../platform/PlatformAdapter'
-import type { BoardsApi } from './useBoards'
+import { getLastBackupAt } from '../../boards/boardIndex'
+import { backupFileName, exportBackup, importBackup } from '../../persistence/backup'
+import { usePlatform } from '../../platform/PlatformContext'
+import type { StorageEstimate } from '../../platform/PlatformAdapter'
+import type { BoardsApi } from '../useBoards'
 
 const APP_VERSION = __APP_VERSION__
 
@@ -29,7 +29,7 @@ function daysSince(ts: number): number {
  * sites that aren't installed — a one-click backup plus a visible "last backup N days ago" is the
  * mitigation the plan calls for, not a nice-to-have.
  */
-export function SettingsPanel({
+export function StoragePanel({
 	api,
 	onImported,
 }: {
@@ -152,8 +152,6 @@ export function SettingsPanel({
 			</div>
 
 			{message && <p className="lb-settings__message">{message}</p>}
-
-			<p className="lb-settings__version">Lifeboard {APP_VERSION}</p>
 		</section>
 	)
 }

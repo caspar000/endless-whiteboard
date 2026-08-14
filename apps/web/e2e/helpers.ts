@@ -41,6 +41,16 @@ export async function skipFirstRunDemo(page: Page): Promise<void> {
 	await expect(page.locator('.lb-board-host')).toHaveCount(0, { timeout: 20_000 })
 }
 
+/** The settings rail's tabs. Each one is a page of its own now, so a test has to say which it wants. */
+export type SettingsTab = 'General' | 'Appearance' | 'Canvas' | 'Storage' | 'Extensions'
+
+/** Opens Settings from the sidebar and lands on a tab — General being the one it opens on. */
+export async function openSettings(page: Page, tab: SettingsTab = 'General'): Promise<void> {
+	await page.getByRole('button', { name: 'Settings' }).click()
+	if (tab !== 'General') await page.getByRole('button', { name: tab, exact: true }).click()
+	await expect(page.getByRole('heading', { level: 1, name: tab })).toBeVisible()
+}
+
 export async function backToList(page: Page): Promise<void> {
 	// The pinned "All boards" tab in the tab strip is the way back to the home screen.
 	await page.getByRole('tab', { name: 'All boards' }).click()

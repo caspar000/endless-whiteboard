@@ -70,7 +70,17 @@ export interface Extension {
 	id: string
 	/** Shown in Settings → Extensions. */
 	name: string
+	/** One or two sentences, shown on the card. Clamped to three lines there, so lead with the point. */
 	description?: string
+	/**
+	 * The long copy, one string per paragraph, shown on the extension's own page in Settings.
+	 *
+	 * Separate from `description` because the two are read in different situations: the card's job is
+	 * to let someone skim a grid and decide, the page's is to answer "what do I actually get, and what
+	 * happens if I turn it off". Optional — an extension with none still gets a page, built from its
+	 * description and the contributions below, which are facts the manifest already carries.
+	 */
+	details?: readonly string[]
 	/** Card icon for Settings → Extensions. Usually the same icon its main node puts in the dock. */
 	icon?: NodeToolbarIcon
 	/** Shown on the card, dimmed — `0.1.0`, no leading `v`. */

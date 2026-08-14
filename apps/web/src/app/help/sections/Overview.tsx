@@ -242,7 +242,7 @@ export function Overview({ go }: SectionProps) {
 					<div className="lb-help__fact">
 						<h3>The grid</h3>
 						<p>
-							Snapping and the dotted paper are set once for the app, in Settings → Appearance. Hold{' '}
+							Snapping and the dotted paper are set once for the app, in Settings → Canvas. Hold{' '}
 							<kbd className="lb-kbd">⌘</kbd> while dragging to ignore the grid for one move.
 						</p>
 					</div>

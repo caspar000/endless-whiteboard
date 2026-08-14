@@ -51,6 +51,51 @@ export {
 	type CommandView,
 } from './commands'
 
+// Operations: the third load-bearing seam. Commands are buttons; operations take named arguments and
+// return an answer, which is what a caller that isn't a person at a keyboard needs. The MCP server is
+// their first consumer. See `operations.ts` for why this is a sibling table rather than a wider Command.
+export {
+	clearOperationRegistry,
+	coerceArgs,
+	commandFromOperation,
+	createOperationContext,
+	defineOperation,
+	fail,
+	getOperation,
+	getOperations,
+	getVisibleOperations,
+	ok,
+	operationManifest,
+	registerOperation,
+	registerOperationAsCommand,
+	runOperation,
+	subscribeToOperations,
+	toJsonSchema,
+	type Args,
+	type CoercedArgs,
+	type JsonSchemaObject,
+	type JsonSchemaProperty,
+	type JsonValue,
+	type Operation,
+	type OperationContext,
+	type OperationManifestEntry,
+	type OperationResult,
+	type ParamSpec,
+	type ParamType,
+	type Params,
+	type RegisteredOperation,
+} from './operations'
+
+
+// The board-capability seam operations run against — installed by the app, like the other bridges.
+export {
+	clearBoardBridge,
+	getBoardBridge,
+	setBoardBridge,
+	type BoardBridge,
+	type BoardSummary,
+} from './boardBridge'
+
 // Extensions: the unit the app composes at startup, users toggle in Settings, and plugins ship as.
 export {
 	actionsForShape,

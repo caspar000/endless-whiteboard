@@ -75,6 +75,13 @@ export function ExtensionDetail({ id, onBack }: { id: string; onBack: () => void
 			})),
 		},
 		{
+			// Listed because this page's premise is that the manifest describes the extension — an
+			// extension whose operations were missing here would show an incomplete "what it adds", and
+			// operations are the half of it an agent can reach.
+			title: 'Agent operations',
+			items: (ext.operations ?? []).map((operation) => ({ label: operation.title })),
+		},
+		{
 			title: 'Opens these files',
 			items: (ext.fileImports ?? []).flatMap((imp) =>
 				imp.extensions.map((suffix) => ({ label: `.${suffix}` }))

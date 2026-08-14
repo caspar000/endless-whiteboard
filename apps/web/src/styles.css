@@ -1394,6 +1394,47 @@ button {
 	user-select: all;
 }
 
+/* -------------------------------------------------------------------- agents */
+
+/*
+ * A text or number field inside a settings card — the third control, after the segmented row and
+ * the toggle. Named into the card family the other tabs use, so a field sits on the same grid as
+ * the rows around it rather than looking like a control from somewhere else.
+ */
+.lb-appearance__input {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 13px;
+	padding: 6px 9px;
+	min-width: 0;
+	width: 260px;
+	outline: none;
+}
+.lb-appearance__input:focus {
+	border-color: var(--lb-accent);
+}
+.lb-appearance__input--short {
+	width: 90px;
+}
+
+/*
+ * Connection state carries a colour because it is the one thing on this page you check at a glance
+ * — "is something attached to my boards right now?".
+ */
+.lb-agent__status[data-state='connected'] strong {
+	color: var(--lb-accent);
+}
+.lb-agent__status[data-state='error'] strong {
+	color: var(--lb-danger);
+}
+.lb-agent__token {
+	font-family: var(--lb-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	letter-spacing: 0.02em;
+}
+
 /* --------------------------------------------------------------- appearance */
 
 .lb-appearance__card {

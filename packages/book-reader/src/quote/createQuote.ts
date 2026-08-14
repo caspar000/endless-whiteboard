@@ -1,4 +1,9 @@
-import { createProperty, getAssetBridge, updateShapeProperties } from '@lifeboard/node-kit'
+import {
+	connectShapes,
+	createProperty,
+	getAssetBridge,
+	updateShapeProperties,
+} from '@lifeboard/node-kit'
 import { createShapeId, type Editor, type TLShapeId } from 'tldraw'
 import { highlightProperty, QUOTE_MIN_HEIGHT, QUOTE_NODE_TYPE, type HighlightTag } from './definition'
 
@@ -80,16 +85,9 @@ export async function addQuoteToBoard(
 			if (def && created) updateShapeProperties(editor, created, { [def.id]: quote.tag })
 		}
 
-		// The arrow's own geometry is a placeholder: both ends are bound, so tldraw recomputes the
-		// line from the two shapes' bounds on the next frame and keeps doing so as either is moved.
-		if (!withArrow) return
-		const arrowId = createShapeId()
-		editor.createShape({ id: arrowId, type: 'arrow', x: 0, y: 0 })
-		const anchor = { normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false }
-		editor.createBindings([
-			{ type: 'arrow', fromId: arrowId, toId: bookId, props: { terminal: 'start', ...anchor } },
-			{ type: 'arrow', fromId: arrowId, toId: quoteId, props: { terminal: 'end', ...anchor } },
-		])
+		// No `markHistory`: we are already inside the `editor.run` that owns this quote's single undo
+		// entry, and the arrow has to be part of it.
+		if (withArrow) connectShapes(editor, bookId, quoteId)
 	})
 
 	return quoteId

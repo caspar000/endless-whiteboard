@@ -51,6 +51,55 @@ export {
 	type CommandView,
 } from './commands'
 
+// Operations: the third load-bearing seam. Commands are buttons; operations take named arguments and
+// return an answer, which is what a caller that isn't a person at a keyboard needs. The MCP server is
+// their first consumer. See `operations.ts` for why this is a sibling table rather than a wider Command.
+export {
+	clearOperationRegistry,
+	coerceArgs,
+	commandFromOperation,
+	createOperationContext,
+	defineOperation,
+	fail,
+	getOperation,
+	getOperations,
+	getVisibleOperations,
+	ok,
+	operationManifest,
+	registerOperation,
+	registerOperationAsCommand,
+	runOperation,
+	subscribeToOperations,
+	toJsonSchema,
+	type Args,
+	type CoercedArgs,
+	type JsonSchemaObject,
+	type JsonSchemaProperty,
+	type JsonValue,
+	type Operation,
+	type OperationContext,
+	type OperationManifestEntry,
+	type OperationResult,
+	type ParamSpec,
+	type ParamType,
+	type Params,
+	type RegisteredOperation,
+} from './operations'
+
+// The core operation surface. Registered by the host's composition root, because these need a
+// `BoardBridge` installed to do anything.
+export { coreOperations, registerCoreOperations } from './ops'
+export { createNodeShape, textPropFor } from './nodes/insert'
+
+// The board-capability seam operations run against — installed by the app, like the other bridges.
+export {
+	clearBoardBridge,
+	getBoardBridge,
+	setBoardBridge,
+	type BoardBridge,
+	type BoardSummary,
+} from './boardBridge'
+
 // Extensions: the unit the app composes at startup, users toggle in Settings, and plugins ship as.
 export {
 	actionsForShape,
@@ -278,7 +327,15 @@ export {
 	type RollupSource,
 	type SourceScope,
 } from './nodes/rollup/aggregate'
-export { getPageEdges, getPageFacts, getRollupResult, rollupStats } from './nodes/rollup/engine'
+export {
+	getPageEdges,
+	getPageFacts,
+	getRollupResult,
+	// The one-shot counterpart to `getPageFacts`, for callers that ask once rather than render.
+	readPageFacts,
+	rollupStats,
+	shapeFacts,
+} from './nodes/rollup/engine'
 export { shapeLabel } from './properties/labels'
 export { ITEMS_TO_NOTES_MIGRATION_ID, itemsToNotesMigrations } from './properties/itemsToNotes'
 export {
@@ -293,6 +350,8 @@ export {
 	type EdgeDirection,
 	type EdgeIndex,
 } from './edges'
+// Writing relations, next to reading them — one definition of what an edge is.
+export { connectShapes, disconnectShapes, type ConnectOptions } from './relations'
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyStrip } from './properties/PropertyStrip'
 

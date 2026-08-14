@@ -1,10 +1,11 @@
 import {
+	createNodeShape,
 	getNodeDefinitions,
 	getNodeOwner,
 	registerCommand,
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
-import { createShapeId, type Editor } from 'tldraw'
+import type { Editor, TLShapeId } from 'tldraw'
 import { INSERT_GROUP } from '../app/paletteItems'
 
 /**
@@ -14,25 +15,25 @@ import { INSERT_GROUP } from '../app/paletteItems'
  * Factored out of the context menu so the right-click entry and the palette's "Add …" command are
  * one action rather than two that drift — the second caller is exactly when a copied implementation
  * starts quietly diverging (the marked stopping point, the selection, the edit-mode hand-off).
+ *
+ * The creation itself now lives in node-kit (`createNodeShape`), because the agent operations create
+ * the same shape and must *not* inherit the rest of this: selecting and entering edit mode are right
+ * for a person who just clicked "Add note" and wrong for a caller with nobody at the keyboard.
  */
 export function insertNode(
 	editor: Editor,
 	def: NodeDefinition<never>,
 	point: { x: number; y: number }
 ): void {
-	const id = createShapeId()
+	let id: TLShapeId | undefined
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('create node')
-		editor.createShapes([
-			{
-				id,
-				type: def.type,
-				x: point.x - def.defaultSize.w / 2,
-				y: point.y - def.defaultSize.h / 2,
-			} as never,
-		])
+		// Nested inside this `run` on purpose: creation and selection stay in one batch behind one
+		// stopping point, so ⌘Z after an insert undoes the whole thing.
+		id = createNodeShape(editor, def, point)
 		editor.select(id)
 	})
+	if (!id) return
 	const shape = editor.getShape(id)
 	if (shape && editor.canEditShape(shape)) editor.setEditingShape(id)
 }

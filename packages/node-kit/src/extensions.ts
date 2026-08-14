@@ -1,5 +1,6 @@
 import type { Editor } from 'tldraw'
 import { registerCommand, type Command } from './commands'
+import { registerOperation, type RegisteredOperation } from './operations'
 import {
 	isExtensionEnabled,
 	isNodeType,
@@ -93,6 +94,12 @@ export interface Extension {
 	 * the same "stop offering, never stop working" rule as its nodes.
 	 */
 	commands?: readonly Command[]
+	/**
+	 * Operations this extension contributes — the parameterised, result-returning table agents drive
+	 * the app through (`operations.ts`). Same enablement rule as its commands, and the reason the MCP
+	 * server needs no list of tools: contributing an operation contributes a tool.
+	 */
+	operations?: readonly RegisteredOperation[]
 	/** File types this extension imports on drop/paste. Gated by enablement at drop time. */
 	fileImports?: readonly FileImport[]
 	/** Actions offered on a shape's context menu. Gated by enablement when the menu opens. */
@@ -113,7 +120,7 @@ export function defineNode<Props extends object>(def: NodeDefinition<Props>): No
 const extensions = new Map<string, Extension>()
 
 /**
- * Registers an extension and every node and command it contributes.
+ * Registers an extension and every node, command and operation it contributes.
  *
  * Idempotent *per node type*, not per extension — a second registration is reconciled, not ignored,
  * and never throws. Module re-evaluation is the normal case here (vite HMR, a test importing two
@@ -131,6 +138,7 @@ export function registerExtension(ext: Extension): void {
 		if (!isNodeType(def.type)) registerNode(def, ext.id)
 	}
 	for (const cmd of ext.commands ?? []) registerCommand(cmd, ext.id)
+	for (const op of ext.operations ?? []) registerOperation(op, ext.id)
 }
 
 /** Registration order, which is also toolbar order for their nodes. */

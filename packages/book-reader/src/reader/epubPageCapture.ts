@@ -347,16 +347,17 @@ function intersects(rect: DOMRect, window: PaintWindow): boolean {
 }
 
 async function within<T>(promise: Promise<T>, milliseconds: number): Promise<T | undefined> {
-	let timer: ReturnType<typeof setTimeout> | undefined
+	let cancelTimer: (() => void) | undefined
 	try {
 		return await Promise.race([
 			promise,
 			new Promise<undefined>((resolve) => {
-				timer = setTimeout(resolve, milliseconds)
+				const timer = setTimeout(resolve, milliseconds)
+				cancelTimer = () => clearTimeout(timer)
 			}),
 		])
 	} finally {
-		if (timer !== undefined) clearTimeout(timer)
+		cancelTimer?.()
 	}
 }
 

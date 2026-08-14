@@ -42,7 +42,13 @@ export async function skipFirstRunDemo(page: Page): Promise<void> {
 }
 
 /** The settings rail's tabs. Each one is a page of its own now, so a test has to say which it wants. */
-export type SettingsTab = 'General' | 'Appearance' | 'Canvas' | 'Storage' | 'Extensions'
+export type SettingsTab =
+	| 'General'
+	| 'Appearance'
+	| 'Canvas'
+	| 'Storage'
+	| 'Extensions'
+	| 'Agents'
 
 /** Opens Settings from the sidebar and lands on a tab — General being the one it opens on. */
 export async function openSettings(page: Page, tab: SettingsTab = 'General'): Promise<void> {

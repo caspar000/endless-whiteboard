@@ -86,6 +86,9 @@ export {
 	type RegisteredOperation,
 } from './operations'
 
+// The core operation surface. Registered by the host's composition root, because these need a
+// `BoardBridge` installed to do anything.
+export { coreOperations, registerCoreOperations } from './ops'
 export { createNodeShape, textPropFor } from './nodes/insert'
 
 // The board-capability seam operations run against — installed by the app, like the other bridges.
@@ -324,7 +327,15 @@ export {
 	type RollupSource,
 	type SourceScope,
 } from './nodes/rollup/aggregate'
-export { getPageEdges, getPageFacts, getRollupResult, rollupStats } from './nodes/rollup/engine'
+export {
+	getPageEdges,
+	getPageFacts,
+	getRollupResult,
+	// The one-shot counterpart to `getPageFacts`, for callers that ask once rather than render.
+	readPageFacts,
+	rollupStats,
+	shapeFacts,
+} from './nodes/rollup/engine'
 export { shapeLabel } from './properties/labels'
 export { ITEMS_TO_NOTES_MIGRATION_ID, itemsToNotesMigrations } from './properties/itemsToNotes'
 export {

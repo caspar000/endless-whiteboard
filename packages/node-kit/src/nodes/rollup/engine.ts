@@ -60,21 +60,33 @@ export const rollupStats = {
  * Stage 0. The comparator is the entire point: it lists everything facts are derived from and
  * **nothing positional**, so moving a shape does not invalidate its facts.
  */
+/**
+ * What one shape's facts *are*, with no caching in the way.
+ *
+ * Split out from the cache below so there is one definition of a shape's facts and two ways to
+ * reach it. The reactive path exists to keep the UI free of recomputes during a drag; a one-shot
+ * caller — an agent operation asking a board a question — has nothing to keep quiet and should not
+ * have to stand up tldraw's computed-cache machinery to ask.
+ */
+export function shapeFacts(editor: Editor, shape: TLShape): ShapeFacts {
+	const stored = readShapeProperties(shape)
+	// A node may also *compute* values from its own props — the legacy item node's route, and the
+	// seam a future computed node would use. Stored values win: they are what the user edited.
+	const computedValues = getNodeDefinition(shape.type)?.extractValues?.(shape as never)
+	return {
+		type: shape.type,
+		parentId: shape.parentId ?? null,
+		label: shapeLabel(editor, shape),
+		values: computedValues ? { ...computedValues, ...stored } : stored,
+		units: readShapePropertyUnits(shape),
+	}
+}
+
 const factsCache = createComputedCache<Editor, ShapeFacts, TLShape>(
 	'lifeboard:shapeFacts',
 	(editor, shape) => {
 		rollupStats.shapeFactsRecomputes++
-		const stored = readShapeProperties(shape)
-		// A node may also *compute* values from its own props — the legacy item node's route, and the
-		// seam a future computed node would use. Stored values win: they are what the user edited.
-		const computedValues = getNodeDefinition(shape.type)?.extractValues?.(shape as never)
-		return {
-			type: shape.type,
-			parentId: shape.parentId ?? null,
-			label: shapeLabel(editor, shape),
-			values: computedValues ? { ...computedValues, ...stored } : stored,
-			units: readShapePropertyUnits(shape),
-		}
+		return shapeFacts(editor, shape)
 	},
 	{
 		// `updateShape` replaces the `props`/`meta` objects only when they actually change, so
@@ -118,6 +130,21 @@ export function getPageFacts(editor: Editor): Computed<FactsMap> {
 
 	factsByEditor.set(editor, facts)
 	return facts
+}
+
+/**
+ * The whole page's facts, computed once and not cached — the one-shot counterpart to
+ * `getPageFacts`.
+ *
+ * For a caller that asks a question and is done: an agent operation, a script, a test. It walks the
+ * page and returns a plain map, taking no reactive dependency and leaving no cache entry behind.
+ * Anything that renders should use `getPageFacts` instead, or it will recompute on every frame of a
+ * drag — which is precisely what the cached path was built to avoid.
+ */
+export function readPageFacts(editor: Editor): FactsMap {
+	const map = new Map<string, ShapeFacts>()
+	for (const shape of editor.getCurrentPageShapes()) map.set(shape.id, shapeFacts(editor, shape))
+	return map
 }
 
 const edgesByEditor = new WeakMap<Editor, Computed<EdgeIndex>>()

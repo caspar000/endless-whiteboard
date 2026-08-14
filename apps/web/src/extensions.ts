@@ -5,6 +5,7 @@ import {
 	tablesExtension,
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
+import { registerNodeCommands } from './canvas/insertNode'
 
 /**
  * The composition root: the one place that decides which extensions this build of the app ships.
@@ -17,6 +18,10 @@ import { markdownNoteExtension } from '@lifeboard/note-markdown'
  */
 registerExtension(markdownNoteExtension)
 registerExtension(tablesExtension)
+
+// Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
+// After the registrations above, deliberately: it reads what they just put there.
+registerNodeCommands()
 
 /**
  * Which extensions the user has switched off — app-wide, like every other preference (see

@@ -358,6 +358,16 @@ export function setDisabledExtensionIds(ids: readonly string[]): void {
 	invalidateVisible()
 }
 
+/**
+ * Which extension registered this type, or `undefined` for a core type.
+ *
+ * The seam for contributions *derived* from a node — the app's "Add <node>" commands, say, which
+ * must be owned by the same extension so one toggle hides the node and everything generated from it.
+ */
+export function getNodeOwner(type: string): string | undefined {
+	return ownerByType.get(type)
+}
+
 /** Whether the extension owning this type is enabled. Core types (no owner) are always enabled. */
 export function isNodeTypeEnabled(type: string): boolean {
 	const owner = ownerByType.get(type)

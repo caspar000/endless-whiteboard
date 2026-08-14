@@ -892,19 +892,32 @@ test.describe('home screen', () => {
 		const sidebar = page.locator('.lb-sidebar')
 		await expect(sidebar.getByRole('button', { name: /All boards 2/ })).toBeVisible()
 		await expect(page.locator('.lb-card')).toHaveCount(2)
+		const [brandBox, tabsBox] = await Promise.all([
+			sidebar.locator('.lb-sidebar__brand').boundingBox(),
+			page.locator('.lb-tabs').boundingBox(),
+		])
+		expect(brandBox?.y).toBe(tabsBox?.y)
+		expect(brandBox?.height).toBe(tabsBox?.height)
 
-		// The Favourites section only exists once something is starred, and then lists exactly
-		// that board by name.
-		await expect(sidebar.locator('.lb-sidebar__section')).toHaveCount(0)
+		// The empty section teaches the feature without inventing a placeholder favourite.
+		const favourites = sidebar.locator('.lb-sidebar__favorites')
+		await expect(favourites.getByText('Star a board to keep it here.')).toBeVisible()
+		await expect(favourites.locator('.lb-sidebar__item')).toHaveCount(0)
 
 		const card = page.locator('.lb-card', { hasText: 'Second board' })
 		await card.hover()
 		await card.getByRole('button', { name: 'Favourite Second board' }).click()
 
-		const favourites = sidebar.locator('.lb-sidebar__section')
 		await expect(favourites).toBeVisible()
+		await expect(favourites.getByText('Star a board to keep it here.')).toHaveCount(0)
 		await expect(favourites.getByRole('button', { name: 'Second board' })).toBeVisible()
-		await expect(favourites.getByRole('button')).toHaveCount(1)
+		await expect(favourites.locator('.lb-sidebar__item')).toHaveCount(1)
+
+		// Compact mode represents the category once rather than repeating an identical star per board.
+		await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
+		await expect(favourites.getByRole('button', { name: 'Favourites (1)' })).toBeVisible()
+		await expect(favourites.getByRole('button', { name: 'Second board' })).not.toBeVisible()
+		await favourites.getByRole('button', { name: 'Favourites (1)' }).click()
 
 		// Clicking a favourite opens that board directly.
 		await favourites.getByRole('button', { name: 'Second board' }).click()
@@ -925,6 +938,55 @@ test.describe('home screen', () => {
 
 		await page.reload()
 		await expect(page.locator('.lb-sidebar__section').getByRole('button')).toHaveCount(1)
+	})
+
+	test('collapses to a persisted icon rail and remembers the All boards disclosure', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Second board')
+
+		const sidebar = page.locator('.lb-sidebar')
+		const boardList = sidebar.getByRole('navigation', { name: 'Boards' })
+		await expect(boardList.getByRole('button')).toHaveCount(2)
+
+		await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
+		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
+		await expect(sidebar).toHaveCSS('width', '56px')
+		await expect(sidebar.getByRole('button', { name: 'Settings' })).toBeVisible()
+
+		await page.reload()
+		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
+		await sidebar.getByRole('button', { name: 'Expand sidebar' }).click()
+		await expect(sidebar).not.toHaveClass(/lb-sidebar--collapsed/)
+		await expect(sidebar).toHaveCSS('width', '248px')
+
+		await sidebar.getByRole('button', { name: 'Collapse All boards' }).click()
+		await expect(sidebar.getByRole('navigation', { name: 'Boards' })).toHaveCount(0)
+		await page.reload()
+		await expect(sidebar.getByRole('button', { name: 'Expand All boards' })).toBeVisible()
+		await expect(sidebar.getByRole('navigation', { name: 'Boards' })).toHaveCount(0)
+	})
+
+	test('uses the compact rail by default and overlays an expanded sidebar on narrow screens', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 700, height: 800 })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		const sidebar = page.locator('.lb-sidebar')
+		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
+		await expect(sidebar).toHaveCSS('width', '56px')
+
+		await sidebar.getByRole('button', { name: 'Expand sidebar' }).click()
+		await expect(sidebar).toHaveCSS('width', '248px')
+		await expect(page.locator('.lb-sidebar__scrim')).toBeVisible()
+
+		await page.locator('.lb-sidebar__scrim').click({ position: { x: 690, y: 400 } })
+		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
+		await expect(page.locator('.lb-sidebar__scrim')).not.toBeVisible()
 	})
 
 	test('board cards show a thumbnail of the board once it has been closed', async ({ page }) => {

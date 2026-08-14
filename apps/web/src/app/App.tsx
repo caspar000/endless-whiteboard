@@ -43,6 +43,18 @@ const MAX_DRAIN_MS = 15_000
 /** Longest we'll make someone wait for a home-screen preview before switching away anyway. */
 const THUMBNAIL_TIMEOUT_MS = 2_000
 
+const SIDEBAR_COLLAPSED_KEY = 'lifeboard:sidebar:collapsed'
+
+function loadSidebarCollapsed(): boolean {
+	try {
+		const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+		if (stored !== null) return stored === 'true'
+	} catch {
+		// Use the viewport default when storage is unavailable.
+	}
+	return window.matchMedia('(max-width: 720px)').matches
+}
+
 /**
  * The app shell — Affine's layout: a persistent sidebar on the left, a strip of tabs across the
  * top (a pinned "All boards" tab plus one tab per open board), and the content underneath.
@@ -54,6 +66,16 @@ export function App() {
 	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)
 	const [seeding, setSeeding] = useState(false)
 	const [paletteOpen, setPaletteOpen] = useState(false)
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
+
+	const updateSidebarCollapsed = useCallback((collapsed: boolean) => {
+		setSidebarCollapsed(collapsed)
+		try {
+			localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed))
+		} catch {
+			// The rail still works for this session when private storage rejects the write.
+		}
+	}, [])
 
 	/** Boards kept mounted purely to let a closed tab's pending write flush. */
 	const [draining, setDraining] = useState<BoardMeta[]>([])
@@ -451,19 +473,27 @@ export function App() {
 				boards={api.boards}
 				onOpenBoard={(board) => void openBoard(board)}
 			/>
-			<div className="lb-shell">
-			<Sidebar
-				view={route.view}
-				activeBoardId={activeBoardId}
-				boards={api.boards}
-				onAllBoards={() => void goHome()}
-				onSettings={() => void goSettings()}
-				onHelp={() => void goHelp()}
-				onOpenBoard={(board) => void openBoard(board)}
-				onNewBoard={() => void createAndOpen()}
-			/>
+			<div className={sidebarCollapsed ? 'lb-shell lb-shell--sidebar-collapsed' : 'lb-shell'}>
+				<Sidebar
+					view={route.view}
+					activeBoardId={activeBoardId}
+					boards={api.boards}
+					collapsed={sidebarCollapsed}
+					onToggleCollapsed={() => updateSidebarCollapsed(!sidebarCollapsed)}
+					onAllBoards={() => void goHome()}
+					onSettings={() => void goSettings()}
+					onHelp={() => void goHelp()}
+					onOpenBoard={(board) => void openBoard(board)}
+					onNewBoard={() => void createAndOpen()}
+				/>
+				<button
+					type="button"
+					className="lb-sidebar__scrim"
+					onClick={() => updateSidebarCollapsed(true)}
+					aria-label="Collapse sidebar"
+				/>
 
-			<div className="lb-shell__body">
+				<div className="lb-shell__body">
 				<TabStrip
 					boards={api.boards}
 					tabs={tabs}

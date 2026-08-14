@@ -7,8 +7,10 @@
  * nothing. `PropertyDef.options` stays a plain `string[]`, so nothing about equality, validation or
  * the JSON-scalar bound has to move.
  *
- * The trade is that you can't *choose* the colour. Worth it here: the colours exist to tell options
- * apart at a glance, not to mean anything.
+ * The trade is that you can't *choose* the colour — unless the definition says otherwise. A property
+ * may carry `optionHues` for the case where the colour genuinely means something the label cannot
+ * say (a reader's highlight tags, say), and one lookup here keeps every chip, swatch and mark of
+ * that option in agreement wherever it is drawn.
  */
 
 import type { PropertyDef, StatusStage } from './types'
@@ -25,8 +27,10 @@ const HUES = [4, 25, 42, 96, 150, 172, 197, 224, 265, 320]
  * Trimmed and lowercased, so `DONE` and `done` land on the same colour. Inner spacing is left alone:
  * `To Do` and `ToDo` are two different options, and colouring them alike would say otherwise.
  */
-export function optionHue(option: string): number {
+export function optionHue(option: string, hues?: Record<string, number>): number {
 	const key = option.trim().toLowerCase()
+	const chosen = hues?.[option] ?? hues?.[key]
+	if (typeof chosen === 'number' && Number.isFinite(chosen)) return ((chosen % 360) + 360) % 360
 	let hash = 0
 	for (let i = 0; i < key.length; i++) {
 		// The classic 31-multiplier string hash, coerced back to int32 each round so it can't drift
@@ -37,8 +41,8 @@ export function optionHue(option: string): number {
 }
 
 /** The inline style that paints a chip its option's colour. See `.lb-chip` in the stylesheet. */
-export function optionStyle(option: string): Record<string, string> {
-	return { '--lb-opt-h': String(optionHue(option)) }
+export function optionStyle(option: string, hues?: Record<string, number>): Record<string, string> {
+	return { '--lb-opt-h': String(optionHue(option, hues)) }
 }
 
 /**
@@ -67,8 +71,10 @@ export function stageForOption(def: Pick<PropertyDef, 'stages'>, option: string)
 
 /** The style for one option of any choice type — stage-coloured for a status, hashed otherwise. */
 export function choiceStyle(
-	def: Pick<PropertyDef, 'type' | 'stages'>,
+	def: Pick<PropertyDef, 'type' | 'stages' | 'optionHues'>,
 	option: string
 ): Record<string, string> {
-	return def.type === 'status' ? stageStyle(stageForOption(def, option)) : optionStyle(option)
+	return def.type === 'status'
+		? stageStyle(stageForOption(def, option))
+		: optionStyle(option, def.optionHues)
 }

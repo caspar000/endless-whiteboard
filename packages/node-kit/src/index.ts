@@ -19,7 +19,9 @@ export {
 	getNodeDefinition,
 	getNodeDefinitions,
 	getNodeOwner,
+	getNodeTypesVersion,
 	getVisibleNodeDefinitions,
+	hasStripsBelow,
 	isExtensionEnabled,
 	isNodeType,
 	isNodeTypeEnabled,
@@ -51,13 +53,29 @@ export {
 
 // Extensions: the unit the app composes at startup, users toggle in Settings, and plugins ship as.
 export {
+	actionsForShape,
 	clearExtensionRegistry,
 	defineNode,
+	fileImportFor,
 	getExtension,
 	getExtensions,
 	registerExtension,
 	type Extension,
+	type FileImport,
+	type FileImportContext,
+	type ShapeAction,
 } from './extensions'
+
+// The outbound-request seam for extensions that reach the outside world — implemented by the app.
+export { getNetworkBridge, setNetworkBridge, type NetworkBridge } from './network'
+
+// The storage seam for extensions that own binary content — implemented by the app (§4.5).
+export {
+	getAssetBridge,
+	setAssetBridge,
+	useAssetUrl,
+	type AssetBridge,
+} from './assets'
 
 export {
 	createShapePropsMigrationIds,
@@ -65,6 +83,8 @@ export {
 	emptyPropsMigrations,
 } from './migrations'
 export { NodeEditorPopover } from './NodeEditorPopover'
+// The one way a node hosts its property/collection strips — see the component's doc comment.
+export { NodeStrips } from './NodeStrips'
 
 // Field & facts contracts
 export {
@@ -121,7 +141,8 @@ export {
 /**
  * Option colouring. Exported because the *help page* renders mock cards and has to paint their chips
  * the same colour the real card would — a help page that invents its own palette is a help page that
- * stops matching the app the first time this hash changes.
+ * stops matching the app the first time this hash changes. And because anything drawing an option
+ * *outside* a chip — a highlight painted into a book, say — has to match it for the same reason.
  */
 export { choiceStyle, optionHue, optionStyle, stageForOption, stageStyle } from './properties/options'
 export {
@@ -143,6 +164,7 @@ export {
 } from './properties/rates'
 export {
 	createProperty,
+	syncPropertyOptions,
 	deleteProperty,
 	findProperty,
 	mergeProperties,

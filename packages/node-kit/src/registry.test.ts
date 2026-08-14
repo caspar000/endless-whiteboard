@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { T } from 'tldraw'
 import {
 	ITEM_NODE_TYPE,
 	ROLLUP_NODE_TYPE,
 	TABLE_NODE_TYPE,
+	defineNode,
+	emptyPropsMigrations,
 	getDisabledExtensionIds,
 	getExtensions,
 	getNodeDefinition,
 	getNodeDefinitions,
+	getNodeTypesVersion,
 	getVisibleNodeDefinitions,
 	isNodeType,
 	isNodeTypeEnabled,
@@ -15,7 +19,20 @@ import {
 	setDisabledExtensionIds,
 	setExtensionEnabled,
 	tablesExtension,
+	type NodeDefinition,
 } from './index'
+
+/** A node type an already-registered extension gains later — see the regression test below. */
+const latecomerDefinition: NodeDefinition<{ text: string }> = {
+	type: 'node.latecomer',
+	label: 'Latecomer',
+	icon: 'L',
+	props: { text: T.string },
+	migrations: emptyPropsMigrations(),
+	defaultProps: () => ({ text: '' }),
+	defaultSize: { w: 100, h: 100 },
+	component: () => null,
+}
 
 // The registry is module state, so this file registers once up front — the same shape as the app's
 // composition root — and every test below reads the composed result.
@@ -105,6 +122,31 @@ describe('extensions', () => {
 	it('is idempotent by id, so HMR re-evaluation of a composition root cannot throw', () => {
 		expect(() => registerExtension(tablesExtension)).not.toThrow()
 		expect(getExtensions().filter((e) => e.id === 'lifeboard.tables')).toHaveLength(1)
+	})
+
+	it('picks up node types an already-registered extension has gained', () => {
+		/*
+		 * Regression: registration used to return early on a known id, so re-registering an extension
+		 * that had *grown* a node type silently skipped it. The registry then disagreed with the code
+		 * creating that type, and the editor died with "No shape util found for type …" — a dead board
+		 * until a full reload. Re-evaluation with new nodes is the normal case under HMR, and is
+		 * exactly what a runtime-loaded plugin will do.
+		 */
+		const grown = {
+			...tablesExtension,
+			nodes: [...tablesExtension.nodes, defineNode(latecomerDefinition)],
+		}
+		const versionBefore = getNodeTypesVersion()
+
+		registerExtension(grown)
+
+		expect(isNodeType('node.latecomer')).toBe(true)
+		expect(getNodeDefinitions().map((d) => d.type)).toContain('node.latecomer')
+		// The version bump is what tells the board its schema changed and the utils must be rebuilt.
+		expect(getNodeTypesVersion()).toBe(versionBefore + 1)
+		// Still one extension, and its existing nodes are untouched.
+		expect(getExtensions().filter((e) => e.id === 'lifeboard.tables')).toHaveLength(1)
+		expect(isNodeType(TABLE_NODE_TYPE)).toBe(true)
 	})
 
 	it('hides a disabled extension’s nodes from the UI but never from the schema', () => {

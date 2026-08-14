@@ -100,6 +100,18 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	autoHeight?: { minHeight: number }
 	/**
+	 * Where this node's property and collection strips are drawn.
+	 *
+	 * `'inline'` (the default) — the node component renders `<NodeStrips>` itself, inside its card.
+	 * Right for a node whose card *is* a text surface: a note's properties read as part of the note.
+	 *
+	 * `'below'` — the app draws the strips under the shape instead, exactly as it does for tldraw's
+	 * own shapes (see the app's ForeignPropertyStrips). Right for a node whose card is a picture: a
+	 * book's cover is the artwork, and rows sitting on top of it would read as part of the jacket.
+	 * A `'below'` node must **not** render `<NodeStrips>`, or its properties appear twice.
+	 */
+	strips?: 'inline' | 'below'
+	/**
 	 * Still registered so existing boards load and validate, but hidden from the toolbar, the canvas
 	 * tools and the create menu. Use `getVisibleNodeDefinitions()` for anything user-facing.
 	 */
@@ -374,6 +386,21 @@ export function isNodeTypeEnabled(type: string): boolean {
 	return owner === undefined || isExtensionEnabled(owner)
 }
 
+/**
+ * Bumped whenever the set of registered *types* changes — which is exactly when the editor's schema
+ * changes, and therefore when its shape utils have to be rebuilt.
+ *
+ * A number rather than a derived list so it can be handed to `useSyncExternalStore` directly. In a
+ * production build it settles at startup and never moves again; it exists for the two cases where
+ * types appear later: vite HMR re-evaluating an extension, and (the point of all this) a
+ * runtime-loaded plugin.
+ */
+let typesVersion = 0
+
+export function getNodeTypesVersion(): number {
+	return typesVersion
+}
+
 export function registerNode<Props extends object>(
 	def: NodeDefinition<Props>,
 	/** The extension this node arrived with; registrations without one are core and always enabled. */
@@ -384,6 +411,7 @@ export function registerNode<Props extends object>(
 	}
 	registry.set(def.type, def as unknown as NodeDefinition<never>)
 	if (owner !== undefined) ownerByType.set(def.type, owner)
+	typesVersion++
 	invalidateVisible()
 }
 
@@ -420,6 +448,16 @@ export function getVisibleNodeDefinitions(): NodeDefinition<never>[] {
 
 export function isNodeType(type: string): boolean {
 	return registry.has(type)
+}
+
+/**
+ * Whether this shape's strips are drawn *under* it rather than inside its card — true for every
+ * shape that isn't one of our nodes (tldraw's own stickies, images, geo), and for nodes that
+ * declare `strips: 'below'`. The app's ForeignPropertyStrips is the single consumer.
+ */
+export function hasStripsBelow(type: string): boolean {
+	const def = registry.get(type)
+	return def === undefined || def.strips === 'below'
 }
 
 /** Used by tests to get a clean registry. */

@@ -56,4 +56,13 @@ export interface PlatformAdapter {
 	estimateStorage(): Promise<StorageEstimate>
 	/** Latest rates against `base`, or `null` when they can't be reached. Never throws. */
 	fetchExchangeRates(base: string): Promise<RawExchangeRates | null>
+	/**
+	 * Generic outbound requests, for extensions that talk to a service the host knows nothing about
+	 * (the books extension and Open Library, say). Behind the adapter for the same reason the rates
+	 * call is: it is network, and the Tauri port has its own HTTP stack.
+	 *
+	 * `null` for anything that went wrong — offline, blocked, non-2xx, unparseable. Never throws.
+	 */
+	fetchExternalJson(url: string): Promise<unknown | null>
+	fetchExternalBlob(url: string): Promise<Blob | null>
 }

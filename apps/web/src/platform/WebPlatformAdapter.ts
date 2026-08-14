@@ -178,6 +178,39 @@ export function createWebPlatformAdapter(): PlatformAdapter {
 			}
 		},
 
+		/**
+		 * The generic outbound calls extensions make (see `PlatformAdapter`). Same posture as the
+		 * rates call above and for the same reasons: cross-origin, no credentials, and `null` rather
+		 * than a throw — an app that works offline cannot treat "no network" as an exception.
+		 *
+		 * `credentials: 'omit'` is deliberate: these are third-party services an extension chose, and
+		 * they have no business receiving cookies from this origin.
+		 */
+		async fetchExternalJson(url: string): Promise<unknown | null> {
+			try {
+				const response = await fetch(url, {
+					headers: { accept: 'application/json' },
+					credentials: 'omit',
+				})
+				if (!response.ok) return null
+				return (await response.json()) as unknown
+			} catch {
+				return null
+			}
+		},
+
+		async fetchExternalBlob(url: string): Promise<Blob | null> {
+			try {
+				const response = await fetch(url, { credentials: 'omit' })
+				if (!response.ok) return null
+				const blob = await response.blob()
+				// A zero-byte body is how some CDNs answer "no such image"; treat it as a miss.
+				return blob.size > 0 ? blob : null
+			} catch {
+				return null
+			}
+		},
+
 		async estimateStorage(): Promise<StorageEstimate> {
 			const persisted = (await navigator.storage?.persisted?.()) ?? false
 			if (!navigator.storage?.estimate) return { usage: null, quota: null, persisted }

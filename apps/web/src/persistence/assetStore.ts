@@ -1,3 +1,4 @@
+import type { AssetBridge } from '@lifeboard/node-kit'
 import type { TLAsset, TLAssetStore } from 'tldraw'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { downscaleImage } from './downscale'
@@ -91,6 +92,50 @@ export function waitForAssetUploads(timeoutMs = 10_000): Promise<void> {
 	})
 }
 
+/** Blob → cached object URL, shared by tldraw's asset resolve and the extension bridge below. */
+async function resolveHashToUrl(blobs: BlobStore, hash: string): Promise<string | null> {
+	const cached = objectUrlCache.get(hash)
+	if (cached) return cached
+
+	const blob = await blobs.get(hash)
+	if (!blob) return null
+
+	// A concurrent resolve for the same hash may have populated the cache while we awaited.
+	const raced = objectUrlCache.get(hash)
+	if (raced) return raced
+
+	const url = URL.createObjectURL(blob)
+	objectUrlCache.set(hash, url)
+	return url
+}
+
+/**
+ * The `AssetBridge` node-kit hands to extensions (see node-kit's `assets.ts`) — same blob store,
+ * same content addressing and object-URL cache as the tldraw asset path above, minus the image
+ * downscale: what comes through here is opaque binary (a book file, a rendered cover) that must be
+ * stored byte-for-byte.
+ *
+ * `store` is awaited by its callers *before* they create the shape that references the hash, so
+ * unlike tldraw's floating uploads there is no pending window for the drain or GC to worry about.
+ */
+export function createAssetBridge(blobs: BlobStore): AssetBridge {
+	return {
+		async store(blob: Blob) {
+			const hash = await sha256Hex(blob)
+			await blobs.put(hash, blob)
+			return assetSrcForHash(hash)
+		},
+		async resolveUrl(src: string) {
+			if (!isManagedAssetSrc(src)) return null
+			return resolveHashToUrl(blobs, hashFromAssetSrc(src))
+		},
+		async getBlob(src: string) {
+			if (!isManagedAssetSrc(src)) return null
+			return (await blobs.get(hashFromAssetSrc(src))) ?? null
+		},
+	}
+}
+
 export function createLifeboardAssetStore(blobs: BlobStore): TLAssetStore {
 	return {
 		async upload(_asset: TLAsset, file: File) {
@@ -117,21 +162,7 @@ export function createLifeboardAssetStore(blobs: BlobStore): TLAssetStore {
 			if (!src) return null
 			// Assets that aren't ours (e.g. a bookmark's remote image) pass through untouched.
 			if (!isManagedAssetSrc(src)) return src
-
-			const hash = hashFromAssetSrc(src)
-			const cached = objectUrlCache.get(hash)
-			if (cached) return cached
-
-			const blob = await blobs.get(hash)
-			if (!blob) return null
-
-			// A concurrent resolve for the same hash may have populated the cache while we awaited.
-			const raced = objectUrlCache.get(hash)
-			if (raced) return raced
-
-			const url = URL.createObjectURL(blob)
-			objectUrlCache.set(hash, url)
-			return url
+			return resolveHashToUrl(blobs, hashFromAssetSrc(src))
 		},
 
 		// `remove` is intentionally not implemented. Blobs are shared by content across boards,

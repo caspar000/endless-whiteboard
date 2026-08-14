@@ -13,6 +13,7 @@
     "gen:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@lifeboard/book-reader": "workspace:*",
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@tldraw/tlschema": "5.2.5",

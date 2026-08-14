@@ -2213,6 +2213,17 @@ button {
  * Deliberately styled like the old item card's field list, because that is what it replaces — the
  * difference is that any shape can wear it now, not just one node type.
  */
+/*
+ * The wrapper every property/collection strip is rendered through — node-kit's `NodeStrips`, never
+ * the strips composed directly. Placement is the host's (a card pads it; a below-shape strip is
+ * positioned by ForeignPropertyStrips), but *presentation* is this class and the strip rules under
+ * it: restyle here and every node — extensions included — and every shape follows.
+ */
+/* Both strips render null on a shape carrying nothing, so the wrapper hides itself. */
+.lb-node-strips:empty {
+	display: none;
+}
+
 .lb-strip {
 	margin: 7px 0 0;
 	display: flex;
@@ -4963,4 +4974,1781 @@ button.lb-props__eye:hover {
 	.lb-help__idea:hover {
 		transform: none;
 	}
+}
+
+/* ------------------------------------------------------------- book node */
+
+.lb-book {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	/* The card is only the cover — every value, reading progress included, is drawn under the shape
+	   — so it can clip to its rounded corners. The reader and file picker portal out of it. */
+	overflow: hidden;
+}
+
+.lb-book__cover {
+	display: block;
+	width: 100%;
+	height: auto;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+/* The typographic stand-in while there is no cover image (or none exists in the file). */
+.lb-book__jacket {
+	aspect-ratio: 2 / 3;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 8px;
+	padding: 18px 14px;
+	text-align: center;
+	background: linear-gradient(160deg, var(--lb-surface-2), var(--lb-bg-raised));
+}
+
+.lb-book__jacket-title {
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+
+.lb-book__jacket-author {
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+
+.lb-book__jacket-hint {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 13px;
+	color: var(--lb-text-dim);
+}
+
+.lb-book__jacket-hint small {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+
+.lb-book__picker {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.lb-book__picker-title {
+	font-weight: 600;
+}
+
+.lb-book__picker small {
+	color: var(--lb-text-faint);
+}
+
+/* ----------------------------------------------------------- book reader */
+
+.lb-reader {
+	position: absolute;
+	inset: 0;
+	/* Over the popover layer (240) and the dock (300); the reader is modal for the board. */
+	z-index: 400;
+	display: flex;
+	flex-direction: column;
+	background: var(--lb-bg);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	pointer-events: all;
+}
+
+.lb-reader__bar {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background: var(--lb-bg-raised);
+	border-bottom: 1px solid var(--lb-border);
+}
+
+.lb-reader__title {
+	flex: 1;
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.lb-reader__close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+
+.lb-reader__close:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__body {
+	flex: 1;
+	min-height: 0;
+	position: relative;
+	display: flex;
+}
+
+.lb-reader__notice {
+	margin: auto;
+	max-width: 420px;
+	text-align: center;
+	font-size: 13px;
+	color: var(--lb-text-dim);
+}
+
+.lb-reader__pdf {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--lb-canvas);
+}
+
+/* Scrolling turns the body into the scroll container; the pages stack inside it. */
+.lb-reader__pdf--scroll {
+	display: block;
+	overflow-y: auto;
+	align-items: stretch;
+}
+
+.lb-reader__scroll {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--lb-scroll-gap, 16px);
+	padding: 16px 0;
+}
+
+/* Reserves a page's height before it renders, so the scroll bar doesn't lurch as pages arrive. */
+.lb-reader__slot {
+	position: relative;
+	flex: none;
+}
+
+/*
+ * One or two pages, side by side — and the scroll container for them, so that zooming past the
+ * window scrolls the page rather than the whole reader (the arrows and page count are pinned to
+ * `__pdf` outside it). `safe center` is the reason both edges stay reachable: plain centring puts
+ * the overflow half above the top of the box, where no scrolling can reach it.
+ */
+.lb-reader__spread {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	display: flex;
+	align-items: safe center;
+	justify-content: safe center;
+	gap: 12px;
+	overflow: auto;
+}
+
+.lb-reader__pdf-page {
+	display: block;
+	background: #fff;
+	border-radius: var(--lb-page-radius, 2px);
+	box-shadow: var(--lb-page-shadow, var(--lb-shadow-2));
+}
+
+/* The desk the page lies on. */
+.lb-reader__book {
+	position: relative;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: var(--lb-canvas);
+}
+
+/*
+ * The page. Paper, deliberately: long-form text reads dark-on-light even in a dark app, and
+ * publisher stylesheets assume it (the reader injects `color-scheme: light` to match).
+ *
+ * Bounded to paper proportions rather than the window, because a line of text that runs the width
+ * of a 27-inch screen cannot be read — the eye loses the return sweep. `--lb-page-w` is the width
+ * you chose in the settings panel; `--lb-page-h` is what that width implies for a book page.
+ */
+.lb-reader__frame {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	max-width: var(--lb-page-w);
+	max-height: var(--lb-page-h);
+	/* All four come from the theme, set on `.lb-reader__book` by the reader. */
+	background: var(--lb-page-colour, #f6f2e9);
+	border-radius: var(--lb-page-radius, 2px);
+	box-shadow: var(--lb-page-shadow, var(--lb-shadow-2));
+}
+
+/* The frame is the paper; the view is what is printed on it. */
+.lb-reader__foliate {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* A spread is two pages of that width, side by side — the renderer splits the columns itself. */
+.lb-reader__book[data-mode='spread'] .lb-reader__frame {
+	max-width: calc(var(--lb-page-w) * 2);
+}
+
+/* Scrolling is one continuous strip of paper: the width still holds, the page height stops meaning
+   anything the moment the text is no longer cut into pages. */
+.lb-reader__book[data-mode='scroll'] .lb-reader__frame {
+	max-height: none;
+}
+
+/* A comic's pages have a size of their own, and the renderer fits them to the space it is given. */
+.lb-reader__book[data-layout='fixed'] .lb-reader__frame {
+	max-width: none;
+	max-height: none;
+	background: none;
+	box-shadow: none;
+}
+
+/* The seam down the middle of a spread: the shadow two facing pages cast into their own gutter,
+   so a spread reads as two sheets rather than one very wide one. */
+.lb-reader__gutter {
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 44px;
+	transform: translateX(-50%);
+	pointer-events: none;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--lb-seam-soft, rgb(0 0 0 / 2.5%)) 42%,
+		var(--lb-seam, rgb(0 0 0 / 4%)) 50%,
+		var(--lb-seam-soft, rgb(0 0 0 / 2.5%)) 58%,
+		transparent
+	);
+	transition: opacity 260ms ease-out;
+}
+
+/*
+ * The seam belongs to the paper, and the renderer turns a page by sliding the *text* across paper
+ * that never moves — so a seam left standing during a turn has columns running straight through it.
+ * It steps out of the way for the duration and comes back once the page has settled.
+ */
+.lb-reader__gutter[data-turning] {
+	opacity: 0;
+	transition-duration: 90ms;
+}
+
+/* `z-index` is load-bearing, not decoration. `<foliate-view>` sets `container-type: size` on its
+   host, which implies `contain: layout` and so makes it a stacking context — and a non-positioned
+   stacking context paints alongside `z-index: auto` positioned boxes, in tree order. The view is
+   appended after these buttons, so without a layer of its own the arrows are painted over and
+   swallow no clicks at all. The same applies to any chrome laid over a reader. */
+.lb-reader__nav {
+	position: absolute;
+	z-index: 1;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 64px;
+	border: none;
+	border-radius: 8px;
+	background: rgb(0 0 0 / 30%);
+	color: #fff;
+	cursor: pointer;
+	opacity: 0.55;
+}
+
+.lb-reader__nav:hover {
+	opacity: 1;
+}
+
+.lb-reader__nav:disabled {
+	opacity: 0.15;
+	cursor: default;
+}
+
+.lb-reader__nav--left {
+	left: 12px;
+}
+
+.lb-reader__nav--right {
+	right: 12px;
+}
+
+/* ------------------------------------------------ reader position bar */
+
+/*
+ * Printed at the foot of the page rather than floating under it, and in the page's own ink — this
+ * is a folio, not app chrome. Which is why it is monochrome: it belongs to the paper it sits on,
+ * and an accent colour would announce it as part of the application instead.
+ */
+.lb-reader__foot {
+	position: absolute;
+	z-index: 1;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: center;
+	gap: 6px;
+	padding-bottom: 8px;
+	/* The page is behind this; only the controls themselves should catch the pointer. */
+	pointer-events: none;
+}
+
+.lb-reader__track {
+	width: calc(100% - 32px);
+	height: 2px;
+	background: rgb(0 0 0 / 11%);
+	border-radius: 2px;
+	cursor: pointer;
+	pointer-events: all;
+}
+
+/* A bigger target than two pixels, without a thicker bar. */
+.lb-reader__track::before {
+	content: '';
+	display: block;
+	height: 14px;
+	margin-top: -6px;
+}
+
+.lb-reader__track:hover,
+.lb-reader__track:focus-visible {
+	background: rgb(0 0 0 / 16%);
+	outline: none;
+}
+
+.lb-reader__track-fill {
+	height: 100%;
+	border-radius: 2px;
+	background: rgb(0 0 0 / 40%);
+}
+
+.lb-reader__pos {
+	color: rgb(0 0 0 / 45%);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	pointer-events: all;
+}
+
+/* A comic has no paper of ours to print on, so the folio goes back to being chrome. */
+.lb-reader__book[data-layout='fixed'] .lb-reader__track {
+	background: rgb(255 255 255 / 14%);
+}
+
+.lb-reader__book[data-layout='fixed'] .lb-reader__track-fill {
+	background: rgb(255 255 255 / 45%);
+}
+
+.lb-reader__book[data-layout='fixed'] .lb-reader__pos {
+	color: rgb(255 255 255 / 55%);
+}
+
+/* ------------------------------------------------------- page turning */
+
+/*
+ * One turn of the page, as one sheet moving.
+ *
+ * Only ever one leaf animates. Forward, the sheet you have finished slides off to the left and the
+ * next is revealed underneath it; back, the previous sheet slides in from the left on top. The
+ * moving one is the one that casts a shadow, because it is the one that has been picked up — that
+ * shadow is what makes it read as a separate sheet rather than the whole spread sliding about.
+ *
+ * The stage clips, so a sheet leaves the page entirely instead of drifting across the desk.
+ * `overflow: clip` rather than `hidden` because it must not become a scroll container — the spread
+ * around it already is one, for zoom — and the clip margin lets the pages keep their own shadows.
+ */
+.lb-reader__stage {
+	position: relative;
+	overflow: clip;
+	overflow-clip-margin: 16px;
+}
+
+.lb-reader__leaf {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+}
+
+.lb-reader__leaf--out {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+/* Forward: the finished sheet slides away, and it is the one on top. */
+.lb-reader__stage:not([data-back]) .lb-reader__leaf--out {
+	z-index: 1;
+	animation: lb-sheet-away var(--lb-turn-ms, 340ms) cubic-bezier(0.32, 0, 0.24, 1) both;
+}
+
+/* Back: the returning sheet slides in over the one you were on. */
+.lb-reader__stage[data-back] .lb-reader__leaf--in {
+	position: relative;
+	z-index: 1;
+	animation: lb-sheet-back var(--lb-turn-ms, 340ms) cubic-bezier(0.32, 0, 0.24, 1) both;
+}
+
+/*
+ * The shadow fades in as the sheet lifts and out as it settles, rather than being switched on for
+ * the length of the turn. A shadow that simply appears and vanishes announces itself as an effect;
+ * one that arrives with the movement reads as the sheet leaving the page. It is faint on purpose —
+ * enough to separate two sheets, not enough to notice on its own.
+ */
+@keyframes lb-sheet-away {
+	from {
+		transform: translateX(0);
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 0%));
+	}
+	22% {
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 6%));
+	}
+	78% {
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 6%));
+	}
+	to {
+		transform: translateX(-102%);
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 0%));
+	}
+}
+
+@keyframes lb-sheet-back {
+	from {
+		transform: translateX(-102%);
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 0%));
+	}
+	22% {
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 6%));
+	}
+	78% {
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 6%));
+	}
+	to {
+		transform: translateX(0);
+		filter: drop-shadow(5px 0 14px rgb(0 0 0 / 0%));
+	}
+}
+
+/*
+ * Turning the shadow off has to outrank the keyframes that draw it, and only `!important` does
+ * that — an animation beats every normal-weight declaration but not an important one.
+ */
+.lb-reader__stage:not([data-shadow]) .lb-reader__leaf {
+	filter: none !important;
+}
+
+/* The setting is checked in JS too; this covers the CSS-only half. */
+@media (prefers-reduced-motion: reduce) {
+	.lb-reader__leaf--in,
+	.lb-reader__leaf--out {
+		animation: none;
+	}
+}
+
+/* --------------------------------------------------------- footnotes */
+
+/*
+ * `display` here would otherwise beat the browser's own `[hidden] { display: none }`, which is how
+ * an empty note ended up parked in the corner of the screen with no way to dismiss it. The popover
+ * has to stay mounted (foliate renders the note into it before it is shown), so `hidden` is the
+ * only thing standing between it and the page — it needs to actually win.
+ */
+.lb-reader__note[hidden] {
+	display: none;
+}
+
+.lb-reader__note {
+	position: fixed;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: #f6f2e9;
+	box-shadow: var(--lb-shadow-3, 0 8px 30px rgb(0 0 0 / 45%));
+	overflow: hidden;
+}
+
+.lb-reader__note-body {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+}
+
+/* The note is a real `<foliate-view>` — a rendered fragment of the book, not extracted text. */
+.lb-reader__note-body > * {
+	flex: 1;
+	min-width: 0;
+}
+
+.lb-reader__note-close {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border: none;
+	border-radius: 5px;
+	background: rgb(0 0 0 / 6%);
+	color: #333;
+	cursor: pointer;
+}
+
+.lb-reader__note-close:hover {
+	background: rgb(0 0 0 / 14%);
+}
+
+/* ------------------------------------------------------- back button */
+
+.lb-reader__back {
+	position: absolute;
+	z-index: 1;
+	left: 50%;
+	bottom: 34px;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 11px;
+	border: none;
+	border-radius: 999px;
+	background: rgb(0 0 0 / 62%);
+	color: #fff;
+	font-family: var(--lb-font);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.lb-reader__back:hover {
+	background: rgb(0 0 0 / 80%);
+}
+
+/* ------------------------------------------------------------ quote node */
+
+.lb-quote {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	/* The passage's own left edge, the way a pull quote is set in print. */
+	border-left: 3px solid var(--lb-accent);
+	border-radius: var(--lb-radius);
+	padding: 10px 13px;
+	height: auto;
+	min-height: var(--lb-quote-min-h, 64px);
+	overflow: visible;
+}
+
+.lb-quote__text {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	/* Serif, italic: an excerpt should read as someone else's words at a glance. */
+	font-family: Georgia, 'Times New Roman', serif;
+	font-style: italic;
+	overflow-wrap: anywhere;
+}
+
+.lb-quote__clip {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: 4px;
+	background: #fff;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+.lb-quote__source {
+	display: flex;
+	gap: 6px;
+	align-items: baseline;
+	margin-top: 8px;
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+
+.lb-quote__book {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lb-quote__loc {
+	flex: none;
+	color: var(--lb-text-dim);
+}
+
+.lb-quote__book--missing {
+	font-style: italic;
+}
+
+/* --------------------------------------------- reader selection & clips */
+
+/*
+ * pdf.js's text layer: invisible, positioned spans over the raster page. Without it a PDF is a
+ * picture — this is what makes a passage selectable, and so quotable. The rules mirror pdf.js's own
+ * `text_layer_builder.css`; its spans size themselves from `--total-scale-factor`, which PdfReader
+ * sets on this container.
+ */
+.lb-reader__page {
+	position: relative;
+	flex: none;
+	line-height: 0;
+}
+
+.lb-reader__text-layer {
+	position: absolute;
+	inset: 0;
+	overflow: clip;
+	line-height: 1;
+	text-align: initial;
+	text-size-adjust: none;
+	forced-color-adjust: none;
+	transform-origin: 0 0;
+	caret-color: CanvasText;
+	z-index: 1;
+}
+
+.lb-reader__text-layer span,
+.lb-reader__text-layer br {
+	position: absolute;
+	color: transparent;
+	white-space: pre;
+	cursor: text;
+	transform-origin: 0% 0%;
+}
+
+/*
+ * The half of pdf.js's text layer that lives in *CSS*, not in its JavaScript.
+ *
+ * `TextLayer` writes only custom properties on each span — `--font-height`, `--scale-x`, `--rotate`
+ * — and expects the page's stylesheet to turn them into a size and a transform. Without these rules
+ * every span renders at the default font size with no horizontal scaling, so the invisible hit
+ * areas sit narrower than the words they belong to: selection lands on the wrong characters and a
+ * highlight drawn from it is visibly too short. Copied from pdf.js's own `pdf_viewer.css`.
+ */
+.lb-reader__text-layer {
+	--min-font-size: 1;
+	--text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+	--min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.lb-reader__text-layer > :not(.markedContent),
+.lb-reader__text-layer .markedContent span:not(.markedContent) {
+	--font-height: 0;
+	--scale-x: 1;
+	--rotate: 0deg;
+	font-size: calc(var(--text-scale-factor) * var(--font-height));
+	transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.lb-reader__text-layer .markedContent {
+	display: contents;
+}
+
+/*
+ * Selection has to be turned back *on*. The reader is portalled into tldraw's container, which sets
+ * `user-select: none` throughout so dragging shapes never highlights the UI — with it inherited
+ * here, a PDF's text layer is unselectable and there is nothing to quote. (The foliate reader is
+ * unaffected: its content is in an iframe, which tldraw's stylesheet cannot reach.)
+ */
+.lb-reader__text-layer,
+.lb-reader__text-layer span {
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.lb-reader__text-layer ::selection {
+	background: var(--lb-selection);
+}
+
+/* The button that appears beside a selection. Fixed, so it needs no container maths — the two
+   readers report selections from very different coordinate spaces (our DOM, and an iframe's). */
+.lb-reader__quote-btn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 11px;
+	border: none;
+	border-radius: 7px;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.lb-reader__quote-btn:hover {
+	background: var(--lb-accent-hover);
+}
+
+.lb-reader__added {
+	flex: none;
+	font-size: 12px;
+	color: var(--lb-accent);
+}
+
+
+/*
+ * pdf.js's selection sentinel. Its own viewer appends this after the text spans; the `TextLayer`
+ * class does not, so PdfReader adds one — these rules are what make it work. Selectable content it
+ * must never be, or a drag past the last line selects the sentinel instead of the text.
+ */
+.lb-reader__text-layer .endOfContent {
+	display: block;
+	position: absolute;
+	inset: 100% 0 0;
+	z-index: -1;
+	cursor: default;
+	user-select: none;
+}
+
+/* Area clipping: the marquee layer sits over the page and takes the drag, so text selection and
+   region selection never fight over the same gesture. */
+.lb-reader__marquee-host {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	cursor: crosshair;
+	/* Dim the page so the part being clipped reads as the subject. */
+	background: rgb(0 0 0 / 18%);
+}
+
+.lb-reader__marquee {
+	position: absolute;
+	border: 1px solid var(--lb-accent);
+	background: var(--lb-accent-tint);
+	/* Punch the marquee back out of the dimming above. */
+	box-shadow: 0 0 0 9999px rgb(0 0 0 / 0%);
+	mix-blend-mode: normal;
+}
+
+
+/* ------------------------------------------------------ reader chrome */
+
+/* A toolbar button. One class for every tool in the bar — contents, view mode, clipping — so the
+   pressed state reads identically wherever it appears. */
+.lb-reader__tool {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 26px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+
+.lb-reader__tool:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__tool--on {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+
+/* The view-mode group reads as one control, so its buttons sit together in a well. */
+.lb-reader__modes {
+	flex: none;
+	display: flex;
+	gap: 2px;
+	padding: 2px;
+	border-radius: 8px;
+	background: var(--lb-surface);
+}
+
+/* Says what clip mode expects of you — a mode you can't see is a mode you can't use. */
+.lb-reader__hint {
+	flex: none;
+	margin: 0;
+	padding: 5px 12px;
+	text-align: center;
+	font-size: 12px;
+	color: var(--lb-accent);
+	background: var(--lb-accent-tint);
+}
+
+/* ------------------------------------------------------ reader outline */
+
+.lb-reader__toc {
+	flex: none;
+	width: 260px;
+	overflow-y: auto;
+	padding: 8px 0;
+	border-right: 1px solid var(--lb-border);
+	background: var(--lb-bg-raised);
+}
+
+.lb-reader__toc-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.lb-reader__toc-item {
+	display: block;
+	width: 100%;
+	padding: 6px 10px;
+	border: none;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	line-height: 1.35;
+	text-align: left;
+	cursor: pointer;
+}
+
+.lb-reader__toc-item:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__toc-empty {
+	margin: 0;
+	padding: 12px;
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
+
+/* ----------------------------------------------------- reader settings */
+
+/* The mirror of the outline panel, on the other side — navigation on the left, presentation on
+   the right, and the page keeps the middle. */
+.lb-reader__settings {
+	flex: none;
+	order: 1;
+	width: 240px;
+	overflow-y: auto;
+	padding: 12px;
+	border-left: 1px solid var(--lb-border);
+	background: var(--lb-bg-raised);
+	font-size: 12px;
+}
+
+.lb-reader__settings-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10px;
+	font-weight: 600;
+	color: var(--lb-text);
+}
+
+.lb-reader__settings-reset {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: none;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+
+.lb-reader__settings-reset:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__settings-reset:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.lb-reader__setting {
+	display: block;
+	margin-bottom: 12px;
+}
+
+.lb-reader__setting-label {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 4px;
+	color: var(--lb-text-dim);
+}
+
+.lb-reader__setting-label output {
+	color: var(--lb-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.lb-reader__setting input[type='range'] {
+	width: 100%;
+	accent-color: var(--lb-accent);
+}
+
+/* Paper-coloured, because it is a preview of the page and not of the panel. */
+.lb-reader__setting-sample {
+	margin: 6px 0 4px;
+	padding: 7px 9px;
+	border-radius: 5px;
+	background: #f6f2e9;
+	color: #1a1a1a;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.lb-reader__setting-note {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	line-height: 1.35;
+}
+
+.lb-reader__setting-select {
+	width: 100%;
+	padding: 4px 6px;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+}
+
+.lb-reader__settings-done {
+	width: 100%;
+	padding: 5px 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.lb-reader__settings-done:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+/* --------------------------------------------------- book details lookup */
+
+.lb-lookup {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.lb-lookup__search {
+	display: flex;
+	gap: 6px;
+}
+
+.lb-lookup__input {
+	flex: 1;
+	min-width: 0;
+	padding: 5px 8px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 6px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+}
+
+.lb-lookup__input:focus {
+	outline: none;
+	border-color: var(--lb-accent);
+}
+
+.lb-lookup__go {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	border: none;
+	border-radius: 6px;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	cursor: pointer;
+}
+
+.lb-lookup__note {
+	margin: 0;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+	line-height: 1.4;
+}
+
+.lb-lookup__results {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+/* A row is cover + title + author, because recognising the right edition is a visual act. */
+.lb-lookup__match {
+	display: flex;
+	gap: 8px;
+	width: 100%;
+	padding: 5px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	text-align: left;
+	cursor: pointer;
+}
+
+.lb-lookup__match:hover {
+	background: var(--lb-surface-hover);
+}
+
+.lb-lookup__cover {
+	flex: none;
+	width: 34px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 3px;
+	background: var(--lb-surface-2);
+}
+
+.lb-lookup__cover--none {
+	display: block;
+	border: 1px dashed var(--lb-border-strong);
+}
+
+.lb-lookup__meta {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.lb-lookup__title {
+	font-size: 12px;
+	line-height: 1.3;
+}
+
+.lb-lookup__sub {
+	font-size: 11px;
+	color: var(--lb-text-faint);
+}
+
+/* Open Library is a non-profit; saying where the data came from is the least we can do. */
+.lb-lookup__credit {
+	margin: 0;
+	font-size: 10px;
+	color: var(--lb-text-faint);
+}
+
+/* ------------------------------------------------------ book highlights */
+
+/*
+ * A mark left in a PDF page by a quote. Under the text layer, so the passage stays selectable, and
+ * translucent so the words read through it — a highlighter, not a redaction. The hue is the tag's
+ * own (`--lb-mark-h`, from the same hash that colours its chip); untagged quotes use the accent.
+ */
+.lb-reader__mark {
+	position: absolute;
+	z-index: 0;
+	padding: 0;
+	border: none;
+	border-radius: 2px;
+	background: hsl(var(--lb-mark-h, 224) 85% 55% / var(--lb-mark-a, 35%));
+	cursor: pointer;
+}
+
+.lb-reader__mark:hover {
+	background: hsl(var(--lb-mark-h, 224) 85% 55% / 55%);
+}
+
+/* The selection bar: take the quote, or take it as something in particular. */
+.lb-reader__quote-bar {
+	position: fixed;
+	transform: translateX(-50%);
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px;
+	border-radius: 9px;
+	background: var(--lb-surface);
+	box-shadow: var(--lb-shadow-1);
+}
+
+.lb-reader__tags {
+	display: flex;
+	gap: 4px;
+	padding-right: 2px;
+}
+
+.lb-reader__tag {
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: 1px solid hsl(var(--lb-opt-h) 60% 45%);
+	border-radius: 50%;
+	background: hsl(var(--lb-opt-h) 85% 55% / 45%);
+	cursor: pointer;
+}
+
+.lb-reader__tag:hover {
+	background: hsl(var(--lb-opt-h) 85% 55% / 85%);
+}
+
+/* An on/off setting in the reader panel. */
+.lb-reader__toggle {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin-bottom: 9px;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+
+.lb-reader__toggle input {
+	accent-color: var(--lb-accent);
+}
+
+/*
+ * The curling sheet. It sits over the page area and paints only the sheet being turned — the page
+ * being turned *to* is the real element beneath, showing through everywhere the sheet has left.
+ */
+.lb-reader__curl {
+	position: absolute;
+	z-index: 2;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+}
+
+/* A curl is not a slide; the leaves stay where they are and the canvas does the moving. */
+.lb-reader__stage[data-turn='curl'] .lb-reader__leaf {
+	animation: none !important;
+}
+
+/* The Advanced disclosure, and what it opens onto. */
+
+
+.lb-reader__settings-more:hover {
+	color: var(--lb-text);
+}
+
+
+
+/* ------------------------------------------------ reader settings cards */
+
+.lb-reader__settings-title {
+	margin: 4px 0 7px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--lb-text-dim);
+}
+
+/* Three choices, side by side and legible at a glance — the answer to "how should this look?"
+   should be a picture, not a menu. */
+.lb-reader__cards {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.lb-reader__card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 10px 2px 7px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-surface);
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 10px;
+	cursor: pointer;
+}
+
+.lb-reader__card:hover {
+	border-color: var(--lb-text-faint);
+}
+
+.lb-reader__card[aria-pressed='true'] {
+	border-color: var(--lb-accent);
+	box-shadow: inset 0 0 0 1px var(--lb-accent);
+	color: var(--lb-text);
+}
+
+/* A theme card is painted in its own colours, so the label is on the paper it describes. */
+.lb-reader__card-aa {
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.lb-reader__setting--colour {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.lb-reader__setting--colour input {
+	width: 34px;
+	height: 22px;
+	padding: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: none;
+	cursor: pointer;
+}
+
+.lb-reader__setting--colour .lb-reader__setting-label {
+	margin: 0;
+}
+
+/* ---------------------------------------------------- reader settings UI */
+
+.lb-reader__settings-title {
+	margin: 16px 0 8px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-faint);
+}
+
+.lb-reader__settings-title:first-of-type {
+	margin-top: 2px;
+}
+
+.lb-reader__settings-blurb {
+	margin: 0 0 8px;
+	font-size: 11px;
+	line-height: 1.45;
+	color: var(--lb-text-faint);
+}
+
+/*
+ * Three choices side by side. Squared off rather than rounded, and separated by hairlines rather
+ * than by gaps — the denser, flatter register the rest of the app reads in, and the one Logseq and
+ * AFFiNE both settle on: chrome that recedes and content that does not.
+ */
+.lb-reader__cards {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	margin-bottom: 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.lb-reader__card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 58px;
+	padding: 0 2px;
+	border: none;
+	border-right: 1px solid var(--lb-border);
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 10px;
+	line-height: 1.1;
+	text-align: center;
+	cursor: pointer;
+}
+
+.lb-reader__card:last-child {
+	border-right: none;
+}
+
+.lb-reader__card:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__card[aria-pressed='true'] {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	box-shadow: inset 0 -2px 0 var(--lb-accent);
+}
+
+.lb-reader__card--theme {
+	border-right-color: rgb(0 0 0 / 15%);
+}
+
+.lb-reader__card-aa {
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1;
+	font-family: Literata, Georgia, serif;
+}
+
+.lb-reader__customize {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: 100%;
+	padding: 6px 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.lb-reader__customize:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-reader__sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* ------------------------------------------------------ settings modal */
+
+.lb-modal {
+	position: absolute;
+	inset: 0;
+	z-index: 500;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+	background: rgb(0 0 0 / 55%);
+	pointer-events: all;
+}
+
+.lb-modal__sheet {
+	display: flex;
+	flex-direction: column;
+	width: min(720px, 100%);
+	max-height: min(600px, 100%);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 6px;
+	background: var(--lb-bg-raised);
+	box-shadow: 0 16px 48px rgb(0 0 0 / 55%);
+	overflow: hidden;
+}
+
+.lb-modal__bar {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 8px 0 16px;
+	height: 42px;
+	border-bottom: 1px solid var(--lb-border);
+}
+
+.lb-modal__title {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--lb-text);
+}
+
+.lb-modal__close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+
+.lb-modal__close:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-modal__body {
+	flex: 1;
+	min-height: 0;
+	display: grid;
+	grid-template-rows: auto 1fr;
+}
+
+/* Plain tabs with an underline, not a stack of cards. */
+.lb-modal__tabs {
+	display: flex;
+	gap: 2px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--lb-border);
+	background: var(--lb-bg);
+}
+
+.lb-modal__tab {
+	position: relative;
+	padding: 9px 12px 8px;
+	border: none;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.lb-modal__tab:hover {
+	color: var(--lb-text-dim);
+}
+
+.lb-modal__tab[aria-selected='true'] {
+	color: var(--lb-text);
+	box-shadow: inset 0 -2px 0 var(--lb-accent);
+}
+
+.lb-modal__page {
+	padding: 4px 20px 20px;
+	overflow-y: auto;
+}
+
+.lb-modal__section {
+	padding: 14px 0;
+	border-bottom: 1px solid var(--lb-border);
+}
+
+.lb-modal__section:last-child {
+	border-bottom: none;
+}
+
+.lb-modal__heading {
+	margin: 0 0 10px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-faint);
+}
+
+.lb-modal__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+/* Name on the left, control on the right, note underneath and out of the way. */
+.lb-modal__row {
+	display: grid;
+	grid-template-columns: 156px 1fr;
+	align-items: center;
+	gap: 3px 16px;
+}
+
+.lb-modal__row-label {
+	font-size: 12px;
+	color: var(--lb-text);
+}
+
+.lb-modal__row-control {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	justify-self: stretch;
+}
+
+.lb-modal__row[data-kind='toggle'] .lb-modal__row-control,
+.lb-modal__row[data-kind='colour'] .lb-modal__row-control {
+	justify-self: start;
+}
+
+.lb-modal__row input[type='range'] {
+	flex: 1;
+	min-width: 0;
+	accent-color: var(--lb-accent);
+}
+
+.lb-modal__value {
+	flex: none;
+	width: 78px;
+	text-align: right;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-faint);
+}
+
+.lb-modal__select {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+}
+
+.lb-modal__colour {
+	width: 46px;
+	height: 24px;
+	padding: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: none;
+	cursor: pointer;
+}
+
+.lb-modal__switch {
+	width: 32px;
+	height: 18px;
+	accent-color: var(--lb-accent);
+	cursor: pointer;
+}
+
+.lb-modal__note {
+	grid-column: 2;
+	margin: 0;
+	font-size: 10.5px;
+	line-height: 1.45;
+	color: var(--lb-text-faint);
+}
+
+.lb-modal__specimen {
+	grid-column: 2;
+	margin: 3px 0 0;
+	padding: 9px 11px;
+	border-radius: 4px;
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+.lb-modal__empty {
+	margin: 0;
+	padding: 14px 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--lb-text-faint);
+}
+
+.lb-modal__foot {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 48px;
+	padding: 0 12px 0 16px;
+	border-top: 1px solid var(--lb-border);
+	background: var(--lb-bg);
+}
+
+.lb-modal__reset {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 9px;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font-family: var(--lb-font);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.lb-modal__reset:hover:not(:disabled) {
+	border-color: var(--lb-border);
+	color: var(--lb-text);
+}
+
+.lb-modal__reset:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.lb-modal__done {
+	padding: 6px 16px;
+	border: none;
+	border-radius: 4px;
+	background: var(--lb-accent);
+	color: #fff;
+	font-family: var(--lb-font);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.lb-modal__done:hover {
+	background: var(--lb-accent-hover);
+}
+
+/* ---------------------------------------------------------- tag editor */
+
+.lb-tags {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.lb-tags__row {
+	display: grid;
+	grid-template-columns: 96px 118px 1fr 28px;
+	align-items: center;
+	gap: 10px;
+}
+
+/* The slider *is* the spectrum: its track carries the hues it selects between. */
+.lb-tags__hue {
+	width: 100%;
+	height: 6px;
+	appearance: none;
+	border-radius: 3px;
+	background: linear-gradient(
+		90deg,
+		hsl(0 70% 55%),
+		hsl(60 70% 55%),
+		hsl(120 70% 55%),
+		hsl(180 70% 55%),
+		hsl(240 70% 55%),
+		hsl(300 70% 55%),
+		hsl(359 70% 55%)
+	);
+	cursor: pointer;
+}
+
+.lb-tags__hue::-webkit-slider-thumb {
+	appearance: none;
+	width: 12px;
+	height: 12px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	background: hsl(var(--lb-opt-h) 70% 55%);
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+}
+
+.lb-tags__chip {
+	justify-self: start;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lb-tags__name {
+	min-width: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	font-size: 12px;
+}
+
+.lb-tags__name:focus {
+	outline: none;
+	border-color: var(--lb-accent);
+}
+
+.lb-tags__remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+
+.lb-tags__remove:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-tags__remove:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.lb-tags__add {
+	align-self: start;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 2px;
+	padding: 5px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-family: var(--lb-font);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.lb-tags__add:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+.lb-tags__note {
+	grid-column: 1;
+	margin-top: 4px;
 }

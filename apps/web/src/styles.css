@@ -6915,6 +6915,78 @@ button.lb-props__eye:hover {
 	pointer-events: none;
 }
 
+/*
+ * Reflowable page peels on mature View Transition engines.
+ *
+ * Foliate's "page" is a clipped column in one long iframe, not a DOM node we can bend. The browser
+ * snapshots the complete outgoing frame as `lb-reader-turn`; this radial mask peels that exact
+ * compositor image off the live next page. Unlike the canvas fallback, the snapshot naturally
+ * contains the EPUB's images, SVG, font shaping, decorations and annotations.
+ */
+@property --lb-reader-vt-fold {
+	syntax: '<percentage>';
+	inherits: false;
+	initial-value: 0%;
+}
+
+.lb-reader-vt::view-transition {
+	pointer-events: none;
+}
+
+/* Only the named book frame moves. Suppress the user agent's full-page cross-fade. */
+.lb-reader-vt::view-transition-old(root),
+.lb-reader-vt::view-transition-new(root) {
+	animation: none;
+}
+
+.lb-reader-vt::view-transition-old(lb-reader-turn),
+.lb-reader-vt::view-transition-new(lb-reader-turn) {
+	animation: none;
+	background: var(--lb-reader-vt-paper, Canvas);
+	mix-blend-mode: normal;
+}
+
+.lb-reader-vt::view-transition-old(lb-reader-turn) {
+	z-index: 1;
+	animation: lb-reader-vt-peel var(--lb-reader-vt-duration, 450ms)
+		cubic-bezier(0.3, 0.1, 0.4, 1) both;
+}
+
+.lb-reader-vt--forward::view-transition-old(lb-reader-turn) {
+	-webkit-mask-image: radial-gradient(
+		circle at 108% var(--lb-reader-vt-origin-y, 108%),
+		transparent calc(var(--lb-reader-vt-fold) - var(--lb-reader-vt-fold-softness, 6%)),
+		black var(--lb-reader-vt-fold)
+	);
+	mask-image: radial-gradient(
+		circle at 108% var(--lb-reader-vt-origin-y, 108%),
+		transparent calc(var(--lb-reader-vt-fold) - var(--lb-reader-vt-fold-softness, 6%)),
+		black var(--lb-reader-vt-fold)
+	);
+}
+
+.lb-reader-vt--backward::view-transition-old(lb-reader-turn) {
+	-webkit-mask-image: radial-gradient(
+		circle at -8% var(--lb-reader-vt-origin-y, 108%),
+		transparent calc(var(--lb-reader-vt-fold) - var(--lb-reader-vt-fold-softness, 6%)),
+		black var(--lb-reader-vt-fold)
+	);
+	mask-image: radial-gradient(
+		circle at -8% var(--lb-reader-vt-origin-y, 108%),
+		transparent calc(var(--lb-reader-vt-fold) - var(--lb-reader-vt-fold-softness, 6%)),
+		black var(--lb-reader-vt-fold)
+	);
+}
+
+@keyframes lb-reader-vt-peel {
+	from {
+		--lb-reader-vt-fold: 0%;
+	}
+	to {
+		--lb-reader-vt-fold: 118%;
+	}
+}
+
 /* A curl is not a slide; the leaves stay where they are and the canvas does the moving. */
 .lb-reader__stage[data-turn='curl'] .lb-reader__leaf {
 	animation: none !important;

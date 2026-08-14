@@ -98,6 +98,9 @@ importers:
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../node-kit
+      '@zumer/snapdom':
+        specifier: 2.23.1
+        version: 2.23.1
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -2290,6 +2293,9 @@ packages:
 
   '@vitest/utils@4.1.10':
     resolution: {integrity: sha512-fy9am/HWxbaGt/Sawrp90vt6Y6jQwf1RX77cz3uwoJwJVMli/e1IEwRPnMNJ7vKfPTwo0diXifkpPvwH9v7nGA==}
+
+  '@zumer/snapdom@2.23.1':
+    resolution: {integrity: sha512-r+6LRFXIpzTxlvGBjTr7mhvVW05TozgyE1QFmvO1hbchdbl4Km5/7DIkeyl2+nEVbz8Sp6/K2g4b86pXhCrFIQ==}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -6494,6 +6500,8 @@ snapshots:
       '@vitest/pretty-format': 4.1.10
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
+
+  '@zumer/snapdom@2.23.1': {}
 
   accepts@2.0.0:
     dependencies:

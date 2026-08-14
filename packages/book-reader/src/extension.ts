@@ -1,5 +1,6 @@
 import { defineNode, type Extension, type ShapeAction } from '@lifeboard/node-kit'
 import { BookOpen, Sparkles } from 'lucide-react'
+import { bookCommands } from './commands'
 import { BOOK_NODE_TYPE, bookNodeDefinition } from './definition'
 import { openEnrich } from './enrich/enrichTarget'
 import { bookFileImport } from './importBook'
@@ -37,6 +38,7 @@ export const bookReaderExtension: Extension = {
 	version: '0.3.0',
 	author: 'Lifeboard',
 	nodes: [defineNode(bookNodeDefinition), defineNode(quoteNodeDefinition)],
+	commands: bookCommands,
 	fileImports: [bookFileImport],
 	actions: [findDetailsAction],
 }

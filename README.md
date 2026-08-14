@@ -18,7 +18,7 @@ pnpm dev          # http://localhost:5173
 | `pnpm build` | Production build (also writes `apps/web/stats.html` for bundle inspection) |
 | `pnpm typecheck` | `tsc --noEmit` across the workspace |
 | `pnpm test` | Vitest units (properties, facts, table queries, collections, registry, snapshot fixtures) |
-| `pnpm test:e2e` | Playwright, against the **production build** |
+| `pnpm test:e2e` | Playwright, against the **production build**. Serves on 4173; set `LB_E2E_PORT` to run two checkouts at once |
 | `pnpm --filter @lifeboard/web gen:icons` | Regenerate PWA icons from `public/favicon.svg` |
 
 ## The two screens
@@ -57,13 +57,17 @@ them into notes-with-properties and tables the first time an old board loads.
 ```
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/app/                routing, home screen (sidebar + card grid), settings panels
+  src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
+  src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
-  src/canvas/             <Board> wrapper, dotted paper, node create menu, toolbar, debug badge
+  src/canvas/             <Board> wrapper, dotted paper, toolbar, selection toolbar, debug badge
+  src/canvas/insertNode.ts  placing a node, + the "Add <node>" commands generated from the registry
   src/extensions.ts       the composition root — which extensions this build ships, and their toggles
   src/platform/           PlatformAdapter (the entire future Tauri port surface)
   src/persistence/        asset store, downscaling, thumbnails, backup zip, tldraw-internals wrapper
 packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK)
   src/registry.tsx        NodeDefinition + registry + createNodeShapeUtil  ← the load-bearing seam
+  src/commands.ts         Command + registry — every command surface reads this one table
   src/extensions.ts       Extension: the unit the app composes, users toggle, and plugins ship as
   src/fields.ts           field types, coercion, currency formatting
   src/facts.ts            the "what data does this node expose" contract
@@ -80,8 +84,8 @@ written outside the host.
 
 ## How extensions work
 
-An `Extension` is a named bag of contributions — today, node definitions — with an id, a display
-name, an icon and a version for the Settings card:
+An `Extension` is a named bag of contributions — node definitions, and optionally commands — with
+an id, a display name, an icon and a version for the Settings card:
 
 - **Composing.** `apps/web/src/extensions.ts` is the composition root: one `registerExtension` line
   per extension this build ships. `Board.tsx` imports it first, so the registry is populated before
@@ -126,6 +130,27 @@ sanitise), with `remark-breaks` so Enter always starts a visible new line.
 one `registerExtension` line to the composition root — nothing else. Shape util, canvas tool, dock
 button, keyboard shortcut, context-menu entry, the Settings card and table participation all follow
 from the registry. There is deliberately no per-node-type branching in the UI.
+
+**Adding a command** means one `registerCommand` call — an id, a title, a group, optionally a `when`
+predicate and a default `kbd`. `packages/node-kit/src/commands.ts` is the one table every command
+surface reads: today the ⌘K palette renders it *and* the Help page's shortcut list is generated from
+it, so a binding is documented by the command existing rather than by someone remembering to add a
+row. A user-rebindable keymap and generated tldraw overrides are each one more implementation over
+the same rows. The palette contains no per-command branching, for the same reason the dock contains
+none per node type. Extensions contribute through `Extension.commands`, and disabling one hides its
+commands exactly as it hides its nodes.
+
+Two rules that fall out of this. `when` is *availability*, not existence — the palette applies it
+(Duplicate is not offered with an empty selection) and the Help page deliberately does not, because a
+reference documents what exists. And anything derived from a node type — the generated "Add …"
+commands in `canvas/insertNode.ts` — is registered with that node's owner (`getNodeOwner`), so one
+extension toggle takes the node and everything generated from it out of the UI together.
+
+**The palette blurs the board while it is open.** tldraw reads keys off the *document* and gates
+them on `editor.getIsFocused()`, so `App.tsx` passes `null` to `focusOnly` whenever `paletteOpen` is
+set. Without that, every letter typed into the palette would also switch the canvas tool underneath
+it. ⌘K itself is a capture-phase `window` listener rather than a tldraw action, because that same
+focus gate would make an action dead everywhere except an open board.
 
 **Frames are outlines, not cards.** `Board.tsx` replaces the built-in `frame` util with
 `FrameShapeUtil.configure({ showColors: true, getCustomDisplayValues })` — the first flag registers the

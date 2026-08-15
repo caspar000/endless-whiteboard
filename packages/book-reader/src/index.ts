@@ -21,11 +21,18 @@ export {
 } from './formats'
 export { bookFileImport, loadBookIntoShape } from './importBook'
 export {
+	HIGHLIGHT_TAGS,
 	QUOTE_NODE_TYPE,
 	quoteNodeDefinition,
 	quoteTitle,
 	type QuoteNodeProps,
 } from './quote/definition'
+/*
+ * For the app's Help page, which describes what the reader offers and should not have to keep its
+ * own copy of the tag names or the view modes. Both are plain string tables; nothing that draws a
+ * page is reachable from here.
+ */
+export { VIEW_MODE_LABELS, VIEW_MODES, type ViewMode } from './reader/types'
 export { addQuoteToBoard, type NewQuote } from './quote/createQuote'
 export {
 	parseSearchResponse,

@@ -2,7 +2,6 @@ import {
 	createProperty,
 	findProperty,
 	getAssetBridge,
-	optionHue,
 	propertyIdFromName,
 	syncPropertyOptions,
 	readPropertyRegistry,
@@ -31,7 +30,8 @@ import {
 } from 'tldraw'
 import { READING_PROGRESS_PROPERTY, type BookNodeProps } from '../definition'
 import { addQuoteToBoard, type NewQuote } from '../quote/createQuote'
-import { highlightProperty, QUOTE_NODE_TYPE, type QuoteNodeProps } from '../quote/definition'
+import { highlightProperty } from '../quote/definition'
+import { collectHighlights } from './highlights'
 import { typingElsewhere } from './keys'
 import { SettingsModal, type SettingsGroup } from './SettingsModal'
 import { SettingsPanel } from './SettingsPanel'
@@ -130,44 +130,30 @@ export function BookReaderOverlay({
 		return shape && shape.type === 'node.book' ? (shape.props as BookNodeProps).location : ''
 	})
 
+	/** Every reading preference, in one place, remembered for the next book (see `settings.ts`). */
+	const [settings, setSettings] = useState<ReaderSettings>(loadReaderSettings)
+
+	/** The colour each tag was configured with, in the shape `optionHue` wants. */
+	const tagHues = useMemo(
+		() => Object.fromEntries(settings.tags.map((t) => [t.label, t.hue])),
+		[settings.tags]
+	)
+
 	/**
 	 * The quotes taken from this book, as marks. Live, so a passage you highlight appears in the
-	 * page immediately — and one you delete from the board stops being marked.
-	 *
-	 * The tag's hue is resolved here rather than in the readers: the property registry is a
-	 * board-level concern, and the readers should know only "what colour".
+	 * page immediately — and one you delete from the board stops being marked. Recomputed when the
+	 * tag palette changes too, so recolouring a tag recolours its marks.
 	 */
 	const highlights = useValue<readonly Highlight[]>(
 		'lifeboard:book-highlights',
-		() => {
-			const tagId = findProperty(readPropertyRegistry(editor), propertyIdFromName('Highlight'))?.id
-			const found: Highlight[] = []
-			for (const shape of editor.getCurrentPageShapes()) {
-				if (shape.type !== QUOTE_NODE_TYPE) continue
-				const props = shape.props as QuoteNodeProps
-				if (props.sourceId !== bookId || !props.location) continue
-				const tag = tagId ? readShapeProperties(shape)[tagId] : null
-				found.push({
-					quoteId: shape.id,
-					location: props.location,
-					rects: props.rects,
-					hue:
-						typeof tag === 'string' && tag
-							? optionHue(tag, Object.fromEntries(tagsRef.current.map((t) => [t.label, t.hue])))
-							: null,
-				})
-			}
-			return found
-		},
-		[editor, bookId]
+		() => collectHighlights(editor, bookId, tagHues),
+		[editor, bookId, tagHues]
 	)
 
 	const [file, setFile] = useState<File | null>(null)
 	const [missing, setMissing] = useState(false)
 	const [selection, setSelection] = useState<ReaderSelection | null>(null)
 	const [added, setAdded] = useState(0)
-	/** Every reading preference, in one place, remembered for the next book (see `settings.ts`). */
-	const [settings, setSettings] = useState<ReaderSettings>(loadReaderSettings)
 	const [clipping, setClipping] = useState(false)
 	const [tocOpen, setTocOpen] = useState(false)
 	const [settingsOpen, setSettingsOpen] = useState(false)
@@ -201,9 +187,6 @@ export function BookReaderOverlay({
 	// Read by callbacks that must not be rebuilt every time a setting moves.
 	const settingsRef = useRef(settings)
 	settingsRef.current = settings
-	/** Read inside `useValue`, which recomputes outside React's render and cannot close over state. */
-	const tagsRef = useRef(settings.tags)
-	tagsRef.current = settings.tags
 
 	const change = useCallback((patch: Partial<ReaderSettings>) => {
 		setSettings((current) => {

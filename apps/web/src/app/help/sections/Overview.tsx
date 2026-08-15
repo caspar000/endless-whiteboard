@@ -1,4 +1,5 @@
 import {
+	BookOpen,
 	Eraser,
 	Frame,
 	Hand,
@@ -6,6 +7,7 @@ import {
 	MousePointer2,
 	NotepadText,
 	Pen,
+	QuoteIcon,
 	Shapes,
 	Spline,
 	StickyNote,
@@ -85,6 +87,22 @@ const DOCK_GROUPS: DockTool[][] = [
 			kbd: ['6'],
 			blurb:
 				'A live, read-only view of the board — rows with filters, groups and sums, or one big number. Double-click it to configure.',
+		},
+		{
+			id: 'node-book',
+			label: 'Book',
+			icon: <BookOpen size={19} />,
+			kbd: [],
+			blurb:
+				'A book you can read full-screen, remembering where you stopped. Usually you drop a PDF or EPUB on the board instead — placing one from here makes a card that asks for a file.',
+		},
+		{
+			id: 'node-quote',
+			label: 'Quote',
+			icon: <QuoteIcon size={19} />,
+			kbd: [],
+			blurb:
+				'A passage taken out of a book, arrow-linked back to it and still pointing at its page. Made while reading; it is in the dock because every node type is.',
 		},
 	],
 	[

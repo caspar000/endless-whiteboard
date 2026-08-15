@@ -42,6 +42,7 @@ and the user can toggle in **Settings → Extensions**:
 |---|---|---|---|
 | **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
 | **Tables** (in node-kit) | `node.table` | A live, read-only table view of the board — grouping, filters, totals, or a single big number. | — |
+| **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ as a cover card, a full-screen reader that remembers its place, and passages taken out of it as quote cards linked back to the page. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -58,6 +59,7 @@ them into notes-with-properties and tables the first time an old board loads.
 apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/app/                routing, home screen (sidebar + card grid)
   src/app/settings/       the settings page: its rail of tabs, and the extension pages under one
+  src/app/help/           the help page: sections.tsx is the whole contents, one file per section
   src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
@@ -76,6 +78,7 @@ packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK
   src/facts.ts            the "what data does this node expose" contract
   src/nodes/*/            item, rollup (legacy, schema-only), table (+ its extension)
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
+packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```

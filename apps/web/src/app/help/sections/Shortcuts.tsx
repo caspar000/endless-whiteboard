@@ -67,6 +67,14 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		title: 'Reading a book',
+		rows: [
+			[['→', 'PageDown', 'Space'], 'Next page'],
+			[['←', 'PageUp'], 'Previous page'],
+			[['Esc'], 'Close the contents or the settings, then the reader'],
+		],
+	},
+	{
 		title: 'Typing an answer',
 		rows: [
 			[['{'], 'Start an expression, anywhere text can be typed'],

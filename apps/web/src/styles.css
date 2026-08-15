@@ -4671,6 +4671,144 @@ button.lb-props__eye:hover {
 	color: var(--lb-money);
 }
 
+/*
+ * The books demos: a file becoming a cover, and a passage becoming a quote.
+ *
+ * The cover is drawn rather than shown — a real jacket would mean shipping cover art in the bundle
+ * and picking a book to advertise, and neither is what the demo is about. What it has to get right
+ * is the shape (a 2:3 card) and the property strips underneath it, which are the actual claim.
+ */
+.lb-demo__file {
+	position: absolute;
+	left: 132px;
+	top: 96px;
+	padding: 7px 12px;
+	border: 1px dashed var(--lb-border-strong);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+	transition: opacity 300ms ease, transform 300ms ease;
+}
+.lb-demo__file--gone {
+	opacity: 0;
+	transform: translateX(40px) scale(0.9);
+}
+/*
+ * Wider than the cover it holds, because the strips underneath are the point and "Frank Herbert"
+ * wrapping onto two lines inside a 104px card is a worse lie about the app than a card that is not
+ * exactly as wide as its property rows.
+ */
+.lb-demo__bookwrap {
+	position: absolute;
+	left: 316px;
+	/* High enough that the cover plus its two property strips clear the stage's caption. */
+	top: 18px;
+	width: 142px;
+}
+.lb-demo__book {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	gap: 3px;
+	width: 98px;
+	height: 132px;
+	padding: 12px 11px;
+	border-radius: 4px 8px 8px 4px;
+	/* A jacket, not a card: the darker spine on the left is what makes 104×100px read as a book. */
+	background: linear-gradient(100deg, var(--lb-accent) 0 8px, color-mix(in srgb, var(--lb-accent) 62%, #1a1a24) 8px);
+	color: var(--lb-on-accent);
+	box-shadow: var(--lb-shadow-2);
+}
+.lb-demo__booktitle {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+.lb-demo__bookauthor {
+	font-size: 10.5px;
+	opacity: 0.8;
+	min-height: 13px;
+}
+
+/* The mock reader page the quote comes out of. */
+.lb-demo__page {
+	position: absolute;
+	left: 40px;
+	top: 34px;
+	display: flex;
+	flex-direction: column;
+	gap: 11px;
+	width: 250px;
+	padding: 20px 22px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	box-shadow: var(--lb-shadow-2);
+	font-size: 11.5px;
+	line-height: 1.55;
+}
+/* Body text as texture — the passage is the only line anyone is meant to read. */
+.lb-demo__pageline {
+	height: 7px;
+	border-radius: 3px;
+	background: var(--lb-border);
+}
+.lb-demo__pageline:nth-of-type(2) {
+	width: 78%;
+}
+.lb-demo__passage {
+	border-radius: 3px;
+	padding: 1px 2px;
+	background: transparent;
+	transition: background 300ms ease;
+}
+/* The highlighter, in the hue the "Key" tag is defined with (quote/definition.tsx). */
+.lb-demo__passage--on {
+	background: hsl(42 92% 55% / 45%);
+	color: var(--lb-text);
+}
+.lb-demo__quote {
+	position: absolute;
+	left: 408px;
+	top: 56px;
+	width: 190px;
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	padding: 12px 14px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	box-shadow: var(--lb-shadow-1);
+	font-size: 11.5px;
+	line-height: 1.5;
+}
+.lb-demo__quotemark {
+	font-size: 15px;
+	line-height: 1;
+	color: var(--lb-text-faint);
+}
+.lb-demo__quotetext {
+	color: var(--lb-text);
+}
+.lb-demo__quotefoot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 10.5px;
+	color: var(--lb-text-faint);
+}
+.lb-demo__tag {
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: hsl(42 92% 55% / 30%);
+	color: var(--lb-text-dim);
+	font-weight: 600;
+}
+
 /* ------------------------------------------------------------- help: shortcuts */
 
 .lb-help__keygroups {

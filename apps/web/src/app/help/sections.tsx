@@ -1,7 +1,8 @@
-import { Compass, Keyboard, NotepadText, Sigma, Spline, Table, Tags } from 'lucide-react'
+import { BookOpen, Compass, Keyboard, NotepadText, Sigma, Spline, Table, Tags } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
 import { Asking } from './sections/Asking'
+import { Books } from './sections/Books'
 import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
 import { Properties } from './sections/Properties'
@@ -89,6 +90,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Table size={15} />,
 		Component: Tables,
+	},
+	{
+		id: 'books',
+		label: 'Books',
+		title: 'Books on the board',
+		lede: 'Drop a PDF or an EPUB and it becomes a card you can read full-screen — and every passage you take out of it lands beside it as a quote, still pointing at the page it came from.',
+		group: 'Extensions',
+		icon: <BookOpen size={15} />,
+		Component: Books,
 	},
 	{
 		id: 'shortcuts',

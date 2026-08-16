@@ -159,7 +159,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.find",
 		"title": "Find nodes",
-		"description": "Searches the shapes on a board and returns what matched, with their ids, labels, positions and property values. With no filters it returns everything. This is how to look at a board before changing it.",
+		"description": "Searches the shapes on a board and returns what matched, with their ids, labels, positions and property values. With no filters it returns everything. This is how to look at a board before changing it. Labels are titles only — a note’s label is its first line — so use node.get on a shape to read what it actually says.",
 		"readOnly": true,
 		"inputSchema": {
 			"type": "object",
@@ -192,7 +192,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.get",
 		"title": "Get node",
-		"description": "One shape in full: type, label, position, size and every property value it carries.",
+		"description": "One shape in full: type, label, position, size, every property value it carries, and its text — the actual body of a note, not just the title node.find shows. Use this to read what a node says before acting on it.",
 		"readOnly": true,
 		"inputSchema": {
 			"type": "object",
@@ -266,6 +266,95 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 				"shapeId": {
 					"type": "string",
 					"description": "The shape to delete."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"shapeId"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "node.image",
+		"title": "Add image from URL",
+		"description": "Downloads an image and places it on the board, returning the new shape id. Give a direct link to an image file (ending .png, .jpg, .webp and so on), not a link to the page it appears on. The image is fetched by the browser, so its host has to allow that — Wikimedia and most CDNs do. Position is the centre in page coordinates; omit x and y to place it in the middle of the current view.",
+		"readOnly": false,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"url": {
+					"type": "string",
+					"description": "Direct https URL of the image file."
+				},
+				"x": {
+					"type": "number",
+					"description": "Page x of the image’s centre."
+				},
+				"y": {
+					"type": "number",
+					"description": "Page y of the image’s centre."
+				},
+				"width": {
+					"type": "number",
+					"description": "Width to place it at, in page units. Omit to use the image’s own width, capped so a large picture does not swamp the board."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"url"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "node.config",
+		"title": "Read node configuration",
+		"description": "The settings a node carries beyond its text and position — for a table that is its source, columns, groupBy, sorts and layout. Read this before node.configure: the JSON it returns is exactly the shape node.configure expects back, so there is no need to guess the structure. Also returns the shape’s collection, if it gathers.",
+		"readOnly": true,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"shapeId": {
+					"type": "string",
+					"description": "The shape to read."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"shapeId"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "node.configure",
+		"title": "Configure node",
+		"description": "Changes a node’s settings — a table’s source, columns, groupBy, sorts or layout, for example. Pass config as a JSON object of only the keys you want to change; the rest are left alone. Read node.config first to see the exact structure. Every value is validated against the node type’s own schema, so a wrong shape is refused with the reason rather than written.",
+		"readOnly": false,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"shapeId": {
+					"type": "string",
+					"description": "The shape to configure."
+				},
+				"config": {
+					"type": "string",
+					"description": "JSON object of settings to change, merged over the current ones. Only top-level keys are merged — send a whole object for a nested key such as \"source\" or \"layout\"."
+				},
+				"collection": {
+					"type": "string",
+					"description": "JSON object making this shape gather others: {source, view, op, property}. Send \"null\" to stop it gathering. Any shape can carry one, not just a table."
 				},
 				"boardId": {
 					"type": "string",

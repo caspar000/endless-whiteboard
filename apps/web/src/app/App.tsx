@@ -9,7 +9,9 @@ import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
 import { setAgentEditorSource, startAgentBridge, stopAgentBridge } from '../agent/bridge'
+import { discoverDevHost, getDevHost, setDevHost, subscribeToDevHost } from '../agent/devHost'
 import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
+import { AgentPanel } from './AgentPanel'
 import { setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
 import { CommandPalette } from './CommandPalette'
@@ -47,6 +49,22 @@ const MAX_DRAIN_MS = 15_000
 const THUMBNAIL_TIMEOUT_MS = 2_000
 
 const SIDEBAR_COLLAPSED_KEY = 'lifeboard:sidebar:collapsed'
+const AGENT_PANEL_KEY = 'lifeboard:agentPanel:open'
+
+/**
+ * Remembered across reloads, and closed by default.
+ *
+ * Closed rather than open because the panel is only useful once an agent host is running, and a
+ * permanent empty column beside the canvas for everyone who has not started one is a worse default
+ * than a menu item.
+ */
+function loadAgentPanelOpen(): boolean {
+	try {
+		return localStorage.getItem(AGENT_PANEL_KEY) === 'true'
+	} catch {
+		return false
+	}
+}
 
 function loadSidebarCollapsed(): boolean {
 	try {
@@ -70,6 +88,32 @@ export function App() {
 	const [seeding, setSeeding] = useState(false)
 	const [paletteOpen, setPaletteOpen] = useState(false)
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
+	const [agentPanelOpen, setAgentPanelOpen] = useState(loadAgentPanelOpen)
+
+	const updateAgentPanelOpen = useCallback((open: boolean) => {
+		setAgentPanelOpen(open)
+		try {
+			localStorage.setItem(AGENT_PANEL_KEY, String(open))
+		} catch {
+			// The panel still works for this session when private storage rejects the write.
+		}
+	}, [])
+
+	/**
+	 * Toggled through the updater rather than off the rendered value, because the ⌘K command holds
+	 * this closure via `setAppCommandApi` and would otherwise flip a stale one.
+	 */
+	const toggleAgentPanel = useCallback(() => {
+		setAgentPanelOpen((open) => {
+			const next = !open
+			try {
+				localStorage.setItem(AGENT_PANEL_KEY, String(next))
+			} catch {
+				// As above.
+			}
+			return next
+		})
+	}, [])
 
 	const updateSidebarCollapsed = useCallback((collapsed: boolean) => {
 		setSidebarCollapsed(collapsed)
@@ -418,7 +462,14 @@ export function App() {
 	// why the commands themselves register at module scope instead of here). No dependency array on
 	// purpose: the callbacks are recreated across renders, and a stale set would run dead closures.
 	useEffect(() => {
-		setAppCommandApi({ createAndOpen, goHome, goSettings, goHelp, setTheme })
+		setAppCommandApi({
+			createAndOpen,
+			goHome,
+			goSettings,
+			goHelp,
+			setTheme,
+			toggleAgentPanel,
+		})
 	})
 
 	/**
@@ -435,10 +486,41 @@ export function App() {
 	 * port take effect.
 	 */
 	const agentPrefs = useSyncExternalStore(subscribeToAgentPrefs, getAgentPrefs)
+	const devHost = useSyncExternalStore(subscribeToDevHost, getDevHost)
+
+	// Ask the dev server whether it started a host for us. In a built app this resolves `null`
+	// immediately and compiles away — see `devHost.ts`.
 	useEffect(() => {
-		startAgentBridge(agentPrefs)
+		const controller = new AbortController()
+		void discoverDevHost(controller.signal).then((found) => {
+			if (!controller.signal.aborted) setDevHost(found)
+		})
+		return () => controller.abort()
+	}, [])
+
+	/**
+	 * A managed host wins over the stored preferences, and is deliberately **not written to them**.
+	 *
+	 * Its port is ephemeral and its token is new on every dev-server restart, so persisting either
+	 * would leave stale credentials behind the moment you stop `pnpm dev` — exactly the manual
+	 * re-pasting this replaced. `readOnly` still comes from the user, because that is a choice about
+	 * what an agent may do rather than about where it lives.
+	 */
+	const effectiveAgentPrefs = devHost
+		? { ...agentPrefs, enabled: true, port: devHost.port, token: devHost.token }
+		: agentPrefs
+
+	useEffect(() => {
+		startAgentBridge(effectiveAgentPrefs)
 		return () => stopAgentBridge()
-	}, [agentPrefs])
+		// Spread rather than the object: it is rebuilt every render, and depending on it would tear
+		// the connection down and back up on each one.
+	}, [
+		effectiveAgentPrefs.enabled,
+		effectiveAgentPrefs.port,
+		effectiveAgentPrefs.token,
+		effectiveAgentPrefs.readOnly,
+	])
 
 	useEffect(() => {
 		setAgentBoardApi({
@@ -529,7 +611,15 @@ export function App() {
 				boards={api.boards}
 				onOpenBoard={(board) => void openBoard(board)}
 			/>
-			<div className={sidebarCollapsed ? 'lb-shell lb-shell--sidebar-collapsed' : 'lb-shell'}>
+			<div
+				className={[
+					'lb-shell',
+					sidebarCollapsed ? 'lb-shell--sidebar-collapsed' : '',
+					agentPanelOpen ? 'lb-shell--agent-open' : '',
+				]
+					.filter(Boolean)
+					.join(' ')}
+			>
 				<Sidebar
 					view={route.view}
 					activeBoardId={activeBoardId}
@@ -560,6 +650,8 @@ export function App() {
 					onClose={(id) => void closeBoardTab(id)}
 					onNew={() => void createAndOpen()}
 					onRename={(id, name) => void api.rename(id, name)}
+					agentOpen={agentPanelOpen}
+					onToggleAgent={toggleAgentPanel}
 				/>
 
 				<div className="lb-shell__content">
@@ -642,6 +734,10 @@ export function App() {
 					)}
 					</div>
 				</div>
+
+				{/* A column of the shell grid rather than a child of the body, so the panel takes width
+				    from the canvas instead of overlaying it — you can keep working while an agent does. */}
+				{agentPanelOpen && <AgentPanel onClose={() => updateAgentPanelOpen(false)} />}
 			</div>
 		</CanvasPrefsProvider>
 	)

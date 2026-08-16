@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WebSocket } from 'ws'
 import { AgentBridge, isOriginAllowed } from './bridge.js'
 import {
@@ -120,7 +120,13 @@ describe('the handshake', () => {
 		await app.opened
 		app.hello()
 
-		expect(await app.next()).toEqual({ type: 'welcome', version: AGENT_PROTOCOL_VERSION })
+		// `chat: false` is the default and is stated rather than omitted: the app reads an absent flag as
+	// "no agent here", so the relay saying so explicitly is what keeps that inference honest.
+	expect(await app.next()).toEqual({
+		type: 'welcome',
+		version: AGENT_PROTOCOL_VERSION,
+		chat: false,
+	})
 		expect(b.getManifest()).toEqual([OPERATION])
 		expect(b.isConnected()).toBe(true)
 	})
@@ -348,8 +354,117 @@ describe('parseClientMessage', () => {
 			JSON.stringify({ type: 'result', id: 1, result: { ok: false } }),
 			JSON.stringify({ type: 'manifest' }),
 			JSON.stringify({ type: 'unknown' }),
+			// An empty prompt is a stray Enter on an empty box, not a turn to run.
+			JSON.stringify({ type: 'prompt', text: '   ' }),
+			JSON.stringify({ type: 'prompt' }),
 		]) {
 			expect(parseClientMessage(raw), raw).toBeNull()
+		}
+	})
+
+	it('reads the chat frames', () => {
+		expect(parseClientMessage(JSON.stringify({ type: 'prompt', text: 'add a note' }))).toEqual({
+			type: 'prompt',
+			text: 'add a note',
+		})
+		expect(parseClientMessage(JSON.stringify({ type: 'interrupt' }))).toEqual({ type: 'interrupt' })
+	})
+})
+
+describe('the agent channel', () => {
+	it('advertises chat and delivers prompts when a host is behind it', async () => {
+		const { bridge: b, port } = await bridge({ chat: true })
+		const prompts: string[] = []
+		b.onPrompt((text) => prompts.push(text))
+
+		const app = client(port)
+		await app.opened
+		app.hello()
+
+		expect(await app.next()).toEqual({
+			type: 'welcome',
+			version: AGENT_PROTOCOL_VERSION,
+			chat: true,
+		})
+
+		app.socket.send(JSON.stringify({ type: 'prompt', text: 'add a note' }))
+		await vi.waitFor(() => expect(prompts).toEqual(['add a note']))
+
+		b.sendChat({ kind: 'text', text: 'Done.' })
+		expect(await app.next()).toEqual({ type: 'chat', event: { kind: 'text', text: 'Done.' } })
+	})
+
+	/**
+	 * The relay and the host share a port and a handshake, so the only thing separating them is this
+	 * flag. A prompt reaching a process with no model behind it must go nowhere rather than be
+	 * queued for an agent that will never arrive.
+	 */
+	it('ignores prompts when no agent is behind it', async () => {
+		const { bridge: b, port } = await bridge()
+		const prompts: string[] = []
+		const interrupts: number[] = []
+		b.onPrompt((text) => prompts.push(text))
+		b.onInterrupt(() => interrupts.push(1))
+
+		const app = client(port)
+		await app.opened
+		app.hello()
+		await app.next()
+
+		app.socket.send(JSON.stringify({ type: 'prompt', text: 'add a note' }))
+		app.socket.send(JSON.stringify({ type: 'interrupt' }))
+		// Round-tripped through an invoke, so the assertion runs after the frames were processed
+		// rather than merely after they were sent.
+		void b.invoke('board.list', {})
+		await app.next()
+
+		expect(prompts).toEqual([])
+		expect(interrupts).toEqual([])
+	})
+})
+
+describe('images on a prompt', () => {
+	const image = { mediaType: 'image/png', data: 'aGVsbG8=' }
+
+	it('carries them to the host', () => {
+		expect(
+			parseClientMessage(JSON.stringify({ type: 'prompt', text: 'what is this?', images: [image] }))
+		).toEqual({ type: 'prompt', text: 'what is this?', images: [image] })
+	})
+
+	/** A screenshot with no words is a real question, so it must not be dropped as an empty prompt. */
+	it('accepts images with no text at all', () => {
+		const parsed = parseClientMessage(JSON.stringify({ type: 'prompt', text: '', images: [image] }))
+		expect(parsed).toMatchObject({ type: 'prompt', images: [image] })
+	})
+
+	it('still refuses an empty prompt with no images', () => {
+		expect(parseClientMessage(JSON.stringify({ type: 'prompt', text: '  ' }))).toBeNull()
+	})
+
+	it('leaves a text-only prompt without an images field', () => {
+		expect(parseClientMessage(JSON.stringify({ type: 'prompt', text: 'hello' }))).toEqual({
+			type: 'prompt',
+			text: 'hello',
+		})
+	})
+
+	/**
+	 * Dropped whole rather than sent with the pictures missing: a turn that silently lost its
+	 * screenshot gets answered confidently about nothing.
+	 */
+	it('drops the frame when an image is malformed', () => {
+		for (const images of [
+			'not-an-array',
+			[{ mediaType: 'image/png' }],
+			[{ mediaType: 'text/plain', data: 'x' }],
+			[{ mediaType: 'image/png', data: '' }],
+			[null],
+		]) {
+			expect(
+				parseClientMessage(JSON.stringify({ type: 'prompt', text: 'hi', images })),
+				JSON.stringify(images)
+			).toBeNull()
 		}
 	})
 })

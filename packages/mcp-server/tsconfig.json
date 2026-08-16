@@ -9,6 +9,9 @@
 		"outDir": "dist",
 		"rootDir": "src",
 		"noEmit": false,
+		// Emitted because the agent host imports `AgentBridge` and the wire types from this package
+		// rather than growing a third copy of them.
+		"declaration": true,
 		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src"]

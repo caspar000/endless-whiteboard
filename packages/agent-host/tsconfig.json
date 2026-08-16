@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		// NodeNext, matching `mcp-server`: this is run by Node, not bundled by vite.
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"lib": ["ES2022"],
+		"outDir": "dist",
+		"rootDir": "src",
+		"noEmit": false,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src"]
+}

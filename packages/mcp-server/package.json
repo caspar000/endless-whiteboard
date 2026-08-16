@@ -6,6 +6,25 @@
 	"bin": {
 		"lifeboard-mcp": "./dist/index.js"
 	},
+	"//exports": "Submodules only, never '.': `index.js` is the stdio entry point and running it as a side effect of an import would start a second server.",
+	"exports": {
+		"./bridge": {
+			"types": "./dist/bridge.d.ts",
+			"default": "./dist/bridge.js"
+		},
+		"./protocol": {
+			"types": "./dist/protocol.d.ts",
+			"default": "./dist/protocol.js"
+		},
+		"./server": {
+			"types": "./dist/server.d.ts",
+			"default": "./dist/server.js"
+		},
+		"./tools": {
+			"types": "./dist/tools.d.ts",
+			"default": "./dist/tools.js"
+		}
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc -p tsconfig.json --noEmit",

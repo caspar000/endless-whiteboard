@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, X } from 'lucide-react'
+import { LayoutGrid, PanelRight, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 
@@ -18,6 +18,8 @@ export function TabStrip({
 	onClose,
 	onNew,
 	onRename,
+	agentOpen,
+	onToggleAgent,
 }: {
 	boards: BoardMeta[]
 	tabs: string[]
@@ -28,6 +30,8 @@ export function TabStrip({
 	onClose: (id: string) => void
 	onNew: () => void
 	onRename: (id: string, name: string) => void
+	agentOpen: boolean
+	onToggleAgent: () => void
 }) {
 	const [renaming, setRenaming] = useState<string | null>(null)
 
@@ -112,6 +116,21 @@ export function TabStrip({
 
 			<button className="lb-tabs__new" onClick={onNew} aria-label="New board" title="New board">
 				<Plus size={15} aria-hidden="true" />
+			</button>
+
+			{/* Pushes the agent toggle to the far right, mirroring the sidebar's collapse control on the
+			    far left — the two panels the shell can show, each toggled from its own edge. */}
+			<span className="lb-tabs__spacer" />
+			<button
+				className={
+					agentOpen ? 'lb-tabs__panel lb-tabs__panel--active' : 'lb-tabs__panel'
+				}
+				onClick={onToggleAgent}
+				aria-label={agentOpen ? 'Close agent panel' : 'Open agent panel'}
+				aria-pressed={agentOpen}
+				title={`${agentOpen ? 'Close' : 'Open'} agent panel  ⌘⇧A`}
+			>
+				<PanelRight size={15} aria-hidden="true" />
 			</button>
 		</div>
 	)

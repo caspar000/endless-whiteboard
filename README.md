@@ -20,6 +20,7 @@ pnpm dev          # http://localhost:5173
 | `pnpm test` | Vitest units (properties, facts, table queries, collections, registry, snapshot fixtures) |
 | `pnpm test:e2e` | Playwright, against the **production build**. Serves on 4173; set `LB_E2E_PORT` to run two checkouts at once |
 | `pnpm --filter @lifeboard/web gen:icons` | Regenerate PWA icons from `public/favicon.svg` |
+| `pnpm agent` | Run the agent host by hand — only needed against a production build, since `pnpm dev` starts it |
 
 ## The two screens
 
@@ -27,6 +28,13 @@ pnpm dev          # http://localhost:5173
 board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
 captured from the live editor as the board is closed; boards never opened show a dotted-paper
 placeholder. Star a board to pin it to Favourites.
+
+Both screens share a third surface: **the agent panel**, docked to the right of the tab strip
+(<kbd>⌘⇧A</kbd>). It runs Claude Code against the board you are looking at — ask it to research
+something and add what it finds, and you watch the nodes appear. It gets the board operations and web
+search and nothing else: no shell, no filesystem. Every change is a normal undo step. There is
+nothing to configure; `pnpm dev` starts the process behind it. See
+[`packages/agent-host`](packages/agent-host/README.md).
 
 **Board** — the endless canvas on dotted paper, with a registry-driven toolbar (the bottom dock).
 Nodes are drawn from the dock like every other tool; right-click offers "Add to board" for placing
@@ -60,7 +68,9 @@ apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/app/                routing, home screen (sidebar + card grid)
   src/app/settings/       the settings page: its rail of tabs, and the extension pages under one
   src/app/help/           the help page: sections.tsx is the whole contents, one file per section
-  src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket
+  src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket, chat
+  src/app/AgentPanel.tsx  the agent panel — the transcript and composer down the right-hand side
+  vite/agentHost.ts       dev-server plugin that starts the agent host, so the panel needs no setup
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
@@ -80,6 +90,7 @@ packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
 packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
+packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```
 

@@ -1,5 +1,7 @@
 import { registerOperation, type RegisteredOperation } from '../operations'
 import { boardOperations } from './board'
+import { configOperations } from './config'
+import { imageOperations } from './image'
 import { nodeOperations } from './node'
 import { propertyOperations } from './property'
 import { queryOperations } from './query'
@@ -21,6 +23,8 @@ import { viewOperations } from './view'
 export const coreOperations: RegisteredOperation[] = [
 	...boardOperations,
 	...nodeOperations,
+	...imageOperations,
+	...configOperations,
 	...propertyOperations,
 	...relationOperations,
 	...queryOperations,
@@ -31,4 +35,13 @@ export function registerCoreOperations(): void {
 	for (const op of coreOperations) registerOperation(op)
 }
 
-export { boardOperations, nodeOperations, propertyOperations, queryOperations, relationOperations, viewOperations }
+export {
+	boardOperations,
+	configOperations,
+	imageOperations,
+	nodeOperations,
+	propertyOperations,
+	queryOperations,
+	relationOperations,
+	viewOperations,
+}

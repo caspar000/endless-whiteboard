@@ -4,8 +4,12 @@ import {
 	AGENT_PROTOCOL_VERSION,
 	encode,
 	parseClientMessage,
+	type ChatEvent,
+	type ChatsMessage,
+	type PromptImage,
 	type OperationManifestEntry,
 	type OperationResult,
+	type ServerMessage,
 } from './protocol.js'
 
 /**
@@ -44,6 +48,13 @@ export interface BridgeOptions {
 	invokeTimeoutMs?: number
 	/** How long a connected socket has to say `hello` before it is dropped. */
 	handshakeTimeoutMs?: number
+	/**
+	 * Whether to tell the app this host runs an agent, so the panel offers a text box.
+	 *
+	 * Off by default: the stdio relay is the common case and has no model behind it, and a panel that
+	 * accepted prompts nothing would ever read is worse than no panel at all.
+	 */
+	chat?: boolean
 	/** Human-readable log line. Never stdout — see `index.ts`. */
 	log?: (message: string) => void
 }
@@ -72,6 +83,13 @@ export class AgentBridge {
 	private readonly pending = new Map<number, Pending>()
 	private nextId = 1
 	private readonly manifestListeners = new Set<() => void>()
+	private readonly promptListeners = new Set<(text: string, images: PromptImage[]) => void>()
+	private readonly interruptListeners = new Set<() => void>()
+	private readonly chatsListeners = new Set<(message: ChatsMessage) => void>()
+	private readonly authTokenListeners = new Set<(token: string) => void>()
+	/** Called when a tab connects, so the host can send it the current chat list and auth state. */
+	private readonly attachListeners = new Set<() => void>()
+	private readonly chat: boolean
 
 	constructor(options: BridgeOptions) {
 		this.options = {
@@ -79,6 +97,7 @@ export class AgentBridge {
 			invokeTimeoutMs: options.invokeTimeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MS,
 			handshakeTimeoutMs: options.handshakeTimeoutMs ?? DEFAULT_HANDSHAKE_TIMEOUT_MS,
 		}
+		this.chat = options.chat ?? false
 		this.allowedOrigins = options.allowedOrigins
 		this.log = options.log ?? (() => {})
 
@@ -119,6 +138,65 @@ export class AgentBridge {
 		this.manifestListeners.add(listener)
 		return () => {
 			this.manifestListeners.delete(listener)
+		}
+	}
+
+	/** A turn the user typed into the app's agent panel. Only the agent host subscribes. */
+	onPrompt(listener: (text: string, images: PromptImage[]) => void): () => void {
+		this.promptListeners.add(listener)
+		return () => {
+			this.promptListeners.delete(listener)
+		}
+	}
+
+	onInterrupt(listener: () => void): () => void {
+		this.interruptListeners.add(listener)
+		return () => {
+			this.interruptListeners.delete(listener)
+		}
+	}
+
+	/**
+	 * Pushes one turn event to the panel.
+	 *
+	 * Silently dropped when nothing is connected, which is the right thing rather than an error: a
+	 * turn keeps running across a tab reload, and the transcript the user comes back to is rebuilt
+	 * from what arrives after they reconnect.
+	 */
+	sendChat(event: ChatEvent): void {
+		this.client?.send(encode({ type: 'chat', event }))
+	}
+
+	/** Pushes any server frame to the panel — the chat list, a replayed transcript, auth state. */
+	send(message: ServerMessage): void {
+		this.client?.send(encode(message))
+	}
+
+	/** Chat management asked for by the panel: list, open, delete. */
+	onChats(listener: (message: ChatsMessage) => void): () => void {
+		this.chatsListeners.add(listener)
+		return () => {
+			this.chatsListeners.delete(listener)
+		}
+	}
+
+	onAuthToken(listener: (token: string) => void): () => void {
+		this.authTokenListeners.add(listener)
+		return () => {
+			this.authTokenListeners.delete(listener)
+		}
+	}
+
+	/**
+	 * A tab finished the handshake.
+	 *
+	 * The host pushes state rather than waiting to be asked, because a reloaded tab has an empty
+	 * panel and no way to know a conversation is mid-flight until something arrives.
+	 */
+	onAttach(listener: () => void): () => void {
+		this.attachListeners.add(listener)
+		return () => {
+			this.attachListeners.delete(listener)
 		}
 	}
 
@@ -177,9 +255,10 @@ export class AgentBridge {
 				if (this.client && this.client !== socket) this.client.close()
 				this.client = socket
 				this.manifest = message.operations
-				socket.send(encode({ type: 'welcome', version: AGENT_PROTOCOL_VERSION }))
+				socket.send(encode({ type: 'welcome', version: AGENT_PROTOCOL_VERSION, chat: this.chat }))
 				this.log(`Lifeboard connected — ${message.operations.length} operations offered`)
 				this.notifyManifest()
+				for (const listener of this.attachListeners) listener()
 				return
 			}
 
@@ -196,6 +275,30 @@ export class AgentBridge {
 					this.manifest = message.operations
 					this.log(`Offered operations changed — now ${message.operations.length}`)
 					this.notifyManifest()
+					return
+				}
+				case 'prompt': {
+					// Dropped rather than queued when this host has no agent: a plain relay advertised
+					// `chat: false`, so a prompt arriving here is a panel that ignored the answer.
+					if (!this.chat) return
+					// Normalised to an array here so every listener has one shape to handle rather than
+					// re-deciding what an absent field means.
+					for (const listener of this.promptListeners) listener(message.text, message.images ?? [])
+					return
+				}
+				case 'interrupt': {
+					if (!this.chat) return
+					for (const listener of this.interruptListeners) listener()
+					return
+				}
+				case 'chats': {
+					if (!this.chat) return
+					for (const listener of this.chatsListeners) listener(message)
+					return
+				}
+				case 'auth.token': {
+					if (!this.chat) return
+					for (const listener of this.authTokenListeners) listener(message.token)
 					return
 				}
 				case 'hello':

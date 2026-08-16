@@ -364,6 +364,7 @@ export { CollectionStrip } from './collections/CollectionStrip'
 export { CollectionEditor } from './collections/CollectionEditor'
 export {
 	COLLECTION_VIEWS,
+	collectionPatch,
 	defaultCollection,
 	hasCollection,
 	readCollection,

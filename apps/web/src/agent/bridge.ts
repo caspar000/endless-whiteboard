@@ -7,7 +7,14 @@ import {
 	type OperationResult,
 } from '@lifeboard/node-kit'
 import type { Editor } from 'tldraw'
-import { AGENT_PROTOCOL_VERSION, encode, parseServerMessage, type ClientMessage } from './protocol'
+import { applyChatEvent, loadHistory, recordPrompt, recordSendFailure, setAuth, setChats } from './chat'
+import {
+	AGENT_PROTOCOL_VERSION,
+	encode,
+	parseServerMessage,
+	type ClientMessage,
+	type PromptImage,
+} from './protocol'
 import { agentUrl, loadAgentPrefs, type AgentPrefs } from './prefs'
 
 /**
@@ -29,9 +36,22 @@ export interface AgentStatus {
 	handled: number
 	/** The last operation run, so the panel can say what an agent just did. */
 	lastOperation: string
+	/**
+	 * Whether the connected process runs an agent, so the panel can offer a text box.
+	 *
+	 * Learned from the welcome rather than configured: the same port serves both the stdio relay and
+	 * the agent host, and which one is running is not something the app should have to be told twice.
+	 */
+	chat: boolean
 }
 
-const OFF: AgentStatus = { connection: 'off', detail: '', handled: 0, lastOperation: '' }
+const OFF: AgentStatus = {
+	connection: 'off',
+	detail: '',
+	handled: 0,
+	lastOperation: '',
+	chat: false,
+}
 
 let status: AgentStatus = OFF
 const listeners = new Set<() => void>()
@@ -98,6 +118,21 @@ export async function handleServerMessage(raw: unknown, deps: BridgeDeps): Promi
 
 	switch (message.type) {
 		case 'welcome':
+			setStatus({ chat: message.chat })
+			return
+		case 'chat':
+			applyChatEvent(message.event)
+			return
+		case 'chats.list':
+			setChats(message.chats, message.activeId)
+			return
+		case 'chat.history':
+			loadHistory(message.sessionId, message.events)
+			return
+		case 'auth':
+			// `checking` is not a panel state: it means the host has not decided yet, and the panel's
+			// existing state is a better thing to keep showing than a flicker.
+			if (message.state !== 'checking') setAuth(message.state, message.detail ?? '')
 			return
 		case 'rejected':
 			deps.onRejected(message.reason)
@@ -179,6 +214,63 @@ function send(message: ClientMessage): void {
 	if (socket?.readyState === WebSocket.OPEN) socket.send(encode(message))
 }
 
+/**
+ * Sends a turn from the agent panel, and records it in the transcript.
+ *
+ * The user's own message is recorded here rather than in the panel so that the failure path is one
+ * place: if the socket is gone, what the user typed still appears above the reason it did not go
+ * anywhere, instead of vanishing from the box with nothing to show for it.
+ */
+export function sendPrompt(text: string, images: readonly PromptImage[] = []): void {
+	const trimmed = text.trim()
+	// Images alone are a turn — "what is this?" with a screenshot and no words is a real question.
+	if (!trimmed && images.length === 0) return
+
+	recordPrompt(trimmed, images)
+
+	if (socket?.readyState !== WebSocket.OPEN) {
+		recordSendFailure('Not connected to an agent host. Start it, then switch the bridge on in Settings → Agents.')
+		return
+	}
+	if (!status.chat) {
+		recordSendFailure(
+			'The connected process is the MCP relay, which has no agent behind it. Run the agent host instead to use this panel.'
+		)
+		return
+	}
+	send({
+		type: 'prompt',
+		text: trimmed,
+		// Stripped of the preview URL and id, which are the panel's business and not the wire's.
+		...(images.length
+			? { images: images.map(({ mediaType, data }) => ({ mediaType, data })) }
+			: {}),
+	})
+}
+
+export function interruptAgent(): void {
+	send({ type: 'interrupt' })
+}
+
+/** Asks the host for the conversations it can resume. */
+export function listChats(): void {
+	send({ type: 'chats', action: 'list' })
+}
+
+/** Opens a past conversation, or starts a new one when given `null`. */
+export function openChat(sessionId: string | null): void {
+	send({ type: 'chats', action: 'open', ...(sessionId ? { sessionId } : {}) })
+}
+
+export function deleteChat(sessionId: string): void {
+	send({ type: 'chats', action: 'delete', sessionId })
+}
+
+export function sendAuthToken(token: string): void {
+	const trimmed = token.trim()
+	if (trimmed) send({ type: 'auth.token', token: trimmed })
+}
+
 function connect(): void {
 	const prefs = current
 	if (!prefs?.enabled) return
@@ -249,9 +341,12 @@ function connect(): void {
 		unsubscribeOperations = null
 		socket = null
 		if (refused || !current?.enabled) return
+		// `chat` is cleared with the connection: whatever reconnects may be the other kind of process,
+		// and a panel left offering a text box for an agent that is no longer there is a lie.
 		setStatus({
 			connection: 'connecting',
 			detail: 'Waiting for the MCP server…',
+			chat: false,
 		})
 		scheduleReconnect()
 	}

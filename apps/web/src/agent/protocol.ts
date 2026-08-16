@@ -14,7 +14,7 @@ import type { OperationManifestEntry, OperationResult } from '@lifeboard/node-ki
  */
 
 /** The protocol revision. Bumped when a message shape changes incompatibly. */
-export const AGENT_PROTOCOL_VERSION = 1
+export const AGENT_PROTOCOL_VERSION = 4
 
 // --- app → server ---------------------------------------------------------
 
@@ -39,7 +39,66 @@ export interface ManifestMessage {
 	operations: OperationManifestEntry[]
 }
 
-export type ClientMessage = HelloMessage | ResultMessage | ManifestMessage
+/**
+ * An image on its way to the model.
+ *
+ * Base64 without the `data:` prefix, which is the shape the Anthropic content block wants — carrying
+ * the data URL instead would mean stripping it on the far side, and the far side is the process that
+ * has the least business knowing how a browser encodes a clipboard.
+ */
+export interface PromptImage {
+	/** `image/png`, `image/webp`, … */
+	mediaType: string
+	/** Base64 payload, no `data:` prefix. */
+	data: string
+}
+
+/**
+ * A turn the user typed into the agent panel.
+ *
+ * Only a host that runs an agent answers this — see `chat` on the welcome below. Sending one to the
+ * plain relay is harmless and does nothing, which is why the panel checks the capability first
+ * rather than discovering it from a reply that never comes.
+ */
+export interface PromptMessage {
+	type: 'prompt'
+	text: string
+	/** Pasted into the composer. Absent for an ordinary text turn. */
+	images?: PromptImage[]
+}
+
+/** Stop the turn in flight. */
+export interface InterruptMessage {
+	type: 'interrupt'
+}
+
+/**
+ * Chat management, from the panel.
+ *
+ * `open` with no id starts a fresh conversation; with one, resumes that conversation. The host owns
+ * the list because the transcripts are Claude Code's own, stored on disk beside the agent rather
+ * than by the app — asking is the only way the app can know what exists.
+ */
+export interface ChatsMessage {
+	type: 'chats'
+	action: 'list' | 'open' | 'delete'
+	sessionId?: string
+}
+
+/** A token the user pasted into the sign-in view. */
+export interface AuthTokenMessage {
+	type: 'auth.token'
+	token: string
+}
+
+export type ClientMessage =
+	| HelloMessage
+	| ResultMessage
+	| ManifestMessage
+	| PromptMessage
+	| InterruptMessage
+	| ChatsMessage
+	| AuthTokenMessage
 
 // --- server → app ---------------------------------------------------------
 
@@ -54,6 +113,13 @@ export interface InvokeMessage {
 export interface WelcomeMessage {
 	type: 'welcome'
 	version: number
+	/**
+	 * Whether the process on the other end runs an agent, rather than relaying for one elsewhere.
+	 *
+	 * Both kinds answer the same handshake on the same port, so this is the only thing that tells them
+	 * apart — and it decides whether the panel offers a text box or explains how to start a host.
+	 */
+	chat: boolean
 }
 
 /** The server rejected us — a bad token, or a version it cannot speak. */
@@ -62,10 +128,128 @@ export interface RejectedMessage {
 	reason: string
 }
 
-export type ServerMessage = InvokeMessage | WelcomeMessage | RejectedMessage
+/**
+ * One thing that happened during a turn.
+ *
+ * `delta` is a live preview and `text` is the record: every delta is a prefix of the block's final
+ * `text`, and deltas may be dropped under load, so the panel renders deltas as they arrive and then
+ * replaces the draft when the authoritative `text` lands. Building a transcript from deltas alone
+ * would silently lose words.
+ */
+export type ChatEvent =
+	/** The user's own turn. Only ever replayed — a live one is recorded by the panel that sent it. */
+	| { kind: 'user'; text: string; images?: PromptImage[] }
+	| { kind: 'delta'; text: string }
+	| { kind: 'text'; text: string }
+	| { kind: 'status'; text: string }
+	| { kind: 'tool'; id: string; name: string; input: unknown }
+	| { kind: 'tool-result'; id: string; ok: boolean; summary: string }
+	| { kind: 'done'; error?: string }
+
+export interface ChatMessage {
+	type: 'chat'
+	event: ChatEvent
+}
+
+/** One past conversation, as the chat list shows it. */
+export interface ChatSummary {
+	sessionId: string
+	title: string
+	/** Epoch ms, for grouping the list into Today / Yesterday / Earlier. */
+	updatedAt: number
+}
+
+export interface ChatsListMessage {
+	type: 'chats.list'
+	chats: ChatSummary[]
+	/** The conversation on screen, or `null` for a new one not yet saved. */
+	activeId: string | null
+}
+
+/**
+ * A conversation's transcript, replayed as the same events a live turn produces — so the panel
+ * renders history and live output through one path rather than two that can disagree.
+ */
+export interface ChatHistoryMessage {
+	type: 'chat.history'
+	sessionId: string | null
+	events: ChatEvent[]
+}
+
+/**
+ * Whether the agent can reach Claude.
+ *
+ * `signed-out` is the normal first run rather than a failure: the panel shows sign-in instructions
+ * instead of a turn that errored.
+ */
+export interface AuthMessage {
+	type: 'auth'
+	state: 'ok' | 'signed-out' | 'checking'
+	detail?: string
+}
+
+export type ServerMessage =
+	| InvokeMessage
+	| WelcomeMessage
+	| RejectedMessage
+	| ChatMessage
+	| ChatsListMessage
+	| ChatHistoryMessage
+	| AuthMessage
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** Reads a replayed image list, or `null` when present but malformed. */
+function parseImages(raw: unknown): PromptImage[] | null {
+	if (raw === undefined) return []
+	if (!Array.isArray(raw)) return null
+
+	const images: PromptImage[] = []
+	for (const entry of raw) {
+		if (!isRecord(entry)) return null
+		const { mediaType, data } = entry
+		if (typeof mediaType !== 'string' || !mediaType.startsWith('image/')) return null
+		if (typeof data !== 'string' || !data) return null
+		images.push({ mediaType, data })
+	}
+	return images
+}
+
+/**
+ * Reads one turn event, or `null`.
+ *
+ * Every field is checked even though the only thing that legitimately sends these is a host on
+ * loopback — this socket is reachable by any page the browser has open, and a `kind` that typechecks
+ * halfway would put a half-built row in the transcript.
+ */
+function parseChatEvent(raw: unknown): ChatEvent | null {
+	if (!isRecord(raw)) return null
+
+	switch (raw.kind) {
+		case 'user': {
+			if (typeof raw.text !== 'string') return null
+			const images = parseImages(raw.images)
+			return images === null
+				? null
+				: { kind: 'user', text: raw.text, ...(images.length ? { images } : {}) }
+		}
+		case 'delta':
+		case 'text':
+		case 'status':
+			return typeof raw.text === 'string' ? ({ kind: raw.kind, text: raw.text } as ChatEvent) : null
+		case 'tool':
+			if (typeof raw.id !== 'string' || typeof raw.name !== 'string') return null
+			return { kind: 'tool', id: raw.id, name: raw.name, input: raw.input }
+		case 'tool-result':
+			if (typeof raw.id !== 'string' || typeof raw.summary !== 'string') return null
+			return { kind: 'tool-result', id: raw.id, ok: raw.ok === true, summary: raw.summary }
+		case 'done':
+			return { kind: 'done', ...(typeof raw.error === 'string' ? { error: raw.error } : {}) }
+		default:
+			return null
+	}
 }
 
 /**
@@ -94,7 +278,60 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
 			// operation's declared params, which is the only place that knows what "valid" means.
 			return { type: 'invoke', id: parsed.id, operation: parsed.operation, args: parsed.args }
 		case 'welcome':
-			return { type: 'welcome', version: typeof parsed.version === 'number' ? parsed.version : 0 }
+			return {
+				type: 'welcome',
+				version: typeof parsed.version === 'number' ? parsed.version : 0,
+				// Absent means no: a host that runs an agent says so, and anything that does not is
+				// treated as the plain relay.
+				chat: parsed.chat === true,
+			}
+		case 'chat': {
+			const event = parseChatEvent(parsed.event)
+			return event ? { type: 'chat', event } : null
+		}
+		case 'chats.list': {
+			if (!Array.isArray(parsed.chats)) return null
+			const chats: ChatSummary[] = []
+			for (const raw of parsed.chats) {
+				if (!isRecord(raw)) return null
+				if (typeof raw.sessionId !== 'string' || typeof raw.title !== 'string') return null
+				chats.push({
+					sessionId: raw.sessionId,
+					title: raw.title,
+					updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : 0,
+				})
+			}
+			return {
+				type: 'chats.list',
+				chats,
+				activeId: typeof parsed.activeId === 'string' ? parsed.activeId : null,
+			}
+		}
+		case 'chat.history': {
+			if (!Array.isArray(parsed.events)) return null
+			const events: ChatEvent[] = []
+			for (const raw of parsed.events) {
+				const event = parseChatEvent(raw)
+				// A transcript with one unreadable row is not worth rendering partially — the gap would
+				// be invisible and the user would read the remainder as complete.
+				if (!event) return null
+				events.push(event)
+			}
+			return {
+				type: 'chat.history',
+				sessionId: typeof parsed.sessionId === 'string' ? parsed.sessionId : null,
+				events,
+			}
+		}
+		case 'auth': {
+			const state = parsed.state
+			if (state !== 'ok' && state !== 'signed-out' && state !== 'checking') return null
+			return {
+				type: 'auth',
+				state,
+				...(typeof parsed.detail === 'string' ? { detail: parsed.detail } : {}),
+			}
+		}
 		case 'rejected':
 			return {
 				type: 'rejected',

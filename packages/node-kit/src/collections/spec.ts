@@ -90,18 +90,30 @@ export function hasCollection(shape: ShapeWithMeta): boolean {
 	return Boolean(shape.meta[COLLECTION_KEY])
 }
 
+/**
+ * The shape patch that stores a collection, without writing it.
+ *
+ * Split out so a caller already inside its own `editor.run` can fold this into that one history
+ * entry — configuring a node's props *and* its collection is one action to the user, and calling
+ * `setCollection` there would mark a second stopping point, making it two ⌘Zs. The storage key stays
+ * private to this module either way.
+ */
+export function collectionPatch(shape: TLShape, next: Collection | null): TLShapePartial {
+	return {
+		id: shape.id,
+		type: shape.type,
+		// One key, not a spread: `updateShape` merges meta one level deep, which is the same reason
+		// every property sidecar is a flat top-level key rather than a nested object.
+		//
+		// `false` rather than a delete when switching off — `undefined` is not a JSON value, and
+		// meta is validated as one.
+		meta: { [COLLECTION_KEY]: next ? next : false },
+	} as TLShapePartial
+}
+
 export function setCollection(editor: Editor, shape: TLShape, next: Collection | null): void {
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('collection')
-		editor.updateShape({
-			id: shape.id,
-			type: shape.type,
-			// One key, not a spread: `updateShape` merges meta one level deep, which is the same reason
-			// every property sidecar is a flat top-level key rather than a nested object.
-			//
-			// `false` rather than a delete when switching off — `undefined` is not a JSON value, and
-			// meta is validated as one.
-			meta: { [COLLECTION_KEY]: next ? next : false },
-		} as TLShapePartial)
+		editor.updateShape(collectionPatch(shape, next))
 	})
 }

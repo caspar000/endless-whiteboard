@@ -27,6 +27,7 @@ export interface AppCommandApi {
 	goSettings(tab?: string): Promise<void>
 	goHelp(): Promise<void>
 	setTheme(theme: Theme): void
+	toggleAgentPanel(): void
 }
 
 let api: AppCommandApi | null = null
@@ -48,6 +49,14 @@ registerCommand({
 	title: 'All boards',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goHome(),
+})
+
+registerCommand({
+	id: 'view.agent',
+	title: 'Toggle agent panel',
+	group: NAVIGATE_GROUP,
+	kbd: 'cmd+shift+a',
+	run: () => api?.toggleAgentPanel(),
 })
 
 registerCommand({

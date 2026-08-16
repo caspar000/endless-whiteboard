@@ -1,6 +1,7 @@
-import { BookOpen, Compass, Keyboard, NotepadText, Sigma, Spline, Table, Tags } from 'lucide-react'
+import { Bot, BookOpen, Compass, Keyboard, NotepadText, Sigma, Spline, Table, Tags } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
+import { Agent } from './sections/Agent'
 import { Asking } from './sections/Asking'
 import { Books } from './sections/Books'
 import { Notes } from './sections/Notes'
@@ -72,6 +73,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Core ideas',
 		icon: <Sigma size={15} />,
 		Component: Asking,
+	},
+	{
+		id: 'agent',
+		label: 'The agent panel',
+		title: 'Asking an agent',
+		lede: 'A panel down the right-hand side that talks to Claude and works on the board you are looking at. It can research something and put what it finds on the canvas — and everything it does is a normal undo step.',
+		group: 'Core ideas',
+		icon: <Bot size={15} />,
+		Component: Agent,
 	},
 	{
 		id: 'notes',

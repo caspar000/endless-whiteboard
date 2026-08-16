@@ -29,14 +29,45 @@ describe('parseServerMessage', () => {
 	})
 
 	it('reads welcome and rejected', () => {
+		// An absent `chat` reads as false, which is what lets an older relay — one that predates the
+		// flag entirely — connect and simply be treated as having no agent behind it.
 		expect(parseServerMessage(JSON.stringify({ type: 'welcome', version: 1 }))).toEqual({
 			type: 'welcome',
 			version: 1,
+			chat: false,
 		})
+		expect(
+			parseServerMessage(JSON.stringify({ type: 'welcome', version: 2, chat: true }))
+		).toEqual({ type: 'welcome', version: 2, chat: true })
 		expect(parseServerMessage(JSON.stringify({ type: 'rejected', reason: 'bad token' }))).toEqual({
 			type: 'rejected',
 			reason: 'bad token',
 		})
+	})
+
+	it('reads chat events, and refuses half-built ones', () => {
+		expect(
+			parseServerMessage(JSON.stringify({ type: 'chat', event: { kind: 'text', text: 'hi' } }))
+		).toEqual({ type: 'chat', event: { kind: 'text', text: 'hi' } })
+		expect(
+			parseServerMessage(
+				JSON.stringify({ type: 'chat', event: { kind: 'tool', id: 't1', name: 'node_insert' } })
+			)
+		).toEqual({ type: 'chat', event: { kind: 'tool', id: 't1', name: 'node_insert', input: undefined } })
+		expect(parseServerMessage(JSON.stringify({ type: 'chat', event: { kind: 'done' } }))).toEqual({
+			type: 'chat',
+			event: { kind: 'done' },
+		})
+
+		for (const event of [
+			{ kind: 'text' },
+			{ kind: 'tool', id: 't1' },
+			{ kind: 'tool-result', id: 't1' },
+			{ kind: 'nonsense' },
+			'not an object',
+		]) {
+			expect(parseServerMessage(JSON.stringify({ type: 'chat', event })), JSON.stringify(event)).toBeNull()
+		}
 	})
 
 	it('gives a rejection without a reason something to say', () => {

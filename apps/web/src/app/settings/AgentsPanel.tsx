@@ -2,6 +2,7 @@ import { getVisibleOperations, subscribeToOperations } from '@lifeboard/node-kit
 import { Bot, Eye } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { getAgentStatus, subscribeToAgentStatus } from '../../agent/bridge'
+import { getDevHost, subscribeToDevHost } from '../../agent/devHost'
 import {
 	DEFAULT_AGENT_PORT,
 	getAgentPrefs,
@@ -34,6 +35,7 @@ export function AgentsPanel() {
 	const prefs = useSyncExternalStore(subscribeToAgentPrefs, getAgentPrefs)
 	const status = useSyncExternalStore(subscribeToAgentStatus, getAgentStatus)
 	const operations = useSyncExternalStore(subscribeToOperations, getVisibleOperations)
+	const devHost = useSyncExternalStore(subscribeToDevHost, getDevHost)
 
 	// Writes to the store; App owns the connection and follows it. Deliberately not started here —
 	// this page unmounts the moment you leave Settings, which is when an agent's work begins.
@@ -71,6 +73,18 @@ export function AgentsPanel() {
 
 			<section className="lb-settings">
 				<h2>Connection</h2>
+
+				{devHost && (
+					// The fields below are still shown, and still editable, but they are not what is in
+					// effect — saying so is the difference between "these are ignored" and a user changing
+					// a port and wondering why nothing happened.
+					<p className="lb-settings__hint">
+						<strong>Managed by the dev server.</strong> It started an agent host on port{' '}
+						{devHost.port} and handed the app its token, so there is nothing to set up here. The
+						settings below are used instead when you connect to an MCP server yourself — note that
+						the app holds one agent connection at a time, so the managed host has this one.
+					</p>
+				)}
 
 				<div className="lb-appearance__card">
 					<div className="lb-appearance__row">

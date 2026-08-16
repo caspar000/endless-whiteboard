@@ -101,7 +101,7 @@ export const nodeOperations: RegisteredOperation[] = [
 		id: 'node.find',
 		title: 'Find nodes',
 		description:
-			'Searches the shapes on a board and returns what matched, with their ids, labels, positions and property values. With no filters it returns everything. This is how to look at a board before changing it.',
+			'Searches the shapes on a board and returns what matched, with their ids, labels, positions and property values. With no filters it returns everything. This is how to look at a board before changing it. Labels are titles only — a note’s label is its first line — so use node.get on a shape to read what it actually says.',
 		readOnly: true,
 		params: {
 			query: {
@@ -157,7 +157,7 @@ export const nodeOperations: RegisteredOperation[] = [
 		id: 'node.get',
 		title: 'Get node',
 		description:
-			'One shape in full: type, label, position, size and every property value it carries.',
+			'One shape in full: type, label, position, size, every property value it carries, and its text — the actual body of a note, not just the title node.find shows. Use this to read what a node says before acting on it.',
 		readOnly: true,
 		params: {
 			shapeId: { type: 'string', description: 'The shape’s id, from node.find.', required: true },
@@ -168,7 +168,11 @@ export const nodeOperations: RegisteredOperation[] = [
 			if (!resolved.ok) return fail(resolved.error)
 			const found = resolveShape(resolved.editor, args.shapeId)
 			if (!found.ok) return fail(found.error)
-			return ok(shapeSummary(resolved.editor, found.shape, propertyDefs(resolved.editor)))
+			return ok(
+				shapeSummary(resolved.editor, found.shape, propertyDefs(resolved.editor), {
+					includeText: true,
+				})
+			)
 		},
 	}),
 

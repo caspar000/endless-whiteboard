@@ -53,6 +53,9 @@
 	   shadow reads as dirt. */
 	--lb-shadow-1: 0 10px 34px rgb(0 0 0 / 60%);
 	--lb-shadow-2: 0 12px 36px rgb(0 0 0 / 55%), 0 2px 8px rgb(0 0 0 / 35%);
+	/* The tracing aura. A saturated colour rather than white in either theme: on the dark canvas white
+	   reads as a highlight, and on the light one it disappears into the paper entirely. */
+	--lb-glow: #6c5ce7;
 	/* Thumbnails are exported in whichever theme is active, so the preview well behind a loading or
 	   letterboxed image matches the paper inside the image. */
 	--lb-thumb-paper: var(--lb-canvas);
@@ -99,6 +102,8 @@
 	--lb-selection: rgb(59 91 219 / 20%);
 	--lb-shadow-1: 0 8px 24px rgb(20 22 40 / 12%), 0 2px 6px rgb(20 22 40 / 6%);
 	--lb-shadow-2: 0 10px 30px rgb(20 22 40 / 14%), 0 2px 8px rgb(20 22 40 / 8%);
+	/* Deeper than the dark theme's, so it holds its own against white paper. */
+	--lb-glow: #5b4ee0;
 	color-scheme: light;
 }
 
@@ -1660,6 +1665,28 @@ button {
 }
 .lb-dock__tool svg {
 	display: block;
+}
+/*
+ * A struck-through glyph — "this is switched off", for the relation-view button's `none` state.
+ *
+ * Drawn here rather than swapped for a second icon so the button keeps one glyph in all three of its
+ * states: it is always "relations", and only its strength changes. The slash is a child of the
+ * button, which is `display: grid; place-items: center`, so it lands over the icon without either
+ * needing to be positioned.
+ */
+.lb-dock__tool--struck {
+	position: relative;
+}
+.lb-dock__tool--struck::after {
+	content: '';
+	position: absolute;
+	width: 22px;
+	height: 1.5px;
+	border-radius: 1px;
+	background: currentColor;
+	transform: rotate(-45deg);
+	/* A hairline of the dock behind it, so the slash reads as *over* the glyph rather than part of it. */
+	box-shadow: 0 -1.5px 0 var(--lb-panel);
 }
 .lb-dock__sep,
 .lb-expand__sep {
@@ -3665,6 +3692,229 @@ button.lb-props__eye:hover {
 }
 .lb-foreign-strip .lb-strip {
 	margin-top: 3px;
+}
+
+/*
+ * The same strip, hanging under the middle of an arrow (see arrowAnchor.ts).
+ *
+ * A card rather than bare text, because this one is drawn *on* something: under a shape a strip has
+ * the paper behind it, but on a relation it sits over the line it belongs to, and over whatever the
+ * arrow happens to cross on a busy board. The surface is what makes it legible there, and it reads as
+ * one object attached to the line rather than as text that happens to be nearby.
+ *
+ * `margin-top` on an absolutely positioned element offsets it from its anchor, which is the small gap
+ * between the line and the card. Horizontal centring is the inline `translateX(-50%)`, so this never
+ * has to know the width — and must not set one.
+ */
+.lb-foreign-strip--arrow {
+	margin-top: 3px;
+	padding: 3px 8px;
+	/*
+	 * `max-content`, and it is load-bearing rather than tidiness.
+	 *
+	 * A strip under a *shape* is given the shape's width inline. This one is given none — it hangs off
+	 * a point on a line and has no width to inherit — so it would be sized shrink-to-fit against a
+	 * containing block of no width, land on *min*-content, and render every property name as "Am…".
+	 * The cap then stops one long value stretching a card across the board.
+	 */
+	width: max-content;
+	max-width: 220px;
+	border-radius: 8px;
+	background: var(--lb-panel);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-1);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+}
+.lb-foreign-strip--arrow .lb-strip {
+	margin-top: 0;
+}
+
+/* ------------------------------------------------------- the tracing lens */
+/*
+ * Pointing at a shape to see what it is wired to (see canvas/tracing.ts).
+ *
+ * Two effects, and the quiet one is doing most of the work: everything *not* in the trace fades back,
+ * which is what makes the few things that remain read as an answer rather than as a highlight.
+ *
+ * The fade is `filter: opacity()` rather than the `opacity` property, and that is not a preference —
+ * tldraw writes each shape's opacity as an inline style, so a rule here would lose to it. Going
+ * through `filter` also composes: a shape the user set to 50% ends up at half of the dim, which is
+ * what "fade everything back" should mean.
+ */
+.lb-board--tracing .tl-shape {
+	filter: opacity(0.26);
+	transition: filter 180ms ease;
+}
+.lb-board--tracing .tl-shape[data-lb-trace] {
+	filter: none;
+}
+/* The strips belong to their shapes and have to fade with them; the aura is the effect itself. */
+.lb-board--tracing .lb-foreign-strip {
+	opacity: 0.26;
+	transition: opacity 180ms ease;
+}
+
+/*
+ * The aura: a drawn outline that drifts (see canvas/auraGeometry.ts).
+ *
+ * Two strokes rather than a blur filter — a wide soft one for the halo and a thin bright one for the
+ * line — because the path is rebuilt thirty times a second and a filter would be re-run on every one
+ * of those frames for an effect these two strokes already give.
+ */
+.lb-aura {
+	position: absolute;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+	overflow: visible;
+	fill: none;
+}
+/*
+ * Unfilled and unblurred, which is the whole character of it: a line drawn *around* the shape rather
+ * than a light shining out of it. A fill would tint the card underneath, and a soft shadow would turn
+ * the scribble back into the halo this deliberately is not.
+ */
+.lb-aura__blob {
+	/* Painted with the glow and made faint by `fill-opacity`, which the preset sets per path. */
+	fill: var(--lb-glow);
+	stroke: var(--lb-glow);
+	/* Width and blur come from the preset, inline on the <svg>, so the tuning panel can reach them. */
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+/*
+ * A closed disclosure at the bottom of a settings page, for numbers nobody needs but somebody
+ * occasionally has to reach (see settings/AuraAdvanced.tsx).
+ *
+ * Deliberately plainer than the switches above it: these are a workbench, and dressing them up would
+ * put them on the same footing as the settings that matter.
+ */
+.lb-advanced {
+	margin-top: 22px;
+	border-top: 1px solid var(--lb-border);
+	padding-top: 14px;
+}
+.lb-advanced__summary {
+	cursor: pointer;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	list-style: none;
+}
+.lb-advanced__summary::-webkit-details-marker {
+	display: none;
+}
+.lb-advanced__summary::before {
+	content: '▸ ';
+}
+.lb-advanced[open] .lb-advanced__summary::before {
+	content: '▾ ';
+}
+.lb-advanced__summary:hover {
+	color: var(--lb-text);
+}
+.lb-advanced__body {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	max-width: 460px;
+	margin-top: 12px;
+}
+.lb-advanced__note {
+	margin: 0 0 8px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	line-height: 1.5;
+}
+/* The live preview: the real outline on the real clock, because Settings hides the canvas. */
+.lb-aura-preview {
+	width: 100%;
+	height: auto;
+	margin-bottom: 10px;
+	border-radius: 10px;
+	background: var(--lb-canvas);
+	border: 1px solid var(--lb-border);
+}
+.lb-aura-preview__outline {
+	fill: var(--lb-glow);
+	stroke: var(--lb-glow);
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+.lb-aura-preview__card {
+	fill: var(--lb-surface);
+	stroke: var(--lb-border);
+}
+/* Stands in for a relation, so the ribbon and merge sliders have something to act on. */
+.lb-aura-preview__relation {
+	stroke: var(--lb-text-dim);
+	stroke-width: 2;
+}
+.lb-advanced__row {
+	display: grid;
+	grid-template-columns: 110px 1fr 42px;
+	align-items: center;
+	gap: 10px;
+	font-size: 12px;
+}
+.lb-advanced__label {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-advanced__range {
+	width: 100%;
+	accent-color: var(--lb-glow);
+}
+.lb-advanced__value {
+	text-align: right;
+	color: var(--lb-text);
+	font-variant-numeric: tabular-nums;
+}
+.lb-advanced__btn {
+	align-self: flex-start;
+	margin-top: 10px;
+	padding: 5px 10px;
+	border-radius: 7px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+.lb-advanced__btn:hover {
+	background: var(--lb-surface-hover);
+}
+
+/* "You are in a mode" — sits where a tool's settings row sits, above the dock. */
+.lb-trace-hint {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text);
+	font-size: 12px;
+	pointer-events: none;
+}
+.lb-trace-hint svg {
+	color: var(--lb-glow);
+}
+.lb-trace-hint__kbd {
+	padding: 1px 6px;
+	border-radius: 5px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	font-size: 11px;
 }
 
 /* An image inside a note — from `![](asset:…)`, which the item→note migration writes. */

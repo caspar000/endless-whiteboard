@@ -1,5 +1,6 @@
 import { Grid2x2, Magnet } from 'lucide-react'
 import type { CanvasPrefs, GridStyle } from '../canvasPrefs'
+import { AuraAdvanced } from './AuraAdvanced'
 import { Segmented, Toggle } from './controls'
 
 const GRID_STYLES: { value: GridStyle; label: string }[] = [
@@ -37,6 +38,8 @@ export function CanvasPanel({ canvas }: { canvas: CanvasPrefs }) {
 					onChange={canvas.setSnapToGrid}
 				/>
 			</div>
+
+			<AuraAdvanced />
 		</section>
 	)
 }

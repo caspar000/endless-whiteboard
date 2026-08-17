@@ -411,16 +411,34 @@ test.describe('canvas chrome', () => {
 		const menu = page.locator('.lb-suggest')
 		const labels = () => menu.locator('.lb-suggest__label').allTextContents()
 		const expectSuggestions = async (expected: string[]) => {
-			// tldraw mirrors rich-text edits through the shape store. Let that render complete before
-			// sending the next key; reading the old menu's still-mounted labels can otherwise race the
-			// brief editor hand-off and make Enter land in the document as a newline.
-			await page.evaluate(
-				() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-			)
 			await expect(menu).toBeVisible()
 			await expect(stickyEditor).toBeFocused()
-			expect(await labels()).toEqual(expected)
+			await expect.poll(labels).toEqual(expected)
 		}
+
+		/** What the sticky's text actually says — the ground truth behind the menu. */
+		const richText = () =>
+			page.evaluate(() => {
+				const editor = (window as unknown as { editor: EditorLike }).editor
+				const note = editor.getCurrentPageShapes().find((s) => s.type === 'note')!
+				return JSON.stringify(note.props.richText)
+			})
+
+		/**
+		 * Picks the highlighted entry, and waits for it to have landed *in the document*.
+		 *
+		 * This is the barrier the test needs, and waiting on the menu is not enough to provide it.
+		 * tldraw mirrors rich-text edits through the shape store and briefly re-creates the editor
+		 * inside the shape as it does; during that window the old menu is still mounted and reads
+		 * correctly, while the new editor has no suggestion state yet — so a second `Enter` sent on the
+		 * strength of the menu alone lands in the document as a newline and the sequence derails. The
+		 * shape's own text is the one thing that cannot be stale.
+		 */
+		const pick = async (landed: string) => {
+			await page.keyboard.press('Enter')
+			await expect.poll(richText).toContain(landed)
+		}
+
 		await expectSuggestions([
 			'sum',
 			'count',
@@ -437,16 +455,16 @@ test.describe('canvas chrome', () => {
 		 * pointer-down blurs tldraw's editor and something downstream of that moves the caret out of
 		 * the expression, so the menu closes mid-sequence. Known rough edge; the typed path is solid.
 		 */
-		await page.keyboard.press('Enter')
+		await pick('sum')
 		await expectSuggestions(['Price', 'Quality', 'in', 'out', 'either', 'frame', 'page'])
-		await page.keyboard.press('Enter')
+		await pick('Price')
 		await expectSuggestions(['in', 'out', 'either', 'frame', 'page'])
 
 		// The terminal step closes the expression, and the menu goes with it — the caret is past the
 		// brace, so there is no open expression left to complete.
 		await page.keyboard.press('ArrowDown')
 		await page.keyboard.press('ArrowDown')
-		await page.keyboard.press('Enter')
+		await pick('either')
 		await expect(menu).toBeHidden()
 		await expect
 			.poll(() =>

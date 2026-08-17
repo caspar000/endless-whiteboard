@@ -47,7 +47,14 @@ export function fakeBoard(): FakeBoard {
 		shapes.set(next)
 	}
 
-	const makeShape = (partial: { id: string; type: string; x?: number; y?: number; props?: object }) => {
+	const makeShape = (partial: {
+		id: string
+		type: string
+		x?: number
+		y?: number
+		props?: object
+		meta?: object
+	}) => {
 		// Defaults come from the node registry, the way tldraw fills them from the shape util.
 		const defaults = getNodeDefinition(partial.type)?.defaultProps() ?? {}
 		return {
@@ -62,7 +69,9 @@ export function fakeBoard(): FakeBoard {
 			isLocked: false,
 			opacity: 1,
 			props: { w: 100, h: 100, ...defaults, ...(partial.props ?? {}) },
-			meta: {},
+			// Carried through, as tldraw does: a shape can be created *with* meta, which is how a
+			// relation is drawn hidden in one step rather than created and then amended.
+			meta: partial.meta ?? {},
 		} as unknown as TLShape
 	}
 
@@ -74,7 +83,14 @@ export function fakeBoard(): FakeBoard {
 		getCurrentPageShapes: () => [...shapes.get().values()],
 		getCurrentPageShapeIds: () => new Set(shapes.get().keys()),
 
-		createShape: (partial: { id: string; type: string; x?: number; y?: number; props?: object }) => {
+		createShape: (partial: {
+			id: string
+			type: string
+			x?: number
+			y?: number
+			props?: object
+			meta?: object
+		}) => {
 			write((next) => next.set(partial.id, makeShape(partial)))
 		},
 		createShapes: (partials: { id: string; type: string; x?: number; y?: number; props?: object }[]) => {

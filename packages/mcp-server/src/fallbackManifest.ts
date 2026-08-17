@@ -396,6 +396,10 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 					"type": "string",
 					"description": "The shape it points at."
 				},
+				"hidden": {
+					"type": "boolean",
+					"description": "Create it hidden. A hidden relation is a real one: tables, collections and expressions follow it exactly as they follow a visible one. It is simply not drawn, which is how a busy board stays readable. Defaults to false."
+				},
 				"boardId": {
 					"type": "string",
 					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
@@ -435,6 +439,34 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 				}
 			},
 			"required": [],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "relation.set-hidden",
+		"title": "Show or hide a relation",
+		"description": "Draws a relation or stops drawing it, without changing what it connects. A hidden relation is a real one: tables, collections and expressions follow it exactly as they follow a visible one. It is simply not drawn, which is how a busy board stays readable. Use it to tidy a board that has become a ball of arrows.",
+		"readOnly": false,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"relationId": {
+					"type": "string",
+					"description": "The arrow’s id, as relation.connect and relation.list return it."
+				},
+				"hidden": {
+					"type": "boolean",
+					"description": "True to stop drawing it, false to draw it again."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"relationId",
+				"hidden"
+			],
 			"additionalProperties": false
 		}
 	},
@@ -559,6 +591,34 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 			},
 			"required": [
 				"shapeIds"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "view.relations",
+		"title": "Show or hide the board’s relations",
+		"description": "How much of a board’s wiring is drawn. This is a view of the board, not a change to it — no relation is created, deleted or altered, and everything that follows arrows keeps working either way. \"none\" — No arrows are drawn. Everything they feed still adds up. \"normal\" — Hidden relations stay hidden; the rest are drawn. \"all\" — Every relation is drawn, hidden ones dashed — how to find one you hid. Set \"all\" before showing someone a board whose relations are hidden, or they will be looking at wiring that isn’t there.",
+		"readOnly": false,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"view": {
+					"type": "string",
+					"description": "Which of the three states to put the board in.",
+					"enum": [
+						"none",
+						"normal",
+						"all"
+					]
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"view"
 			],
 			"additionalProperties": false
 		}

@@ -1,5 +1,11 @@
 import type { TLShapeId } from 'tldraw'
 import { defineOperation, fail, ok, type RegisteredOperation } from '../operations'
+import {
+	RELATION_VIEWS,
+	RELATION_VIEW_NOTES,
+	readRelationView,
+	setRelationView,
+} from '../relationView'
 import { BOARD_ID_PARAM, resolveEditor } from './shared'
 
 /**
@@ -44,6 +50,38 @@ export const viewOperations: RegisteredOperation[] = [
 			// Partial success is reported, not silently rounded up to success: an agent that asked for
 			// five shapes and moved three needs to know which two went missing.
 			return ok({ selected: present, missing })
+		},
+	}),
+
+	defineOperation({
+		id: 'view.relations',
+		title: 'Show or hide the board’s relations',
+		description: [
+			'How much of a board’s wiring is drawn. This is a view of the board, not a change to it — no relation is created, deleted or altered, and everything that follows arrows keeps working either way.',
+			`"none" — ${RELATION_VIEW_NOTES.none}`,
+			`"normal" — ${RELATION_VIEW_NOTES.normal}`,
+			`"all" — ${RELATION_VIEW_NOTES.all}`,
+			'Set "all" before showing someone a board whose relations are hidden, or they will be looking at wiring that isn’t there.',
+		].join(' '),
+		params: {
+			view: {
+				type: 'string',
+				description: 'Which of the three states to put the board in.',
+				required: true,
+				choices: RELATION_VIEWS,
+			},
+			boardId: BOARD_ID_PARAM,
+		},
+		run: async (ctx, args) => {
+			const resolved = await resolveEditor(ctx, args.boardId)
+			if (!resolved.ok) return fail(resolved.error)
+			const editor = resolved.editor
+
+			// `args.view` is already narrowed to the three states: `choices` both validates the
+			// argument and types it, so an unknown value fails before `run` is ever reached.
+			const before = readRelationView(editor)
+			setRelationView(editor, args.view)
+			return ok({ view: args.view, previous: before })
 		},
 	}),
 

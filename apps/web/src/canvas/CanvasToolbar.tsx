@@ -1,4 +1,12 @@
-import { getVisibleNodeDefinitions, subscribeToNodeDefinitions } from '@lifeboard/node-kit'
+import {
+	RELATION_VIEW_LABELS,
+	RELATION_VIEW_NOTES,
+	getVisibleNodeDefinitions,
+	nextRelationView,
+	readRelationView,
+	setRelationView,
+	subscribeToNodeDefinitions,
+} from '@lifeboard/node-kit'
 import { useSyncExternalStore } from 'react'
 import {
 	Circle,
@@ -14,9 +22,11 @@ import {
 	Shapes,
 	Spline,
 	Square,
+	Radar,
 	StickyNote,
 	Triangle,
 	Type,
+	Waypoints,
 	type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -32,6 +42,7 @@ import {
 	type StyleProp,
 } from 'tldraw'
 import { toolIdForNodeType } from './nodeTools'
+import { isTracing, toggleTracing } from './tracing'
 
 /**
  * The bottom dock — replaces tldraw's toolbar with an Affine-style one.
@@ -297,6 +308,85 @@ function TextSettings() {
 	)
 }
 
+/**
+ * How much of the board's wiring is drawn: none → as set → all, cycling on click.
+ *
+ * One button rather than three, because it is one dial with a position, and the dock has no room for
+ * a segmented control. The glyph stays the same in all three states — it is always "relations" — and
+ * the *state* is carried by the dock's own vocabulary: the accent background it already uses for an
+ * active tool means "all", and a struck-through glyph means "none". Between them, plain, is the
+ * default, which is what a board looks like unless you have said otherwise.
+ *
+ * A view control rather than a tool, so it sits in its own group after the drawing tools and never
+ * changes what the next click on the canvas does.
+ */
+function RelationViewButton() {
+	const editor = useEditor()
+	const view = useValue('lb:relation-view', () => readRelationView(editor), [editor])
+
+	return (
+		<button
+			className={
+				view === 'all'
+					? 'lb-dock__tool lb-dock__tool--active'
+					: view === 'none'
+						? 'lb-dock__tool lb-dock__tool--struck'
+						: 'lb-dock__tool'
+			}
+			data-testid="lb.relation-view"
+			data-state={view}
+			// Keep focus on the canvas, so keyboard shortcuts keep flowing to the editor.
+			onPointerDown={(e) => e.preventDefault()}
+			onClick={() => setRelationView(editor, nextRelationView(view))}
+			title={`${RELATION_VIEW_LABELS[view]} — ${RELATION_VIEW_NOTES[view]}`}
+			aria-label={`Relation view: ${RELATION_VIEW_LABELS[view]}`}
+		>
+			<Waypoints size={ICON_SIZE} aria-hidden="true" />
+		</button>
+	)
+}
+
+/**
+ * The tracing lens, on or off.
+ *
+ * Next to the relation-view button because they are two halves of the same idea — how much wiring you
+ * want to see, and which wiring you want to see *now*.
+ */
+function TracingButton() {
+	const tracing = useValue('lb:tracing-on', () => isTracing(), [])
+	return (
+		<button
+			className={tracing ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
+			data-testid="lb.tracing"
+			data-state={tracing ? 'on' : 'off'}
+			onPointerDown={(e) => e.preventDefault()}
+			onClick={() => toggleTracing()}
+			title="Trace relations (⌥⇧T) — click a shape to light up what it is connected to"
+			aria-label="Trace relations"
+			aria-pressed={tracing}
+		>
+			<Radar size={ICON_SIZE} aria-hidden="true" />
+		</button>
+	)
+}
+
+/**
+ * A mode with nothing on screen to say so is a trap, and this one changes what a click does to the
+ * board's appearance. The hint sits where the tool settings row sits, so it reads as part of the same
+ * chrome rather than as a notification.
+ */
+function TracingHint() {
+	const tracing = useValue('lb:tracing-hint', () => isTracing(), [])
+	if (!tracing) return null
+	return (
+		<div className="lb-trace-hint" role="status">
+			<Radar size={14} aria-hidden="true" />
+			<span>Tracing — click a shape to light up its relations</span>
+			<kbd className="lb-trace-hint__kbd">Esc</kbd>
+		</div>
+	)
+}
+
 export function CanvasToolbar() {
 	const editor = useEditor()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
@@ -307,6 +397,7 @@ export function CanvasToolbar() {
 
 	return (
 		<div className="lb-dock-wrap">
+			<TracingHint />
 			{(currentToolId === 'draw' || currentToolId === 'highlight') && (
 				<PenSettings currentToolId={currentToolId} />
 			)}
@@ -408,6 +499,12 @@ export function CanvasToolbar() {
 					icon={<Image size={ICON_SIZE} aria-hidden="true" />}
 					isActive={false}
 				/>
+
+				<div className="lb-dock__sep" />
+
+				{/* Not tools: these change what the board *shows*, not what the next click draws. */}
+				<RelationViewButton />
+				<TracingButton />
 			</div>
 		</div>
 	)

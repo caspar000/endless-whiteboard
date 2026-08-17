@@ -429,6 +429,60 @@ describe('relations', () => {
 		expect(await run('relation.list')).toMatchObject({ matched: 0 })
 	})
 
+	it('connects hidden when asked, and still lists the relation', async () => {
+		const a = await boardWithNote('A')
+		const b = (await run('node.insert', { type: NOTE, text: 'B' })) as { id: string }
+		await run('relation.connect', { from: a.id, to: b.id, hidden: true })
+
+		// Listed like any other: hiding is about drawing, and an agent asking what is connected must
+		// be told about every connection or it will helpfully draw a duplicate.
+		const listed = (await run('relation.list')) as {
+			matched: number
+			relations: { hidden: boolean }[]
+		}
+		expect(listed.matched).toBe(1)
+		expect(listed.relations[0]?.hidden).toBe(true)
+	})
+
+	it('shows and hides an existing relation, and says so when given the wrong id', async () => {
+		const a = await boardWithNote('A')
+		const b = (await run('node.insert', { type: NOTE, text: 'B' })) as { id: string }
+		const relation = (await run('relation.connect', { from: a.id, to: b.id })) as { id: string }
+
+		await run('relation.set-hidden', { relationId: relation.id, hidden: true })
+		const hidden = (await run('relation.list')) as { relations: { hidden: boolean }[] }
+		expect(hidden.relations[0]?.hidden).toBe(true)
+
+		await run('relation.set-hidden', { relationId: relation.id, hidden: false })
+		const shown = (await run('relation.list')) as { relations: { hidden: boolean }[] }
+		expect(shown.relations[0]?.hidden).toBe(false)
+
+		const wrong = await attempt('relation.set-hidden', { relationId: a.id, hidden: true })
+		expect(wrong.ok).toBe(false)
+		if (wrong.ok) return
+		expect(wrong.error).toContain('arrow')
+	})
+
+	it('puts the board into a relation view, and reports what it was', async () => {
+		await boardWithNote('A')
+
+		const first = (await run('view.relations', { view: 'none' })) as {
+			view: string
+			previous: string
+		}
+		expect(first).toEqual({ view: 'none', previous: 'normal' })
+
+		const second = (await run('view.relations', { view: 'all' })) as { previous: string }
+		expect(second.previous).toBe('none')
+
+		// The closed set is enforced before `run` is reached, so a typo is a readable failure rather
+		// than a board left in a state nothing knows how to draw.
+		const bad = await attempt('view.relations', { view: 'everything' })
+		expect(bad.ok).toBe(false)
+		if (bad.ok) return
+		expect(bad.error).toContain('none, normal, all')
+	})
+
 	it('drops the relation when either end is deleted', async () => {
 		const a = await boardWithNote('A')
 		const b = (await run('node.insert', { type: NOTE, text: 'B' })) as { id: string }

@@ -350,8 +350,35 @@ export {
 	type EdgeDirection,
 	type EdgeIndex,
 } from './edges'
-// Writing relations, next to reading them — one definition of what an edge is.
-export { connectShapes, disconnectShapes, type ConnectOptions } from './relations'
+// Writing relations, next to reading them — one definition of what an edge is. `isHiddenRelation` is
+// the one place that answers "is this relation drawn?", so no reader can disagree with another.
+export {
+	HIDDEN_RELATION_META,
+	connectShapes,
+	deleteRelationsWithShapes,
+	disconnectShapes,
+	isHiddenRelation,
+	isRelation,
+	relationEnds,
+	setRelationHidden,
+	type ConnectOptions,
+	type HistoryOptions,
+} from './relations'
+// How much of the wiring the board draws — the other half of hiding, and a per-board view.
+export {
+	DEFAULT_RELATION_VIEW,
+	RELATION_VIEWS,
+	RELATION_VIEW_LABELS,
+	RELATION_VIEW_META,
+	RELATION_VIEW_NOTES,
+	cycleRelationView,
+	isRelationDrawn,
+	nextRelationView,
+	parseRelationView,
+	readRelationView,
+	setRelationView,
+	type RelationView,
+} from './relationView'
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyStrip } from './properties/PropertyStrip'
 

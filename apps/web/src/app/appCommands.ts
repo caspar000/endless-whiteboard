@@ -1,5 +1,17 @@
-import { registerCommand, type CommandContext } from '@lifeboard/node-kit'
+import {
+	RELATION_VIEWS,
+	RELATION_VIEW_LABELS,
+	RELATION_VIEW_NOTES,
+	cycleRelationView,
+	isHiddenRelation,
+	isRelation,
+	registerCommand,
+	setRelationHidden,
+	setRelationView,
+	type CommandContext,
+} from '@lifeboard/node-kit'
 import { openProperties } from '../canvas/propertiesTarget'
+import { toggleTracing } from '../canvas/tracing'
 import {
 	APPEARANCE_GROUP,
 	BOARDS_GROUP,
@@ -113,6 +125,12 @@ const onBoard = (ctx: CommandContext) => ctx.editor !== null
 const hasSelection = (ctx: CommandContext) =>
 	ctx.editor !== null && ctx.editor.getSelectedShapeIds().length > 0
 
+/** The one selected shape, or `null` — what the relation commands are about. */
+const onlySelected = (ctx: CommandContext) => ctx.editor?.getOnlySelectedShape() ?? null
+
+const hasRelationSelected = (ctx: CommandContext) =>
+	ctx.editor !== null && isRelation(ctx.editor, onlySelected(ctx) ?? undefined)
+
 registerCommand({
 	id: 'edit.undo',
 	title: 'Undo',
@@ -166,6 +184,72 @@ registerCommand({
 	run: (ctx) => {
 		const id = ctx.editor?.getSelectedShapeIds()[0]
 		if (id) openProperties(id)
+	},
+})
+
+/**
+ * The keyboard half of the selection toolbar's eye button.
+ *
+ * One command rather than a "hide" and a "show", because it acts on one relation whose state you can
+ * see — the palette's title reads as the thing that will happen. Offered only when a relation is
+ * selected: `when` decides whether a command is *available*, and "hide relation" with a sticky
+ * selected is not a command that fails, it is one that isn't there.
+ */
+registerCommand({
+	id: 'relation.toggle-hidden',
+	title: 'Hide or show the selected relation',
+	group: CANVAS_GROUP,
+	when: hasRelationSelected,
+	run: (ctx) => {
+		const editor = ctx.editor
+		const shape = onlySelected(ctx)
+		if (!editor || !shape) return
+		setRelationHidden(editor, shape.id, !isHiddenRelation(shape), { markHistory: true })
+	},
+})
+
+/**
+ * The board's relation view, as four commands: one per state, plus the cycle the dock button runs.
+ *
+ * Both, deliberately. The cycle is the fast gesture and gets the keybinding; the three named states
+ * are what you use when you know where you want to end up, and they are also what makes the feature
+ * *findable* — someone who has lost a relation searches "relations", not "cycle".
+ */
+for (const view of RELATION_VIEWS) {
+	registerCommand({
+		id: `view.relations.${view}`,
+		title: `Relations: ${RELATION_VIEW_LABELS[view].toLowerCase()} — ${RELATION_VIEW_NOTES[view]}`,
+		group: CANVAS_GROUP,
+		when: onBoard,
+		run: (ctx) => {
+			if (ctx.editor) setRelationView(ctx.editor, view)
+		},
+	})
+}
+
+registerCommand({
+	id: 'view.relations.cycle',
+	title: 'Cycle the relation view',
+	group: CANVAS_GROUP,
+	// Display only — the key is dispatched by the tldraw action of the same name in
+	// canvas/uiOverrides.tsx, which is the only layer that hears keystrokes on the canvas.
+	// `alt+shift+r` because plain `alt+r` is tldraw's own (rotate), as uiOverrides.tsx records.
+	kbd: 'alt+shift+r',
+	when: onBoard,
+	run: (ctx) => {
+		if (ctx.editor) cycleRelationView(ctx.editor)
+	},
+})
+
+registerCommand({
+	id: 'view.tracing',
+	title: 'Trace relations — light up what a shape is connected to',
+	group: CANVAS_GROUP,
+	// Display only; the key is dispatched by the tldraw action in canvas/uiOverrides.tsx.
+	kbd: 'alt+shift+t',
+	when: onBoard,
+	run: () => {
+		toggleTracing()
 	},
 })
 

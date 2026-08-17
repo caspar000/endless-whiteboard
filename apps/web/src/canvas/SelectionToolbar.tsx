@@ -1,3 +1,4 @@
+import { isHiddenRelation, isRelation, setRelationHidden } from '@lifeboard/node-kit'
 import {
 	ArrowDown,
 	ArrowDownToLine,
@@ -6,6 +7,8 @@ import {
 	Check,
 	Clipboard,
 	Copy,
+	Eye,
+	EyeOff,
 	ImageDown,
 	MoreHorizontal,
 	Scissors,
@@ -145,6 +148,51 @@ function ShapeColorPicker() {
 					</div>
 				)}
 			</div>
+			<div className="lb-seltb__sep" />
+		</>
+	)
+}
+
+/**
+ * Show or hide the selected relation.
+ *
+ * Offered only for an arrow that is genuinely a relation — both ends bound — because on a loose arrow
+ * the button would promise something it cannot do: nothing reads a doodle, so hiding one would only
+ * make it vanish with no way back. `isRelation` is node-kit's own definition, the same one
+ * `getPageEdges` builds the graph from, so this cannot disagree with what the board counts as one.
+ *
+ * The label says what will *happen*, not what is true now, because that is what a button is for.
+ */
+function RelationVisibilityButton({ shapeId }: { shapeId: TLShapeId }) {
+	const editor = useEditor()
+
+	const state = useValue(
+		'lb:relation-visibility',
+		() => {
+			const shape = editor.getShape(shapeId)
+			if (!isRelation(editor, shape)) return null
+			return { hidden: isHiddenRelation(shape) }
+		},
+		[editor, shapeId]
+	)
+	if (!state) return null
+
+	return (
+		<>
+			<TldrawUiToolbarButton
+				type="icon"
+				title={state.hidden ? 'Show relation' : 'Hide relation'}
+				tooltip={
+					state.hidden
+						? 'Show relation'
+						: 'Hide relation — it keeps counting everywhere, it just stops being drawn'
+				}
+				data-testid="lb.relation-visibility"
+				onClick={() => setRelationHidden(editor, shapeId, !state.hidden, { markHistory: true })}
+			>
+				{state.hidden ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+				<span className="lb-sr-only">{state.hidden ? 'Show relation' : 'Hide relation'}</span>
+			</TldrawUiToolbarButton>
 			<div className="lb-seltb__sep" />
 		</>
 	)
@@ -496,6 +544,8 @@ function SelectionToolbarContent({
 					<div className="lb-seltb__sep" />
 				</>
 			)}
+
+			{single && onlyId && <RelationVisibilityButton shapeId={onlyId} />}
 
 			{single && (
 				<>

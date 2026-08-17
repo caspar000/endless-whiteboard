@@ -17,6 +17,7 @@ import { shapeLabel } from '../../properties/labels'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import { readShapeProperties, readShapePropertyUnits } from '../../properties/values'
 import { getNodeDefinition } from '../../registry'
+import { relationEnds } from '../../relations'
 import { aggregate, EMPTY_ROLLUP, type RollupResult } from './aggregate'
 import { ROLLUP_NODE_TYPE } from './definition'
 
@@ -169,16 +170,11 @@ export function getPageEdges(editor: Editor): Computed<EdgeIndex> {
 			rollupStats.edgeRecomputes++
 			const found: Edge[] = []
 			for (const shape of editor.getCurrentPageShapes()) {
-				if (shape.type !== 'arrow') continue
-				let from: string | undefined
-				let to: string | undefined
-				for (const binding of editor.getBindingsFromShape(shape, 'arrow')) {
-					if (binding.props.terminal === 'start') from = binding.toId
-					else to = binding.toId
-				}
-				// Both ends bound, and not a loop. A loose end means someone drew a line, not a relation;
-				// a self-arrow is decoration on a single shape and would only ever match itself.
-				if (from && to && from !== to) found.push({ id: shape.id, from, to })
+				// What counts as a relation lives in `relations.ts`, so the graph read here and the
+				// controls that write it cannot drift apart. Visibility is deliberately not consulted:
+				// a hidden relation is still an edge, which is the whole point of being able to hide one.
+				const ends = relationEnds(editor, shape)
+				if (ends) found.push({ id: shape.id, ...ends })
 			}
 			return buildEdgeIndex(found)
 		},

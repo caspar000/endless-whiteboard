@@ -11,6 +11,7 @@ import {
 	readShapePropertyDefs,
 	rollupsToTablesMigrations,
 	itemsToNotesMigrations,
+	deleteRelationsWithShapes,
 	rollupStats,
 	expressionSuggestExtension,
 	readPropertyRegistry,
@@ -45,6 +46,9 @@ import { expressionShapeUtils } from './expressionShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
+import { deselectHiddenShapes, getShapeVisibility } from './relationVisibility'
+import { TraceLayer, TraceShapeWrapper } from './TraceLayer'
+import { followSelectionWhileTracing, isTracing, stopTracing } from './tracing'
 import { createNodeTools } from './nodeTools'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
@@ -114,6 +118,22 @@ function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
  */
 const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations]
 
+/**
+ * Everything we draw *inside* the camera transform, in paint order.
+ *
+ * `OnTheCanvas` is a single slot, so the two things that want it are composed here rather than one of
+ * them growing a second responsibility. The aura goes first: it is a halo *around* shapes and belongs
+ * behind them, where a property strip on an arrow deliberately does not (see ForeignPropertyStrips).
+ */
+function CanvasLayers() {
+	return (
+		<>
+			<TraceLayer />
+			<ForeignPropertyStrips />
+		</>
+	)
+}
+
 const canvasComponents: TLComponents = {
 	...nodeComponents,
 	// The paper backdrop, and whichever grid the user has chosen (see CanvasBackground.tsx).
@@ -147,8 +167,11 @@ const canvasComponents: TLComponents = {
 	// components render inside it — so the standalone versions must not also appear.
 	ImageToolbar: null,
 	VideoToolbar: null,
-	// Properties for shapes whose components we don't own. See ForeignPropertyStrips.
-	OnTheCanvas: ForeignPropertyStrips,
+	// The tracing aura, and properties for shapes whose components we don't own.
+	OnTheCanvas: CanvasLayers,
+	// Every shape's container, so the tracing lens can mark the ones it has lit up. Delegates to
+	// tldraw's own wrapper for everything else — see TraceLayer.tsx.
+	ShapeWrapper: TraceShapeWrapper,
 }
 
 /*
@@ -245,6 +268,10 @@ export function Board({
 
 	const [editor, setEditor] = useState<Editor | null>(null)
 
+	// Module-scope signal, read here so the container can carry the mode as a class. `useValue` needs
+	// no editor context — it is a signals hook, not a tldraw one.
+	const tracing = useValue('lifeboard:tracing-on', () => isTracing(), [])
+
 	/**
 	 * The `{…}` helper, for every text editor tldraw draws itself — sticky, text shape, geo label,
 	 * arrow label. One TipTap config serves all four.
@@ -272,7 +299,9 @@ export function Board({
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
 	return (
-		<div className="lb-board">
+		// The tracing class rides the board's own container rather than the canvas, so the dim can be
+		// one CSS rule over `.tl-shape` and the mode has somewhere to hang its other affordances.
+		<div className={tracing ? 'lb-board lb-board--tracing' : 'lb-board'}>
 			<Tldraw
 				// The schema version is part of the editor's identity: new node types mean new shape
 				// utils, which `<Tldraw>` only reads on mount.
@@ -288,6 +317,16 @@ export function Board({
 				tools={nodeTools}
 				overrides={nodeUiOverrides}
 				components={canvasComponents}
+				/*
+				 * What the board *draws*, as opposed to what it holds: this is where a hidden relation
+				 * stops being drawn, and where the board's three-state relation view takes effect.
+				 *
+				 * A module-scope constant, not an inline arrow. The prop feeds the Editor constructor,
+				 * so a fresh identity on each render would remount the editor — and a remount inside
+				 * tldraw's persistence throttle discards the pending write along with the camera,
+				 * selection and undo history (see DRAIN_MS in app/App.tsx).
+				 */
+				getShapeVisibility={getShapeVisibility}
 				/*
 				 * One TipTap config serves every text editor tldraw owns — sticky, text shape, geo
 				 * label, arrow label — so the `{…}` helper reaches all four from here.
@@ -330,6 +369,13 @@ export function Board({
 						() => void touchBoard(platform.kv, board.id)
 					)
 					const stopWatchingPastes = watchPastedProperties(editor)
+					// A shape that stops being drawn must stop being selected with it — see
+					// relationVisibility.ts.
+					const stopDeselectingHidden = deselectHiddenShapes(editor)
+					// While the lens is on, what you select is what it points at (see tracing.ts).
+					const stopFollowingSelection = followSelectionWhileTracing(editor)
+					// A relation must not outlive the shapes it joins — see node-kit's relations.ts.
+					const stopCascadingDeletes = deleteRelationsWithShapes(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -339,10 +385,18 @@ export function Board({
 						if (w.editor === editor) delete w.editor
 						onEditor?.(null)
 						stopWatchingPastes()
+						stopDeselectingHidden()
+						stopFollowingSelection()
+						stopCascadingDeletes()
 						stopTracking()
-						// The target is module-scope, so a stale id would make the next board try to open
-						// a panel for a shape that isn't on it.
+						// Both are module-scope. The properties target is a bare shape id, so a stale one
+						// would make the next board open a panel for a shape that isn't on it.
 						closeProperties()
+						// The lens survives *switching* boards — it is a way of working, like a chosen
+						// tool, and an open tab keeps its editor mounted so this does not run. It does
+						// not survive closing the board you were tracing, which is the one case where
+						// what you were looking at has genuinely gone.
+						stopTracing()
 						// NB: no thumbnail capture here. Exporting from the unmount path ran while the
 						// board host was already hidden for the drain, and tldraw's exporter dropped every
 						// node background and font — previews looked right for a second and then decayed

@@ -1,5 +1,6 @@
 import {
 	actionsForShape,
+	cycleRelationView,
 	getNodeDefinitions,
 	getVisibleNodeDefinitions,
 	isNodeTypeEnabled,
@@ -21,6 +22,7 @@ import {
 import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
 import { openProperties } from './propertiesTarget'
+import { toggleTracing } from './tracing'
 
 /**
  * Toolbar and shortcut entries for the node types, generated from the registry (§7: "Registry-driven
@@ -73,6 +75,33 @@ export const nodeUiOverrides: TLUiOverrides = {
 				// One shape only: properties are per-shape, and a panel that silently edited several at
 				// once would be a different feature with different undo semantics.
 				if (selected.length === 1) openProperties(selected[0]!)
+			},
+		}
+		/*
+		 * The keyboard half of the dock's relation-view button.
+		 *
+		 * Registered here rather than on the ⌘K command because the command registry's `kbd` is
+		 * *display only* — tldraw's action layer is the only thing listening for keystrokes while the
+		 * canvas has focus. Both run `cycleRelationView`, so the two doors cannot disagree.
+		 *
+		 * `alt+shift+r` rather than `alt+r`: plain `alt+r` is tldraw's own rotate, as the note above
+		 * records. The R is worth keeping — this is the relations key.
+		 */
+		actions['lifeboard-relation-view'] = {
+			id: 'lifeboard-relation-view',
+			label: 'Cycle the relation view',
+			kbd: 'alt+shift+r',
+			onSelect() {
+				cycleRelationView(editor)
+			},
+		}
+		// The tracing lens, on the same terms and for the same reason. `alt+t` is tldraw's own.
+		actions['lifeboard-tracing'] = {
+			id: 'lifeboard-tracing',
+			label: 'Trace relations',
+			kbd: 'alt+shift+t',
+			onSelect() {
+				toggleTracing()
 			},
 		}
 		/*

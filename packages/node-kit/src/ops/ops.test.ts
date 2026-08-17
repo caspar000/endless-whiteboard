@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { clearAgentActivity, getAgentActivity } from '../agentPresence'
 import { clearBoardBridge } from '../boardBridge'
 import { clearCommandRegistry } from '../commands'
 import { clearExtensionRegistry, defineNode } from '../extensions'
@@ -14,6 +15,7 @@ import {
 import { clearNodeRegistry, registerNode, type NodeDefinition } from '../registry'
 import { fakeWorkspace, type FakeWorkspace } from './fakeBoard'
 import { registerCoreOperations } from './index'
+import { lookScale } from './view'
 
 const NOTE = 'node.testnote'
 
@@ -40,6 +42,7 @@ beforeEach(async () => {
 	clearExtensionRegistry()
 	clearNodeRegistry()
 	clearBoardBridge()
+	clearAgentActivity()
 	registerNode(noteDefinition())
 	registerCoreOperations()
 	workspace = fakeWorkspace()
@@ -157,9 +160,59 @@ describe('board.delete', () => {
 
 describe('nodes', () => {
 	it('says which types exist and which take text', async () => {
-		expect(await run('node.types')).toEqual([
-			{ type: NOTE, label: 'Test note', acceptsText: true, defaultSize: { w: 200, h: 120 } },
+		const types = (await run('node.types')) as { type: string; builtIn: boolean }[]
+		// The registered node comes first, then tldraw's own shapes — one answer to "what can I put on
+		// a board", with `builtIn` telling the two apart.
+		expect(types[0]).toEqual({
+			type: NOTE,
+			label: 'Test note',
+			builtIn: false,
+			acceptsText: true,
+			defaultSize: { w: 200, h: 120 },
+		})
+		expect(types.filter((entry) => entry.builtIn).map((entry) => entry.type)).toEqual([
+			'text',
+			'note',
+			'geo',
+			'frame',
 		])
+	})
+
+	it('creates tldraw’s own text shape, which is not a registered node type', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		const shape = (await run('node.insert', { type: 'text', text: 'Q3 plan', x: 80, y: 140 })) as {
+			id: string
+			type: string
+		}
+		expect(shape.type).toBe('text')
+		const created = workspace.board('board-1').shapes().at(-1)
+		// Rich text, not a `text` prop: this is where an agent's words have to end up for tldraw to
+		// draw them, and getting it wrong produces an empty shape rather than an error.
+		expect((created?.props as { richText?: unknown }).richText).toBeDefined()
+	})
+
+	it('puts a frame’s text in its name, since that is where a frame keeps one', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		await run('node.insert', { type: 'frame', text: 'Ideas' })
+		const created = workspace.board('board-1').shapes().at(-1)
+		expect((created?.props as { name?: string }).name).toBe('Ideas')
+	})
+
+	it('refuses a size a built-in shape has no room for, rather than failing validation later', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		const shape = (await run('node.insert', { type: 'text', text: 'Caption' })) as { id: string }
+		const result = await attempt('node.update', { shapeId: shape.id, h: 400 })
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.error).toContain('no h to set')
+	})
+
+	it('lists the built-ins too when given a bad type', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		const result = await attempt('node.insert', { type: 'sticky' })
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.error).toContain('text')
 	})
 
 	it('inserts a node at the centre of the view by default and returns it', async () => {
@@ -586,5 +639,101 @@ describe('view', () => {
 		await boardWithNote()
 		await run('view.zoom-fit')
 		expect(workspace.board('board-1').zoomed.toFit).toBe(1)
+	})
+
+	it('reads what the user has selected, which is what "these ones" means', async () => {
+		const node = await boardWithNote('Standing desk')
+		await run('view.select', { shapeIds: [node.id] })
+
+		const result = (await run('view.selection')) as {
+			selected: number
+			shapes: { id: string; label: string }[]
+		}
+		expect(result.selected).toBe(1)
+		expect(result.shapes[0]).toMatchObject({ id: node.id, label: 'Standing desk' })
+	})
+
+	it('says nothing is selected rather than failing', async () => {
+		await boardWithNote()
+		expect(await run('view.selection')).toMatchObject({ selected: 0, shapes: [] })
+	})
+
+	it('hands back a picture beside the JSON, so the agent can see the board', async () => {
+		const node = await boardWithNote()
+		const result = await attempt('view.look', { shapeIds: [node.id] })
+		expect(result.ok).toBe(true)
+		if (!result.ok) return
+
+		expect(result.images?.[0]?.mediaType).toBe('image/png')
+		// Base64 of the four PNG magic bytes the fake renderer returns.
+		expect(result.images?.[0]?.data).toBe('iVBORw==')
+		expect(result.data).toMatchObject({ shapes: 1, width: 100, height: 80 })
+		expect(workspace.board('board-1').looks[0]?.shapeIds).toEqual([node.id])
+	})
+
+	it('crops to the window when asked for what is on screen', async () => {
+		await boardWithNote()
+		await run('view.look', { region: 'viewport' })
+
+		const look = workspace.board('board-1').looks[0]
+		// A viewport look is a question about the window, so it renders the window — padding off and
+		// explicit bounds — rather than whichever shapes happened to poke into it.
+		expect(look?.opts).toMatchObject({ padding: 0 })
+		expect(look?.opts.bounds).toBeDefined()
+	})
+
+	it('refuses to render a selection that is not there', async () => {
+		await boardWithNote()
+		const result = await attempt('view.look', { region: 'selection' })
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.error).toContain('Nothing is selected')
+	})
+
+	it('renders an empty board as a failure an agent can act on', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		expect(await attempt('view.look')).toMatchObject({ ok: false })
+	})
+
+	it('never renders bigger than the source, so a sticky does not cost a full-page image', () => {
+		expect(lookScale({ w: 4000, h: 2000 }, 1200)).toBe(0.3)
+		expect(lookScale({ w: 200, h: 200 }, 1200)).toBe(1)
+	})
+})
+
+/**
+ * The presence channel: what the board is told about an agent at work.
+ *
+ * Tested at the operation layer rather than through the cursor, because this is the contract the
+ * cursor draws from — if an operation forgets to report, no amount of correct drawing helps.
+ */
+describe('presence', () => {
+	it('says what was created, and where', async () => {
+		const node = await boardWithNote('Standing desk')
+		const activity = getAgentActivity()
+		expect(activity).toMatchObject({ kind: 'create', operation: 'node.insert' })
+		expect(activity?.shapes.map((shape) => shape.id)).toEqual([node.id])
+		expect(activity?.point).toEqual({ x: 400, y: 340 })
+	})
+
+	it('captures where a shape was before deleting it, since afterwards there is nowhere to point', async () => {
+		const node = await boardWithNote()
+		await run('node.delete', { shapeId: node.id })
+
+		const activity = getAgentActivity()
+		expect(activity).toMatchObject({ kind: 'delete', operation: 'node.delete' })
+		expect(activity?.shapes).toHaveLength(1)
+	})
+
+	it('bounds how much of the board one activity lights up', async () => {
+		await run('board.open', { boardId: 'board-1' })
+		for (let i = 0; i < 20; i++) await run('node.insert', { type: NOTE, text: `n${i}` })
+
+		await run('node.find')
+		const activity = getAgentActivity()
+		// The cursor still says twenty; outlining all of them would be a full-screen flash rather
+		// than a signal.
+		expect(activity?.verb).toBe('Looking at 20 shapes')
+		expect(activity?.shapes.length).toBe(12)
 	})
 })

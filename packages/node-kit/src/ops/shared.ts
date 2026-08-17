@@ -1,4 +1,5 @@
 import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import { reportAgentActivity, type AgentActivityKind } from '../agentPresence'
 import { textPropFor } from '../nodes/insert'
 import type { OperationContext, JsonValue, ParamSpec } from '../operations'
 import { shapeLabel } from '../properties/labels'
@@ -168,6 +169,48 @@ export function shapeSummary(
 			value: (value ?? null) as JsonValue,
 		})),
 	}
+}
+
+/**
+ * How many shapes one activity draws a ring around.
+ *
+ * A `node.find` with no filters matches the whole board, and outlining 900 shapes is not "showing
+ * what the agent is doing" — it is a full-screen flash. The cursor still says how many were read.
+ */
+const MAX_HIGHLIGHTED = 12
+
+/**
+ * Says what an operation is touching, so the board can draw it. See `agentPresence.ts`.
+ *
+ * Geometry is read here, at report time, rather than by the layer later: an operation reports the
+ * shape it is *about to delete*, and by the time a renderer looked it up there would be nothing to
+ * measure. Shapes that have already gone are simply left out.
+ *
+ * Called for its effect and never awaited — a board that draws nothing must not change how an
+ * operation behaves.
+ */
+export function reportAgentWork(
+	editor: Editor,
+	kind: AgentActivityKind,
+	operation: string,
+	verb: string,
+	shapeIds: readonly (TLShapeId | string)[]
+): void {
+	const shapes = shapeIds.slice(0, MAX_HIGHLIGHTED).flatMap((id) => {
+		const bounds = editor.getShapePageBounds(id as TLShapeId)
+		return bounds ? [{ id: id as TLShapeId, x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h }] : []
+	})
+
+	// The top-left of everything touched, which is where a cursor pointing at a group belongs: over
+	// the corner of it, the way a person's would be, rather than buried in the middle of the shapes.
+	const point = shapes.length
+		? {
+				x: Math.min(...shapes.map((shape) => shape.x)),
+				y: Math.min(...shapes.map((shape) => shape.y)),
+			}
+		: null
+
+	reportAgentActivity({ kind, operation, verb, editor, shapes, point })
 }
 
 /** The board's property definitions, for turning ids into names and back. */

@@ -24,7 +24,9 @@ interface Manifest {
 	inputSchema: unknown
 }
 
-type OperationResult = { ok: true; data: unknown } | { ok: false; error: string }
+type OperationResult =
+	| { ok: true; data: unknown; images?: { mediaType: string; data: string }[] }
+	| { ok: false; error: string }
 
 /** Stands in for `packages/mcp-server`: accepts the handshake and relays operation calls. */
 class FakeServer {
@@ -217,6 +219,103 @@ test.describe('the agent bridge', () => {
 			op: 'sum',
 		})) as { value: number }
 		expect(summed.value).toBe(2399)
+	})
+
+	/**
+	 * The board's own shapes, and looking at the result.
+	 *
+	 * Both need a real browser and neither can be faked: a text shape's width comes from *measuring*
+	 * the text, and `view.look` runs tldraw's exporter over the real canvas. The unit tests cover
+	 * which shapes get chosen; this covers whether pixels come back.
+	 */
+	test('draws tldraw’s own shapes and can look at what it drew', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await enableBridge(page, port)
+		await server.ready
+
+		await server.run('board.create', { name: 'Looking board' })
+
+		const types = (await server.run('node.types')) as { type: string; builtIn: boolean }[]
+		expect(types.filter((entry) => entry.builtIn).map((entry) => entry.type)).toContain('text')
+
+		// The shape that started all this: an agent asked for plain text and was told the type did
+		// not exist.
+		const caption = (await server.run('node.insert', {
+			type: 'text',
+			text: 'Q3 plan',
+			x: 200,
+			y: 200,
+		})) as { id: string; label: string; w: number }
+		expect(await countShapes(page, 'text')).toBe(1)
+		expect(caption.label).toBe('Q3 plan')
+		// Measured, not declared — a text shape that kept tldraw's 8px default would be invisible.
+		expect(caption.w).toBeGreaterThan(20)
+
+		await server.run('node.insert', { type: 'note', text: 'A sticky', x: 500, y: 200 })
+		expect(await countShapes(page, 'note')).toBe(1)
+
+		// And now look at it. A real render through tldraw's exporter, in a real browser.
+		const looked = await server.invoke('view.look', { size: 400 })
+		expect(looked.ok).toBe(true)
+		if (!looked.ok) return
+		expect(looked.images?.[0]?.mediaType).toBe('image/png')
+		// A PNG, not an empty string: the first bytes of base64-encoded PNG magic.
+		expect(looked.images?.[0]?.data.startsWith('iVBOR')).toBe(true)
+		expect(looked.data).toMatchObject({ shapes: 2 })
+
+		// And what the person can actually see, which crops to the window rather than to the shapes.
+		const onScreen = await server.invoke('view.look', { region: 'viewport', size: 300 })
+		expect(onScreen.ok).toBe(true)
+		if (!onScreen.ok) return
+		expect(onScreen.images?.[0]?.data.startsWith('iVBOR')).toBe(true)
+
+		// A picture on the board, looked at on its own. This is the case the whole thing exists for —
+		// an agent can read an image shape's position and property values and still have no idea what
+		// it depicts. The render has to go back through the app's own asset store to resolve the
+		// bytes, which is why this is worth an end-to-end test rather than a unit one.
+		const picture = (await server.run('node.image', {
+			url: `${page.url().split('#')[0]}icon-192.png`,
+			x: 900,
+			y: 200,
+		})) as { id: string }
+		const looksAt = await server.invoke('view.look', { shapeIds: [picture.id], size: 300 })
+		expect(looksAt.ok).toBe(true)
+		if (!looksAt.ok) return
+		expect(looksAt.images?.[0]?.data.startsWith('iVBOR')).toBe(true)
+		// Big enough to be a picture of something: a render that failed to resolve the asset comes
+		// back as a near-empty PNG of a placeholder box.
+		expect(looksAt.images?.[0]?.data.length ?? 0).toBeGreaterThan(2000)
+
+		// What the user is pointing at, which is the other half of "look at these".
+		await server.run('view.select', { shapeIds: [caption.id] })
+		const selection = (await server.run('view.selection')) as {
+			selected: number
+			shapes: { id: string }[]
+		}
+		expect(selection.selected).toBe(1)
+		expect(selection.shapes[0]?.id).toBe(caption.id)
+	})
+
+	test('shows a cursor on the board while it works', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await enableBridge(page, port)
+		await server.ready
+
+		await server.run('board.create', { name: 'Presence board' })
+		await server.run('node.insert', { type: NOTE, text: 'Standing desk' })
+
+		// The cursor says what just happened and rings what it happened to — the difference between
+		// watching someone work and shapes changing on their own.
+		const cursor = page.locator('.lb-agent-cursor')
+		await expect(cursor).toBeVisible()
+		await expect(cursor.locator('.lb-agent-cursor__verb')).toHaveText(/Adding/)
+		await expect(cursor.locator('.lb-agent-cursor__op')).toHaveText('node.insert')
+		await expect(page.locator('.lb-agent-ring')).toHaveCount(1)
+
+		// And it goes away on its own, rather than leaving a marker on the board.
+		await expect(cursor).toBeHidden({ timeout: 10_000 })
 	})
 
 	test('an agent’s work is undoable, one operation at a time', async ({ page }) => {

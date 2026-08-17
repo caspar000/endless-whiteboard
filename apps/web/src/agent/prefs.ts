@@ -11,6 +11,7 @@ const ENABLED_KEY = 'lifeboard:agentEnabled'
 const PORT_KEY = 'lifeboard:agentPort'
 const TOKEN_KEY = 'lifeboard:agentToken'
 const READ_ONLY_KEY = 'lifeboard:agentReadOnly'
+const PRESENCE_KEY = 'lifeboard:agentPresence'
 
 /** Matches the MCP server's own default. Nothing depends on the number beyond both ends agreeing. */
 export const DEFAULT_AGENT_PORT = 8787
@@ -28,6 +29,14 @@ export interface AgentPrefs {
 	 * rather than quietly allowed through.
 	 */
 	readOnly: boolean
+	/**
+	 * Draw the agent's cursor on the board as it works.
+	 *
+	 * **On** by default, unlike everything else here — the others govern what an agent is allowed to
+	 * do and default to the cautious answer; this one governs whether you can *see* it doing it, and
+	 * the cautious answer there is to show it. Off is for demos and screen recordings.
+	 */
+	showPresence: boolean
 }
 
 function read(key: string): string | null {
@@ -53,6 +62,9 @@ export function loadAgentPrefs(): AgentPrefs {
 		port: Number.isInteger(port) && port > 0 && port < 65536 ? port : DEFAULT_AGENT_PORT,
 		token: read(TOKEN_KEY) ?? '',
 		readOnly: read(READ_ONLY_KEY) === 'true',
+		// Absent means on: the default is "show me", and a user who has never opened Settings has not
+		// asked to be kept in the dark.
+		showPresence: read(PRESENCE_KEY) !== 'false',
 	}
 }
 
@@ -86,6 +98,7 @@ export function setAgentPrefs(next: AgentPrefs): void {
 	write(PORT_KEY, String(next.port))
 	write(TOKEN_KEY, next.token)
 	write(READ_ONLY_KEY, String(next.readOnly))
+	write(PRESENCE_KEY, String(next.showPresence))
 	for (const listener of listeners) listener()
 }
 

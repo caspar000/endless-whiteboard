@@ -3,7 +3,14 @@ import { coercePropertyValue } from '../properties/format'
 import { createProperty } from '../properties/schema'
 import { PROPERTY_TYPES, type PropertyDef, type PropertyType } from '../properties/types'
 import { updateShapeProperties } from '../properties/values'
-import { BOARD_ID_PARAM, propertyDefs, resolveEditor, resolveProperty, resolveShape } from './shared'
+import {
+	BOARD_ID_PARAM,
+	propertyDefs,
+	reportAgentWork,
+	resolveEditor,
+	resolveProperty,
+	resolveShape,
+} from './shared'
 
 function definitionSummary(def: PropertyDef): JsonValue {
 	return {
@@ -120,6 +127,7 @@ export const propertyOperations: RegisteredOperation[] = [
 				updateShapeProperties(editor, found.shape, { [def.id]: value })
 			})
 
+			reportAgentWork(editor, 'update', 'property.set', `Setting ${def.name}`, [found.shape.id])
 			return ok({
 				shapeId: args.shapeId,
 				property: { id: def.id, name: def.name, type: def.type },

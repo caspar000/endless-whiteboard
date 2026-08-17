@@ -119,7 +119,17 @@ export function buildToolServer(
 					return { content: [{ type: 'text' as const, text: result.error }], isError: true }
 				}
 				return {
-					content: [{ type: 'text' as const, text: JSON.stringify(result.data, null, 2) }],
+					content: [
+						{ type: 'text' as const, text: JSON.stringify(result.data, null, 2) },
+						// `view.look` renders the board and hands back the pixels; this is where they
+						// become something the model can actually see. Without it the operation would be
+						// a JSON description of an image it was never shown.
+						...(result.images ?? []).map((image) => ({
+							type: 'image' as const,
+							data: image.data,
+							mimeType: image.mediaType,
+						})),
+					],
 				}
 			}
 		)

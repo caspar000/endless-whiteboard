@@ -70,5 +70,9 @@ Everything an agent does lands in the board's undo history, one step per operati
 - **Tool names are not operation ids.** MCP tool names are restricted to `[A-Za-z0-9_-]`, so
   `board.list` is offered as `board_list`. That mapping is reversible only because operation ids
   never contain an underscore — a test in node-kit enforces it.
+- **A result may carry pictures.** `view_look` renders the board and returns base64 PNG in
+  `OperationResult.images`, which `server.ts` turns into `image` content blocks beside the JSON. The
+  relay does not look inside them; a client that cannot display images still gets the JSON saying
+  what was rendered.
 - `src/protocol.ts` is a deliberate structural duplicate of `apps/web/src/agent/protocol.ts`; see
   its doc comment for why, and bump `AGENT_PROTOCOL_VERSION` in both when the wire format changes.

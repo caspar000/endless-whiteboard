@@ -68,6 +68,13 @@ export function createServer(bridge: AgentBridge): Server {
 					// on the shape of a board that a single line would bury.
 					text: JSON.stringify(result.data, null, 2),
 				},
+				// A rendered board, when the operation produced one. Second, so the JSON that says what
+				// was rendered is read first — a picture with no idea which shapes it covers is a riddle.
+				...(result.images ?? []).map((image) => ({
+					type: 'image' as const,
+					data: image.data,
+					mimeType: image.mediaType,
+				})),
 			],
 		}
 	})

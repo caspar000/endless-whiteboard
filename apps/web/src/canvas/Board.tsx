@@ -2,6 +2,7 @@
 // tools below are built at module scope from the registry the root populates.
 import '../extensions'
 import {
+	clearAgentActivity,
 	createNodeShapeUtil,
 	PropertiesPopover,
 	getNodeDefinitions,
@@ -39,6 +40,7 @@ import { createLifeboardAssetStore } from '../persistence/assetStore'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
 import { clearPendingRestore, takePendingRestore } from '../persistence/pendingRestore'
 import { persistenceKeyForBoard, type RawBoardSnapshot } from '../persistence/tldrawLocalDb'
+import { AgentPresence } from './AgentPresence'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { FileImportHandler } from './FileImportHandler'
@@ -134,6 +136,23 @@ function CanvasLayers() {
 	)
 }
 
+/**
+ * Everything drawn *over* the shapes. `InFrontOfTheCanvas` is one slot too, so its two occupants are
+ * composed here for the same reason `CanvasLayers` exists.
+ *
+ * The agent's cursor goes above the selection toolbar in source order but never overlaps it in
+ * practice — one tracks a shape on the canvas, the other floats above the selection — and neither
+ * takes pointer events.
+ */
+function CanvasOverlays() {
+	return (
+		<>
+			<SelectionToolbar />
+			<AgentPresence />
+		</>
+	)
+}
+
 const canvasComponents: TLComponents = {
 	...nodeComponents,
 	// The paper backdrop, and whichever grid the user has chosen (see CanvasBackground.tsx).
@@ -161,8 +180,8 @@ const canvasComponents: TLComponents = {
 	StylePanel: null,
 	// Our own bottom dock instead of tldraw's toolbar (see CanvasToolbar.tsx).
 	Toolbar: CanvasToolbar,
-	// The floating bar above a selected shape (see SelectionToolbar.tsx).
-	InFrontOfTheCanvas: SelectionToolbar,
+	// The floating bar above a selected shape, and the agent's cursor (see CanvasOverlays above).
+	InFrontOfTheCanvas: CanvasOverlays,
 	// tldraw's separate image/video bars are merged *into* the selection toolbar — their content
 	// components render inside it — so the standalone versions must not also appear.
 	ImageToolbar: null,
@@ -397,6 +416,9 @@ export function Board({
 						// not survive closing the board you were tracing, which is the one case where
 						// what you were looking at has genuinely gone.
 						stopTracing()
+						// The presence store holds the editor an agent last touched, so a closed board
+						// would be kept alive by a cursor nobody can see.
+						clearAgentActivity()
 						// NB: no thumbnail capture here. Exporting from the unmount path ran while the
 						// board host was already hidden for the drain, and tldraw's exporter dropped every
 						// node background and font — previews looked right for a second and then decayed

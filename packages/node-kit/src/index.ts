@@ -79,6 +79,7 @@ export {
 	type Operation,
 	type OperationContext,
 	type OperationManifestEntry,
+	type OperationImage,
 	type OperationResult,
 	type ParamSpec,
 	type ParamType,
@@ -90,6 +91,20 @@ export {
 // `BoardBridge` installed to do anything.
 export { coreOperations, registerCoreOperations } from './ops'
 export { createNodeShape, textPropFor } from './nodes/insert'
+// tldraw's own shapes, described well enough for an agent to create one. Not registry entries — see
+// the file's doc comment for why that distinction is load-bearing.
+export { NATIVE_SHAPES, createNativeShape, getNativeShape, type NativeShapeSpec } from './nodes/native'
+
+// Where the agent is working, so the board can draw a cursor there. The channel only — the app owns
+// what it looks like.
+export {
+	clearAgentActivity,
+	getAgentActivity,
+	reportAgentActivity,
+	subscribeToAgentActivity,
+	type AgentActivity,
+	type AgentActivityKind,
+} from './agentPresence'
 
 // The board-capability seam operations run against — installed by the app, like the other bridges.
 export {

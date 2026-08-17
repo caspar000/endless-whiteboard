@@ -11,7 +11,7 @@
  * If you change anything here, change the app's copy and bump the version.
  */
 
-export const AGENT_PROTOCOL_VERSION = 4
+export const AGENT_PROTOCOL_VERSION = 5
 
 /** One operation, as the app describes it. Mirrors node-kit's `OperationManifestEntry`. */
 export interface OperationManifestEntry {
@@ -27,8 +27,13 @@ export interface OperationManifestEntry {
 	}
 }
 
+/**
+ * `images` is how an operation hands back something JSON cannot describe — a render of the board, so
+ * the model can *see* it. The relay does not look inside them beyond checking they are images; it
+ * turns each into a content block beside the JSON (see `server.ts`).
+ */
 export type OperationResult =
-	| { ok: true; data: unknown }
+	| { ok: true; data: unknown; images?: PromptImage[] }
 	| { ok: false; error: string }
 
 // --- app → server ---------------------------------------------------------
@@ -294,7 +299,17 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
 			if (typeof parsed.id !== 'number' || !Number.isFinite(parsed.id)) return null
 			const result = parsed.result
 			if (!isRecord(result)) return null
-			if (result.ok === true) return { type: 'result', id: parsed.id, result: { ok: true, data: result.data } }
+			if (result.ok === true) {
+				// Malformed images lose the pictures, not the answer. Everything else in this file
+				// returns `null` for a bad field, but a dropped `result` frame is a tool call that never
+				// answers — the agent waits for its own timeout, having been told nothing.
+				const images = parseImages(result.images) ?? []
+				return {
+					type: 'result',
+					id: parsed.id,
+					result: { ok: true, data: result.data, ...(images.length ? { images } : {}) },
+				}
+			}
 			if (result.ok === false && typeof result.error === 'string') {
 				return { type: 'result', id: parsed.id, result: { ok: false, error: result.error } }
 			}

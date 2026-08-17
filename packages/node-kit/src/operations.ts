@@ -82,6 +82,25 @@ export type Args<P extends Params> = Prettify<
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
 /**
+ * A picture an operation is handing back, for a caller that can show one to a model.
+ *
+ * The reason this exists at all: an agent could read a board's *structure* — ids, labels, positions,
+ * property values — and could not see it. Ten images with no name were ten rows of coordinates, and
+ * "what is in this picture" was unanswerable however many times it read the shape. JSON has no way to
+ * carry pixels, so results grew a second channel rather than a base64 string in a field the transport
+ * would have had to guess the meaning of.
+ *
+ * Base64 without the `data:` prefix: that is the shape both the MCP content block and the Anthropic
+ * one want, and it matches `PromptImage` going the other way.
+ */
+export interface OperationImage {
+	/** `image/png`, `image/webp`, … */
+	mediaType: string
+	/** Base64 payload, no `data:` prefix. */
+	data: string
+}
+
+/**
  * Every operation answers, and none of them throw.
  *
  * `ok: false` is a *normal* answer — "no board is open", "no shape with that id" — the same
@@ -90,10 +109,19 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
  * trace can only give up. `runOperation` is the choke point that turns a thrown error into one of
  * these, so an operation *may* throw — it just never gets to surface that way.
  */
-export type OperationResult = { ok: true; data: JsonValue } | { ok: false; error: string }
+export type OperationResult =
+	| { ok: true; data: JsonValue; images?: OperationImage[] }
+	| { ok: false; error: string }
 
-export function ok(data: JsonValue): OperationResult {
-	return { ok: true, data }
+/**
+ * A successful answer, optionally with pictures.
+ *
+ * `data` is still the whole of what most operations return; `images` is additive and every existing
+ * caller ignores it. A transport that cannot show an image should say so in `data` rather than drop
+ * it silently, which is why `view.look` also reports the size and shape count it rendered.
+ */
+export function ok(data: JsonValue, images?: readonly OperationImage[]): OperationResult {
+	return { ok: true, data, ...(images?.length ? { images: [...images] } : {}) }
 }
 
 export function fail(error: string): OperationResult {

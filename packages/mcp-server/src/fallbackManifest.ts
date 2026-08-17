@@ -112,7 +112,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.types",
 		"title": "List node types",
-		"description": "The kinds of node that can be created right now, with whether each accepts text. Types come from the enabled extensions, so this can change between calls — read it before guessing a type name.",
+		"description": "Everything that can be put on a board right now: the smart node types the enabled extensions provide, and tldraw’s own shapes (text, sticky note, rectangle, frame) marked with builtIn. Node types come from the enabled extensions, so this can change between calls — read it before guessing a type name.",
 		"readOnly": true,
 		"inputSchema": {
 			"type": "object",
@@ -124,18 +124,18 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.insert",
 		"title": "Insert node",
-		"description": "Puts a new node on a board and returns its id. Use node.types for valid type values. Position is the centre of the node in page coordinates; omit x and y to place it in the middle of the current view.",
+		"description": "Puts a new node or shape on a board and returns its id. Use node.types for valid type values — it lists the smart node types and tldraw’s own shapes (\"text\" for a plain caption, \"note\" for a sticky, \"geo\" for a rectangle, \"frame\" for a titled region). Position is the centre in page coordinates; omit x and y to place it in the middle of the current view.",
 		"readOnly": false,
 		"inputSchema": {
 			"type": "object",
 			"properties": {
 				"type": {
 					"type": "string",
-					"description": "The node type, e.g. the markdown note type. See node.types."
+					"description": "The type to create, e.g. \"text\" or the markdown note type. See node.types."
 				},
 				"text": {
 					"type": "string",
-					"description": "Initial text, for types where acceptsText is true. Markdown notes take markdown."
+					"description": "Initial text, for types where acceptsText is true. Markdown notes take markdown; a frame’s text is its title."
 				},
 				"x": {
 					"type": "number",
@@ -709,6 +709,60 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 			"required": [
 				"view"
 			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "view.look",
+		"title": "Look at the board",
+		"description": "Renders the board — or some shapes on it — to a picture and hands it back, so you can see it rather than infer it from coordinates. Use this whenever the answer depends on what something *looks like*: what a photo or diagram shows, whether a layout is aligned or overlapping, what somebody drew by hand, or what colour things are. Pass shapeIds to look at particular shapes (this is how to see an image on the board), or region: \"viewport\" for what the user can see right now, \"selection\" for what they have selected, \"board\" for everything. Costs tokens like any image, so look once at the right thing rather than repeatedly at everything.",
+		"readOnly": true,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"shapeIds": {
+					"type": "array",
+					"description": "The shapes to render, from node.find. A single id may be passed on its own. Omit to use region.",
+					"items": {
+						"type": "string"
+					}
+				},
+				"region": {
+					"type": "string",
+					"description": "What to render when no shapeIds are given. \"board\" (the default) is everything, \"viewport\" is what is on screen, \"selection\" is what the user has selected.",
+					"enum": [
+						"board",
+						"viewport",
+						"selection"
+					]
+				},
+				"size": {
+					"type": "number",
+					"description": "Longest side of the returned image in pixels — between 200 and 2400, 1200 by default. Larger reads finer detail and costs more."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "view.selection",
+		"title": "Read the selection",
+		"description": "What the user has selected on screen right now, with the same detail node.find returns. This is how to answer \"these ones\" — when someone says \"name these images\" or \"tidy this up\", the selection is what they are pointing at. Returns an empty list when nothing is selected.",
+		"readOnly": true,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [],
 			"additionalProperties": false
 		}
 	},

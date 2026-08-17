@@ -1,7 +1,7 @@
 import { AssetRecordType, createShapeId, type TLAssetId, type TLImageAsset } from 'tldraw'
 import { getAssetBridge } from '../assets'
 import { defineOperation, fail, ok, type RegisteredOperation } from '../operations'
-import { BOARD_ID_PARAM, resolveEditor } from './shared'
+import { BOARD_ID_PARAM, reportAgentWork, resolveEditor } from './shared'
 
 /**
  * Putting a picture on the board.
@@ -173,6 +173,7 @@ export const imageOperations: RegisteredOperation[] = [
 				editor.createShape({ id: shapeId, type: 'image', x, y, props: { assetId, w, h } })
 			})
 
+			reportAgentWork(editor, 'create', 'node.image', 'Adding image', [shapeId])
 			return ok({
 				id: shapeId,
 				type: 'image',

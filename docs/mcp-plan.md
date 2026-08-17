@@ -19,7 +19,7 @@ remaining ideas are under "Deliberately not in scope" and "Where this goes next"
   refactored onto it.
 - `packages/node-kit/src/nodes/insert.ts` — `createNodeShape` (shared with the app's `insertNode`,
   which keeps selection and edit mode on top) and `textPropFor`.
-- `packages/node-kit/src/ops/` — the 20 operations, plus `fakeBoard.ts` and `ops.test.ts` (48 cases).
+- `packages/node-kit/src/ops/` — the core operations, plus `fakeBoard.ts` and `ops.test.ts`.
   Registered by `registerCoreOperations()`, which the host must call **after** installing a bridge.
 - `packages/node-kit/src/nodes/rollup/engine.ts` — `shapeFacts` and `readPageFacts` extracted, so a
   one-shot caller can read the page without standing up tldraw's computed-cache machinery.
@@ -69,12 +69,31 @@ Additive, and none of it changes an operation id:
 - **A richer `board.query`** as a *second* operation. The current one flattens `TableSource` into
   named scalars so an agent can fill it in first time; the full selector is a nested object and
   wants its own entry rather than a widening of this one.
-- **tldraw's own shapes** in `node.insert` (sticky, text, frame). Registered node types only, today.
 - **Batched operations** — one call, several writes, one undo entry. Worth it only once there is
   evidence agents are round-tripping enough for it to matter.
+- **Styling and arranging** — set a shape's colour/size/font, align and distribute a group, duplicate,
+  group. The gap between "can build a board" and "can build a board that looks deliberate". Colour is
+  the one agents reach for first, since it is how a whiteboard says "these belong together".
+- **Undo as an operation** — an agent that made a mess in three calls cannot take them back. The
+  history is shared with the user, so it needs a rule for how far back is its own.
 
 Goal: an MCP server my coding agents can point at, so they can list and create boards, put nodes on
 them, set properties, draw relations and read the result back.
+
+## Since shipped (2026-08-17)
+
+- **tldraw's own shapes** in `node.insert` — `text`, `note`, `geo`, `frame`, from
+  `nodes/native.ts`. A table of how to create one, **not** node-registry entries: the registry is the
+  editor's schema (`createNodeShapeUtil` turns each definition into a `ShapeUtil`), so registering
+  `text` there would replace tldraw's own text shape with an imitation.
+- **Vision** — `view.look` renders the board (all of it, the viewport, the selection, or named shapes)
+  and returns it as an image. `OperationResult` grew an optional `images` array, and both transports
+  turn it into a content block beside the JSON. This is what closed "I can read the nodes but not see
+  what the pictures show", which no amount of richer JSON could have.
+- **`view.selection`** — what the user has selected, so "these ones" resolves.
+- **Presence** — `agentPresence.ts` carries what an operation just touched; the app draws a cursor and
+  rings (`canvas/AgentPresence.tsx`). The channel is in node-kit and the drawing is in the app, so the
+  SDK stays DOM-free.
 
 ## The finding that shapes this plan
 

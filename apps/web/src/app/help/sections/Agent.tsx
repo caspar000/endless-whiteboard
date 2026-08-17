@@ -53,6 +53,67 @@ function TurnDemo() {
 	)
 }
 
+/**
+ * The cursor, shown with the cursor's own CSS.
+ *
+ * Same exception as the panel demo above, for the same reason: this is chrome, so drawing it with the
+ * real `lb-agent-*` classes is both more honest and impossible to let drift. Only the board under it
+ * is a mock-up.
+ */
+const CURSOR_STEPS = [1800, 2000, 2200] as const
+
+const CURSOR_STAGES = [
+	{ kind: 'read', verb: 'Looking at 2 shapes', op: 'node.find', x: 60, y: 44, ring: { x: 60, y: 44, w: 200, h: 62 } },
+	{ kind: 'create', verb: 'Adding sticky note', op: 'node.insert', x: 320, y: 60, ring: { x: 320, y: 60, w: 150, h: 92 } },
+	{ kind: 'update', verb: 'Setting Price', op: 'property.set', x: 60, y: 44, ring: { x: 60, y: 44, w: 200, h: 62 } },
+] as const
+
+function CursorDemo() {
+	// The ref is what starts it: `useDemo` only advances while the demo is actually on screen.
+	const { step, ref } = useDemo(CURSOR_STEPS)
+	const stage = CURSOR_STAGES[step] ?? CURSOR_STAGES[0]
+
+	return (
+		<div
+			className="lb-demo lb-demo--short"
+			ref={ref}
+			role="img"
+			aria-label="An agent's cursor moving across a board, ringing the shape it is working on"
+		>
+			<div className="lb-demo__scene">
+				<div className="lb-demo__note" style={{ left: 60, top: 44, width: 200 }}>
+					Standing desk
+				</div>
+				<div className="lb-agent-presence" data-kind={stage.kind}>
+					<div
+						className="lb-agent-ring"
+						key={`${step}:ring`}
+						style={{
+							transform: `translate(${stage.ring.x}px, ${stage.ring.y}px)`,
+							width: stage.ring.w,
+							height: stage.ring.h,
+						}}
+					/>
+					<div className="lb-agent-cursor" style={{ transform: `translate(${stage.x}px, ${stage.y}px)` }}>
+						<svg className="lb-agent-cursor__arrow" viewBox="0 0 20 22" aria-hidden="true">
+							<path
+								d="M2 1.6 L2 17.4 L6.2 13.6 L9 20 L12 18.7 L9.2 12.6 L15 12.4 Z"
+								stroke="var(--lb-canvas)"
+								strokeWidth="1.4"
+								strokeLinejoin="round"
+							/>
+						</svg>
+						<div className="lb-agent-cursor__label">
+							<span className="lb-agent-cursor__verb">{stage.verb}</span>
+							<span className="lb-agent-cursor__op">{stage.op}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	)
+}
+
 export function Agent({ go }: SectionProps) {
 	// Live, and it moves: switching an extension off withdraws its operations from the agent too.
 	const operations = useSyncExternalStore(subscribeToOperations, getVisibleOperations)
@@ -82,6 +143,18 @@ export function Agent({ go }: SectionProps) {
 					of steps.
 				</p>
 				<p>
+					It makes the board's plain shapes too, not only typed nodes: a text caption, a sticky, a
+					rectangle, a frame around a group. “Give that cluster a title” gets a piece of text, which
+					is what you would have drawn.
+				</p>
+				<p>
+					<strong>It can see the board.</strong> Beyond reading positions and property values, it can
+					render what is on screen — or the shapes you point it at — and look at the picture. That is
+					how it answers questions about images you have put on a board, about a sketch, or about
+					whether a layout lines up. It also reads your <em>selection</em>, so “name these” means the
+					ones you have selected, with no need to describe them.
+				</p>
+				<p>
 					It can also search the web, which is what makes research requests work end to end: it will
 					look something up, then put what it found on the board as notes and pictures rather than
 					only describing it back to you.
@@ -91,6 +164,20 @@ export function Agent({ go }: SectionProps) {
 					you did not want, <Keys keys={['⌘Z']} /> walks back through it exactly as if you had
 					done the work by hand.
 				</Hint>
+			</Section>
+
+			<Section title="Watching it work">
+				<p>
+					While a turn is running, the agent has a cursor on the board. It moves to whatever it is
+					touching and says what it is doing there, and the shapes involved are ringed: green while
+					it makes something, red before it removes one, violet while it reads.
+				</p>
+				<CursorDemo />
+				<p>
+					This is the difference between “shapes changed by themselves” and watching someone work —
+					and it is how you catch a turn heading somewhere you did not intend, early enough to stop
+					it. Turn it off in <strong>Settings → Agents</strong> if you are recording the screen.
+				</p>
 			</Section>
 
 			<Section title="What it cannot do">

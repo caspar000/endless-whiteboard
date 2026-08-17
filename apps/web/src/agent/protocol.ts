@@ -14,7 +14,7 @@ import type { OperationManifestEntry, OperationResult } from '@lifeboard/node-ki
  */
 
 /** The protocol revision. Bumped when a message shape changes incompatibly. */
-export const AGENT_PROTOCOL_VERSION = 4
+export const AGENT_PROTOCOL_VERSION = 5
 
 // --- app → server ---------------------------------------------------------
 

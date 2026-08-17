@@ -56,6 +56,12 @@
 	/* The tracing aura. A saturated colour rather than white in either theme: on the dark canvas white
 	   reads as a highlight, and on the light one it disappears into the paper entirely. */
 	--lb-glow: #6c5ce7;
+	/* The agent's cursor and the rings it draws. Its own hue, not the accent: blue is *your* selection
+	   everywhere else, and a second blue outline round a shape you did not select would read as one.
+	   A token rather than a rule on the layer, so the per-activity colours can override it locally
+	   without fighting the theme's own selector for specificity. */
+	--lb-agent: #b06cff;
+	--lb-agent-soft: rgb(176 108 255 / 16%);
 	/* Thumbnails are exported in whichever theme is active, so the preview well behind a loading or
 	   letterboxed image matches the paper inside the image. */
 	--lb-thumb-paper: var(--lb-canvas);
@@ -104,6 +110,8 @@
 	--lb-shadow-2: 0 10px 30px rgb(20 22 40 / 14%), 0 2px 8px rgb(20 22 40 / 8%);
 	/* Deeper than the dark theme's, so it holds its own against white paper. */
 	--lb-glow: #5b4ee0;
+	--lb-agent: #7c3aed;
+	--lb-agent-soft: rgb(124 58 237 / 12%);
 	color-scheme: light;
 }
 
@@ -3825,6 +3833,137 @@ button.lb-props__eye:hover {
 	stroke-linejoin: round;
 	stroke-linecap: round;
 }
+/* ------------------------------------------------------ the agent's cursor */
+/*
+ * Where an agent is working (see canvas/AgentPresence.tsx).
+ *
+ * Its own colour, not the accent: blue is *your* selection everywhere else in the app, and a second
+ * blue outline appearing on a shape you did not select is the one reading this must never allow. The
+ * three states below are the whole vocabulary — reading, making, removing — because a cursor is
+ * glanced at, and a palette you have to decode is not a glance.
+ */
+.lb-agent-presence {
+	position: absolute;
+	inset: 0;
+	/* Above the shapes, under nothing: it must never eat a click meant for the board. */
+	pointer-events: none;
+	transition: opacity 700ms ease;
+}
+/*
+ * Making something is green, removing it is red — the two moments worth telling apart from across the
+ * room, and the same two colours the rest of the app already uses for them.
+ *
+ * These re-declare the theme's `--lb-agent` on the layer itself, which is why the default lives in
+ * `:root` rather than here: a `:root[data-theme='light'] .lb-agent-presence` rule would out-specify
+ * a class-plus-attribute one and silently paint every kind violet in light mode.
+ */
+.lb-agent-presence[data-kind='create'] {
+	--lb-agent: var(--lb-money);
+	--lb-agent-soft: rgb(61 214 140 / 14%);
+}
+.lb-agent-presence[data-kind='delete'] {
+	--lb-agent: var(--lb-danger);
+	--lb-agent-soft: var(--lb-danger-tint);
+}
+.lb-agent-presence--fading {
+	opacity: 0;
+}
+
+/*
+ * The ring around a shape the agent is holding.
+ *
+ * Positioned by transform and sized in pixels the layer computes from the camera, rather than by a
+ * CSS transform on a page-space container: a scaled container would scale the border with it, and a
+ * 4px outline at 400% zoom stops being an outline.
+ */
+.lb-agent-ring {
+	position: absolute;
+	top: 0;
+	left: 0;
+	border: 2px solid var(--lb-agent);
+	border-radius: 10px;
+	background: var(--lb-agent-soft);
+	/* One pulse on arrival, then it simply sits there. A ring that keeps pulsing turns a board an
+	   agent is working through into a strobe. */
+	animation: lb-agent-ring-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes lb-agent-ring-in {
+	from {
+		opacity: 0;
+		/* Grown into place from slightly outside, which reads as something landing on the shape
+		   rather than something switching on underneath it. */
+		box-shadow: 0 0 0 10px transparent;
+	}
+	to {
+		opacity: 1;
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+/*
+ * The cursor. Drawn at a fixed size at a converted screen point, so it stays a pointer at any zoom.
+ *
+ * The transition is the feature: keeping this element mounted between reports is what turns a
+ * sequence of tool calls into something that visibly *moves* across the board, which is the whole
+ * difference between "an agent is working" and "shapes are changing on their own".
+ */
+.lb-agent-cursor {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: flex-start;
+	gap: 2px;
+	transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+	will-change: transform;
+}
+.lb-agent-cursor__arrow {
+	width: 20px;
+	height: 22px;
+	fill: var(--lb-agent);
+	filter: drop-shadow(0 2px 4px rgb(0 0 0 / 30%));
+	flex: none;
+}
+.lb-agent-cursor__label {
+	margin-top: 14px;
+	padding: 4px 9px;
+	border-radius: 8px;
+	background: var(--lb-agent);
+	color: #fff;
+	box-shadow: var(--lb-shadow-1);
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	/* The label is a caption on a cursor, so it must never grow into a paragraph over the board. */
+	max-width: 220px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.lb-agent-cursor__verb {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+/* The operation id, for anyone who wants to know exactly which tool ran. Quiet by design — it is a
+   receipt, not the message. */
+.lb-agent-cursor__op {
+	font-size: 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	opacity: 0.72;
+	line-height: 1.2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lb-agent-cursor {
+		transition: none;
+	}
+	.lb-agent-ring {
+		animation: none;
+	}
+}
+
 /*
  * A closed disclosure at the bottom of a settings page, for numbers nobody needs but somebody
  * occasionally has to reach (see settings/AuraAdvanced.tsx).

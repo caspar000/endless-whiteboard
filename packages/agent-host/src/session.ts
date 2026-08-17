@@ -656,19 +656,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** A tool result as one short line. The panel shows the shape of what came back, not the payload. */
 function summarise(content: unknown): string {
+	const blocks = Array.isArray(content) ? content : []
 	const text =
 		typeof content === 'string'
 			? content
-			: Array.isArray(content)
-				? content
-						.map((block) =>
-							typeof block === 'object' && block !== null && 'text' in block
-								? String((block as { text: unknown }).text)
-								: ''
-						)
-						.join('')
-				: ''
+			: blocks
+					.map((block) =>
+						typeof block === 'object' && block !== null && 'text' in block
+							? String((block as { text: unknown }).text)
+							: ''
+					)
+					.join('')
+
+	// Counted, never rendered: a `view.look` result carries a megabyte of base64, and the transcript
+	// should say a picture came back rather than try to be one.
+	const images = blocks.filter(
+		(block) => isRecord(block) && block.type === 'image'
+	).length
 
 	const collapsed = text.replace(/\s+/g, ' ').trim()
-	return collapsed.length > 200 ? `${collapsed.slice(0, 200)}…` : collapsed
+	const trimmed = collapsed.length > 200 ? `${collapsed.slice(0, 200)}…` : collapsed
+	if (!images) return trimmed
+	const note = images === 1 ? '1 image' : `${images} images`
+	return trimmed ? `${trimmed} (+${note})` : `+${note}`
 }

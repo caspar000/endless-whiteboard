@@ -1,7 +1,22 @@
 import { atom, type Editor, type TLShape, type TLShapeId } from 'tldraw'
 import type { BoardBridge, BoardSummary } from '../boardBridge'
+import { getNativeShape } from '../nodes/native'
 import type { OperationContext } from '../operations'
 import { getNodeDefinition } from '../registry'
+
+/**
+ * Which size props tldraw's own shapes actually carry, which is not "both, always".
+ *
+ * A text shape has a width and measures its height; a sticky is a fixed square and declares neither.
+ * Only the *presence* of each key is faithful — the numbers are the fake's, since measuring text
+ * needs a browser.
+ */
+const NATIVE_BOX_PROPS: Record<string, { w?: number; h?: number }> = {
+	text: { w: 180 },
+	note: {},
+	geo: { w: 240, h: 160 },
+	frame: { w: 600, h: 420 },
+}
 
 /**
  * A board that behaves enough like a real one to test operations against.
@@ -27,6 +42,8 @@ export interface FakeBoard {
 	stops: string[]
 	selected: string[]
 	zoomed: { toFit: number; toSelection: number }
+	/** Every render `view.look` asked for, so a test can check what was framed without a browser. */
+	looks: { shapeIds: string[]; opts: Record<string, unknown> }[]
 }
 
 export function fakeBoard(): FakeBoard {
@@ -39,6 +56,7 @@ export function fakeBoard(): FakeBoard {
 		stops: [],
 		selected: [],
 		zoomed: { toFit: 0, toSelection: 0 },
+		looks: [],
 	}
 
 	const write = (mutate: (next: Map<string, TLShape>) => void) => {
@@ -57,6 +75,12 @@ export function fakeBoard(): FakeBoard {
 	}) => {
 		// Defaults come from the node registry, the way tldraw fills them from the shape util.
 		const defaults = getNodeDefinition(partial.type)?.defaultProps() ?? {}
+		// tldraw's own shapes do not all have a `w`/`h` — a text shape's height is measured and a
+		// sticky's is fixed — and an operation that writes one anyway fails validation in the real app.
+		// Giving every shape both would hide exactly that bug, so the built-ins get their real shape.
+		const box = getNativeShape(partial.type)
+			? NATIVE_BOX_PROPS[partial.type] ?? {}
+			: { w: 100, h: 100 }
 		return {
 			id: partial.id as TLShapeId,
 			typeName: 'shape',
@@ -68,7 +92,7 @@ export function fakeBoard(): FakeBoard {
 			rotation: 0,
 			isLocked: false,
 			opacity: 1,
-			props: { w: 100, h: 100, ...defaults, ...(partial.props ?? {}) },
+			props: { ...box, ...defaults, ...(partial.props ?? {}) },
 			// Carried through, as tldraw does: a shape can be created *with* meta, which is how a
 			// relation is drawn hidden in one step rather than created and then amended.
 			meta: partial.meta ?? {},
@@ -121,9 +145,29 @@ export function fakeBoard(): FakeBoard {
 			const shape = shapes.get().get(id)
 			if (!shape) return undefined
 			const props = shape.props as { w?: number; h?: number }
-			return { x: shape.x, y: shape.y, w: props.w ?? 0, h: props.h ?? 0 }
+			// A shape whose size is not in its props still occupies space — tldraw measures it. The
+			// declared default is the closest thing to that answer available without a browser.
+			const measured = getNativeShape(shape.type)?.defaultSize
+			return {
+				x: shape.x,
+				y: shape.y,
+				w: props.w ?? measured?.w ?? 0,
+				h: props.h ?? measured?.h ?? 0,
+				// `view.look` asks each shape whether it is in the window. Everything is, here — the
+				// question this fake exists to answer is which shapes were *chosen*, not where they are.
+				collides: () => true,
+			}
 		},
-		getViewportPageBounds: () => ({ center: { x: 500, y: 400 } }),
+		// A box as well as a centre: `node.insert` wants the middle of the view, and `view.look` wants
+		// the window itself so it can crop to what the person can see.
+		getViewportPageBounds: () => ({
+			x: 0,
+			y: 0,
+			w: 1000,
+			h: 800,
+			center: { x: 500, y: 400 },
+			collides: () => true,
+		}),
 		getShapeUtil: () => ({ getText: () => '' }),
 		getAsset: () => undefined,
 		canEditShape: () => true,
@@ -141,6 +185,23 @@ export function fakeBoard(): FakeBoard {
 			state.selected = ids
 		},
 		getSelectedShapeIds: () => state.selected,
+		getSelectedShapes: () =>
+			state.selected.flatMap((id) => {
+				const shape = shapes.get().get(id)
+				return shape ? [shape] : []
+			}),
+
+		/**
+		 * A render, without a renderer.
+		 *
+		 * The point of testing `view.look` against this is not the pixels — nothing here can draw — but
+		 * everything around them: which shapes were chosen, whether the window was cropped to, and that
+		 * the result carries an image beside its JSON rather than describing one.
+		 */
+		toImage: async (rendered: { id: string }[], opts: Record<string, unknown>) => {
+			state.looks.push({ shapeIds: rendered.map((shape) => shape.id), opts })
+			return { blob: new Blob([new Uint8Array([137, 80, 78, 71])]), width: 100, height: 80 }
+		},
 		zoomToFit: () => {
 			state.zoomed.toFit++
 		},

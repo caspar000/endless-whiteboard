@@ -4,7 +4,7 @@ import { getPageEdges } from '../nodes/rollup/engine'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'
 import { shapeLabel } from '../properties/labels'
 import { connectShapes, disconnectShapes, isHiddenRelation, setRelationHidden } from '../relations'
-import { BOARD_ID_PARAM, MAX_RESULTS, resolveEditor, resolveShape } from './shared'
+import { BOARD_ID_PARAM, MAX_RESULTS, reportAgentWork, resolveEditor, resolveShape } from './shared'
 
 /**
  * Relations are arrows, and an arrow is only a relation when both of its ends are bound to a shape
@@ -56,6 +56,10 @@ export const relationOperations: RegisteredOperation[] = [
 			})
 			if (!arrowId) return fail('The connection could not be made.')
 
+			reportAgentWork(editor, 'connect', 'relation.connect', 'Connecting', [
+				from.shape.id,
+				to.shape.id,
+			])
 			return ok({
 				id: arrowId,
 				hidden: args.hidden === true,

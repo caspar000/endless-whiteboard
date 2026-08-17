@@ -1,5 +1,5 @@
 import { getVisibleOperations, subscribeToOperations } from '@lifeboard/node-kit'
-import { Bot, Eye } from 'lucide-react'
+import { Bot, Eye, MousePointer2 } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { getAgentStatus, subscribeToAgentStatus } from '../../agent/bridge'
 import { getDevHost, subscribeToDevHost } from '../../agent/devHost'
@@ -67,6 +67,13 @@ export function AgentsPanel() {
 						icon={Eye}
 						checked={prefs.readOnly}
 						onChange={(readOnly) => update({ readOnly })}
+					/>
+					<Toggle
+						label="Show the agent on the board"
+						hint="Draws a cursor where the agent is working, and rings round the shapes it reads and changes. Turn off for a clean screen recording."
+						icon={MousePointer2}
+						checked={prefs.showPresence}
+						onChange={(showPresence) => update({ showPresence })}
 					/>
 				</div>
 			</section>

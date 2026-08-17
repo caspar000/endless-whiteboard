@@ -145,6 +145,19 @@ A coding agent can drive a board — create boards, add nodes, set properties, d
   undo entry to return to.
 - **Nothing is hardcoded.** The MCP server holds no list of tools — the tab reports what it offers
   and the server projects it, so an extension that contributes an operation contributes a tool.
+- **It can see the board, not only read it.** `view.look` renders the board — everything, the
+  viewport, the selection, or named shapes — and returns the pixels as an image content block beside
+  the JSON (`OperationResult.images`). Coordinates cannot say what a photograph shows or whether a
+  layout is aligned; this is the only thing that can. `view.selection` answers the other half of it:
+  what the user is pointing at when they say "these ones".
+- **It draws the board's own shapes too.** `node.insert` takes tldraw's `text`, `note`, `geo` and
+  `frame` beside the registered node types (`packages/node-kit/src/nodes/native.ts`) — a small table
+  of *how to create one*, deliberately not registry entries, since registering `text` there would
+  replace tldraw's own shape util with an imitation of it.
+- **You can watch it work.** Operations report what they touch to a presence channel
+  (`agentPresence.ts`); the board draws a cursor there with the verb on it and rings the shapes
+  involved (`canvas/AgentPresence.tsx`). node-kit owns the channel and the app owns the drawing, so
+  the SDK stays free of the DOM.
 - **Consent and reach.** Loopback only, token *and* `Origin` checked, off by default, with a
   read-only mode that withholds every operation that would change anything. See the package README
   for what each gate is actually worth.

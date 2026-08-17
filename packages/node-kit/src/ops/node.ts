@@ -1,5 +1,6 @@
 import type { TLShapeId, TLShapePartial } from 'tldraw'
 import { createNodeShape, textPropFor } from '../nodes/insert'
+import { createNativeShape, getNativeShape, NATIVE_SHAPES } from '../nodes/native'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'
 import { shapeLabel } from '../properties/labels'
 import { getNodeDefinition, getVisibleNodeDefinitions } from '../registry'
@@ -8,16 +9,57 @@ import {
 	BOARD_ID_PARAM,
 	MAX_RESULTS,
 	propertyDefs,
+	reportAgentWork,
 	resolveEditor,
 	resolveProperty,
 	resolveShape,
 	shapeSummary,
 } from './shared'
 
+/**
+ * What an agent may create: the registered node types, then tldraw's own shapes.
+ *
+ * One list rather than two operations, because "what can I put on this board" is one question. The
+ * `builtIn` flag is what tells the two apart where it matters — a node carries properties and can be
+ * rolled up into a table, a text shape is a caption — and `node.types` passes it straight through.
+ */
+function creatableTypes(): { type: string; label: string; builtIn: boolean; note?: string }[] {
+	return [
+		...getVisibleNodeDefinitions().map((def) => ({
+			type: def.type,
+			label: def.label,
+			builtIn: false,
+		})),
+		...NATIVE_SHAPES.map((spec) => ({
+			type: spec.type,
+			label: spec.label,
+			builtIn: true,
+			note: spec.note,
+		})),
+	]
+}
+
 /** The types an agent may create, as a sentence for an error message. */
 function offeredTypes(): string {
-	const types = getVisibleNodeDefinitions().map((def) => def.type)
+	const types = creatableTypes().map((entry) => entry.type)
 	return types.length ? types.join(', ') : '(none — every node extension is switched off)'
+}
+
+/**
+ * Which prop of this shape holds text an agent may set, and how to write it.
+ *
+ * Our nodes keep text in a declared prop (`md`, `text`); tldraw's keep rich text, except a frame
+ * whose text is its title. One function so the two update paths — insert and update — cannot end up
+ * disagreeing about where a sticky's words live.
+ */
+function textPropsFor(type: string, text: string): Record<string, unknown> | null {
+	const def = getNodeDefinition(type)
+	if (def) {
+		const prop = textPropFor(def)
+		return prop ? { [prop]: text } : null
+	}
+	const native = getNativeShape(type)
+	return native?.textProps ? native.textProps(text) : null
 }
 
 export const nodeOperations: RegisteredOperation[] = [
@@ -25,17 +67,23 @@ export const nodeOperations: RegisteredOperation[] = [
 		id: 'node.types',
 		title: 'List node types',
 		description:
-			'The kinds of node that can be created right now, with whether each accepts text. Types come from the enabled extensions, so this can change between calls — read it before guessing a type name.',
+			'Everything that can be put on a board right now: the smart node types the enabled extensions provide, and tldraw’s own shapes (text, sticky note, rectangle, frame) marked with builtIn. Node types come from the enabled extensions, so this can change between calls — read it before guessing a type name.',
 		readOnly: true,
 		params: {},
 		run: async () =>
 			ok(
-				getVisibleNodeDefinitions().map((def) => ({
-					type: def.type,
-					label: def.label,
-					acceptsText: textPropFor(def) !== null,
-					defaultSize: { w: def.defaultSize.w, h: def.defaultSize.h },
-				}))
+				creatableTypes().map((entry) => {
+					const def = getNodeDefinition(entry.type)
+					const size = def?.defaultSize ?? getNativeShape(entry.type)?.defaultSize
+					return {
+						type: entry.type,
+						label: entry.label,
+						builtIn: entry.builtIn,
+						acceptsText: textPropsFor(entry.type, '') !== null,
+						defaultSize: { w: size?.w ?? 0, h: size?.h ?? 0 },
+						...(entry.note ? { note: entry.note } : {}),
+					}
+				})
 			),
 	}),
 
@@ -43,17 +91,17 @@ export const nodeOperations: RegisteredOperation[] = [
 		id: 'node.insert',
 		title: 'Insert node',
 		description:
-			'Puts a new node on a board and returns its id. Use node.types for valid type values. Position is the centre of the node in page coordinates; omit x and y to place it in the middle of the current view.',
+			'Puts a new node or shape on a board and returns its id. Use node.types for valid type values — it lists the smart node types and tldraw’s own shapes ("text" for a plain caption, "note" for a sticky, "geo" for a rectangle, "frame" for a titled region). Position is the centre in page coordinates; omit x and y to place it in the middle of the current view.',
 		params: {
 			type: {
 				type: 'string',
-				description: 'The node type, e.g. the markdown note type. See node.types.',
+				description: 'The type to create, e.g. "text" or the markdown note type. See node.types.',
 				required: true,
 			},
 			text: {
 				type: 'string',
 				description:
-					'Initial text, for types where acceptsText is true. Markdown notes take markdown.',
+					'Initial text, for types where acceptsText is true. Markdown notes take markdown; a frame’s text is its title.',
 			},
 			x: { type: 'number', description: 'Page x of the node’s centre.' },
 			y: { type: 'number', description: 'Page y of the node’s centre.' },
@@ -64,19 +112,25 @@ export const nodeOperations: RegisteredOperation[] = [
 			if (!resolved.ok) return fail(resolved.error)
 			const editor = resolved.editor
 
+			// Registered types are namespaced (`node.markdown`) and tldraw's are not (`text`), so the two
+			// tables cannot collide — but the node registry is asked first either way, since a definition
+			// is the richer thing to create.
 			const def = getNodeDefinition(args.type)
-			if (!def) return fail(`Unknown node type "${args.type}". Available: ${offeredTypes()}.`)
-			if (def.deprecated) {
+			const native = getNativeShape(args.type)
+			if (!def && !native) {
+				return fail(`Unknown node type "${args.type}". Available: ${offeredTypes()}.`)
+			}
+			if (def?.deprecated) {
 				return fail(`"${args.type}" is a legacy type kept only so old boards load. Use one of: ${offeredTypes()}.`)
 			}
 
 			let props: Record<string, unknown> | undefined
 			if (args.text !== undefined) {
-				const textProp = textPropFor(def)
-				if (!textProp) {
+				const written = textPropsFor(args.type, args.text)
+				if (!written) {
 					return fail(`"${args.type}" does not hold text. node.types says which types do.`)
 				}
-				props = { [textProp]: args.text }
+				props = written
 			}
 
 			const centre = editor.getViewportPageBounds().center
@@ -87,12 +141,16 @@ export const nodeOperations: RegisteredOperation[] = [
 				// One stopping point per operation: a human watching can undo an agent one action at a
 				// time, which is the whole reason agent writes go through the live editor at all.
 				editor.markHistoryStoppingPoint(`agent: node.insert`)
-				id = createNodeShape(editor, def, point, props)
+				id = def
+					? createNodeShape(editor, def, point, props)
+					: native && createNativeShape(editor, native, point, args.text)
 			})
 			if (!id) return fail('The node could not be created.')
 
 			const shape = editor.getShape(id)
 			if (!shape) return fail('The node was created but immediately vanished.')
+			const label = def?.label ?? native?.label ?? args.type
+			reportAgentWork(editor, 'create', 'node.insert', `Adding ${label.toLowerCase()}`, [id])
 			return ok(shapeSummary(editor, shape, propertyDefs(editor)))
 		},
 	}),
@@ -143,6 +201,13 @@ export const nodeOperations: RegisteredOperation[] = [
 			})
 
 			const limit = Math.min(args.limit ?? MAX_RESULTS, MAX_RESULTS)
+			reportAgentWork(
+				editor,
+				'read',
+				'node.find',
+				matches.length === 1 ? 'Looking at 1 shape' : `Looking at ${matches.length} shapes`,
+				matches.slice(0, limit).map((shape) => shape.id)
+			)
 			return ok({
 				matched: matches.length,
 				// Said explicitly rather than left for the caller to infer from a length: an agent that
@@ -168,6 +233,7 @@ export const nodeOperations: RegisteredOperation[] = [
 			if (!resolved.ok) return fail(resolved.error)
 			const found = resolveShape(resolved.editor, args.shapeId)
 			if (!found.ok) return fail(found.error)
+			reportAgentWork(resolved.editor, 'read', 'node.get', 'Reading', [found.shape.id])
 			return ok(
 				shapeSummary(resolved.editor, found.shape, propertyDefs(resolved.editor), {
 					includeText: true,
@@ -200,13 +266,28 @@ export const nodeOperations: RegisteredOperation[] = [
 
 			const props: Record<string, unknown> = {}
 			if (args.text !== undefined) {
-				const def = getNodeDefinition(shape.type)
-				const textProp = def ? textPropFor(def) : null
-				if (!textProp) return fail(`A "${shape.type}" shape does not hold text that can be set.`)
-				props[textProp] = args.text
+				const written = textPropsFor(shape.type, args.text)
+				if (!written) return fail(`A "${shape.type}" shape does not hold text that can be set.`)
+				Object.assign(props, written)
 			}
-			if (args.w !== undefined) props.w = args.w
-			if (args.h !== undefined) props.h = args.h
+
+			// Checked against the shape's *own* props rather than written blindly: tldraw's text shape
+			// has no `h` (its height is measured) and a sticky has neither, so an unguarded write is a
+			// validation error the agent reads as "the operation is broken" rather than "that shape
+			// does not have a height".
+			const sizeable = shape.props as Record<string, unknown>
+			for (const [key, value] of [
+				['w', args.w],
+				['h', args.h],
+			] as const) {
+				if (value === undefined) continue
+				if (!(key in sizeable)) {
+					return fail(
+						`A "${shape.type}" shape has no ${key} to set — its size comes from its content.`
+					)
+				}
+				props[key] = value
+			}
 
 			const patch: TLShapePartial = { id: shape.id, type: shape.type }
 			if (args.x !== undefined) patch.x = args.x
@@ -224,6 +305,7 @@ export const nodeOperations: RegisteredOperation[] = [
 
 			const updated = editor.getShape(shape.id)
 			if (!updated) return fail('The shape disappeared while being updated.')
+			reportAgentWork(editor, 'update', 'node.update', 'Editing', [shape.id])
 			return ok(shapeSummary(editor, updated, propertyDefs(editor)))
 		},
 	}),
@@ -245,6 +327,9 @@ export const nodeOperations: RegisteredOperation[] = [
 			if (!found.ok) return fail(found.error)
 
 			const label = shapeLabel(editor, found.shape)
+			// Reported *before* the delete: the presence layer draws where the shape is, and a shape that
+			// has already gone has nowhere to draw.
+			reportAgentWork(editor, 'delete', 'node.delete', 'Removing', [found.shape.id])
 			editor.run(() => {
 				editor.markHistoryStoppingPoint('agent: node.delete')
 				editor.deleteShape(found.shape.id)

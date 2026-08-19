@@ -243,7 +243,14 @@ export interface TableSort {
 	dir: 'asc' | 'desc'
 }
 
-export const LAYOUT_MODES = ['value', 'table'] as const
+/**
+ * The views this node can draw — its ViewSpec, in the vocabulary of `docs/views-plan.md`.
+ *
+ * A member is added here in the same change that adds its entry to the view registry
+ * (`views/index.ts`), never before: a mode with no view behind it is a value the validator accepts,
+ * an agent can write through `node.config`, and nothing can render.
+ */
+export const LAYOUT_MODES = ['value', 'table', 'kanban', 'calendar'] as const
 export type LayoutMode = (typeof LAYOUT_MODES)[number]
 
 export interface TableLayout {
@@ -252,9 +259,39 @@ export interface TableLayout {
 	 *
 	 * Kept inside this node type rather than split into a separate KPI node: a lone ₾4,409 is a
 	 * genuinely good object on a whiteboard, and a second node type would duplicate the spec, the
-	 * migration and the config UI to gain nothing.
+	 * migration and the config UI to gain nothing. Every later view (kanban, calendar) arrives the
+	 * same way and for the same reason — one selector, one set of columns, one config panel.
 	 */
 	mode: LayoutMode
+	/**
+	 * For `value` — which column to headline. Absent picks one, which is what every table persisted
+	 * before this existed relies on: see `headlineColumn` for the rule and why it prefers a summary
+	 * that produces a value over one that merely counts.
+	 *
+	 * Optional rather than required for the reason `TableSource.direction` is: tldraw validates props
+	 * on load, so a required field turns every existing table into a broken shape.
+	 */
+	valueColumn?: string | null
+	/**
+	 * For `kanban` — the lanes to draw, in this order, whether or not anything is in them.
+	 *
+	 * Absent derives them from the group property's own options and stages (`laneKeys`), which is the
+	 * right answer until someone drags a lane heading. Values present on the board but missing from
+	 * this list are still drawn, appended: a list of lanes must never be able to hide a card.
+	 */
+	lanes?: string[] | null
+	/**
+	 * For `calendar` — a month at a time, or a week. Absent means a month.
+	 */
+	span?: 'month' | 'week'
+	/**
+	 * For `calendar` — which period to show, as `YYYY-MM` or a full ISO day.
+	 *
+	 * Absent follows **today**, which is what a board wants nine times in ten; a card that opened on the
+	 * month it was created in would be showing last April by the summer. Stored rather than kept in
+	 * session state because a board *about* October should still be about October tomorrow.
+	 */
+	anchor?: string | null
 	/**
 	 * Rows rendered before the table stops and says "+N more".
 	 *
@@ -286,6 +323,15 @@ export interface MoneyConfig {
 
 export interface TableNodeProps {
 	title: string
+	/**
+	 * Whether the card's height follows its content. Absent means yes — see `useAutoHeight`.
+	 *
+	 * A **placing** view turns this off (`views/mode.ts`): a kanban's height comes from its tallest
+	 * lane, which is a fact about the cards it has arranged and not about the HTML it drew, so the
+	 * placement pass sets `h` and the measurement must stay out of it. With both writing, they disagree
+	 * by the card's 2px border and grow it forever.
+	 */
+	autoHeight?: boolean
 	source: TableSource
 	columns: TableColumn[]
 	groupBy: string | null
@@ -350,6 +396,10 @@ export const tableSortValidator: T.Validatable<TableSort> = T.object({
 export const tableLayoutValidator: T.Validatable<TableLayout> = T.object({
 	mode: T.literalEnum(...LAYOUT_MODES),
 	maxRows: T.positiveInteger,
+	valueColumn: T.string.nullable().optional(),
+	lanes: T.arrayOf(T.string).nullable().optional(),
+	span: T.literalEnum('month', 'week').optional(),
+	anchor: T.string.nullable().optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -369,6 +419,36 @@ export const CURRENCY_GROUP_PREFIX = 'currency:'
 export function currencyGroupProperty(groupBy: string | null): string | null {
 	if (!groupBy?.startsWith(CURRENCY_GROUP_PREFIX)) return null
 	return groupBy.slice(CURRENCY_GROUP_PREFIX.length) || null
+}
+
+/**
+ * A `groupBy` of `date:<propertyId>` buckets rows by the **day** of that date property.
+ *
+ * The same trick as the currency prefix, and it exists for the calendar: a month grid is a bucket per
+ * day, so the view can be filled from `buildGroups` rather than growing a second way to group. A date
+ * property's raw value is a day already (`YYYY-MM-DD`), but bucketing on it *as a grouping* is what
+ * makes the calendar's cells and a grouped table's rows the same mechanism — and what would let
+ * `date:` later mean by-week or by-month without the view changing at all.
+ */
+export const DATE_GROUP_PREFIX = 'date:'
+
+/** The property id behind a date grouping, or `null` if this isn't one. */
+export function dateGroupProperty(groupBy: string | null): string | null {
+	if (!groupBy?.startsWith(DATE_GROUP_PREFIX)) return null
+	return groupBy.slice(DATE_GROUP_PREFIX.length) || null
+}
+
+/**
+ * The property a grouping reads, whichever kind of grouping it is.
+ *
+ * One function because three places have to agree on it — what the query *reads* for a row, what it
+ * buckets on, and what a view calls the thing it is grouped by. They disagreed once already: the date
+ * prefix worked in `buildGroups` and not in `neededKeys`, so every cell came back `undefined` and every
+ * row landed in the empty bucket.
+ */
+export function groupProperty(groupBy: string | null): string | null {
+	if (!groupBy) return null
+	return currencyGroupProperty(groupBy) ?? dateGroupProperty(groupBy) ?? groupBy
 }
 
 export const DEFAULT_MAX_ROWS = 12

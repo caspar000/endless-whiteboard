@@ -49,14 +49,17 @@ and the user can toggle in **Settings → Extensions**:
 | Extension | Node | What it holds | Toolbar |
 |---|---|---|---|
 | **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
-| **Tables** (in node-kit) | `node.table` | A live, read-only table view of the board — grouping, filters, totals, or a single big number. | — |
+| **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ as a cover card, a full-screen reader that remembers its place, and passages taken out of it as quote cards linked back to the page. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
-the schema. Any shape — ours or tldraw's — can carry typed properties (`price: ₾2399`); tables are
-pure derivations, computed from the board and never written back to it, so undo history stays clean
-and there are no feedback loops.
+the schema. Any shape — ours or tldraw's — can carry typed properties (`price: ₾2399`); a view's *rows*
+are pure derivations, computed from the board and never written back to it, so undo history stays clean
+and there are no feedback loops. A kanban or a calendar additionally writes **position** — it stands
+your real cards in its lanes — under one rule that keeps that safe: position is an *output* of a view
+and never an input to one, so membership is always the query's answer and never what a shape overlaps.
+See `docs/views-plan.md`.
 
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
 them into notes-with-properties and tables the first time an old board loads.

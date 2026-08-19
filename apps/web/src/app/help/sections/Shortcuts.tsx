@@ -52,6 +52,16 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// Not commands and not keys: the whole interaction with a kanban or a calendar is a drag, and a
+		// reference that lists every keystroke but none of the gestures would be missing the feature.
+		title: 'On a kanban or a calendar',
+		rows: [
+			[['drag'], 'Drop a card in a lane or on a day — it takes that status, or that date'],
+			[['drag'], 'Drag a card out of the view to remove the property, and leave the board'],
+			[['⌘Z'], 'Take back the decision; the card walks out of the lane by itself'],
+		],
+	},
+	{
 		title: 'Writing in a note',
 		rows: [
 			[['⌘Enter'], 'Tick the task under the caret — or finish editing'],

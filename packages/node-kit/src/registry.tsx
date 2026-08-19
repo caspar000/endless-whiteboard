@@ -9,11 +9,13 @@ import {
 	type TLAnyShapeUtilConstructor,
 	type TLBaseBoxShape,
 	type TLResizeInfo,
+	type TLShape,
 	type TLShapePartial,
 	type TLShapeUtilCanBindOpts,
 	resizeBox,
 } from 'tldraw'
 import type { ComponentType } from 'react'
+import type { PropertyValue } from './properties/types'
 import type { ShapeProperties } from './properties/values'
 import { useAutoHeight } from './useAutoHeight'
 
@@ -39,6 +41,64 @@ export interface NodeComponentProps<Props extends object> {
 	shape: NodeShape<Props>
 	isEditing: boolean
 	editor: Editor
+}
+
+/**
+ * What a point on a node *means* to something dropped there — a kanban lane, a day on a calendar.
+ *
+ * `values` rather than one key-and-property, because a position can say more than one thing: a calendar
+ * day sets a date, a lane sets a status, and a two-axis matrix will set two numbers at once. `key`
+ * exists alongside it purely so the node can say *which* target is lit up while a drag hovers.
+ */
+export interface DropTarget {
+	/** Identifies the target for feedback — the lane's value, the day's ISO date. */
+	key: string
+	/** What dropping here writes, by property id. `null` empties a property; absent leaves it alone. */
+	values: Readonly<Record<string, PropertyValue>>
+}
+
+/**
+ * A node that shapes can be dropped onto: the **InteractionSpec** of `docs/views-plan.md`, and the
+ * thing that makes space an input to a board rather than only an output.
+ *
+ * The node says what a drop *means*; the factory owns every dealing with tldraw's drag-and-drop system
+ * — which shape is the target, when the callbacks fire, what has to be true for them to fire at all.
+ * See `docs/tldraw-api-notes.md`: the rules there are unobvious and two of them are traps.
+ */
+export interface NodeDropSpec<Props extends object> {
+	/**
+	 * Whether this shape takes drops *at the moment*, checked per shape.
+	 *
+	 * A table does not; the same card showing a kanban does. It is also what tldraw's
+	 * `canReceiveNewChildrenOfType` answers, so a `false` here keeps the node out of the paste-reparenting
+	 * candidates as well.
+	 */
+	accepts(ctx: { editor: Editor; shape: NodeShape<Props> }): boolean
+	/** What the cursor is over, in page coordinates. `null` for a part of the card that means nothing. */
+	targetAt(ctx: {
+		editor: Editor
+		shape: NodeShape<Props>
+		point: { x: number; y: number }
+	}): DropTarget | null
+	/** Apply the drop. One user action, so one undo entry. */
+	apply(ctx: {
+		editor: Editor
+		shape: NodeShape<Props>
+		shapes: TLShape[]
+		target: DropTarget
+	}): void
+	/**
+	 * Called as the cursor moves over the node with shapes in hand, and with `null` when the drag leaves
+	 * or lands — for showing which lane is about to receive them.
+	 *
+	 * Feedback only: it must not write to the store. It fires on every pointer move, and a store
+	 * transaction per move would put a drag's worth of records through tldraw's persistence throttle.
+	 */
+	hover?(ctx: {
+		editor: Editor
+		shape: NodeShape<Props>
+		target: DropTarget | null
+	}): void
 }
 
 /**
@@ -111,6 +171,14 @@ export interface NodeDefinition<Props extends object = object> {
 	 * A `'below'` node must **not** render `<NodeStrips>`, or its properties appear twice.
 	 */
 	strips?: 'inline' | 'below'
+	/**
+	 * Shapes dragged onto this node mean something — see {@link NodeDropSpec}.
+	 *
+	 * Declaring this makes **every** shape of this type one of tldraw's drop targets, which is a decision
+	 * with a cost: a target shadows whatever is beneath it, so a frame under this node stops adopting
+	 * shapes dropped on it. `accepts` narrows what happens next, not what tldraw considers a target.
+	 */
+	drop?: NodeDropSpec<Props>
 	/**
 	 * Still registered so existing boards load and validate, but hidden from the toolbar, the canvas
 	 * tools and the create menu. Use `getVisibleNodeDefinitions()` for anything user-facing.
@@ -288,7 +356,74 @@ export function createNodeShapeUtil<Props extends object>(
 
 	// `TLAnyShapeUtilConstructor` is tldraw's own type for this — it's what `<Tldraw shapeUtils>`
 	// accepts — so no cast is needed here.
-	return NodeShapeUtil
+	if (!def.drop) return NodeShapeUtil
+
+	/*
+	 * The drop hooks live on a *subclass*, present only for a definition that asked for them.
+	 *
+	 * Not a flag inside always-present methods, because tldraw chooses its drop target by testing whether
+	 * the util *has* these methods (`Editor.getDraggingOverShape`). Defining them unconditionally would
+	 * make every node on every board a drop target — and since a target shadows whatever is under it,
+	 * dropping a sticky on a note inside a frame would stop the frame adopting it. See
+	 * `docs/tldraw-api-notes.md`.
+	 */
+	const drop = def.drop
+	class DroppableNodeShapeUtil extends NodeShapeUtil {
+		/**
+		 * tldraw's gate: with the default `false` the drop callback below is never called at all. It also
+		 * decides whether a pasted shape can be reparented into this one, which is why it is asked per
+		 * shape rather than answered `true` for the type.
+		 */
+		override canReceiveNewChildrenOfType(shape: TLBaseBoxShape, _type: TLShape['type']): boolean {
+			return drop.accepts({ editor: this.editor, shape: shape as unknown as Shape })
+		}
+
+		/**
+		 * Both hooks, and both are needed.
+		 *
+		 * `onDragShapesIn` fires once, on the frame the shapes first arrive over this shape.
+		 * `onDragShapesOver` fires on later frames — but only ones where the *cursor moved*
+		 * (`DragAndDropManager` checks `cursorDidMove`), so on its own it misses the whole case of
+		 * dragging in and pausing before letting go, which is exactly when someone is looking for
+		 * confirmation of where the card will land.
+		 */
+		override onDragShapesIn(shape: TLBaseBoxShape): void {
+			this.showDropTarget(shape)
+		}
+
+		override onDragShapesOver(shape: TLBaseBoxShape): void {
+			this.showDropTarget(shape)
+		}
+
+		private showDropTarget(shape: TLBaseBoxShape): void {
+			const typed = shape as unknown as Shape
+			if (!drop.accepts({ editor: this.editor, shape: typed })) return
+			// The cursor, not the dragged shape's centre — the same point tldraw picked this shape with.
+			const point = this.editor.inputs.getCurrentPagePoint()
+			drop.hover?.({
+				editor: this.editor,
+				shape: typed,
+				target: drop.targetAt({ editor: this.editor, shape: typed, point }),
+			})
+		}
+
+		override onDragShapesOut(shape: TLBaseBoxShape): void {
+			drop.hover?.({ editor: this.editor, shape: shape as unknown as Shape, target: null })
+		}
+
+		override onDropShapesOver(shape: TLBaseBoxShape, shapes: TLShape[]): void {
+			const typed = shape as unknown as Shape
+			// Cleared first, and unconditionally: an early return below would otherwise leave a lane lit up
+			// for a drop that never happened.
+			drop.hover?.({ editor: this.editor, shape: typed, target: null })
+			if (!drop.accepts({ editor: this.editor, shape: typed })) return
+			const point = this.editor.inputs.getCurrentPagePoint()
+			const target = drop.targetAt({ editor: this.editor, shape: typed, point })
+			if (!target) return
+			drop.apply({ editor: this.editor, shape: typed, shapes, target })
+		}
+	}
+	return DroppableNodeShapeUtil
 }
 
 // ---------------------------------------------------------------------------

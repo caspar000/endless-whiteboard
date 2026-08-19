@@ -1,9 +1,12 @@
 import { Table } from 'lucide-react'
-import { T } from 'tldraw'
+import { T, type TLShape } from 'tldraw'
 import { defineNode, type Extension } from '../../extensions'
 import { createShapePropsMigrationIds, createShapePropsMigrationSequence } from '../../migrations'
 import type { NodeDefinition } from '../../registry'
 import { TableNodeComponent } from './TableNodeComponent'
+import { viewCommands } from './views/commands'
+import { setDropHint } from './views/dropHint'
+import { acceptsViewDrop, applyViewDrop, viewDropTarget } from './views/interaction'
 import {
 	defaultTableProps,
 	tableColumnValidator,
@@ -39,6 +42,9 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 	toolbarIcon: Table,
 	props: {
 		title: T.string,
+		// Optional, so every table persisted before the kanban existed reads as "on" — which is what it
+		// was. Only a placing view turns it off; see `TableNodeProps.autoHeight`.
+		autoHeight: T.boolean.optional(),
 		source: tableSourceValidator,
 		columns: T.arrayOf(tableColumnValidator),
 		groupBy: T.string.nullable(),
@@ -76,6 +82,24 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 	// `getEditingShapeId`), so this is what lets a table with more rows than it shows be scrolled once
 	// you double-click into it — it cannot and does not affect display mode.
 	canScroll: true,
+	/**
+	 * Dropping a card on a lane sets its status — the InteractionSpec half of a view.
+	 *
+	 * Declared on the definition rather than reached for from inside the component, because it is the
+	 * *shape* that receives a drop, not its HTML: a node in display mode has `pointer-events: none`, so a
+	 * card drawn inside one could not have been dragged at all without double-clicking in first. Placing
+	 * real shapes is what sidesteps that, and this is the other side of the same bargain.
+	 */
+	drop: {
+		// Only a view that arranges its members has anywhere to put a dropped card. A plain table
+		// answering `false` also keeps it out of tldraw's paste-reparenting candidates.
+		accepts: ({ shape }) => acceptsViewDrop(shape),
+		targetAt: ({ editor, shape, point }) =>
+			viewDropTarget(editor, shape as unknown as TLShape, point),
+		apply: ({ editor, shape, shapes, target }) =>
+			applyViewDrop(editor, shape as unknown as TLShape, shapes, target),
+		hover: ({ shape, target }) => setDropHint(shape.id, target?.key ?? null),
+	},
 	getLabel: (shape) => shape.props.title,
 	// No `extractValues`: a view contributes no values, which is what makes table-of-table cycles
 	// impossible.
@@ -85,18 +109,28 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
  * The table, packaged as an extension so it is toggleable like any other. Exported from node-kit
  * (rather than wrapped app-side) because the definition lives here; the app still decides whether to
  * register it — node-kit self-registers nothing but the deprecated legacy types.
+ *
+ * The **id stays `lifeboard.tables`** although the thing is growing views beyond the table: enablement
+ * is persisted against the id, so renaming it would silently re-enable the extension for anyone who had
+ * switched it off. Names and copy are free to change; ids are not.
  */
 export const tablesExtension: Extension = {
 	id: 'lifeboard.tables',
-	name: 'Tables',
-	description: 'A live, read-only table view of the shapes on the board — grouping, filters and totals.',
+	name: 'Tables & views',
+	description:
+		'Live views of the shapes on the board — a table, one big number, a kanban, or a calendar that stands your cards on their days.',
 	details: [
-		'Adds the table: a card that asks the board a question and shows the answer as rows. It reads the shapes that are already there — nothing is copied into it, so a table can never drift out of date with what it describes.',
-		'Choose the columns from the board’s properties, filter and group the rows, and put a total at the foot of any numeric column. Narrow it down far enough and a table becomes one big number, which is often all you wanted.',
-		'Turning this off removes the table tool and its menu entries. Tables already on your boards keep rendering and stay live.',
+		'Adds the view: a card that asks the board a question and shows the answer. It reads the shapes that are already there — nothing is copied into it, so a view can never drift out of date with what it describes.',
+		'Choose the columns from the board’s properties, filter and group the rows, and put a total at the foot of any numeric column. Narrow it down far enough and a table becomes one big number, which is often all you wanted — the same card, showing a different view of the same question.',
+		'Group by a status and switch to a kanban, or by a date and switch to a calendar, and the view stops describing your cards and starts arranging them: the things in the lanes are the real stickies and notes, moved there for you. Drag one into another lane to change its status; change the status anywhere else and the card crosses the board by itself. Drag it out and the property is removed, which is how something leaves a board.',
+		'Switch view from the card’s own panel or from ⌘K, with the card selected.',
+		'Turning this off removes the view tool and its menu entries. Views already on your boards keep rendering and stay live — including the cards they have arranged, which stay where they are.',
 	],
 	icon: Table,
 	version: '0.1.0',
 	author: 'Lifeboard',
 	nodes: [defineNode(tableNodeDefinition)],
+	// One "Show as …" per registered view, so a view added in `views/index.ts` reaches ⌘K without an
+	// edit here — the same registry-driven rule the dock and the create menu follow for node types.
+	commands: viewCommands(TABLE_NODE_TYPE),
 }

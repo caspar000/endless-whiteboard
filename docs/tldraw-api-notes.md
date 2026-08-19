@@ -151,6 +151,37 @@ Two limits follow, and both are load-bearing for the table node:
 auto-height to fit them, rather than being a small scrolling box. `canScroll: true` is still set, so
 the full set can be scrolled once you double-click into the table.
 
+## A shape becomes a drop target by *having* a drop hook, and it shadows what is beneath it
+
+The four hooks — `onDragShapesIn`, `onDragShapesOver`, `onDragShapesOut`, `onDropShapesOver` — are how a
+shape reacts to other shapes being dragged onto it. Three facts about how tldraw picks which shape gets
+them, all verified in 5.2.5 and all load-bearing for the kanban view (`views/interaction.ts`):
+
+1. **The target is chosen by hook *presence*, topmost first.** `Editor.getDraggingOverShape` calls
+   `getShapesAtPoint(...).reverse()` — z-order, topmost first — and returns the first whose util defines
+   any of the four. It is a property lookup on the util, so it cannot vary per shape: every shape of a
+   type is a target, or none is. `createNodeShapeUtil` therefore builds a **subclass** carrying the
+   hooks, and only for a definition that declares `drop`.
+2. **Therefore a drop target shadows anything under it.** Frame adoption during a drag happens *only*
+   through `FrameShapeUtil.onDragShapesIn`, so a shape dropped onto our node while it sits inside a
+   frame does not join the frame. (The paste path is separate and geometric —
+   `getDroppedShapesToNewParents`, called from `putExternalContent`.) There is no way to decline being
+   the target while still receiving drops; the trade is accepted deliberately.
+3. **`canReceiveNewChildrenOfType` defaults to `false`, and gates the drop callback.**
+   `DragAndDropManager.dropShapes` filters the dragged shapes through it and calls `onDropShapesOver`
+   only `if (receivableShapes.length > 0)`. So a util with the hooks but the default answer receives
+   nothing — the method has to return `true` for the drop to arrive at all. `onDragShapesOver` is *not*
+   filtered, which is why the hover hint works regardless.
+
+   The same method also decides whether a shape may become a **paste parent**
+   (`getDroppedShapesToNewParents` filters candidates by it), so returning `true` means a shape pasted
+   over the node can be reparented into it. The node answers `true` only while it is a placing view,
+   which keeps that to the one case where children moving with the card is harmless.
+
+`TLDropShapesOverInfo` carries no point — the cursor's page position comes from
+`editor.inputs.getCurrentPagePoint()`, which is what tldraw itself uses to choose the target. So the
+*pointer* decides which lane a card lands in, not the dragged shape's own centre.
+
 ## `markEventAsHandled` is the only way to stop tldraw acting on a key you handled
 
 tldraw listens for `keydown` on **its container** (`useDocumentEvents.ts`:

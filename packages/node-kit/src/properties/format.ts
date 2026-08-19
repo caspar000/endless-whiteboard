@@ -152,6 +152,25 @@ export function coercePropertyValue(type: PropertyType, raw: unknown): PropertyV
 }
 
 /**
+ * The calendar day a value falls on, as `YYYY-MM-DD`, or `null` for anything that is not a date.
+ *
+ * A `date` property already stores exactly this (see `parsePropertyInput`), so the fast path is a
+ * ten-character slice. The fallback is for values that arrived some other way — an import, an agent, a
+ * property retyped from text — and it deliberately reads them in **local** time: a board that showed a
+ * task on the 13th because the browser is east of UTC would be wrong about the only thing a calendar is
+ * for.
+ */
+export function isoDayValue(value: PropertyValue | undefined): string | null {
+	if (typeof value !== 'string' || !value) return null
+	if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10)
+	const parsed = new Date(value)
+	if (Number.isNaN(parsed.getTime())) return null
+	const month = String(parsed.getMonth() + 1).padStart(2, '0')
+	const day = String(parsed.getDate()).padStart(2, '0')
+	return `${parsed.getFullYear()}-${month}-${day}`
+}
+
+/**
  * Human-readable rendering of one property's value.
  *
  * `unit` overrides the definition's, because a unit is per *shape*: two cards can carry the same price

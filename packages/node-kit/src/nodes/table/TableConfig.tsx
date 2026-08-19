@@ -10,11 +10,14 @@ import type { PropertyDef } from '../../properties/types'
 import { updateNodeProps, type NodeShape } from '../../registry'
 import { getPageFacts } from '../rollup/engine'
 import { getTableResult } from './engine'
+import { getViewDefinitions } from './views'
+import { calendarAnchor } from './views/calendarLayout'
+import { setViewMode } from './views/mode'
 import {
 	DEFAULT_COLUMN_WIDTH,
 	LABEL_COLUMN,
-	LAYOUT_MODES,
 	CURRENCY_GROUP_PREFIX,
+	DATE_GROUP_PREFIX,
 	TABLE_SCOPES,
 	edgeColumnKey,
 	edgeDirectionOf,
@@ -94,6 +97,8 @@ export function TableConfig({
 		...(source.scope === 'connected' ? properties.map((p) => edgeColumnKey(p.id)) : []),
 	]
 	const unusedKeys = columnKeys.filter((key) => !columns.some((c) => c.key === key))
+	/** The columns the `value` view could headline — the ones that actually produce a number. */
+	const summarised = columns.filter((c) => c.summary)
 
 	return (
 		<div className="lb-tcfg">
@@ -107,22 +112,113 @@ export function TableConfig({
 				/>
 			</label>
 
+			{/*
+			 * The view, from the registry rather than a hardcoded pair — so a view added in
+			 * `views/index.ts` appears here with no edit, the same rule the dock follows for node types.
+			 * A `<select>` rather than a segmented control: four options in a 340px popover read fine as a
+			 * dropdown, and the panel already styles selects.
+			 */}
 			<label className="lb-tcfg__row">
 				<span>Show as</span>
 				<select
 					aria-label="Show as"
 					value={layout.mode}
-					onChange={(e) =>
-						update({ layout: { ...layout, mode: e.currentTarget.value as LayoutMode } })
-					}
+					// `setViewMode` rather than `update`: a switch also settles auto-height, the card's width
+					// and its z-order, and the ⌘K commands go through the same door.
+					onChange={(e) => setViewMode(editor, shape, e.currentTarget.value as LayoutMode)}
 				>
-					{LAYOUT_MODES.map((mode) => (
-						<option key={mode} value={mode}>
-							{mode === 'value' ? 'one big number' : 'a table'}
+					{getViewDefinitions().map((view) => (
+						<option key={view.mode} value={view.mode}>
+							{view.label}
 						</option>
 					))}
 				</select>
 			</label>
+
+			{/*
+			 * A calendar's period. A panel control rather than arrows on the card itself: a node in display
+			 * mode has `pointer-events: none`, so an arrow would need the card double-clicked into first —
+			 * and this panel is where every other view setting already lives.
+			 *
+			 * A **day** rather than a month, because the default span is a week: what you are choosing is
+			 * which week, and the day you pick is the one inside it. Blank means "follow today", which is
+			 * what a new calendar does and what a board left open over a weekend wants.
+			 */}
+			{layout.mode === 'calendar' && (
+				<>
+					<label className="lb-tcfg__row">
+						<span>Span</span>
+						<select
+							aria-label="Calendar span"
+							value={layout.span ?? 'week'}
+							onChange={(e) =>
+								update({
+									layout: { ...layout, span: e.currentTarget.value as 'month' | 'week' },
+								})
+							}
+						>
+							<option value="week">a week</option>
+							<option value="month">a month</option>
+						</select>
+					</label>
+					<label className="lb-tcfg__row">
+						<span>Showing</span>
+						<div className="lb-tcfg__anchor">
+							{/*
+							 * Shows the day the calendar is *actually* drawing, which for an unpinned card is today —
+							 * so the field reads as filled in rather than blank, and next week it reads as next week.
+							 * Storing today's date instead would make the field look identical and pin the card to
+							 * this week forever, which is the one thing a calendar on a board you revisit must not do.
+							 */}
+							<input
+								aria-label="Date to show"
+								type="date"
+								value={calendarAnchor(layout)}
+								onChange={(e) =>
+									update({ layout: { ...layout, anchor: e.currentTarget.value || null } })
+								}
+								onKeyDown={(e) => e.stopPropagation()}
+							/>
+							{layout.anchor && (
+								<button
+									className="lb-tcfg__today"
+									// Only offered when there is something to undo: with no anchor stored, the card is
+									// already following today and the button would do nothing.
+									onClick={() => update({ layout: { ...layout, anchor: null } })}
+								>
+									Today
+								</button>
+							)}
+						</div>
+					</label>
+				</>
+			)}
+
+			{/*
+			 * Which total the big number shows. Only worth asking when there is more than one to choose
+			 * between: with a single summarised column the automatic answer is the only answer, and a
+			 * picker with one entry is a control that cannot be wrong and cannot be useful.
+			 */}
+			{layout.mode === 'value' && summarised.length > 1 && (
+				<label className="lb-tcfg__row">
+					<span>Number</span>
+					<select
+						aria-label="Number to show"
+						value={layout.valueColumn ?? ''}
+						onChange={(e) =>
+							update({ layout: { ...layout, valueColumn: e.currentTarget.value || null } })
+						}
+					>
+						{/* The default, and a real choice: it follows the columns as they change. */}
+						<option value="">— pick automatically —</option>
+						{summarised.map((column) => (
+							<option key={column.key} value={column.key}>
+								{columnTitle(column.key, byId)}
+							</option>
+						))}
+					</select>
+				</label>
+			)}
 
 			<Section title="Source">
 				<label className="lb-tcfg__row">
@@ -370,6 +466,18 @@ export function TableConfig({
 							.map((key) => (
 								<option key={`cur-${key}`} value={`${CURRENCY_GROUP_PREFIX}${key}`}>
 									{columnTitle(key, byId)} currency
+								</option>
+							))}
+						{/*
+						 * Grouping by the *day* of a date, which is what a calendar's cells are — so a calendar
+						 * is configured the same way a kanban is, by choosing what to group by, and a grouped
+						 * table gets a bucket-per-day for free.
+						 */}
+						{columnKeys
+							.filter((key) => byId.get(key)?.type === 'date')
+							.map((key) => (
+								<option key={`day-${key}`} value={`${DATE_GROUP_PREFIX}${key}`}>
+									{columnTitle(key, byId)} by day
 								</option>
 							))}
 					</select>

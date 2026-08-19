@@ -69,6 +69,17 @@ export function useAutoHeight({
 			if (frame !== null) cancelAnimationFrame(frame)
 			frame = requestAnimationFrame(() => {
 				frame = null
+				/*
+				 * Guard 5: asked again, because a frame has passed since the check above and auto-height may
+				 * have been switched off inside it.
+				 *
+				 * That race is not theoretical. Switching a card to a view that owns its own height
+				 * (`views/mode.ts`) pins the flag and sets `h` in one write — and a measurement taken a
+				 * moment earlier, while the flag was still on, then landed on top of it. The calendar came
+				 * out 145px tall instead of 380, with day cells too short to hold anything, in the full e2e
+				 * suite but never when run alone.
+				 */
+				if (!state.current.enabled) return
 				editor.run(
 					() => {
 						editor.updateShape({

@@ -104,6 +104,25 @@ export function buildToolServer(
 				title: entry.title,
 				description: entry.description,
 				inputSchema: shape,
+				/**
+				 * Put these tools in the prompt rather than behind tool search.
+				 *
+				 * By default the SDK *defers* MCP tool schemas: the model is told a server exists and has
+				 * to call `ToolSearch` to find out what it offers. For a machine with twenty servers
+				 * attached that is the right trade. Here it is the wrong one — this server is the entire
+				 * reason the panel exists, every conversation in it is about a board, and deferring meant
+				 * each one opened with a search for the tools it was always going to use.
+				 *
+				 * The cost is honest: ~25 schemas in the prompt on every turn. The deferred path pays for
+				 * the same schemas *plus* a model turn to ask for them, so the only case where deferring
+				 * wins is one where the tools go unused — which, in a panel whose whole subject is the
+				 * board, is not the common case.
+				 *
+				 * `_meta['anthropic/alwaysLoad']` is the SDK's documented hook for this; it is what
+				 * `createSdkMcpServer({ alwaysLoad: true })` sets on each tool, and this server is built
+				 * from a raw `McpServer` so it sets it directly.
+				 */
+				_meta: { 'anthropic/alwaysLoad': true },
 				annotations: {
 					title: entry.title,
 					readOnlyHint: entry.readOnly,

@@ -61,7 +61,7 @@ Then paste the token it prints into **Settings → Agents** and switch the bridg
 |---|---|---|
 | `--port` (`0` binds an ephemeral one and reports it) | `LIFEBOARD_AGENT_PORT` | `8787` |
 | `--token` | `LIFEBOARD_AGENT_TOKEN` | generated per start |
-| `--model` | `LIFEBOARD_AGENT_MODEL` | whatever Claude Code would pick |
+| `--model` (a *fallback* — the panel sends a model per turn) | `LIFEBOARD_AGENT_MODEL` | whatever Claude Code would pick |
 | `--origin` (repeatable) | — | any loopback origin |
 
 ## What the agent can and cannot do
@@ -88,13 +88,39 @@ the MCP path, because it is the same operations.
 
 ## Notes for anyone changing this
 
-- **A turn is a fresh `query()` resumed onto the last session id**, not one long-lived
-  streaming-input query. That rebuilds the tool list from the live manifest every turn — so toggling
-  an extension takes effect immediately — and gives each turn its own `AbortController`, which makes
-  "stop" local and certain instead of a control message racing a model mid-tool-call.
+- **A conversation is one long-lived streaming-input `query()`**, not a fresh query per turn. That
+  is what gives it an open input channel — so a follow-up can be queued mid-turn and steer work
+  already running — and it is what makes the SDK's control requests available at all. The two things
+  the per-turn shape used to buy are recovered rather than given up: the tool list follows the live
+  manifest through `setMcpServers`, and the *gate* re-reads the manifest per call, so a withdrawn
+  operation is refused from that instant; and "stop" is `Query.interrupt()`, which halts at a safe
+  boundary and leaves the conversation able to carry on.
+- **Model and reasoning effort arrive with every prompt**, chosen in the panel's composer. A change
+  is applied to the *running* conversation with `setModel` and `applyFlagSettings` rather than by
+  starting a new one, because the context somebody is halfway through is precisely what they do not
+  want to lose when they reach for a stronger model. `session.ts` compares the request against what
+  the conversation is already running, so an unchanged selection costs nothing;
+  `selection.test.ts` pins all of that against a mocked SDK.
 - **The SDK wants a Zod shape; the manifest carries JSON Schema.** `tools.ts` translates between
   them, and refuses anything outside node-kit's closed parameter space rather than approximating it.
   A parameter shown inaccurately produces a call that validates in the host and fails in the app.
+- **The board tools are `alwaysLoad`, not deferred behind tool search.** The SDK's default is to tell
+  the model a server exists and make it call `ToolSearch` to learn what that server offers — the right
+  trade for a machine with twenty servers attached, the wrong one for the single server this panel
+  exists to drive. Every conversation was opening with a search for tools it was always going to use.
+  `tools.ts` sets `_meta['anthropic/alwaysLoad']` on each tool, which is what
+  `createSdkMcpServer({ alwaysLoad: true })` does; this server is a raw `McpServer`, so it sets it
+  directly.
+- **Each turn is prefixed with a `<lifeboard-context>` block** naming the open board and the user's
+  selection (`formatTurnContext`). The panel knows both, so making the agent call `board.list` and
+  `view.selection` to find out was spending a model turn on what was already on screen. Those
+  operations still exist, for the cases the block cannot cover — a background board, or a selection
+  the user changed mid-turn.
+- **The context-window figure comes from two different fields, and mixing them up is the hazard.**
+  `result.usage` is *per-turn* in a streaming-input session, which is what "how full is the window"
+  means; `result.modelUsage` is *cumulative*, so it is read only for `contextWindow`. Cache reads
+  count toward the window — a cached prefix is still in front of the model. `contextUsageFrom` in
+  `session.ts` is the one place that does this, and `context.test.ts` pins it.
 - **Text arrives twice** — as `delta` while the model writes, then as one authoritative `text` when
   the block closes. Deltas can be shed under load, so the transcript is built from `text` and
   `delta` is only ever a preview. See `ChatEvent` in `mcp-server/src/protocol.ts`.

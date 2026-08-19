@@ -36,6 +36,24 @@ export interface ParamSpec {
 	required?: boolean
 	/** A closed set, when there is one. Narrows the argument's *type* as well as validating it. */
 	choices?: readonly string[]
+	/**
+	 * A closed set that is only knowable at manifest time, read fresh whenever the schema is built.
+	 *
+	 * This exists because of what it costs an agent not to have it. The set of node types depends on
+	 * which extensions are enabled, so it cannot be written in the source as `choices` — and without
+	 * it in the schema the model's only way to learn a type name is to *call a tool and read the
+	 * answer*, which turns "add a note" into two round trips and a paragraph of reasoning about
+	 * whether the type it wants exists. The registry already knows; this is how the schema says so.
+	 *
+	 * Deliberately **not** validated in `coerceArgs`, unlike `choices`. The operation itself refuses
+	 * an unusable value with a sentence naming the alternatives, which is a better answer than a
+	 * schema violation — and the schema is a snapshot, so an extension switched off mid-conversation
+	 * would otherwise turn a stale enum into a dead end rather than a correction.
+	 *
+	 * It is also the reason `subscribeToNodeDefinitions(invalidate)` below matters: the manifest is
+	 * re-announced when the node registry changes, so the enum a model is holding stays current.
+	 */
+	liveChoices?: () => readonly string[]
 }
 
 export type Params = Readonly<Record<string, ParamSpec>>
@@ -303,7 +321,11 @@ export function toJsonSchema(params: Params): JsonSchemaObject {
 			spec.type === 'string[]'
 				? { type: 'array', description: spec.description, items: { type: 'string' } }
 				: { type: spec.type, description: spec.description }
-		if (spec.choices) property.enum = [...spec.choices]
+		// A live set wins over a written one; no param declares both, and if one ever did the runtime
+		// answer is the truthful one.
+		const live = spec.liveChoices?.()
+		if (live?.length) property.enum = [...live]
+		else if (spec.choices) property.enum = [...spec.choices]
 		properties[name] = property
 		if (spec.required) required.push(name)
 	}

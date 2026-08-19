@@ -7,7 +7,15 @@ import {
 	type OperationResult,
 } from '@lifeboard/node-kit'
 import type { Editor } from 'tldraw'
-import { applyChatEvent, loadHistory, recordPrompt, recordSendFailure, setAuth, setChats } from './chat'
+import {
+	applyChatEvent,
+	loadHistory,
+	recordInterrupt,
+	recordPrompt,
+	recordSendFailure,
+	setAuth,
+	setChats,
+} from './chat'
 import {
 	AGENT_PROTOCOL_VERSION,
 	encode,
@@ -15,6 +23,8 @@ import {
 	type ClientMessage,
 	type PromptImage,
 } from './protocol'
+import { getSendableContext, restoreSelection } from './boardContext'
+import { getAgentModelSelection } from './models'
 import { agentUrl, loadAgentPrefs, type AgentPrefs } from './prefs'
 
 /**
@@ -238,6 +248,11 @@ export function sendPrompt(text: string, images: readonly PromptImage[] = []): v
 		)
 		return
 	}
+	// Read at send time rather than passed in by the composer: the picker writes to the store and the
+	// wire reads from it, so there is one answer to "which model is this turn on" and no prop to
+	// thread through a form. Same for the board context — it is whatever was true when Send was hit.
+	const selection = getAgentModelSelection()
+	const context = getSendableContext()
 	send({
 		type: 'prompt',
 		text: trimmed,
@@ -245,10 +260,34 @@ export function sendPrompt(text: string, images: readonly PromptImage[] = []): v
 		...(images.length
 			? { images: images.map(({ mediaType, data }) => ({ mediaType, data })) }
 			: {}),
+		model: selection.model,
+		// Omitted when the model has no reasoning control, which is how the host tells "no level" from
+		// "a panel too old to have an opinion".
+		...(selection.effort ? { effort: selection.effort } : {}),
+		// The board and selection, so the agent's first move can be the work rather than two questions.
+		...(context
+			? {
+					context: {
+						boardId: context.boardId,
+						boardName: context.boardName,
+						selection: context.selection.map(({ id, type, label }) => ({ id, type, label })),
+						...(context.selectionTotal > context.selection.length
+							? { selectionTotal: context.selectionTotal }
+							: {}),
+					},
+				}
+			: {}),
 	})
+
+	// Dismissing the selection is a decision about *this* turn, so sending ends it — see `dismissed`
+	// in `boardContext.ts`.
+	restoreSelection()
 }
 
 export function interruptAgent(): void {
+	// Recorded before the frame goes out: the turn's fold row says "You stopped after" rather than
+	// "Worked for", and nothing on the wire tells the panel that a stop was a stop.
+	recordInterrupt()
 	send({ type: 'interrupt' })
 }
 

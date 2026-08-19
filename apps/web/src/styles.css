@@ -454,11 +454,16 @@ button {
 }
 /* The agent panel is a third column, so it takes width from the canvas rather than covering it —
    you can keep drawing while an agent works, and watch it happen. */
+/*
+ * 372px, not 360: 360 of content plus the 12px gutter the transcript reserves for the minimap rail.
+ * The panel grew rather than the messages shrinking — a rail that costs you reading width is a rail
+ * you resent.
+ */
 .lb-shell--agent-open {
-	grid-template-columns: 248px minmax(0, 1fr) var(--lb-agent-width, 360px);
+	grid-template-columns: 248px minmax(0, 1fr) var(--lb-agent-width, 372px);
 }
 .lb-shell--agent-open.lb-shell--sidebar-collapsed {
-	grid-template-columns: 56px minmax(0, 1fr) var(--lb-agent-width, 360px);
+	grid-template-columns: 56px minmax(0, 1fr) var(--lb-agent-width, 372px);
 }
 .lb-shell__body {
 	display: flex;
@@ -8181,14 +8186,45 @@ button.lb-props__eye:hover {
 	color: var(--lb-text);
 }
 
+/*
+ * A positioned wrapper around the scroller, so the minimap can sit still while the transcript moves.
+ * It is the flex item; the transcript inside it is what scrolls.
+ */
+.lb-agent-panel__scroller {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
 .lb-agent-panel__transcript {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
-	padding: 12px;
+	/* Right padding leaves the 12px the minimap rail lives in — see `.lb-agent-minimap`. */
+	padding: 14px 24px 12px 12px;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+	/*
+	 * Browser scroll anchoring off, because the panel does its own: rows grow constantly while a turn
+	 * streams, and letting the browser also compensate makes expanding a message jump the view.
+	 * Expanders carry `data-scroll-anchor-ignore` to say the same thing to a reader.
+	 */
+	overflow-anchor: none;
+	/* Reserved, so the first row does not shift sideways when the scrollbar appears mid-turn. */
+	scrollbar-gutter: stable;
+}
+/*
+ * Every row keeps its own height.
+ *
+ * This is load-bearing, not tidiness. A flex item whose `overflow` is not `visible` has an automatic
+ * minimum size of **0**, so the moment the transcript overflowed, every tool row — which clips its
+ * expanded arguments — was crushed by the default `flex-shrink: 1` from 26px to 2px, leaving a row of
+ * empty coloured bars that contributed nothing to the scroll extent. Set at the container so a row
+ * that gains `overflow` later cannot bring the bug back.
+ */
+.lb-agent-panel__transcript > * {
+	flex: none;
 }
 
 /* ---- empty state / setup instructions */
@@ -8244,11 +8280,21 @@ button.lb-props__eye:hover {
 /* No bubble, full width, relaxed measure: the assistant's reply is the page, not a message in a
    thread. Bubbling both sides makes long answers unreadable in a 360px column. */
 .lb-agent-row--agent {
+	position: relative;
 	color: var(--lb-text);
 	line-height: 1.65;
+	/* The reply is markdown now, so it owns its own block spacing — a `pre-wrap` inherited from
+	   `.lb-agent-row` would add a blank line for every newline in the source. */
+	white-space: normal;
 }
-/* A caret while a block is still streaming, so a pause reads as "still writing" not "finished". */
-.lb-agent-row--agent[data-streaming]::after {
+/*
+ * A caret while a block is still streaming, so a pause reads as "still writing" not "finished".
+ *
+ * On the markdown's *last block* rather than the row, which is what keeps it on the end of the
+ * sentence being written: a pseudo-element on the row itself would sit below the last paragraph,
+ * because a paragraph is a block and the caret would be pushed onto its own line.
+ */
+.lb-agent-row--agent[data-streaming] .lb-agent-md > :last-child::after {
 	content: '';
 	display: inline-block;
 	width: 6px;
@@ -8257,6 +8303,186 @@ button.lb-props__eye:hover {
 	vertical-align: text-bottom;
 	background: var(--lb-accent);
 	animation: lb-agent-caret 1s steps(2) infinite;
+}
+/* Copy appears on hover, top-right, over the reply. Always-visible would put a button beside every
+   one-line acknowledgement in the transcript. */
+.lb-agent-row__copy {
+	position: absolute;
+	top: -2px;
+	right: 0;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.lb-agent-row--agent:hover .lb-agent-row__copy,
+.lb-agent-row__copy:focus-visible {
+	opacity: 1;
+}
+.lb-agent-copy {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-agent-copy:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+/* ---- a reply, as rendered markdown */
+
+/*
+ * Tuned for a 360px column, which is the whole difference between this and a document stylesheet:
+ * headings barely step up in size, block spacing is tight, and nothing is allowed to establish its
+ * own horizontal scroll except the two things that genuinely need one (a code fence and a table).
+ */
+.lb-agent-md > :first-child {
+	margin-top: 0;
+}
+.lb-agent-md > :last-child {
+	margin-bottom: 0;
+}
+.lb-agent-md p,
+.lb-agent-md ul,
+.lb-agent-md ol,
+.lb-agent-md blockquote {
+	margin: 0 0 8px;
+}
+.lb-agent-md h1,
+.lb-agent-md h2,
+.lb-agent-md h3,
+.lb-agent-md h4,
+.lb-agent-md h5,
+.lb-agent-md h6 {
+	margin: 14px 0 6px;
+	font-size: 12.5px;
+	font-weight: 650;
+	line-height: 1.4;
+	color: var(--lb-text);
+}
+.lb-agent-md h1,
+.lb-agent-md h2 {
+	font-size: 13.5px;
+}
+.lb-agent-md ul,
+.lb-agent-md ol {
+	padding-left: 18px;
+}
+.lb-agent-md li {
+	margin-bottom: 3px;
+}
+.lb-agent-md li > p {
+	margin-bottom: 3px;
+}
+.lb-agent-md li::marker {
+	color: var(--lb-text-faint);
+}
+/* GFM task lists: the box is disabled, so it is a record of what was said rather than a control. */
+.lb-agent-md li:has(> input[type='checkbox']) {
+	list-style: none;
+	margin-left: -14px;
+}
+.lb-agent-md input[type='checkbox'] {
+	margin-right: 5px;
+	accent-color: var(--lb-accent);
+}
+.lb-agent-md a {
+	color: var(--lb-accent);
+	text-decoration-color: color-mix(in srgb, var(--lb-accent) 45%, transparent);
+	text-underline-offset: 2px;
+	overflow-wrap: anywhere;
+}
+.lb-agent-md strong {
+	font-weight: 650;
+}
+.lb-agent-md blockquote {
+	padding-left: 9px;
+	border-left: 2px solid var(--lb-border-strong);
+	color: var(--lb-text-dim);
+}
+.lb-agent-md hr {
+	margin: 12px 0;
+	border: 0;
+	border-top: 1px solid var(--lb-border);
+}
+/* Inline code as a chip rather than bare monospace: a `node.insert` in the middle of a sentence is a
+   name, and the tint is what stops it reading as emphasis. */
+.lb-agent-md :not(pre) > code {
+	padding: 1px 4px;
+	border-radius: 4px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	overflow-wrap: anywhere;
+}
+.lb-agent-md__code {
+	position: relative;
+	margin: 0 0 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	overflow: hidden;
+}
+.lb-agent-md__code pre {
+	margin: 0;
+	/* Room on the right for the copy button, which sits over the block rather than in a header bar —
+	   a header would spend a line of a narrow column on a language label nobody reads. */
+	padding: 9px 32px 9px 10px;
+	overflow-x: auto;
+}
+.lb-agent-md__code code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	line-height: 1.6;
+	color: var(--lb-text);
+	white-space: pre;
+}
+.lb-agent-md__code-copy {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.lb-agent-md__code:hover .lb-agent-md__code-copy,
+.lb-agent-md__code-copy:focus-visible {
+	opacity: 1;
+}
+.lb-agent-md__table {
+	margin: 0 0 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	overflow-x: auto;
+}
+.lb-agent-md__table table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 11.5px;
+}
+.lb-agent-md__table th,
+.lb-agent-md__table td {
+	padding: 5px 8px;
+	border-bottom: 1px solid var(--lb-border);
+	text-align: left;
+	white-space: nowrap;
+}
+.lb-agent-md__table th {
+	background: var(--lb-surface);
+	color: var(--lb-text-dim);
+	font-weight: 600;
+}
+.lb-agent-md__table tr:last-child td {
+	border-bottom: 0;
+}
+.lb-agent-md img {
+	max-width: 100%;
+	border-radius: 6px;
 }
 @keyframes lb-agent-caret {
 	50% {
@@ -8277,39 +8503,410 @@ button.lb-props__eye:hover {
 	font-size: 12px;
 }
 
-/* A tool call: what it was, and how it went. The arguments are not shown because the board is the
-   argument — you can see the result rather than read about it. */
-.lb-agent-row--tool {
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
-	padding: 5px 9px;
+/* A tool call: what it was, how it went, and its arguments behind a chevron. The board is still the
+   argument — the JSON is for the turn you did not follow. The `--tool` classes are kept because the
+   Help page's demo builds rows from them. */
+.lb-agent-row--tool,
+.lb-agent-tool {
 	border: 1px solid var(--lb-border);
 	border-left: 2px solid var(--lb-border-strong);
 	border-radius: 6px;
 	background: var(--lb-surface);
 	font-size: 11.5px;
 	color: var(--lb-text-dim);
+	overflow: hidden;
 }
-.lb-agent-row--tool[data-state='running'] {
+.lb-agent-row--tool {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 5px 9px;
+}
+.lb-agent-row--tool[data-state='running'],
+.lb-agent-tool[data-state='running'] {
 	border-left-color: var(--lb-accent);
 }
-.lb-agent-row--tool[data-state='ok'] {
+.lb-agent-row--tool[data-state='ok'],
+.lb-agent-tool[data-state='ok'] {
 	border-left-color: var(--lb-money);
 }
-.lb-agent-row--tool[data-state='failed'] {
+.lb-agent-row--tool[data-state='failed'],
+.lb-agent-tool[data-state='failed'] {
 	border-left-color: var(--lb-danger);
 }
-.lb-agent-row__tool-name {
+.lb-agent-tool__head {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	width: 100%;
+	padding: 5px 9px;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 11.5px;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-agent-tool__head:disabled {
+	cursor: default;
+}
+.lb-agent-tool__head:not(:disabled):hover {
+	background: var(--lb-surface-hover);
+}
+/* Reserved even when there is nothing to expand, so a column of tool rows has its names aligned
+   rather than stepping in and out by 12px depending on whether an operation took arguments. The
+   open/closed state is a different icon, not a rotation — see `ToolRow`. */
+.lb-agent-tool__chevron {
+	flex: none;
+	width: 12px;
+	height: 12px;
+	align-self: center;
+	color: var(--lb-text-faint);
+}
+.lb-agent-row__tool-name,
+.lb-agent-tool__name {
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	color: var(--lb-text);
 	flex: none;
 }
-.lb-agent-row__tool-summary {
+.lb-agent-row__tool-summary,
+.lb-agent-tool__summary {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+.lb-agent-tool__detail {
+	margin: 0;
+	padding: 8px 9px 9px;
+	border-top: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	line-height: 1.55;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+/* ---- the minimap: a tick per question, in the gutter the panel grew for it */
+
+/*
+ * Sticky inside the scroller rather than fixed to the panel, so it stays put as the transcript scrolls
+ * without needing a second positioned ancestor. It sits in the 12px of right padding the transcript
+ * reserves — nothing overlaps a message, which is what makes the pointer hazard T3 Code engineered
+ * around not exist here.
+ */
+.lb-agent-minimap {
+	position: absolute;
+	top: 50%;
+	right: 6px;
+	transform: translateY(-50%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
+	width: 12px;
+	max-height: min(240px, 60%);
+	z-index: 2;
+}
+.lb-agent-minimap__tick {
+	width: 100%;
+	height: 2px;
+	padding: 0;
+	border: 0;
+	border-radius: 2px;
+	background: var(--lb-border-strong);
+	cursor: pointer;
+	transition: background-color 120ms ease, height 120ms ease;
+}
+.lb-agent-minimap__tick:hover,
+.lb-agent-minimap__tick[data-active] {
+	height: 3px;
+	background: var(--lb-accent);
+}
+/*
+ * The preview opens leftward, over the transcript — which is fine because it only exists while a tick
+ * is hovered, and the tick is outside the message column.
+ */
+.lb-agent-minimap__preview {
+	position: absolute;
+	right: 18px;
+	max-width: 240px;
+	padding: 5px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-bg-raised);
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	line-height: 1.4;
+	pointer-events: none;
+	transform: translateY(-50%);
+	text-wrap: pretty;
+}
+
+/* ---- the user's message: collapsed when it is a wall, with its own footer */
+
+.lb-agent-user {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 3px;
+}
+/*
+ * The collapsed height and the fade are set inline by the component (the mask has to switch with the
+ * state), so this only holds the cap. ~176px is about eight lines — past that a request is reference
+ * material rather than something you re-read.
+ */
+.lb-agent-user__body[data-collapsed] {
+	max-height: 176px;
+	overflow: hidden;
+}
+/* Hover-revealed, like T3 Code's: a timestamp and a copy button on every message would be more
+   chrome than transcript. The expander stays visible, because it is the only clue there is more. */
+.lb-agent-user__footer {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 80%;
+	padding-right: 2px;
+}
+.lb-agent-user__time,
+.lb-agent-user__footer .lb-agent-copy {
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.lb-agent-user:hover .lb-agent-user__time,
+.lb-agent-user:hover .lb-agent-copy,
+.lb-agent-user__footer :focus-visible {
+	opacity: 1;
+}
+.lb-agent-user__time {
+	color: var(--lb-text-faint);
+	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-agent-user__more {
+	padding: 1px 5px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+.lb-agent-user__more:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+/* A sent image is a button now, so it needs the img's old framing without a button's chrome. */
+.lb-agent-row__image {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	cursor: zoom-in;
+}
+.lb-agent-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+	background: rgb(0 0 0 / 72%);
+	cursor: zoom-out;
+}
+.lb-agent-lightbox img {
+	max-width: 100%;
+	max-height: 100%;
+	border-radius: 8px;
+}
+
+/* ---- a run of tool calls, as one piece of work */
+
+.lb-agent-work {
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-surface);
+	overflow: hidden;
+}
+.lb-agent-work__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 5px 8px;
+	border: 0;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11.5px;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-agent-work__head:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-agent-work__chevron {
+	flex: none;
+	color: var(--lb-text-faint);
+	transition: transform 120ms ease;
+}
+.lb-agent-work[data-open] .lb-agent-work__chevron {
+	transform: rotate(90deg);
+}
+.lb-agent-work__label {
+	flex: 1;
+	min-width: 0;
+}
+.lb-agent-work__failed {
+	flex: none;
+	color: var(--lb-danger);
+	font-size: 10.5px;
+}
+/* A dot rather than a spinner: it sits on a 26px row beside text, and a spinner at that size is a
+   smudge. */
+.lb-agent-work__running {
+	flex: none;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--lb-accent);
+	animation: lb-agent-pulse 2s infinite;
+}
+.lb-agent-work__body {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 2px 3px 3px;
+	border-top: 1px solid var(--lb-border);
+}
+/* Inside a group the rows lose their own frame — the group is the frame. */
+.lb-agent-work__body .lb-agent-tool {
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+}
+.lb-agent-work__body .lb-agent-tool__detail {
+	border-radius: 5px;
+}
+.lb-agent-tool__icon {
+	flex: none;
+	color: var(--lb-text-faint);
+}
+
+/* ---- the live indicator, and the fold a settled turn leaves behind */
+
+.lb-agent-working {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 2px 2px 2px 3px;
+	color: var(--lb-text-faint);
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-agent-working__label {
+	flex: none;
+}
+.lb-agent-working__step {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--lb-text-faint);
+	opacity: 0.75;
+}
+/*
+ * Three dots that stutter.
+ *
+ * Stepped rather than eased, and staggered by 200ms — T3 Code's treatment, and the reason is that a
+ * smooth fade reads as decoration while a stutter reads as a machine doing something.
+ */
+.lb-agent-dots {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	flex: none;
+}
+.lb-agent-dots span {
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--lb-text-dim);
+	animation: lb-agent-pulse 2s infinite;
+}
+.lb-agent-dots span:nth-child(2) {
+	animation-delay: 200ms;
+}
+.lb-agent-dots span:nth-child(3) {
+	animation-delay: 400ms;
+}
+@keyframes lb-agent-pulse {
+	0%,
+	40% {
+		opacity: 1;
+		animation-timing-function: steps(6);
+	}
+	50%,
+	90% {
+		opacity: 0.35;
+		animation-timing-function: steps(6);
+	}
+	100% {
+		opacity: 1;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-agent-dots span,
+	.lb-agent-work__running {
+		animation: none;
+		opacity: 0.7;
+	}
+}
+
+.lb-agent-fold {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	padding: 3px 8px 3px 5px;
+	border: 1px dashed var(--lb-border);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font: inherit;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+.lb-agent-fold:hover {
+	border-style: solid;
+	background: var(--lb-surface);
+	color: var(--lb-text-dim);
+}
+.lb-agent-fold__chevron {
+	flex: none;
+	transition: transform 120ms ease;
+}
+.lb-agent-fold[data-open] .lb-agent-fold__chevron {
+	transform: rotate(90deg);
+}
+.lb-agent-fold__count {
+	padding: 0 4px;
+	border-radius: 4px;
+	background: var(--lb-surface-2);
+	font-size: 10px;
 }
 
 /* ---- composer */
@@ -8322,51 +8919,564 @@ button.lb-props__eye:hover {
 	padding: 10px 12px 12px;
 	border-top: 1px solid var(--lb-border);
 }
+/*
+ * One box holding the text and the dials.
+ *
+ * The border moved off the textarea and onto this wrapper, so the model and effort menus sit *inside*
+ * the composer the way T3 Code's do — which is what makes them read as part of the request rather
+ * than as panel chrome. The textarea keeps `resize: vertical`, and the wrapper grows with it.
+ */
+.lb-agent-composer {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-surface-2);
+}
+.lb-agent-composer:focus-within {
+	border-color: var(--lb-accent);
+}
+.lb-agent-composer[data-disabled] {
+	opacity: 0.6;
+}
+/*
+ * Grows with what you type, up to a point, then scrolls.
+ *
+ * `field-sizing: content` is the whole mechanism — the same one T3 Code uses — and it is why there is
+ * no resize observer, no shadow element and no `scrollHeight` measurement here. The box is as tall as
+ * its text; `min-height` is the floor and `max-height` is where it stops and hands over to its own
+ * scrollbar, which is what keeps a pasted essay from pushing the send button off the panel.
+ */
 .lb-agent-panel__input {
 	width: 100%;
-	padding: 8px 10px;
-	border: 1px solid var(--lb-border);
-	border-radius: 8px;
-	background: var(--lb-surface-2);
+	padding: 9px 10px 4px;
+	border: 0;
+	background: transparent;
 	color: var(--lb-text);
 	font: inherit;
 	font-size: 12.5px;
 	line-height: 1.5;
-	resize: vertical;
-	min-height: 52px;
+	field-sizing: content;
+	min-height: 46px;
+	/* Roughly twelve lines. Past that the panel is more composer than transcript, and the thing you
+	   are writing about has scrolled out of sight. */
+	max-height: 240px;
+	overflow-y: auto;
+	resize: none;
+}
+/*
+ * Without `field-sizing` the box cannot grow, so the drag handle comes back rather than leaving the
+ * user stuck in a two-line box. Firefox before 141 and Safari before 18.4 land here.
+ */
+@supports not (field-sizing: content) {
+	.lb-agent-panel__input {
+		resize: vertical;
+		min-height: 52px;
+	}
 }
 .lb-agent-panel__input:focus {
 	outline: none;
-	border-color: var(--lb-accent);
 }
 .lb-agent-panel__input:disabled {
-	opacity: 0.55;
 	cursor: not-allowed;
 }
+.lb-agent-panel__actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 5px 5px;
+}
+/* Circular and icon-only, like T3 Code's: the row has two menus on it, and "Send" spelled out costs
+   more of a 360px column than the arrow does clarity. */
 .lb-agent-panel__send {
-	align-self: flex-end;
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
+	justify-content: center;
+	flex: none;
+	width: 26px;
+	height: 26px;
 	border: 0;
-	border-radius: 7px;
+	border-radius: 50%;
 	background: var(--lb-accent);
 	color: var(--lb-on-accent);
-	font-size: 12px;
-	font-weight: 600;
 	cursor: pointer;
 }
 .lb-agent-panel__send:hover:not(:disabled) {
 	background: var(--lb-accent-hover);
 }
 .lb-agent-panel__send:disabled {
-	opacity: 0.45;
+	opacity: 0.4;
 	cursor: not-allowed;
 }
 .lb-agent-panel__send--stop {
 	background: var(--lb-danger);
 	color: #fff;
+}
+
+/* ---- what the next turn carries: the selection chip */
+
+/*
+ * Sits above the composer, not inside it. It appears and disappears as the user clicks around the
+ * board, and inside the bordered box that motion would shove the textarea up and down under the
+ * caret.
+ */
+.lb-agent-context {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	align-self: flex-start;
+	max-width: 100%;
+	padding: 3px 4px 3px 7px;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: var(--lb-surface);
+	color: var(--lb-text-dim);
+	font-size: 11px;
+}
+.lb-agent-context--off {
+	color: var(--lb-text-faint);
+	border-style: dashed;
+}
+.lb-agent-context__count {
+	flex: none;
+	min-width: 15px;
+	padding: 0 3px;
+	border-radius: 5px;
+	background: var(--lb-accent-tint);
+	color: var(--lb-text);
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 15px;
+	text-align: center;
+}
+.lb-agent-context__label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-agent-context__remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 16px;
+	height: 16px;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-agent-context__remove:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-agent-context__undo {
+	flex: none;
+	padding: 0 5px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--lb-accent);
+	font: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	cursor: pointer;
+}
+.lb-agent-context__undo:hover {
+	background: var(--lb-surface-hover);
+}
+
+/* ---- the composer's model and reasoning menus */
+
+.lb-agent-controls {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	min-width: 0;
+}
+/* Deliberately *not* a containing block for the menu — see `.lb-agent-menu`. */
+.lb-agent-control-wrap {
+	min-width: 0;
+}
+.lb-agent-control {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	max-width: 130px;
+	height: 24px;
+	padding: 0 5px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11.5px;
+	font-weight: 500;
+	cursor: pointer;
+}
+.lb-agent-control:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-agent-control:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+/*
+ * A flex row rather than a plain inline span: the model trigger's label is a brand mark *and* a name,
+ * and inline the mark sits on the text baseline (visibly low) with nothing between it and the first
+ * letter. `min-width: 0` on the text child is what keeps the ellipsis working inside a flex row.
+ */
+.lb-agent-control__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-agent-control__chevron {
+	flex: none;
+	color: var(--lb-text-faint);
+}
+
+/*
+ * Opens upward, out of the composer's left edge rather than its trigger's.
+ *
+ * Upward because the composer is pinned to the foot of the panel and a dropdown would render below
+ * the viewport. Anchored to the *composer* — which is why `.lb-agent-control-wrap` is not positioned
+ * — because these rows carry a sentence each: a popover hung off a trigger two thirds of the way
+ * across a 360px column would spill past the right edge of the window.
+ */
+.lb-agent-pop {
+	position: absolute;
+	bottom: calc(100% + 6px);
+	left: 0;
+	z-index: 20;
+	width: max-content;
+	max-width: 100%;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-bg-raised);
+	box-shadow: var(--lb-shadow-2);
+	/* Clips the picker's rail into the rounded corner, and keeps a long list inside the radius. */
+	overflow: hidden;
+}
+/* The picker wants the whole composer: it has a rail *and* a list, and `max-content` on the pair
+   leaves the list too narrow to read a model name in. */
+.lb-agent-pop[data-wide] {
+	width: 100%;
+}
+.lb-agent-menu {
+	max-height: 420px;
+	overflow-y: auto;
+	padding: 4px;
+}
+.lb-agent-menu__title {
+	margin: 0;
+	padding: 4px 8px 5px;
+	color: var(--lb-text-faint);
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+.lb-agent-menu__item {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	width: 100%;
+	padding: 5px 7px;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-agent-menu__item:hover,
+.lb-agent-menu__item:focus-visible {
+	background: var(--lb-surface-hover);
+	outline: none;
+}
+.lb-agent-menu__tick {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 13px;
+	height: 18px;
+	color: var(--lb-accent);
+}
+.lb-agent-menu__body {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+.lb-agent-menu__label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 500;
+	line-height: 18px;
+}
+.lb-agent-menu__badge {
+	flex: none;
+	padding: 0 4px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: var(--lb-surface);
+	color: var(--lb-text-faint);
+	font-size: 9.5px;
+	font-weight: 600;
+	line-height: 14px;
+	text-transform: uppercase;
+}
+.lb-agent-menu__description {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	line-height: 1.45;
+	text-wrap: pretty;
+}
+
+/* ---- the model picker: a provider rail, a search box, and rows */
+
+.lb-agent-picker {
+	display: flex;
+	min-height: 0;
+	max-height: 340px;
+}
+/*
+ * The rail. Its own tinted column, as in T3 Code — the tint is what makes it read as a switch between
+ * *lists* rather than as five more buttons at the top of one.
+ */
+.lb-agent-picker__rail {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: none;
+	width: 38px;
+	padding: 5px 4px;
+	border-right: 1px solid var(--lb-border);
+	background: var(--lb-surface);
+}
+.lb-agent-picker__rail-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 1;
+	width: 100%;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-agent-picker__rail-item:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+/* The favourites star has no list behind it yet, so it does not pretend to be pressable. */
+.lb-agent-picker__rail-item--static {
+	color: var(--lb-text-faint);
+	cursor: default;
+}
+.lb-agent-picker__rail-item:disabled {
+	opacity: 0.42;
+	cursor: not-allowed;
+}
+/*
+ * The selected marker sits on the rail's *right* edge, pointing into the list it governs — T3 Code's
+ * placement, and the reason the rail reads as attached to the list rather than floating beside it.
+ */
+.lb-agent-picker__rail-item[data-selected]::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	right: -5px;
+	width: 2px;
+	height: 18px;
+	transform: translateY(-50%);
+	border-radius: 2px 0 0 2px;
+	background: var(--lb-accent);
+}
+.lb-agent-picker__rail-divider {
+	height: 1px;
+	margin: 3px 1px;
+	background: var(--lb-border);
+}
+
+.lb-agent-picker__body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1;
+}
+.lb-agent-picker__search {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--lb-border);
+	color: var(--lb-text-faint);
+}
+.lb-agent-picker__search input {
+	width: 100%;
+	min-width: 0;
+	border: 0;
+	background: transparent;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12.5px;
+}
+.lb-agent-picker__search input:focus {
+	outline: none;
+}
+/* The accent underline the search box gets while it holds the caret — which it does on open. */
+.lb-agent-picker__search:focus-within {
+	box-shadow: inset 0 -1px 0 var(--lb-accent);
+}
+
+.lb-agent-picker__list {
+	display: flex;
+	flex-direction: column;
+	/* Rows carry two lines each, so butted together they read as one block of text rather than as four
+	   things you can pick between. */
+	gap: 3px;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 4px;
+}
+.lb-agent-picker__empty {
+	margin: 0;
+	padding: 10px 8px;
+	color: var(--lb-text-faint);
+	font-size: 11.5px;
+}
+.lb-agent-picker__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 6px 7px;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-agent-picker__row:hover,
+.lb-agent-picker__row:focus-visible {
+	background: var(--lb-surface-hover);
+	outline: none;
+}
+.lb-agent-picker__row[aria-selected='true'] {
+	background: var(--lb-accent-tint);
+}
+.lb-agent-picker__row-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+.lb-agent-picker__row-name {
+	overflow: hidden;
+	font-size: 12.5px;
+	font-weight: 500;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-agent-picker__row-provider {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	line-height: 1.3;
+}
+.lb-agent-picker__kbd {
+	flex: none;
+	padding: 0 4px;
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	background: var(--lb-surface);
+	color: var(--lb-text-faint);
+	font-family: inherit;
+	font-size: 10px;
+	line-height: 15px;
+}
+.lb-agent-picker__row-tick {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 13px;
+	color: var(--lb-accent);
+}
+
+/* Brand marks. Claude keeps its own colour — a grey burst reads as a disabled one — and OpenAI's is
+   monochrome by design, which is what lets the disabled rail button grey it out. */
+.lb-brand {
+	flex: none;
+}
+.lb-brand--claude {
+	fill: #d97757;
+}
+.lb-agent-picker__rail-item .lb-brand:not(.lb-brand--claude) {
+	fill: currentColor;
+}
+
+/* ---- the context-window ring */
+
+.lb-agent-meter {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex: none;
+	padding: 0 4px 0 2px;
+	color: var(--lb-text-faint);
+	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
+	cursor: default;
+}
+.lb-agent-meter svg {
+	width: 16px;
+	height: 16px;
+	/* Starts the arc at twelve o'clock rather than at three, so it fills like a dial. */
+	transform: rotate(-90deg);
+}
+.lb-agent-meter__track {
+	stroke: var(--lb-border-strong);
+}
+.lb-agent-meter__fill {
+	stroke: var(--lb-text-dim);
+	transition: stroke-dashoffset 500ms ease-out, stroke 300ms ease;
+}
+/* Past 90% the window is about to compact and the answers start degrading, so it stops being
+   informational and becomes a warning. */
+.lb-agent-meter[data-crowded] {
+	color: var(--lb-danger);
+}
+.lb-agent-meter[data-crowded] .lb-agent-meter__fill {
+	stroke: var(--lb-danger);
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-agent-meter__fill {
+		transition: none;
+	}
 }
 
 /* Narrow viewports have no room for a third column, so the panel becomes an overlay instead. */
@@ -8380,7 +9490,8 @@ button.lb-props__eye:hover {
 		top: 0;
 		right: 0;
 		bottom: 0;
-		width: min(360px, 92vw);
+		/* Matches the docked width: content plus the minimap gutter. */
+		width: min(372px, 92vw);
 		z-index: 40;
 		box-shadow: var(--lb-shadow-1);
 	}
@@ -8686,10 +9797,3 @@ button.lb-props__eye:hover {
 	display: block;
 }
 
-/* Stop and Send sit together while a turn runs — the composer stays usable so a follow-up can
-   steer work already in flight. */
-.lb-agent-panel__actions {
-	display: flex;
-	align-self: flex-end;
-	gap: 6px;
-}

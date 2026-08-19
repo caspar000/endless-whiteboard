@@ -25,7 +25,14 @@ describe('streaming text', () => {
 		applyChatEvent({ kind: 'delta', text: 'a note' })
 
 		expect(rows()).toEqual([
-			{ kind: 'agent', id: expect.any(String), text: 'Adding a note', streaming: true },
+			{
+				kind: 'agent',
+				id: expect.any(String),
+				// Rows carry the turn they belong to, so a fold knows what it owns — see `transcript.ts`.
+				turn: expect.any(Number),
+				text: 'Adding a note',
+				streaming: true,
+			},
 		])
 	})
 
@@ -35,7 +42,13 @@ describe('streaming text', () => {
 		applyChatEvent({ kind: 'text', text: 'Adding a note.' })
 
 		expect(rows()).toEqual([
-			{ kind: 'agent', id: expect.any(String), text: 'Adding a note.', streaming: false },
+			{
+				kind: 'agent',
+				id: expect.any(String),
+				turn: expect.any(Number),
+				text: 'Adding a note.',
+				streaming: false,
+			},
 		])
 	})
 

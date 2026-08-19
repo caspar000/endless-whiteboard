@@ -11,7 +11,7 @@
  * If you change anything here, change the app's copy and bump the version.
  */
 
-export const AGENT_PROTOCOL_VERSION = 5
+export const AGENT_PROTOCOL_VERSION = 8
 
 /** One operation, as the app describes it. Mirrors node-kit's `OperationManifestEntry`. */
 export interface OperationManifestEntry {
@@ -76,11 +76,67 @@ export interface PromptImage {
  * Only a host that actually runs an agent answers this; the plain relay ignores it, which is why the
  * `welcome` below advertises the capability rather than leaving the panel to infer it from silence.
  */
+/**
+ * The reasoning levels the Claude Agent SDK accepts.
+ *
+ * Listed here rather than imported from the SDK because this file is the wire's own vocabulary and
+ * `mcp-server` does not depend on the SDK — only `agent-host` does. `parseClientMessage` checks
+ * against this list, so a level the SDK would reject never reaches it.
+ */
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
+
+/** The longest model slug this will carry. Generous for a name; short enough to not be a payload. */
+const MAX_MODEL_SLUG_LENGTH = 128
+
+/**
+ * The model and reasoning level the panel picked for a turn.
+ *
+ * Present as a unit or not at all: a panel that sends a model always sends its effort decision too
+ * (`null` meaning "this model has none"), so the host can tell "leave it alone" — an older panel,
+ * which sends neither — apart from "explicitly no reasoning level", which is what Haiku wants.
+ */
+export interface TurnSelection {
+	model: string
+	effort: EffortLevel | null
+}
+
+/**
+ * What the app already knows, sent with the turn so the agent does not have to ask.
+ *
+ * The board on screen and the user's selection. Both are readable through operations
+ * (`board.list`, `view.selection`) and that is the point: an agent whose opening move is always two
+ * discovery calls spends the user's tokens learning what the panel could simply have told it.
+ *
+ * Bounded on the way in — see `parseClientMessage`. It is app-authored data, but it crosses a socket
+ * any page on this machine can open.
+ */
+export interface TurnContextShape {
+	id: string
+	type: string
+	label: string
+}
+
+export interface TurnContext {
+	/** `null` when the user is on the board list rather than a board. */
+	boardId: string | null
+	boardName: string | null
+	selection: TurnContextShape[]
+	/** How many were actually selected, when the list above was truncated. */
+	selectionTotal?: number
+}
+
 export interface PromptMessage {
 	type: 'prompt'
 	text: string
 	/** Pasted into the composer. Absent or empty for an ordinary text turn. */
 	images?: PromptImage[]
+	/** The board and selection the panel had when this was sent. Absent from an older panel. */
+	context?: TurnContext
+	/** The model to answer with. Absent leaves the host's launch default in place. */
+	model?: string
+	/** How hard it thinks. Absent means the model has no reasoning control. */
+	effort?: EffortLevel
 }
 
 /** Stop the turn in flight. Sent by the panel's stop button. */
@@ -162,6 +218,14 @@ export type ChatEvent =
 	| { kind: 'status'; text: string }
 	| { kind: 'tool'; id: string; name: string; input: unknown }
 	| { kind: 'tool-result'; id: string; ok: boolean; summary: string }
+	/**
+	 * How full the context window is after a turn.
+	 *
+	 * Not a transcript row — it replaces the previous figure rather than being appended, which is why
+	 * it is an event with no id. `max` is `null` when the host could not learn the window size; the
+	 * panel then shows a token count and no ring fill rather than inventing a denominator.
+	 */
+	| { kind: 'usage'; used: number; max: number | null }
 	/** The turn ended. `error` is set when it ended badly. */
 	| { kind: 'done'; error?: string }
 
@@ -266,6 +330,49 @@ function isManifestEntry(value: unknown): value is OperationManifestEntry {
  * listens on a port, so anything on the machine can open it and say whatever it likes. A frame is
  * a message only if it fully typechecks at runtime.
  */
+/** Bounds on the context block. Generous for real use; short enough not to be a payload. */
+const MAX_CONTEXT_SHAPES = 32
+const MAX_CONTEXT_STRING = 200
+
+function trimmed(value: unknown): string | null {
+	return typeof value === 'string' ? value.slice(0, MAX_CONTEXT_STRING) : null
+}
+
+/**
+ * Reads the turn's context, or `null`.
+ *
+ * Every field is optional and a malformed one is dropped rather than failing the turn: this is a
+ * *hint*, and a person's request is worth answering with less context rather than not at all.
+ */
+function parseTurnContext(raw: unknown): TurnContext | null {
+	if (!isRecord(raw)) return null
+
+	const selection: TurnContextShape[] = []
+	if (Array.isArray(raw.selection)) {
+		for (const entry of raw.selection.slice(0, MAX_CONTEXT_SHAPES)) {
+			if (!isRecord(entry)) continue
+			const id = trimmed(entry.id)
+			const type = trimmed(entry.type)
+			if (!id || !type) continue
+			selection.push({ id, type, label: trimmed(entry.label) ?? '' })
+		}
+	}
+
+	const boardId = trimmed(raw.boardId)
+	if (!boardId && selection.length === 0) return null
+
+	const total = typeof raw.selectionTotal === 'number' && Number.isFinite(raw.selectionTotal)
+		? Math.max(selection.length, Math.trunc(raw.selectionTotal))
+		: undefined
+
+	return {
+		boardId,
+		boardName: trimmed(raw.boardName),
+		selection,
+		...(total !== undefined && total > selection.length ? { selectionTotal: total } : {}),
+	}
+}
+
 export function parseClientMessage(raw: unknown): ClientMessage | null {
 	const text =
 		typeof raw === 'string'
@@ -326,7 +433,25 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
 			// this?") even with nothing typed.
 			if (typeof parsed.text !== 'string') return null
 			if (!parsed.text.trim() && images.length === 0) return null
-			return { type: 'prompt', text: parsed.text, ...(images.length ? { images } : {}) }
+			// A bad model or effort drops the *field*, not the turn: the message is a person's request
+			// and the selection is only a hint about how to answer it. Falling back to the host's
+			// default is a worse answer than they asked for; refusing to answer is not an answer.
+			const model =
+				typeof parsed.model === 'string' &&
+				parsed.model.trim() &&
+				parsed.model.length <= MAX_MODEL_SLUG_LENGTH
+					? parsed.model.trim()
+					: undefined
+			const effort = EFFORT_LEVELS.find((level) => level === parsed.effort)
+			const context = parseTurnContext(parsed.context)
+			return {
+				type: 'prompt',
+				text: parsed.text,
+				...(images.length ? { images } : {}),
+				...(model ? { model } : {}),
+				...(effort ? { effort } : {}),
+				...(context ? { context } : {}),
+			}
 		}
 		case 'interrupt':
 			return { type: 'interrupt' }

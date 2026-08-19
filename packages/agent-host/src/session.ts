@@ -16,8 +16,11 @@ import type { AgentBridge } from '@lifeboard/mcp-server/bridge'
 import type {
 	ChatEvent,
 	ChatSummary,
+	EffortLevel,
 	OperationManifestEntry,
 	PromptImage,
+	TurnContext,
+	TurnSelection,
 } from '@lifeboard/mcp-server/protocol'
 import { toolNameFor } from '@lifeboard/mcp-server/tools'
 import { buildToolServer } from './tools.js'
@@ -84,14 +87,55 @@ export function decidePermission(allowed: ReadonlySet<string>, toolName: string)
 	}
 }
 
+/**
+ * How full the context window is, read off a turn's result.
+ *
+ * Two different fields, for two different reasons, and mixing them up is the whole hazard here:
+ *
+ * - **`usage` is per-turn** in a streaming-input session, and that is exactly what "how full is the
+ *   window" means — the tokens the model just had in front of it. Cache reads count: a cached prefix
+ *   still occupies the window.
+ * - **`modelUsage` is cumulative** across turns, so its token counts are useless for this. It is read
+ *   only for `contextWindow`, the window's size, which the SDK reports nowhere else.
+ *
+ * The window is looked up by the model that answered rather than by taking the largest, because
+ * subagents and internal calls (compaction, title generation) appear in `modelUsage` too — and the
+ * largest window in that record may belong to a model the conversation is not running on.
+ */
+export function contextUsageFrom(
+	usage: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } | undefined,
+	modelUsage: Record<string, { contextWindow?: number }> | undefined,
+	model: string | undefined
+): { used: number; max: number | null } | null {
+	if (!usage) return null
+	const finite = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+	const used =
+		finite(usage.input_tokens) +
+		finite(usage.cache_read_input_tokens) +
+		finite(usage.cache_creation_input_tokens) +
+		finite(usage.output_tokens)
+
+	const entries = Object.entries(modelUsage ?? {})
+	// Exact key first, then a prefix match — the SDK keys this by the id it actually called, which may
+	// carry a suffix the panel never asked for (`claude-opus-5[1m]`).
+	const matched =
+		entries.find(([key]) => key === model) ??
+		(model ? entries.find(([key]) => key.startsWith(model)) : undefined)
+	const window = finite(matched?.[1]?.contextWindow)
+
+	return { used, max: window > 0 ? window : null }
+}
+
 const SYSTEM_PROMPT = `You are the agent built into Lifeboard, an infinite-canvas whiteboard app where the user keeps notes, books, tables and the relations between them.
 
 You act on the user's boards through the Lifeboard tools. They run inside the user's open tab, against the board they are looking at, so the user watches every change happen and can undo it — one undo step per operation.
 
 Working rules:
-- Prefer looking before writing. \`board.list\`, \`node.find\` and \`node.types\` cost nothing and stop you from inventing structure that already exists.
-- Most operations need an open board. If nothing is open, open one with \`board.open\` or make one with \`board.create\`.
-- \`node.types\` tells you what kinds of node this board actually supports; it varies with which extensions the user has enabled. Do not assume a type exists.
+- **Act on a clear request; do not survey first.** The tool schemas already tell you what is possible — \`node.insert\`'s type parameter lists every type this board accepts right now. "Add a text node" is one call, not a check followed by a call.
+- Each turn begins with a context block naming the board on screen and what the user has selected. It is current and authoritative: do not call \`board.list\` or \`view.selection\` to learn what it already told you.
+- Look first only when the request depends on what is already there — "find every node with no Status", "tidy this up", anything about existing structure. Then \`node.find\` and \`board.query\` are the right first move.
+- If a request needs a board and the context block says none is open, open one with \`board.open\` or make one with \`board.create\`.
+- When a call is refused, read the refusal. It names the alternatives, so it is a correction rather than a reason to go exploring.
 - You can research on the web. When you do, put what you found on the board as nodes rather than only summarising it in chat — that is usually the point of the request.
 - Say what you did in a sentence or two. The user can see the board, so do not narrate every operation back to them.
 
@@ -160,7 +204,12 @@ export class PromptQueue {
 
 export interface SessionOptions {
 	bridge: AgentBridge
-	/** Overrides the model Claude Code would otherwise pick. */
+	/**
+	 * The model to use until the panel says otherwise — `--model` on the command line.
+	 *
+	 * A fallback rather than the setting: the composer sends a model with every turn, so this only
+	 * decides what a conversation started by an older panel (or a script) runs on.
+	 */
 	model?: string
 	log?: (message: string) => void
 	/**
@@ -176,6 +225,18 @@ export class AgentSession {
 	private readonly bridge: AgentBridge
 	private readonly model: string | undefined
 	private readonly log: (message: string) => void
+
+	/**
+	 * What the composer last asked for, and what the live conversation is actually running.
+	 *
+	 * Two fields rather than one because they legitimately differ: the panel's choice is known the
+	 * moment it is made, and the conversation only catches up when the next turn is sent. Comparing
+	 * them is what keeps `steer` from issuing a control request per turn for a model that has not
+	 * changed.
+	 */
+	private wanted: TurnSelection | null = null
+	private appliedModel: string | undefined
+	private appliedEffort: EffortLevel | null | undefined
 
 	/** Set from any message that carries it, so a resumed chat picks up where it stopped. */
 	private resumeId: string | undefined
@@ -314,7 +375,12 @@ export class AgentSession {
 	 * Never throws. The panel's response to any failure is identical — show the sentence, re-enable
 	 * the box — so failures come back as a `done` carrying an error.
 	 */
-	async run(prompt: string, images: readonly PromptImage[] = []): Promise<void> {
+	async run(
+		prompt: string,
+		images: readonly PromptImage[] = [],
+		selection: TurnSelection | null = null,
+		context: TurnContext | null = null
+	): Promise<void> {
 		const manifest = this.bridge.getManifest()
 		if (!manifest?.length) {
 			this.emit({
@@ -324,9 +390,14 @@ export class AgentSession {
 			return
 		}
 
+		// Remembered before the conversation is opened, because `optionsFor` reads it — a first turn
+		// has to start on the model that was picked, not start on the default and switch afterwards.
+		if (selection) this.wanted = selection
+
 		try {
 			if (!this.live) this.begin(manifest)
-			this.queue?.push(userMessage(prompt, images))
+			else await this.steer(this.live)
+			this.queue?.push(userMessage(prompt, images, context))
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error)
 			this.log(`Could not start a turn: ${detail}`)
@@ -343,10 +414,15 @@ export class AgentSession {
 	 */
 	private begin(manifest: readonly OperationManifestEntry[]): void {
 		const queue = new PromptQueue()
-		const live = query({ prompt: queue.stream(), options: this.optionsFor(manifest) })
+		const options = this.optionsFor(manifest)
+		const live = query({ prompt: queue.stream(), options })
 
 		this.queue = queue
 		this.live = live
+		// What this conversation is running, recorded from the options it was actually opened with, so
+		// the first `steer` after it has no work to do.
+		this.appliedModel = options.model
+		this.appliedEffort = this.wanted ? this.wanted.effort : undefined
 
 		/**
 		 * Toggling an extension changes what the app offers, so the model's tool list has to follow.
@@ -390,9 +466,53 @@ export class AgentSession {
 		})()
 	}
 
+	/**
+	 * Points a running conversation at the model and effort the composer now has.
+	 *
+	 * The obvious implementation is to end the conversation and open a new one on the new settings,
+	 * and it is the wrong one: it throws away the context somebody is halfway through, which is
+	 * precisely what a person reaching for a stronger model *because* the turn went wrong does not
+	 * want. `setModel` and `applyFlagSettings` are the SDK's own control requests for this, and they
+	 * exist only in streaming mode — which is the shape this session already has, for steering.
+	 *
+	 * Failures are logged and swallowed. A control request that did not land means the turn runs on
+	 * the previous settings, which is a worse answer than was asked for; refusing to send the turn at
+	 * all would be no answer.
+	 */
+	private async steer(live: Query): Promise<void> {
+		const wanted = this.wanted
+		if (!wanted) return
+
+		if (wanted.model !== this.appliedModel) {
+			try {
+				await live.setModel(wanted.model)
+				this.appliedModel = wanted.model
+				this.log(`Switched to ${wanted.model}.`)
+			} catch (error) {
+				this.log(`Could not switch model: ${error instanceof Error ? error.message : String(error)}`)
+			}
+		}
+
+		if (wanted.effort !== this.appliedEffort) {
+			try {
+				// `null` clears it, which is what moving to a model with no reasoning control means —
+				// leaving the previous model's level applied would silently keep charging for it.
+				await live.applyFlagSettings({ effortLevel: wanted.effort })
+				this.appliedEffort = wanted.effort
+			} catch (error) {
+				this.log(`Could not set effort: ${error instanceof Error ? error.message : String(error)}`)
+			}
+		}
+	}
+
 	private optionsFor(manifest: readonly OperationManifestEntry[]): Options {
 		return {
-			model: this.model,
+			// The panel's choice wins over `--model`; the flag is only the fallback for a client that
+			// does not send one. See `SessionOptions.model`.
+			model: this.wanted?.model ?? this.model,
+			// Omitted rather than defaulted when there is no level: Claude Code's own default is what
+			// should apply, and it is not this process's business to guess what that is.
+			...(this.wanted?.effort ? { effort: this.wanted.effort } : {}),
 			resume: this.resumeId,
 			systemPrompt: SYSTEM_PROMPT,
 			// Conversations live here rather than in whatever directory the host was started from —
@@ -519,6 +639,14 @@ export class AgentSession {
 				return
 			}
 			case 'result': {
+				// Before the `done` below, so the ring is already current when the composer re-enables.
+				const usage = contextUsageFrom(
+					message.usage,
+					message.modelUsage,
+					this.appliedModel ?? this.wanted?.model ?? this.model
+				)
+				if (usage) this.emit({ kind: 'usage', ...usage })
+
 				if (message.subtype !== 'success') {
 					this.emit({ kind: 'status', text: `Turn ended: ${message.subtype.replace(/_/g, ' ')}` })
 				}
@@ -629,7 +757,50 @@ function replayEvents(messages: readonly { type: string; message: unknown }[]): 
  * Text goes last, after the pictures, because that is the order the Anthropic docs recommend for
  * vision — the question reads better once the images are in context.
  */
-function userMessage(text: string, images: readonly PromptImage[]): SDKUserMessage {
+/**
+ * The turn's context, as the model reads it.
+ *
+ * A tagged block before the user's words rather than a sentence woven into them: the model has to be
+ * able to tell at a glance which part of the message is the person talking. It is deliberately terse —
+ * ids, types and labels only — because it is prepended to *every* turn, and the agent has `node.find`
+ * for anything more once it knows which ids to ask about.
+ *
+ * Returns `''` when there is nothing worth saying, so an older panel that sends no context produces
+ * exactly the message it always did.
+ */
+export function formatTurnContext(context: TurnContext | null): string {
+	if (!context) return ''
+
+	const lines: string[] = [
+		context.boardId
+			? `board: ${context.boardName ?? 'untitled'} (${context.boardId})`
+			: 'board: none open — the user is on the board list',
+	]
+
+	if (context.selection.length > 0) {
+		const total = context.selectionTotal ?? context.selection.length
+		// Says so when the list was cut, or a model reading three of thirty ids would reasonably
+		// conclude that three is all there are.
+		const more = total > context.selection.length ? ` (${context.selection.length} of ${total})` : ''
+		lines.push(`selected${more}:`)
+		for (const shape of context.selection) {
+			lines.push(`  ${shape.id} ${shape.type}${shape.label ? ` — ${shape.label}` : ''}`)
+		}
+	}
+
+	return `<lifeboard-context>\n${lines.join('\n')}\n</lifeboard-context>`
+}
+
+function userMessage(
+	text: string,
+	images: readonly PromptImage[],
+	context: TurnContext | null = null
+): SDKUserMessage {
+	const preamble = formatTurnContext(context)
+	// Joined into one block rather than sent as two: two text blocks in a row read as two messages, and
+	// the second one — the person's actual request — should not look like a follow-up to the first.
+	const body = preamble ? `${preamble}\n\n${text}` : text
+
 	return {
 		type: 'user',
 		parent_tool_use_id: null,
@@ -644,7 +815,8 @@ function userMessage(text: string, images: readonly PromptImage[]): SDKUserMessa
 						data: image.data,
 					},
 				})),
-				...(text.trim() ? [{ type: 'text' as const, text }] : []),
+				// The context rides with the text, so an images-only turn still carries it.
+				...(body.trim() ? [{ type: 'text' as const, text: body }] : []),
 			],
 		},
 	}

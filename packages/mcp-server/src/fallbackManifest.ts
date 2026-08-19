@@ -112,7 +112,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.types",
 		"title": "List node types",
-		"description": "Everything that can be put on a board right now: the smart node types the enabled extensions provide, and tldraw’s own shapes (text, sticky note, rectangle, frame) marked with builtIn. Node types come from the enabled extensions, so this can change between calls — read it before guessing a type name.",
+		"description": "Details about each type that can be put on a board: its label, whether it holds text, and its default size. The type *names* are already in node.insert’s schema, so this is not needed before creating something — reach for it when the size or text-handling matters, or to show the user what this board supports.",
 		"readOnly": true,
 		"inputSchema": {
 			"type": "object",
@@ -124,14 +124,20 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 	{
 		"id": "node.insert",
 		"title": "Insert node",
-		"description": "Puts a new node or shape on a board and returns its id. Use node.types for valid type values — it lists the smart node types and tldraw’s own shapes (\"text\" for a plain caption, \"note\" for a sticky, \"geo\" for a rectangle, \"frame\" for a titled region). Position is the centre in page coordinates; omit x and y to place it in the middle of the current view.",
+		"description": "Puts a new node or shape on a board and returns its id. The type parameter lists everything available right now, so create straight away rather than checking first: the smart node types the enabled extensions provide, plus tldraw’s own shapes — \"text\" for a plain caption, \"note\" for a sticky, \"geo\" for a rectangle, \"frame\" for a titled region. Position is the centre in page coordinates; omit x and y to place it in the middle of the current view.",
 		"readOnly": false,
 		"inputSchema": {
 			"type": "object",
 			"properties": {
 				"type": {
 					"type": "string",
-					"description": "The type to create, e.g. \"text\" or the markdown note type. See node.types."
+					"description": "What to create. The listed values are the ones this board accepts right now — they change with which extensions are enabled, which is why they are in the schema rather than written in prose.",
+					"enum": [
+						"text",
+						"note",
+						"geo",
+						"frame"
+					]
 				},
 				"text": {
 					"type": "string",
@@ -170,7 +176,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 				},
 				"type": {
 					"type": "string",
-					"description": "Only shapes of this type. See node.types."
+					"description": "Only shapes of this type. Not a closed set, unlike node.insert’s: a board can hold types an extension no longer offers, and those still have to be findable."
 				},
 				"hasProperty": {
 					"type": "string",

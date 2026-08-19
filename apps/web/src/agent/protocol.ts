@@ -14,7 +14,7 @@ import type { OperationManifestEntry, OperationResult } from '@lifeboard/node-ki
  */
 
 /** The protocol revision. Bumped when a message shape changes incompatibly. */
-export const AGENT_PROTOCOL_VERSION = 5
+export const AGENT_PROTOCOL_VERSION = 8
 
 // --- app → server ---------------------------------------------------------
 
@@ -54,17 +54,58 @@ export interface PromptImage {
 }
 
 /**
+ * The reasoning levels the Claude Agent SDK accepts.
+ *
+ * Spelled out here as well as in `agent/models.ts` so the wire has its own vocabulary: the catalog is
+ * the app's opinion about which levels are worth offering, this is what the far side will accept.
+ */
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
+
+/**
  * A turn the user typed into the agent panel.
  *
  * Only a host that runs an agent answers this — see `chat` on the welcome below. Sending one to the
  * plain relay is harmless and does nothing, which is why the panel checks the capability first
  * rather than discovering it from a reply that never comes.
  */
+/**
+ * What the app already knows, sent with the turn so the agent does not have to ask.
+ *
+ * Mirrors `TurnContext` in `agent/boardContext.ts`, which is where it is built and documented. The
+ * duplication is the same one the rest of this file lives with: the wire's vocabulary is written out
+ * on both sides rather than shared through a package the browser cannot load.
+ */
+export interface TurnContext {
+	boardId: string | null
+	boardName: string | null
+	selection: { id: string; type: string; label: string }[]
+	selectionTotal?: number
+}
+
 export interface PromptMessage {
 	type: 'prompt'
 	text: string
 	/** Pasted into the composer. Absent for an ordinary text turn. */
 	images?: PromptImage[]
+	/**
+	 * The board and selection the composer had when this was sent, so the agent starts a turn already
+	 * knowing what the user is looking at and pointing at.
+	 */
+	context?: TurnContext
+	/**
+	 * The model to answer with, chosen in the composer.
+	 *
+	 * Sent per turn rather than agreed once at connection, because it changes per turn — and because
+	 * that is what lets the host steer a conversation already in flight onto a different model
+	 * instead of abandoning its context. Absent leaves whatever the host was launched with.
+	 */
+	model?: string
+	/**
+	 * How hard it thinks. Absent means the model has no reasoning control, or the panel is older than
+	 * this field — either way the host leaves the level alone.
+	 */
+	effort?: EffortLevel
 }
 
 /** Stop the turn in flight. */
@@ -144,6 +185,14 @@ export type ChatEvent =
 	| { kind: 'status'; text: string }
 	| { kind: 'tool'; id: string; name: string; input: unknown }
 	| { kind: 'tool-result'; id: string; ok: boolean; summary: string }
+	/**
+	 * How full the context window is after a turn.
+	 *
+	 * Not a transcript row — it replaces the previous figure rather than being appended, which is why
+	 * it is an event with no id. `max` is `null` when the host could not learn the window size; the
+	 * panel then shows a token count and no ring fill rather than inventing a denominator.
+	 */
+	| { kind: 'usage'; used: number; max: number | null }
 	| { kind: 'done'; error?: string }
 
 export interface ChatMessage {
@@ -245,6 +294,13 @@ function parseChatEvent(raw: unknown): ChatEvent | null {
 		case 'tool-result':
 			if (typeof raw.id !== 'string' || typeof raw.summary !== 'string') return null
 			return { kind: 'tool-result', id: raw.id, ok: raw.ok === true, summary: raw.summary }
+		case 'usage': {
+			// A non-finite `used` would render the ring as `NaN%`, so it is refused rather than clamped:
+			// there is nothing useful to show for a figure that is not a number.
+			if (typeof raw.used !== 'number' || !Number.isFinite(raw.used)) return null
+			const max = typeof raw.max === 'number' && Number.isFinite(raw.max) ? raw.max : null
+			return { kind: 'usage', used: raw.used, max }
+		}
 		case 'done':
 			return { kind: 'done', ...(typeof raw.error === 'string' ? { error: raw.error } : {}) }
 		default:

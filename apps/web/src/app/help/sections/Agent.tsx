@@ -1,5 +1,9 @@
 import { getVisibleOperations, subscribeToOperations } from '@lifeboard/node-kit'
+import { ArrowUp, ChevronDown } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
+import { AGENT_MODELS, DEFAULT_EFFORT, DEFAULT_MODEL_SLUG } from '../../../agent/models'
+import { ClaudeMark } from '../../AgentBrandIcons'
+import { AgentContextMeter } from '../../AgentContextMeter'
 import { Hint, Jump, Keys, Section, useDemo, type SectionProps } from '../kit'
 
 /**
@@ -114,6 +118,55 @@ function CursorDemo() {
 	)
 }
 
+/**
+ * The composer's model and reasoning controls.
+ *
+ * Real classes again, and the labels come from the catalog rather than being retyped — a model list
+ * written out here would be wrong the first time one is added or dropped. Only the *first* two models
+ * are named, because the point of the picture is the shape of the control, not the roster.
+ */
+function ComposerDemo() {
+	const model = AGENT_MODELS.find((entry) => entry.slug === DEFAULT_MODEL_SLUG) ?? AGENT_MODELS[0]
+	const effort = model?.efforts.find((option) => option.value === DEFAULT_EFFORT)
+
+	return (
+		<div
+			className="lb-demo lb-demo--short"
+			role="img"
+			aria-label="The agent composer, with a model picker and a reasoning picker beside the send button"
+		>
+			<div className="lb-help-agent">
+				<div className="lb-agent-composer">
+					<div className="lb-agent-panel__input" aria-hidden="true">
+						Find every node with no Status and set it to Todo
+					</div>
+					<div className="lb-agent-panel__actions">
+						<div className="lb-agent-controls">
+							<span className="lb-agent-control">
+								<span className="lb-agent-control__label">
+									<ClaudeMark size={13} />
+									{model?.shortName}
+								</span>
+								<ChevronDown size={13} strokeWidth={2.25} aria-hidden="true" className="lb-agent-control__chevron" />
+							</span>
+							<span className="lb-agent-control">
+								<span className="lb-agent-control__label">{effort?.label}</span>
+								<ChevronDown size={13} strokeWidth={2.25} aria-hidden="true" className="lb-agent-control__chevron" />
+							</span>
+						</div>
+						<span className="lb-agent-panel__spacer" />
+						{/* The real meter, given a plausible figure — the component is the documentation. */}
+						<AgentContextMeter usage={{ used: 42_000, max: 200_000 }} />
+						<span className="lb-agent-panel__send">
+							<ArrowUp size={15} strokeWidth={2.5} aria-hidden="true" />
+						</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	)
+}
+
 export function Agent({ go }: SectionProps) {
 	// Live, and it moves: switching an extension off withdraws its operations from the agent too.
 	const operations = useSyncExternalStore(subscribeToOperations, getVisibleOperations)
@@ -148,6 +201,13 @@ export function Agent({ go }: SectionProps) {
 					is what you would have drawn.
 				</p>
 				<p>
+					<strong>It already knows what you are looking at.</strong> Every message carries the board
+					on screen and whatever you have selected, so “name these” or “tidy this up” works with no
+					explaining and no delay — the agent does not have to go and ask which shapes you meant.
+					When something is selected, a chip above the box says what is going with your message;
+					the <strong>×</strong> on it drops the selection from that one turn.
+				</p>
+				<p>
 					<strong>It can see the board.</strong> Beyond reading positions and property values, it can
 					render what is on screen — or the shapes you point it at — and look at the picture. That is
 					how it answers questions about images you have put on a board, about a sketch, or about
@@ -164,6 +224,96 @@ export function Agent({ go }: SectionProps) {
 					you did not want, <Keys keys={['⌘Z']} /> walks back through it exactly as if you had
 					done the work by hand.
 				</Hint>
+			</Section>
+
+			<Section title="Choosing what it costs">
+				<p>
+					The composer carries two pickers: <strong>which model answers</strong>, and{' '}
+					<strong>how hard it thinks</strong>. They matter more here than in a coding tool, because
+					most requests to a board are a handful of tool calls rather than a problem — and Claude
+					Code's own default reasoning level is set for writing code, so left alone it will spend
+					longer thinking about “add a note per city” than doing it.
+				</p>
+				<ComposerDemo />
+				<p>
+					The panel therefore starts on{' '}
+					<strong>{AGENT_MODELS.find((model) => model.slug === DEFAULT_MODEL_SLUG)?.name}</strong> at{' '}
+					<strong>
+						{AGENT_MODELS.find((model) => model.slug === DEFAULT_MODEL_SLUG)
+							?.efforts.find((effort) => effort.value === DEFAULT_EFFORT)?.label}
+					</strong>
+					, which is enough to build and edit a board. Move up when a turn keeps going wrong; move
+					down to <em>Low</em> for bulk edits you have already described exactly. Each menu row says
+					what picking it means, and your choice sticks between sessions.
+				</p>
+				<Hint>
+					Changing either mid-conversation does <em>not</em> start over. The turn you are in the
+					middle of keeps its context, and the next message runs on the new setting — so reaching
+					for a stronger model after a turn goes wrong does not also throw away everything you had
+					just explained.
+				</Hint>
+				<p>
+					The cheapest model has no reasoning control at all, so the second picker disappears rather
+					than offering a setting that would be ignored. The model list also has a provider rail:
+					only Claude has models behind it, because the panel runs Claude Code — the greyed-out
+					entry beside it is saying so, not waiting to be configured. Type to filter, or press{' '}
+					<Keys keys={['⌘1']} /> to <Keys keys={['⌘4']} /> to jump straight to one.
+				</p>
+			</Section>
+
+			<Section title="How full the context is">
+				<p>
+					The ring beside the send button is the conversation's context window. It appears after the
+					first turn and updates with every one after it, because that is the only moment the true
+					figure is known — hover it for the token count.
+				</p>
+				<p>
+					It matters because a full window has no error message. The model starts forgetting the
+					beginning of the conversation, and answers quietly get worse. Past 90% the ring turns red;
+					that is the point to start a new chat rather than the point to wonder what went wrong.
+				</p>
+			</Section>
+
+			<Section title="Following a turn">
+				<p>
+					While the agent is working there is one line at the foot of the transcript rather than a
+					running commentary: three stuttering dots, how long it has been going —{' '}
+					<em>Working for 1m 4s</em> — and what it last said it was doing. Runs of tool calls
+					collapse into a single <em>4 tool calls</em> row you can open.
+				</p>
+				<p>
+					When the turn finishes, its work folds away behind <em>Worked for 1m 12s</em> and the
+					reply stays where it is. That is the rule: a fold hides <em>how</em> something was done,
+					never what was said. If you stopped the turn yourself it says so — <em>You stopped
+					after 8s</em> — because "worked for 8s" would read as the agent having given up.
+				</p>
+				<Hint>
+					Your own long requests collapse too, behind <strong>Show full message</strong>. A pasted
+					brief is the one thing in a transcript you already know the contents of, and left whole it
+					pushes the answer off the panel.
+				</Hint>
+			</Section>
+
+			<Section title="Reading what it says">
+				<p>
+					Replies are rendered markdown — headings, lists, tables, and code blocks with a copy
+					button — so a structured answer reads as one. Hovering a reply offers to copy the whole
+					thing.
+				</p>
+				<p>
+					The box you type in grows as you write, up to about a dozen lines, then scrolls — so a
+					long request is visible while you compose it without the transcript disappearing behind
+					it. <Keys keys={['⇧↵']} /> makes a new line; <Keys keys={['↵']} /> sends.
+				</p>
+				<p>
+					Down the right-hand edge is a tick per question you have asked. Hover one to see the
+					question, click it to jump back to that point in the conversation.
+				</p>
+				<p>
+					Tool calls stay collapsed to a name and a result, because the board is the real output:
+					you can see what happened rather than read about it. Open one when a turn goes somewhere
+					you did not follow, and it shows exactly what the operation was given.
+				</p>
 			</Section>
 
 			<Section title="Watching it work">
@@ -201,6 +351,12 @@ export function Agent({ go }: SectionProps) {
 					can read and work around — it is told what is available rather than left guessing. If the
 					panel says it is waiting for the agent, the process that runs it is not up; restarting the
 					dev server starts it again.
+				</p>
+				<p>
+					It should not spend turns working out what it can do. “Add a text node” is one action, not
+					a look followed by an action: the types a board accepts are part of the tool description
+					the agent is handed, so there is nothing to check first. If you see it surveying before a
+					simple request, that is a gap in the tool descriptions rather than the model being careful.
 				</p>
 				<p>
 					Images are fetched by the browser, so a host that does not allow that will fail. Direct

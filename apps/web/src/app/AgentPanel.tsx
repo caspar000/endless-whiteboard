@@ -1,4 +1,15 @@
-import { Bot, CircleStop, History, ImageOff, PanelRightClose, Plus, Send, X } from 'lucide-react'
+import {
+	ArrowUp,
+	Bot,
+	ChevronDown,
+	ChevronRight,
+	CircleStop,
+	History,
+	ImageOff,
+	PanelRightClose,
+	Plus,
+	X,
+} from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
 	deleteChat,
@@ -9,7 +20,8 @@ import {
 	sendPrompt,
 	subscribeToAgentStatus,
 } from '../agent/bridge'
-import { getChatState, subscribeToChat, type TranscriptRow } from '../agent/chat'
+import { getChatState, subscribeToChat } from '../agent/chat'
+import { toDisplayItems, type DisplayItem } from '../agent/transcript'
 import {
 	dataUrlFor,
 	imageFilesFrom,
@@ -17,8 +29,17 @@ import {
 	MAX_IMAGES,
 	type PendingImage,
 } from '../agent/images'
+import { formatToolInput, prettyToolName } from '../agent/toolRow'
 import { AgentChats } from './AgentChats'
+import { AgentContextChip } from './AgentContextChip'
+import { AgentContextMeter } from './AgentContextMeter'
+import { AgentMarkdown, CopyButton } from './AgentMarkdown'
+import { AgentMinimap, type MinimapMark } from './AgentMinimap'
+import { AgentModelControls } from './AgentModelControls'
 import { AgentSignIn } from './AgentSignIn'
+import { AgentUserMessage } from './AgentUserMessage'
+import { AgentFoldRow, AgentWorkingRow } from './AgentWorking'
+import { AgentWorkGroup, WorkRow } from './AgentWorkGroup'
 
 /**
  * The agent panel: a conversation with Claude Code, docked to the right of the board.
@@ -26,7 +47,8 @@ import { AgentSignIn } from './AgentSignIn'
  * The point of it being *here* rather than in a terminal is that the board is the shared subject.
  * You watch nodes appear as they are created, on the board you are already looking at, and every one
  * of them is a normal undo step — so the panel needs no preview, no diff and no apply button. That
- * is why the transcript shows tool calls by name and not their payloads: the payload is the board.
+ * is why the transcript shows tool calls by name and keeps their payloads closed: the payload is the
+ * board, and the JSON is there only for the turn that went somewhere you did not follow.
  *
  * The panel deliberately owns no connection. It reads the same bridge Settings → Agents controls, so
  * there is exactly one switch for "something outside the browser may touch my boards", and closing
@@ -39,6 +61,23 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 	const [showChats, setShowChats] = useState(false)
 	const [images, setImages] = useState<PendingImage[]>([])
 	const [imageNote, setImageNote] = useState('')
+	/**
+	 * Turns whose fold the user has opened.
+	 *
+	 * Held here rather than per row because a fold row is recomputed on every derivation — it comes from
+	 * the store, not from it — so its open state has to live above it or it would reset on each streamed
+	 * delta.
+	 */
+	const [expandedFolds, setExpandedFolds] = useState<ReadonlySet<number>>(() => new Set())
+	const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+
+	const toggleFold = (turn: number) => {
+		setExpandedFolds((current) => {
+			const next = new Set(current)
+			if (!next.delete(turn)) next.add(turn)
+			return next
+		})
+	}
 
 	/**
 	 * Object URLs are a manual allocation: without this, every pasted screenshot leaks its blob for
@@ -132,6 +171,39 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 		pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
 	}
 
+	// Derived on render rather than stored: the same rows read differently once their turn has ended,
+	// and grouping inside the store would mean rewriting history as it settles.
+	const items = toDisplayItems({ rows: chat.rows, turns: chat.turns, expanded: expandedFolds })
+
+	/** One minimap tick per question asked — the landmark you actually look for. */
+	const marks: MinimapMark[] = chat.rows
+		.filter((row): row is Extract<typeof row, { kind: 'user' }> => row.kind === 'user')
+		.map((row) => ({
+			id: row.id,
+			label: row.text.trim().slice(0, 90) || 'Image',
+		}))
+
+	/**
+	 * Scrolls a message to the top of the transcript.
+	 *
+	 * `scrollTo` on the container rather than `scrollIntoView` on the row: the latter also scrolls every
+	 * *ancestor*, which on a board means panning the canvas behind the panel.
+	 *
+	 * Measured from bounding rects rather than `offsetTop`, which is relative to whichever ancestor
+	 * happens to be positioned — that is the scroller, not the transcript, and a layout change to either
+	 * would silently move the target. Rects are scroll-aware and mean the same thing whatever the
+	 * offset parent is.
+	 */
+	const jumpTo = (id: string) => {
+		const container = transcript.current
+		const target = container?.querySelector<HTMLElement>(`[data-row-id="${id}"]`)
+		if (!container || !target) return
+		// Jumping is reading, not following: the turn must not yank the view back down afterwards.
+		pinned.current = false
+		const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top
+		container.scrollTo({ top: container.scrollTop + delta - 8, behavior: 'smooth' })
+	}
+
 	const ready = status.connection === 'connected' && status.chat && chat.auth !== 'signed-out'
 	const signedOut = status.connection === 'connected' && status.chat && chat.auth === 'signed-out'
 
@@ -214,14 +286,43 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 					onDelete={deleteChat}
 				/>
 			) : (
-				<div className="lb-agent-panel__transcript" ref={transcript} onScroll={onScroll}>
+				/*
+				 * The rail is a sibling of the scroller, not a child of it.
+				 *
+				 * Inside the transcript it would be a flex item — `float` does not apply to those — so it
+				 * took a 240px slot in the column and pushed every message down past it. And it cannot be
+				 * `position: absolute` in there either: absolute children of a scroll container scroll with
+				 * the content, and a minimap that scrolls away is not a map. So the scroller is a
+				 * positioned wrapper and the rail hangs off that.
+				 */
+				<div className="lb-agent-panel__scroller">
+				<div
+					className="lb-agent-panel__transcript"
+					ref={transcript}
+					onScroll={onScroll}
+					// Focusable so the transcript answers PageUp/PageDown and Home/End natively — a scroll
+					// region nobody can focus is one a keyboard cannot read.
+					tabIndex={0}
+					aria-label="Transcript"
+				>
 					{signedOut ? (
 						<AgentSignIn detail={chat.authDetail} />
 					) : chat.rows.length === 0 ? (
 						<Empty ready={ready} status={status.connection} />
 					) : (
-						chat.rows.map((row) => <Row key={row.id} row={row} />)
+						items.map((item) => (
+							<Item
+								key={item.kind === 'row' ? item.row.id : `${item.kind}-${item.turn}`}
+								item={item}
+								rowId={item.kind === 'row' ? item.row.id : null}
+								expanded={expandedFolds}
+								onToggleFold={toggleFold}
+								onExpandImage={(src, alt) => setLightbox({ src, alt })}
+							/>
+						))
 					)}
+				</div>
+				<AgentMinimap marks={marks} onSelect={jumpTo} />
 				</div>
 			)}
 
@@ -257,54 +358,73 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 					</p>
 				)}
 
-				<textarea
-					className="lb-agent-panel__input"
-					value={draft}
-					rows={2}
-					disabled={!ready}
-					placeholder={
-						!ready
-							? 'Not connected to an agent host'
-							: chat.busy
-								? 'Send another message to steer it…'
-								: 'Ask the agent, or paste an image…'
-					}
-					onPaste={onPaste}
-					onChange={(event) => setDraft(event.target.value)}
-					onKeyDown={(event) => {
-						// Enter sends, Shift+Enter breaks the line: the convention every chat box in the
-						// user's day already follows.
-						if (event.key === 'Enter' && !event.shiftKey) {
-							event.preventDefault()
-							submit()
+				{/* Above the box rather than inside it: this is a statement about what will be sent, not a
+				    control that shapes the message, and it comes and goes as the user clicks around the
+				    board — inside the composer it would make the whole thing jump. */}
+				<AgentContextChip />
+
+				{/* One bordered box holding the box you type in and the dials that decide what typing in
+				    it costs — T3 Code's arrangement, and the reason the model and effort menus are
+				    legible at all: sitting inside the composer they read as part of the request rather
+				    than as app chrome that happens to be nearby. */}
+				<div className="lb-agent-composer" data-disabled={!ready || undefined}>
+					{/* `rows={1}` with the floor in CSS: `field-sizing: content` sizes the box to its text and
+					    treats `rows` as the smallest it will shrink to, so a 2-row floor here would leave a
+					    blank line under a one-line draft. */}
+					<textarea
+						className="lb-agent-panel__input"
+						value={draft}
+						rows={1}
+						disabled={!ready}
+						placeholder={
+							!ready
+								? 'Not connected to an agent host'
+								: chat.busy
+									? 'Send another message to steer it…'
+									: 'Ask the agent, or paste an image…'
 						}
-					}}
-				/>
-				{/* Both while busy, rather than Stop *replacing* Send: the composer stays live so a
-				    follow-up can steer the work, and stopping has to remain one click away. */}
-				<div className="lb-agent-panel__actions">
-					{chat.busy && (
+						onPaste={onPaste}
+						onChange={(event) => setDraft(event.target.value)}
+						onKeyDown={(event) => {
+							// Enter sends, Shift+Enter breaks the line: the convention every chat box in the
+							// user's day already follows.
+							if (event.key === 'Enter' && !event.shiftKey) {
+								event.preventDefault()
+								submit()
+							}
+						}}
+					/>
+					{/* Stop sits *beside* Send while busy rather than replacing it: the composer stays live
+					    so a follow-up can steer the work, and stopping has to remain one click away. */}
+					<div className="lb-agent-panel__actions">
+						<AgentModelControls disabled={!ready} />
+						<span className="lb-agent-panel__spacer" />
+						{/* Only once a turn has reported. Before that there is nothing to be a fraction of. */}
+						{chat.context && <AgentContextMeter usage={chat.context} />}
+						{chat.busy && (
+							<button
+								type="button"
+								className="lb-agent-panel__send lb-agent-panel__send--stop"
+								onClick={interruptAgent}
+								title="Stop"
+								aria-label="Stop"
+							>
+								<CircleStop size={14} aria-hidden="true" />
+							</button>
+						)}
 						<button
-							type="button"
-							className="lb-agent-panel__send lb-agent-panel__send--stop"
-							onClick={interruptAgent}
-							title="Stop"
+							type="submit"
+							className="lb-agent-panel__send"
+							disabled={!ready || (!draft.trim() && images.length === 0)}
+							title={chat.busy ? 'Send — queued for the running turn' : 'Send'}
+							aria-label="Send"
 						>
-							<CircleStop size={15} aria-hidden="true" />
-							Stop
+							<ArrowUp size={15} strokeWidth={2.5} aria-hidden="true" />
 						</button>
-					)}
-					<button
-						type="submit"
-						className="lb-agent-panel__send"
-						disabled={!ready || (!draft.trim() && images.length === 0)}
-						title={chat.busy ? 'Send — queued for the running turn' : 'Send'}
-					>
-						<Send size={14} aria-hidden="true" />
-						Send
-					</button>
+					</div>
 				</div>
 			</form>
+			{lightbox && <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />}
 		</aside>
 	)
 }
@@ -362,53 +482,99 @@ function Empty({ ready, status }: { ready: boolean; status: string }) {
 	)
 }
 
-function Row({ row }: { row: TranscriptRow }) {
+/**
+ * One thing in the transcript.
+ *
+ * The transcript is no longer one row per event: `toDisplayItems` groups runs of tool calls, drops the
+ * repeated `Thinking…` noise, adds a live indicator to the running turn and folds the settled ones.
+ * This renders whatever came out of that.
+ */
+function Item({
+	item,
+	rowId,
+	expanded,
+	onToggleFold,
+	onExpandImage,
+}: {
+	item: DisplayItem
+	/** Stamped on the element so the minimap can scroll to it. Only rows are landmarks. */
+	rowId: string | null
+	expanded: ReadonlySet<number>
+	onToggleFold: (turn: number) => void
+	onExpandImage: (dataUrl: string, alt: string) => void
+}) {
+	switch (item.kind) {
+		case 'work':
+			return <AgentWorkGroup tools={item.tools} />
+		case 'working':
+			return <AgentWorkingRow startedAt={item.startedAt} step={item.step} />
+		case 'fold':
+			return (
+				<AgentFoldRow
+					label={item.label}
+					count={item.hidden.length}
+					open={expanded.has(item.turn)}
+					onToggle={() => onToggleFold(item.turn)}
+				/>
+			)
+		case 'row':
+			break
+	}
+
+	const row = item.row
 	switch (row.kind) {
 		case 'user':
 			return (
-				<div className="lb-agent-row lb-agent-row--user">
-					{row.images?.length ? (
-						<div className="lb-agent-row__images">
-							{row.images.map((image, index) => (
-								<img
-									key={index}
-									src={dataUrlFor(image)}
-									alt={`Attached image ${index + 1}`}
-								/>
-							))}
-						</div>
-					) : null}
-					{row.text}
+				<div data-row-id={rowId ?? undefined}>
+					<AgentUserMessage row={row} onExpandImage={onExpandImage} />
 				</div>
 			)
 		case 'agent':
 			return (
 				<div className="lb-agent-row lb-agent-row--agent" data-streaming={row.streaming || undefined}>
-					{row.text}
+					<AgentMarkdown text={row.text} />
+					{/* Only once the block has closed. A copy button on a half-written answer copies half an
+					    answer, and it would move under the pointer on the next delta. */}
+					{!row.streaming && <CopyButton text={row.text} label="Copy reply" className="lb-agent-row__copy" />}
 				</div>
 			)
 		case 'status':
+			// Only the statuses that survived `isNoiseStatus` reach here — a real event, not "Thinking…".
 			return <div className="lb-agent-row lb-agent-row--status">{row.text}</div>
 		case 'error':
 			return <div className="lb-agent-row lb-agent-row--error">{row.text}</div>
 		case 'tool':
-			return (
-				<div className="lb-agent-row lb-agent-row--tool" data-state={row.state}>
-					<span className="lb-agent-row__tool-name">{prettyToolName(row.name)}</span>
-					{row.summary && <span className="lb-agent-row__tool-summary">{row.summary}</span>}
-				</div>
-			)
+			// A lone call outside a group, which `toDisplayItems` does not produce today — kept so a
+			// future single-tool item renders rather than vanishing.
+			return <WorkRow tool={row} />
 	}
 }
 
-/**
- * A tool name as the user should read it.
- *
- * The wire carries `mcp__lifeboard__node_insert`, which is three encodings deep — the SDK's MCP
- * namespacing, the underscore-for-dot swap MCP tool names require, and the operation id itself.
- * Undoing all three here keeps that entirely inside the plumbing that needs it.
- */
-export function prettyToolName(name: string): string {
-	const bare = name.startsWith('mcp__lifeboard__') ? name.slice('mcp__lifeboard__'.length) : name
-	return bare.replace(/_/g, '.')
+/** A pasted screenshot, full size. Closed by clicking anywhere or pressing Escape. */
+function ImageLightbox({
+	image,
+	onClose,
+}: {
+	image: { src: string; alt: string }
+	onClose: () => void
+}) {
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') onClose()
+		}
+		document.addEventListener('keydown', onKeyDown)
+		return () => document.removeEventListener('keydown', onKeyDown)
+	}, [onClose])
+
+	return (
+		<div
+			className="lb-agent-lightbox"
+			role="dialog"
+			aria-modal="true"
+			aria-label={image.alt}
+			onClick={onClose}
+		>
+			<img src={image.src} alt={image.alt} />
+		</div>
+	)
 }

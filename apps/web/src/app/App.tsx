@@ -8,6 +8,7 @@ import { clearThumbnailsExcept, saveBoardThumbnail } from '../persistence/thumbn
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
+import { watchBoard } from '../agent/boardContext'
 import { setAgentEditorSource, startAgentBridge, stopAgentBridge } from '../agent/bridge'
 import { discoverDevHost, getDevHost, setDevHost, subscribeToDevHost } from '../agent/devHost'
 import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
@@ -558,6 +559,35 @@ export function App() {
 		)
 	}, [])
 
+	/**
+	 * Tells the agent panel which board is in front of the user, so every turn can carry it and the
+	 * user's selection without the agent having to ask for either.
+	 *
+	 * A *pushed* value rather than a getter like the one above, because the panel has to react — the
+	 * selection chip appears the moment something is clicked. Called from the two events that can
+	 * change the answer, for the same reason `focusOnly` is: the active tab changing, and a board's
+	 * editor mounting. Neither implies the other — a board mounts long after its tab is selected, and
+	 * a mounting background board must not steal the context from the one on screen.
+	 */
+	const boardsRef = useRef(api.boards)
+	boardsRef.current = api.boards
+	const syncAgentContext = useCallback(() => {
+		const boardId = activeBoardIdRef.current
+		const editor = boardId ? editors.current.get(boardId) : null
+		if (!boardId || !editor) {
+			watchBoard(null)
+			return
+		}
+		watchBoard({
+			boardId,
+			name: boardsRef.current.find((board) => board.id === boardId)?.name ?? 'untitled',
+			editor,
+		})
+	}, [])
+
+	// The tab-change half. The mount half is in `onEditor` below.
+	useEffect(syncAgentContext, [activeBoardId, api.boards, syncAgentContext])
+
 	useEffect(() => {
 		// An open palette counts as "no board has focus", and this is the whole of the palette's focus
 		// story: tldraw reads keys off the *document* and gates them on `isFocused`, so without the
@@ -672,11 +702,17 @@ export function App() {
 									if (editor) {
 										editors.current.set(board.id, editor)
 										focusOnly(activeBoardIdRef.current)
+										// The agent panel's context, for a board that mounted after its tab was
+										// chosen. `syncAgentContext` ignores this when another board is on screen.
+										syncAgentContext()
 										// A board can mount long after these were chosen — on a restored tab, or the
 										// first time an already-open tab is shown.
 										editor.user.updateUserPreferences({ colorScheme: themeRef.current })
 										editor.updateInstanceState({ isGridMode: snapRef.current })
-									} else editors.current.delete(board.id)
+									} else {
+										editors.current.delete(board.id)
+										syncAgentContext()
+									}
 								}}
 							/>
 						</div>

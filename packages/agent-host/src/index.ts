@@ -96,11 +96,17 @@ async function main(): Promise<void> {
 		onIdle: () => void sendChats(),
 	})
 
-	bridge.onPrompt((text, images) => {
-		say(`› ${text}${images.length ? `  [${images.length} image${images.length > 1 ? 's' : ''}]` : ''}`)
+	bridge.onPrompt((text, images, selection, context) => {
+		const attached = images.length ? `  [${images.length} image${images.length > 1 ? 's' : ''}]` : ''
+		// The model and effort are logged with the turn because this is where a surprising bill gets
+		// explained: the panel's picker is two clicks and easy to forget you moved.
+		const on = selection
+			? `  (${selection.model}${selection.effort ? `, ${selection.effort}` : ''})`
+			: ''
+		say(`› ${text}${attached}${on}`)
 		// Returns once queued, not once answered — which is exactly what lets a second message arrive
 		// mid-turn and steer the work already running.
-		void session.run(text, images)
+		void session.run(text, images, selection, context)
 	})
 
 	bridge.onInterrupt(() => {

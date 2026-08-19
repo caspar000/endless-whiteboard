@@ -70,6 +70,35 @@ describe('parseServerMessage', () => {
 		}
 	})
 
+	it('reads a context-window figure, and refuses one that is not a number', () => {
+		const usage = (event: unknown) => parseServerMessage(JSON.stringify({ type: 'chat', event }))
+
+		expect(usage({ kind: 'usage', used: 42_000, max: 200_000 })).toEqual({
+			type: 'chat',
+			event: { kind: 'usage', used: 42_000, max: 200_000 },
+		})
+		// An unknown window size is a real state — the panel shows a token count and an empty ring.
+		expect(usage({ kind: 'usage', used: 42_000 })).toEqual({
+			type: 'chat',
+			event: { kind: 'usage', used: 42_000, max: null },
+		})
+		expect(usage({ kind: 'usage', used: 42_000, max: 'lots' })).toEqual({
+			type: 'chat',
+			event: { kind: 'usage', used: 42_000, max: null },
+		})
+
+		// A non-finite `used` has no honest rendering — it would put `NaN%` on the ring — so the frame
+		// is dropped rather than clamped to something invented.
+		for (const event of [
+			{ kind: 'usage' },
+			{ kind: 'usage', used: 'plenty' },
+			{ kind: 'usage', used: Number.NaN },
+			{ kind: 'usage', used: Number.POSITIVE_INFINITY },
+		]) {
+			expect(usage(event), JSON.stringify(event)).toBeNull()
+		}
+	})
+
 	it('gives a rejection without a reason something to say', () => {
 		const message = parseServerMessage(JSON.stringify({ type: 'rejected' }))
 		expect(message).toMatchObject({ type: 'rejected' })

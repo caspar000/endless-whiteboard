@@ -10,6 +10,8 @@ import {
 	type OperationManifestEntry,
 	type OperationResult,
 	type ServerMessage,
+	type TurnContext,
+	type TurnSelection,
 } from './protocol.js'
 
 /**
@@ -83,7 +85,14 @@ export class AgentBridge {
 	private readonly pending = new Map<number, Pending>()
 	private nextId = 1
 	private readonly manifestListeners = new Set<() => void>()
-	private readonly promptListeners = new Set<(text: string, images: PromptImage[]) => void>()
+	private readonly promptListeners = new Set<
+		(
+			text: string,
+			images: PromptImage[],
+			selection: TurnSelection | null,
+			context: TurnContext | null
+		) => void
+	>()
 	private readonly interruptListeners = new Set<() => void>()
 	private readonly chatsListeners = new Set<(message: ChatsMessage) => void>()
 	private readonly authTokenListeners = new Set<(token: string) => void>()
@@ -141,8 +150,20 @@ export class AgentBridge {
 		}
 	}
 
-	/** A turn the user typed into the app's agent panel. Only the agent host subscribes. */
-	onPrompt(listener: (text: string, images: PromptImage[]) => void): () => void {
+	/**
+	 * A turn the user typed into the app's agent panel. Only the agent host subscribes.
+	 *
+	 * `selection` is the model and reasoning level the composer had set, or `null` from a panel that
+	 * does not send one — which the host reads as "keep using what you were launched with".
+	 */
+	onPrompt(
+		listener: (
+			text: string,
+			images: PromptImage[],
+			selection: TurnSelection | null,
+			context: TurnContext | null
+		) => void
+	): () => void {
 		this.promptListeners.add(listener)
 		return () => {
 			this.promptListeners.delete(listener)
@@ -281,9 +302,15 @@ export class AgentBridge {
 					// Dropped rather than queued when this host has no agent: a plain relay advertised
 					// `chat: false`, so a prompt arriving here is a panel that ignored the answer.
 					if (!this.chat) return
-					// Normalised to an array here so every listener has one shape to handle rather than
-					// re-deciding what an absent field means.
-					for (const listener of this.promptListeners) listener(message.text, message.images ?? [])
+					// Normalised here so every listener has one shape to handle rather than re-deciding
+					// what an absent field means. A model with no effort field is a real selection (the
+					// model has no reasoning control); no model at all is no selection.
+					const selection: TurnSelection | null = message.model
+						? { model: message.model, effort: message.effort ?? null }
+						: null
+					for (const listener of this.promptListeners) {
+						listener(message.text, message.images ?? [], selection, message.context ?? null)
+					}
 					return
 				}
 				case 'interrupt': {

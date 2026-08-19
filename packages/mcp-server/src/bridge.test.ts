@@ -369,13 +369,105 @@ describe('parseClientMessage', () => {
 		})
 		expect(parseClientMessage(JSON.stringify({ type: 'interrupt' }))).toEqual({ type: 'interrupt' })
 	})
+
+	it('carries the model and reasoning level the composer picked', () => {
+		expect(
+			parseClientMessage(
+				JSON.stringify({ type: 'prompt', text: 'add a note', model: 'claude-sonnet-5', effort: 'low' })
+			)
+		).toEqual({ type: 'prompt', text: 'add a note', model: 'claude-sonnet-5', effort: 'low' })
+	})
+
+	it('carries the board and selection the panel had', () => {
+		expect(
+			parseClientMessage(
+				JSON.stringify({
+					type: 'prompt',
+					text: 'name these',
+					context: {
+						boardId: 'b1',
+						boardName: 'Trip',
+						selection: [{ id: 'shape:a', type: 'text', label: 'Reykjavik' }],
+					},
+				})
+			)
+		).toEqual({
+			type: 'prompt',
+			text: 'name these',
+			context: {
+				boardId: 'b1',
+				boardName: 'Trip',
+				selection: [{ id: 'shape:a', type: 'text', label: 'Reykjavik' }],
+			},
+		})
+	})
+
+	it('bounds the context, which is app-authored but still comes off a socket', () => {
+		const message = parseClientMessage(
+			JSON.stringify({
+				type: 'prompt',
+				text: 'go',
+				context: {
+					boardId: 'b1',
+					// Over the cap, and with two entries that are not shapes at all.
+					selection: [
+						...Array.from({ length: 40 }, (_, index) => ({ id: `shape:${index}`, type: 'text' })),
+						{ id: 'shape:no-type' },
+						'not an object',
+					],
+					selectionTotal: 42,
+				},
+			})
+		)
+
+		expect(message?.type).toBe('prompt')
+		if (message?.type !== 'prompt') return
+		expect(message.context?.selection).toHaveLength(32)
+		// A missing label is empty rather than absent, so the host has one shape to format.
+		expect(message.context?.selection[0]).toEqual({ id: 'shape:0', type: 'text', label: '' })
+		expect(message.context?.selectionTotal).toBe(42)
+	})
+
+	it('drops a context that says nothing, keeping the turn', () => {
+		for (const context of [{}, { selection: [] }, 'nonsense', null]) {
+			const message = parseClientMessage(JSON.stringify({ type: 'prompt', text: 'go', context }))
+			expect(message, JSON.stringify(context)).toEqual({ type: 'prompt', text: 'go' })
+		}
+	})
+
+	/**
+	 * A bad selection drops the *field*, not the turn.
+	 *
+	 * The message is a person's request and the selection only says how to answer it — so an unknown
+	 * effort level falls back to the host's own default rather than swallowing what they typed. The
+	 * validation still matters: an arbitrary string reaching the SDK's `effort` option is a failed turn,
+	 * and an unbounded one is a payload rather than a name.
+	 */
+	it('drops a selection it does not recognise, keeping the turn', () => {
+		for (const selection of [
+			{ effort: 'ludicrous' },
+			{ effort: 42 },
+			{ model: '   ' },
+			{ model: 7 },
+			{ model: 'x'.repeat(129) },
+		]) {
+			expect(
+				parseClientMessage(JSON.stringify({ type: 'prompt', text: 'add a note', ...selection })),
+				JSON.stringify(selection)
+			).toEqual({ type: 'prompt', text: 'add a note' })
+		}
+	})
 })
 
 describe('the agent channel', () => {
 	it('advertises chat and delivers prompts when a host is behind it', async () => {
 		const { bridge: b, port } = await bridge({ chat: true })
 		const prompts: string[] = []
-		b.onPrompt((text) => prompts.push(text))
+		const selections: unknown[] = []
+		b.onPrompt((text, _images, selection) => {
+			prompts.push(text)
+			selections.push(selection)
+		})
 
 		const app = client(port)
 		await app.opened
@@ -387,8 +479,24 @@ describe('the agent channel', () => {
 			chat: true,
 		})
 
-		app.socket.send(JSON.stringify({ type: 'prompt', text: 'add a note' }))
+		app.socket.send(
+			JSON.stringify({ type: 'prompt', text: 'add a note', model: 'claude-sonnet-5', effort: 'low' })
+		)
 		await vi.waitFor(() => expect(prompts).toEqual(['add a note']))
+		// Normalised into one object so the host has a single shape to compare against what it is
+		// already running — see `onPrompt`.
+		expect(selections).toEqual([{ model: 'claude-sonnet-5', effort: 'low' }])
+
+		// A model with no reasoning control sends no effort, and that is a real selection rather than
+		// silence: the host has to clear the previous model's level rather than leave it applied.
+		app.socket.send(JSON.stringify({ type: 'prompt', text: 'again', model: 'claude-haiku-4-5' }))
+		await vi.waitFor(() => expect(prompts).toEqual(['add a note', 'again']))
+		expect(selections[1]).toEqual({ model: 'claude-haiku-4-5', effort: null })
+
+		// No model at all is a panel with no opinion, which leaves the host on its launch default.
+		app.socket.send(JSON.stringify({ type: 'prompt', text: 'and again' }))
+		await vi.waitFor(() => expect(prompts.length).toBe(3))
+		expect(selections[2]).toBeNull()
 
 		b.sendChat({ kind: 'text', text: 'Done.' })
 		expect(await app.next()).toEqual({ type: 'chat', event: { kind: 'text', text: 'Done.' } })

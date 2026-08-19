@@ -33,8 +33,17 @@ Both screens share a third surface: **the agent panel**, docked to the right of 
 (<kbd>⌘⇧A</kbd>). It runs Claude Code against the board you are looking at — ask it to research
 something and add what it finds, and you watch the nodes appear. It gets the board operations and web
 search and nothing else: no shell, no filesystem. Every change is a normal undo step. There is
-nothing to configure; `pnpm dev` starts the process behind it. See
-[`packages/agent-host`](packages/agent-host/README.md).
+nothing to configure; `pnpm dev` starts the process behind it. Its composer carries a **model** and a
+**reasoning** picker, so a request that is really three tool calls does not get answered at the effort
+Claude Code would spend on writing code; changing either steers the conversation already running
+rather than starting a new one. Beside them is a **context-window ring**, because a full window has no
+error message — it just quietly forgets the top of the conversation. A running turn shows one live
+line — `Working for 1m 4s` — and folds its work behind `Worked for 1m 12s` once it settles, keeping the
+reply; long requests collapse behind **Show full message**; runs of tool calls group into one row; and a
+tick per question down the right edge jumps you back through the conversation. Replies render as
+markdown, the box grows as you type, and a tool call opens to show what it was given. Every message carries the board
+on screen and your current selection, so “name these” needs no explaining and the agent never opens a
+turn by asking what it is looking at. See [`packages/agent-host`](packages/agent-host/README.md).
 
 **Board** — the endless canvas on dotted paper, with a registry-driven toolbar (the bottom dock).
 Nodes are drawn from the dock like every other tool; right-click offers "Add to board" for placing

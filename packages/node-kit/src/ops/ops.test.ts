@@ -86,6 +86,45 @@ describe('the core surface', () => {
 		}
 	})
 
+	/**
+	 * The gap this closes: `node.insert`'s type was a bare string saying "see node.types", so a model's
+	 * only route to a type name was a tool call. Every "add a note" cost a discovery round trip, and the
+	 * registry knew the answer the whole time.
+	 */
+	it('puts the creatable types in node.insert’s schema, so no discovery call is needed', () => {
+		const insert = operationManifest().find((entry) => entry.id === 'node.insert')
+		const types = insert?.inputSchema.properties.type?.enum
+
+		expect(types, 'node.insert.type has no enum').toBeDefined()
+		// The registered note and tldraw's own shapes, which is exactly what `node.types` reports.
+		expect(types).toContain(NOTE)
+		expect(types).toContain('text')
+		expect(types).toContain('note')
+		expect(types).toContain('frame')
+	})
+
+	it('tracks the registry, so a toggled extension cannot leave a stale enum behind', () => {
+		const typesNow = () =>
+			operationManifest().find((entry) => entry.id === 'node.insert')?.inputSchema.properties.type
+				?.enum ?? []
+
+		expect(typesNow()).toContain(NOTE)
+		clearNodeRegistry()
+		// The whole reason the set is read at manifest time rather than written in the source: it is a
+		// function of what is enabled, and the host re-announces its tools when this changes.
+		expect(typesNow()).not.toContain(NOTE)
+		expect(typesNow()).toContain('text')
+	})
+
+	/**
+	 * `node.find` is deliberately *not* enumerated. A board can hold a type an extension no longer
+	 * offers — an old note from a disabled plugin — and a closed set would make it unfindable.
+	 */
+	it('leaves node.find’s type open, so shapes of withdrawn types stay findable', () => {
+		const find = operationManifest().find((entry) => entry.id === 'node.find')
+		expect(find?.inputSchema.properties.type?.enum).toBeUndefined()
+	})
+
 	it('marks the reads read-only and the writes not', () => {
 		const byId = new Map(operationManifest().map((entry) => [entry.id, entry.readOnly]))
 		expect(byId.get('board.list')).toBe(true)

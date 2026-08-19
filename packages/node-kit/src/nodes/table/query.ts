@@ -6,7 +6,7 @@ import {
 	type EdgeIndex,
 } from '../../edges'
 import { isEmptyValue, listValuesOf, type FactsMap, type ShapeFacts } from '../../facts'
-import { numericPropertyValue } from '../../properties/format'
+import { isoDayValue, numericPropertyValue } from '../../properties/format'
 import {
 	convertAmount,
 	normaliseCurrency,
@@ -18,6 +18,8 @@ import {
 	LABEL_COLUMN,
 	columnProperty,
 	currencyGroupProperty,
+	dateGroupProperty,
+	groupProperty,
 	edgeColumnProperty,
 	edgeDirectionOf,
 	type FilterOp,
@@ -73,8 +75,17 @@ export interface MoneyOutcome {
 	stale?: boolean
 }
 
+/**
+ * The bucket shapes with no value for the group property fall into.
+ *
+ * A constant because three things have to agree on it: `buildGroups` produces it, the sort keeps it
+ * last, and the kanban draws it as a lane. It is a *display* string standing in for an absence, which
+ * is why it can never collide with a real value — no property value formats as an em dash.
+ */
+export const EMPTY_GROUP_KEY = '—'
+
 export interface TableGroup {
-	/** `null` for an ungrouped table; `'—'` for shapes with no value for the group property. */
+	/** `null` for an ungrouped table; {@link EMPTY_GROUP_KEY} for shapes with no value for the group property. */
 	key: string | null
 	rows: TableRow[]
 	/** Summary per column key, for this group only. */
@@ -659,9 +670,9 @@ export function queryTable(
 	const neededKeys = new Set<string>()
 	for (const column of columns) if (column.key !== LABEL_COLUMN) neededKeys.add(column.key)
 	if (groupBy && groupBy !== LABEL_COLUMN) {
-		// A currency grouping needs the money column's *cell* present, since a row with no value for it
-		// belongs in no currency bucket.
-		neededKeys.add(currencyGroupProperty(groupBy) ?? groupBy)
+		// Through `groupProperty`, so a prefixed grouping — by a money column's currency, by a date's day —
+		// reads the *cell* it is derived from. A row with no value for it belongs in no bucket.
+		neededKeys.add(groupProperty(groupBy) ?? groupBy)
 	}
 	for (const sort of sorts) if (sort.key !== LABEL_COLUMN) neededKeys.add(sort.key)
 
@@ -731,17 +742,32 @@ function buildGroups(
 	rates: RateTable | null
 ): TableGroup[] {
 	const currencyOf = currencyGroupProperty(groupBy)
-	const def = properties.get(currencyOf ?? groupBy)
+	const dayOf = dateGroupProperty(groupBy)
+	const def = properties.get(groupProperty(groupBy) ?? groupBy)
 	const buckets = new Map<string, TableRow[]>()
 
 	for (const row of rows) {
+		// Bucketing by the *day* of a date, which is what a calendar's cells are. A value that is not a
+		// date at all falls into the empty bucket rather than making a bucket of its own — a lane called
+		// "next tuesday" is not a day, and a grid has nowhere to draw it.
+		if (dayOf) {
+			const day = isoDayValue(row.cells[dayOf]) ?? EMPTY_GROUP_KEY
+			let bucket = buckets.get(day)
+			if (!bucket) {
+				bucket = []
+				buckets.set(day, bucket)
+			}
+			bucket.push(row)
+			continue
+		}
+
 		// Grouping by currency buckets on the row's *unit* rather than its value, so each bucket totals
 		// its own currency and nothing has to be converted at all.
 		if (currencyOf) {
 			const code =
 				row.cells[currencyOf] === undefined
-					? '—'
-					: (normaliseCurrency(row.units[currencyOf] ?? def?.unit) ?? '—')
+					? EMPTY_GROUP_KEY
+					: (normaliseCurrency(row.units[currencyOf] ?? def?.unit) ?? EMPTY_GROUP_KEY)
 			let bucket = buckets.get(code)
 			if (!bucket) {
 				bucket = []
@@ -754,13 +780,13 @@ function buildGroups(
 		const value = groupBy === LABEL_COLUMN ? row.label : row.cells[groupBy]
 		let keys: string[]
 		if (isEmptyValue(value)) {
-			keys = ['—']
+			keys = [EMPTY_GROUP_KEY]
 		} else if (Array.isArray(value) && (!def || isListType(def.type))) {
-			keys = value.length ? [...value] : ['—']
+			keys = value.length ? [...value] : [EMPTY_GROUP_KEY]
 		} else {
 			// The raw value, not its display form: a bucket key is an identity, and formatting a number
 			// property would file a year under "2,026".
-			keys = [Array.isArray(value) ? (value[0] ?? '—') : String(value)]
+			keys = [Array.isArray(value) ? (value[0] ?? EMPTY_GROUP_KEY) : String(value)]
 		}
 		for (const key of keys) {
 			let bucket = buckets.get(key)
@@ -782,8 +808,8 @@ function buildGroups(
 			// Biggest first — the interesting buckets float to the top — with an alphabetical tiebreak so the
 			// order is stable across recomputes. `—` sorts last: it is an absence, not a category.
 			.sort((a, b) => {
-				if (a.key === '—') return 1
-				if (b.key === '—') return -1
+				if (a.key === EMPTY_GROUP_KEY) return 1
+				if (b.key === EMPTY_GROUP_KEY) return -1
 				return (
 					b.rows.length - a.rows.length || a.key.localeCompare(b.key, undefined, { numeric: true })
 				)

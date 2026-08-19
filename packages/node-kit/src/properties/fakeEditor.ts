@@ -17,12 +17,19 @@ export interface FakeEditor {
 	documentMeta(): Record<string, unknown>
 	/** How many `run` calls happened — one user action must be one undo entry (§7). */
 	runs: number
+	/**
+	 * How many history stopping points were marked.
+	 *
+	 * The sharper version of `runs` for the same rule: nested `run`s join the outer batch, so what
+	 * actually decides how many times ⌘Z has to be pressed is how many stopping points were marked.
+	 */
+	marks: number
 }
 
 export function fakeEditor(initial: { shapes?: Record<string, TLShape> } = {}): FakeEditor {
 	let documentMeta: Record<string, unknown> = {}
 	const shapes = new Map<string, TLShape>(Object.entries(initial.shapes ?? {}))
-	const state = { runs: 0 }
+	const state = { runs: 0, marks: 0 }
 
 	if (!shapes.size) shapes.set('shape:a', makeShape('shape:a'))
 
@@ -36,6 +43,11 @@ export function fakeEditor(initial: { shapes?: Record<string, TLShape> } = {}): 
 		run: (fn: () => void) => {
 			state.runs++
 			fn()
+		},
+		// Returns the name it was given, as tldraw returns a mark id — a caller may hold on to it.
+		markHistoryStoppingPoint: (name?: string) => {
+			state.marks++
+			return name ?? 'mark'
 		},
 		getShape: (id: string) => shapes.get(id),
 		updateShape: (partial: { id: string; meta?: Record<string, unknown> }) => {
@@ -55,6 +67,9 @@ export function fakeEditor(initial: { shapes?: Record<string, TLShape> } = {}): 
 		documentMeta: () => documentMeta,
 		get runs() {
 			return state.runs
+		},
+		get marks() {
+			return state.marks
 		},
 	}
 }

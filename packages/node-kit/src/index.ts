@@ -305,6 +305,21 @@ export {
 	type TableRow,
 } from './nodes/table/query'
 export { areTableResultsEqual, getTableResult } from './nodes/table/engine'
+// The views a table can be drawn as — one entry per `LayoutMode`. Exported because the Help page is
+// generated from registries wherever one exists, and this is the registry for "how can a view look".
+export {
+	getViewDefinition,
+	getViewDefinitions,
+	type ViewDefinition,
+	type ViewProps,
+} from './nodes/table/views'
+// A placing view (the kanban) moves its members into their lanes. The app installs this once per
+// board, beside its other store-level behaviours — see Board.tsx.
+export { placeViewMembers } from './nodes/table/views/placement'
+// The inverse gesture: dragging a card off a view's lanes takes its property with it.
+export { watchViewDragOut } from './nodes/table/views/interaction'
+export { setViewMode } from './nodes/table/views/mode'
+export { readViewHome, type ViewHome } from './nodes/table/views/ownership'
 export {
 	ROLLUPS_TO_TABLES_MIGRATION_ID,
 	rollupsToTablesMigrations,

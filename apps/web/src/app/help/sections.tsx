@@ -9,7 +9,7 @@ import { Overview } from './sections/Overview'
 import { Properties } from './sections/Properties'
 import { Relations } from './sections/Relations'
 import { Shortcuts } from './sections/Shortcuts'
-import { Tables } from './sections/Tables'
+import { Views } from './sections/Views'
 
 /**
  * The help page's contents, and the only place that decides what the inner sidebar says.
@@ -93,13 +93,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		Component: Notes,
 	},
 	{
+		// The id is the URL (`#/help/tables`), so it stays what it has always been even though the thing
+		// it names has grown past tables — a link someone bookmarked is not ours to break.
 		id: 'tables',
-		label: 'Tables',
-		title: 'Tables',
-		lede: 'The other node type: a live, read-only view of the board. Filters, groups and summaries — or one big number, which is often all you wanted.',
+		label: 'Tables & views',
+		title: 'Views of the board',
+		lede: 'One card, four ways to answer the same question: a table, one big number, a kanban or a calendar. The last two arrange the real cards on your board rather than describing them.',
 		group: 'Extensions',
 		icon: <Table size={15} />,
-		Component: Tables,
+		Component: Views,
 	},
 	{
 		id: 'books',

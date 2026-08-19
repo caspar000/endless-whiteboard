@@ -4038,6 +4038,145 @@ button.lb-props__eye:hover {
 	letter-spacing: 0.06em;
 }
 
+/* ---------------------------------------------------------------- kanban view */
+/*
+ * The lanes of a kanban — and nothing else. Its *cards* are the real shapes on the board, positioned
+ * into these columns by node-kit's views/placement.ts, so there is no card rule here and never should
+ * be: a sticky in a lane is drawn by tldraw, exactly as it is anywhere else on the canvas.
+ *
+ * Every measurement is inline, from KANBAN_METRICS. The same numbers place the cards, and a lane whose
+ * geometry came from this file would drift away from them the first time either was edited. What lives
+ * here is colour, weight and the rules between things.
+ */
+.lb-table--fills {
+	/* The view lays itself out against the shape's own box, so the card must fill it rather than
+	   shrink-wrap its content. Paired with `autoHeight: false` — the placement pass owns `h`. */
+	height: 100%;
+}
+.lb-kanban {
+	position: relative;
+	height: 100%;
+	width: 100%;
+}
+.lb-kanban__title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+.lb-kanban__lane {
+	position: absolute;
+	border-radius: 6px;
+	/* Barely there on purpose: a lane is a place for cards, and a strongly drawn column would compete
+	   with the cards standing in it. */
+	background: var(--lb-surface-2);
+}
+/* The lane a dragged card would land in. Deliberately unmistakable: this is the only feedback that
+   says which column a drop is about to write, and it is read while the pointer is moving. */
+.lb-kanban__lane--drop {
+	background: var(--lb-accent-tint);
+	box-shadow: inset 0 0 0 1px var(--lb-accent);
+}
+.lb-kanban__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	padding: 0 6px;
+	font-size: 11px;
+}
+/* Usually `.lb-chip` as well, so a lane wears its option's own colour. This adds only what a heading
+   needs that a chip does not: room to be truncated when the lane is narrower than the word. */
+.lb-kanban__key {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+.lb-kanban__count {
+	color: var(--lb-text-dim);
+	font-variant-numeric: tabular-nums;
+	flex-shrink: 0;
+}
+.lb-kanban__rule {
+	position: absolute;
+	height: 1px;
+	background: var(--lb-border);
+}
+
+/* ---------------------------------------------------------------- calendar view */
+/*
+ * A week (or a month) of the board's dates — day boxes, exactly as the kanban has lane boxes, and for
+ * the same reason: the cards standing on them are the real shapes, positioned by views/placement.ts.
+ * So there is no card rule here and never should be. Measurements are inline from CALENDAR_METRICS,
+ * since the same numbers answer "which day was that dropped on".
+ */
+.lb-cal {
+	position: relative;
+	height: 100%;
+	width: 100%;
+}
+.lb-cal__title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+.lb-cal__weekdays {
+	position: absolute;
+	right: 8px;
+}
+.lb-cal__weekday {
+	position: absolute;
+	text-align: center;
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	line-height: 18px;
+}
+.lb-cal__day {
+	position: absolute;
+	overflow: hidden;
+	border-radius: 6px;
+	/* Barely there, like a lane: a day is a place for cards, and a strongly drawn box would compete
+	   with the cards standing in it. */
+	background: var(--lb-surface-2);
+}
+/* The days either side of a month that fill out its first and last weeks. Still real days — a card due
+   on one has to be somewhere — so they recede rather than disappear. */
+.lb-cal__day--outside {
+	opacity: 0.5;
+}
+/* Today, on a board whose whole point is which week you are in. */
+.lb-cal__day--today {
+	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
+}
+.lb-cal__day--drop {
+	background: var(--lb-accent-tint);
+	box-shadow: inset 0 0 0 1px var(--lb-accent);
+}
+.lb-cal__date {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	padding: 0 6px;
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-cal__day--today .lb-cal__date {
+	color: var(--lb-accent);
+	font-weight: 600;
+}
+/* Only on the 1st, where the day number alone does not say which month it belongs to. */
+.lb-cal__month {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-size: 9px;
+}
+
 /*
  * The grid. CSS grid rather than a <table>: column widths are flex weights so they hold their
  * proportions as the shape is resized, and a grid lets group headers and the summary row span the
@@ -4162,6 +4301,28 @@ button.lb-props__eye:hover {
 .lb-tcfg select:focus {
 	outline: 1px solid var(--lb-accent);
 }
+/* The calendar's date, with a "Today" button beside it once the card has been pinned to a week. */
+.lb-tcfg__anchor {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-tcfg__today {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	font-size: 11px;
+	padding: 3px 7px;
+	flex-shrink: 0;
+}
+.lb-tcfg__today:hover {
+	color: var(--lb-text);
+	border-color: var(--lb-border-strong);
+}
+
 /* Property · operator · value · remove. */
 .lb-tcfg__filter {
 	display: grid;
@@ -4900,6 +5061,93 @@ button.lb-props__eye:hover {
 }
 
 /* The live-table demo: mini cards on the left, the table that watches them on the right. */
+/*
+ * The kanban and calendar demos on the Views page. Mock-ups from the app's own tokens, never the real
+ * component — but deliberately the *same shape* as the real thing: lane boxes with a chip heading, and
+ * a card that is placed rather than listed, since that is the claim the demo is making.
+ */
+.lb-demo__scene--kanban,
+.lb-demo__scene--week {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 28px;
+}
+.lb-demo__lanes {
+	position: relative;
+	display: flex;
+	gap: 10px;
+	width: 100%;
+	max-width: 420px;
+	/* Clipped, so the card can start off the board and slide in from outside. */
+	overflow: hidden;
+}
+.lb-demo__lane {
+	flex: 1;
+	min-width: 0;
+	height: 96px;
+	border-radius: 8px;
+	background: var(--lb-surface-2);
+	padding: 6px;
+}
+.lb-demo__card {
+	position: absolute;
+	top: 34px;
+	width: 29%;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 5px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	padding: 7px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.25;
+	box-shadow: var(--lb-shadow-1);
+	/* The whole point of the demo is the card *travelling*, so this is the one place the movement is
+	   the message rather than decoration. */
+	transition: left 520ms cubic-bezier(0.4, 0, 0.2, 1), top 520ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lb-demo__week {
+	display: flex;
+	gap: 6px;
+	width: 100%;
+	max-width: 460px;
+}
+.lb-demo__day {
+	flex: 1;
+	min-width: 0;
+	height: 88px;
+	border-radius: 6px;
+	background: var(--lb-surface-2);
+	padding: 4px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.lb-demo__daynum {
+	color: var(--lb-text-dim);
+	font-size: 9px;
+	text-align: right;
+}
+.lb-demo__daycard {
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	padding: 4px 5px;
+	font-size: 9px;
+	font-weight: 600;
+	line-height: 1.2;
+	box-shadow: var(--lb-shadow-1);
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-demo__card {
+		transition: none;
+	}
+}
+
 .lb-demo__minis {
 	position: absolute;
 	left: 36px;

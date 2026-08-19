@@ -12,6 +12,8 @@ import {
 	type TableRow,
 } from './query'
 import { TABLE_NODE_TYPE } from './definition'
+import type { TableNodeProps } from './spec'
+import { getViewDefinition } from './views'
 
 /**
  * Stage 2 for tables, over the **unchanged** stage 0/1 pipeline (`nodes/rollup/engine.ts`).
@@ -38,9 +40,19 @@ const tableCache = createComputedCache<Editor, TableResult, TLShape>(
 			(shape.props as { source?: { scope?: string } }).source?.scope === 'connected'
 				? getPageEdges(editor).get()
 				: EMPTY_EDGE_INDEX
+		/*
+		 * The *view* gets a say in what is queried, and exactly one: which columns.
+		 *
+		 * A kanban has to ask for its lane property as a column, because that is what turns
+		 * `queryTable`'s membership rule into "carries a Status" rather than "is a shape on this page" —
+		 * see `ViewDefinition.columnsFor`. Applied here rather than in the component so that everything
+		 * reading this cache (the card, the placement pass, the config panel) sees one answer.
+		 */
+		const props = shape.props as unknown as TableNodeProps
+		const columns = getViewDefinition(props.layout.mode)?.columnsFor?.(props) ?? null
 		return queryTable(
 			getPageFacts(editor).get(),
-			shape.props as never,
+			columns ? { ...props, columns } : props,
 			shape.id,
 			properties,
 			rates,

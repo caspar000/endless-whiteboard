@@ -12,6 +12,8 @@ import {
 	rollupsToTablesMigrations,
 	itemsToNotesMigrations,
 	deleteRelationsWithShapes,
+	placeViewMembers,
+	watchViewDragOut,
 	rollupStats,
 	expressionSuggestExtension,
 	readPropertyRegistry,
@@ -376,6 +378,13 @@ export function Board({
 					const stopFollowingSelection = followSelectionWhileTracing(editor)
 					// A relation must not outlive the shapes it joins — see node-kit's relations.ts.
 					const stopCascadingDeletes = deleteRelationsWithShapes(editor)
+					// A kanban arranges the real shapes that matched it: set a card's status anywhere on
+					// the board and it joins the lane. See node-kit's views/placement.ts, where the rule
+					// that keeps this from oscillating is also written down.
+					const stopPlacingMembers = placeViewMembers(editor)
+					// And the way back off a board: drag a card out of the lanes and its property goes
+					// with it (node-kit's views/interaction.ts).
+					const stopWatchingDragOut = watchViewDragOut(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -388,6 +397,8 @@ export function Board({
 						stopDeselectingHidden()
 						stopFollowingSelection()
 						stopCascadingDeletes()
+						stopPlacingMembers()
+						stopWatchingDragOut()
 						stopTracking()
 						// Both are module-scope. The properties target is a bare shape id, so a stale one
 						// would make the next board open a panel for a shape that isn't on it.

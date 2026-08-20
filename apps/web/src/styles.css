@@ -455,15 +455,29 @@ button {
 /* The agent panel is a third column, so it takes width from the canvas rather than covering it —
    you can keep drawing while an agent works, and watch it happen. */
 /*
- * 372px, not 360: 360 of content plus the 12px gutter the transcript reserves for the minimap rail.
- * The panel grew rather than the messages shrinking — a rail that costs you reading width is a rail
- * you resent.
+ * The width is the user's, set from `useAgentPanelWidth` and remembered across reloads; the fallback
+ * here is only what the first paint uses. 12px of it is the gutter the transcript reserves for the
+ * minimap rail — the panel grew to make room rather than the messages shrinking, because a rail that
+ * costs you reading width is a rail you resent.
  */
 .lb-shell--agent-open {
-	grid-template-columns: 248px minmax(0, 1fr) var(--lb-agent-width, 372px);
+	grid-template-columns: 248px minmax(0, 1fr) var(--lb-agent-width, 440px);
 }
 .lb-shell--agent-open.lb-shell--sidebar-collapsed {
-	grid-template-columns: 56px minmax(0, 1fr) var(--lb-agent-width, 372px);
+	grid-template-columns: 56px minmax(0, 1fr) var(--lb-agent-width, 440px);
+}
+/*
+ * Mid-drag the column must not ease.
+ *
+ * The 160ms transition above is what makes opening the panel feel like a panel opening, and it is
+ * exactly wrong while the pointer is holding the divider: the edge lags behind the cursor the whole
+ * way and lands somewhere you were 160ms ago. Selection off for the same reason — a horizontal drag
+ * across a transcript otherwise highlights every message it passes.
+ */
+.lb-shell--resizing {
+	transition: none;
+	cursor: col-resize;
+	user-select: none;
 }
 .lb-shell__body {
 	display: flex;
@@ -8141,12 +8155,53 @@ button.lb-props__eye:hover {
 
 .lb-agent-panel {
 	grid-column: 3;
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 	background: var(--lb-bg-raised);
 	border-left: 1px solid var(--lb-border);
+}
+
+/*
+ * The resize handle, straddling the panel's left border.
+ *
+ * Out of flow and hanging 3px over the canvas, so the target is 7px wide while the line the user sees
+ * stays the 1px border it always was. The panel is painted after the shell body, so those 3px sit on
+ * top of tldraw without needing a stacking context of their own — but the z-index is stated anyway,
+ * because "later sibling wins" is not a thing to leave a resize handle depending on.
+ *
+ * It shows itself on hover rather than always: a permanent vertical accent beside the board would
+ * read as a second border.
+ */
+.lb-agent-panel__divider {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -3px;
+	width: 7px;
+	z-index: 3;
+	cursor: col-resize;
+	/* Or a touch drag here is a scroll gesture, and the browser cancels the pointer stream mid-resize. */
+	touch-action: none;
+}
+.lb-agent-panel__divider::after {
+	content: '';
+	position: absolute;
+	inset: 0 3px;
+	background: var(--lb-accent);
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.lb-agent-panel__divider:hover::after,
+.lb-agent-panel__divider:focus-visible::after,
+.lb-shell--resizing .lb-agent-panel__divider::after {
+	opacity: 1;
+}
+/* The ::after *is* the focus ring here — a 7px outline on a hairline would sit over the transcript. */
+.lb-agent-panel__divider:focus-visible {
+	outline: none;
 }
 
 .lb-agent-panel__header {
@@ -8200,8 +8255,8 @@ button.lb-props__eye:hover {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
-	/* Right padding leaves the 12px the minimap rail lives in — see `.lb-agent-minimap`. */
-	padding: 14px 24px 12px 12px;
+	/* Left padding leaves the 12px the minimap rail lives in — see `.lb-agent-minimap`. */
+	padding: 14px 12px 12px 24px;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -8596,14 +8651,20 @@ button.lb-props__eye:hover {
 
 /*
  * Sticky inside the scroller rather than fixed to the panel, so it stays put as the transcript scrolls
- * without needing a second positioned ancestor. It sits in the 12px of right padding the transcript
+ * without needing a second positioned ancestor. It sits in the 12px of left padding the transcript
  * reserves — nothing overlaps a message, which is what makes the pointer hazard T3 Code engineered
  * around not exist here.
+ *
+ * Left, not right, and it is the crowding that decides it. The right edge already carries the
+ * scrollbar and every settled reply's copy button, so the rail was a third row of small targets in
+ * one strip and read as clutter beside the panel's own border. The left edge has nothing on it, and a
+ * column of ticks against the panel's inner edge reads as an index of the conversation — which is
+ * what it is.
  */
 .lb-agent-minimap {
 	position: absolute;
 	top: 50%;
-	right: 6px;
+	left: 6px;
 	transform: translateY(-50%);
 	display: flex;
 	flex-direction: column;
@@ -8629,12 +8690,12 @@ button.lb-props__eye:hover {
 	background: var(--lb-accent);
 }
 /*
- * The preview opens leftward, over the transcript — which is fine because it only exists while a tick
+ * The preview opens rightward, over the transcript — which is fine because it only exists while a tick
  * is hovered, and the tick is outside the message column.
  */
 .lb-agent-minimap__preview {
 	position: absolute;
-	right: 18px;
+	left: 18px;
 	max-width: 240px;
 	padding: 5px 8px;
 	border: 1px solid var(--lb-border);
@@ -9490,8 +9551,8 @@ button.lb-props__eye:hover {
 		top: 0;
 		right: 0;
 		bottom: 0;
-		/* Matches the docked width: content plus the minimap gutter. */
-		width: min(372px, 92vw);
+		/* The docked width still applies, capped at what the viewport can actually show. */
+		width: min(var(--lb-agent-width, 440px), 92vw);
 		z-index: 40;
 		box-shadow: var(--lb-shadow-1);
 	}

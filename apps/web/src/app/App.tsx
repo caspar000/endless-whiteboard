@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from 'tldraw'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
@@ -13,6 +13,7 @@ import { setAgentEditorSource, startAgentBridge, stopAgentBridge } from '../agen
 import { discoverDevHost, getDevHost, setDevHost, subscribeToDevHost } from '../agent/devHost'
 import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
 import { AgentPanel } from './AgentPanel'
+import { useAgentPanelWidth } from './agentPanelWidth'
 import { setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
 import { CommandPalette } from './CommandPalette'
@@ -90,15 +91,7 @@ export function App() {
 	const [paletteOpen, setPaletteOpen] = useState(false)
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
 	const [agentPanelOpen, setAgentPanelOpen] = useState(loadAgentPanelOpen)
-
-	const updateAgentPanelOpen = useCallback((open: boolean) => {
-		setAgentPanelOpen(open)
-		try {
-			localStorage.setItem(AGENT_PANEL_KEY, String(open))
-		} catch {
-			// The panel still works for this session when private storage rejects the write.
-		}
-	}, [])
+	const { divider: agentDivider, resizing: agentResizing } = useAgentPanelWidth()
 
 	/**
 	 * Toggled through the updater rather than off the rendered value, because the ⌘K command holds
@@ -646,9 +639,13 @@ export function App() {
 					'lb-shell',
 					sidebarCollapsed ? 'lb-shell--sidebar-collapsed' : '',
 					agentPanelOpen ? 'lb-shell--agent-open' : '',
+					agentResizing ? 'lb-shell--resizing' : '',
 				]
 					.filter(Boolean)
 					.join(' ')}
+				/* The dragged width reaches the grid as a custom property, because the panel is a grid
+				   *column* — there is nothing on the panel itself to set a width on. */
+				style={{ '--lb-agent-width': `${agentDivider.width}px` } as CSSProperties}
 			>
 				<Sidebar
 					view={route.view}
@@ -773,7 +770,7 @@ export function App() {
 
 				{/* A column of the shell grid rather than a child of the body, so the panel takes width
 				    from the canvas instead of overlaying it — you can keep working while an agent does. */}
-				{agentPanelOpen && <AgentPanel onClose={() => updateAgentPanelOpen(false)} />}
+				{agentPanelOpen && <AgentPanel divider={agentDivider} />}
 			</div>
 		</CanvasPrefsProvider>
 	)

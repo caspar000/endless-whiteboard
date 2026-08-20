@@ -1,4 +1,4 @@
-import { LayoutGrid, PanelRight, Plus, X } from 'lucide-react'
+import { LayoutGrid, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 
@@ -119,7 +119,12 @@ export function TabStrip({
 			</button>
 
 			{/* Pushes the agent toggle to the far right, mirroring the sidebar's collapse control on the
-			    far left — the two panels the shell can show, each toggled from its own edge. */}
+			    far left — the two panels the shell can show, each toggled from its own edge.
+
+			    This is the *only* control for the panel: it used to have a close button of its own as
+			    well, which meant two buttons for one piece of state, in two places, one of which vanished
+			    with the thing it closed. So the icon carries the state instead, exactly as the sidebar's
+			    does — an open panel shows the arrow that will shut it. */}
 			<span className="lb-tabs__spacer" />
 			<button
 				className={
@@ -130,7 +135,11 @@ export function TabStrip({
 				aria-pressed={agentOpen}
 				title={`${agentOpen ? 'Close' : 'Open'} agent panel  ⌘⇧A`}
 			>
-				<PanelRight size={15} aria-hidden="true" />
+				{agentOpen ? (
+					<PanelRightClose size={15} aria-hidden="true" />
+				) : (
+					<PanelRightOpen size={15} aria-hidden="true" />
+				)}
 			</button>
 		</div>
 	)

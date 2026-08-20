@@ -6,7 +6,6 @@ import {
 	CircleStop,
 	History,
 	ImageOff,
-	PanelRightClose,
 	Plus,
 	X,
 } from 'lucide-react'
@@ -36,6 +35,7 @@ import { AgentContextMeter } from './AgentContextMeter'
 import { AgentMarkdown, CopyButton } from './AgentMarkdown'
 import { AgentMinimap, type MinimapMark } from './AgentMinimap'
 import { AgentModelControls } from './AgentModelControls'
+import { AgentResizeDivider, type AgentDivider } from './agentPanelWidth'
 import { AgentSignIn } from './AgentSignIn'
 import { AgentUserMessage } from './AgentUserMessage'
 import { AgentFoldRow, AgentWorkingRow } from './AgentWorking'
@@ -53,8 +53,13 @@ import { AgentWorkGroup, WorkRow } from './AgentWorkGroup'
  * The panel deliberately owns no connection. It reads the same bridge Settings → Agents controls, so
  * there is exactly one switch for "something outside the browser may touch my boards", and closing
  * the panel does not cancel a turn — the store outlives it (see `chat.ts`).
+ *
+ * It has no close button of its own either. There is one control for showing and hiding it — the
+ * toggle at the right of the tab strip — and it lives where you go to *open* the panel, so opening
+ * and closing are the same gesture in the same place rather than two buttons that do one thing.
+ * The header keeps only what acts on the conversation: its history, and a new one.
  */
-export function AgentPanel({ onClose }: { onClose: () => void }) {
+export function AgentPanel({ divider }: { divider: AgentDivider }) {
 	const status = useSyncExternalStore(subscribeToAgentStatus, getAgentStatus)
 	const chat = useSyncExternalStore(subscribeToChat, getChatState)
 	const [draft, setDraft] = useState('')
@@ -227,6 +232,7 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 
 	return (
 		<aside className="lb-agent-panel" aria-label="Agent">
+			<AgentResizeDivider {...divider} />
 			<header className="lb-agent-panel__header">
 				<span className="lb-agent-panel__title">
 					<Bot size={15} aria-hidden="true" />
@@ -260,15 +266,6 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 				>
 					<Plus size={15} aria-hidden="true" />
 				</button>
-				<button
-					type="button"
-					className="lb-agent-panel__icon"
-					onClick={onClose}
-					title="Close agent panel"
-					aria-label="Close agent panel"
-				>
-					<PanelRightClose size={15} aria-hidden="true" />
-				</button>
 			</header>
 
 			{showChats ? (
@@ -294,6 +291,10 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
 				 * `position: absolute` in there either: absolute children of a scroll container scroll with
 				 * the content, and a minimap that scrolls away is not a map. So the scroller is a
 				 * positioned wrapper and the rail hangs off that.
+				 *
+				 * It hangs off the *left*, in the 12px the transcript reserves there. On the right it shared
+				 * an edge with the scrollbar and with every reply's copy button, which is a lot of small
+				 * targets in one strip; on the left it has that edge to itself.
 				 */
 				<div className="lb-agent-panel__scroller">
 				<div

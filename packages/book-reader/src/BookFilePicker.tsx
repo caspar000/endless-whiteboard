@@ -22,7 +22,7 @@ export function BookFilePicker({
 		<NodeEditorPopover shape={shape} editor={editor} width={260}>
 			<label className="lb-book__picker">
 				<span className="lb-book__picker-title">Choose a book file</span>
-				<small>PDF · EPUB · MOBI · AZW3 · FB2 · CBZ</small>
+				<small>PDF · EPUB · MOBI · AZW3 · FB2 · CBZ · CBR</small>
 				<input
 					type="file"
 					accept={ACCEPT}

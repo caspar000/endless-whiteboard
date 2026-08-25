@@ -22,7 +22,7 @@ const findDetailsAction: ShapeAction = {
 }
 
 /**
- * Books on the whiteboard: drop a PDF/EPUB/MOBI/FB2/CBZ and it becomes a cover card whose author
+ * Books on the whiteboard: drop a PDF/EPUB/MOBI/FB2/CBZ/CBR and it becomes a cover card whose author
  * and page count land in the property system; double-click reads it full-screen and remembers the
  * position; select a passage and it lands on the board as a quote, arrow-linked back to the book
  * and still pointing at the exact page it came from.
@@ -33,7 +33,7 @@ export const bookReaderExtension: Extension = {
 	id: 'lifeboard.book-reader',
 	name: 'Books',
 	description:
-		'Drop PDF, EPUB, MOBI, FB2 or CBZ files onto the board. Covers become cards, double-click opens a full-screen reader, and passages you select become quote cards linked back to the page they came from.',
+		'Drop PDF, EPUB, MOBI, FB2, CBZ or CBR files onto the board. Covers become cards, double-click opens a full-screen reader, and passages you select become quote cards linked back to the page they came from.',
 	details: [
 		'Drop a book file onto a board and it becomes a cover card. The title, author and page count are read out of the file and land in the property system, so books can be filtered, grouped and counted by a table like anything else on the canvas.',
 		'Double-click a cover to read it full-screen. The reader remembers where you stopped, per book, and has its own typography settings. Select a passage while reading and it lands on the board as a quote card, arrow-linked back to the book and still pointing at the page it came from.',
@@ -41,7 +41,7 @@ export const bookReaderExtension: Extension = {
 		'Turning this off stops books from being imported on drop and hides the reader. Books and quotes already on your boards keep rendering.',
 	],
 	icon: BookOpen,
-	version: '0.3.0',
+	version: '0.4.0',
 	author: 'Lifeboard',
 	nodes: [defineNode(bookNodeDefinition), defineNode(quoteNodeDefinition)],
 	commands: bookCommands,

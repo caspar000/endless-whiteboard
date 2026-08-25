@@ -7,6 +7,7 @@ import {
 	createEpubPageCaptureCache,
 	epubPageCaptureTarget,
 } from './epubPageCapture'
+import { openBook } from '../openBook'
 import { FootnotePopover, type NoteAnchor } from './FootnotePopover'
 import { PageCurl } from './PageCurl'
 import { paintPage, visibleWindow, type PaintedPage } from './paintPage'
@@ -19,7 +20,7 @@ import type { Highlight, ReaderApi, ReaderSelection, TocItem, ViewMode } from '.
 /**
  * Injected into reflowable book content. `color-scheme: light` keeps book pages paper-coloured
  * even though the app chrome is dark — long-form text wants dark-on-light, and publishers' own
- * stylesheets assume it. Fixed-layout renderers (CBZ) have no `setStyles` and skip this.
+ * stylesheets assume it. Fixed-layout renderers (comics) have no `setStyles` and skip this.
  *
  * Text size is a percentage on `html` rather than a size on the body: an EPUB's own stylesheet
  * sizes everything in `em`s off the root, so scaling the root scales headings, notes and captions
@@ -118,7 +119,7 @@ function fontRule(stack: string): string {
 }
 
 /**
- * Everything that isn't a PDF: EPUB, MOBI/AZW3, FB2 and CBZ, all through foliate's `<foliate-view>`
+ * Everything that isn't a PDF: EPUB, MOBI/AZW3, FB2, CBZ and CBR, all through foliate's `<foliate-view>`
  * element. The element owns pagination, per-format parsing and position CFIs; this wrapper owns
  * mounting it into React, relaying relocations and selections, and translating the shared view
  * modes into the renderer's own attributes.
@@ -153,7 +154,7 @@ export function FoliateReader({
 	/**
 	 * Whether the book reflows, decided by the renderer the format chose rather than by the
 	 * extension: `setStyles` is exactly the capability that separates the paginator from the
-	 * fixed-layout renderer. A comic (CBZ) has pages of its own size and its own typography, so it
+	 * fixed-layout renderer. A comic has pages of its own size and its own typography, so it
 	 * takes neither the injected CSS nor the paper page below.
 	 */
 	const [reflowable, setReflowable] = useState(true)
@@ -556,7 +557,9 @@ export function FoliateReader({
 					})
 				})
 				host.append(view)
-				await view.open(file)
+				// An already-parsed book rather than the file, so that CBR — the one container foliate
+				// has no reader for — arrives here looking like every other comic.
+				await view.open(await openBook(file))
 				if (disposed) return
 				setReflowable(typeof view.renderer.setStyles === 'function')
 				view.renderer.setStyles?.(bookCss(settingsRef.current))

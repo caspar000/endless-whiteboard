@@ -202,7 +202,9 @@ export function Books({ go }: SectionProps) {
 					The file is stored in the board, not linked from your disk — moving the original later
 					changes nothing. <code>Import a book…</code> in the command palette does the same thing for
 					anyone who would rather not drag, and a book placed from the dock is an empty card that asks
-					for a file when you open it.
+					for a file when you open it. A comic — <code>.cbz</code> or <code>.cbr</code> — is a stack of
+					images rather than a book with a title page, so what comes out of it is a page count and a
+					cover; the title stays the one its file name gave it.
 				</p>
 			</Section>
 

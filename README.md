@@ -59,7 +59,7 @@ and the user can toggle in **Settings → Extensions**:
 |---|---|---|---|
 | **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
-| **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ as a cover card, a full-screen reader that remembers its place, and passages taken out of it as quote cards linked back to the page. | — |
+| **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place, and passages taken out of it as quote cards linked back to the page. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching

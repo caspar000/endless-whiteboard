@@ -3,8 +3,10 @@
  * through foliate-js — so the *format* only needs to be as fine-grained as that split plus what the
  * UI wants to display. Detection is by filename suffix, not MIME type: browsers report book formats
  * inconsistently (`.epub` often arrives with an empty type), while the suffix is dependable.
+ *
+ * CBR is the one format whose suffix does not settle how it is read — see `isRarArchive`.
  */
-export type BookFormat = 'pdf' | 'epub' | 'mobi' | 'fb2' | 'cbz'
+export type BookFormat = 'pdf' | 'epub' | 'mobi' | 'fb2' | 'cbz' | 'cbr'
 
 /** Order matters only for `titleFromFileName`: compound suffixes strip before their tails. */
 const SUFFIX_FORMATS: readonly (readonly [string, BookFormat])[] = [
@@ -17,10 +19,26 @@ const SUFFIX_FORMATS: readonly (readonly [string, BookFormat])[] = [
 	['fbz', 'fb2'],
 	['fb2', 'fb2'],
 	['cbz', 'cbz'],
+	['cbr', 'cbr'],
 ]
 
 /** What the extension claims from file drops — see `FileImport.extensions` in node-kit. */
 export const BOOK_FILE_SUFFIXES: readonly string[] = SUFFIX_FORMATS.map(([suffix]) => suffix)
+
+/**
+ * Whether the bytes are a RAR archive, whatever the file is called.
+ *
+ * The one question a suffix cannot answer. `.cbr` and `.cbz` name the *container* a comic is packed
+ * in, and comics get renamed between the two often enough that the name is not evidence — a `.cbr`
+ * is as likely to hold a zip as a RAR. `Rar!\x1a\x07` opens both RAR 4 and RAR 5; only the byte
+ * after it tells them apart, and unrar reads either.
+ */
+const RAR_MAGIC = [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07]
+
+export async function isRarArchive(file: Blob): Promise<boolean> {
+	const head = new Uint8Array(await file.slice(0, RAR_MAGIC.length).arrayBuffer())
+	return RAR_MAGIC.every((byte, index) => head[index] === byte)
+}
 
 export function detectBookFormat(fileName: string): BookFormat | null {
 	const name = fileName.toLowerCase()

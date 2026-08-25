@@ -43,7 +43,7 @@ function BookNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 					) : (
 						<span className="lb-book__jacket-hint">
 							Drop a book file here
-							<small>PDF · EPUB · MOBI · FB2 · CBZ</small>
+							<small>PDF · EPUB · MOBI · FB2 · CBZ · CBR</small>
 						</span>
 					)}
 				</div>

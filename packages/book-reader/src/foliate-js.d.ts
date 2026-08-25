@@ -22,9 +22,16 @@ declare module 'foliate-js/view.js' {
 		metadata?: FoliateMetadata
 		toc?: FoliateTocItem[]
 		getCover?(): Promise<Blob | null>
+		/** One entry per spine document — and, in a pre-paginated book, one per page. */
+		sections?: { id?: string }[]
+		/** `layout: 'pre-paginated'` for comics and fixed-layout EPUBs: pages, not reflowed text. */
+		rendition?: { layout?: string }
 	}
 
-	/** Parses any supported format (EPUB, MOBI/KF8, FB2, CBZ; zip and zlib are vendored). */
+	/**
+	 * Parses any supported format (EPUB, MOBI/KF8, FB2, CBZ; zip and zlib are vendored). Not CBR:
+	 * RAR is not a container it can open, which is what `cbr.ts` is for.
+	 */
 	export function makeBook(file: File): Promise<FoliateBook>
 
 	export interface FoliateRenderer extends HTMLElement {
@@ -126,4 +133,25 @@ declare module 'foliate-js/overlayer.js' {
 		static highlight(rects: unknown, options?: { color?: string }): unknown
 		static underline(rects: unknown, options?: { color?: string }): unknown
 	}
+}
+
+declare module 'foliate-js/comic-book.js' {
+	import type { FoliateBook } from 'foliate-js/view.js'
+
+	/**
+	 * What the comic reader needs from an archive: the names in it, the bytes behind a name, and how
+	 * big each one is. Everything container-specific stops here — which is exactly what lets a RAR be
+	 * read through the same reader a CBZ uses.
+	 */
+	export interface ComicArchiveLoader {
+		entries: readonly { filename: string }[]
+		loadBlob(name: string): Blob | null | Promise<Blob | null>
+		getSize(name: string): number
+	}
+
+	/**
+	 * An archive of images as a book: one page per image, in numeric filename order, laid out by the
+	 * fixed-layout renderer. `file` supplies only the fallback title.
+	 */
+	export function makeComicBook(loader: ComicArchiveLoader, file: File): FoliateBook
 }

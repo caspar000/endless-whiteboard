@@ -226,14 +226,15 @@ export type Engine = 'reflowable' | 'fixed'
  * Which set of controls a format answers to, or null when it answers to none.
  *
  * A comic is the null case, and genuinely so: its pages are images of a fixed size that the reader
- * scales to the window, so there is no text to resize and no page size to choose.
+ * scales to the window, so there is no text to resize and no page size to choose. Both comic
+ * containers answer alike — what is inside them is the same pile of images either way.
  *
  * Takes the `format` prop as it is stored — a plain string, like every shape prop — and routes it
  * the same way the reader itself does: PDF one way, everything else the other.
  */
 export function engineFor(format: string): Engine | null {
 	if (format === 'pdf') return 'fixed'
-	if (format === 'cbz') return null
+	if (format === 'cbz' || format === 'cbr') return null
 	return 'reflowable'
 }
 

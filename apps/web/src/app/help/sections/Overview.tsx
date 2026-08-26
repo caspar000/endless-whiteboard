@@ -1,5 +1,6 @@
 import {
 	BookOpen,
+	Dices,
 	Eraser,
 	Frame,
 	Hand,
@@ -103,6 +104,14 @@ const DOCK_GROUPS: DockTool[][] = [
 			kbd: [],
 			blurb:
 				'A passage taken out of a book, arrow-linked back to it and still pointing at its page. Made while reading; it is in the dock because every node type is.',
+		},
+		{
+			id: 'node-roll',
+			label: 'Roll',
+			icon: <Dices size={19} />,
+			kbd: [],
+			blurb:
+				'A dice roll, kept. Made by rolling with “Keep results” on, and its total is a property — so a table can count and sum your rolls. In the dock because every node type is; drawing a blank one is not a workflow.',
 		},
 	],
 	[

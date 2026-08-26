@@ -10,6 +10,8 @@ import {
 	PropertiesPopover,
 	getNodeDefinitions,
 	getNodeTypesVersion,
+	getVisibleCanvasOverlays,
+	subscribeToCanvasOverlays,
 	subscribeToNodeDefinitions,
 	mergeProperties,
 	readShapePropertyDefs,
@@ -145,18 +147,27 @@ function CanvasLayers() {
 }
 
 /**
- * Everything drawn *over* the shapes. `InFrontOfTheCanvas` is one slot too, so its two occupants are
+ * Everything drawn *over* the shapes. `InFrontOfTheCanvas` is one slot too, so its occupants are
  * composed here for the same reason `CanvasLayers` exists.
  *
  * The agent's cursor goes above the selection toolbar in source order but never overlaps it in
  * practice — one tracks a shape on the canvas, the other floats above the selection — and neither
  * takes pointer events.
+ *
+ * Extension-contributed overlays (`Extension.overlays`) go last, so an extension's chrome draws above
+ * the app's own. They are read through the registry rather than imported, which is what lets an
+ * extension put a control on the canvas at all, and what makes its Settings switch take that control
+ * away live — there is no board remount here, unlike a change to the node *types*.
  */
 function CanvasOverlays() {
+	const overlays = useSyncExternalStore(subscribeToCanvasOverlays, getVisibleCanvasOverlays)
 	return (
 		<>
 			<SelectionToolbar />
 			<AgentPresence />
+			{overlays.map(({ id, Component }) => (
+				<Component key={id} />
+			))}
 		</>
 	)
 }

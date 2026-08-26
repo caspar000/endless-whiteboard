@@ -1,9 +1,21 @@
-import { Bot, BookOpen, Compass, Keyboard, NotepadText, Sigma, Spline, Table, Tags } from 'lucide-react'
+import {
+	Bot,
+	BookOpen,
+	Compass,
+	Dices,
+	Keyboard,
+	NotepadText,
+	Sigma,
+	Spline,
+	Table,
+	Tags,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
 import { Agent } from './sections/Agent'
 import { Asking } from './sections/Asking'
 import { Books } from './sections/Books'
+import { Dice } from './sections/Dice'
 import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
 import { Properties } from './sections/Properties'
@@ -111,6 +123,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <BookOpen size={15} />,
 		Component: Books,
+	},
+	{
+		id: 'dice',
+		label: 'Dice',
+		title: 'Dice on the board',
+		lede: 'A tray of dice down the edge of the canvas. Click to pick some up — the cursor shows what you are holding — then click the board to throw them where you dropped them. Nothing is written down; a roll is a moment.',
+		group: 'Extensions',
+		icon: <Dices size={15} />,
+		Component: Dice,
 	},
 	{
 		id: 'shortcuts',

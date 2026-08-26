@@ -105,6 +105,20 @@ export function ExtensionDetail({ id, onBack }: { id: string; onBack: () => void
 			title: 'Right-click actions',
 			items: (ext.actions ?? []).map((action) => ({ label: action.label, icon: action.icon })),
 		},
+		{
+			// An overlay is the one contribution with nothing to name it by — it is a component, not a
+			// labelled verb — so its id is what the page can honestly show. Worth a row anyway: chrome
+			// that appears on the canvas is the most visible thing an extension can add, and a page that
+			// omitted it would be describing a quieter extension than the one you installed.
+			title: 'Draws on the canvas',
+			items: (ext.overlays ?? []).map((overlay) => ({ label: overlay.id })),
+		},
+		{
+			// The palette rows an extension builds from what you type. Not in the command table, so this is
+			// the one contribution the page would otherwise be unable to mention.
+			title: 'Answers in ⌘K',
+			items: (ext.commandSources ?? []).map((source) => ({ label: source.id })),
+		},
 	].filter((group) => group.items.length > 0)
 
 	return (
@@ -143,6 +157,17 @@ export function ExtensionDetail({ id, onBack }: { id: string; onBack: () => void
 					</p>
 				))}
 			</section>
+
+			{/*
+			  * The extension's own controls, above the derived list — see `Extension.settings`. A setting is
+			  * something you came here to change; "what it adds" is something you came here to read.
+			  */}
+			{ext.settings && (
+				<section className="lb-settings">
+					<h2>{ext.settings.title}</h2>
+					<ext.settings.Component />
+				</section>
+			)}
 
 			{groups.length > 0 && (
 				<section className="lb-settings">

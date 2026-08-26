@@ -1,4 +1,5 @@
 import { bookReaderExtension } from '@lifeboard/book-reader'
+import { diceExtension } from '@lifeboard/dice'
 import {
 	getDisabledExtensionIds,
 	registerCoreOperations,
@@ -28,6 +29,9 @@ import { registerToolCommands } from './canvas/toolCommands'
 registerExtension(markdownNoteExtension)
 registerExtension(tablesExtension)
 registerExtension(bookReaderExtension)
+// Contributes no node types — only canvas chrome, commands and an operation. Registered here all the
+// same: the composition root is the list of what this build ships, not the list of what has shapes.
+registerExtension(diceExtension)
 
 // Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
 // After the registrations above, deliberately: it reads what they just put there.

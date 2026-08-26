@@ -1,6 +1,7 @@
 import type {
 	Command,
 	CommandContext,
+	CommandSource,
 	NodeToolbarIcon,
 	ParamSpec,
 	RegisteredOperation,
@@ -225,6 +226,11 @@ function commandItem(command: Command, group: string): PaletteItem {
 	return { kind: 'command', key: `command:${command.id}`, title: command.title, group, command }
 }
 
+/** Whether a row will actually do something when it is chosen — see `Command.runnable`. */
+export function isRunnable(item: PaletteItem): boolean {
+	return item.kind !== 'command' || item.command.runnable !== false
+}
+
 /**
  * Collects items into `GROUP_ORDER`'s sections, each one contiguous so the renderer can put a single
  * header on it. The ungrouped bucket is forced last — it is the "everything else" pile, and a plugin
@@ -257,6 +263,11 @@ export interface PaletteInput {
 	boards: readonly BoardMeta[]
 	/** Already enablement-filtered — pass `getVisibleCommands()`, never `getCommands()`. */
 	commands: readonly Command[]
+	/**
+	 * Query-driven sources — pass `getVisibleCommandSources()`. Absent is the same as none, so a caller
+	 * that predates them (the Help page builds items too) keeps working.
+	 */
+	sources?: readonly CommandSource[]
 	/** The open board's shapes, nearest the middle of the view first. Only find mode reads them. */
 	shapes?: readonly BoardShapeRef[]
 	/** The evaluated expression and its completions. Only expression mode reads them. */
@@ -277,11 +288,13 @@ export interface ExpressionRows {
 	savedName?: string | null
 }
 
+
 export function buildPaletteItems({
 	query,
 	ctx,
 	boards,
 	commands,
+	sources,
 	shapes = [],
 	expression,
 }: PaletteInput): PaletteItem[] {
@@ -307,6 +320,25 @@ export function buildPaletteItems({
 					group: BOARDS_GROUP,
 					board,
 				})
+			}
+		}
+	}
+
+	/*
+	 * Commands built from the query itself — `> roll 2d20 + 10`.
+	 *
+	 * Offered **unfiltered**: a source has already read the whole needle and decided this is what the
+	 * user asked for, so running the title through `matches` as well would only ask whether the answer
+	 * happens to contain the question.
+	 *
+	 * Commands mode alone, because the other three modes are asking different questions: navigate is
+	 * "where do I want to be", find is "which shape", expression is "what is the answer" — and a
+	 * source's reply is a *verb*, which is none of those.
+	 */
+	if (mode === 'commands') {
+		for (const source of sources ?? []) {
+			for (const command of source.offer(needle, ctx)) {
+				items.push(commandItem(command, command.group ?? OTHER_GROUP))
 			}
 		}
 	}

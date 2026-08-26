@@ -1,12 +1,19 @@
+import type { ComponentType } from 'react'
 import type { Editor } from 'tldraw'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
-import { registerCommand, type Command } from './commands'
+import {
+	registerCommand,
+	registerCommandSource,
+	type Command,
+	type CommandSource,
+} from './commands'
 import { registerHooks, type BoardHooks } from './hooks'
 import { registerOperation, type RegisteredOperation } from './operations'
 import {
 	isExtensionEnabled,
 	isNodeType,
 	registerNode,
+	subscribeToNodeDefinitions,
 	type NodeDefinition,
 	type NodeToolbarIcon,
 } from './registry'
@@ -84,6 +91,39 @@ export interface FileImport {
 }
 
 /**
+ * Something an extension draws *over the board*, rather than on it.
+ *
+ * The third contribution kind that is neither a noun nor a verb: a tray, a readout, a laser pointer —
+ * chrome that belongs to the canvas but is not a shape and therefore has nowhere else to live. Until
+ * this existed an extension could contribute a node, a command, a file type and a menu entry, and had
+ * no way at all to put a control on screen.
+ *
+ * The component is rendered in tldraw's `InFrontOfTheCanvas` slot: screen space, above every shape,
+ * *inside* the editor context, so it may call `useEditor` and `useValue` and track the camera the way
+ * the agent's cursor does.
+ *
+ * It is handed **no props**, deliberately. Everything it needs it reads from the editor context or
+ * from its own module-scope state — the same discipline `CommandContext` is held to, and for the same
+ * reason: an interface that grows a field per feature stops being a seam. It is also why an overlay is
+ * free to be a plugin's later, having been given no host capability it wasn't granted on purpose.
+ */
+export interface CanvasOverlay {
+	/** Namespaced like an extension id: `<extension>.<name>`. */
+	id: string
+	/**
+	 * Rendered on every board, for as long as the extension is enabled — so it must decide for itself
+	 * whether it has anything to show, and render nothing when it does not.
+	 *
+	 * Two obligations come with that. It must not take pointer events unless it is genuinely claiming
+	 * the gesture, since a transparent layer over the canvas that swallows clicks is indistinguishable
+	 * from a broken board. And it must not write to the store on a frame loop: `e2e/perf.spec.ts`
+	 * asserts zero rollup recomputes during a drag, and an overlay animating through the store is the
+	 * one way to break that from outside the app.
+	 */
+	Component: ComponentType
+}
+
+/**
  * An extension is a named bag of contributions the app composes at startup — today that means node
  * definitions; later contribution kinds (store migrations, text-editor extensions, expression
  * functions) are added as optional fields, so existing extensions keep compiling.
@@ -151,6 +191,34 @@ export interface Extension {
 	hooks?: BoardHooks
 	/** Actions offered on a shape's context menu. Gated by enablement when the menu opens. */
 	actions?: readonly ShapeAction[]
+	/**
+	 * Chrome this extension draws over the board — see {@link CanvasOverlay}. Same enablement rule as
+	 * its commands: switching the extension off takes the overlay off screen, live, with no remount.
+	 */
+	overlays?: readonly CanvasOverlay[]
+	/**
+	 * Commands built from what the user typed in the palette — see {@link CommandSource}. For verbs that
+	 * genuinely take an argument, like rolling a notation.
+	 */
+	commandSources?: readonly CommandSource[]
+	/**
+	 * The extension's own controls, rendered on its page in Settings → Extensions.
+	 *
+	 * Everything else on that page is *derived* from this manifest — what it adds, what happens if you
+	 * turn it off — which is the point of the manifest being the unit of packaging. But an extension with
+	 * preferences of its own has nowhere to put them, and "add a tab to the app's Settings" is not
+	 * something a third-party plugin can be allowed to do. This is the seam: the host owns the page, the
+	 * extension owns one panel on it.
+	 *
+	 * Rendered above the derived sections, because a setting is something you came to do and a
+	 * contribution list is something you came to read.
+	 */
+	settings?: {
+		/** Section heading, e.g. `Appearance`. */
+		title: string
+		/** Takes no props, for the same reason a `CanvasOverlay` does not: it owns its own state. */
+		Component: ComponentType
+	}
 }
 
 /**
@@ -167,7 +235,50 @@ export function defineNode<Props extends object>(def: NodeDefinition<Props>): No
 const extensions = new Map<string, Extension>()
 
 /**
- * Registers an extension and every node, command, operation and query it contributes.
+ * The canvas-overlay store, in the shape `commands.ts` established: a listener set, a snapshot cached
+ * so it is stable between changes, and `subscribeToNodeDefinitions` chained in because that is where
+ * extension enablement lives.
+ *
+ * A store of its own rather than reusing the node registry's, because an extension may contribute an
+ * overlay and no node types — the dice tray does — and registering it would then notify nobody.
+ */
+const overlayListeners = new Set<() => void>()
+let overlayCache: CanvasOverlay[] | null = null
+
+function invalidateOverlays(): void {
+	overlayCache = null
+	for (const listener of overlayListeners) listener()
+}
+
+// An enablement flip changes what should be on screen, and enablement is the node registry's state.
+subscribeToNodeDefinitions(invalidateOverlays)
+
+/**
+ * Notifies on any change to which overlays should be drawn — a registration, or an extension being
+ * switched on or off. Pair with `getVisibleCanvasOverlays` in `useSyncExternalStore`.
+ */
+export function subscribeToCanvasOverlays(listener: () => void): () => void {
+	overlayListeners.add(listener)
+	return () => {
+		overlayListeners.delete(listener)
+	}
+}
+
+/**
+ * The overlays the board should draw, in registration order.
+ *
+ * A stable snapshot between changes, like `getVisibleCommands` and `getVisibleNodeDefinitions` — a
+ * fresh array each call would make `useSyncExternalStore` re-render forever.
+ */
+export function getVisibleCanvasOverlays(): CanvasOverlay[] {
+	overlayCache ??= [...extensions.values()]
+		.filter((ext) => ext.overlays?.length && isExtensionEnabled(ext.id))
+		.flatMap((ext) => [...(ext.overlays ?? [])])
+	return overlayCache
+}
+
+/**
+ * Registers an extension and every node, command, command source, operation and query it contributes.
  *
  * Idempotent *per node type*, not per extension — a second registration is reconciled, not ignored,
  * and never throws. Module re-evaluation is the normal case here (vite HMR, a test importing two
@@ -185,9 +296,13 @@ export function registerExtension(ext: Extension): void {
 		if (!isNodeType(def.type)) registerNode(def, ext.id)
 	}
 	for (const cmd of ext.commands ?? []) registerCommand(cmd, ext.id)
+	for (const source of ext.commandSources ?? []) registerCommandSource(source, ext.id)
 	for (const op of ext.operations ?? []) registerOperation(op, ext.id)
 	for (const query of ext.queries ?? []) registerQuery(query, ext.id)
 	if (ext.hooks) registerHooks({ id: ext.id, ...ext.hooks }, ext.id)
+	// Unconditional: the record above was *replaced*, so a re-registration under HMR has just swapped
+	// in a fresh component identity even when the overlay list looks unchanged.
+	invalidateOverlays()
 }
 
 /** Registration order, which is also toolbar order for their nodes. */
@@ -257,4 +372,5 @@ export function fileImportFor(fileName: string): FileImport | undefined {
 /** Used by tests to get a clean slate. Pair with `clearNodeRegistry`. */
 export function clearExtensionRegistry(): void {
 	extensions.clear()
+	invalidateOverlays()
 }

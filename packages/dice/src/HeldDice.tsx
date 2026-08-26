@@ -53,7 +53,7 @@ export function HeldDice({ hand }: { hand: Hand }) {
 		<div className="lb-dice-held" ref={ref} aria-hidden="true">
 			{DIE_KINDS.filter((kind) => (hand.counts.get(kind) ?? 0) > 0).map((kind) => (
 				<span className="lb-dice-held__die" key={kind}>
-					<DieIcon kind={kind} size={20} />
+					<DieIcon kind={kind} size={22} />
 					<span className="lb-dice-held__count">{hand.counts.get(kind)}</span>
 				</span>
 			))}

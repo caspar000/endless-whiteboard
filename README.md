@@ -60,6 +60,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
+| **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -101,6 +102,8 @@ packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK
   src/nodes/*/            item, rollup (legacy, schema-only), table (+ its extension)
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
 packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
+packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (three.js + cannon-es)
+  src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
@@ -136,6 +139,90 @@ an id, a display name, an icon and a version for the Settings card:
   component, an icon, optionally a `kbd` letter), wrapped in an `Extension`, plus a
   `TLGlobalShapePropsMap` augmentation for its type. Everything else — shape util, tool, dock
   button, menus, properties, tables — follows from the registry.
+- **Chrome, not only content.** An extension can also contribute a `CanvasOverlay` — a component the
+  board renders in tldraw's `InFrontOfTheCanvas` slot, above the shapes. That is how the dice tray
+  exists at all, and it is what an extension needs to put a *control* on the canvas rather than a shape
+  on it. Same enablement rule as everything else: switching the extension off takes the overlay off
+  screen live, with no board remount. An overlay takes no props on purpose — it reads the editor from
+  context and its own state from its own module — so the seam cannot grow a field per feature. It must
+  also not put a hit-target over the board: `InFrontOfTheCanvas` is a *sibling* of `.tl-canvas`, which
+  is where tldraw binds its wheel gesture, so a transparent layer there silently breaks pan and zoom
+  (see `packages/dice/src/DiceOverlay.tsx`, which claims its click from a capture-phase `window`
+  listener for exactly this reason).
+
+## An extension's own settings
+
+Everything on an extension's page in Settings is *derived* from its manifest — what it adds, what
+happens if you turn it off — which is the point of the manifest being the unit of packaging. But an
+extension with preferences of its own had nowhere to put them, and "add a tab to the app's Settings" is
+not something a runtime-loaded plugin can be allowed to do.
+
+`Extension.settings` is the seam: the host owns the page, the extension owns one panel on it, rendered
+above the derived sections because a setting is something you came to change and a contribution list is
+something you came to read. Dice is the first user — colour, colourful dice with a per-die override,
+edges, and whether a roll leaves a card behind. Its preferences live *outside* the lazily-loaded 3D
+chunk so the panel needs no three.js, and the numerals are deliberately **not** a setting: `inkOn` picks
+light or dark from the body's luminance, because a dark die with dark numbers is unreadable in a way
+choosing could only get wrong.
+
+## Commands that take an argument
+
+`Command` is a *button*: `run(ctx)` with no arguments, which is what lets every surface render one
+without knowing what it does. Some verbs genuinely take an argument, though, and the palette is where it
+is already being typed — `> roll 2d20 + 10` is one string, and splitting it into a command and a prompt
+would make it two interactions.
+
+So there is a third table beside the commands and the operations: **`CommandSource`**
+(`packages/node-kit/src/commands.ts`). Given the palette's query it returns however many ordinary
+commands that query deserves — usually none. What varies is *how many commands exist*, not what a
+command is, so keybindings still bind to commands, the Help page still lists what exists, and the
+palette needs no notion of arguments at all. Extensions contribute them through
+`Extension.commandSources`, under the same enablement rule as everything else. `Command` also gained
+`hint` (secondary text) and `runnable` (shown, but inert), which is what lets `> roll` teach its own
+syntax instead of answering with silence.
+
+Worth knowing how this differs from an operation's **drill-in**: a drill-in collects declared
+parameters one page at a time, which is right when the arguments are a known list. A source is right
+when the argument is a *language* — dice notation is not a form.
+
+## The dice roll
+
+Two decisions carry the whole thing, and both are visible in `packages/dice/src/three/`.
+
+**The random number comes first; the physics is theatre.** A face is drawn from `crypto.getRandomValues`
+with rejection sampling (`% 20` over a byte is biased ~7% against rolling well, which is exactly the
+number anyone using this cares about). Only then is the throw simulated — headlessly, to completion,
+*before a frame is drawn* — and the die **renumbered** so that whichever face it happened to land on
+carries the value already drawn. Nobody can tell, and three things fall out of it: the roll is provably
+uniform rather than however cannon-es happens to be biased; a cocked die is discarded and re-thrown
+invisibly rather than read at an angle; and `prefers-reduced-motion` is "skip the animation", not a
+second code path with its own idea of what was rolled.
+
+**Nothing simulates during playback.** The simulation records positions and orientations per tick, and
+the render loop interpolates two of them. Forty dice cost the same per frame as one, and no dropped
+frame can change where anything lands. The physics runs on the click; the animation is a recording.
+
+The world is measured in **page units** and the camera's frustum comes from
+`editor.getViewportPageBounds()` every frame, so the dice land where you released them, scale when you
+zoom, and stay put when you pan — with no mapping code, because there is no mapping. The one flip
+between page space (y down) and the scene (y up) lives in `three/space.ts`; read its comment before
+touching a coordinate, because negating an axis is a *reflection* and renders the dice as though seen
+from under the board. three.js and cannon-es are a **158 KB-gzip chunk loaded on the first throw** and
+never before, which is the only reason the tray can be on by default.
+
+One thing that is not obvious and cost a day: a cannon-es `ConvexPolyhedron` caches *world-space*
+vertices on the shape, so sharing one between dice makes them collide against each other's geometry.
+It presents as the numbers on the dice not matching the result card, worse with more dice — not as a
+physics fault. Build a hull per body.
+
+## The dice icons are the dice
+
+`packages/dice/src/dieOutline.ts` projects the same vertex and face tables the rolling dice are built
+from — keeping the silhouette and the visible creases — so the icon in the tray is a true picture of the
+solid that rolls, and a die added later gets a correct icon without anyone drawing one. It pulls in no
+three.js, which is what lets the tray, the palette, Settings and the result card share one component.
+The numeral is centred and haloed so it stays readable over the facets and on a die of any colour, and
+is dropped below 18px where it would only be a smudge.
 
 ## Agents (MCP)
 
@@ -412,15 +499,18 @@ port to one new file (`TauriPlatformAdapter`).
 ## Status
 
 MVP milestones 1–10 are implemented and verified, plus the property system, tables, collections,
-inline expressions, the extension split, the command registry and ⌘K palette, and the agent/MCP
-surface: ~690 unit tests across four packages, and Playwright suites covering board CRUD, per-board
-persistence, note editing and undo granularity, live aggregation, image downscaling/dedupe/GC,
-backup round-trip, offline operation, the zero-recompute guarantee, dotted paper, board thumbnails,
-the palette, and an agent building a board end to end over the real bridge.
+inline expressions, the extension split, the command registry and ⌘K palette, the keymap, the
+agent/MCP surface, and dice: **~1,340 unit tests across seven packages**, and Playwright suites
+covering board CRUD, per-board persistence, note editing and undo granularity, live aggregation, image
+downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute guarantee, dotted
+paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, and a
+3D dice roll in a production build.
 
 Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system
-is in; sandboxing and a placeholder shape util for uninstalled plugins are what remain).
+is in — and now covers nodes, commands, query-driven commands, operations, queries, hooks, file and
+content imports, shape actions, canvas overlays and an extension's own settings panel; sandboxing and
+a placeholder shape util for uninstalled plugins are what remain).
 
 A free tldraw hobby licence key is still needed before any production deploy; the "made with tldraw"
 watermark stays.

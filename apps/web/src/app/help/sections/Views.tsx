@@ -376,7 +376,9 @@ export function Views({ go }: SectionProps) {
 						<p>
 							Everything on the board, everything parented to one frame, or whatever the arrows reach
 							— optionally only the arrows carrying a given label. Plus a shape-type filter, which is
-							now the exception rather than the rule.
+							now the exception rather than the rule. Draw the table <em>inside</em> a frame and it
+							starts on that frame, already chosen: a frame is the gesture for "these belong
+							together", so the table asks the question the frame is asking.
 						</p>
 					</div>
 					<div className="lb-help__fact">

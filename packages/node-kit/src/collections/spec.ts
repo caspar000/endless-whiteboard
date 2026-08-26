@@ -64,10 +64,17 @@ export const collectionValidator: T.Validatable<Collection> = T.object({
  * counts what points at it says nothing until you draw an arrow — and then says something obviously
  * right. Counting rather than summing for the same reason: a count is correct before a property has
  * been chosen, a sum of nothing is a zero that looks like an answer.
+ *
+ * **Inside a frame, that frame instead** — the same rule a table drawn in a frame follows. It keeps
+ * the property the default was chosen for: a frame is a set someone has already gathered by hand, so
+ * counting it says something true immediately, and it is narrow in exactly the way "the whole board"
+ * is not. `frameId` stays null on purpose; `runCollection` reads it as "wherever this shape is now".
  */
-export function defaultCollection(): Collection {
+export function defaultCollection(inFrame = false): Collection {
 	return {
-		source: { shapeTypes: null, scope: 'connected', frameId: null, direction: 'in', filters: [] },
+		source: inFrame
+			? { shapeTypes: null, scope: 'frame', frameId: null, filters: [] }
+			: { shapeTypes: null, scope: 'connected', frameId: null, direction: 'in', filters: [] },
 		view: 'value',
 		op: 'count',
 		property: null,

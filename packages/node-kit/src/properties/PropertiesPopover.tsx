@@ -959,6 +959,43 @@ function AddProperty({
 	const [creating, setCreating] = useState(false)
 	const [name, setName] = useState('')
 	const [type, setType] = useState<PropertyType>('text')
+	const form = useRef<HTMLDivElement>(null)
+
+	const cancel = () => {
+		setName('')
+		setCreating(false)
+	}
+
+	/**
+	 * Escape cancels *the form*, and stops there.
+	 *
+	 * Three things were listening for that key. React's `onKeyDown` is the one that looks like it
+	 * handles it and is always too late: React attaches at its root, above tldraw's container, so
+	 * tldraw's own handler has already cleared the selection — and the panel, which is only shown for a
+	 * single selected shape, vanished with it. The panel's window listener then closed it for good
+	 * measure. So one keystroke abandoned the property, the selection and the panel.
+	 *
+	 * A capture-phase listener on the form is the only place early enough to claim it: it runs before
+	 * the event reaches either. `markEventAsHandled` is tldraw's own way of saying "this one is mine"
+	 * and covers the case where stopping propagation is not enough — see docs/tldraw-api-notes.md.
+	 *
+	 * Only Escape, and only while the form is open. Every other key still reaches the input, and
+	 * Escape with no form open goes back to meaning "close the panel".
+	 */
+	useEffect(() => {
+		const node = form.current
+		if (!creating || !node) return
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== 'Escape') return
+			editor.markEventAsHandled(event)
+			event.preventDefault()
+			event.stopPropagation()
+			cancel()
+		}
+		node.addEventListener('keydown', onKeyDown, { capture: true })
+		return () => node.removeEventListener('keydown', onKeyDown, { capture: true })
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [creating, editor])
 
 	const attach = (def: PropertyDef) =>
 		updateShapeProperties(editor, shape, { [def.id]: emptyValueForType(def.type) })
@@ -1005,7 +1042,7 @@ function AddProperty({
 			)}
 
 			{creating ? (
-				<div className="lb-props__new">
+				<div className="lb-props__new" ref={form}>
 					<input
 						className="lb-props__new-name"
 						aria-label="New property name"
@@ -1014,8 +1051,8 @@ function AddProperty({
 						autoFocus
 						onChange={(e) => setName(e.currentTarget.value)}
 						onKeyDown={(e) => {
+							// Escape is taken earlier, by the capture listener above.
 							if (e.key === 'Enter') create()
-							if (e.key === 'Escape') setCreating(false)
 							e.stopPropagation()
 						}}
 					/>

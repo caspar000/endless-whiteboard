@@ -187,26 +187,34 @@ export const PdfPage = memo(function PdfPage({
 			x: clamp((event.clientX - bounds.left) / bounds.width),
 			y: clamp((event.clientY - bounds.top) / bounds.height),
 		}
-		setMarquee({ ...origin, w: 0, h: 0 })
+		/*
+		 * The rectangle lives in the gesture's own closure; the state is only what draws it.
+		 *
+		 * Reading it back out of a `setMarquee` updater instead — and taking the crop from in there —
+		 * cost a real bug: React invokes updaters twice under StrictMode to prove they are pure, so a
+		 * single crop called `onClipArea` twice and the board got **two quote cards and two relations,
+		 * both holding the same image**. An updater must compute a value and nothing else.
+		 */
+		let area: AreaFraction = { ...origin, w: 0, h: 0 }
+		setMarquee(area)
 
 		const move = (moveEvent: PointerEvent) => {
 			const x = clamp((moveEvent.clientX - bounds.left) / bounds.width)
 			const y = clamp((moveEvent.clientY - bounds.top) / bounds.height)
-			setMarquee({
+			area = {
 				x: Math.min(origin.x, x),
 				y: Math.min(origin.y, y),
 				w: Math.abs(x - origin.x),
 				h: Math.abs(y - origin.y),
-			})
+			}
+			setMarquee(area)
 		}
 		const up = () => {
 			window.removeEventListener('pointermove', move)
 			window.removeEventListener('pointerup', up)
-			setMarquee((current) => {
-				// A click, not a drag: nothing to clip, and certainly not a 1px image.
-				if (current && current.w > 0.01 && current.h > 0.01) onClipArea(pageNumber, current)
-				return null
-			})
+			setMarquee(null)
+			// A click, not a drag: nothing to clip, and certainly not a 1px image.
+			if (area.w > 0.01 && area.h > 0.01) onClipArea(pageNumber, area)
 		}
 		window.addEventListener('pointermove', move)
 		window.addEventListener('pointerup', up)

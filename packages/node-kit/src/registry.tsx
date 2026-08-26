@@ -138,11 +138,32 @@ export interface NodeDefinition<Props extends object = object> {
 	/** REQUIRED from v1 — every props change ships one (§7). */
 	migrations: TLPropsMigrations
 	defaultProps: () => Props
+	/**
+	 * Props adjusted to *where the node landed*, applied once as it is created.
+	 *
+	 * The shape passed in is the record tldraw is about to store, so its `parentId` is already
+	 * resolved — a node drawn inside a frame arrives here parented to that frame, which is what lets
+	 * a table default to reading the frame it was dropped into. Return a partial to merge over the
+	 * defaults, or `null` to leave them alone.
+	 *
+	 * Hung off tldraw's `onBeforeCreate`, so **every** path runs it: the toolbar tool (click and
+	 * drag), "Add …" in ⌘K, the context menu, the agent's operations — and paste and duplicate too.
+	 * That last pair is the constraint on what belongs here: a hook may only fill in what nobody has
+	 * chosen yet, never overwrite a setting a copied shape is carrying.
+	 */
+	onCreate?: (ctx: { editor: Editor; shape: NodeShape<Props> }) => Partial<Props> | null
 	defaultSize: { w: number; h: number }
 	component: ComponentType<NodeComponentProps<Props>>
 	/** `true` → double-click enters tldraw's editing state and the component gets `isEditing`. */
 	canEdit?: boolean
-	/** Locks the resize aspect ratio (unused by the MVP nodes, needed by future media nodes). */
+	/**
+	 * Every handle scales both axes: the node is a picture, and a picture with the wrong proportions is
+	 * not a smaller picture.
+	 *
+	 * Combined with `autoHeight` this also says *how* the height is decided — by the content's aspect
+	 * ratio rather than by a reflow — which is what `onResize` needs to know to keep a drag smooth.
+	 * See the comment there; the book node is the case it was written for.
+	 */
 	aspectRatioLocked?: boolean
 	/**
 	 * Let the wheel scroll the node's own content instead of zooming the canvas.
@@ -255,6 +276,13 @@ export function createNodeShapeUtil<Props extends object>(
 			return props as unknown as TLBaseBoxShape['props']
 		}
 
+		/** The definition's one look at where it was created — see `NodeDefinition.onCreate`. */
+		override onBeforeCreate(shape: TLBaseBoxShape): TLBaseBoxShape | undefined {
+			const props = def.onCreate?.({ editor: this.editor, shape: shape as unknown as Shape })
+			if (!props) return undefined
+			return { ...shape, props: { ...shape.props, ...props } } as unknown as TLBaseBoxShape
+		}
+
 		override canEdit(): boolean {
 			return def.canEdit ?? false
 		}
@@ -279,6 +307,24 @@ export function createNodeShapeUtil<Props extends object>(
 		override onResize(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {
 			if (!def.autoHeight) return resizeBox(shape, info)
 
+			/*
+			 * A node whose height is a **picture's aspect ratio** rather than a reflow scales both axes
+			 * together, and has nothing to pin.
+			 *
+			 * The reflow rule below is exactly wrong for it, and visibly so. Every pointer move recomputes
+			 * from the drag's *initial* snapshot, so neutralising `scaleY` puts the height back to where
+			 * the drag started while the width runs ahead; auto-height then corrects it a frame later,
+			 * and the next move resets it again. Dragging a book card wider made its height flick between
+			 * two values on every frame — the cover clipped against a card too short to hold it, and the
+			 * property strip, which hangs at the bottom edge, jumped with it.
+			 *
+			 * Scaling proportionally is what the card already does in CSS (`width: 100%; height: auto` on
+			 * the cover), so the shape's box tracks its content *during* the drag and auto-height has
+			 * nothing left to correct. tldraw is told the same thing through `isAspectRatioLocked`, which
+			 * is what makes an edge handle scale both axes rather than deform the picture.
+			 */
+			if (def.aspectRatioLocked) return resizeBox(shape, info)
+
 			// Dragging a vertical handle is an explicit request for a fixed height, so pin it.
 			const isVerticalHandle = info.handle === 'top' || info.handle === 'bottom'
 			if (isVerticalHandle) {
@@ -292,7 +338,23 @@ export function createNodeShapeUtil<Props extends object>(
 			// `resizeBox` computes `x`/`y` from the scaled height, so a post-hoc override would leave
 			// the shape mis-positioned on any top-anchored drag.
 			const autoHeightOn = (shape.props as { autoHeight?: boolean }).autoHeight !== false
-			return resizeBox(shape, autoHeightOn ? { ...info, scaleY: 1 } : info)
+			if (!autoHeightOn) return resizeBox(shape, info)
+
+			/*
+			 * Carrying the height *forward* rather than rewinding it to the start of the drag.
+			 *
+			 * tldraw hands every pointer move the shape as it was when the drag began, so `scaleY: 1`
+			 * against that snapshot means "the height it had before you started" — while auto-height has
+			 * been writing the height the content actually needs, once per frame, all the way through.
+			 * The two then take turns: reset, correct, reset, correct. Reading the live height instead
+			 * makes the drag monotonic — it lags the reflow by a frame, which is unavoidable, but it
+			 * never goes backwards.
+			 */
+			const live = this.editor.getShape(shape.id)
+			const height = (live?.props as { h?: number } | undefined)?.h ?? shape.props.h
+			// Expressed as a scale rather than by patching the shape: `resizeBox` reads `h` off the
+			// snapshot it is given, and `h` is validated non-zero, so this is exact.
+			return resizeBox(shape, { ...info, scaleY: height / shape.props.h })
 		}
 
 		/** v5 replaced `indicator()` with `getIndicatorPath()`; see docs/tldraw-api-notes.md. */

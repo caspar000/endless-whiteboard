@@ -189,11 +189,12 @@ export function BookReaderOverlay({
 	settingsRef.current = settings
 
 	const change = useCallback((patch: Partial<ReaderSettings>) => {
-		setSettings((current) => {
-			const next = { ...current, ...patch }
-			saveReaderSettings(next)
-			return next
-		})
+		// Composed from the ref, not inside a `setSettings` updater: an updater has to be pure, and
+		// React proves it by running it twice under StrictMode — see the crop marquee in `PdfPage`,
+		// where the same shortcut produced two quotes from one gesture.
+		const next = { ...settingsRef.current, ...patch }
+		saveReaderSettings(next)
+		setSettings(next)
 	}, [])
 	const viewMode = settings.viewMode
 

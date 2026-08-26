@@ -371,7 +371,9 @@ export function Asking() {
 				<p className="lb-help__aside">
 					A fresh collection counts the arrows pointing in, which is deliberately the most boring
 					default available: it says nothing until you draw an arrow, and then says something obviously
-					right. A sum of nothing, by contrast, is a zero that looks like an answer.
+					right. A sum of nothing, by contrast, is a zero that looks like an answer. Inside a frame it
+					counts the frame instead — a set someone has already gathered by hand — and "this frame"
+					means wherever the shape is now, so dragging it into another one re-aims it.
 				</p>
 			</Section>
 		</>

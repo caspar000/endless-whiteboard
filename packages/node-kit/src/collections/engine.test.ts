@@ -176,3 +176,56 @@ describe('collections', () => {
 		expect(result.matched).toBe(0)
 	})
 })
+
+describe('collections — "this frame"', () => {
+	/** A collector and two priced stickies inside one frame; a third sticky in another. */
+	function framed(): FactsMap {
+		const inFrame = (id: string, values: Record<string, PropertyValue>, parentId: string) => {
+			const [key, facts] = shape(id, values)
+			return [key, { ...facts, parentId }] as [string, ShapeFacts]
+		}
+		return new Map([
+			inFrame('total', {}, 'shape:frame1'),
+			inFrame('rent', { price: 1200 }, 'shape:frame1'),
+			inFrame('food', { price: 340 }, 'shape:frame1'),
+			inFrame('bus', { price: 89 }, 'shape:frame2'),
+		])
+	}
+
+	const inThisFrame = (patch: Partial<Collection> = {}) =>
+		collection({ source: { ...defaultCollection(true).source }, ...patch })
+
+	it('collects the frame the collecting shape is in, with no frame to pick', () => {
+		// The menu says "shapes in this frame", so the frame is wherever the shape sits — not a second
+		// thing to choose. Before this resolved, a frame-scoped collection matched nothing at all.
+		const result = runCollection(
+			framed(),
+			inThisFrame({ op: 'sum', property: 'price' }),
+			'total',
+			REGISTRY
+		)
+		expect(result.value).toBe(1540)
+		expect(result.matched).toBe(2)
+	})
+
+	it('starts a shape inside a frame off collecting that frame', () => {
+		expect(defaultCollection(true).source.scope).toBe('frame')
+		// Anywhere else, the documented default stands: what points at me, counted.
+		expect(defaultCollection().source).toMatchObject({ scope: 'connected', direction: 'in' })
+	})
+
+	it('finds nothing for a collector sitting on open canvas', () => {
+		const loose = new Map(framed())
+		loose.set('total', { ...loose.get('total')!, parentId: null })
+		expect(runCollection(loose, inThisFrame(), 'total', REGISTRY).matched).toBe(0)
+	})
+
+	it('keeps a frame someone chose explicitly', () => {
+		const aimed = inThisFrame({
+			op: 'sum',
+			property: 'price',
+			source: { ...defaultCollection(true).source, frameId: 'shape:frame2' },
+		})
+		expect(runCollection(framed(), aimed, 'total', REGISTRY).value).toBe(89)
+	})
+})

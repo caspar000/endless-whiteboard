@@ -60,7 +60,14 @@ export function CollectionEditor({
 					aria-label="Collects"
 					checked={collection !== null}
 					onChange={(e) =>
-						setCollection(editor, shape, e.currentTarget.checked ? defaultCollection() : null)
+						setCollection(
+							editor,
+							shape,
+							e.currentTarget.checked
+								? // A shape inside a frame starts by collecting that frame — see `defaultCollection`.
+									defaultCollection(editor.getShape(shape.parentId)?.type === 'frame')
+								: null
+						)
 					}
 				/>
 			</label>

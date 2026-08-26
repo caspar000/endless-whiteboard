@@ -60,11 +60,12 @@ const QUOTE_STEPS = [1400, 900, 1300, 2600] as const
 const PASSAGE = 'A beginning is the time for taking the most delicate care that the balances are correct.'
 
 /**
- * Selecting in the reader, and the quote landing on the board arrow-linked to the book.
+ * Selecting in the reader, and the quote landing on the board related to the book.
  *
- * The arrow is drawn because it is the difference between this and a screenshot pasted into a note:
- * a bound arrow is a relation the board can follow, so "everything I took out of this book" is a
- * question a table can answer.
+ * The link is drawn here — as "All relations" draws it on a real board — because it is the difference
+ * between this and a screenshot pasted into a note: a bound arrow is a relation the board can follow,
+ * so "everything I took out of this book" is a question a table can answer. On the board itself the
+ * relation is made hidden, which changes nothing about that.
  */
 function QuoteDemo() {
 	const { step, ref } = useDemo(QUOTE_STEPS)
@@ -76,7 +77,7 @@ function QuoteDemo() {
 			className="lb-demo"
 			ref={ref}
 			role="img"
-			aria-label="Selecting a passage while reading, which lands on the board as a quote card joined to the book by an arrow"
+			aria-label="Selecting a passage while reading, which lands on the board as a quote card related to the book"
 		>
 			<div className="lb-demo__scene">
 				<div className="lb-demo__page">
@@ -229,12 +230,12 @@ export function Books({ go }: SectionProps) {
 				<p>
 					Select text while reading and the highlight buttons appear at the selection — one per tag (
 					{HIGHLIGHT_TAGS.join(', ')}). Pick one and the excerpt lands on the board as a quote card,
-					joined to the book by an arrow, with the tag as a coloured property and the mark left behind
-					in the book in the same colour.
+					related to the book, with the tag as a coloured property and the mark left behind in the
+					book in the same colour.
 				</p>
 				<QuoteDemo />
 				<p>
-					The arrow is doing real work. A bound arrow is a{' '}
+					That link is doing real work. A bound arrow is a{' '}
 					<Jump to="relations" go={go}>relation</Jump>, so "everything I took out of this book" is a
 					question the board can answer rather than a spatial arrangement you have to maintain by hand.
 					The quote's own record of <em>where</em> — a page number, or an EPUB position — is what an
@@ -242,8 +243,14 @@ export function Books({ go }: SectionProps) {
 					at that passage.
 				</p>
 				<p className="lb-help__aside">
+					The relation is <strong>hidden</strong>: a reading session makes a column of quotes, and a
+					line from every one of them back to the book would say what each card already says. Tables
+					and rollups count it exactly the same, and "All relations" — or the eye button on one you
+					select — draws it when you want to see it.
+				</p>
+				<p className="lb-help__aside">
 					Quotes are prose, so they survive their source. Delete the book and the excerpt keeps
-					rendering; it simply has nowhere left to jump to. Tagging is optional, the arrow can be
+					rendering; it simply has nowhere left to jump to. Tagging is optional, the link can be
 					switched off in the reading settings, and the tags themselves — names and colours — are
 					yours to change.
 				</p>

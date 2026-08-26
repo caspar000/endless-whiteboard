@@ -29,21 +29,22 @@ export interface NewQuote {
 }
 
 /**
- * Puts an excerpt on the board beside its book, joined by an arrow.
+ * Puts an excerpt on the board beside its book, related to it.
  *
- * The arrow is the point. Lifeboard already treats a fully bound arrow as a relation (`edges.ts`),
- * so a quote arrives as a *queryable* edge — a table can ask a book for everything taken out of it
- * — rather than as a card that merely happens to sit nearby. The quote's own `location` prop then
- * carries what an arrow cannot: where in the book the passage is.
+ * The relation is the point. Lifeboard already treats a fully bound arrow as one (`edges.ts`), so a
+ * quote arrives as a *queryable* edge — a table can ask a book for everything taken out of it —
+ * rather than as a card that merely happens to sit nearby. The quote's own `location` prop then
+ * carries what an arrow cannot: where in the book the passage is. It is created **hidden**, which
+ * changes nothing about any of that; see the call below.
  *
  * One undo entry for the whole thing: pressing ⌘Z after collecting a quote removes the card and its
- * arrow together, because half a quote is not a state anyone wants to land in.
+ * relation together, because half a quote is not a state anyone wants to land in.
  */
 export async function addQuoteToBoard(
 	editor: Editor,
 	bookId: TLShapeId,
 	quote: NewQuote,
-	/** Whether to join the quote to its book. Off leaves the card standing on its own. */
+	/** Whether to relate the quote to its book. Off leaves the card standing on its own. */
 	withArrow = true,
 	/** The tags as configured, so the property carries their names *and* their colours. */
 	tags: readonly HighlightTag[] = []
@@ -85,9 +86,23 @@ export async function addQuoteToBoard(
 			if (def && created) updateShapeProperties(editor, created, { [def.id]: quote.tag })
 		}
 
-		// No `markHistory`: we are already inside the `editor.run` that owns this quote's single undo
-		// entry, and the arrow has to be part of it.
-		if (withArrow) connectShapes(editor, bookId, quoteId)
+		/*
+		 * **Hidden**, so the link is a fact rather than a line.
+		 *
+		 * A reading session produces a column of quotes, and a visible arrow from each one back to the
+		 * book turns that column into a fan of lines over the board — every one of them saying the same
+		 * thing the card already says, since a quote card names its source. What the arrow is *for* is
+		 * the query: `edges.ts` counts a hidden relation exactly as it counts a drawn one, so a table
+		 * can still ask a book for everything taken out of it. Hiding costs nothing there and buys back
+		 * the board.
+		 *
+		 * Reversible either way: "All relations" draws every hidden one dashed, and the eye button on a
+		 * selected relation (or ⌘K) unhides this one for good.
+		 *
+		 * No `markHistory`: we are already inside the `editor.run` that owns this quote's single undo
+		 * entry, and the relation has to be part of it.
+		 */
+		if (withArrow) connectShapes(editor, bookId, quoteId, { hidden: true })
 	})
 
 	return quoteId

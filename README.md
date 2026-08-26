@@ -145,8 +145,12 @@ A coding agent can drive a board — create boards, add nodes, set properties, d
 - **Two tables, not one.** A `Command` is a *button*: `run(ctx)` takes no arguments and returns
   nothing, which is right for a palette row and wrong for an agent. Operations
   (`packages/node-kit/src/operations.ts`) are its sibling — named parameters in, a structured answer
-  out, a readable failure when something is wrong. `commandFromOperation` projects a zero-argument
-  operation onto a command, so capability both a person and an agent should have is authored once.
+  out, a readable failure when something is wrong. `commandFromOperation` projects an operation onto
+  a command, so capability both a person and an agent should have is authored once. An operation
+  that *needs* arguments still projects: the command becomes a doorway, and ⌘K generates one
+  question per required parameter from `ParamSpec` — its `choices` become rows, its `description`
+  becomes the prompt. Which operations are worth a palette row is a curated list
+  (`app/operationCommands.ts`); how they are *asked for* is generated.
 - **The schema is generated.** `ParamSpec` declares arguments as data; the TypeScript type `run`
   receives *and* the JSON Schema the agent is shown both come from it, so they cannot drift.
 - **It runs in the live editor.** The app connects out to the server (a tab cannot listen on a
@@ -202,6 +206,52 @@ one `registerExtension` line to the composition root — nothing else. Shape uti
 button, keyboard shortcut, context-menu entry, the Settings card and table participation all follow
 from the registry. There is deliberately no per-node-type branching in the UI.
 
+**⌘K has four modes**, one prefix apart: boards by default, `>` for commands, `@` to find a shape
+on the open board by name and animate-zoom to it, `=` to ask the board a question. The last one is why the palette is not just a
+command list — on an endless canvas the thing you are looking for is usually off-screen, and
+`shapeLabel` already names every shape, ours and tldraw's alike (`properties/labels.ts`). Find mode
+reads `getPageFacts`, so it costs a cached map read rather than an index that has to be maintained.
+A command that needs arguments opens a stack of pages instead of running (Raycast's shape); Escape
+and Backspace-on-empty both go back exactly one step — a question, then the command, then closed.
+
+`=` runs the *same* evaluator and the same completion menu the `{…}` expressions in notes use
+(`collections/expressions.ts`, `collections/suggest.ts`) — one vocabulary, two doors to it. Two
+things happen to an answer: Enter copies it, and the row below writes the **question** onto the
+board as a text shape, which then keeps answering itself. That is why `expressionForBoard` spells
+the scope out before either: what you previewed and what the dropped shape computes have to be the
+same string, and a default living in the evaluator could not have travelled with it.
+
+**A question can be given a name.** `= sum cash page as runway` files it, and `{runway}` then works
+in any note on any board — one namespace, and the name appears in the `{…}` menu beside `sum` and
+`count`. A named query is *textual*: it stands for an expression and is expanded before evaluation,
+so there is no interpreter, no arguments and no evaluation order — nothing can be computed that
+could not be written out. Extensions contribute them through `Extension.queries`; the user's own
+live in localStorage and load after the extensions, so a name you chose beats one a plugin shipped.
+Two rules keep a name from changing what a board already says: verbs and source keywords are refused
+at registration (you are told as you type), and **a property always wins** — so a query can only ever
+resolve a `{…}` that resolved to nothing before it existed.
+
+**Extensions can add *behaviour*, not just things.** Two contracts, deliberately kept apart
+(`packages/node-kit/src/hooks.ts`). A **hook** is a reaction — `onBoardOpen`, `onShapeCreate`,
+`onPropertyChange` — where every enabled extension's handler runs and none of them can claim the
+event. A **claim** is `fileImports` and its new sibling `contentImports`, where exactly one extension
+gets the dropped content, because two extensions both turning a dropped link into a shape would
+produce two shapes. The issue this came from listed `onDrop` alongside the reactions; it is a
+different promise, so it lives next door.
+
+Reactions are **synchronous and fire inside the store change that triggered them**, which is what
+puts a hook's write in the *same* undo entry — ⌘Z after creating an auto-tagged note takes back the
+note and its tag together. They are wired to tldraw's side effects rather than to the app's creation
+helpers, because `insertNode` is one of six ways a shape appears (dock, context menu, paste,
+duplicate, import, agent) and a hook on the helpers would silently miss five. One flag stops a hook's
+own writes re-entering any hook: hooks react to what the user did, not to each other.
+
+The first two consumers are both real. The property-sidecar merge that makes copying shapes between
+boards work is now an `onShapeCreate` hook (`canvas/Board.tsx`) — which is what proves the fire point
+covers a paste. And dropping a link makes a **note carrying a `Link` property**
+(`packages/note-markdown/src/linkDrop.ts`) rather than tldraw's bookmark card, because a card cannot
+hold a property, join a table or stand in a view.
+
 **Adding a command** means one `registerCommand` call — an id, a title, a group, optionally a `when`
 predicate and a default `kbd`. `packages/node-kit/src/commands.ts` is the one table every command
 surface reads: today the ⌘K palette renders it *and* the Help page's shortcut list is generated from
@@ -216,6 +266,26 @@ Two rules that fall out of this. `when` is *availability*, not existence — the
 reference documents what exists. And anything derived from a node type — the generated "Add …"
 commands in `canvas/insertNode.ts` — is registered with that node's owner (`getNodeOwner`), so one
 extension toggle takes the node and everything generated from it out of the UI together.
+
+**Keys come from the command table, and the user gets the last word.** `Command.kbd` is the
+*default*; `packages/node-kit/src/keymap.ts` layers the user's answer over it, and one capture-phase
+`window` listener (`app/useKeymap.ts`) is the whole of dispatch. That listener runs *before* tldraw's
+own — tldraw binds to `document.body` in the bubble phase — so a claimed chord never reaches it and
+nothing has to be deleted from tldraw's action map. Which matters: tldraw builds that map once per
+mount, so the alternative design needed a board remount per rebinding, and remounting inside the
+persistence throttle discards the pending write along with the camera and the undo history.
+
+Three consequences worth knowing. A chord the table does *not* claim falls through untouched, so
+every tldraw shortcut that is not a command — group, align, select-all — keeps working and simply
+is not rebindable yet; adding a delegating command for one is how that changes. A command's *retired*
+default is claimed and swallowed, because tldraw still has its own binding for ⌘Z and letting it
+through would make a rebinding look ignored. And the commands tldraw also implements now **delegate
+to its action** (`canvas/tldrawUi.ts`) rather than reimplementing it — which fixed a real bug: the
+palette's "Duplicate" never did what ⌘D does, since tldraw's offsets the copy, marks history and
+keeps stepping when held.
+
+**⌘ and Ctrl are one modifier** in the keymap's vocabulary, which is what lets a single binding work
+on both platforms — and is what ⌘K already did before any of this.
 
 **The palette blurs the board while it is open.** tldraw reads keys off the *document* and gates
 them on `editor.getIsFocused()`, so `App.tsx` passes `null` to `focusOnly` whenever `paletteOpen` is

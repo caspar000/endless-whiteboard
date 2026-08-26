@@ -1,5 +1,7 @@
 import type { Editor } from 'tldraw'
+import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import { registerCommand, type Command } from './commands'
+import { registerHooks, type BoardHooks } from './hooks'
 import { registerOperation, type RegisteredOperation } from './operations'
 import {
 	isExtensionEnabled,
@@ -40,6 +42,33 @@ export interface ShapeAction {
 	appliesTo(shape: { type: string }): boolean
 	/** Errors are caught and logged by the host; long work should show its own progress. */
 	run(ctx: { editor: Editor; shape: { id: string; type: string } }): void
+}
+
+/**
+ * What landed on the canvas that was not a file: a dropped or pasted URL, or a run of text.
+ *
+ * `FileImport`'s sibling, and deliberately the same *claim* contract rather than a hook — exactly one
+ * extension gets the content, because two extensions both turning a dropped link into a shape would
+ * produce two shapes. That is why the issue's `onDrop` is here and not in `hooks.ts`: reacting and
+ * claiming are different promises, and a mechanism that did both would have to answer "what happens
+ * if two of you want it" with a coin toss.
+ *
+ * Anything unclaimed continues into tldraw's own pipeline — which already turns a URL into a bookmark
+ * card and text into a text shape — exactly as if no extension were installed.
+ */
+export interface ContentImportContext {
+	editor: Editor
+	/** The URL or text as it arrived, untrimmed. */
+	text: string
+	/** Page coordinates to create content at — the drop point, or the middle of the view on a paste. */
+	point: { x: number; y: number }
+}
+
+export interface ContentImport {
+	/** Whether this import wants it. Called per drop against each enabled extension, so keep it cheap. */
+	matches(text: string): boolean
+	/** Errors are caught and toasted by the app, as for `fileImports`. */
+	onText(ctx: ContentImportContext): Promise<void>
 }
 
 export interface FileImport {
@@ -100,8 +129,26 @@ export interface Extension {
 	 * server needs no list of tools: contributing an operation contributes a tool.
 	 */
 	operations?: readonly RegisteredOperation[]
+	/**
+	 * Named questions this extension teaches the board — `{runway}` for `sum cash page`.
+	 *
+	 * Vocabulary rather than capability, which is why it is a separate field from `commands`: these
+	 * appear in the `{…}` menu of every note and in ⌘K's `=` mode, and are hidden with the extension
+	 * like everything else it contributes.
+	 */
+	queries?: readonly NamedQuery[]
 	/** File types this extension imports on drop/paste. Gated by enablement at drop time. */
 	fileImports?: readonly FileImport[]
+	/** Dropped or pasted URLs and text this extension claims. Same gating as `fileImports`. */
+	contentImports?: readonly ContentImport[]
+	/**
+	 * Behaviour rather than capability: what this extension does *because* the board changed.
+	 *
+	 * The extension's own id is the hook set's id, so there is nothing to name here. Switched off with
+	 * the extension, checked at fire time — see `hooks.ts` for why reactions cannot claim, cannot be
+	 * async, and cannot re-enter each other.
+	 */
+	hooks?: BoardHooks
 	/** Actions offered on a shape's context menu. Gated by enablement when the menu opens. */
 	actions?: readonly ShapeAction[]
 }
@@ -120,7 +167,7 @@ export function defineNode<Props extends object>(def: NodeDefinition<Props>): No
 const extensions = new Map<string, Extension>()
 
 /**
- * Registers an extension and every node, command and operation it contributes.
+ * Registers an extension and every node, command, operation and query it contributes.
  *
  * Idempotent *per node type*, not per extension — a second registration is reconciled, not ignored,
  * and never throws. Module re-evaluation is the normal case here (vite HMR, a test importing two
@@ -139,6 +186,8 @@ export function registerExtension(ext: Extension): void {
 	}
 	for (const cmd of ext.commands ?? []) registerCommand(cmd, ext.id)
 	for (const op of ext.operations ?? []) registerOperation(op, ext.id)
+	for (const query of ext.queries ?? []) registerQuery(query, ext.id)
+	if (ext.hooks) registerHooks({ id: ext.id, ...ext.hooks }, ext.id)
 }
 
 /** Registration order, which is also toolbar order for their nodes. */
@@ -171,6 +220,27 @@ export function actionsForShape(shape: { type: string }): ShapeAction[] {
 		}
 	}
 	return found
+}
+
+/**
+ * The import that claims this text, or undefined if no enabled extension wants it.
+ *
+ * Registration order decides, like `fileImportFor` — first claim wins. Checked at drop time so
+ * switching an extension off returns its content types to tldraw's default handling immediately.
+ */
+export function contentImportFor(text: string): ContentImport | undefined {
+	for (const ext of extensions.values()) {
+		if (!ext.contentImports?.length || !isExtensionEnabled(ext.id)) continue
+		for (const contentImport of ext.contentImports) {
+			try {
+				if (contentImport.matches(text)) return contentImport
+			} catch (error) {
+				// A bad matcher costs its own extension the claim, not everyone else theirs.
+				console.error(`Content import matcher in "${ext.id}" failed`, error)
+			}
+		}
+	}
+	return undefined
 }
 
 export function fileImportFor(fileName: string): FileImport | undefined {

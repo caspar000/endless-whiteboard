@@ -2189,6 +2189,52 @@ button {
 	box-shadow: var(--lb-shadow-2);
 	color: var(--lb-text);
 }
+/*
+ * The drill-in breadcrumb: which command you are inside, and every answer given so far.
+ *
+ * Above the input rather than inside it, because the input is the *field* on these pages — typing
+ * replaces what is there, and a trail rendered in the same box would look editable when it is not.
+ */
+.lb-palette__crumbs {
+	display: flex;
+	flex: none;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	border-bottom: 1px solid var(--lb-border);
+	font-size: 11px;
+	padding: 9px 16px 0;
+}
+.lb-palette__crumb {
+	background: var(--lb-surface-2);
+	border-radius: 5px;
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	max-width: 240px;
+	padding: 2px 7px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-palette__crumb-sep {
+	color: var(--lb-text-faint);
+}
+/* An operation's own refusal, kept in the panel: the palette is outside tldraw's toast context. */
+.lb-palette__error {
+	flex: none;
+	background: var(--lb-danger-tint);
+	border-bottom: 1px solid var(--lb-border);
+	color: var(--lb-danger);
+	font-size: 12px;
+	padding: 8px 16px;
+}
+.lb-palette__more {
+	color: var(--lb-text-faint);
+	font-size: 13px;
+}
+.lb-palette__row--on .lb-palette__more {
+	color: var(--lb-on-accent);
+}
+
 .lb-palette__input {
 	flex: none;
 	background: none;
@@ -2262,6 +2308,26 @@ button {
 	border-color: transparent;
 	color: var(--lb-on-accent);
 }
+/*
+ * The answer to `=`. Tabular figures because it is a number you are reading rather than a label you
+ * are picking, and a group of them (typing `= sum p`, then `ri`, then `ce`) should not jitter
+ * sideways as the digits change.
+ */
+.lb-palette__row--answer .lb-palette__name {
+	font-size: 16px;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+}
+/* A completion's kind — "add them up", "financial". Plain text, not a keycap: it is not a key. */
+.lb-palette__detail {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-palette__row--on .lb-palette__detail {
+	color: var(--lb-on-accent);
+	opacity: 0.85;
+}
+
 .lb-palette__empty {
 	color: var(--lb-text-faint);
 	font-size: 13px;
@@ -2274,6 +2340,74 @@ button {
 	color: var(--lb-text-faint);
 	font-size: 11px;
 	padding: 8px 12px;
+}
+
+/*
+ * Settings → Keyboard. A grid rather than a list of cards: the eye reads down the *keys* column
+ * looking for a chord it recognises, and cards would put a box round every row and break that line.
+ */
+.lb-keymap {
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	overflow: hidden;
+}
+.lb-keymap__section {
+	background: var(--lb-surface-2);
+	border-bottom: 1px solid var(--lb-border);
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	padding: 7px 14px;
+	text-transform: uppercase;
+}
+.lb-keymap__section:not(:first-child) {
+	border-top: 1px solid var(--lb-border);
+}
+.lb-keymap__row {
+	display: grid;
+	/* The keys column is fixed so every chord starts at the same x — see the note above. */
+	grid-template-columns: 1fr 160px auto auto;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 14px;
+}
+.lb-keymap__row + .lb-keymap__row,
+.lb-keymap__section + .lb-keymap__row {
+	border-top: 1px solid var(--lb-border);
+}
+.lb-keymap__name {
+	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-keymap__keys {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+.lb-keymap__unbound {
+	color: var(--lb-text-faint);
+	font-size: 12px;
+}
+.lb-keymap__listening {
+	color: var(--lb-accent);
+	font-size: 12px;
+	font-weight: 600;
+}
+.lb-keymap__conflict {
+	/* Spans the row below it: a sentence naming another command does not fit in a 160px column. */
+	grid-column: 1 / -1;
+	color: var(--lb-danger);
+	font-size: 11px;
+}
+.lb-keymap__reset-all {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 14px;
 }
 
 /* ================================================================== nodes  */

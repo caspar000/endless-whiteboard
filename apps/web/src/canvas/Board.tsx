@@ -4,6 +4,9 @@ import '../extensions'
 import {
 	clearAgentActivity,
 	createNodeShapeUtil,
+	fireBoardOpen,
+	installBoardHooks,
+	registerHooks,
 	PropertiesPopover,
 	getNodeDefinitions,
 	getNodeTypesVersion,
@@ -29,7 +32,9 @@ import {
 	type TLComponents,
 	type TldrawOptions,
 	type TLEventInfo,
+	useActions,
 	useEditor,
+	useTools,
 	useValue,
 	tipTapDefaultExtensions,
 	type TLTextOptions,
@@ -54,6 +59,7 @@ import { deselectHiddenShapes, getShapeVisibility } from './relationVisibility'
 import { TraceLayer, TraceShapeWrapper } from './TraceLayer'
 import { followSelectionWhileTracing, isTracing, stopTracing } from './tracing'
 import { createNodeTools } from './nodeTools'
+import { setTldrawUi } from './tldrawUi'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
 
@@ -212,22 +218,41 @@ const canvasComponents: TLComponents = {
  * with no name, type or unit. Merging is idempotent and skips ids the board already knows, so the
  * target board's own meaning of a property always wins over the copy's.
  *
- * Guarded to `source === 'user'`: loading a board creates every shape too, and re-merging a whole
- * board's sidecars on open would write to the document record for nothing.
+ * The first consumer of `onShapeCreate`, and the reason the hook is wired to tldraw's side effects
+ * rather than to the app's creation helpers: this has to fire on a *paste*, which no helper is
+ * involved in. Core rather than an extension's, so it has no owner and cannot be switched off.
+ *
+ * The `source === 'user'` guard that used to live here now lives in `installBoardHooks`, for the same
+ * reason it was written: loading a board creates every shape on it, and re-merging a whole board's
+ * sidecars on open would write to the document record for nothing.
  */
-function watchPastedProperties(editor: Editor): () => void {
-	return editor.sideEffects.registerAfterCreateHandler('shape', (shape, source) => {
-		if (source !== 'user') return
+registerHooks({
+	id: 'lifeboard.paste-properties',
+	onShapeCreate({ editor, shape }) {
 		const defs = readShapePropertyDefs(shape)
 		if (defs.length) mergeProperties(editor, defs)
-	})
-}
+	},
+})
 
 // The rollup recompute counters, so the perf suite can assert the §4.3 guarantee ("zero rollup
 // recomputes while dragging") against real numbers rather than wall-clock timing, which varies by
 // machine. Exposed at module scope, not per mount: `rollupStats` is a singleton, and tying it to a
 // mount meant a *draining* board's unmount deleted the live board's counters.
 ;(window as unknown as { __rollupStats?: typeof rollupStats }).__rollupStats = rollupStats
+
+/**
+ * Publishes tldraw's actions and tools so the keymap and the palette can run them.
+ *
+ * Written during render rather than in an effect, deliberately: `onMount` reports the editor to the
+ * shell in the same commit, and an effect-based publish could land after it — leaving a few
+ * milliseconds in which ⌘Z was bound to an action nobody could reach. This is the same idiom
+ * `setAppCommandApi` uses in App.tsx, and it is idempotent for the same reason.
+ */
+function TldrawUiBridge() {
+	const editor = useEditor()
+	setTldrawUi(editor, { actions: useActions(), tools: useTools() })
+	return null
+}
 
 /**
  * Bridges the module-scope properties target to the panel.
@@ -389,7 +414,10 @@ export function Board({
 						editor,
 						() => void touchBoard(platform.kv, board.id)
 					)
-					const stopWatchingPastes = watchPastedProperties(editor)
+					// Every extension's reactions, plus the core hook above. One installer, because they
+					// all hang off the same two side effects.
+					const stopHooks = installBoardHooks(editor)
+					fireBoardOpen({ editor, boardId: board.id })
 					// A shape that stops being drawn must stop being selected with it — see
 					// relationVisibility.ts.
 					const stopDeselectingHidden = deselectHiddenShapes(editor)
@@ -412,7 +440,7 @@ export function Board({
 						editorRef.current = null
 						if (w.editor === editor) delete w.editor
 						onEditor?.(null)
-						stopWatchingPastes()
+						stopHooks()
 						stopDeselectingHidden()
 						stopFollowingSelection()
 						stopCascadingDeletes()
@@ -448,6 +476,7 @@ export function Board({
 				{/* Must be a child of <Tldraw>: it needs the toast context, and mounting after tldraw's
 				    own handler registration is what lets it take over the `files` content type. */}
 				<FileImportHandler />
+				<TldrawUiBridge />
 			</Tldraw>
 		</div>
 	)

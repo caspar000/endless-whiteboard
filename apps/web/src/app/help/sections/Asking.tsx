@@ -376,6 +376,49 @@ export function Asking() {
 					means wherever the shape is now, so dragging it into another one re-aims it.
 				</p>
 			</Section>
+
+			<Section title="Or just ask, without writing it down anywhere">
+				<p>
+					Press <kbd className="lb-kbd">⌘K</kbd> and start with <code>=</code>. The same vocabulary,
+					the same menu, the same engine — <code>= sum price</code> answers straight away, and nothing
+					has been added to the board. It is the question you ask once, on the way past.
+				</p>
+				<p>
+					Two things you can do with the answer. <strong>Enter</strong> copies it. The row below
+					<em>puts the question on the board</em> as a text shape — the question, not the number, so it
+					keeps answering itself as the board changes. That is the one worth knowing about: a pasted
+					total is out of date the moment anything moves.
+				</p>
+				<p className="lb-help__aside">
+					One difference from a note, and it is the sensible one: a question typed here is about the
+					whole board unless you say otherwise, because there is no shape doing the asking.{' '}
+					<code>= count</code> counts the board; <code>{'{count}'}</code> in a note counts what points
+					at that note.
+				</p>
+			</Section>
+
+			<Section title="A question worth asking twice deserves a name">
+				<p>
+					End the line with <code>as</code> and a name — <code>= sum cash page as runway</code> — and
+					the question is filed under it. From then on <code>{'{runway}'}</code> works in any note on
+					any board, and <code>runway</code> is in the <code>{'{'}</code> menu beside{' '}
+					<code>sum</code> and <code>count</code>. It is the same vocabulary; you just added a word
+					to it.
+				</p>
+				<p>
+					Nothing new can be computed this way — a name stands for an expression you could have
+					written out, and that is the point. There is no second language to learn, no arguments, no
+					evaluation order. A name is a shorthand, and shorthands are what make a notation yours.
+				</p>
+				<p className="lb-help__aside">
+					Two rules, both there to stop a name changing what a board already says. A question cannot
+					be called <code>sum</code>, <code>page</code> or anything else the grammar uses — you are
+					told so as you type it. And a property always wins: on a board with a{' '}
+					<em>Runway</em> property, <code>{'{runway}'}</code> keeps meaning that property, and the
+					saved question quietly does not apply there. To take a name back, type it on its own and
+					choose <em>Forget</em>.
+				</p>
+			</Section>
 		</>
 	)
 }

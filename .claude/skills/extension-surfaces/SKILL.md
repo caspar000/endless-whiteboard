@@ -39,10 +39,34 @@ the extension's `commands`; they are hidden with it when it is disabled.
 
 - `group` is a **string by value** (`'Insert'`, or your own), because a package must not import the
   app's `paletteItems.ts`. An unrecognised group renders as its own trailing section, which is fine.
+  It also decides one real behaviour: only the app-chrome groups (`Boards`, `Navigate`, `Appearance`)
+  may fire their keys while the user is typing. A command about the board must not be in one.
+- `kbd` **binds the key** — it is not documentation any more. The app dispatches from this table
+  (`app/useKeymap.ts`), so check your chord against tldraw's own before claiming it, and expect the
+  user to be able to move it in Settings → Keyboard. Never render `kbd` in a UI: ask
+  `chordsFor(id)` for what the command actually answers to.
 - `when` decides whether the command is *offered*, not whether it works. A verb that needs one
   selected shape must check for exactly that.
 - If agents should be able to drive it too, that is an `operation` (`node-kit/src/operations.ts`), not
   a command. Contributing an operation contributes an MCP tool — the server needs no edit.
+- Behaviour is its own contribution, and there are **two** kinds. `hooks` (`onBoardOpen`,
+  `onShapeCreate`, `onPropertyChange`) are *reactions*: everyone's runs, nobody claims, synchronous,
+  and a throw is caught. `contentImports` (and `fileImports`) are *claims*: the first enabled match
+  wins and everything unclaimed falls through to tldraw. If two extensions could both want the thing,
+  it is a claim; if they could all reasonably respond to it, it is a hook.
+- A hook must not need `await`. Reactions run inside the store change, which is what keeps their
+  write in the same undo entry as the user's action — schedule async work yourself and accept that the
+  later write is its own ⌘Z.
+- Vocabulary is a third thing, neither a command nor an operation: `Extension.queries` binds a name
+  to an expression (`{runway}` → `sum cash page`). It shows up in every note's `{…}` menu and in ⌘K's
+  `=` mode, and on the extension's Settings page under "Questions it teaches". Names that collide
+  with a verb or a source keyword are refused at registration, and a board's own property always
+  wins — so a query can never change what an existing note reports.
+- An operation can *also* reach ⌘K, arguments and all: `commandFromOperation` projects it, and the
+  palette generates one question per required `ParamSpec` (choices become rows, `description` becomes
+  the prompt). Nothing to write per operation — but the projection is opt-in, so add the id to
+  `apps/web/src/app/operationCommands.ts` if a person would go looking for it by name. Most
+  operations should not be there: `view.select` takes shape ids, which nobody types.
 
 ## 4. The Help page — `apps/web/src/app/help/`
 

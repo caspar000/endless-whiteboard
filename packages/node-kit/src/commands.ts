@@ -24,9 +24,9 @@ export interface CommandContext {
 
 /**
  * A user-invokable action. The registry of these is the single table every command surface reads —
- * the ⌘K palette first; the Help page's shortcut list, generated tldraw overrides and a
- * user-rebindable keymap later. One entry here and every surface follows, the same rule the node
- * registry already enforces for shapes: no per-command branching in the UI, ever.
+ * the ⌘K palette, the Help page's shortcut list, Settings → Keyboard, and the keyboard dispatcher
+ * itself. One entry here and every surface follows, the same rule the node registry already enforces
+ * for shapes: no per-command branching in the UI, ever.
  */
 export interface Command {
 	/**
@@ -41,10 +41,14 @@ export interface Command {
 	/** Optional richer row icon (the app chrome uses lucide). Structural, like the node registry's. */
 	icon?: NodeToolbarIcon
 	/**
-	 * The *default* key binding — and today documentation only: dispatch stays with whoever owns the
-	 * key (tldraw for canvas keys, the palette hook for its own). Kept on the command so the palette
-	 * row, the Help page and a future user keymap all read one source and can never drift apart.
-	 * Same syntax tldraw's overrides use: `'cmd+z'`, `'alt+p'`, `'shift+1'`.
+	 * The **default** key binding, which the user's keymap may override (`keymap.ts`).
+	 *
+	 * No longer documentation only: the app dispatches from this table, so declaring a `kbd` here is
+	 * what actually binds the key. Ask `bindingFor(id)`/`chordsFor(id)` for what a command answers to
+	 * *now* — a surface that renders `kbd` directly will keep advertising a chord the user has moved.
+	 *
+	 * Same syntax tldraw's overrides use, alternates included: `'cmd+z'`, `'alt+p'`, `'shift+1'`,
+	 * `'v,1'`.
 	 */
 	kbd?: string
 	/**

@@ -245,12 +245,16 @@ rather than replace it. It becomes worthwhile in Phase 4, when `uiOverrides.acti
 
 ---
 
-## Phase 4 — later (do NOT build now; keep doors open)
+## Phase 4 — planned, in its own document
 
 `@` find-on-board (via `shapeLabel`/`getPageFacts`), `=` expression mode (shared namespace with
 `{…}`), user-rebindable keymap (then `uiOverrides.actions` gets generated from the table and `kbd`
-becomes the default the user overrides), nested/drill-in commands, hooks, board modes. The only
-obligation today: command ids are stable and namespaced — never rename one.
+becomes the default the user overrides), nested/drill-in commands, hooks, board modes. Tracked as
+issue #11 and recorded item by item in **`docs/command-palette-phase-4.md`**. Five of the six shipped;
+board modes were investigated and declined, with the reasoning written down there rather than left as
+a to-do.
+
+The obligation that outlives all of it: command ids are stable and namespaced — never rename one.
 
 ## Known issue, not introduced here
 

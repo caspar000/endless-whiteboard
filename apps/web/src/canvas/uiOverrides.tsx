@@ -21,6 +21,7 @@ import {
 } from 'tldraw'
 import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
+import { nativeToolKbds, nodeToolKbds } from './toolKeys'
 import { openProperties } from './propertiesTarget'
 import { toggleTracing } from './tracing'
 
@@ -28,30 +29,12 @@ import { toggleTracing } from './tracing'
  * Toolbar and shortcut entries for the node types, generated from the registry (§7: "Registry-driven
  * UI — no per-node-type hardcoding in toolbar/menus"). Adding a node type — or, later, installing a
  * plugin that supplies one — puts it in the toolbar with no change here.
- */
-/**
- * Numeric shortcuts, `1`–`9` in the dock's own order (see CanvasToolbar). tldraw 5 binds only
- * letters, but numbers-by-position is the convention every comparable canvas app keeps, so the
- * dock restores it. The node tools take the numbers after these, assigned in registry order.
- */
-const NUMBER_KBDS: Record<string, string> = {
-	select: '1',
-	hand: '2',
-	frame: '3',
-	arrow: '4',
-	draw: '7',
-	eraser: '8',
-	text: '9',
-}
-const FIRST_NODE_NUMBER = 5
-/**
- * The node run stops at 6 because 7–9 are already spoken for above.
  *
- * There are more dock buttons than digits — the sticky note, the shapes menu and the image button have
- * no number either — so a third node type takes its letter and no digit, rather than silently stealing
- * `7` from the pen.
+ * The keys these advertise come from `toolKeys.ts`, which the command table reads too. tldraw's own
+ * dispatch of them is now dead — the app's keymap takes the event in the capture phase before it
+ * arrives here (`app/useKeymap.ts`) — but the strings still feed tldraw's tooltips and its ⌘/ dialog,
+ * so they have to stay, and they have to stay the same strings.
  */
-const LAST_NODE_NUMBER = 6
 
 /**
  * A definition's `icon` is a glyph ("M", "▤", "Σ"), not one of tldraw's built-in icon names — a
@@ -122,14 +105,11 @@ export const nodeUiOverrides: TLUiOverrides = {
 		// fixed at mount and a disabled extension can be re-enabled mid-session. The gate is in
 		// `onSelect`: entries stay registered, but a disabled extension's shortcut does nothing, and
 		// the dock only *shows* enabled types (CanvasToolbar reads the visible list reactively).
-		const defs = getNodeDefinitions().filter((def) => !def.deprecated)
-		defs.forEach((def, index) => {
+		const nodeKbds = nodeToolKbds()
+		for (const def of getNodeDefinitions()) {
+			if (def.deprecated) continue
 			const id = toolIdForNodeType(def.type)
-			// The letter is the definition's own (`kbd`), so an extension's node arrives with its
-			// shortcut — checked by its author against tldraw's bindings (`r` and `g` are taken).
-			const position = index + FIRST_NODE_NUMBER
-			const number = position <= LAST_NODE_NUMBER ? String(position) : undefined
-			const kbd = [def.kbd, number].filter(Boolean).join(',')
+			const kbd = nodeKbds.get(id)
 			tools[id] = {
 				id,
 				label: def.label,
@@ -140,11 +120,12 @@ export const nodeUiOverrides: TLUiOverrides = {
 					editor.setCurrentTool(id)
 				},
 			}
-		})
-		for (const [id, number] of Object.entries(NUMBER_KBDS)) {
+		}
+		// tldraw's own tools keep their letters and gain the dock's digits. Written back onto its map
+		// so its tooltips agree with the table, not because anything here dispatches them.
+		for (const [id, kbd] of nativeToolKbds()) {
 			const tool = tools[id]
-			if (!tool) continue
-			tool.kbd = tool.kbd ? `${tool.kbd},${number}` : number
+			if (tool) tool.kbd = kbd
 		}
 		return tools
 	},

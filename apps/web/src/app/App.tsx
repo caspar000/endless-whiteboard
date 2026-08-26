@@ -17,6 +17,7 @@ import { useAgentPanelWidth } from './agentPanelWidth'
 import { setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
 import { CommandPalette } from './CommandPalette'
+import { useKeymap } from './useKeymap'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
 import { HelpPage } from './help/HelpPage'
 import { SettingsPage } from './settings/SettingsPage'
@@ -250,26 +251,6 @@ export function App() {
 		}
 	}
 
-	/**
-	 * ⌘K opens the palette from anywhere.
-	 *
-	 * A window listener in the capture phase, deliberately **not** a tldraw action: tldraw binds its
-	 * shortcuts to the document but gates them on `editor.getIsFocused()`, and `focusOnly` above blurs
-	 * every editor the moment you leave the board view — so an override would be dead on the home
-	 * screen, Settings and Help, which is most of where you want it. Capture plus `stopPropagation`
-	 * also means tldraw and CodeMirror never see the keystroke at all.
-	 */
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return
-			event.preventDefault()
-			event.stopPropagation()
-			setPaletteOpen((open) => !open)
-		}
-		window.addEventListener('keydown', onKeyDown, { capture: true })
-		return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-	}, [])
-
 	// Ask for durable storage once, at startup. Chrome grants it silently based on engagement;
 	// Safari grants it to installed PWAs. Either way, asking early is free (§4.4).
 	useEffect(() => {
@@ -463,6 +444,7 @@ export function App() {
 			goHelp,
 			setTheme,
 			toggleAgentPanel,
+			togglePalette: () => setPaletteOpen((open) => !open),
 		})
 	})
 
@@ -604,6 +586,17 @@ export function App() {
 		}),
 		[activeBoardId, route.view]
 	)
+
+	/*
+	 * Every keyboard shortcut in the app, from the one table.
+	 *
+	 * ⌘K used to be a bespoke listener right here. It is now an ordinary row (`view.palette`), which
+	 * is the whole point of the keymap: one dispatcher, one source for what a key does, and the
+	 * palette's own key rebindable like everything else. The capture-phase reasoning that made the
+	 * bespoke listener necessary still applies and now lives in `useKeymap.ts` — tldraw gates its
+	 * shortcuts on `getIsFocused()`, and `focusOnly` blurs every editor outside the board view.
+	 */
+	useKeymap({ getContext: getCommandContext })
 
 	const routedBoard = activeBoardId
 		? api.boards.find((b) => b.id === activeBoardId)

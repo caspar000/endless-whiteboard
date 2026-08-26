@@ -82,10 +82,24 @@ export function ExtensionDetail({ id, onBack }: { id: string; onBack: () => void
 			items: (ext.operations ?? []).map((operation) => ({ label: operation.title })),
 		},
 		{
+			// Vocabulary rather than capability, and worth naming for exactly that reason: turning the
+			// extension off takes these words out of every note's `{…}` menu, which is a change to what
+			// the boards you already wrote can say. Nothing else on this page has that reach.
+			title: 'Questions it teaches',
+			items: (ext.queries ?? []).map((query) => ({ label: query.name })),
+		},
+		{
 			title: 'Opens these files',
 			items: (ext.fileImports ?? []).flatMap((imp) =>
 				imp.extensions.map((suffix) => ({ label: `.${suffix}` }))
 			),
+		},
+		{
+			// Listed as a count rather than by pattern: "matches(text)" is a function, so unlike a file
+			// suffix there is nothing truthful to print — and the page's premise is that it describes
+			// the extension, so a contribution that changes what dropping something does cannot be absent.
+			title: 'Dropped links and text',
+			items: (ext.contentImports ?? []).map(() => ({ label: 'Claims links and pasted text' })),
 		},
 		{
 			title: 'Right-click actions',

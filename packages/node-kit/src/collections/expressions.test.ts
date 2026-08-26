@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { buildEdgeIndex } from '../edges'
 import type { FactsMap, ShapeFacts } from '../facts'
 import type { PropertyDef, PropertyValue } from '../properties/types'
-import { renderExpressions, type ExpressionContext } from './expressions'
+import { clearQueryRegistry, registerQuery } from './namedQueries'
+import {
+	expressionForBoard,
+	isAggregateExpression,
+	renderExpressions,
+	type ExpressionContext,
+} from './expressions'
 
 const REGISTRY = new Map<string, PropertyDef>([
 	['price', { id: 'price', name: 'Price', type: 'financial', unit: 'GEL' }],
@@ -122,5 +128,97 @@ describe('inline expressions', () => {
 	it('skips the work entirely when a note has no braces at all', () => {
 		const md = '# Just prose\n\nNothing to evaluate here.'
 		expect(render(md)).toBe(md)
+	})
+})
+
+describe('expressionForBoard', () => {
+	it('spells out the board when an op left the place to look implicit', () => {
+		expect(expressionForBoard('sum price')).toBe('sum price page')
+		// `{count}` on its own means "how many things point at me" in a note; from the palette it can
+		// only sensibly mean the board.
+		expect(expressionForBoard('count')).toBe('count page')
+		expect(expressionForBoard('  sum   price  ')).toBe('sum price page')
+	})
+
+	it('leaves a question that already says where alone', () => {
+		for (const body of ['sum price page', 'sum price in', 'count either', 'avg rating frame']) {
+			expect(expressionForBoard(body)).toBe(body)
+		}
+	})
+
+	it('leaves the bare-property form alone — it reads the selected shape, not the board', () => {
+		expect(expressionForBoard('price')).toBe('price')
+		expect(expressionForBoard('unit price')).toBe('unit price')
+		expect(expressionForBoard('')).toBe('')
+	})
+
+	it('tells a question about a set apart from one about a shape', () => {
+		// Which decides whether the expression has a *subject*: a query never includes its own shape,
+		// so asking `count page` on behalf of the selection would silently exclude the selection.
+		expect(isAggregateExpression('sum price')).toBe(true)
+		expect(isAggregateExpression('COUNT')).toBe(true)
+		// Aliases the parser accepts count too — one vocabulary, not two.
+		expect(isAggregateExpression('total price')).toBe(true)
+		expect(isAggregateExpression('price')).toBe(false)
+		expect(isAggregateExpression('unit price')).toBe(false)
+		expect(isAggregateExpression('   ')).toBe(false)
+	})
+
+	it('produces a body the evaluator agrees with, which is the point', () => {
+		// The rewritten string is what gets previewed *and* what is written into a dropped shape, so
+		// the two cannot disagree: this asserts the rewrite is something `evaluate` actually accepts.
+		expect(render(`{${expressionForBoard('sum price')}}`)).toBe(render('{sum price page}'))
+	})
+})
+
+describe('named questions', () => {
+	afterEach(() => clearQueryRegistry())
+
+	it('stands for the expression it was given, wherever expressions are read', () => {
+		registerQuery({ name: 'committed', body: 'sum price in' })
+		expect(render('Committed **{committed}** so far')).toBe(render('Committed **{sum price in}** so far'))
+	})
+
+	it('follows a name that stands for another name', () => {
+		registerQuery({ name: 'committed', body: 'sum price in' })
+		registerQuery({ name: 'spend', body: 'committed' })
+		expect(render('{spend}')).toBe(render('{sum price in}'))
+	})
+
+	it('gives up on a cycle instead of hanging', () => {
+		// Two names pointing at each other is a typo someone will make. It must cost them a dash.
+		registerQuery({ name: 'a', body: 'b' })
+		registerQuery({ name: 'b', body: 'a' })
+		expect(render('{a}')).toBe('{a}')
+	})
+
+	it('never takes a name a property already has', () => {
+		// The rule that makes the whole feature unable to change what an existing note reports: a
+		// board with a "Price" property keeps meaning its own price, and the query does not apply.
+		registerQuery({ name: 'Price', body: 'sum price page' })
+		expect(render('{price}')).toBe('₾ 500.00')
+		expect(render('{Price}')).toBe('₾ 500.00')
+	})
+
+	it('only resolves as a whole question, never as a word inside one', () => {
+		registerQuery({ name: 'committed', body: 'sum price in' })
+		// `{sum committed}` would have to mean "sum of the committed query", and a query is a
+		// question, not a column. Left as typed, which is what an unrecognised expression always does.
+		expect(render('{sum committed}')).toBe('{sum committed}')
+	})
+
+	it('is seen through when deciding whether a question has a subject', () => {
+		registerQuery({ name: 'everything', body: 'count page' })
+		// Otherwise the palette would lend `= everything` the selected shape as a subject, and a query
+		// never includes its own shape — so the answer would quietly be one short.
+		expect(isAggregateExpression('everything')).toBe(true)
+		expect(isAggregateExpression('unknown name')).toBe(false)
+	})
+
+	it('leaves a named question alone when spelling out a scope', () => {
+		registerQuery({ name: 'everything', body: 'count page' })
+		// The name is written to the board rather than its expansion, so redefining the question
+		// updates every shape that asked it. Appending `page` here would have frozen the expansion in.
+		expect(expressionForBoard('everything')).toBe('everything')
 	})
 })

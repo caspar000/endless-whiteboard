@@ -14,6 +14,7 @@ import { QUOTE_WIDTH, type NewQuote } from '../quote/createQuote'
 import { loadPdfjs } from '../pdfjs'
 import { PdfPage, type AreaFraction } from './PdfPage'
 import { decodeRects, encodeRects, rectsFromRange, type QuoteRect } from '../quote/rects'
+import { subscribeToReaderKeys, typingNow } from './keys'
 import { createPageCache, prefetchAround } from './pageCache'
 import { PageCurl } from './PageCurl'
 import { ReaderFooter } from './ReaderFooter'
@@ -446,16 +447,16 @@ export function PdfReader({
 	}, [viewMode, pageCount])
 
 	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
+		return subscribeToReaderKeys((event) => {
 			// Scrolling has its own keys; hijacking them would be worse than leaving them alone.
 			if (viewMode === 'scroll') return
+			// An arrow in a settings field is a caret, not a page turn.
+			if (typingNow()) return
 			if (event.key === 'ArrowLeft' || event.key === 'PageUp') turn(-1)
 			else if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') turn(1)
 			else return
 			event.preventDefault()
-		}
-		window.addEventListener('keydown', onKeyDown)
-		return () => window.removeEventListener('keydown', onKeyDown)
+		})
 	}, [turn, viewMode])
 
 	/**

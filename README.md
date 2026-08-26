@@ -59,7 +59,7 @@ and the user can toggle in **Settings → Extensions**:
 |---|---|---|---|
 | **Markdown notes** (`@lifeboard/note-markdown`) | `node.markdown` | Markdown with Obsidian-style live preview. Grows with its content. | <kbd>m</kbd> |
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
-| **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place, and passages taken out of it as quote cards linked back to the page. | — |
+| **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -286,6 +286,15 @@ keeps stepping when held.
 
 **⌘ and Ctrl are one modifier** in the keymap's vocabulary, which is what lets a single binding work
 on both platforms — and is what ⌘K already did before any of this.
+
+**A full-screen surface binds its own keys**, outside the table and deliberately so. The reader
+(`packages/book-reader/src/reader/keys.ts`) is the case: it covers the canvas, has no text to type and
+no shortcut behind it to work around, so its bar answers to bare letters — and a command in the table
+would be wrong twice over, since ⌘K's dispatcher refuses non-chrome commands while a shape is being
+edited, which reading a book *is*. What that surface does owe is reach: reader keys are dispatched from
+one handler list with **two sources**, the window and each of the book's own section iframes, because
+clicking a paragraph moves focus into a document the window never hears from again. The real event is
+forwarded rather than a synthetic copy, so `preventDefault` still suppresses the iframe's own scrolling.
 
 **The palette blurs the board while it is open.** tldraw reads keys off the *document* and gates
 them on `editor.getIsFocused()`, so `App.tsx` passes `null` to `focusOnly` whenever `paletteOpen` is

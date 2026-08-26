@@ -10013,31 +10013,58 @@ button.lb-props__eye:hover {
 	font-family: var(--lb-font);
 }
 
-/* The die silhouettes, in the tray, on the cursor and in the readout. The numeral is part of the icon
-   because a d8 and a d10 have nearly the same outline at this size. */
+/*
+ * The die wireframes, in the tray, on the cursor, in the palette, in Settings and on a result card.
+ *
+ * Two weights: the outer edge carries the shape and the creases sit behind it, lighter, so a d20's
+ * twelve visible facets read as surface rather than as scribble at 24px. Both are `currentColor`, which
+ * is what lets one icon take the tray's dim grey, the palette's row colour and a roll's red-to-blue.
+ */
+.lb-dice-icon {
+	overflow: visible;
+}
 .lb-dice-icon path {
 	fill: none;
 	stroke: currentColor;
-	stroke-width: 1.6;
 	stroke-linejoin: round;
+	stroke-linecap: round;
+	vector-effect: non-scaling-stroke;
 }
+.lb-dice-icon__rim {
+	stroke-width: 1.5;
+}
+.lb-dice-icon__crease {
+	/* Thinner than the rim but not fainter: at icon size a low opacity turns a facet into a smudge,
+	   where a thin full-strength line still reads as an edge. */
+	stroke-width: 0.85;
+	opacity: 0.72;
+}
+
+/*
+ * The numeral, haloed.
+ *
+ * `paint-order: stroke fill` draws the stroke *under* the glyph, so a thick same-colour-as-the-paper
+ * stroke becomes an outline around it rather than a fringe on top of it. That halo is what makes one
+ * icon work everywhere: the number now sits over the die's own creases, and on a card it sits over
+ * whatever colour the die is, and it stays legible in both cases without anyone choosing a text colour.
+ */
 .lb-dice-icon text {
 	fill: currentColor;
-	stroke: none;
+	stroke: var(--lb-dice-halo, var(--lb-surface));
+	/* Enough to separate the glyph from a crease running under it, and no more — 3 smothered the facets
+	   the wireframe exists to show. */
+	stroke-width: 2;
+	paint-order: stroke fill;
 	font-family: var(--lb-font);
 	font-size: 8.5px;
-	font-weight: 650;
+	font-weight: 700;
 	/*
-	 * Both axes, and the vertical one is the load-bearing half. An SVG `<text>` y is a *baseline*, so
-	 * without `dominant-baseline` every number sat high by half a glyph — most visibly in the shapes
-	 * that are not symmetrical top-to-bottom, where it read as the number being in the wrong place
-	 * rather than as a uniform offset. `central` centres the em box on y; `CENTRE` in DieIcon.tsx then
-	 * only has to say where each shape's own middle is.
+	 * Both axes. An SVG `<text>` y is a *baseline*, so without `dominant-baseline` every number sat high
+	 * by half a glyph — most visibly on the shapes that are not symmetrical top to bottom, where it read
+	 * as the number being in the wrong place rather than as a uniform offset.
 	 */
 	text-anchor: middle;
 	dominant-baseline: central;
-	/* The glyph is the only part that must stay legible when the outline is dimmed. */
-	opacity: 0.95;
 }
 
 /*
@@ -10079,6 +10106,7 @@ button.lb-props__eye:hover {
  * is a real shell column, so the container narrows and the tray comes inward with it.
  */
 .lb-dice-tray {
+	--lb-dice-halo: var(--lb-panel);
 	position: absolute;
 	top: 50%;
 	right: 12px;
@@ -10100,8 +10128,9 @@ button.lb-props__eye:hover {
 	position: relative;
 	display: grid;
 	place-items: center;
-	width: 34px;
-	height: 34px;
+	/* 38, not 34: the wireframes carry real detail and were muddy at the size a flat silhouette needed. */
+	width: 38px;
+	height: 38px;
 	padding: 0;
 	border: 0;
 	border-radius: 8px;
@@ -10129,8 +10158,8 @@ button.lb-props__eye:hover {
 /* The count, as a badge on the die rather than a number beside it: what went up is the die. */
 .lb-dice-tray__count {
 	position: absolute;
-	right: 1px;
-	bottom: 0;
+	right: 0;
+	bottom: -1px;
 	min-width: 13px;
 	padding: 0 2px;
 	border-radius: 7px;
@@ -10159,6 +10188,7 @@ button.lb-props__eye:hover {
 
 /* What you are holding, trailing the pointer. Offset down and right so it sits clear of the arrow. */
 .lb-dice-held {
+	--lb-dice-halo: var(--lb-panel);
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -10198,6 +10228,8 @@ button.lb-props__eye:hover {
  * itself rather than a fixed offset.
  */
 .lb-dice-readout {
+	/* The floating readout sits on the translucent chrome panel, not on a card. */
+	--lb-dice-halo: var(--lb-panel);
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -10245,13 +10277,9 @@ button.lb-props__eye:hover {
 	place-items: center;
 	color: var(--lb-text);
 }
-.lb-dice-readout__face .lb-dice-icon {
-	/* Larger than the tray's, because this is the number you are actually here to read. */
-	font-size: 11px;
-}
 .lb-dice-readout__face .lb-dice-icon text {
-	font-size: inherit;
-	font-weight: 700;
+	/* Larger than the tray's, because this is the number you are actually here to read. */
+	font-size: 10px;
 }
 /*
  * The outline steps back so the number reads first — fourteen dice at full-strength outline is a grid
@@ -10261,8 +10289,13 @@ button.lb-props__eye:hover {
  * findable in that grid at a glance: at the extremes the colour has to arrive as a *shape*, not as one
  * tinted digit. A middling roll stays a faint outline round a plain number.
  */
-.lb-dice-readout__face .lb-dice-icon path {
-	opacity: calc(0.4 + 0.6 * var(--lb-die-strength, 0));
+.lb-dice-readout__face .lb-dice-icon__rim {
+	opacity: calc(0.45 + 0.55 * var(--lb-die-strength, 0));
+}
+.lb-dice-readout__face .lb-dice-icon__crease {
+	/* Fainter still on a card: fourteen wireframes at full strength is a thicket to look past, and the
+	   facets are only here to say *which die* — the number is the thing being read. */
+	opacity: calc(0.22 + 0.4 * var(--lb-die-strength, 0));
 }
 .lb-dice-readout__total {
 	display: flex;
@@ -10547,7 +10580,9 @@ button.lb-props__eye:hover {
  * it is a *shape*, so it takes the board's card surface rather than the chrome's translucent panel, and
  * its properties are drawn under it by the app (`strips: 'below'`).
  */
+/* The halo has to be the colour behind the number, and on a card that is the card. */
 .lb-roll-card {
+	--lb-dice-halo: var(--lb-surface);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -10568,4 +10603,15 @@ button.lb-props__eye:hover {
 .lb-roll-card__empty {
 	color: var(--lb-text-faint);
 	font-size: 12px;
+}
+
+/*
+ * A die in the Settings preview: the halo is the die's own colour, since the icon is drawn *on* it.
+ *
+ * Set from the same inline colour the swatch uses (`DicePreview` puts it on `background`), so a numeral
+ * on a dark die gets a dark halo and stays a light glyph with a soft edge — rather than a light glyph
+ * ringed in white, which would look like a sticker.
+ */
+.lb-dice-preview__die {
+	--lb-dice-halo: transparent;
 }

@@ -1,58 +1,24 @@
 import type { CSSProperties } from 'react'
+import { OUTLINE_BOX, dieOutline } from './dieOutline'
 import { facesOf, type DieKind } from './kinds'
 
 /**
- * A die, as a silhouette with a number in it.
+ * A die, as a projected wireframe with a number in the middle of it.
  *
- * Drawn here rather than taken from lucide, which has `Dice1`–`Dice6` and nothing polyhedral — there
- * is no icon set with a d10 in it. The number inside is not decoration: a d8 and a d10 have nearly
- * the same outline at 20px, so the silhouette alone would make two of the seven buttons a guess.
+ * Drawn here rather than taken from lucide, which has `Dice1`–`Dice6` and nothing polyhedral — there is
+ * no icon set with a d10 in it. The geometry comes from `dieOutline`, which projects the *same* vertex
+ * and face tables the rolling dice are built from, so an icon is a true picture of the die it stands
+ * for and cannot drift from it.
  *
- * The d100 shares the d10's kite, because that is what it is — a second d10, read as tens — and gets
- * the percentile die's own marking instead of a number that would not fit.
+ * It replaced a set of flat silhouettes — a triangle, a square, a rhombus, a kite, a pentagon, a
+ * hexagon. Legible, but they were not dice, and two of them were nearly the same shape: a d8 and a d10
+ * are both "a diamond" in outline. The facets are what tell them apart.
  *
- * One component draws both the tray's face count *and* the rolled value (`label`), so "where the
- * number goes" is decided once. It used to be decided twice: the readout hid this text and floated an
- * HTML span over the icon instead, centred on the icon's bounding box rather than on the shape — which
- * is a different point for every die that is not symmetrical about its middle.
+ * **One component for every surface** — the tray, the held-dice cursor, the palette, Settings, and the
+ * result card — so a d20 is the same d20 wherever it appears. That is why the number is always dead
+ * centre and always carries a halo: it has to stay readable over the creases, at 38px in the tray and
+ * at 24px on a card, on a die of any colour.
  */
-const OUTLINES: Record<DieKind, string> = {
-	d4: 'M12 3 L21.5 20 L2.5 20 Z',
-	d6: 'M4.5 4.5 H19.5 V19.5 H4.5 Z',
-	d8: 'M12 2.5 L21 12 L12 21.5 L3 12 Z',
-	d10: 'M12 2.5 L20.5 10.5 L12 21.5 L3.5 10.5 Z',
-	d12: 'M12 2.5 L21.4 9.3 L17.8 20.5 L6.2 20.5 L2.6 9.3 Z',
-	d20: 'M12 2.5 L20.4 7.25 L20.4 16.75 L12 21.5 L3.6 16.75 L3.6 7.25 Z',
-	d100: 'M12 2.5 L20.5 10.5 L12 21.5 L3.5 10.5 Z',
-}
-
-/**
- * Where the number sits in each outline — the shape's own middle, not the viewBox's.
- *
- * Only the square, the rhombus and the hexagon are symmetrical top-to-bottom, so only those three
- * centre at 12. The rest are computed from the path and then nudged for legibility rather than left
- * at the bare centroid:
- *
- *  - **d4** — a triangle's centroid (14.3) is not where a number looks centred, because the shape is
- *    still narrowing above it. The incircle's centre (14.4) is, and leaves the glyph inside the sides.
- *  - **d10 / d100** — the kite's centroid is 11.5; a touch lower sits the digits under its widest line
- *    (y=10.5) instead of straddling it, which is what makes room for two of them.
- *  - **d12** — a vertex-up regular pentagon with its apex at 2.5 and base at 20.5 has its centre at
- *    12.45, not 12.
- *
- * Paired with `dominant-baseline: central` in the stylesheet, which is what makes this a *centre* at
- * all: an SVG `<text>` y is otherwise the baseline, so every number here used to sit high by half a
- * glyph.
- */
-const CENTRE: Record<DieKind, number> = {
-	d4: 14.4,
-	d6: 12,
-	d8: 12,
-	d10: 11.9,
-	d12: 12.45,
-	d20: 12,
-	d100: 11.9,
-}
 
 /**
  * How far a rolled value leans toward the best or the worst the die could do.
@@ -115,10 +81,21 @@ export function DieIcon({
 	label?: string
 	tone?: DieTone
 }) {
+	const outline = dieOutline(kind)
+	/*
+	 * Below this the numeral is a smudge, so the wireframe stands alone.
+	 *
+	 * A d20 has twelve visible facets; adding two illegible digits and a halo on top of them at 15px made
+	 * the palette's rows unreadable in both directions. Nothing is lost: at these sizes the icon sits
+	 * beside a label that already says which die it is, and the shape alone distinguishes them — which is
+	 * the whole reason for drawing the geometry rather than a silhouette.
+	 */
+	const NUMERAL_LEGIBLE_AT = 18
+	const numeral = size >= NUMERAL_LEGIBLE_AT
 	return (
 		<svg
 			className="lb-dice-icon"
-			viewBox="0 0 24 24"
+			viewBox={`0 0 ${OUTLINE_BOX} ${OUTLINE_BOX}`}
 			width={size}
 			height={size}
 			data-side={tone?.side}
@@ -126,10 +103,19 @@ export function DieIcon({
 			aria-hidden="true"
 			focusable="false"
 		>
-			<path d={OUTLINES[kind]} />
-			<text x="12" y={CENTRE[kind]}>
-				{label ?? (kind === 'd100' ? '%' : facesOf(kind))}
-			</text>
+			{/* Creases first, so the outer edge draws over the points where they meet it. */}
+			<path className="lb-dice-icon__crease" d={outline.creases} />
+			<path className="lb-dice-icon__rim" d={outline.silhouette} />
+			{/*
+			 * Dead centre, on both axes. For a die viewed down a face normal that is exactly where the front
+			 * face's own middle projects to, so the number sits on the face it belongs to — and for the
+			 * cube, seen from a corner, the centre is the only place it can go and still look deliberate.
+			 */}
+			{numeral && (
+				<text x={OUTLINE_BOX / 2} y={OUTLINE_BOX / 2}>
+					{label ?? (kind === 'd100' ? '%' : facesOf(kind))}
+				</text>
+			)}
 		</svg>
 	)
 }

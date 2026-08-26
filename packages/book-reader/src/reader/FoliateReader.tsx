@@ -13,6 +13,7 @@ import { PageCurl } from './PageCurl'
 import { paintPage, visibleWindow, type PaintedPage } from './paintPage'
 import { ReaderFooter } from './ReaderFooter'
 import { fontFaceCss, fontStack } from './fonts'
+import { readKeysFrom, subscribeToReaderKeys, typingNow } from './keys'
 import { startLayeredPageTurn, supportsLayeredPageTurn } from './layeredPageTurn'
 import { animatesPageTurns, withAlpha, type ReaderSettings } from './settings'
 import type { Highlight, ReaderApi, ReaderSelection, TocItem, ViewMode } from './types'
@@ -525,6 +526,11 @@ export function FoliateReader({
 						{ capture: true }
 					)
 					doc.fonts?.addEventListener('loadingdone', invalidateCapture)
+					// And the keys, for the same reason the selection is read from in here: click a
+					// paragraph and focus moves into this document, where the window never hears from it
+					// again. Every reader key goes through the one handler list, so handing the document
+					// over is all either engine has to do.
+					readKeysFrom(doc)
 					doc.addEventListener('pointerup', () => {
 						const selected = doc.getSelection()
 						const text = selected?.toString().trim() ?? ''
@@ -665,15 +671,14 @@ export function FoliateReader({
 	}, [toc, onReady])
 
 	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
+		return subscribeToReaderKeys((event) => {
 			if (viewMode === 'scroll') return
+			if (typingNow()) return
 			if (event.key === 'ArrowLeft' || event.key === 'PageUp') turn(-1)
 			else if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') turn(1)
 			else return
 			event.preventDefault()
-		}
-		window.addEventListener('keydown', onKeyDown)
-		return () => window.removeEventListener('keydown', onKeyDown)
+		})
 	}, [viewMode, turn])
 
 	if (failed) {

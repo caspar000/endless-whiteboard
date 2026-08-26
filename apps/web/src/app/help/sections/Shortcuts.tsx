@@ -1,3 +1,4 @@
+import { READER_HOTKEYS, VIEW_MODE_LABELS, VIEW_MODES, viewModeKey } from '@lifeboard/book-reader'
 import { chordsFor, getVisibleCommands, subscribeToCommands, subscribeToKeymap } from '@lifeboard/node-kit'
 import { useSyncExternalStore } from 'react'
 import { OTHER_GROUP, formatKbd, groupInOrder, isMacPlatform } from '../../paletteItems'
@@ -67,10 +68,20 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The reader is a full-screen surface of its own, so these are not commands and cannot be
+		// rebound — they come from `book-reader`'s own table, which is also what draws the tooltips.
 		title: 'Reading a book',
 		rows: [
 			[['→', 'PageDown', 'Space'], 'Next page'],
 			[['←', 'PageUp'], 'Previous page'],
+			[[READER_HOTKEYS.contents], 'Contents'],
+			[
+				VIEW_MODES.map(viewModeKey),
+				`Layout: ${VIEW_MODES.map((mode) => VIEW_MODE_LABELS[mode].toLowerCase()).join(', ')}`,
+			],
+			[[READER_HOTKEYS.clipRegion], 'Clip a region of the page — PDFs, which have pages to cut'],
+			[[READER_HOTKEYS.clipPage], 'Clip the whole page'],
+			[[READER_HOTKEYS.settings], 'Reading settings'],
 			[['Esc'], 'Close the contents or the settings, then the reader'],
 		],
 	},

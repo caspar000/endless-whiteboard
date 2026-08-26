@@ -1,4 +1,11 @@
-import { BOOK_FILE_SUFFIXES, HIGHLIGHT_TAGS, VIEW_MODE_LABELS } from '@lifeboard/book-reader'
+import {
+	BOOK_FILE_SUFFIXES,
+	HIGHLIGHT_TAGS,
+	READER_HOTKEYS,
+	VIEW_MODE_LABELS,
+	VIEW_MODES,
+	viewModeKey,
+} from '@lifeboard/book-reader'
 import { useState } from 'react'
 import { Jump, Keys, Section, Tabs, useDemo, type SectionProps } from '../kit'
 
@@ -121,29 +128,33 @@ function QuoteDemo() {
 
 /* ------------------------------------------------------------------ the reader's chrome */
 
-type ReaderBit = { id: string; label: string; blurb: string }
+type ReaderBit = { id: string; label: string; keys: string[]; blurb: string }
 
 const READER_BITS: ReaderBit[] = [
 	{
 		id: 'contents',
 		label: 'Contents',
+		keys: [READER_HOTKEYS.contents],
 		blurb:
 			"The book's own table of contents, as far down as it nests. Jumping from it moves your position, which means it also moves the progress property.",
 	},
 	{
 		id: 'view',
 		label: 'Layout',
+		keys: VIEW_MODES.map(viewModeKey),
 		blurb: `${VIEW_MODE_LABELS.page}, ${VIEW_MODE_LABELS.spread.toLowerCase()} side by side, or ${VIEW_MODE_LABELS.scroll.toLowerCase()} — the same three choices whether the book has fixed pages or reflows. A choice about how you are reading rather than about the book, so it is not written to the shape.`,
 	},
 	{
 		id: 'clip',
 		label: 'Clip',
+		keys: [READER_HOTKEYS.clipRegion, READER_HOTKEYS.clipPage],
 		blurb:
 			'For everything a text selection cannot take: a diagram, a table, a page of a comic. Drag a region — or clip the whole page — and the picture lands on the board as a quote card, linked back the same way.',
 	},
 	{
 		id: 'settings',
 		label: 'Reading settings',
+		keys: [READER_HOTKEYS.settings],
 		blurb:
 			'Typography, page shape and the page-turn animation. App-wide, not per book: they describe how you like to read, and having to re-choose a font for every file would be absurd.',
 	},
@@ -163,7 +174,9 @@ function ReaderTour() {
 				onChange={setActiveId}
 			/>
 			<div className="lb-help-dockdemo__info">
-				<div className="lb-help-dockdemo__name">{active.label}</div>
+				<div className="lb-help-dockdemo__name">
+					{active.label} <Keys keys={active.keys} />
+				</div>
 				<p>{active.blurb}</p>
 			</div>
 		</div>
@@ -175,6 +188,15 @@ function ReaderTour() {
 const READER_KEYS: [string[], string][] = [
 	[['→', 'PageDown', 'Space'], 'Next page'],
 	[['←', 'PageUp'], 'Previous page'],
+	// Straight from the reader's own table, so a key moved there cannot leave a stale row here.
+	[[READER_HOTKEYS.contents], 'Contents'],
+	[
+		VIEW_MODES.map(viewModeKey),
+		`Layout: ${VIEW_MODES.map((mode) => VIEW_MODE_LABELS[mode].toLowerCase()).join(', ')}`,
+	],
+	[[READER_HOTKEYS.clipRegion], 'Clip a region — drag over the page, then take it'],
+	[[READER_HOTKEYS.clipPage], 'Clip the whole page'],
+	[[READER_HOTKEYS.settings], 'Reading settings'],
 	[['Esc'], 'Close whatever is open — the contents, the settings, then the reader itself'],
 	[['double-click'], 'On a cover, read it; on a quote, open its book at that passage'],
 ]
@@ -294,6 +316,13 @@ export function Books({ go }: SectionProps) {
 						</div>
 					))}
 				</div>
+				<p className="lb-help__aside">
+					Every one of these is a single key: the reader is full-screen, so there is no canvas
+					shortcut behind it to work around and nothing to type. Each is written in the tooltip of
+					the button it presses, and each does only what that button would — the clips are a PDF's,
+					where the page is a fixed thing to cut out of, and a comic has no typography to set and so
+					no reading settings to open.
+				</p>
 				<p className="lb-help__aside">
 					Books can be switched off like any extension, in Settings → Extensions. Dropped files stop
 					being claimed and the reader goes away — but the books and quotes already on your boards keep

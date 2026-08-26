@@ -33,6 +33,8 @@ export {
  * page is reachable from here.
  */
 export { VIEW_MODE_LABELS, VIEW_MODES, type ViewMode } from './reader/types'
+/** The reader's own keys, for the same reason — `keys.ts` reaches nothing but the table above. */
+export { READER_HOTKEYS, viewModeKey } from './reader/keys'
 export { addQuoteToBoard, type NewQuote } from './quote/createQuote'
 export {
 	parseSearchResponse,

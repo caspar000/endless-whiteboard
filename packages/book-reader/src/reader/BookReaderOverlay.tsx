@@ -32,7 +32,14 @@ import { READING_PROGRESS_PROPERTY, type BookNodeProps } from '../definition'
 import { addQuoteToBoard, type NewQuote } from '../quote/createQuote'
 import { highlightProperty } from '../quote/definition'
 import { collectHighlights } from './highlights'
-import { typingElsewhere } from './keys'
+import {
+	READER_HOTKEYS,
+	readerHotkey,
+	subscribeToReaderKeys,
+	typingElsewhere,
+	typingNow,
+	viewModeKey,
+} from './keys'
 import { SettingsModal, type SettingsGroup } from './SettingsModal'
 import { SettingsPanel } from './SettingsPanel'
 import {
@@ -326,6 +333,51 @@ export function BookReaderOverlay({
 
 	const isFixedLayout = book?.format === 'pdf'
 	const engine = book ? engineFor(book.format) : null
+
+	/**
+	 * The bar, as keys.
+	 *
+	 * Everything in the header is a toggle you reach for mid-sentence — the contents, the layout, a
+	 * clip, the settings — and moving the pointer to the top of the screen for each one is the kind of
+	 * friction that stops you doing it at all. The chords themselves are in `keys.ts`, next to the
+	 * tooltips that advertise them, so the bar and the help page cannot disagree about what T does.
+	 *
+	 * Nothing here fires while the settings window is up: it is a modal with a text field in it, and
+	 * a letter typed into a tag name is a letter, not a command.
+	 */
+	useEffect(() => {
+		return subscribeToReaderKeys((event) => {
+			if (customizing || typingNow()) return
+			const hotkey = readerHotkey(event)
+			if (!hotkey) return
+
+			switch (hotkey.kind) {
+				case 'contents':
+					setTocOpen((open) => !open)
+					break
+				case 'view':
+					change({ viewMode: hotkey.mode })
+					break
+				case 'clipRegion':
+					// Both clips are offered by fixed-layout books only, and the keys follow the buttons:
+					// silence, rather than a marquee over a book that has no page to draw it on.
+					if (!isFixedLayout) return
+					setClipping((on) => !on)
+					break
+				case 'clipPage':
+					if (!api.clipPage) return
+					api.clipPage()
+					break
+				case 'settings':
+					if (!engine) return
+					setSettingsOpen((open) => !open)
+					break
+			}
+			event.preventDefault()
+			event.stopPropagation()
+		})
+	}, [api, change, customizing, engine, isFixedLayout])
+
 	const readerProps = useMemo(
 		() => ({
 			viewMode,
@@ -355,7 +407,7 @@ export function BookReaderOverlay({
 					className={tocOpen ? 'lb-reader__tool lb-reader__tool--on' : 'lb-reader__tool'}
 					onClick={() => setTocOpen((open) => !open)}
 					aria-pressed={tocOpen}
-					title="Contents"
+					title={`Contents (${READER_HOTKEYS.contents})`}
 				>
 					<BookText size={15} aria-hidden />
 				</button>
@@ -373,7 +425,7 @@ export function BookReaderOverlay({
 								}
 								onClick={() => change({ viewMode: mode })}
 								aria-pressed={viewMode === mode}
-								title={VIEW_MODE_LABELS[mode]}
+								title={`${VIEW_MODE_LABELS[mode]} (${viewModeKey(mode)})`}
 							>
 								<Icon size={15} aria-hidden />
 							</button>
@@ -388,7 +440,7 @@ export function BookReaderOverlay({
 							className={clipping ? 'lb-reader__tool lb-reader__tool--on' : 'lb-reader__tool'}
 							onClick={() => setClipping((on) => !on)}
 							aria-pressed={clipping}
-							title="Clip an area to the board"
+							title={`Clip an area to the board (${READER_HOTKEYS.clipRegion})`}
 						>
 							<Crop size={15} aria-hidden />
 						</button>
@@ -396,7 +448,7 @@ export function BookReaderOverlay({
 							type="button"
 							className="lb-reader__tool"
 							onClick={() => api.clipPage?.()}
-							title="Clip the whole page to the board"
+							title={`Clip the whole page to the board (${READER_HOTKEYS.clipPage})`}
 						>
 							<Scissors size={15} aria-hidden />
 						</button>
@@ -409,7 +461,7 @@ export function BookReaderOverlay({
 						className={settingsOpen ? 'lb-reader__tool lb-reader__tool--on' : 'lb-reader__tool'}
 						onClick={() => setSettingsOpen((open) => !open)}
 						aria-pressed={settingsOpen}
-						title="Reading settings"
+						title={`Reading settings (${READER_HOTKEYS.settings})`}
 					>
 						<Settings2 size={15} aria-hidden />
 					</button>
@@ -420,7 +472,13 @@ export function BookReaderOverlay({
 						{added === 1 ? 'Quote added' : `${added} quotes added`}
 					</span>
 				)}
-				<button type="button" className="lb-reader__close" onClick={onClose} aria-label="Close reader">
+				<button
+					type="button"
+					className="lb-reader__close"
+					onClick={onClose}
+					aria-label="Close reader"
+					title="Close reader (Esc)"
+				>
 					<X size={16} aria-hidden />
 				</button>
 			</header>

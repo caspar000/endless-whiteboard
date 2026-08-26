@@ -220,4 +220,65 @@ test.describe('comic books', () => {
 		await page.keyboard.press('ArrowRight')
 		await expect.poll(at).toBeGreaterThan(second)
 	})
+
+	/**
+	 * The bar's own keys, end to end.
+	 *
+	 * The mapping is unit-tested next to it (`reader/keys.test.ts`); what only the real app can show is
+	 * that the keystroke *arrives* — the reader is a portal inside tldraw's container, with the app's
+	 * capture-phase dispatcher and tldraw's own listener both in front of it.
+	 */
+	test('the reader bar answers to single keys', async ({ page }) => {
+		await dropComic(page, 'Watchmen_03.cbr', 2)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-book__cover')).toBeVisible()
+
+		await openReader(page)
+		const reader = page.locator('.lb-reader')
+		await expect(reader).toBeVisible()
+
+		const toc = reader.locator('.lb-reader__toc')
+		await page.keyboard.press('t')
+		await expect(toc).toBeVisible()
+		await page.keyboard.press('t')
+		await expect(toc).toBeHidden()
+
+		// The digits follow the buttons, so the third one is scrolling.
+		const scrolling = reader.getByTitle('Scrolling (3)')
+		const singlePage = reader.getByTitle('Single page (1)')
+		await expect(singlePage).toHaveAttribute('aria-pressed', 'true')
+		await page.keyboard.press('3')
+		await expect(scrolling).toHaveAttribute('aria-pressed', 'true')
+		// A modified chord belongs to whoever else wants it: ⌘1 is not a layout.
+		await page.keyboard.press('Meta+1')
+		await expect(scrolling).toHaveAttribute('aria-pressed', 'true')
+		await page.keyboard.press('1')
+		await expect(singlePage).toHaveAttribute('aria-pressed', 'true')
+
+		/*
+		 * The keys follow the buttons, including the ones a comic does not get: it has no typography to
+		 * set and no page to clip, so the bar offers neither and neither key does anything.
+		 */
+		await expect(reader.getByTitle(/Reading settings/)).toHaveCount(0)
+		await page.keyboard.press(',')
+		await page.keyboard.press('c')
+		await expect(reader.locator('.lb-reader__settings')).toHaveCount(0)
+		await expect(reader.locator('.lb-reader__hint')).toHaveCount(0)
+
+		/*
+		 * And they still arrive after a click on the page itself, which is the case a window listener
+		 * alone gets wrong: a book section renders in an iframe, and clicking it moves focus into a
+		 * document this one never hears from again — silently killing every reader key until you
+		 * clicked back out. See `readKeysFrom` in the package's `reader/keys.ts`.
+		 */
+		const body = reader.locator('.lb-reader__body')
+		await body.click({ position: { x: 40, y: 40 } })
+		await page.keyboard.press('t')
+		await expect(toc).toBeVisible()
+		await page.keyboard.press('t')
+		await expect(toc).toBeHidden()
+
+		// And Escape still closes the book itself, with nothing open over it.
+		await page.keyboard.press('Escape')
+		await expect(reader).toBeHidden()
+	})
 })

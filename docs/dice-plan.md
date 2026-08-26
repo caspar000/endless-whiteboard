@@ -1,9 +1,10 @@
 # Dice on the board — implementation plan
 
-Status: **Phases 0, 1 and 2 shipped.** Only Phase 3 — the optional `node.roll` card behind a
-preference — is left. Read both sets of "as built" notes before touching this: between them they record
-five bugs that were invisible until something specific was checked for, and three of the five were in
-code that looked obviously correct.
+Status: **Done.** All four phases have shipped. What follows is the record: each phase's "as built"
+notes say where reality diverged from the sketch and why, and the sketch is kept as the reasoning.
+Read the as-built notes before touching any of it — between them they record seven bugs that were
+invisible until something specific was checked for, and several were in code that looked obviously
+correct.
 
 A tray of dice down the right edge of the canvas. Click `d6` twice and `d12` once and you are holding
 `2d6 + 1d12` — the cursor says so. Click the board and they land there and roll, in 3D, on the paper,
@@ -122,11 +123,7 @@ Phase 2 then has nothing to prove except that it looks good.
   board unmounts, for the reason `tracing.ts` documents. Never a store write, so nothing here can spend
   an undo entry or wake the facts pipeline.
 - **`DiceTray.tsx`** — the overlay's tray: one button per kind, `d4 d6 d8 d10 d12 d20 d100`, each with
-  a loaded count badge. Right-click or shift-click a button to unload one. (It briefly had a "clear"
-  button, which had to go: it only appeared once dice were held, so the tray grew a row mid-gesture and
-  every button moved out from under the pointer — the second click of "d6, d6" landed somewhere else. A
-  control that rearranges what you are in the middle of using is worse than none, and Escape and
-  right-click already do the job.) lucide has `Dice1`…`Dice6`
+  a loaded count badge. Right-click or shift-click a button to unload one. lucide has `Dice1`…`Dice6`
   and nothing polyhedral, so the icons are small SVG die silhouettes in the package — which is what the
   sketch draws anyway.
 - **`HeldDice.tsx`** — the badge cluster beside the pointer, following `pointermove`, and the
@@ -354,16 +351,65 @@ text) and `runnable` (shown, but inert), so `> roll` now offers **Roll a d20** a
 beside it, and `> roll 2d7` shows *why* it will not roll instead of vanishing. A row marked `runnable:
 false` does not close the palette either — being ejected mid-expression is the opposite of helpful.
 
-### Still to do
+### The icons became projections of the real solids
 
-The **`node.roll` result card** — the optional shape a roll can leave behind, behind a preference. Not
-started. It brings the full node-type checklist with it (props validators, migrations from v1, a
-`TLGlobalShapePropsMap` augmentation, a snapshot fixture) and the pref now has an obvious home in the
-panel that exists.
+The tray started with flat silhouettes — a triangle, a square, a rhombus, a kite, a pentagon, a hexagon
+— which were legible and were not dice, and two of which were the same shape: a d8 and a d10 are both
+"a diamond" in outline, which is why the face count had to be printed inside to tell them apart at all.
 
-## Phase 3 — the result card
+`dieOutline.ts` now projects the *same* vertex and face tables the rolling dice are built from, keeping
+the silhouette and the visible creases, so an icon is a true picture of the die it stands for and a solid
+added later gets a correct icon for free. It loads no three.js: the tables are plain data, which is what
+lets the tray, the palette, Settings and the result card all share one component.
 
-Ephemeral is the default: the dice fade a beat after they settle, the total shows, nothing persists.
+Three things took two attempts:
+
+- **No tilt.** The first version added a few degrees "to make it look solid" and made every icon look
+  skewed and every facet look like scribble. What makes a polyhedral die legible at icon size is its
+  *symmetry* — a front face in the middle with its neighbours fanned evenly around it — and a tilt is
+  exactly what destroys that.
+- **A deliberate `up`.** Left to the vertex order, the d4 pointed downwards. Each view now aims a known
+  vertex at the top, so every die sits the way you would hand it to someone.
+- **Three view kinds, not one.** Face-on for most; corner-on for the cube, which face-on is a square
+  with no interior edges at all; equator-on for the trapezohedron, which down a kite's normal is a lumpy
+  decagon rather than the pointed diamond a d10 looks like.
+
+The numeral is dead centre with a halo (`paint-order: stroke fill`), which is what lets one icon work on
+the tray, over its own creases, and on a card of any colour. Below 18px it is dropped: at palette size
+two digits and a halo over twelve facets made the rows unreadable in both directions, and there the icon
+sits beside a label that already names the die. Tray buttons went from 34px to 38px, because the
+wireframes carry detail a silhouette did not.
+
+### The result card, as built
+
+`node.roll`, off by default, written when the dice settle. The full node-type checklist came with it —
+props validators, an (empty) migration sequence from v1, a `TLGlobalShapePropsMap` augmentation in the
+package's own `shape-types.ts`, `strips: 'below'` because the card is a readout rather than a text
+surface. No new snapshot fixture: fixtures pin *released* schemas, and adding a type cannot break one.
+
+Four things worth knowing:
+
+- **Its dice are a string.** Props are bounded to JSON scalars, so the faces are encoded `d20:14,d6:3`
+  (`card/encode.ts`) — the same constraint that makes a quote encode its highlight rectangles. Decoding
+  is lenient, because it parses *stored* text: a card that renders the dice it understands beats one
+  that refuses to render.
+- **The total is a property**, attached with `createProperty` + `updateShapeProperties`. That is the
+  entire reason to keep a roll rather than watch it fade: a number the property system knows about is
+  one a table can group, total and filter on.
+- **One history entry.** `createNodeShape` opens its own `editor.run` and the property write is a
+  second, so both are wrapped in one — otherwise ⌘Z after a roll undid the total and left a blank card.
+- **The card replaces the readout** rather than joining it. The card *is* the result; a floating copy
+  of it over the top would read as two rolls.
+
+It also puts a **Roll button in the dock**, because the dock is registry-driven and every node type gets
+one. That is the same trade the quote card already makes, and `Overview.tsx`'s tour says so rather than
+pretending otherwise. Registering the type also generates an `Add roll` command, which is why the
+palette test scopes to a row instead of asserting there is only one.
+
+## Phase 3 — the sketch it was built from
+
+Kept below the "as built" notes above, as the rest of this document's sketches are. Ephemeral is the
+default: the dice fade a beat after they settle, the total shows, nothing persists.
 
 The pref that changes that lives in **two places for one piece of state**:
 
@@ -443,26 +489,13 @@ shelf, and notation is how everyone writes it anyway.
 ring of faces around it, all legible, so nothing distinguished the answer. It is coloured on *settling*
 rather than at build time, because a tinted face mid-tumble gave the result away before it landed.
 
-**The dice were made to look like a set, and it took three criteria to get there.** At one
-**circumradius** they were wildly uneven, because a circumradius says how far the corners reach and not
-how much paper the shape covers (a cube's face-to-face is 1.155 of it, an icosahedron's 1.589). Matching
-**volume** was better and is how real sets are made, but bulk is not apparent size either — a
-tetrahedron's volume is spread over a much wider footprint, so the d4 still looked like the big one. What
-works is measuring the thing being complained about: `apparentRadius` orients each solid the way it will
-come to rest, flattens it onto the paper and measures how far it reaches, and `sizeScale` normalises that
-on the d20. Computed from the face tables, so a solid added later is sized right without anyone squinting.
-
-Three things had to follow, each found by something breaking:
-
-- **The spawn geometry is a ring, not a line, sized to the dice.** Apparent-size matching makes the
-  widest die more than twice the narrowest in real extent, and a line of seven ran clean outside the
-  walls: dice spawned inside each other and a full set never settled. A ring gives every die the same
-  room, always fits, and collapses to a point for one die.
-- **`sizeScale` is not a radius.** It normalises apparent size and also absorbs the fact that the tables
-  are not all at the same scale (the octahedron's vertices sit at 1, the icosahedron's at 1.9), so it
-  says nothing about how much room a die needs. `circumradius` does, and the spawn spacing uses it.
-- **The walls were made tall enough to cover the whole pre-throw stack**, since a die could otherwise
-  spawn above them and leave sideways.
+**The dice were made to look like a set.** Built at one circumradius they did not: a d20 is nearly a
+ball and a d4 is mostly empty space, so they read as a big die beside a small one. They are now matched
+by **volume**, which is how real sets are matched and is computed from the face tables rather than
+eyeballed (`sizeScale`). Two things had to follow: the throw's spawn spacing is measured in the *widest*
+die in the hand, because a gap in bare radii put the now-larger d4 inside its neighbour and the
+separation impulse fired it out of the arena; and the invisible walls were made tall enough to cover the
+whole stack, since a die could otherwise spawn above them and leave sideways.
 
 **Numerals fill about 70% of their face**, sized against the face's *incircle* — and centred on the
 incircle rather than the centroid, which differ on the d10's kites. `6` and `9` are underlined, because

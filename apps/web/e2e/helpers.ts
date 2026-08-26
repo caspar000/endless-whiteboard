@@ -46,6 +46,7 @@ export type SettingsTab =
 	| 'General'
 	| 'Appearance'
 	| 'Canvas'
+	| 'Keyboard'
 	| 'Storage'
 	| 'Extensions'
 	| 'Agents'

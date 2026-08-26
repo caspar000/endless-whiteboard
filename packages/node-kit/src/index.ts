@@ -51,6 +51,40 @@ export {
 	type CommandView,
 } from './commands'
 
+// Behaviour, as opposed to capability: what an extension does because the board changed. Reactions,
+// not claims — `ContentImport` in extensions.ts is the claiming sibling. See hooks.ts for the rules.
+export {
+	clearHookRegistry,
+	fireBoardOpen,
+	firePropertyChange,
+	fireShapeCreate,
+	installBoardHooks,
+	registerHooks,
+	type BoardHooks,
+	type BoardOpenContext,
+	type HookSet,
+	type PropertyChangeContext,
+	type ShapeCreateContext,
+} from './hooks'
+
+// The user's keymap, layered over the table's defaults. `Command.kbd` is the default; this decides
+// what a key actually does, and is the only place a chord becomes a command id.
+export {
+	bindingFor,
+	chordFromEvent,
+	chordsFor,
+	conflictsFor,
+	getUserBindings,
+	hasUserBinding,
+	matchChord,
+	normalizeChord,
+	parseKbd,
+	setUserBindings,
+	subscribeToKeymap,
+	type ChordMatch,
+	type UserBindings,
+} from './keymap'
+
 // Operations: the third load-bearing seam. Commands are buttons; operations take named arguments and
 // return an answer, which is what a caller that isn't a person at a keyboard needs. The MCP server is
 // their first consumer. See `operations.ts` for why this is a sibling table rather than a wider Command.
@@ -68,6 +102,7 @@ export {
 	operationManifest,
 	registerOperation,
 	registerOperationAsCommand,
+	requiredParams,
 	runOperation,
 	subscribeToOperations,
 	toJsonSchema,
@@ -120,11 +155,14 @@ export {
 	actionsForShape,
 	clearExtensionRegistry,
 	defineNode,
+	contentImportFor,
 	fileImportFor,
 	getExtension,
 	getExtensions,
 	registerExtension,
 	type Extension,
+	type ContentImport,
+	type ContentImportContext,
 	type FileImport,
 	type FileImportContext,
 	type ShapeAction,
@@ -435,7 +473,25 @@ export {
 	type CollectionResult,
 	type CollectionRow,
 } from './collections/engine'
-export { renderExpressions, type ExpressionContext } from './collections/expressions'
+export {
+	clearQueryRegistry,
+	forgetQuery,
+	getQuery,
+	getUserQueries,
+	getVisibleQueries,
+	queryNameProblem,
+	registerQuery,
+	subscribeToQueries,
+	type NamedQuery,
+} from './collections/namedQueries'
+
+export {
+	evaluateExpression,
+	expressionForBoard,
+	isAggregateExpression,
+	renderExpressions,
+	type ExpressionContext,
+} from './collections/expressions'
 // The `{…}` helper for CodeMirror-based editors — how an extension's own editor (the markdown
 // note's, say) offers the same expression completion tldraw's text editors get.
 export { expressionHelper } from './collections/completion'
@@ -480,3 +536,20 @@ export function registerBuiltinNodes(): void {
 }
 
 registerBuiltinNodes()
+
+/*
+ * The `link` property type's own helpers.
+ *
+ * Exported because an extension needs them: the note package turns a dropped URL into a note that
+ * carries a `Link` property, and it reaches the host only through this barrel. Encoding a link value
+ * by hand would mean re-deriving markdown's `[title](url)` form, which is the one thing
+ * `parseLinkValue` promises to be the only definition of.
+ */
+export {
+	encodeLinkValue,
+	linkDisplayText,
+	linkHref,
+	parseLinkValue,
+	type LinkParts,
+} from './properties/link'
+export { linkHost, normalizeUrl } from './properties/url'

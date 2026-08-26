@@ -1,5 +1,6 @@
 import type { PropertyDef } from '../properties/types'
 import { EXPRESSION_OPS } from './expressions'
+import { getVisibleQueries } from './namedQueries'
 
 /**
  * What to offer while someone is writing `{…}` — the logic, with no editor in it.
@@ -14,7 +15,7 @@ import { EXPRESSION_OPS } from './expressions'
  * the difference between a menu that teaches and one you have to read every time.
  */
 
-export type SuggestionKind = 'op' | 'property' | 'source'
+export type SuggestionKind = 'op' | 'property' | 'source' | 'query'
 
 export interface Suggestion {
 	label: string
@@ -108,7 +109,7 @@ export function expressionSuggestions(
 			terminal: true,
 		}))
 
-	// Nothing settled: either a verb, or a bare property for this shape's own value.
+	// Nothing settled: a verb, a saved question, or a bare property for this shape's own value.
 	if (settled.length === 0) {
 		return {
 			from,
@@ -121,8 +122,23 @@ export function expressionSuggestions(
 						insert: `${label} `,
 						terminal: false,
 					})),
-					// Below the verbs: asking a question about the board is the common case, and reading
-					// this shape's own value back to itself is the rare one.
+					/*
+					 * A question someone already composed, offered wherever the vocabulary is.
+					 *
+					 * This is what makes the namespace *shared* rather than merely reachable from two
+					 * places: save "runway" from ⌘K and it is in the menu of every note on every board,
+					 * because both menus are this function. Above properties because a saved question is
+					 * something a person deliberately named, and below the verbs because those are the
+					 * grammar — you can always fall back to spelling the question out.
+					 */
+					...getVisibleQueries().map((query) => ({
+						label: query.name,
+						detail: query.description ?? query.body,
+						kind: 'query' as const,
+						insert: query.name,
+						terminal: true,
+					})),
+					// Below both: reading this shape's own value back to itself is the rare one.
 					...asProperties(true),
 				],
 				typing

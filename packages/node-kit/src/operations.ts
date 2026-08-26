@@ -486,30 +486,41 @@ export async function runOperation(
 // ---------------------------------------------------------------------------
 
 /**
- * Projects a zero-argument operation onto a `Command`, so capability that both an agent and a person
- * should have is authored once. The direction is fixed: operations are the richer table, and a
- * command is the view of one that needs no arguments.
+ * The arguments a caller has to supply, in declaration order.
  *
- * Refuses an operation with required parameters — there is nowhere to get them from until the
- * palette grows the drill-in page stack (issue #11), at which point that UI should be *generated*
- * from `params` rather than hand-written per command.
+ * The seam an argument-collecting surface generates itself from, rather than hand-writing a form per
+ * operation: the palette's drill-in pages are one page per entry, rendered from `spec` — its
+ * `choices`/`liveChoices` become rows, its `type` decides whether a page is a list or a field, and
+ * its `description` is the prompt (it is already written for a reader deciding what to give it).
  *
- * Nothing existing moves onto this. Command ids are frozen and the current commands are fine; this
- * is for what comes next.
+ * Empty means the operation is a button, and `commandFromOperation` makes one that just runs.
+ */
+export function requiredParams(op: RegisteredOperation): { name: string; spec: ParamSpec }[] {
+	return Object.entries(op.params)
+		.filter(([, spec]) => spec.required)
+		.map(([name, spec]) => ({ name, spec }))
+}
+
+/**
+ * Projects an operation onto a `Command`, so capability that both an agent and a person should have
+ * is authored once. The direction is fixed: operations are the richer table, and a command is the
+ * view of one.
+ *
+ * An operation with required parameters still becomes a command, and that command is a **doorway**
+ * rather than an invocation. A surface that can collect arguments checks `requiredParams` first and
+ * opens its own pages — that is what the palette does, generating them from `params`. Anything else
+ * gets `run`, which can only report that arguments are missing: it invokes the operation with none
+ * and logs the refusal the operation itself returns. Deliberately not a throw and not a silent
+ * no-op — `run` is reached from a keypress handler, which must not throw, and a command that does
+ * nothing at all with no explanation is the harder bug to find.
+ *
+ * Command ids stay frozen: a projected command has the operation's id, so one capability has one
+ * name in both tables.
  */
 export function commandFromOperation(
 	op: RegisteredOperation,
 	over: Partial<Pick<Command, 'title' | 'group' | 'icon' | 'kbd' | 'when'>> = {}
 ): Command {
-	const required = Object.entries(op.params).filter(([, spec]) => spec.required)
-	if (required.length > 0) {
-		throw new Error(
-			`Operation "${op.id}" needs arguments (${required
-				.map(([name]) => name)
-				.join(', ')}) and cannot become a command.`
-		)
-	}
-
 	return {
 		id: op.id,
 		title: op.title,
@@ -518,7 +529,10 @@ export function commandFromOperation(
 			const opCtx = createOperationContext(ctx.editor)
 			// No bridge means the host never installed one; a command has nowhere to report that, and
 			// failing silently beats throwing out of a keypress handler.
-			if (opCtx) void runOperation(op.id, opCtx, {})
+			if (!opCtx) return
+			void runOperation(op.id, opCtx, {}).then((result) => {
+				if (!result.ok) console.warn(`Command "${op.id}" did not run — ${result.error}`)
+			})
 		},
 	}
 }

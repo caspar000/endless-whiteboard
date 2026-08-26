@@ -17,6 +17,7 @@ import {
 	operationManifest,
 	registerOperation,
 	registerOperationAsCommand,
+	requiredParams,
 	runOperation,
 	subscribeToOperations,
 	toJsonSchema,
@@ -386,12 +387,43 @@ describe('commandFromOperation', () => {
 		expect(command.title).toBe('Go')
 	})
 
-	it('refuses an operation that needs arguments, naming them', () => {
+	it('names the arguments an argument-collecting surface has to gather, in order', () => {
 		const op = operation({
 			id: 'test.needs',
-			params: { name: { type: 'string', description: 'n', required: true } },
+			params: {
+				name: { type: 'string', description: 'n', required: true },
+				// Not required, so no page is generated for it: the palette asks for the minimum that
+				// makes the operation run, and everything else keeps its default.
+				unit: { type: 'string', description: 'u' },
+				type: { type: 'string', description: 't', required: true, choices: ['a', 'b'] },
+			},
 		})
-		expect(() => commandFromOperation(op)).toThrow(/name/)
+		expect(requiredParams(op).map((param) => param.name)).toEqual(['name', 'type'])
+		expect(requiredParams(op)[1]?.spec.choices).toEqual(['a', 'b'])
+		expect(requiredParams(operation({ id: 'test.none' }))).toEqual([])
+	})
+
+	it('still projects an operation that needs arguments — the command is a doorway', () => {
+		const run = vi.fn(async () => ok(null))
+		const op = operation({
+			id: 'test.needs2',
+			params: { name: { type: 'string', description: 'n', required: true } },
+			run,
+		})
+		registerOperation(op)
+		setBoardBridge(bridge())
+
+		const command = commandFromOperation(op)
+		expect(command.id).toBe('test.needs2')
+		// Invoked without going through a surface that collects arguments, it reports rather than
+		// runs: the operation's own validation refuses it, and nothing throws out of the handler.
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+		expect(() => command.run({ editor: null, view: 'board' })).not.toThrow()
+		return vi.waitFor(() => {
+			expect(run).not.toHaveBeenCalled()
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('Missing required argument'))
+			warn.mockRestore()
+		})
 	})
 
 	it('runs the operation, and does nothing rather than throwing with no bridge', async () => {

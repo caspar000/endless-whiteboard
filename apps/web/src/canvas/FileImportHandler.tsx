@@ -1,7 +1,9 @@
-import { fileImportFor } from '@lifeboard/node-kit'
+import { contentImportFor, fileImportFor } from '@lifeboard/node-kit'
 import { useEffect } from 'react'
 import {
 	defaultHandleExternalFileContent,
+	defaultHandleExternalTextContent,
+	defaultHandleExternalUrlContent,
 	useEditor,
 	useToasts,
 	useTranslation,
@@ -63,6 +65,44 @@ export function FileImportHandler() {
 					// video MIME lists stay undefined so tldraw's own defaults apply.
 					{ toasts, msg, maxAssetSize: MAX_IMPORT_BYTES }
 				)
+			}
+		})
+		/*
+		 * The same arrangement for a dropped or pasted **URL** and for **text**.
+		 *
+		 * Files were the only content an extension could claim, which left the most obvious drop of all
+		 * — a link — going to tldraw's bookmark card. A card is a fine thing to look at and cannot carry
+		 * a property, join a table or appear in a view, which in this app is most of what content is
+		 * for. So this opens the same door for the other two content types, and anything unclaimed
+		 * continues into tldraw's pipeline exactly as before.
+		 */
+		editor.registerExternalContentHandler('url', async (content) => {
+			const point = content.point ?? editor.getViewportPageBounds().center
+			const claim = contentImportFor(content.url)
+			if (!claim) {
+				await defaultHandleExternalUrlContent(editor, content, { toasts, msg })
+				return
+			}
+			try {
+				await claim.onText({ editor, text: content.url, point })
+			} catch (error) {
+				console.error(`Failed to import ${content.url}`, error)
+				toasts.addToast({ title: 'Could not import that link', severity: 'error' })
+			}
+		})
+
+		editor.registerExternalContentHandler('text', async (content) => {
+			const point = content.point ?? editor.getViewportPageBounds().center
+			const claim = contentImportFor(content.text)
+			if (!claim) {
+				await defaultHandleExternalTextContent(editor, content)
+				return
+			}
+			try {
+				await claim.onText({ editor, text: content.text, point })
+			} catch (error) {
+				console.error('Failed to import pasted text', error)
+				toasts.addToast({ title: 'Could not import that text', severity: 'error' })
 			}
 		})
 		// No cleanup: the handler dies with the editor, and re-registration simply replaces it.

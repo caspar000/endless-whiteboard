@@ -8,6 +8,7 @@ import { CanvasPanel } from './CanvasPanel'
 import { ExtensionDetail } from './ExtensionDetail'
 import { ExtensionsPanel } from './ExtensionsPanel'
 import { GeneralPanel } from './GeneralPanel'
+import { KeymapPanel } from './KeymapPanel'
 import { StoragePanel } from './StoragePanel'
 import { EXTENSIONS_TAB, SETTINGS_GROUPS, SETTINGS_TABS, tabFor } from './sections'
 
@@ -108,6 +109,7 @@ export function SettingsPage({
 								<AppearancePanel theme={theme} onThemeChange={onThemeChange} canvas={canvas} />
 							)}
 							{active.id === 'canvas' && <CanvasPanel canvas={canvas} />}
+							{active.id === 'keyboard' && <KeymapPanel />}
 							{active.id === 'storage' && <StoragePanel api={api} onImported={onImported} />}
 							{active.id === EXTENSIONS_TAB && <ExtensionsPanel onOpen={onExtension} />}
 							{active.id === 'agents' && <AgentsPanel />}

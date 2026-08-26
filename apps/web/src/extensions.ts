@@ -10,7 +10,11 @@ import { markdownNoteExtension } from '@lifeboard/note-markdown'
 // Imported for its side effect: installs the app's `BoardBridge` at module scope, which the
 // operations registered below cannot run without.
 import './agent/boardBridge'
+import { registerOperationCommands } from './app/operationCommands'
+import { loadUserBindings } from './app/keymapStore'
+import { loadSavedQueries } from './app/savedQueries'
 import { registerNodeCommands } from './canvas/insertNode'
+import { registerToolCommands } from './canvas/toolCommands'
 
 /**
  * The composition root: the one place that decides which extensions this build of the app ships.
@@ -29,6 +33,10 @@ registerExtension(bookReaderExtension)
 // After the registrations above, deliberately: it reads what they just put there.
 registerNodeCommands()
 
+// ...and the dock's tools onto it too, so a tool key is a binding the user can move rather than
+// something only tldraw knows about. After the node registrations, for the same reason.
+registerToolCommands()
+
 /*
  * The agent operation surface. After the board bridge is installed (the import above) and after the
  * extensions, so `node.insert` can offer every registered type.
@@ -37,6 +45,26 @@ registerNodeCommands()
  * in Settings → Agents is switched on. This only means the table is populated if it is.
  */
 registerCoreOperations()
+
+// ...and the handful of them a person should also be able to reach by name. After the line above,
+// which is what puts the rows in the table this reads.
+registerOperationCommands()
+
+/*
+ * The questions the user has named, back into the expression vocabulary.
+ *
+ * After the extensions, deliberately: `registerQuery` replaces by name, so loading these last is
+ * what makes a name someone chose for themselves win over one a plugin shipped with.
+ */
+loadSavedQueries()
+
+/*
+ * The user's keymap, over the defaults the table declares.
+ *
+ * Last of all, because it is a view of the finished command table: loading it earlier would work
+ * (bindings are matched by id, not by resolving a command) but reads as though order did not matter.
+ */
+loadUserBindings()
 
 /**
  * Which extensions the user has switched off — app-wide, like every other preference (see

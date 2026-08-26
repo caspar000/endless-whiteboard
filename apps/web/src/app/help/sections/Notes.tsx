@@ -245,6 +245,24 @@ export function Notes() {
 					double-click edits the first and <kbd className="lb-kbd">⌥P</kbd> opens the second.
 				</p>
 			</Section>
+
+			<Section title="Drop a link and you get a note, not a card">
+				<p>
+					Drag a URL onto the board, or paste one, and it lands as a note carrying a{' '}
+					<strong>Link</strong> property — titled with the site it came from. The link is in the
+					prose too, so it is still one click away.
+				</p>
+				<p>
+					A card would have been easier and is the wrong thing here: a card cannot hold a price, be
+					counted by a table, stand on a calendar or answer an expression. A note with a property
+					can, so a page you saved is something you can <em>file</em> rather than only look at.
+				</p>
+				<p className="lb-help__aside">
+					The title is the site rather than the page&rsquo;s own, because reading a page&rsquo;s title
+					means asking a server for it, and nothing here talks to one. Rename it in the properties
+					panel — the note is ordinary once it exists.
+				</p>
+			</Section>
 		</>
 	)
 }

@@ -11,6 +11,7 @@ import {
 	type CommandContext,
 } from '@lifeboard/node-kit'
 import { openProperties } from '../canvas/propertiesTarget'
+import { runTldrawAction } from '../canvas/tldrawUi'
 import { toggleTracing } from '../canvas/tracing'
 import {
 	APPEARANCE_GROUP,
@@ -40,6 +41,7 @@ export interface AppCommandApi {
 	goHelp(): Promise<void>
 	setTheme(theme: Theme): void
 	toggleAgentPanel(): void
+	togglePalette(): void
 }
 
 let api: AppCommandApi | null = null
@@ -61,6 +63,21 @@ registerCommand({
 	title: 'All boards',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goHome(),
+})
+
+/**
+ * ⌘K itself, as an ordinary row.
+ *
+ * It was a bespoke `window` listener in App.tsx until the keymap existed. Now that one dispatcher
+ * reads the table, the palette's own key has no reason to be special — and putting it in means it
+ * shows up on the Help page and can be rebound like anything else.
+ */
+registerCommand({
+	id: 'view.palette',
+	title: 'Command palette',
+	group: NAVIGATE_GROUP,
+	kbd: 'cmd+k',
+	run: () => api?.togglePalette(),
 })
 
 registerCommand({
@@ -108,10 +125,14 @@ for (const theme of ['light', 'dark', 'system'] as const) {
 }
 
 // ---------------------------------------------------------------------------
-// Canvas commands. Thin wrappers over the active editor, gated on there being one. Undo/redo and
-// zoom deliberately have no other UI — removing tldraw's menu panel took theirs away — so the
-// command table is their home. The `kbd`s are tldraw's own bindings, recorded here for display;
-// tldraw still dispatches them.
+// Canvas commands, gated on there being an editor. Undo/redo and zoom deliberately have no other UI
+// — removing tldraw's menu panel took theirs away — so the command table is their home.
+//
+// The ones tldraw also implements **delegate to its action** rather than reimplementing it (see
+// `canvas/tldrawUi.ts`). Their `kbd`s are still tldraw's own bindings, but they are no longer merely
+// recorded: the app now dispatches them (`app/useKeymap.ts`) so the user can move them, and it runs
+// the same action tldraw would have. One implementation, three doors — the palette, the key, and
+// tldraw's own menus.
 // ---------------------------------------------------------------------------
 
 const onBoard = (ctx: CommandContext) => ctx.editor !== null
@@ -138,7 +159,7 @@ registerCommand({
 	kbd: 'cmd+z',
 	when: onBoard,
 	run: (ctx) => {
-		ctx.editor?.undo()
+		if (ctx.editor) runTldrawAction(ctx.editor, 'undo')
 	},
 })
 
@@ -149,7 +170,7 @@ registerCommand({
 	kbd: 'cmd+shift+z',
 	when: onBoard,
 	run: (ctx) => {
-		ctx.editor?.redo()
+		if (ctx.editor) runTldrawAction(ctx.editor, 'redo')
 	},
 })
 
@@ -160,7 +181,7 @@ registerCommand({
 	kbd: 'shift+1',
 	when: onBoard,
 	run: (ctx) => {
-		ctx.editor?.zoomToFit({ animation: { duration: 220 } })
+		if (ctx.editor) runTldrawAction(ctx.editor, 'zoom-to-fit')
 	},
 })
 
@@ -171,7 +192,7 @@ registerCommand({
 	kbd: 'shift+0',
 	when: onBoard,
 	run: (ctx) => {
-		ctx.editor?.resetZoom(undefined, { animation: { duration: 220 } })
+		if (ctx.editor) runTldrawAction(ctx.editor, 'zoom-to-100')
 	},
 })
 
@@ -253,6 +274,12 @@ registerCommand({
 	},
 })
 
+/**
+ * Duplicate and Delete, delegated for a reason worth spelling out: tldraw's ⌘D places the copy
+ * beside the original (or an adjacent-margin away when the camera is locked) and keeps stepping if
+ * you hold it, and its ⌫ marks a history stopping point first. Both of those were missing here, so
+ * the palette's rows have never quite done what the keys do. Now they are the same action.
+ */
 registerCommand({
 	id: 'edit.duplicate',
 	title: 'Duplicate',
@@ -260,8 +287,7 @@ registerCommand({
 	kbd: 'cmd+d',
 	when: hasSelection,
 	run: (ctx) => {
-		const editor = ctx.editor
-		if (editor) editor.duplicateShapes(editor.getSelectedShapeIds())
+		if (ctx.editor) runTldrawAction(ctx.editor, 'duplicate')
 	},
 })
 
@@ -269,10 +295,10 @@ registerCommand({
 	id: 'edit.delete',
 	title: 'Delete',
 	group: CANVAS_GROUP,
-	kbd: 'backspace',
+	// `⌫` is how tldraw spells it; `backspace` is the same chord after normalisation (`keymap.ts`).
+	kbd: 'backspace,delete',
 	when: hasSelection,
 	run: (ctx) => {
-		const editor = ctx.editor
-		if (editor) editor.deleteShapes(editor.getSelectedShapeIds())
+		if (ctx.editor) runTldrawAction(ctx.editor, 'delete')
 	},
 })

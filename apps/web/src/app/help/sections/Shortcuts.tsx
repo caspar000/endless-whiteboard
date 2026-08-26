@@ -1,4 +1,4 @@
-import { getVisibleCommands, subscribeToCommands } from '@lifeboard/node-kit'
+import { chordsFor, getVisibleCommands, subscribeToCommands, subscribeToKeymap } from '@lifeboard/node-kit'
 import { useSyncExternalStore } from 'react'
 import { OTHER_GROUP, formatKbd, groupInOrder, isMacPlatform } from '../../paletteItems'
 import { Keys, Section } from '../kit'
@@ -19,23 +19,13 @@ const GROUPS: ShortcutGroup[] = [
 	{
 		title: 'Anywhere',
 		rows: [
-			[['⌘K'], 'The command palette — jump to a board, or type > for commands'],
+			// ⌘K itself is a command now (`view.palette`) and so appears in the generated group below.
+			// What stays written out is the *prefixes*, which are not keys anything is bound to.
+			[['⌘K', '>'], 'Every command, with its binding'],
+			[['⌘K', '@'], 'Find something on the open board by name, and go to it'],
+			[['⌘K', '='], 'Ask the board a question — the answer, or the question to leave on it'],
+			[['Esc', '⌫'], 'In the palette: back one step — a question, then the command, then closed'],
 			[['⌘/'], "The canvas's own shortcut list, on a board"],
-		],
-	},
-	{
-		title: 'Reaching a tool',
-		rows: [
-			[['V', '1'], 'Select'],
-			[['H', '2'], 'Hand'],
-			[['F', '3'], 'Frame'],
-			[['A', '4'], 'Arrow'],
-			[['N'], 'Sticky note'],
-			[['M', '5'], 'Note'],
-			[['6'], 'Table'],
-			[['D', '7'], 'Pen'],
-			[['E', '8'], 'Eraser'],
-			[['T', '9'], 'Text'],
 		],
 	},
 ]
@@ -110,13 +100,18 @@ const HELP_TITLES: Record<string, string> = { Canvas: 'On the canvas' }
  */
 function useCommandShortcuts(): ShortcutGroup[] {
 	const commands = useSyncExternalStore(subscribeToCommands, getVisibleCommands)
+	// Subscribed to the keymap as well, so this page shows what the keys *are* rather than what they
+	// were shipped as. A reference that kept advertising a default the user moved would be worse than
+	// no reference at all.
+	useSyncExternalStore(subscribeToKeymap, getVisibleCommands)
 	const mac = isMacPlatform()
-	// `flatMap` rather than `filter`, so `kbd` narrows to a string instead of needing an assertion.
-	const bound = commands.flatMap((command) =>
-		command.kbd
-			? [{ group: command.group ?? OTHER_GROUP, kbd: command.kbd, title: command.title }]
+	// `flatMap` rather than `filter`, so an unbound command drops out instead of needing an assertion.
+	const bound = commands.flatMap((command) => {
+		const chords = chordsFor(command.id)
+		return chords.length
+			? [{ group: command.group ?? OTHER_GROUP, chords, title: command.title }]
 			: []
-	)
+	})
 
 	const groups: ShortcutGroup[] = []
 	for (const command of groupInOrder(bound)) {
@@ -127,7 +122,9 @@ function useCommandShortcuts(): ShortcutGroup[] {
 			group = { title, rows: [] }
 			groups.push(group)
 		}
-		group.rows.push([[formatKbd(command.kbd, mac)], command.title])
+		// Every chord it answers to, as separate keycaps — which is how a tool's letter *and* its digit
+		// ended up on one row when this group was written by hand.
+		group.rows.push([command.chords.map((chord) => formatKbd(chord, mac)), command.title])
 	}
 	return groups
 }
@@ -142,7 +139,9 @@ export function Shortcuts() {
 					Undo and redo have no button anywhere — they are <kbd className="lb-kbd">⌘Z</kbd> and{' '}
 					<kbd className="lb-kbd">⇧⌘Z</kbd>, deliberately. Tool keys come in pairs, a letter and a
 					digit, so your hand never has to leave either side of the keyboard. Anything with a
-					binding is also in the palette, on <kbd className="lb-kbd">⌘K</kbd>.
+					binding is also in the palette, on <kbd className="lb-kbd">⌘K</kbd> — and every one of
+					them can be moved, in <em>Settings → Keyboard</em>. This page shows what they are now,
+					not what they shipped as.
 				</p>
 				<div className="lb-help__keygroups">
 					{groups.map((group) => (

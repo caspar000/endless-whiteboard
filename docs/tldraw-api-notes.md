@@ -206,6 +206,37 @@ entry** landed on top of the undo stack and the first ⌘Z after writing a note 
 is a **capture-phase** listener on the shape's element that marks the event handled before anything else
 sees it — see `nodes/markdown/NoteEditor.tsx`.
 
+### Escape is the one key that leaks out of a focused input
+
+Every other key is gated: `handleKeyDown`'s cases call `areShortcutsDisabled(editor)`, which is true
+whenever the active element is an input. The `Escape` case returns *before* reaching that check — it only
+steps aside for open menus — so `editor.cancel()` runs on a keystroke typed into a text field, clearing
+the selection under it. Anything drawn only for a selected shape (the properties panel, which is shown
+for a single selection) disappears with the selection, which makes one Escape look like three things
+happening at once.
+
+So any panel of ours with a cancellable form takes Escape the same way a shape does: a capture-phase
+listener on the form, `markEventAsHandled` plus `stopPropagation` — see `AddProperty` in
+`properties/PropertiesPopover.tsx`. React's `onKeyDown` is still too late, for the reason above.
+
+## `onBeforeCreate` sees the parent tldraw chose, which is where "created inside a frame" comes from
+
+`Editor.createShapes` resolves the parent *before* it calls the util's `onBeforeCreate`: a partial with no
+`parentId` gets the topmost shape at its x/y that can receive children (a frame, in practice), and the
+record handed to the hook already carries it. So a node can read `shape.parentId` there and answer "I was
+drawn inside that frame" — which is how a table dropped into a frame arrives scoped to it
+(`NodeDefinition.onCreate`, wired in `registry.tsx`).
+
+Two things to know before using it:
+
+- **Every creation path goes through it** — the box tool's click *and* drag, our `createNodeShape`, the
+  agent's operations, and paste and duplicate. A hook may therefore only fill in what nobody has chosen
+  yet: `frameScopedSource` stands down unless the source still matches the default exactly, or pasting a
+  configured table into a frame would silently re-aim it.
+- **The parent may not be in the store yet.** Partials created in the same call (a pasted frame and its
+  children) are put after every hook has run, so `editor.getShape(parentId)` can return `undefined` for a
+  parent that is about to exist. Degrade quietly rather than assuming a lookup succeeds.
+
 ## CodeMirror 6 works correctly inside tldraw's camera transform
 
 Worth recording because it was the main risk when choosing an editor. Verified by driving the real app at

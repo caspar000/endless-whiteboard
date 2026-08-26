@@ -105,6 +105,82 @@ test.describe('comic books', () => {
 		expect(await storedPageCount(page)).toBe(5)
 	})
 
+	/**
+	 * Resizing a book, which is the one gesture its two halves can disagree during.
+	 *
+	 * The card is a picture and its height is auto-derived from the cover, so a resize that changed
+	 * only the width put the height back to where the drag started on every pointer move while
+	 * auto-height corrected it a frame later. On screen: a cover clipped by a card too short for it,
+	 * and a property strip — which hangs off the bottom edge — jumping on every frame. The fix is to
+	 * scale both axes together, so this asserts the proportions *during* the drag, not just after it.
+	 */
+	test('resizing a book keeps its cover and its properties with the card', async ({ page }) => {
+		await dropComic(page, 'Resize_me.cbr', 3)
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-book__cover')).toBeVisible()
+
+		const size = (): Promise<{ w: number; h: number }> =>
+			page.evaluate(() => {
+				const editor = (
+					window as unknown as {
+						editor: {
+							getCurrentPageShapes(): { id: string; type: string; props: { w: number; h: number } }[]
+						}
+					}
+				).editor
+				const book = editor.getCurrentPageShapes().find((s) => s.type === 'node.book')!
+				return { w: book.props.w, h: book.props.h }
+			})
+
+		// The fixture's page is a single pixel, so a settled card is square give or take its border.
+		await expect.poll(async () => Math.round((await size()).h)).toBeLessThan(240)
+		const start = await size()
+		const startRatio = start.h / start.w
+
+		const corner = await page.evaluate(() => {
+			const editor = (
+				window as unknown as {
+					editor: {
+						getCurrentPageShapes(): { id: string; type: string }[]
+						getShapePageBounds(id: string): { x: number; y: number; w: number; h: number }
+						pageToScreen(p: { x: number; y: number }): { x: number; y: number }
+						select(id: string): void
+					}
+				}
+			).editor
+			const book = editor.getCurrentPageShapes().find((s) => s.type === 'node.book')!
+			editor.select(book.id)
+			const b = editor.getShapePageBounds(book.id)
+			return editor.pageToScreen({ x: b.x + b.w, y: b.y + b.h })
+		})
+
+		await page.mouse.move(corner.x, corner.y)
+		await page.mouse.down()
+
+		const ratios: number[] = []
+		for (let step = 1; step <= 6; step++) {
+			await page.mouse.move(corner.x + step * 30, corner.y + step * 30)
+			const during = await size()
+			ratios.push(during.h / during.w)
+		}
+		await page.mouse.up()
+
+		// It actually resized, and stayed the same shape the whole way — the old behaviour halved the
+		// ratio as the width ran ahead of the height.
+		const end = await size()
+		expect(end.w).toBeGreaterThan(start.w + 100)
+		for (const ratio of ratios) expect(Math.abs(ratio - startRatio)).toBeLessThan(0.05)
+
+		// And the properties are still sitting on the card's bottom edge rather than somewhere the
+		// height used to be.
+		const gap = await page.evaluate(() => {
+			const host = document.querySelector('.lb-board-host:not([data-hidden])')!
+			const card = host.querySelector('.lb-book')!.getBoundingClientRect()
+			const strip = host.querySelector('.lb-foreign-strip')!.getBoundingClientRect()
+			return strip.top - card.bottom
+		})
+		expect(Math.abs(gap)).toBeLessThan(6)
+	})
+
 	test('the reader pages through a CBR', async ({ page }) => {
 		await dropComic(page, 'Watchmen_02.cbr', 4)
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-book__cover')).toBeVisible()

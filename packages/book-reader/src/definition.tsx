@@ -87,6 +87,14 @@ export const bookNodeDefinition: NodeDefinition<BookNodeProps> = {
 	// A book-ish 2:3. Real proportions come from the cover image via auto-height once one exists.
 	defaultSize: { w: 200, h: 300 },
 	autoHeight: { minHeight: 140 },
+	/**
+	 * The card is a cover, so its height *is* its width times the picture's ratio — never a free
+	 * dimension. Resizing scales both axes together (see `onResize` in the factory), which is what
+	 * keeps a drag smooth: without it the height snapped back to where the drag began on every pointer
+	 * move and auto-height chased it a frame later, clipping the cover and jolting the property strip
+	 * that hangs under the card.
+	 */
+	aspectRatioLocked: true,
 	// The card is a cover image, so its properties belong under the shape — the same place, and the
 	// same rendering, as a sticky note's. Rows drawn over the artwork read as part of the jacket.
 	strips: 'below',

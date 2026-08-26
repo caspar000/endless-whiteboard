@@ -104,7 +104,10 @@ export interface ReaderSettings {
 	// ---- tools -----------------------------------------------------------
 	/** The tag put on a quote taken with the plain button. '' for none. */
 	quoteTag: string
-	/** Whether a new quote is joined to its book by an arrow — the relation the board reasons about. */
+	/**
+	 * Whether a new quote is related to its book. The relation is created *hidden* — it counts in
+	 * every table and rollup, and no line is drawn across the board (see `createQuote.ts`).
+	 */
 	quoteArrow: boolean
 	/** How strongly a highlight is painted over the words, as a percentage. */
 	markOpacity: number
@@ -549,7 +552,7 @@ export const READER_CONTROLS: readonly ReaderControl[] = [
 		group: 'tools',
 		section: 'Quotes',
 		engine: null,
-		note: 'Joins a new quote to its book with an arrow — the relation the board itself reasons about.',
+		note: 'Relates a new quote to its book. The relation is hidden — tables and rollups count it, but no arrow is drawn. Show it with the eye button, or with "All relations".',
 	},
 	{
 		key: 'markOpacity',

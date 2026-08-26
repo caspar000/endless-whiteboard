@@ -469,6 +469,30 @@ export function defaultTableProps(): TableNodeProps {
 }
 
 /**
+ * A table drawn inside a frame is a table *about* that frame.
+ *
+ * The default is the whole board, which is right for a table on open canvas and almost never what
+ * someone dropping one into a frame meant: a frame is already the gesture for "these things belong
+ * together", so the table arrives asking the question the frame asks, with its Frame picker filled
+ * in rather than empty. Widening it back to the board is one menu away; narrowing it by hand was two
+ * menus and a look at a list of frame names.
+ *
+ * **Only an untouched source.** Duplicating or pasting a table runs the creation hook too, so a
+ * source anyone has configured — a different scope, a frame already chosen — has to survive
+ * unchanged; matching the default exactly is the one signal available here for "nobody has said yet".
+ */
+export function frameScopedSource(
+	props: TableNodeProps,
+	/** The shape the new table is parented to, which tldraw has already resolved. */
+	parent: { id: string; type: string } | null
+): Partial<TableNodeProps> | null {
+	const { source } = props
+	if (source.scope !== 'page' || source.frameId !== null) return null
+	if (parent?.type !== 'frame') return null
+	return { source: { ...source, scope: 'frame', frameId: parent.id } }
+}
+
+/**
  * A column reading a property off the **arrow** rather than off the shape it points at.
  *
  * This is what a relation with data on it looks like in a table: "this meal uses 200g of that

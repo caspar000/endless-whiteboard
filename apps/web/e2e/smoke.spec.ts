@@ -1124,6 +1124,48 @@ test.describe('nodes', () => {
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__value')).toHaveText('₾ 420.00')
 	})
 
+	test('Escape in the new-property form cancels the form and nothing else', async ({ page }) => {
+		/*
+		 * One keystroke used to do three things. tldraw's Escape branch runs before it checks whether an
+		 * input has focus, so it cleared the selection; the panel is only drawn for a single selected
+		 * shape, so it vanished; and its own window listener closed it for good measure. The property you
+		 * were half-way through naming went with them.
+		 */
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ type: 'note', x: 200, y: 200 }])
+		})
+
+		await openProperties(page, 'note')
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Half-typed')
+		await page.keyboard.press('Escape')
+
+		// The form is gone, and only the form.
+		await expect(panel.getByLabel('New property name')).toHaveCount(0)
+		await expect(panel.getByRole('button', { name: 'New property…' })).toBeVisible()
+		await expect(panel).toBeVisible()
+		expect(
+			await page.evaluate(
+				() =>
+					(window as unknown as { editor: EditorHandle }).editor.getSelectedShapeIds().length
+			)
+		).toBe(1)
+
+		// Reopening starts blank rather than with the abandoned name, and Escape still closes the panel
+		// when there is no form to cancel.
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await expect(panel.getByLabel('New property name')).toHaveValue('')
+		await page.keyboard.press('Escape')
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-props')).toHaveCount(0)
+	})
+
 	test('the properties panel edits any shape and is fully visible above other shapes', async ({
 		page,
 	}) => {

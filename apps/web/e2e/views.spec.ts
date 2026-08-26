@@ -561,6 +561,55 @@ test.describe('collection views', () => {
 			)
 			.toBe('shape:frame')
 	})
+
+	/**
+	 * The creation hook, end to end.
+	 *
+	 * Only reachable here: `onBeforeCreate` reads the parent *tldraw* chose from the drag's origin, so
+	 * nothing short of drawing a table inside a frame with the real tool proves the two agree. The rule
+	 * itself — and its refusal to touch a source anyone has configured — is unit-tested.
+	 */
+	test('a table drawn inside a frame starts by reading that frame', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{
+					id: 'shape:kitchen' as never,
+					type: 'frame',
+					x: 200,
+					y: 150,
+					props: { w: 620, h: 460, name: 'Kitchen' },
+				},
+			])
+		})
+
+		const at = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const bounds = editor.getShapePageBounds('shape:kitchen')!
+			return editor.pageToScreen({ x: bounds.x + 60, y: bounds.y + 60 })
+		})
+		await drawNode(page, 'Table', at, { w: 300, h: 220 })
+
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const editor = (window as unknown as { editor: EditorHandle }).editor
+					const table = editor.getCurrentPageShapes().find((s) => s.type === 'node.table')
+					return (table?.props as { source?: { scope: string; frameId: string | null } }).source
+				})
+			)
+			.toEqual({ shapeTypes: null, scope: 'frame', frameId: 'shape:kitchen', filters: [] })
+
+		// And the config panel opens on it already answered, rather than on an empty frame picker.
+		await dblclickNode(page, 'node.table')
+		const config = page.locator('.lb-tcfg')
+		await expect(config.getByLabel('Scope')).toHaveValue('frame')
+		await expect(config.getByLabel('Frame')).toHaveValue('shape:kitchen')
+	})
 })
 
 /**

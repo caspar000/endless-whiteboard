@@ -9,6 +9,7 @@ import { setDropHint } from './views/dropHint'
 import { acceptsViewDrop, applyViewDrop, viewDropTarget } from './views/interaction'
 import {
 	defaultTableProps,
+	frameScopedSource,
 	tableColumnValidator,
 	tableLayoutValidator,
 	tableSortValidator,
@@ -72,6 +73,10 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 		],
 	}),
 	defaultProps: defaultTableProps,
+	// Dropped into a frame → reads that frame. See `frameScopedSource` for why it stands down on a
+	// source that has already been configured.
+	onCreate: ({ editor, shape }) =>
+		frameScopedSource(shape.props, editor.getShape(shape.parentId) ?? null),
 	defaultSize: { w: 360, h: 220 },
 	// The card sizes itself to the rows it shows. A table whose height is unrelated to its content is
 	// either clipping data or padding empty space, and both look broken.

@@ -38,6 +38,25 @@ export interface Command {
 	title: string
 	/** Palette section and (later) Help grouping. Commands without one land in a trailing bucket. */
 	group?: string
+	/**
+	 * Secondary text a surface may show beside the title — what this will do, or what is wrong with what
+	 * you have typed so far.
+	 *
+	 * Exists for the commands a `CommandSource` builds, where the *title* is the answer and there is
+	 * still something worth saying: `> roll` has to be able to teach the notation, and `> roll 2d7` has
+	 * to be able to say why nothing will happen. A static command rarely needs one — its title is the
+	 * whole of it.
+	 */
+	hint?: string
+	/**
+	 * `false` means "shown, but nothing will happen" — a row that exists to explain itself.
+	 *
+	 * Deliberately narrow. A palette full of dead rows would be miserable, and `when` already exists for
+	 * "do not offer this at all". This is for the case in between, which query-driven commands create:
+	 * silence in answer to a half-typed expression reads as the feature being broken, and the useful
+	 * reply is the reason rather than nothing.
+	 */
+	runnable?: boolean
 	/** Optional richer row icon (the app chrome uses lucide). Structural, like the node registry's. */
 	icon?: NodeToolbarIcon
 	/**
@@ -59,7 +78,34 @@ export interface Command {
 	run: (ctx: CommandContext) => void | Promise<void>
 }
 
+/**
+ * A command built from what the user typed, rather than one that exists in advance.
+ *
+ * The command table answers "what can I do?"; this answers "what can I do *with this*". Some verbs
+ * genuinely take an argument, and the palette is where it is already being typed — `> roll 2d20 + 10`
+ * is one string, and splitting it into a command and a prompt would make it two interactions.
+ *
+ * Deliberately a *source of commands* rather than a `Command` with parameters. A command stays the
+ * zero-argument button every surface can render (`commands.ts`'s whole premise), and what varies is
+ * how many of them there are — so the palette needs no notion of arguments, keybindings still bind to
+ * ordinary commands, and the Help page can keep listing what exists without having to invent examples.
+ *
+ * Called on **every keystroke** in the palette, so `offer` must be cheap and must return nothing
+ * rather than something apologetic when the query is not for it.
+ */
+export interface CommandSource {
+	/** Namespaced like a command: `dice.roll.notation`. */
+	id: string
+	/**
+	 * The commands this source offers for `query` — the palette's text with its `>` already stripped.
+	 * Return `[]` when the query is not addressed to it, which is almost always.
+	 */
+	offer(query: string, ctx: CommandContext): Command[]
+}
+
 const commands = new Map<string, Command>()
+const sources = new Map<string, CommandSource>()
+const sourceOwnerById = new Map<string, string>()
 
 /** Which extension registered each command. Commands with no owner are core and cannot toggle off. */
 const ownerById = new Map<string, string>()
@@ -71,9 +117,11 @@ const listeners = new Set<() => void>()
  * `getVisibleNodeDefinitions`, for the same `useSyncExternalStore` reason.
  */
 let visibleCache: Command[] | null = null
+let sourceCache: CommandSource[] | null = null
 
 function invalidate(): void {
 	visibleCache = null
+	sourceCache = null
 	for (const listener of listeners) listener()
 }
 
@@ -114,6 +162,26 @@ export function getCommand(id: string): Command | undefined {
 	return commands.get(id)
 }
 
+/** Registers a query-driven source of commands — see {@link CommandSource}. */
+export function registerCommandSource(source: CommandSource, owner?: string): void {
+	sources.set(source.id, source)
+	if (owner !== undefined) sourceOwnerById.set(source.id, owner)
+	else sourceOwnerById.delete(source.id)
+	invalidate()
+}
+
+/**
+ * The sources a user should be offered, by the same enablement rule as commands: an extension switched
+ * off stops offering, and its dynamic commands go with its static ones.
+ */
+export function getVisibleCommandSources(): CommandSource[] {
+	sourceCache ??= [...sources.values()].filter((source) => {
+		const owner = sourceOwnerById.get(source.id)
+		return owner === undefined || isExtensionEnabled(owner)
+	})
+	return sourceCache
+}
+
 /** Every registered command in registration order, regardless of extension enablement. */
 export function getCommands(): Command[] {
 	return [...commands.values()]
@@ -136,5 +204,7 @@ export function getVisibleCommands(): Command[] {
 export function clearCommandRegistry(): void {
 	commands.clear()
 	ownerById.clear()
+	sources.clear()
+	sourceOwnerById.clear()
 	invalidate()
 }

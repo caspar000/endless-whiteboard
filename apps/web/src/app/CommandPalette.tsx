@@ -3,6 +3,7 @@ import {
 	createOperationContext,
 	getNativeShape,
 	getOperation,
+	getVisibleCommandSources,
 	getVisibleCommands,
 	requiredParams,
 	runOperation,
@@ -45,6 +46,7 @@ import {
 	emptyMessage,
 	expressionBody,
 	expressionFooter,
+	isRunnable,
 	formatKbd,
 	isComplete,
 	isMacPlatform,
@@ -160,6 +162,8 @@ export function CommandPalette({
 	// The registry's own store, so the palette follows a registration or an extension toggle live —
 	// `getVisibleCommands` returns a stable snapshot between changes, which is what makes this legal.
 	const commands = useSyncExternalStore(subscribeToCommands, getVisibleCommands)
+	// Same store, same stable-snapshot contract — a source registration invalidates both.
+	const sources = useSyncExternalStore(subscribeToCommands, getVisibleCommandSources)
 
 	const mode = parseQuery(query).mode
 	const finding = mode === 'find'
@@ -195,8 +199,16 @@ export function CommandPalette({
 		// Inside a drill-in the list is that page's answers and nothing else: the top-level modes are
 		// not reachable from here, and mixing them in would offer "New board" as a value for a URL.
 		if (drill) return drillInItems(drill, query)
-		return buildPaletteItems({ query, ctx: getContext(), boards, commands, shapes, expression })
-	}, [open, drill, query, getContext, boards, commands, shapes, expression])
+		return buildPaletteItems({
+			query,
+			ctx: getContext(),
+			boards,
+			commands,
+			sources,
+			shapes,
+			expression,
+		})
+	}, [open, drill, query, getContext, boards, commands, sources, shapes, expression])
 
 	// Clamped rather than corrected in an effect: the list shrinks as you type, and an effect would
 	// render one frame with the highlight past the end — briefly highlighting nothing.
@@ -275,6 +287,10 @@ export function CommandPalette({
 			// in `items` and Enter still reaches them — so the guard has to be here, not in the render.
 			// `node.image` fetches over the network, which is long enough to press Enter twice.
 			if (running) return
+
+			// An explain-yourself row does nothing and, importantly, does not close the palette either:
+			// you are mid-expression, and being thrown out of it would be the opposite of helpful.
+			if (!isRunnable(item)) return
 
 			if (item.kind === 'arg') {
 				if (drill) void advance(answerDrillIn(drill, item.value))
@@ -466,6 +482,9 @@ export function CommandPalette({
 							const pages = item.kind === 'command' && opensPages(item.command.id)
 							const kbd = item.kind === 'command' && !pages ? item.command.kbd : undefined
 							const Icon = rowIcon(item)
+							const hint = item.kind === 'command' ? item.command.hint : undefined
+							// A row that exists to explain itself rather than to be run — see `Command.runnable`.
+							const dead = !isRunnable(item)
 							return (
 								<Fragment key={item.key}>
 									{(index === 0 || items[index - 1]?.group !== item.group) && (
@@ -475,6 +494,7 @@ export function CommandPalette({
 										id={`lb-palette-item-${index}`}
 										className={rowClass(item, on)}
 										data-index={index}
+										data-dead={dead || undefined}
 										role="option"
 										aria-selected={on}
 										onPointerDown={(event) => {
@@ -495,6 +515,9 @@ export function CommandPalette({
 											)}
 										</span>
 										<span className="lb-palette__name">{item.title}</span>
+										{/* Secondary text, after the title: what this will do, or what is wrong with
+										    what has been typed so far. */}
+										{hint && <span className="lb-palette__note">{hint}</span>}
 										{kbd && <kbd className="lb-kbd lb-palette__hint">{formatKbd(kbd, mac)}</kbd>}
 									{item.kind === 'complete' && (
 										<span className="lb-palette__hint lb-palette__detail">{item.hint}</span>

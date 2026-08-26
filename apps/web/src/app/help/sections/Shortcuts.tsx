@@ -53,6 +53,19 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The dice tray's gestures are commands for *loading* and keys for nothing else: picking up, putting
+		// back and throwing are all pointer work, and the one key involved is bound by the overlay rather
+		// than registered, so none of it can generate itself.
+		title: 'Holding dice',
+		rows: [
+			[['click'], 'A die in the tray: pick one up. Click again for another'],
+			[['right-click', '⇧click'], 'A die in the tray: put one back'],
+			[['click'], 'The board: throw what you are holding, there'],
+			[['right-click'], 'The board: put the whole hand down'],
+			[['Esc'], 'Put the whole hand down'],
+		],
+	},
+	{
 		title: 'Writing in a note',
 		rows: [
 			[['⌘Enter'], 'Tick the task under the caret — or finish editing'],

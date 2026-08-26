@@ -9992,3 +9992,580 @@ button.lb-props__eye:hover {
 	display: block;
 }
 
+
+/*
+ * ── Dice ────────────────────────────────────────────────────────────────────────────────────────
+ *
+ * The dice extension's chrome (`@lifeboard/dice`). It lives here rather than in the package because
+ * this file is the app's whole stylesheet — `@lifeboard/book-reader` ships no CSS of its own either —
+ * and one palette in one place is what makes a theme a palette swap rather than a second stylesheet.
+ *
+ * Everything is drawn from the same tokens as the rest of the chrome, so the tray reads as part of the
+ * app in both themes without a single hardcoded colour.
+ */
+.lb-dice {
+	position: absolute;
+	inset: 0;
+	/* The root never takes a click: the tray and the release layer opt back in individually. Same rule
+	   as .lb-agent-presence — an overlay that eats pointer events is indistinguishable from a broken
+	   board. */
+	pointer-events: none;
+	font-family: var(--lb-font);
+}
+
+/* The die silhouettes, in the tray, on the cursor and in the readout. The numeral is part of the icon
+   because a d8 and a d10 have nearly the same outline at this size. */
+.lb-dice-icon path {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linejoin: round;
+}
+.lb-dice-icon text {
+	fill: currentColor;
+	stroke: none;
+	font-family: var(--lb-font);
+	font-size: 8.5px;
+	font-weight: 650;
+	/*
+	 * Both axes, and the vertical one is the load-bearing half. An SVG `<text>` y is a *baseline*, so
+	 * without `dominant-baseline` every number sat high by half a glyph — most visibly in the shapes
+	 * that are not symmetrical top-to-bottom, where it read as the number being in the wrong place
+	 * rather than as a uniform offset. `central` centres the em box on y; `CENTRE` in DieIcon.tsx then
+	 * only has to say where each shape's own middle is.
+	 */
+	text-anchor: middle;
+	dominant-baseline: central;
+	/* The glyph is the only part that must stay legible when the outline is dimmed. */
+	opacity: 0.95;
+}
+
+/*
+ * How a rolled value landed, as colour — a continuous ramp from `--lb-danger` at the die's lowest face
+ * to `--lb-accent` at its highest, so a 17 on a d20 is visibly good and a 20 is unmistakable.
+ *
+ * Mixed here rather than computed in JS, for two reasons. The two ends stay **theme tokens**, so a
+ * light-mode roll is coloured in light-mode colours without the component knowing a palette exists.
+ * And the midpoint is `--lb-text` — the ordinary number colour — so the ramp passes through *neutral*
+ * instead of through the mauve a direct red-to-blue interpolation would give every middling roll.
+ *
+ * `in oklab` because sRGB interpolation darkens and dulls through the middle of a hue sweep.
+ *
+ * Only ever on a rolled value. In the tray the number is a face *count*, which has no outcome to report.
+ */
+.lb-dice-icon[data-side] {
+	/* Set inline by `DieIcon`: 0 at the middle of the die, 1 at either extreme. */
+	--lb-die-strength: 0;
+	color: color-mix(
+		in oklab,
+		var(--lb-text),
+		var(--lb-die-end) calc(var(--lb-die-strength) * 100%)
+	);
+}
+.lb-dice-icon[data-side='max'] {
+	--lb-die-end: var(--lb-accent);
+}
+.lb-dice-icon[data-side='min'] {
+	--lb-die-end: var(--lb-danger);
+}
+.lb-dice-icon[data-side] text {
+	opacity: 1;
+}
+
+/*
+ * The tray: floating at the right-hand edge of the *canvas*, not the window.
+ *
+ * Absolute inside tldraw's container, which is why the agent panel needs no special case — that panel
+ * is a real shell column, so the container narrows and the tray comes inward with it.
+ */
+.lb-dice-tray {
+	position: absolute;
+	top: 50%;
+	right: 12px;
+	transform: translateY(-50%);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 4px;
+	pointer-events: auto;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 11px;
+	box-shadow: var(--lb-shadow-2);
+}
+
+.lb-dice-tray__die {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+	transition:
+		background 120ms ease,
+		color 120ms ease;
+}
+.lb-dice-tray__die:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+/* Loaded is the button's own state, so it takes the same accent fill an active tool does. */
+.lb-dice-tray__die[data-loaded] {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-dice-tray__die:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+/* The count, as a badge on the die rather than a number beside it: what went up is the die. */
+.lb-dice-tray__count {
+	position: absolute;
+	right: 1px;
+	bottom: 0;
+	min-width: 13px;
+	padding: 0 2px;
+	border-radius: 7px;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-size: 9.5px;
+	font-weight: 700;
+	line-height: 13px;
+	text-align: center;
+}
+
+/*
+ * The cursor while dice are held, said with a class on tldraw's container.
+ *
+ * `!important` because tldraw writes its cursor as an *inline style* on `.tl-canvas`, reasserting it
+ * from the select tool as the pointer moves on and off shapes — so nothing short of this survives
+ * crossing a sticky note. There is deliberately no transparent layer over the board to hang a normal
+ * `cursor` on: one used to be here, and being a hit-target in front of `.tl-canvas` stopped wheel
+ * events ever reaching tldraw's gesture listener, which silently disabled pan and zoom for as long as
+ * you held a die. See `useThrowOnPointerDown` in DiceOverlay.tsx.
+ */
+.lb-dice-holding .tl-canvas,
+.lb-dice-holding .tl-shape {
+	cursor: grab !important;
+}
+
+/* What you are holding, trailing the pointer. Offset down and right so it sits clear of the arrow. */
+.lb-dice-held {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin: 16px 0 0 18px;
+	padding: 3px 6px;
+	border-radius: 9px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--lb-border-strong);
+	box-shadow: var(--lb-shadow-1);
+	color: var(--lb-text);
+	white-space: nowrap;
+	/* Follows the pointer by transform, which cannot be allowed to lag behind it. */
+	will-change: transform;
+}
+.lb-dice-held__die {
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	color: var(--lb-accent);
+}
+.lb-dice-held__count {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--lb-text);
+}
+
+/*
+ * The result, above wherever the dice came to rest.
+ *
+ * Centring and lifting are done in the inline transform (see RollReadout.tsx), not with margins: the
+ * card's height depends on how many dice were thrown, so "clear of the pile" has to be a percentage of
+ * itself rather than a fixed offset.
+ */
+.lb-dice-readout {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	width: 140px;
+	padding: 8px 10px;
+	border-radius: 12px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text);
+	opacity: 1;
+	/* Must match FADE_MS in RollReadout.tsx. */
+	transition: opacity 500ms ease;
+}
+.lb-dice-readout[data-phase='fading'] {
+	opacity: 0;
+}
+.lb-dice-readout__notation {
+	font-size: 10.5px;
+	font-weight: 600;
+	color: var(--lb-text-faint);
+	letter-spacing: 0.02em;
+}
+.lb-dice-readout__faces {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 2px;
+}
+/*
+ * The die outline around its rolled value — so a face reads as "a d20 that came up 17", not as a 17.
+ *
+ * The value is drawn *inside* the icon (`DieIcon`'s `label`), not floated over it: an HTML span
+ * centred on the icon's box is only in the right place for a shape that is symmetrical about its
+ * middle, which three of the seven are not.
+ */
+.lb-dice-readout__face {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text);
+}
+.lb-dice-readout__face .lb-dice-icon {
+	/* Larger than the tray's, because this is the number you are actually here to read. */
+	font-size: 11px;
+}
+.lb-dice-readout__face .lb-dice-icon text {
+	font-size: inherit;
+	font-weight: 700;
+}
+/*
+ * The outline steps back so the number reads first — fourteen dice at full-strength outline is a grid
+ * of boxes you have to look past. It says *which die* this was, which matters less than what it rolled.
+ *
+ * It comes forward again in proportion to the roll's `strength`, which is what makes a 20 or a 1
+ * findable in that grid at a glance: at the extremes the colour has to arrive as a *shape*, not as one
+ * tinted digit. A middling roll stays a faint outline round a plain number.
+ */
+.lb-dice-readout__face .lb-dice-icon path {
+	opacity: calc(0.4 + 0.6 * var(--lb-die-strength, 0));
+}
+.lb-dice-readout__total {
+	display: flex;
+	align-items: baseline;
+	gap: 5px;
+	padding-top: 3px;
+	border-top: 1px solid var(--lb-border);
+	width: 100%;
+	justify-content: center;
+}
+.lb-dice-readout__totallabel {
+	font-size: 10px;
+	color: var(--lb-text-faint);
+}
+.lb-dice-readout__totalvalue {
+	font-size: 19px;
+	font-weight: 700;
+	color: var(--lb-accent);
+	line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	/* The readout still goes away — it is transient information, not decoration — it just goes without
+	   being animated out. */
+	.lb-dice-readout {
+		transition: none;
+	}
+	.lb-dice-tray__die {
+		transition: none;
+	}
+}
+
+/*
+ * The dice demo on the help page.
+ *
+ * The demo is built from the board's *real* tray, cursor and readout markup — a help page that redrew
+ * them would stop matching the app the first time they changed — so all that is needed here is to
+ * re-anchor the absolute positioning those pieces use to sit on a canvas. The scene keeps its standard
+ * 640px box (see `.lb-demo__scene`) so the pixel coordinates `<Cursor>` is given mean the same thing
+ * here as in every other demo.
+ */
+.lb-demo--dice .lb-dice-tray {
+	top: 16px;
+	right: auto;
+	left: 50%;
+	transform: translateX(-50%);
+	/* A row rather than a column: the real tray is tall because it runs down the edge of a board, and
+	   this scene is wider than it is high. */
+	flex-direction: row;
+}
+.lb-demo__diceheld {
+	top: 80px;
+	left: 350px;
+	margin: 0;
+}
+.lb-demo__dicereadout {
+	top: 70px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+/*
+ * The canvas the 3D dice roll on.
+ *
+ * Fills the board and takes no pointer events — it is a picture of dice on the paper, not something you
+ * can interact with. Sized in CSS and told its own pixel size by the renderer (see `stage.ts`), which
+ * is why there are no width/height attributes here.
+ */
+.lb-dice-stage {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+/*
+ * The flat modifier, as a term beside the faces.
+ *
+ * Deliberately not a die: it was not rolled. It reads as the arithmetic it is, so a total of 28 from a
+ * d20 is explicable at a glance rather than looking impossible.
+ */
+.lb-dice-readout__modifier {
+	display: grid;
+	place-items: center;
+	min-width: 22px;
+	height: 26px;
+	padding: 0 3px;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--lb-text-dim);
+}
+
+/*
+ * A palette row's secondary text — what a command will do, or what is wrong with what has been typed.
+ *
+ * Sits after the title and shrinks before it does: the title is the answer, and this is the footnote.
+ */
+.lb-palette__note {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--lb-text-faint);
+	font-size: 12px;
+}
+.lb-palette__row--on .lb-palette__note {
+	color: rgb(255 255 255 / 72%);
+}
+/* A row that exists to explain itself. Dimmed, and it never becomes the highlighted one. */
+.lb-palette__row[data-dead] .lb-palette__name {
+	color: var(--lb-text-dim);
+}
+
+/*
+ * The Dice extension's Appearance panel (Settings → Extensions → Dice).
+ *
+ * Its rows follow the same shape as Settings' own (`lb-appearance__card` wraps them), so an extension's
+ * panel reads as part of the page rather than as something bolted onto it.
+ */
+.lb-dice-setting {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-dice-setting:last-of-type {
+	border-bottom: 0;
+}
+/* A per-die row, stepped in under the toggle that reveals it. */
+.lb-dice-setting[data-indented] {
+	padding-left: 16px;
+}
+.lb-dice-setting__label {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	font-size: 13.5px;
+	color: var(--lb-text);
+	padding-top: 4px;
+}
+.lb-dice-setting__title {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--lb-text-dim);
+}
+.lb-dice-setting__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+	max-width: 42ch;
+}
+.lb-dice-setting__note {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+	padding-top: 5px;
+}
+.lb-dice-setting__control {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+/*
+ * A colour: one circle that opens a swatch menu — the selection toolbar's gesture, reusing its classes.
+ *
+ * The wrapper is only here to give the absolutely-positioned menu something to hang from.
+ */
+.lb-dice-picker {
+	position: relative;
+	flex-shrink: 0;
+	padding-top: 4px;
+}
+/*
+ * Opens *below* rather than above, unlike the selection toolbar's: this sits in a scrolling settings
+ * page with rows underneath it, not on a bar at the bottom of the screen.
+ */
+.lb-dice-picker__menu {
+	top: calc(100% + 8px);
+	bottom: auto;
+	left: auto;
+	right: 0;
+	transform: none;
+	/* A column of blocks — swatches, then actions, then the editor — so opening one does not reflow the
+	   others into a ragged shape. */
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	z-index: 2;
+}
+/* Six per row: two tidy rows for the eleven, rather than however many happen to fit. */
+.lb-dice-picker__swatches {
+	display: grid;
+	grid-template-columns: repeat(6, 18px);
+	gap: 6px;
+}
+.lb-dice-picker__actions {
+	display: flex;
+	gap: 6px;
+}
+.lb-dice-picker__advanced {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	/* Its own line under the swatches, so opening it widens nothing. */
+	flex-basis: 100%;
+	justify-content: flex-end;
+}
+.lb-dice-picker__hex {
+	width: 86px;
+	padding: 4px 7px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 7px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: var(--lb-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	font-size: 12px;
+}
+
+/*
+ * The preset swatches reuse `.lb-swatch` — the selection toolbar's own. Only the native colour input,
+ * which is a *well* rather than a swatch, needs anything of its own.
+ */
+.lb-dice-swatch--input {
+	width: 34px;
+	height: 26px;
+	padding: 0;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 7px;
+	background: none;
+	cursor: pointer;
+}
+.lb-dice-swatch--input::-webkit-color-swatch-wrapper {
+	padding: 2px;
+}
+.lb-dice-swatch--input::-webkit-color-swatch {
+	border: 0;
+	border-radius: 4px;
+}
+
+.lb-dice-setting__reset {
+	padding: 4px 9px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 7px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.lb-dice-setting__reset:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+/*
+ * The set, as it will look. Flat silhouettes rather than the real dice: showing someone a colour is not
+ * worth loading a WebGL scene and a physics world (see `DicePreview`).
+ */
+.lb-dice-preview {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding-top: 14px;
+}
+.lb-dice-preview__die {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border: 2px solid;
+	border-radius: 9px;
+}
+
+/*
+ * A kept roll, as a card on the board.
+ *
+ * Laid out like the floating readout it replaces — it reuses the same `lb-dice-readout__*` innards — but
+ * it is a *shape*, so it takes the board's card surface rather than the chrome's translucent panel, and
+ * its properties are drawn under it by the app (`strips: 'below'`).
+ */
+.lb-roll-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	width: 100%;
+	height: 100%;
+	padding: 9px 10px;
+	box-sizing: border-box;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	/* A record, not a control: nothing in it responds to a pointer, so it behaves like a shape. */
+	user-select: none;
+}
+.lb-roll-card__empty {
+	color: var(--lb-text-faint);
+	font-size: 12px;
+}

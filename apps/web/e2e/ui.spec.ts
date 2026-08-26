@@ -1249,7 +1249,10 @@ test.describe('extensions', () => {
 		await skipFirstRunDemo(page)
 
 		await openSettings(page, 'Extensions')
-		await expect(page.locator('.lb-extmarket__card')).toHaveCount(3)
+		// One card per extension the composition root ships (`apps/web/src/extensions.ts`). Deliberately
+		// a literal: this number is *supposed* to change when an extension is added, because "Settings
+		// lists every extension this build has" is the thing being asserted.
+		await expect(page.locator('.lb-extmarket__card')).toHaveCount(4)
 
 		// The card is the way in — the switch alone can't answer "what is this?".
 		await page.getByRole('button', { name: 'Markdown notes', exact: true }).click()
@@ -1289,7 +1292,7 @@ test.describe('extensions', () => {
 
 		await page.getByRole('button', { name: 'All extensions' }).click()
 		await expect(page).toHaveURL(/#\/settings\/extensions$/)
-		await expect(page.locator('.lb-extmarket__card')).toHaveCount(3)
+		await expect(page.locator('.lb-extmarket__card')).toHaveCount(4)
 
 		// A link from a build that had an extension this one doesn't must not render a blank page.
 		await page.goto('/#/settings/extensions/someone.else')

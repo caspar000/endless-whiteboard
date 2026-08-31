@@ -1,13 +1,10 @@
 import {
 	RELATION_VIEW_LABELS,
 	RELATION_VIEW_NOTES,
-	getVisibleNodeDefinitions,
 	nextRelationView,
 	readRelationView,
 	setRelationView,
-	subscribeToNodeDefinitions,
 } from '@lifeboard/node-kit'
-import { useSyncExternalStore } from 'react'
 import {
 	Circle,
 	Diamond,
@@ -41,14 +38,28 @@ import {
 	type Editor,
 	type StyleProp,
 } from 'tldraw'
-import { toolIdForNodeType } from './nodeTools'
+import { NodeMenuButton } from './NodeMenu'
+import { getNextFillColor, setNextFillColor } from './shapeFill'
 import { isTracing, toggleTracing } from './tracing'
 
 /**
  * The bottom dock — replaces tldraw's toolbar with an Affine-style one.
  *
+ * Four groups, and the grouping is the argument:
+ *
+ * 1. **Getting around and around things** — select, hand, frame, relation. Nothing here makes a mark.
+ * 2. **Making marks** — sticky, pen, eraser, shapes, text, image. tldraw's own drawing surface.
+ * 3. **Looking** — the relation view and the tracing lens. They change what the board *shows*, never
+ *    what the next click does, which is why they are not tools and not next to any.
+ * 4. **Nodes** — one button that opens the searchable picker (`NodeMenu.tsx`).
+ *
+ * The node types used to be a fifth group of their own, one button each in registry order. They are
+ * behind the picker now: the list is open-ended — an extension adds to it — and a dock that grows a
+ * button per installed extension is a dock with no fixed shape. See NodeMenu.tsx for the rest of that
+ * reasoning; the registry-driven rule is unchanged, it just renders somewhere with room.
+ *
  * Rendering our own component in the `Toolbar` slot changes *presentation only*: tool keyboard
- * shortcuts (1–9 by dock position, `b` for draw, `t` for text, and the node tools' letters) are
+ * shortcuts (1–9 by dock position, `d` for draw, `t` for text, and the node tools' letters) are
  * registered by tldraw from the tools map, not by the toolbar that happens to render the buttons,
  * so they all keep working — including for tools this dock doesn't show.
  *
@@ -240,7 +251,66 @@ function PenSettings({ currentToolId }: { currentToolId: string }) {
 	)
 }
 
-/** Shape kind and colour — the Affine shape expansion. */
+/**
+ * The fill colour for the next shape, transparent included.
+ *
+ * A second row of the *same* swatches as the border, plus a "no fill" chip at the front — because
+ * "which colour" is the same question in both places, and answering it twice with two different
+ * controls would be the thing that makes people think one of them means something else.
+ *
+ * Transparent leads because it is the default and the state you come back to. See `shapeFill.ts` for
+ * why a fill colour is not simply a style prop.
+ */
+function FillSwatches() {
+	const editor = useEditor()
+	const current = useValue('lb:next-fill', () => getNextFillColor(), [])
+	const colors = useValue(
+		'lb:theme-colors-fill',
+		() => editor.getCurrentTheme().colors[editor.getColorMode()],
+		[editor]
+	)
+	return (
+		<div className="lb-expand__group" role="group" aria-label="Fill">
+			<button
+				className={
+					current === null
+						? 'lb-expand__swatch lb-expand__swatch--none lb-expand__swatch--active'
+						: 'lb-expand__swatch lb-expand__swatch--none'
+				}
+				data-testid="lb.fill-none"
+				onPointerDown={(e) => e.preventDefault()}
+				onClick={() => setNextFillColor(editor, null)}
+				title="No fill"
+				aria-label="No fill"
+				aria-pressed={current === null}
+			/>
+			{COLORS.map((value) => (
+				<button
+					key={value}
+					className={
+						current === value ? 'lb-expand__swatch lb-expand__swatch--active' : 'lb-expand__swatch'
+					}
+					// `fill`, not `solid`: the swatch has to be painted in the colour the shape's inside
+					// will actually be, and the inside uses the theme's full-strength fill variant.
+					style={{ backgroundColor: getColorValue(colors, value, 'fill') }}
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => setNextFillColor(editor, value)}
+					title={`Fill ${value}`}
+					aria-label={`Fill ${value}`}
+					aria-pressed={current === value}
+				/>
+			))}
+		</div>
+	)
+}
+
+/**
+ * Shape kind, border colour and fill colour — the Affine shape expansion, in two rows.
+ *
+ * Two rows rather than one because a single row of five kinds and twenty-two swatches is wider than
+ * the dock it is meant to sit above. Stacked inside one panel rather than as two panels, so it still
+ * reads as one thing: the settings for the shape you are about to draw.
+ */
 function ShapeSettings() {
 	const editor = useEditor()
 	const currentKind = useValue(
@@ -249,30 +319,37 @@ function ShapeSettings() {
 		[editor]
 	)
 	return (
-		<div className="lb-expand">
-			<div className="lb-expand__group" role="group" aria-label="Shape">
-				{GEO_KINDS.map(({ value, icon: Icon }) => (
-					<button
-						key={value}
-						className={
-							currentKind === value ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
-						}
-						onPointerDown={(e) => e.preventDefault()}
-						onClick={() =>
-							editor.run(() => {
-								editor.setStyleForNextShapes(GeoShapeGeoStyle, value)
-								editor.setCurrentTool('geo')
-							})
-						}
-						title={value}
-						aria-label={`Shape ${value}`}
-					>
-						<Icon size={ICON_SIZE} aria-hidden="true" />
-					</button>
-				))}
+		<div className="lb-expand lb-expand--stack">
+			<div className="lb-expand__row">
+				<div className="lb-expand__group" role="group" aria-label="Shape">
+					{GEO_KINDS.map(({ value, icon: Icon }) => (
+						<button
+							key={value}
+							className={
+								currentKind === value ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
+							}
+							onPointerDown={(e) => e.preventDefault()}
+							onClick={() =>
+								editor.run(() => {
+									editor.setStyleForNextShapes(GeoShapeGeoStyle, value)
+									editor.setCurrentTool('geo')
+								})
+							}
+							title={value}
+							aria-label={`Shape ${value}`}
+						>
+							<Icon size={ICON_SIZE} aria-hidden="true" />
+						</button>
+					))}
+				</div>
+				<div className="lb-expand__sep" />
+				<span className="lb-expand__tag">Border</span>
+				<ColorSwatches />
 			</div>
-			<div className="lb-expand__sep" />
-			<ColorSwatches />
+			<div className="lb-expand__row">
+				<span className="lb-expand__tag">Fill</span>
+				<FillSwatches />
+			</div>
 		</div>
 	)
 }
@@ -390,10 +467,6 @@ function TracingHint() {
 export function CanvasToolbar() {
 	const editor = useEditor()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
-	// Subscribed to the registry's own store, so flipping a toggle in Settings adds/removes dock
-	// buttons on the spot. Not tldraw's `useValue`: the registry deliberately owns its reactivity
-	// (see node-kit's registry.tsx for the dual-signal-instance bug that forced this).
-	const nodeDefs = useSyncExternalStore(subscribeToNodeDefinitions, getVisibleNodeDefinitions)
 
 	return (
 		<div className="lb-dock-wrap">
@@ -410,6 +483,7 @@ export function CanvasToolbar() {
 			)}
 
 			<div className="lb-dock">
+				{/* Getting around, and around things. */}
 				<ToolButton
 					toolId="select"
 					icon={<MousePointer2 size={ICON_SIZE} aria-hidden="true" />}
@@ -425,46 +499,22 @@ export function CanvasToolbar() {
 					icon={<Frame size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'frame'}
 				/>
+				{/* tldraw's arrow. Snapped at both ends it becomes a relation, which is what it is for
+				    here and why it reads as one of the structural tools rather than a drawing one. */}
 				<ToolButton
 					toolId="arrow"
 					icon={<Spline size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'arrow'}
 				/>
-				{/* tldraw's sticky note. On this side of the separator because it is one of tldraw's own
-				    shapes, not a registry node type — keeping the group below purely registry-driven. */}
+
+				<div className="lb-dock__sep" />
+
+				{/* Making marks. */}
 				<ToolButton
 					toolId="note"
 					icon={<StickyNote size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'note'}
 				/>
-
-				<div className="lb-dock__sep" />
-
-				{/* The node types — registry-driven, so a new type (or a plugin's) appears for free.
-				    A definition brings its own lucide-style icon (`toolbarIcon`) so the dock reads as
-				    one set; without one it falls back to the registry glyph, so the icon never gates
-				    what can appear here. */}
-				{nodeDefs.map((def) => {
-					const toolId = toolIdForNodeType(def.type)
-					const Icon = def.toolbarIcon
-					return (
-						<ToolButton
-							key={def.type}
-							toolId={toolId}
-							icon={
-								Icon ? (
-									<Icon size={ICON_SIZE} aria-hidden="true" />
-								) : (
-									<span className="lb-tool-icon">{def.icon}</span>
-								)
-							}
-							isActive={currentToolId === toolId}
-						/>
-					)
-				})}
-
-				<div className="lb-dock__sep" />
-
 				<ToolButton
 					toolId="draw"
 					icon={<Pen size={ICON_SIZE} aria-hidden="true" />}
@@ -505,6 +555,11 @@ export function CanvasToolbar() {
 				{/* Not tools: these change what the board *shows*, not what the next click draws. */}
 				<RelationViewButton />
 				<TracingButton />
+
+				<div className="lb-dock__sep" />
+
+				{/* Every node type, ours and every extension's, behind one button. */}
+				<NodeMenuButton />
 			</div>
 		</div>
 	)

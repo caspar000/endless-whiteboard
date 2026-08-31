@@ -5,12 +5,14 @@ import {
 	NoteShapeUtil,
 	TextShapeUtil,
 	getArrowBindings,
+	getColorValue,
 	type TLArrowShape,
 	type TLGeoShape,
 	type TLHandleDragInfo,
 	type TLNoteShape,
 	type TLTextShape,
 } from 'tldraw'
+import { FILL_COLOR_META, getNextFillColor, readFillColor } from './shapeFill'
 
 /**
  * tldraw's own text-bearing shapes, taught to evaluate `{…}`.
@@ -40,10 +42,58 @@ class ExpressionTextShapeUtil extends TextShapeUtil {
 	}
 }
 
+/**
+ * A geo shape whose fill has a colour of its own — see `shapeFill.ts` for why that is not simply a
+ * prop, and for the `meta` key it reads.
+ *
+ * `getCustomDisplayValues` is tldraw's own seam for exactly this, merged over the defaults on the way
+ * to `GeoShapeBody` (which already takes the stroke and the fill as separate colours). Its result is
+ * cached per shape *record*, so writing the meta is what invalidates it — nothing here has to
+ * subscribe to anything.
+ *
+ * `patternFillFallbackColor` comes along because a pattern fill would otherwise keep painting itself
+ * in the stroke's colour, which is exactly the disagreement this whole file exists to remove.
+ */
+const geoWithFillColor = GeoShapeUtil.configure({
+	getCustomDisplayValues: (_editor, shape, theme, colorMode) => {
+		const fill = readFillColor(shape)
+		if (!fill) return {}
+		const colors = theme.colors[colorMode]
+		return {
+			fillColor: getColorValue(colors, fill, 'fill'),
+			patternFillFallbackColor: getColorValue(colors, fill, 'semi'),
+		}
+	},
+})
+
 /** Covers the label on a rectangle, ellipse, cloud and the rest — they are all one shape type. */
-class ExpressionGeoShapeUtil extends GeoShapeUtil {
+class ExpressionGeoShapeUtil extends geoWithFillColor {
 	override component(shape: TLGeoShape) {
 		return super.component(useExpressionShape(this.editor, shape))
+	}
+
+	/**
+	 * A shape drawn now gets the fill colour the dock is currently showing — the `meta` half of what
+	 * `setStyleForNextShapes` does for real style props.
+	 *
+	 * Two guards, and both are load-bearing. **Only while the geo tool is drawing:** paste and
+	 * alt-drag duplicate run through here too (with `select` current), and a pasted transparent
+	 * rectangle must not pick up whatever the dock happens to be set to — the registry's `onCreate`
+	 * note makes the same point about only filling in what nobody has chosen. **Only when the shape
+	 * carries no choice of its own:** that is what makes the first guard belt-and-braces, since
+	 * anything this app's controls have touched records its answer explicitly, transparent included.
+	 */
+	// `undefined` rather than `void`: tldraw narrows the base's return to a union of the shape and
+	// `undefined`, and `void` is not assignable to it.
+	override onBeforeCreate(shape: TLGeoShape): TLGeoShape | undefined {
+		// Chained, not replaced: tldraw's own hook is what grows a labelled shape to fit its text, and
+		// dropping it would make every shape created with a label the wrong height.
+		const sized: TLGeoShape = super.onBeforeCreate(shape) ?? shape
+		const wanted = getNextFillColor()
+		if (!wanted || FILL_COLOR_META in sized.meta || !this.editor.isIn('geo')) {
+			return sized === shape ? undefined : sized
+		}
+		return { ...sized, meta: { ...sized.meta, [FILL_COLOR_META]: wanted } }
 	}
 }
 

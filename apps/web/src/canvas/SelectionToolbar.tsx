@@ -30,6 +30,7 @@ import {
 	useEditor,
 	useValue,
 	type Editor,
+	type TLDefaultColorStyle,
 	type TLImageAsset,
 	type TLImageShape,
 	type TLShape,
@@ -44,6 +45,7 @@ import {
 } from '../persistence/removeBackground'
 import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
+import { canHaveFillColor, readFillColor, setSelectionFillColor } from './shapeFill'
 
 /**
  * Whether the colour paints an *outline* rather than an area, which decides how its swatch is drawn.
@@ -141,6 +143,109 @@ function ShapeColorPicker() {
 									// semantics. Deliberately not `setStyleForNextShapes`: recolouring a frame
 									// should not repaint the next pen stroke.
 									editor.setStyleForSelectedShapes(DefaultColorStyle, value)
+									setOpen(false)
+								}}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+			<div className="lb-seltb__sep" />
+		</>
+	)
+}
+
+/**
+ * The *inside* of what is selected: transparent, or a colour of its own.
+ *
+ * A second swatch beside the border's, and the pair is the whole point — tldraw gives a shape one
+ * colour and decides the fill from it, so until now "black outline, blue inside" was not something a
+ * board could say. See `shapeFill.ts` for where the second colour is kept and why.
+ *
+ * Offered for geo shapes only, and that is not a shortcut: a pen stroke and an arrowhead have a fill
+ * too, but there the colour is ink either way — the same distinction `isOutlineOnly` above already
+ * makes, for the same reason.
+ */
+function ShapeFillPicker() {
+	const editor = useEditor()
+	const [open, setOpen] = useState(false)
+
+	const state = useValue(
+		'lb:shape-fill',
+		() => {
+			const shapes = editor.getSelectedShapes()
+			if (shapes.length === 0 || !shapes.every(canHaveFillColor)) return null
+			const values = new Set(shapes.map((shape) => readFillColor(shape)))
+			return {
+				// `undefined` for a mixed selection — distinct from `null`, which is a real answer
+				// ("transparent") and has a swatch of its own.
+				value: values.size === 1 ? [...values][0]! : undefined,
+				colors: editor.getCurrentTheme().colors[editor.getColorMode()],
+			}
+		},
+		[editor]
+	)
+
+	useEffect(() => {
+		if (!state) setOpen(false)
+	}, [state])
+
+	if (!state) return null
+
+	// The full-strength variant, because that is what the shape's inside is painted with.
+	const paint = (value: string) => getColorValue(state.colors, value, 'fill')
+	const swatchClass = (value: TLDefaultColorStyle | null) =>
+		value === null ? 'lb-swatch lb-swatch--none' : 'lb-swatch'
+
+	return (
+		<>
+			<div className="lb-seltb__color">
+				<button
+					className={
+						state.value === undefined ? 'lb-swatch' : swatchClass(state.value)
+					}
+					style={state.value ? { background: paint(state.value) } : undefined}
+					title={
+						state.value === undefined
+							? 'Mixed fills'
+							: state.value === null
+								? 'Fill: none'
+								: `Fill: ${state.value}`
+					}
+					aria-label="Fill"
+					aria-expanded={open}
+					data-testid="lb.fill"
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => setOpen((v) => !v)}
+				/>
+
+				{open && (
+					<div className="lb-seltb__palette" role="group" aria-label="Fill options">
+						<button
+							className={
+								state.value === null ? 'lb-swatch lb-swatch--none lb-swatch--active' : 'lb-swatch lb-swatch--none'
+							}
+							title="No fill"
+							aria-label="No fill"
+							aria-pressed={state.value === null}
+							data-testid="lb.fill-none"
+							onPointerDown={(e) => e.preventDefault()}
+							onClick={() => {
+								setSelectionFillColor(editor, null)
+								setOpen(false)
+							}}
+						/>
+						{DefaultColorStyle.values.map((value) => (
+							<button
+								key={value}
+								className={value === state.value ? 'lb-swatch lb-swatch--active' : 'lb-swatch'}
+								style={{ background: paint(value) }}
+								title={value}
+								aria-label={`Fill ${value}`}
+								aria-pressed={value === state.value}
+								onPointerDown={(e) => e.preventDefault()}
+								onClick={() => {
+									setSelectionFillColor(editor, value)
 									setOpen(false)
 								}}
 							/>
@@ -519,6 +624,7 @@ function SelectionToolbarContent({
 	return (
 		<>
 			<ShapeColorPicker />
+			<ShapeFillPicker />
 			{media === 'image' && onlyId && (
 				<>
 					<DefaultImageToolbarContent

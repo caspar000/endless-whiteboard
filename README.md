@@ -45,10 +45,13 @@ markdown, the box grows as you type, and a tool call opens to show what it was g
 on screen and your current selection, so “name these” needs no explaining and the agent never opens a
 turn by asking what it is looking at. See [`packages/agent-host`](packages/agent-host/README.md).
 
-**Board** — the endless canvas on dotted paper, with a registry-driven toolbar (the bottom dock).
-Nodes are drawn from the dock like every other tool; right-click offers "Add to board" for placing
-one at the pointer. Double-clicking empty canvas is tldraw's default action. Double-clicking the
-board's name in the tab strip renames it.
+**Board** — the endless canvas on dotted paper, with the bottom dock in four groups: getting around
+(select, hand, frame, relation), making marks (sticky, pen, eraser, shapes, text, image), looking
+(relation view, tracing), and the node types. Digits `1`–`9` run left to right along it. The node
+types sit behind the last button — a **searchable grid**, registry-driven, so a new type or an
+extension's arrives in it without widening the dock; right-click offers "Add to board" for placing
+one at the pointer instead. Double-clicking empty canvas is tldraw's default action. Double-clicking
+the board's name in the tab strip renames it.
 
 ## Nodes & extensions
 
@@ -128,7 +131,7 @@ an id, a display name, an icon and a version for the Settings card:
   switch again, and a "what it adds" list *derived from the manifest* (node types, commands, agent
   operations, file types it opens, context-menu actions), so a third-party extension gets the same
   page for free.
-  Off means *stop offering*: the dock button, context-menu entry and shortcut disappear — live, no
+  Off means *stop offering*: the node picker's tile, context-menu entry and shortcut disappear — live, no
   board remount — but the extension's shape types stay registered with the schema, so existing
   boards keep opening and its shapes keep rendering. The disabled set persists in localStorage.
 - **Reactivity.** The registry owns its own tiny store (`subscribeToNodeDefinitions` +
@@ -137,8 +140,8 @@ an id, a display name, an icon and a version for the Settings card:
   that boundary.
 - **Writing one.** A new package with a `NodeDefinition` (props validators, migrations from v1, a
   component, an icon, optionally a `kbd` letter), wrapped in an `Extension`, plus a
-  `TLGlobalShapePropsMap` augmentation for its type. Everything else — shape util, tool, dock
-  button, menus, properties, tables — follows from the registry.
+  `TLGlobalShapePropsMap` augmentation for its type. Everything else — shape util, tool, its tile in
+  the dock's node picker, menus, properties, tables — follows from the registry.
 - **Chrome, not only content.** An extension can also contribute a `CanvasOverlay` — a component the
   board renders in tldraw's `InFrontOfTheCanvas` slot, above the shapes. That is how the dice tray
   exists at all, and it is what an extension needs to put a *control* on the canvas rather than a shape
@@ -289,9 +292,14 @@ sanitise), with `remark-breaks` so Enter always starts a visible new line.
 ## Things worth knowing before you change something
 
 **Adding a node type** means writing a `NodeDefinition`, wrapping it in an `Extension`, and adding
-one `registerExtension` line to the composition root — nothing else. Shape util, canvas tool, dock
-button, keyboard shortcut, context-menu entry, the Settings card and table participation all follow
-from the registry. There is deliberately no per-node-type branching in the UI.
+one `registerExtension` line to the composition root — nothing else. Shape util, canvas tool, its tile
+in the dock's node picker, keyboard shortcut, context-menu entry, the Settings card and table
+participation all follow from the registry. There is deliberately no per-node-type branching in the UI.
+
+**⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
+case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,
+which is what lets the second key switch an already-open palette into command mode instead of closing
+it.
 
 **⌘K has four modes**, one prefix apart: boards by default, `>` for commands, `@` to find a shape
 on the open board by name and animate-zoom to it, `=` to ask the board a question. The last one is why the palette is not just a
@@ -408,6 +416,17 @@ opens a palette above it, mirroring the dock's pen expansion. Which shapes get i
 gets the control for free. The swatch is a **ring** when the colour only paints an outline (a frame, a
 `fill: 'none'` rectangle) and a **filled dot** when it paints an area (a sticky) — restricted to `frame`
 and `geo`, because a pen stroke has a `fill` prop too but its colour is ink either way.
+
+**A geo shape has a second colour: its fill** (`canvas/shapeFill.ts`). tldraw gives a shape one colour
+and derives the fill from it, so "black border, blue inside" is not expressible in its props. The fill
+colour therefore lives in `shape.meta` — free-form, no migration — and reaches the picture through
+`GeoShapeUtil`'s `getCustomDisplayValues`, which already hands the stroke and the fill to the renderer
+as separate colours. Transparent is tldraw's own default and is written out as a value rather than left
+absent, because a partial cannot delete a `meta` key and because "explicitly transparent" has to be
+distinguishable from "never set". Geo shapes only: a pen stroke's fill is ink either way. The *next*
+shape's fill colour cannot ride on `setStyleForNextShapes` (that is style props only), so it is a
+session preference applied by the util's `onBeforeCreate` — guarded on the geo tool actually drawing,
+or a pasted rectangle would pick it up.
 
 **The canvas chrome is customised through `canvasComponents` in `canvas/Board.tsx`**: our paper
 replaces tldraw's `Background` (rather than enabling grid mode, which would also snap movement), the

@@ -5,9 +5,10 @@ import {
 	registerCommand,
 	type CommandContext,
 } from '@lifeboard/node-kit'
+import { toggleNodeMenu } from './nodeMenuState'
 import { toolIdForNodeType } from './nodeTools'
 import { runTldrawTool } from './tldrawUi'
-import { nativeToolKbds, nodeToolKbds } from './toolKeys'
+import { NODE_MENU_KBD, nativeToolKbds, nodeToolKbds } from './toolKeys'
 
 /**
  * The dock's tools, as commands.
@@ -32,6 +33,9 @@ const NATIVE_TOOL_TITLES: Record<string, string> = {
 	draw: 'Pen',
 	eraser: 'Eraser',
 	text: 'Text',
+	// tldraw's own tool, and the one whose `onSelect` opens a file dialog rather than arming a click.
+	// In the table so the dock's image button has a key like every other tool in its group.
+	asset: 'Image — place a file',
 }
 
 const onBoard = (ctx: CommandContext) => ctx.editor !== null
@@ -54,6 +58,25 @@ export function registerToolCommands(): void {
 			},
 		})
 	}
+
+	/*
+	 * The dock's node picker (see `NodeMenu.tsx`), which is not a tool but sits with them and is
+	 * reached the same way — so it belongs in this group, where somebody looking for "how do I get a
+	 * table" will find it next to the tables.
+	 *
+	 * Registered here rather than as an app command because it acts on **this board's** dock: the
+	 * picker's open flag is keyed by editor, since every open tab keeps a mounted one.
+	 */
+	registerCommand({
+		id: 'tool.nodes',
+		title: 'Node types…',
+		group: TOOLS_GROUP,
+		kbd: NODE_MENU_KBD,
+		when: onBoard,
+		run: (ctx) => {
+			if (ctx.editor) toggleNodeMenu(ctx.editor)
+		},
+	})
 
 	const nodeKbds = nodeToolKbds()
 	for (const def of getNodeDefinitions()) {

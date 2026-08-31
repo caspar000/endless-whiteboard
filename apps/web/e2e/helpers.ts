@@ -108,7 +108,21 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 	}
 }
 
-/** Selects a node tool from the registry-driven toolbar and drags out a shape. */
+/**
+ * Opens the dock's node picker — the searchable grid every node tool now lives behind.
+ *
+ * Idempotent, because the button is a toggle and a second click would put the panel away.
+ */
+export async function openNodeMenu(page: Page): Promise<void> {
+	// Scoped to the visible board: inactive tabs keep their (hidden) editors mounted, each with its
+	// own dock, so a page-wide testid lookup can match more than one.
+	const host = page.locator('.lb-board-host:not([data-hidden])')
+	const button = host.getByTestId('lb.node-menu')
+	if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click()
+	await expect(host.locator('.lb-nodemenu__panel')).toBeVisible()
+}
+
+/** Selects a node tool from the registry-driven picker and drags out a shape. */
 export async function drawNode(
 	page: Page,
 	label: 'Note' | 'Table',
@@ -116,8 +130,7 @@ export async function drawNode(
 	size = { w: 240, h: 260 }
 ): Promise<void> {
 	const toolId = labelToToolId(label)
-	// Scoped to the visible board: inactive tabs keep their (hidden) editors mounted, each with its
-	// own toolbar, so a page-wide testid lookup can match more than one dock.
+	await openNodeMenu(page)
 	await page.locator('.lb-board-host:not([data-hidden])').getByTestId(`tools.${toolId}`).click()
 	// Switching tools is asynchronous, and the click resolving is not the same as the tool being
 	// current. Dragging too early is handled by the *select* tool, which draws a marquee and creates

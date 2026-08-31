@@ -67,6 +67,11 @@ import {
  */
 export interface CommandPaletteProps {
 	open: boolean
+	/**
+	 * What the input starts with each time it opens — `''` for ⌘K, `'> '` for ⌘⇧K. A *changing* value
+	 * re-seeds an already-open palette, which is how the second key switches modes without closing.
+	 */
+	initialQuery?: string
 	onClose: () => void
 	/**
 	 * Built at the moment of use, never stored, so a command can't act on a board that has since been
@@ -135,6 +140,7 @@ function FallbackIcon({ kind }: { kind: PaletteItem['kind'] }) {
 
 export function CommandPalette({
 	open,
+	initialQuery = '',
 	onClose,
 	getContext,
 	boards,
@@ -221,16 +227,18 @@ export function CommandPalette({
 	const prompt = drill ? (currentParam(drill)?.spec.description ?? PROMPT) : PROMPT
 
 	// Each opening is a fresh question. A query left over from last time is invisible until you
-	// wonder why the board you're looking for isn't listed.
+	// wonder why the board you're looking for isn't listed. `initialQuery` is the exception the caller
+	// asked for — a prefix it wants pre-typed — and it is in the deps so re-seeding an open palette
+	// lands here too.
 	useEffect(() => {
 		if (!open) return
-		setQuery('')
+		setQuery(initialQuery)
 		setSelected(0)
 		setDrill(null)
 		setError(null)
 		setRunning(false)
 		inputRef.current?.focus()
-	}, [open])
+	}, [open, initialQuery])
 
 	/*
 	 * Scrolled by hand within the list rather than with `scrollIntoView`, for the reason

@@ -1777,6 +1777,30 @@ button {
 	height: 34px;
 	border-radius: 8px;
 }
+/*
+ * A settings row too wide for one line — the shape expansion, which carries a border palette and a
+ * fill palette. Still one panel: they are the settings for one shape, and two floating bars would
+ * read as two unrelated things.
+ */
+.lb-expand--stack {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+}
+.lb-expand__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+/* Names the palette that follows it. Needed only once there are two of them. */
+.lb-expand__tag {
+	padding: 0 4px 0 2px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text-faint);
+}
 .lb-expand__group {
 	display: flex;
 	align-items: center;
@@ -1793,6 +1817,26 @@ button {
 }
 .lb-expand__swatch:hover {
 	transform: scale(1.15);
+}
+/*
+ * "No fill" — a ring with a slash through it, which is the convention for transparency everywhere
+ * else it appears. A checkerboard would read as a *pattern* fill, which tldraw also has.
+ */
+.lb-expand__swatch--none {
+	position: relative;
+	background: none;
+	border: 1.5px solid var(--lb-border-strong);
+	overflow: hidden;
+}
+.lb-expand__swatch--none::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: -10%;
+	width: 120%;
+	height: 1.5px;
+	background: var(--lb-text-faint);
+	transform: rotate(-45deg);
 }
 .lb-expand__swatch--active {
 	outline: 2px solid var(--lb-accent);
@@ -1840,6 +1884,130 @@ button {
 .lb-expand__label--active {
 	background: var(--lb-surface-2);
 	color: var(--lb-accent);
+}
+
+/* ----------------------------------------------------------- node picker */
+/*
+ * The dock's node picker (canvas/NodeMenu.tsx): one button, and a panel of tiles above it.
+ *
+ * Anchored to the button rather than centred on the dock, because it belongs to the button — it opens
+ * where you clicked, and the dock is wide enough that a centred panel would appear somewhere you were
+ * not looking. `right: 0` keeps it inside the viewport, since the button is at the dock's right end.
+ */
+.lb-nodemenu {
+	position: relative;
+	display: flex;
+}
+.lb-nodemenu__panel {
+	position: absolute;
+	bottom: calc(100% + 10px);
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: min(340px, calc(100vw - 32px));
+	padding: 10px;
+	background: var(--lb-panel);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 14px;
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text);
+	/* The dock is `align-items: center`, which would otherwise stretch nothing but does make the
+	   absolute child's static position wander as the dock's height changes. */
+	text-align: left;
+}
+.lb-nodemenu__search {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 9px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 13px;
+	padding: 8px 10px;
+}
+.lb-nodemenu__search:focus {
+	outline: none;
+	border-color: var(--lb-accent);
+}
+.lb-nodemenu__search::placeholder {
+	color: var(--lb-text-faint);
+}
+.lb-nodemenu__grid {
+	/* `position: relative` makes it the offset parent the highlight's scroll maths measures against —
+	   the same arrangement as the palette's list. */
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+	gap: 6px;
+	max-height: 46vh;
+	overflow-y: auto;
+}
+.lb-nodemenu__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 5px;
+	padding: 11px 6px 9px;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 11px;
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+.lb-nodemenu__tile:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+/* The virtual highlight — the keyboard's position in the grid, which is not DOM focus (that stays in
+   the search box), so it needs a mark of its own. */
+.lb-nodemenu__tile--on {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-nodemenu__tileicon {
+	display: grid;
+	place-items: center;
+	height: 24px;
+}
+.lb-nodemenu__tileicon svg {
+	display: block;
+}
+.lb-nodemenu__tilelabel {
+	font-size: 11.5px;
+	font-weight: 500;
+	line-height: 1.25;
+	text-align: center;
+	/* A long label wraps rather than widening the column: the grid's tracks are what keep the tiles
+	   square-ish, and one "Gantt chart from Jira" would otherwise reshape the whole panel. */
+	overflow-wrap: anywhere;
+}
+.lb-nodemenu__tilekbd {
+	min-width: 15px;
+	padding: 0 4px 1px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 4px;
+	font-family: inherit;
+	font-size: 10px;
+	font-weight: 600;
+	color: var(--lb-text-faint);
+}
+.lb-nodemenu__tile--on .lb-nodemenu__tilekbd {
+	color: var(--lb-accent);
+}
+.lb-nodemenu__tilekbd--none {
+	visibility: hidden;
+}
+.lb-nodemenu__empty {
+	margin: 0;
+	padding: 14px 8px 18px;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--lb-text-dim);
 }
 
 /* -------------------------------------------------------- selection toolbar */
@@ -1966,6 +2134,23 @@ button {
 	background: none;
 	border: 2.5px solid var(--lb-border-strong);
 	box-shadow: none;
+}
+/* No fill — the same slashed ring the dock's fill palette uses, so the two agree. */
+.lb-swatch--none {
+	position: relative;
+	background: none;
+	box-shadow: inset 0 0 0 1.5px var(--lb-border-strong);
+	overflow: hidden;
+}
+.lb-swatch--none::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: -10%;
+	width: 120%;
+	height: 1.5px;
+	background: var(--lb-text-faint);
+	transform: rotate(-45deg);
 }
 .lb-swatch--active {
 	outline: 2px solid var(--lb-accent);
@@ -4984,6 +5169,55 @@ button.lb-props__eye:hover {
 	line-height: 1.6;
 	color: var(--lb-text-dim);
 	margin: 0;
+}
+
+/*
+ * A still of the node picker's grid — what the dock's last button opens. A mock-up from the app's own
+ * tokens, like every other demo on this page, rather than a screenshot.
+ */
+.lb-help-nodegrid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-width: 360px;
+	margin: 4px 0 0;
+	padding: 10px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 14px;
+	background: var(--lb-panel);
+	box-shadow: var(--lb-shadow-2);
+}
+.lb-help-nodegrid__search {
+	padding: 8px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 9px;
+	background: var(--lb-surface-2);
+	font-size: 13px;
+	color: var(--lb-text-faint);
+}
+.lb-help-nodegrid__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+	gap: 6px;
+}
+.lb-help-nodegrid__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 5px;
+	padding: 11px 6px 9px;
+	border: 1px solid transparent;
+	border-radius: 11px;
+	font-size: 11.5px;
+	font-weight: 500;
+	text-align: center;
+	color: var(--lb-text-dim);
+}
+.lb-help-nodegrid__tile--more {
+	justify-content: center;
+	color: var(--lb-text-faint);
+	font-weight: 400;
+	line-height: 1.35;
 }
 
 /* ------------------------------------------------------------- help: demo stage */

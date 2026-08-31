@@ -1,5 +1,6 @@
 import {
 	BookOpen,
+	Boxes,
 	Dices,
 	Eraser,
 	Frame,
@@ -9,11 +10,13 @@ import {
 	NotepadText,
 	Pen,
 	QuoteIcon,
+	Radar,
 	Shapes,
 	Spline,
 	StickyNote,
 	Table,
 	Type,
+	Waypoints,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Keys, Section, type SectionProps } from '../kit'
@@ -57,69 +60,27 @@ const DOCK_GROUPS: DockTool[][] = [
 		},
 		{
 			id: 'arrow',
-			label: 'Arrow',
+			label: 'Relation',
 			icon: <Spline size={19} />,
 			kbd: ['A', '4'],
 			blurb:
-				'Connects shapes. Snapped to a shape at both ends, an arrow becomes a relation the board can count and sum.',
+				'Connects shapes. Snapped to a shape at both ends, an arrow becomes a relation the board can count and sum. Hold Shift while drawing one to make it hidden.',
 		},
+	],
+	[
 		{
 			id: 'note',
 			label: 'Sticky note',
 			icon: <StickyNote size={19} />,
-			kbd: ['N'],
+			kbd: ['N', '5'],
 			blurb:
 				'A quick coloured sticky. Like everything else on the board, it can carry properties — a priced sticky counts as much as a priced note.',
 		},
-	],
-	[
-		{
-			id: 'node-markdown',
-			label: 'Note',
-			icon: <NotepadText size={19} />,
-			kbd: ['M', '5'],
-			blurb:
-				'A markdown note. The source text is the truth; the card renders it. Click to drop one at a default size, or drag out your own.',
-		},
-		{
-			id: 'node-table',
-			label: 'Table',
-			icon: <Table size={19} />,
-			kbd: ['6'],
-			blurb:
-				'A live, read-only view of the board — rows with filters, groups and sums, or one big number. Double-click it to configure.',
-		},
-		{
-			id: 'node-book',
-			label: 'Book',
-			icon: <BookOpen size={19} />,
-			kbd: [],
-			blurb:
-				'A book you can read full-screen, remembering where you stopped. Usually you drop a PDF or EPUB on the board instead — placing one from here makes a card that asks for a file.',
-		},
-		{
-			id: 'node-quote',
-			label: 'Quote',
-			icon: <QuoteIcon size={19} />,
-			kbd: [],
-			blurb:
-				'A passage taken out of a book, arrow-linked back to it and still pointing at its page. Made while reading; it is in the dock because every node type is.',
-		},
-		{
-			id: 'node-roll',
-			label: 'Roll',
-			icon: <Dices size={19} />,
-			kbd: [],
-			blurb:
-				'A dice roll, kept. Made by rolling with “Keep results” on, and its total is a property — so a table can count and sum your rolls. In the dock because every node type is; drawing a blank one is not a workflow.',
-		},
-	],
-	[
 		{
 			id: 'draw',
 			label: 'Pen',
 			icon: <Pen size={19} />,
-			kbd: ['D', '7'],
+			kbd: ['D', '6'],
 			blurb:
 				'Freehand ink. While a drawing tool is active, a row above the dock offers the highlighter, stroke sizes and colours.',
 		},
@@ -127,7 +88,7 @@ const DOCK_GROUPS: DockTool[][] = [
 			id: 'eraser',
 			label: 'Eraser',
 			icon: <Eraser size={19} />,
-			kbd: ['E', '8'],
+			kbd: ['E', '7'],
 			blurb: 'Removes whatever you drag across — ink first, shapes if you insist.',
 		},
 		{
@@ -136,25 +97,87 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <Shapes size={19} />,
 			kbd: [],
 			blurb:
-				'Rectangles, ellipses and friends. Their labels are live text, so an expression like {sum price} works inside a shape too.',
+				'Rectangles, ellipses and friends. The row above the dock sets the kind, the border colour and the fill colour — fill is off until you pick one. Their labels are live text, so an expression like {sum price} works inside a shape too.',
 		},
 		{
 			id: 'text',
 			label: 'Text',
 			icon: <Type size={19} />,
-			kbd: ['T', '9'],
-			blurb: 'Plain text straight on the paper. Double-clicking empty canvas does the same thing.',
+			kbd: ['T', '8'],
+			blurb: 'Plain text straight on the paper.',
 		},
 		{
 			id: 'asset',
 			label: 'Image',
 			icon: <ImageIcon size={19} />,
-			kbd: [],
+			kbd: ['9'],
 			blurb:
 				'Place an image — or just drag one in, or paste. Images can carry properties and be pointed at by arrows, same as any shape.',
 		},
 	],
+	[
+		{
+			id: 'relation-view',
+			label: 'Relation view',
+			icon: <Waypoints size={19} />,
+			kbd: ['⌥⇧R'],
+			blurb:
+				'How much of the board’s wiring is drawn: none, as you set it, or all. One button with three positions — click to cycle. It changes what you see, never what the next click does.',
+		},
+		{
+			id: 'tracing',
+			label: 'Trace relations',
+			icon: <Radar size={19} />,
+			kbd: ['⌥⇧T'],
+			blurb:
+				'A lens. While it is on, clicking a shape lights up everything it is connected to — hidden relations included — and dims the rest. Escape leaves.',
+		},
+	],
+	[
+		{
+			id: 'nodes',
+			label: 'Node types',
+			icon: <Boxes size={19} />,
+			kbd: ['0'],
+			blurb:
+				'Every node type, in a searchable grid: notes, tables, books, quotes, rolls, and whatever the extensions you have installed add. Start typing to filter, then Enter — or click a tile — to pick up that tool and draw one.',
+		},
+	],
 ]
+
+/**
+ * The node types the picker holds, as a preview of the grid.
+ *
+ * Retyped rather than read from the registry, on purpose: importing it would pull every node
+ * definition — and the packages behind them — into the eagerly-loaded help chunk, which is the same
+ * bargain the rest of this page makes for its demos. What is here is a *sample*, and the tour says so,
+ * so it cannot go stale in the way a claimed-complete list would.
+ */
+const NODE_SAMPLE: { label: string; icon: ReactNode }[] = [
+	{ label: 'Note', icon: <NotepadText size={20} /> },
+	{ label: 'Table', icon: <Table size={20} /> },
+	{ label: 'Book', icon: <BookOpen size={20} /> },
+	{ label: 'Quote', icon: <QuoteIcon size={20} /> },
+	{ label: 'Roll', icon: <Dices size={20} /> },
+]
+
+/** The picker's grid, as a still — the tour explains the button, this shows what opens. */
+function NodeGridDemo() {
+	return (
+		<div className="lb-help-nodegrid">
+			<div className="lb-help-nodegrid__search">Search node types</div>
+			<div className="lb-help-nodegrid__grid">
+				{NODE_SAMPLE.map((node) => (
+					<span key={node.label} className="lb-help-nodegrid__tile">
+						<span aria-hidden="true">{node.icon}</span>
+						<span>{node.label}</span>
+					</span>
+				))}
+				<span className="lb-help-nodegrid__tile lb-help-nodegrid__tile--more">…and any an extension adds</span>
+			</div>
+		</div>
+	)
+}
 
 /** The dock, as an interactive replica: click a tool to read what it does. */
 function DockTour() {
@@ -237,11 +260,18 @@ export function Overview({ go }: SectionProps) {
 
 			<Section title="The dock">
 				<p>
-					Every tool lives in the dock at the bottom of the canvas. Click one below to see what it does
-					and the keys that reach it — <strong>letters and digits both work</strong>, so your hand never
-					has to leave either side of the keyboard.
+					Every tool lives in the dock at the bottom of the canvas, in four groups: getting around,
+					making marks, looking, and the node types. Click one below to see what it does and the keys
+					that reach it — <strong>letters and digits both work</strong>, and the digits run left to
+					right along the dock, so your hand never has to leave either side of the keyboard.
 				</p>
 				<DockTour />
+				<p>
+					The last button is the odd one out: it opens a <strong>searchable grid</strong> rather than
+					picking up a tool. Everything the app and its extensions can add lives there, so installing
+					one does not make the dock any wider.
+				</p>
+				<NodeGridDemo />
 			</Section>
 
 			<Section title="Getting around">

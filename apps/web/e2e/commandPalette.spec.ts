@@ -34,6 +34,35 @@ test.describe('command palette', () => {
 		await expect(page.locator(PALETTE)).toBeHidden()
 	})
 
+	test('⌘⇧K opens straight into commands, and re-seeds an already-open palette', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+
+		await page.keyboard.press('ControlOrMeta+Shift+k')
+		await expect(page.locator(PALETTE)).toBeVisible()
+		// The prefix is typed for you, so the rows are commands rather than boards and the caret is
+		// already past it.
+		await expect(page.locator(INPUT)).toHaveValue('> ')
+		await expect(page.locator(INPUT)).toBeFocused()
+		await page.locator(INPUT).type('theme')
+		await expect(page.locator(INPUT)).toHaveValue('> theme')
+		await expect(page.locator(ROWS).first()).toContainText('Theme')
+
+		// Same key again closes it, like ⌘K does.
+		await page.keyboard.press('ControlOrMeta+Shift+k')
+		await expect(page.locator(PALETTE)).toBeHidden()
+
+		// And over a palette that is already open on the other seed it *switches modes* rather than
+		// closing — the whole reason the palette's state is its seed and not a boolean.
+		await openPalette(page)
+		await expect(page.locator(INPUT)).toHaveValue('')
+		await page.keyboard.press('ControlOrMeta+Shift+k')
+		await expect(page.locator(PALETTE)).toBeVisible()
+		await expect(page.locator(INPUT)).toHaveValue('> ')
+	})
+
 	test('typing a board name and pressing Enter opens that board', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)

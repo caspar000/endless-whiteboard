@@ -89,7 +89,13 @@ export function App() {
 	const [route, navigate] = useHashRoute()
 	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)
 	const [seeding, setSeeding] = useState(false)
-	const [paletteOpen, setPaletteOpen] = useState(false)
+	/**
+	 * The palette's state is its *seed*, not a boolean: `null` is closed, and an open palette carries
+	 * the text it was opened with (`''` for ⌘K, `'> '` for ⌘⇧K). Keeping the seed in the state is what
+	 * lets the second key re-seed a palette that is already open — see `togglePalette` below.
+	 */
+	const [palette, setPalette] = useState<{ seed: string } | null>(null)
+	const paletteOpen = palette !== null
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
 	const [agentPanelOpen, setAgentPanelOpen] = useState(loadAgentPanelOpen)
 	const { divider: agentDivider, resizing: agentResizing } = useAgentPanelWidth()
@@ -444,7 +450,10 @@ export function App() {
 			goHelp,
 			setTheme,
 			toggleAgentPanel,
-			togglePalette: () => setPaletteOpen((open) => !open),
+			// Same seed twice is a toggle; a different seed re-seeds an open palette rather than
+			// closing it, so ⌘⇧K over an open ⌘K palette types the `>` for you.
+			togglePalette: (seed = '') =>
+				setPalette((current) => (current && current.seed === seed ? null : { seed })),
 		})
 	})
 
@@ -622,7 +631,8 @@ export function App() {
 		<CanvasPrefsProvider value={canvasPrefs}>
 			<CommandPalette
 				open={paletteOpen}
-				onClose={() => setPaletteOpen(false)}
+				initialQuery={palette?.seed ?? ''}
+				onClose={() => setPalette(null)}
 				getContext={getCommandContext}
 				boards={api.boards}
 				onOpenBoard={(board) => void openBoard(board)}

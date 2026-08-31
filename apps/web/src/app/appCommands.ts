@@ -17,6 +17,7 @@ import {
 	APPEARANCE_GROUP,
 	BOARDS_GROUP,
 	CANVAS_GROUP,
+	COMMAND_PREFIX,
 	NAVIGATE_GROUP,
 } from './paletteItems'
 import { EXTENSIONS_TAB } from './settings/sections'
@@ -41,7 +42,12 @@ export interface AppCommandApi {
 	goHelp(): Promise<void>
 	setTheme(theme: Theme): void
 	toggleAgentPanel(): void
-	togglePalette(): void
+	/**
+	 * Opens the palette with `seed` already in its input, or closes it if it is already open on that
+	 * same seed — which is what makes both palette keys plain toggles while still letting ⌘⇧K
+	 * *switch* an already-open palette into command mode instead of shutting it.
+	 */
+	togglePalette(seed?: string): void
 }
 
 let api: AppCommandApi | null = null
@@ -78,6 +84,21 @@ registerCommand({
 	group: NAVIGATE_GROUP,
 	kbd: 'cmd+k',
 	run: () => api?.togglePalette(),
+})
+
+/**
+ * The same palette, opened straight into command mode — `>` already typed.
+ *
+ * Its own command rather than an argument to the one above, because the keymap binds commands and
+ * this is the door people want bound: ⌘K is "where is that board", ⌘⇧K is "what can I do". The seed
+ * is the real prefix constant, so the two cannot drift if the character ever changes.
+ */
+registerCommand({
+	id: 'view.palette.commands',
+	title: 'Command palette — commands',
+	group: NAVIGATE_GROUP,
+	kbd: 'cmd+shift+k',
+	run: () => api?.togglePalette(`${COMMAND_PREFIX} `),
 })
 
 registerCommand({

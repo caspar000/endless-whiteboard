@@ -8,6 +8,7 @@ import {
 	gotoFresh,
 	noteMarkdown,
 	openBoard,
+	openNodeMenu,
 	openSettings,
 	skipFirstRunDemo,
 	waitForStableHeight,
@@ -683,7 +684,9 @@ test.describe('canvas chrome', () => {
 		expect(await countByType(page, 'node.markdown')).toBe(before)
 	})
 
-	test('the sticky note sits between the arrow and the node tools, on n', async ({ page }) => {
+	test('the dock is four groups, and the sticky opens the making-marks one on n', async ({
+		page,
+	}) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
@@ -695,20 +698,44 @@ test.describe('canvas chrome', () => {
 					: (child.getAttribute('data-testid')?.replace('tools.', '') ?? '?')
 			)
 		)
-		// tldraw's sticky is one of its own shapes, so it stays on the arrow's side of the separator and
-		// leaves the group below purely registry-driven.
-		expect(order.slice(0, 7)).toEqual([
+		// Getting around | making marks | looking | nodes. The node types are behind the picker, so the
+		// dock's own shape no longer changes when an extension is installed — which is what lets the
+		// digits below be assigned by position.
+		expect(order).toEqual([
 			'select',
 			'hand',
 			'frame',
 			'arrow',
-			'note',
 			'|',
-			'node-markdown',
+			'note',
+			'draw',
+			'eraser',
+			// The shapes button is not a tldraw tool (its map has one entry per geo kind) and neither
+			// the relation-view nor the tracing button is one, so none of them carries a `tools.` id.
+			'?',
+			'text',
+			'asset',
+			'|',
+			'lb.relation-view',
+			'lb.tracing',
+			'|',
+			'?',
 		])
+
+		// Digits follow the dock, contiguously: the sticky is the fifth button, so it is `5`.
+		await page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.select').click()
+		await page.keyboard.press('5')
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => (window as unknown as { editor: EditorLike }).editor.getCurrentToolId()
+				)
+			)
+			.toBe('note')
 
 		// `n` is tldraw's own shortcut for it. The markdown node used to take that key, which silently
 		// left two tools claiming it; it is `m` now.
+		await page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.select').click()
 		await page.keyboard.press('n')
 		await expect
 			.poll(() =>
@@ -818,6 +845,163 @@ test.describe('canvas chrome', () => {
 		// tldraw's own `getSharedStyles`, not from a list of shape types we maintain.
 		await select({ type: 'node.table', x: 700, y: 400, props: { w: 280, h: 160 } })
 		await expect(page.locator('[data-testid="lb.color"]')).toHaveCount(0)
+	})
+
+	test('a rectangle has a border colour and a fill colour, and starts transparent', async ({
+		page,
+	}) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		const id = await page.evaluate(() => {
+			const ed = (window as unknown as { editor: EditorLike }).editor
+			ed.setCamera({ x: 0, y: 0, z: 1 })
+			const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
+			// In view with room above: the toolbar and its two palettes float over the shape.
+			ed.createShapes([
+				{ type: 'geo', x: 240, y: 380, props: { w: 300, h: 180, geo: 'rectangle' } },
+			])
+			const made = ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id
+			ed.select(made)
+			return made
+		})
+
+		/*
+		 * `'none'` and an absent key both read as transparent — the rule `shapeFill.ts` documents. The
+		 * sentinel exists because tldraw cannot delete a `meta` key through a partial, and because
+		 * "explicitly transparent" has to be distinguishable from "never set".
+		 */
+		const readFill = () =>
+			page.evaluate((shapeId) => {
+				const ed = (
+					window as unknown as {
+						editor: {
+							getShape(id: string): { props: { fill: string }; meta: Record<string, unknown> }
+						}
+					}
+				).editor
+				const shape = ed.getShape(shapeId)
+				const raw = shape.meta['lifeboard:fillColor'] ?? null
+				return { fill: shape.props.fill, colour: raw === 'none' ? null : raw }
+			}, id)
+
+		/** The raw key, for the one assertion that is about the sentinel itself. */
+		const readRawFillMeta = () =>
+			page.evaluate(
+				(shapeId) =>
+					(
+						window as unknown as {
+							editor: { getShape(id: string): { meta: Record<string, unknown> } }
+						}
+					).editor.getShape(shapeId).meta['lifeboard:fillColor'] ?? null,
+				id
+			)
+
+		// Transparent by default — tldraw's own default fill style, and the state the control returns to.
+		expect(await readFill()).toEqual({ fill: 'none', colour: null })
+
+		// Two swatches now, not one: the border's and the fill's. With no fill the border swatch is a
+		// ring, which is the existing rule and now reads as agreeing with the fill swatch beside it.
+		const border = page.locator('[data-testid="lb.color"]')
+		const fill = page.locator('[data-testid="lb.fill"]')
+		await expect(border).toBeVisible()
+		await expect(fill).toBeVisible()
+		expect(await border.evaluate((el) => el.className)).toContain('lb-swatch--ring')
+		expect(await fill.evaluate((el) => el.className)).toContain('lb-swatch--none')
+
+		await fill.click()
+		await page.locator('.lb-seltb__palette button[aria-label="Fill blue"]').click()
+		await expect.poll(readFill).toEqual({ fill: 'fill', colour: 'blue' })
+
+		// The border is untouched, which is the whole point: one colour each.
+		expect(
+			await page.evaluate((shapeId) => {
+				const ed = (
+					window as unknown as { editor: { getShape(id: string): { props: { color: string } } } }
+				).editor
+				return ed.getShape(shapeId).props.color
+			}, id)
+		).toBe('black')
+
+		/*
+		 * And the picture agrees. tldraw's GeoShapeBody draws the interior and the outline as two paths
+		 * with independent colours, so what this checks is that they came out *different* — which is the
+		 * whole claim, and was impossible before.
+		 *
+		 * The values are compared to each other rather than to hexes: `black` renders near-white on a
+		 * dark canvas and near-black on a light one, and the suite's theme is whatever the machine
+		 * running it prefers.
+		 */
+		const paths = page.locator(
+			`.lb-board-host:not([data-hidden]) [data-shape-id="${id}"] svg path`
+		)
+		await expect
+			.poll(async () => {
+				const [fill, stroke] = [
+					await paths.nth(0).getAttribute('fill'),
+					await paths.nth(1).getAttribute('stroke'),
+				]
+				return { painted: fill !== null && fill !== 'transparent', differ: fill !== stroke }
+			})
+			.toEqual({ painted: true, differ: true })
+
+		// Back to transparent, from the same palette.
+		await fill.click()
+		await page.locator('.lb-seltb__palette button[aria-label="No fill"]').click()
+		await expect.poll(readFill).toEqual({ fill: 'none', colour: null })
+		// Written out rather than deleted — see readFill above. This is the difference between a shape
+		// told to be transparent and one nobody has touched, which is what stops a paste picking up the
+		// dock's pending fill.
+		await expect.poll(readRawFillMeta).toBe('none')
+	})
+
+	test('the shape tool offers border and fill, and the next shape takes both', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		const host = page.locator('.lb-board-host:not([data-hidden])')
+		// The shapes button is not a tldraw tool, so it has no `tools.` id — it is found by its label.
+		await host.getByRole('button', { name: 'Shapes', exact: true }).click()
+
+		// The expansion stacks: kinds and the border palette on one row, the fill palette on the next.
+		const expand = host.locator('.lb-expand--stack')
+		await expect(expand).toBeVisible()
+		await expect(expand.locator('.lb-expand__row')).toHaveCount(2)
+
+		await expand.getByRole('button', { name: 'Colour violet' }).click()
+		await expand.getByRole('button', { name: 'Fill green' }).click()
+
+		await page.mouse.move(360, 380)
+		await page.mouse.down()
+		await page.mouse.move(620, 540, { steps: 8 })
+		await page.mouse.up()
+
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const ed = (
+						window as unknown as {
+							editor: {
+								getCurrentPageShapes(): {
+									type: string
+									props: { color?: string; fill?: string }
+									meta: Record<string, unknown>
+								}[]
+							}
+						}
+					).editor
+					const shape = ed.getCurrentPageShapes().find((s) => s.type === 'geo')
+					if (!shape) return null
+					return {
+						border: shape.props.color,
+						fill: shape.props.fill,
+						colour: shape.meta['lifeboard:fillColor'] ?? null,
+					}
+				})
+			)
+			// The fill colour is not a style prop — it cannot ride on `setStyleForNextShapes` — so this
+			// is what proves the geo util's creation hook applied the dock's pending choice.
+			.toEqual({ border: 'violet', fill: 'fill', colour: 'green' })
 	})
 
 	test('rounded corners reach both frames and images, and can be turned off', async ({ page }) => {
@@ -1263,9 +1447,11 @@ test.describe('extensions', () => {
 
 		await page.getByRole('checkbox', { name: 'Enable Markdown notes' }).uncheck()
 
-		// The point of the switch: the tool leaves every creation surface.
+		// The point of the switch: the tool leaves every creation surface — including the node picker,
+		// which reads the *visible* definitions rather than all of them.
 		await backToList(page)
 		await createBoard(page)
+		await openNodeMenu(page)
 		await expect(
 			page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.node-markdown')
 		).toHaveCount(0)

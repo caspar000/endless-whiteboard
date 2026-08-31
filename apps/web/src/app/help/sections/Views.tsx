@@ -340,8 +340,8 @@ export function Views({ go }: SectionProps) {
 				</p>
 				<TableDemo />
 				<p>
-					Drop one from the dock (<kbd className="lb-kbd">6</kbd>) and double-click it to change the
-					question it asks — or to change how the answer is drawn. One card, four views:{' '}
+					Drop one from the dock's node picker (<kbd className="lb-kbd">0</kbd>, then type “table”) and
+					double-click it to change the question it asks — or to change how the answer is drawn. One card, four views:{' '}
 					<strong>a table</strong>, <strong>one big number</strong>, <strong>a kanban</strong> and{' '}
 					<strong>a calendar</strong>. Switching is a menu, not a new card, so nothing you configured is
 					lost on the way.

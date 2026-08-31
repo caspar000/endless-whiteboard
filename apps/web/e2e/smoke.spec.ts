@@ -8,6 +8,7 @@ import {
 	drawNode,
 	gotoFresh,
 	openBoard,
+	openNodeMenu,
 	openProperties,
 	openSettings,
 	skipFirstRunDemo,
@@ -1332,22 +1333,44 @@ test.describe('nodes', () => {
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-table__more')).toHaveText('+8 more')
 	})
 
-	test('the toolbar comes from the registry, and retired node types are hidden from it', async ({
+	test('the node picker comes from the registry, searches, and hides retired types', async ({
 		page,
 	}) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page)
 
+		const host = page.locator('.lb-board-host:not([data-hidden])')
+		await openNodeMenu(page)
+
 		// §7: registry-driven UI. These exist because the definitions are registered, not because
-		// anything in the toolbar names them.
-		await expect(page.getByTestId('tools.node-markdown')).toBeVisible()
-		await expect(page.getByTestId('tools.node-table')).toBeVisible()
+		// anything in the picker names them.
+		await expect(host.getByTestId('tools.node-markdown')).toBeVisible()
+		await expect(host.getByTestId('tools.node-table')).toBeVisible()
 
 		// Both retired types stay *registered* — unregistering one would turn any surviving record into a
 		// validation failure — but a user must never be offered a type that no longer has a future.
 		await expect(page.getByTestId('tools.node-item')).toHaveCount(0)
 		await expect(page.getByTestId('tools.node-rollup')).toHaveCount(0)
+
+		// The search box is the reason the picker exists rather than a longer dock: the grid is filtered
+		// by the definitions' own labels, so an extension's node is findable by its name.
+		await host.getByRole('combobox', { name: 'Search node types' }).fill('tab')
+		await expect(host.getByTestId('tools.node-table')).toBeVisible()
+		await expect(host.getByTestId('tools.node-markdown')).toHaveCount(0)
+
+		// Enter takes the highlighted tile, which with one match is the only one.
+		await host.getByRole('combobox', { name: 'Search node types' }).press('Enter')
+		await expect(host.locator('.lb-nodemenu__panel')).toHaveCount(0)
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						(window as unknown as { editor: { getCurrentToolId(): string } }).editor
+							.getCurrentToolId()
+				)
+			)
+			.toBe('node-table')
 	})
 
 	test('properties survive being copied to another board', async ({ page }) => {

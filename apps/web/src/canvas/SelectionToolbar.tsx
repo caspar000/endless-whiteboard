@@ -62,6 +62,22 @@ function isOutlineOnly(shape: TLShape): boolean {
 }
 
 /**
+ * Which of the bar's panels is showing, or `null` for none.
+ *
+ * **One slot, not a flag per panel.** Each of these hangs off the bar in the same place and at the
+ * same size, so two open at once overlap and neither is readable — which is exactly what a flag per
+ * panel allowed. Opening one therefore *is* closing the others: there is a single piece of state and
+ * it can only hold one answer.
+ */
+type OpenPanel = 'border' | 'fill' | 'menu' | null
+
+/** What the parent hands each panel so they share that one slot. */
+interface PanelProps {
+	open: boolean
+	setOpen: (open: boolean) => void
+}
+
+/**
  * The colour of whatever is selected: one swatch that opens a palette above it.
  *
  * One swatch rather than the whole row, because the row is thirteen buttons wide and the selection
@@ -75,9 +91,8 @@ function isOutlineOnly(shape: TLShape): boolean {
  * The swatch is painted with the value the shape will actually take, from tldraw's theme for the active
  * colour mode, so it is the thing itself rather than an approximation of it.
  */
-function ShapeColorPicker() {
+function ShapeColorPicker({ open, setOpen }: PanelProps) {
 	const editor = useEditor()
-	const [open, setOpen] = useState(false)
 
 	const state = useValue(
 		'lb:shape-color',
@@ -122,7 +137,7 @@ function ShapeColorPicker() {
 					aria-expanded={open}
 					data-testid="lb.color"
 					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => setOpen((v) => !v)}
+					onClick={() => setOpen(!open)}
 				/>
 
 				{open && (
@@ -166,9 +181,8 @@ function ShapeColorPicker() {
  * too, but there the colour is ink either way — the same distinction `isOutlineOnly` above already
  * makes, for the same reason.
  */
-function ShapeFillPicker() {
+function ShapeFillPicker({ open, setOpen }: PanelProps) {
 	const editor = useEditor()
-	const [open, setOpen] = useState(false)
 
 	const state = useValue(
 		'lb:shape-fill',
@@ -216,7 +230,7 @@ function ShapeFillPicker() {
 					aria-expanded={open}
 					data-testid="lb.fill"
 					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => setOpen((v) => !v)}
+					onClick={() => setOpen(!open)}
 				/>
 
 				{open && (
@@ -576,26 +590,45 @@ function SelectionToolbarContent({
 }) {
 	const editor = useEditor()
 	const actions = useActions()
-	const [menuOpen, setMenuOpen] = useState(false)
+	/*
+	 * Every panel the bar can show, in one variable — see `OpenPanel`. The colour palette, the fill
+	 * palette and the `…` dropdown all float in the same spot, so this is what makes opening one close
+	 * whichever was open before.
+	 */
+	const [panel, setPanel] = useState<OpenPanel>(null)
 	const [editingAlt, setEditingAlt] = useState(false)
+	const menuOpen = panel === 'menu'
 
-	// A different selection means a different bar; an open menu or alt editor must not carry over.
+	/**
+	 * The `PanelProps` for one panel.
+	 *
+	 * Closing goes through a functional update that checks the slot still belongs to *this* panel, so
+	 * a picker whose style has just left the selection (its `if (!state) setOpen(false)` effect) takes
+	 * only its own panel down and not a sibling's.
+	 */
+	const panelProps = (id: Exclude<OpenPanel, null>): PanelProps => ({
+		open: panel === id,
+		setOpen: (next) =>
+			setPanel((current) => (next ? id : current === id ? null : current)),
+	})
+
+	// A different selection means a different bar; an open panel or alt editor must not carry over.
 	const selectionKey = ids.join(',')
 	useEffect(() => {
-		setMenuOpen(false)
+		setPanel(null)
 		setEditingAlt(false)
 	}, [selectionKey])
 
 	useEffect(() => {
 		if (!menuOpen) return
-		const close = () => setMenuOpen(false)
+		const close = () => setPanel((current) => (current === 'menu' ? null : current))
 		// `pointerdown` so the menu is gone before the click lands on the canvas underneath.
 		document.addEventListener('pointerdown', close)
 		return () => document.removeEventListener('pointerdown', close)
 	}, [menuOpen])
 
 	const run = (id: string) => {
-		setMenuOpen(false)
+		setPanel(null)
 		actions[id]?.onSelect('menu')
 	}
 
@@ -623,8 +656,8 @@ function SelectionToolbarContent({
 
 	return (
 		<>
-			<ShapeColorPicker />
-			<ShapeFillPicker />
+			<ShapeColorPicker {...panelProps('border')} />
+			<ShapeFillPicker {...panelProps('fill')} />
 			{media === 'image' && onlyId && (
 				<>
 					<DefaultImageToolbarContent
@@ -693,7 +726,7 @@ function SelectionToolbarContent({
 					tooltip="More options"
 					title="More options"
 					isActive={menuOpen}
-					onClick={() => setMenuOpen((open) => !open)}
+					onClick={() => setPanel(menuOpen ? null : 'menu')}
 					aria-expanded={menuOpen}
 				>
 					<MoreHorizontal size={16} aria-hidden="true" />
@@ -729,7 +762,7 @@ function SelectionToolbarContent({
 								<button
 									className="lb-seltb__item"
 									onClick={() => {
-										setMenuOpen(false)
+										setPanel(null)
 										openProperties(ids[0]!)
 									}}
 								>

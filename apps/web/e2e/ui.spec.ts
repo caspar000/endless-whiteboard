@@ -955,6 +955,52 @@ test.describe('canvas chrome', () => {
 		await expect.poll(readRawFillMeta).toBe('none')
 	})
 
+	test('the selection toolbar shows one panel at a time', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+
+		await page.evaluate(() => {
+			const ed = (window as unknown as { editor: EditorLike }).editor
+			ed.setCamera({ x: 0, y: 0, z: 1 })
+			const before = new Set(ed.getCurrentPageShapes().map((s) => s.id))
+			ed.createShapes([
+				{ type: 'geo', x: 240, y: 380, props: { w: 300, h: 180, geo: 'rectangle' } },
+			])
+			ed.select(ed.getCurrentPageShapes().find((s) => !before.has(s.id))!.id)
+		})
+
+		const border = page.locator('[data-testid="lb.color"]')
+		const fill = page.locator('[data-testid="lb.fill"]')
+		// By accessible name, not `[title=…]`: tldraw's toolbar button renders its label through its own
+		// tooltip machinery, so which attribute carries the string is not ours to assume.
+		const more = page.locator('.lb-seltb').getByRole('button', { name: 'More options' })
+		const palettes = page.locator('.lb-seltb__palette')
+		const menu = page.locator('.lb-seltb__menu')
+
+		// The colour palette, the fill palette and the `…` dropdown all float in the same place above the
+		// bar, so two of them open at once overlap and neither can be read. Opening one closes the other.
+		await border.click()
+		await expect(palettes).toHaveCount(1)
+		await expect(border).toHaveAttribute('aria-expanded', 'true')
+
+		await fill.click()
+		await expect(palettes).toHaveCount(1)
+		await expect(fill).toHaveAttribute('aria-expanded', 'true')
+		await expect(border).toHaveAttribute('aria-expanded', 'false')
+
+		await more.click()
+		await expect(menu).toHaveCount(1)
+		await expect(palettes).toHaveCount(0)
+
+		await border.click()
+		await expect(menu).toHaveCount(0)
+		await expect(palettes).toHaveCount(1)
+
+		// And the same button again is still a plain toggle.
+		await border.click()
+		await expect(palettes).toHaveCount(0)
+	})
+
 	test('the shape tool offers border and fill, and the next shape takes both', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()

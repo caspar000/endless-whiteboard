@@ -16,6 +16,12 @@ importers:
       '@lifeboard/dice':
         specifier: workspace:*
         version: link:../../packages/dice
+      '@lifeboard/health':
+        specifier: workspace:*
+        version: link:../../packages/health
+      '@lifeboard/health-core':
+        specifier: workspace:*
+        version: link:../../packages/health-core
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../../packages/node-kit
@@ -215,6 +221,68 @@ importers:
       tldraw:
         specifier: 5.2.5
         version: 5.2.5(@floating-ui/dom@1.8.0)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+
+  packages/health:
+    dependencies:
+      '@lifeboard/health-core':
+        specifier: workspace:*
+        version: link:../health-core
+      '@lifeboard/node-kit':
+        specifier: workspace:*
+        version: link:../node-kit
+      lucide-react:
+        specifier: ^1.28.0
+        version: 1.28.0(react@19.2.8)
+    devDependencies:
+      '@tldraw/tlschema':
+        specifier: 5.2.5
+        version: 5.2.5(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
+      tldraw:
+        specifier: 5.2.5
+        version: 5.2.5(@floating-ui/dom@1.8.0)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+
+  packages/health-core:
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+
+  packages/health-service:
+    dependencies:
+      '@lifeboard/health-core':
+        specifier: workspace:*
+        version: link:../health-core
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
       typescript:
         specifier: 5.9.3
         version: 5.9.3

@@ -5,6 +5,7 @@ import {
 	type Editor,
 	type TLDefaultColorStyle,
 	type TLShape,
+	type TLShapePartial,
 } from 'tldraw'
 
 /**
@@ -91,7 +92,7 @@ export function setSelectionFillColor(editor: Editor, value: TLDefaultColorStyle
 				id: shape.id,
 				type: shape.type,
 				meta: { [FILL_COLOR_META]: value ?? NO_FILL },
-			}))
+			}) as TLShapePartial)
 		)
 	})
 }

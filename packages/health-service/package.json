@@ -1,0 +1,10 @@
+{
+  "name": "@lifeboard/health-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "start": "node src/index.ts", "build": "tsc --noEmit", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "@lifeboard/health-core": "workspace:*" },
+  "devDependencies": { "@types/node": "^26.1.2", "typescript": "5.9.3", "vitest": "^4.1.10" }
+}

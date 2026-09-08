@@ -1,8 +1,10 @@
 import { setAssetBridge, setNetworkBridge } from '@lifeboard/node-kit'
+import { refreshHealth, setHealthHost } from '@lifeboard/health'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './app/App'
 import { createAssetBridge } from './persistence/assetStore'
+import { createHealthHost } from './persistence/healthCache'
 import { PlatformProvider } from './platform/PlatformContext'
 import { createWebPlatformAdapter } from './platform/WebPlatformAdapter'
 import { registerServiceWorker } from './pwa/registerServiceWorker'
@@ -15,6 +17,18 @@ setAssetBridge(createAssetBridge(platform.blobs))
 setNetworkBridge({
 	getJson: (url) => platform.fetchExternalJson(url),
 	getBlob: (url) => platform.fetchExternalBlob(url),
+})
+
+// One lifecycle for the whole app, rather than a fetch loop in each card or each open board.
+void setHealthHost(createHealthHost(platform)).then(() => refreshHealth())
+const healthTimer = window.setInterval(() => { if (!document.hidden) void refreshHealth() }, 60_000)
+const refreshHealthOnFocus = () => { void refreshHealth() }
+window.addEventListener('focus', refreshHealthOnFocus)
+window.addEventListener('online', refreshHealthOnFocus)
+if (import.meta.hot) import.meta.hot.dispose(() => {
+	window.clearInterval(healthTimer)
+	window.removeEventListener('focus', refreshHealthOnFocus)
+	window.removeEventListener('online', refreshHealthOnFocus)
 })
 
 const container = document.getElementById('root')

@@ -2,6 +2,7 @@
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"noEmit": true,
+		"allowImportingTsExtensions": true,
 		"types": ["node", "vite/client", "vite-plugin-pwa/client"]
 	},
 	// No project reference to node-kit: it is consumed as TypeScript source (its package `main`

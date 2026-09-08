@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@codemirror/state": "^6.7.1",
 		"@codemirror/view": "^6.43.7",
+		"@lifeboard/link-preview": "workspace:*",
 		"@tiptap/core": "^3.12.1",
 		"@tiptap/pm": "^3.12.1",
 		"lucide-react": "^1.28.0"

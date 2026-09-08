@@ -15,6 +15,7 @@ setAssetBridge(createAssetBridge(platform.blobs))
 setNetworkBridge({
 	getJson: (url) => platform.fetchExternalJson(url),
 	getBlob: (url) => platform.fetchExternalBlob(url),
+	unfurl: (url) => platform.unfurl(url),
 })
 
 const container = document.getElementById('root')

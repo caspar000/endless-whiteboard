@@ -1,3 +1,4 @@
+import type { LinkPreview } from '@lifeboard/link-preview'
 import { clear, createStore, del, get, keys, set, type UseStore } from 'idb-keyval'
 import type {
 	BlobStore,
@@ -206,6 +207,44 @@ export function createWebPlatformAdapter(): PlatformAdapter {
 				const blob = await response.blob()
 				// A zero-byte body is how some CDNs answer "no such image"; treat it as a miss.
 				return blob.size > 0 ? blob : null
+			} catch {
+				return null
+			}
+		},
+
+		/**
+		 * Link previews, asked of whoever is serving this app.
+		 *
+		 * The one platform call a browser cannot make for itself. Reading another origin's `<head>`
+		 * needs its permission, and pages do not grant it — a `no-cors` fetch returns an opaque
+		 * response whose body is empty, which is precisely how tldraw's built-in bookmark handler
+		 * ends up with the page URL as its `og:image` and draws a broken image. So this asks the
+		 * *same origin* instead, and something on the other end does the reading: the dev server, the
+		 * preview server, a self-hosted deployment (see `packages/link-preview`).
+		 *
+		 * Same-origin and relative on purpose. No third party sees which links get pasted, and there
+		 * is nothing to configure — if the host serves the endpoint, previews work; if it doesn't
+		 * (plain static hosting), this returns `null` and callers fall back to the page's host.
+		 */
+		async unfurl(url: string): Promise<LinkPreview | null> {
+			try {
+				const response = await fetch(`/__lifeboard/unfurl?url=${encodeURIComponent(url)}`, {
+					headers: { accept: 'application/json' },
+				})
+				// 404 (no endpoint), 502 (unreadable page), anything else — all the same answer here.
+				if (!response.ok) return null
+				const preview = (await response.json()) as Partial<LinkPreview> | null
+				if (!preview || typeof preview !== 'object') return null
+				// Normalised rather than trusted: this crosses a process boundary, and every consumer
+				// downstream assumes six strings.
+				return {
+					url: typeof preview.url === 'string' ? preview.url : url,
+					title: typeof preview.title === 'string' ? preview.title : '',
+					description: typeof preview.description === 'string' ? preview.description : '',
+					image: typeof preview.image === 'string' ? preview.image : '',
+					favicon: typeof preview.favicon === 'string' ? preview.favicon : '',
+					siteName: typeof preview.siteName === 'string' ? preview.siteName : '',
+				}
 			} catch {
 				return null
 			}

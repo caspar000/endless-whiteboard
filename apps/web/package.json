@@ -15,6 +15,7 @@
   "dependencies": {
     "@lifeboard/book-reader": "workspace:*",
     "@lifeboard/dice": "workspace:*",
+    "@lifeboard/link-preview": "workspace:*",
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@tldraw/tlschema": "5.2.5",

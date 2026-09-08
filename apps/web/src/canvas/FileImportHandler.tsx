@@ -10,6 +10,8 @@ import {
 	type TLFilesExternalContent,
 } from 'tldraw'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
+import { usePlatform } from '../platform/PlatformContext'
+import { registerBookmarkAssetHandler } from './bookmarkAssets'
 
 /**
  * Routes dropped and pasted files: ones an enabled extension claims (see `fileImportFor`) go to that
@@ -26,6 +28,19 @@ export function FileImportHandler() {
 	const editor = useEditor()
 	const toasts = useToasts()
 	const msg = useTranslation()
+	const platform = usePlatform()
+
+	/*
+	 * The bookmark card's metadata, before anything can ask for it.
+	 *
+	 * Its own effect rather than a line in the one below, because it is a different seam — an
+	 * *asset* handler, not a content one — and because it must be in place even when nothing here
+	 * claims the URL: a link only reaches tldraw's bookmark when no extension wanted it, which is
+	 * exactly the path this fixes. See `bookmarkAssets.ts` for what was wrong with the default.
+	 */
+	useEffect(() => {
+		registerBookmarkAssetHandler(editor, (url) => platform.unfurl(url))
+	}, [editor, platform])
 
 	useEffect(() => {
 		editor.registerExternalContentHandler('files', async (content: TLFilesExternalContent) => {

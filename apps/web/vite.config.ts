@@ -4,6 +4,7 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { agentHostPlugin } from './vite/agentHost'
+import { linkPreviewPlugin } from './vite/linkPreview'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
 	version: string
@@ -17,6 +18,9 @@ export default defineConfig({
 		react(),
 		// Starts the in-app agent's host process with the dev server, so the panel needs no setup.
 		agentHostPlugin(),
+		// Answers `/__lifeboard/unfurl`, which a tab cannot do for itself. On the preview server too,
+		// so the production build has real link previews without a dev server anywhere.
+		linkPreviewPlugin(),
 		VitePWA({
 			registerType: 'prompt',
 			includeAssets: ['favicon.svg', 'apple-touch-icon.png'],

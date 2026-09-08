@@ -87,6 +87,7 @@ apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket, chat
   src/app/AgentPanel.tsx  the agent panel — the transcript and composer down the right-hand side
   vite/agentHost.ts       dev-server plugin that starts the agent host, so the panel needs no setup
+  vite/linkPreview.ts     mounts /__lifeboard/unfurl on the dev *and* preview servers
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
@@ -107,6 +108,8 @@ packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a d
 packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
 packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (three.js + cannon-es)
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
+packages/link-preview/    @lifeboard/link-preview — reads a page's og: tags. No dependencies; '.' is
+                          isomorphic (the parser), '/node' does the fetching a browser is not allowed to
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
@@ -347,6 +350,26 @@ covers a paste. And dropping a link makes a **note carrying a `Link` property**
 (`packages/note-markdown/src/linkDrop.ts`) rather than tldraw's bookmark card, because a card cannot
 hold a property, join a table or stand in a view.
 
+**A pasted link's title and preview image come from the host, because a tab cannot get them.**
+Reading another origin's `<head>` is not something a browser is permitted to do — a `no-cors` fetch
+returns an opaque, empty body — so tldraw's built-in bookmark handler always found no `og:image` and
+then resolved that emptiness *against the page*, giving every card the HTML document as its
+`<img src>`: a broken image, with the raw URL where a title should be. The fix moves the read to
+where it can happen. `packages/link-preview` is a dependency-free package that fetches and parses a
+page in Node and exposes the result at one same-origin path (`/__lifeboard/unfurl`); the dev server
+and the preview server both mount it in two lines, and so can a self-hosted deployment. The app never
+calls it directly — it asks `PlatformAdapter.unfurl`, so a Tauri build answers the same question with
+no server at all, and `NetworkBridge.unfurl` passes it on to extensions.
+
+Deliberately **no third-party unfurl service**: a link someone saved is private, and the endpoint is
+the app's own or nothing. "Or nothing" is a supported state — plain static hosting has no endpoint,
+which reads as *this page said nothing about itself*, and every consumer already had to handle that:
+the bookmark card shows its short form titled with the host, the note keeps the host it was created
+with. Nothing is ever invented to fill a gap, because the invented value is what draws the broken
+image. The endpoint refuses private, loopback and link-local addresses at every redirect hop
+(`LIFEBOARD_UNFURL_ALLOW_PRIVATE=1` to allow them on purpose), since a server that fetches a URL its
+caller chose is otherwise a way into its own network.
+
 **Adding a command** means one `registerCommand` call — an id, a title, a group, optionally a `when`
 predicate and a default `kbd`. `packages/node-kit/src/commands.ts` is the one table every command
 surface reads: today the ⌘K palette renders it *and* the Help page's shortcut list is generated from
@@ -519,11 +542,12 @@ port to one new file (`TauriPlatformAdapter`).
 
 MVP milestones 1–10 are implemented and verified, plus the property system, tables, collections,
 inline expressions, the extension split, the command registry and ⌘K palette, the keymap, the
-agent/MCP surface, and dice: **~1,340 unit tests across seven packages**, and Playwright suites
+agent/MCP surface, and dice: **~1,340 unit tests across eight packages**, and Playwright suites
 covering board CRUD, per-board persistence, note editing and undo granularity, live aggregation, image
 downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute guarantee, dotted
-paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, and a
-3D dice roll in a production build.
+paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, link
+previews (including the endpoint being served by the production build), and a 3D dice roll in a
+production build.
 
 Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system

@@ -6,11 +6,12 @@ import { refreshHealth } from './store'
 
 export const healthExtension: Extension = {
   id: 'lifeboard.health', name: 'Apple Health', icon: Heart, version: '0.1.0', author: 'Lifeboard',
-  description: 'Daily activity, sleep and recovery on your board. Connect Health Auto Export through iCloud Drive and a local service, then explore your history offline.',
+  description: 'Daily activity, sleep and recovery from Health Auto Export. Start Lifeboard, choose the iCloud export folder in this extension’s settings, and explore your history offline.',
   details: [
     'Steps, energy, sleep, weight, heart rate, HRV, temperature and breathing each have their own card. Change a card between daily bars, a trend, a heat strip or one number. The overview brings the previous week together.',
-    'Your iPhone exports daily summaries to iCloud Drive. A separate local service keeps the history in SQLite, and the whiteboard caches it for offline use. Only metrics actually exported from Apple Health are available.',
-    'Disabling this extension hides its creation tools and pauses browser refresh. Existing cards keep rendering their cached data. Stop the separate service to stop importing files.',
+    'On iPhone, use an iCloud Drive automation with Health Metrics, JSON Version 2, Date Range Day, Time Grouping Days, and Summarize Data on. Run one manual seven-day export, then enable its automatic schedule.',
+    'Running pnpm dev starts the importer too. In this extension’s settings, choose the folder Health Auto Export created. Lifeboard accepts any JSON filename and searches its dated subfolders.',
+    'Disabling this extension hides its creation tools and pauses browser refresh. Existing cards keep rendering their cached data. Stopping Lifeboard’s development process stops local importing.',
   ],
   nodes: healthNodes,
   settings: { title: 'Sync and history', Component: HealthSettings },

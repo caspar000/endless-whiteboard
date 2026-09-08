@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseAutoExport } from '@lifeboard/health-core'
 import { HealthDatabase } from './database.ts'
-import { createScanner } from './scanner.ts'
+import { createScanner, normalizeFolderInput } from './scanner.ts'
 import { createHealthServer } from './server.ts'
 
 const directories: string[] = []
@@ -22,6 +22,10 @@ async function setup() {
 }
 const payload = (qty = 6000, metric = 'step_count') => ({ data: { metrics: [{ name: metric, units: 'count', data: [{ date: '2026-09-01', qty, source: 'Zepp' }] }] } })
 describe('local service ingestion', () => {
+  it('accepts Finder paths and paths copied in shell-escaped form', () => {
+    expect(normalizeFolderInput('/Users/me/Library/Mobile\\ Documents/iCloud\\~HealthExport/Daily\\ Health\\ Backup')).toBe('/Users/me/Library/Mobile Documents/iCloud~HealthExport/Daily Health Backup')
+    expect(normalizeFolderInput("'/Users/me/Daily Health Backup'")).toBe('/Users/me/Daily Health Backup')
+  })
   it('replays without duplication and replaces corrections without clearing unrelated history', async () => {
     const { db } = await setup()
     expect(db.import('one', 'hash1', 100, parseAutoExport(payload()))).toBe(1)
@@ -79,6 +83,37 @@ describe('local service ingestion', () => {
       expect(response.headers.get('cache-control')).toBe('no-store')
       expect(await response.json()).toMatchObject({ snapshot: { datasetId: db.snapshot().datasetId } })
       expect((await fetch(url, { method: 'POST', headers: { authorization: 'Bearer secret-test-token' } })).status).toBe(405)
+    } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) }
+  })
+  it('configures a filename-agnostic export folder through the authenticated API', async () => {
+    const { dir, db } = await setup()
+    const folder = join(dir, 'Daily Health Backup'); await mkdir(join(folder, 'dated'), { recursive: true })
+    const exportPath = join(folder, 'dated', 'AutoExport-Custom-2026-09-01.JSON')
+    await writeFile(exportPath, JSON.stringify(payload()))
+    const rawPath = join(folder, 'Aut-2026-09-01.json')
+    await writeFile(rawPath, JSON.stringify({ data: { metrics: [{ name: 'step_count', units: 'count', data: [
+      { date: '2026-09-01 10:00:00 +0400', qty: 10, source: 'Zepp' },
+      { date: '2026-09-01 11:00:00 +0400', qty: 20, source: 'Zepp' },
+    ] }] } }))
+    const old = new Date(Date.now() - 20_000); await utimes(exportPath, old, old)
+    await utimes(rawPath, old, old)
+    const scanner = createScanner(null, db)
+    let saved = ''
+    const server = createHealthServer({ database: db, scanner, token: 'secret', saveFolder: async value => { saved = value }, pickFolder: async () => folder })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const port = (server.address() as { port: number }).port
+    try {
+      const initial = await fetch(`http://127.0.0.1:${port}/health/v1/snapshot`, { headers: { authorization: 'Bearer secret' } })
+      expect(await initial.json()).toMatchObject({ status: { folder: null, files: 0 } })
+      const invalid = await fetch(`http://127.0.0.1:${port}/health/v1/config`, { method: 'PUT', headers: { authorization: 'Bearer secret', 'content-type': 'application/json' }, body: JSON.stringify({ folder: 'relative' }) })
+      expect(invalid.status).toBe(400)
+      const configured = await fetch(`http://127.0.0.1:${port}/health/v1/config`, { method: 'PUT', headers: { authorization: 'Bearer secret', 'content-type': 'application/json' }, body: JSON.stringify({ folder }) })
+      expect(configured.status).toBe(200)
+      expect(await configured.json()).toMatchObject({ snapshot: { records: [{ value: 6000 }] }, status: { folder, files: 2, incompatible: 1 } })
+      expect(saved).toBe(folder)
+      const picked = await fetch(`http://127.0.0.1:${port}/health/v1/pick-folder`, { method: 'POST', headers: { authorization: 'Bearer secret' } })
+      expect(picked.status).toBe(200)
+      expect(await picked.json()).toMatchObject({ status: { folder, files: 2 } })
     } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) }
   })
 })

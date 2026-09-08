@@ -1,38 +1,60 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { METRIC_KEYS, METRICS } from '@lifeboard/health-core'
-import { clearHealth, exportHealth, refreshHealth, restoreHealth, setHealthPaused, setHealthToken, useHealth } from './store'
+import { chooseHealthFolder, clearHealth, configureHealthFolder, exportHealth, refreshHealth, restoreHealth, setHealthPaused, setHealthToken, useHealth } from './store'
 
 export function HealthSettings() {
   const health = useHealth()
   const [key, setKey] = useState('')
   const [message, setMessage] = useState('')
   const [clearing, setClearing] = useState(false)
+  const [folder, setFolder] = useState(health.folder ?? '')
+  useEffect(() => { if (health.folder) setFolder(health.folder) }, [health.folder])
   async function run(action: () => Promise<void>, success: string) {
     setMessage('')
     try { await action(); setMessage(success) } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not complete this action.') }
   }
+  async function chooseFolder() {
+    setMessage('Opening the macOS folder picker…')
+    const selected = await chooseHealthFolder()
+    setMessage(selected ? 'Export folder selected and scanned.' : 'No folder selected.')
+  }
+  async function saveFolder() {
+    setMessage('')
+    const normalized = folder.trim().replace(/\\([ ~])/g, '$1')
+    setFolder(normalized)
+    if (await configureHealthFolder(normalized)) setMessage('Folder saved and scanned.')
+  }
   return <div className="lb-health-settings">
     <div className="lb-health-setup">
-      <div className="lb-health-eyebrow">IPHONE → ICLOUD DRIVE → THIS MAC</div>
-      <h3>A little history, a clearer picture</h3>
-      <p>Send daily Apple Health summaries from Health Auto Export to iCloud Drive. The local service reads that folder; your cards follow along.</p>
+      <div className="lb-health-eyebrow">1 · SET UP THE IPHONE EXPORT</div>
+      <h3>Export Apple Health to iCloud Drive</h3>
+      <p>In Health Auto Export, add an <strong>iCloud Drive</strong> automation with:</p>
       <ol>
-        <li>In Health Auto Export, create an <strong>iCloud Drive</strong> automation named <strong>Lifeboard</strong>. Choose Health Metrics, JSON version 2, daily files, and daily time grouping. Turn on summarized data and aggregated sleep.</li>
-        <li>Select the metrics you want and set Preferred Sources in the exporter. Start with a manual 7-day export, then enable daily automation. Ensure the exported folder is downloaded on your Mac.</li>
-        <li>Start the local service using the command in <code>docs/apple-health-setup.md</code>, with the export folder's actual Mac path. Keep that process running while the whiteboard is closed.</li>
+        <li><strong>Health Metrics · JSON · Version 2</strong></li>
+        <li><strong>Date Range: Day · Time Grouping: Days · Summarize Data: On</strong></li>
+        <li>Select your metrics and Preferred Sources, then run a manual seven-day export once.</li>
       </ol>
-      <p>Automatic export needs the exporter's Premium tier and may wait for your iPhone to unlock. Only data already readable in Apple Health can appear here.</p>
+      <p>The filenames do not matter. Lifeboard reads every JSON export inside the selected folder, including dated subfolders. Automatic runs can wait until the iPhone is unlocked.</p>
     </div>
     <div className="lb-health-controls">
-      <h3>Connection</h3>
-      <label>Service access key <span>(only needed when serving the built app directly)</span><input type="password" value={key} autoComplete="off" onChange={e => setKey(e.target.value)} placeholder="The development server connects automatically" /></label>
-      <p>The key stays in memory and is never saved with boards or health backups.</p>
-      <div className="lb-health-buttons"><button disabled={health.busy} onClick={() => { setHealthToken(key); setHealthPaused(false); void refreshHealth() }}>{health.busy ? 'Refreshing…' : 'Connect / refresh'}</button><button onClick={() => setHealthPaused(!health.paused)}>{health.paused ? 'Resume refresh' : 'Pause refresh'}</button></div>
-      <p role="status">{health.paused ? 'Refresh paused.' : health.connected ? 'Connected to the local service.' : 'Service not connected.'} {health.snapshot ? `${health.snapshot.records.length.toLocaleString()} daily records available offline.` : 'No health records imported yet.'}</p>
+      <div className="lb-health-eyebrow">2 · CHOOSE THE EXPORTED FOLDER</div>
+      <h3>Import folder</h3>
+      <p>Running <code>pnpm dev</code> starts the importer automatically. Choose the folder created by Health Auto Export in iCloud Drive.</p>
+      <label>Export folder<input aria-label="Export folder" value={folder} onChange={e => setFolder(e.target.value)} placeholder="Choose the AutoExport folder…" /></label>
+      <div className="lb-health-buttons">
+        <button disabled={health.busy} onClick={() => void chooseFolder()}>Choose folder…</button>
+        <button disabled={health.busy || !folder.trim()} onClick={() => void saveFolder()}>Use this path</button>
+        <button disabled={health.busy || !health.folder} onClick={() => { setHealthToken(key); setHealthPaused(false); void refreshHealth() }}>{health.busy ? 'Scanning…' : 'Scan now'}</button>
+        <button onClick={() => setHealthPaused(!health.paused)}>{health.paused ? 'Resume automatic scans' : 'Pause automatic scans'}</button>
+      </div>
+      <p role="status">{!health.folder ? 'Choose an export folder to begin.' : health.paused ? 'Automatic scans paused.' : health.connected ? 'Import is ready.' : 'Connecting to the importer…'} {health.snapshot ? `${health.snapshot.records.length.toLocaleString()} daily records available offline.` : ''}</p>
+      {health.folder && <p className="lb-health-folder">Watching <code>{health.folder}</code></p>}
       {health.checkedAt && <p>Folder checked: {new Date(health.checkedAt).toLocaleString()} · {health.files} JSON files</p>}
+      {health.folder && health.checkedAt && health.files === 0 && <p className="lb-health-error">No JSON exports were found. Choose the folder containing files such as AutoExport-2026-09-08.json, rather than the AutoSync folder of .hae files.</p>}
       {health.snapshot?.importedAt && <p>History last changed: {new Date(health.snapshot.importedAt).toLocaleString()}</p>}
       {health.error && <p className="lb-health-error">{health.error}</p>}
       {health.warnings.length > 0 && <ul>{health.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>}
+      <details><summary>Advanced connection</summary><label>Service access key <span>Only needed when Lifeboard is served as a production build.</span><input type="password" value={key} autoComplete="off" onChange={e => setKey(e.target.value)} /></label><p>The key stays in memory and is excluded from all backups.</p></details>
     </div>
     <div className="lb-health-controls">
       <h3>Available history</h3>

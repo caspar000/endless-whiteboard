@@ -1,19 +1,22 @@
 import { createHash } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
-import { join } from 'node:path'
-import { MAX_FILE_BYTES, parseAutoExport } from '@lifeboard/health-core'
+import { isAbsolute, join, resolve } from 'node:path'
+import { MAX_FILE_BYTES, parseAutoExport, UnsupportedExportGranularityError } from '@lifeboard/health-core'
 import type { HealthDatabase } from './database.ts'
 
 export interface ScanStatus {
   scanning: boolean
+  folder: string | null
   checkedAt: string | null
   files: number
   changed: number
+  incompatible: number
   errors: string[]
   ignored: string[]
 }
-export function createScanner(folder: string, database: HealthDatabase) {
-  let status: ScanStatus = { scanning: false, checkedAt: null, files: 0, changed: 0, errors: [], ignored: [] }
+export function createScanner(initialFolder: string | null, database: HealthDatabase) {
+  let folder = initialFolder ? resolve(initialFolder) : null
+  let status: ScanStatus = { scanning: false, folder, checkedAt: null, files: 0, changed: 0, incompatible: 0, errors: [], ignored: [] }
   let running: Promise<ScanStatus> | null = null
   const signatures = new Map<string, string>()
   async function collect(directory: string, depth = 0): Promise<{ path: string; modified: number; size: number }[]> {
@@ -23,7 +26,7 @@ export function createScanner(folder: string, database: HealthDatabase) {
       if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue
       const path = join(directory, entry.name)
       if (entry.isDirectory()) files.push(...await collect(path, depth + 1))
-      else if (entry.isFile() && entry.name.endsWith('.json')) {
+      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
         const info = await stat(path)
         files.push({ path, modified: info.mtimeMs, size: info.size })
       }
@@ -34,10 +37,15 @@ export function createScanner(folder: string, database: HealthDatabase) {
   async function scan(): Promise<ScanStatus> {
     status = { ...status, scanning: true }
     let changed = 0
+    let incompatible = 0
     const errors: string[] = []
     const ignored = new Set<string>()
     let count = 0
     try {
+      if (!folder) {
+        status = { scanning: false, folder: null, checkedAt: new Date().toISOString(), files: 0, changed: 0, incompatible: 0, errors: [], ignored: [] }
+        return status
+      }
       const files = (await collect(folder)).sort((a, b) => a.modified - b.modified || a.path.localeCompare(b.path))
       count = files.length
       for (const file of files) {
@@ -57,21 +65,43 @@ export function createScanner(folder: string, database: HealthDatabase) {
           for (const name of result.ignored) ignored.add(name)
           changed += database.import(file.path, hash, file.modified, result)
         } catch (error) {
+          if (error instanceof UnsupportedExportGranularityError) { incompatible++; continue }
           // Do not include paths or record values in HTTP responses/logs.
           if (errors.length < 10) errors.push(error instanceof SyntaxError ? 'A JSON file is incomplete or invalid; it will be retried.' : safeMessage(error))
         }
       }
     } catch (error) { errors.push(safeMessage(error)) }
-    status = { scanning: false, checkedAt: new Date().toISOString(), files: count, changed, errors, ignored: [...ignored] }
+    status = { scanning: false, folder, checkedAt: new Date().toISOString(), files: count, changed, incompatible, errors, ignored: [...ignored] }
     return status
+  }
+  function requestScan() {
+    if (!running) running = scan().finally(() => { running = null })
+    return running
   }
   return {
     getStatus: () => status,
-    scan: () => {
-      if (!running) running = scan().finally(() => { running = null })
-      return running
+    setFolder: async (next: string) => {
+      const normalized = normalizeFolderInput(next)
+      if (!normalized || !isAbsolute(normalized)) throw new Error('Choose an absolute export folder.')
+      const candidate = resolve(normalized)
+      const info = await stat(candidate)
+      if (!info.isDirectory()) throw new Error('The selected export location is not a folder.')
+      await readdir(candidate)
+      if (running) await running
+      folder = candidate
+      signatures.clear()
+      status = { scanning: false, folder, checkedAt: null, files: 0, changed: 0, incompatible: 0, errors: [], ignored: [] }
+      await requestScan()
+      return requestScan()
     },
+    scan: requestScan,
   }
+}
+/** Accept paths copied from Finder as well as shell-escaped paths dragged into Terminal. */
+export function normalizeFolderInput(input: string): string {
+  let folder = input.trim()
+  if (folder.length >= 2 && ((folder.startsWith('"') && folder.endsWith('"')) || (folder.startsWith("'") && folder.endsWith("'")))) folder = folder.slice(1, -1)
+  return folder.replace(/\\([ ~])/g, '$1')
 }
 function safeMessage(error: unknown): string {
   const code = (error as NodeJS.ErrnoException)?.code

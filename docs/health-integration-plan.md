@@ -1,6 +1,6 @@
 # Health integration: research and implementation handoff
 
-Research date: 2026-09-07. Implementation update: 2026-09-08. A first local Apple Health version is implemented and tested with synthetic exports. No personal account or device export has been connected.
+Research date: 2026-09-07. Implementation update: 2026-09-08. A first local Apple Health version is implemented; its parser has been checked against the user's actual daily-export filenames and JSON structure without copying readings into the repository.
 
 ## Selected scope and current handoff (supersedes the broader proposal below)
 
@@ -14,7 +14,7 @@ Health backups are separate normalized JSON files in this version, with stable d
 
 ### Tasks for the next implementation agent
 
-1. **Verify the real exporter contract.** Use the user's configured folder locally once available. Record app/device versions, names/units, date grouping, sources, and seven-day comparisons in `health-data-audit.md`. Keep original readings out of repository fixtures/logs. Add synthetic regression cases for any real contract differences. Do not claim unobserved Zepp fields are available.
+1. **Finish live accuracy verification.** The real filenames, envelope, supported metric names, daily grouping, and raw-file coexistence are verified. Compare a completed week of displayed values with Apple Health, then record app/device versions and coverage findings in `health-data-audit.md`. Keep original readings out of repository fixtures/logs. Do not claim unobserved Zepp fields are available.
 2. **Validate unattended operation.** Observe overnight sleep arriving late, a Mac sleep/wake cycle, iCloud hydration, and a corrected previous day. Confirm which date ranges the exporter rewrites automatically. If older corrections are not refreshed, document a periodic manual overlap export or add a supported exporter schedule. A launch-at-login service can be added after the actual folder and Node installation are known; use absolute executable/workspace paths.
 3. **Finish deletion reconciliation before broadening ingestion.** Define authoritative daily replacement scopes and source-policy changes with real export evidence. Never infer a deletion from an empty permission-limited export. Add reviewable dataset rebuild/retention controls and meaningful regression tests. Preserve the ability to restore current backups.
 4. **Implement self-hosting when its target is chosen.** Add a Mac uploader or exporter HTTPS ingestion adapter, authenticated same-origin reads, persistent server storage, replay/idempotency handling, request limits, and tested backup restore. Preserve dataset identity across migration. The existing loopback service must not be exposed publicly without that work.

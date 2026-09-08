@@ -10,6 +10,8 @@ export function createHealthServer(options: {
   scanner: ReturnType<typeof createScanner>
   token: string
   web?: string
+  saveFolder?: (folder: string) => Promise<void>
+  pickFolder?: () => Promise<string | null>
 }) {
   function authenticated(req: IncomingMessage): boolean {
     const value = Buffer.from(req.headers.authorization ?? '')
@@ -20,6 +22,19 @@ export function createHealthServer(options: {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
     res.end(JSON.stringify(body))
   }
+  async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
+    const chunks: Buffer[] = []
+    let size = 0
+    for await (const chunk of req) {
+      const bytes = Buffer.from(chunk)
+      size += bytes.length
+      if (size > 8_192) throw new Error('Request is too large.')
+      chunks.push(bytes)
+    }
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected a JSON object.')
+    return value as Record<string, unknown>
+  }
   return createServer(async (req, res) => {
     try {
       // Host and Origin validation prevent cross-site/DNS-rebinding access to a local service.
@@ -29,9 +44,29 @@ export function createHealthServer(options: {
       const path = new URL(req.url ?? '/', `http://${host}`).pathname
       if (path.startsWith('/__lifeboard/health/') || path.startsWith('/health/v1/')) {
         if (!authenticated(req)) return json(res, 401, { error: 'Enter the local service access key in Health settings.' })
-        if (req.method !== 'GET') return json(res, 405, { error: 'Only read requests are supported.' })
-        if (path.endsWith('/snapshot')) return json(res, 200, { snapshot: options.database.snapshot(), status: options.scanner.getStatus() })
-        if (path.endsWith('/status')) return json(res, 200, options.scanner.getStatus())
+        const endpoint = path.replace(/^\/(?:__lifeboard\/health|health\/v1)/, '')
+        if (req.method === 'GET' && endpoint === '/snapshot') return json(res, 200, { snapshot: options.database.snapshot(), status: await options.scanner.scan() })
+        if (req.method === 'GET' && endpoint === '/status') return json(res, 200, options.scanner.getStatus())
+        if (req.method === 'PUT' && endpoint === '/config') {
+          try {
+            const input = await body(req)
+            if (typeof input.folder !== 'string') return json(res, 400, { error: 'Choose an export folder.' })
+            const status = await options.scanner.setFolder(input.folder)
+            await options.saveFolder?.(status.folder!)
+            return json(res, 200, { snapshot: options.database.snapshot(), status })
+          } catch (error) { return json(res, 400, { error: folderError(error) }) }
+        }
+        if (req.method === 'POST' && endpoint === '/pick-folder') {
+          try {
+            if (!options.pickFolder) return json(res, 501, { error: 'Folder selection is unavailable on this system.' })
+            const folder = await options.pickFolder()
+            if (!folder) return json(res, 200, { cancelled: true })
+            const status = await options.scanner.setFolder(folder)
+            await options.saveFolder?.(status.folder!)
+            return json(res, 200, { snapshot: options.database.snapshot(), status })
+          } catch (error) { return json(res, 400, { error: folderError(error) }) }
+        }
+        if (endpoint === '/snapshot' || endpoint === '/status') return json(res, 405, { error: 'Method not allowed.' })
         return json(res, 404, { error: 'Unknown health endpoint.' })
       }
       if (!options.web || (req.method !== 'GET' && req.method !== 'HEAD')) return json(res, 404, { error: 'Not found.' })
@@ -46,4 +81,11 @@ export function createHealthServer(options: {
       res.end(req.method === 'HEAD' ? undefined : data)
     } catch { json(res, 500, { error: 'The health service could not complete the request.' }) }
   })
+}
+
+function folderError(error: unknown): string {
+  const code = (error as NodeJS.ErrnoException)?.code
+  if (code === 'ENOENT') return 'That folder does not exist or is not downloaded from iCloud yet.'
+  if (code === 'EACCES' || code === 'EPERM') return 'Lifeboard cannot read that folder. Check macOS file access.'
+  return error instanceof Error ? error.message.slice(0, 240) : 'Could not use that export folder.'
 }

@@ -19,6 +19,8 @@ export function createHealthHost(platform: PlatformAdapter): HealthHost {
     save: snapshot => enqueue(() => platform.kv.set(HEALTH_CACHE_KEY, snapshot)),
     clear: () => enqueue(() => platform.kv.delete(HEALTH_CACHE_KEY)),
     read: token => platform.fetchHealthSnapshot(token),
+    configure: (token, folder) => platform.configureHealthFolder(token, folder),
+    pickFolder: token => platform.pickHealthFolder(token),
     export: snapshot => platform.saveFile(`lifeboard-health-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify(snapshot)], { type: 'application/json' })),
     async restore() {
       const file = await platform.openFile(['.json'])

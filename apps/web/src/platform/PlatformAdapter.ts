@@ -68,6 +68,8 @@ export interface PlatformAdapter {
 	/** Same-origin local health service. Authentication failures are distinct from an empty dataset. */
 	fetchHealthSnapshot(token: string): Promise<{
 		snapshot: unknown
-		status: { checkedAt: string | null; files: number; errors: string[]; ignored: string[] }
+		status: { folder: string | null; checkedAt: string | null; files: number; incompatible: number; errors: string[]; ignored: string[] }
 	}>
+	configureHealthFolder(token: string, folder: string): ReturnType<PlatformAdapter['fetchHealthSnapshot']>
+	pickHealthFolder(token: string): Promise<Awaited<ReturnType<PlatformAdapter['fetchHealthSnapshot']>> | null>
 }

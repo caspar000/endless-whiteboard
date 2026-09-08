@@ -16,6 +16,31 @@ const DB_NAME = 'lifeboard'
 const BLOB_STORE = 'blobs'
 const KV_STORE = 'kv'
 
+async function healthRequest(token: string, path: string, init: RequestInit = {}) {
+	let response: Response
+	try {
+		response = await fetch(`/__lifeboard/health/${path}`, {
+			...init,
+			headers: { ...(init.body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+			cache: 'no-store', signal: AbortSignal.timeout(path === 'pick-folder' ? 120_000 : 60_000),
+		})
+	} catch { throw new Error('The local health service is unavailable. Cached readings remain available.') }
+	let data: unknown
+	try { data = await response.json() } catch { throw new Error('The local health service returned an invalid response.') }
+	if (response.status === 401) throw new Error('Enter the service access key to connect. The key is stored only in memory.')
+	if (!response.ok) {
+		const message = data && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string' ? (data as { error: string }).error : 'The health service could not complete this request.'
+		throw new Error(message)
+	}
+	if (data && typeof data === 'object' && (data as { cancelled?: unknown }).cancelled === true) return null
+	const result = data as { snapshot?: unknown; status?: { folder?: unknown; checkedAt?: unknown; files?: unknown; incompatible?: unknown; errors?: unknown; ignored?: unknown } }
+	const status = result?.status
+	if (!status || !(status.folder === null || typeof status.folder === 'string') || !(status.checkedAt === null || typeof status.checkedAt === 'string') || typeof status.files !== 'number' || typeof status.incompatible !== 'number' ||
+		!Array.isArray(status.errors) || !status.errors.every(e => typeof e === 'string') ||
+		!Array.isArray(status.ignored) || !status.ignored.every(e => typeof e === 'string')) throw new Error('Invalid health service response.')
+	return { snapshot: result.snapshot, status: { folder: status.folder, checkedAt: status.checkedAt, files: status.files, incompatible: status.incompatible, errors: status.errors, ignored: status.ignored } }
+}
+
 function idbBlobStore(store: UseStore): BlobStore {
 	return {
 		async get(hash) {
@@ -223,24 +248,16 @@ export function createWebPlatformAdapter(): PlatformAdapter {
 		},
 
 		async fetchHealthSnapshot(token) {
-			let response: Response
-			try {
-				response = await fetch('/__lifeboard/health/snapshot', {
-					headers: token ? { authorization: `Bearer ${token}` } : {},
-					cache: 'no-store', signal: AbortSignal.timeout(12_000),
-				})
-			} catch { throw new Error('Health service unavailable. Showing the offline cache.') }
-			if (response.status === 401) throw new Error('Enter the service access key to connect. The key is stored only in memory.')
-			if (!response.ok) throw new Error('Start the local health service with your iCloud export folder. Cached readings remain available.')
-			let data: unknown
-			try { data = await response.json() } catch { throw new Error('No health service at this address. See the Apple Health setup guide.') }
-			const result = data as { snapshot?: unknown; status?: { checkedAt?: unknown; files?: unknown; errors?: unknown; ignored?: unknown } }
-			const status = result?.status
-			if (!status || !(status.checkedAt === null || typeof status.checkedAt === 'string') || typeof status.files !== 'number' ||
-				!Array.isArray(status.errors) || !status.errors.every(e => typeof e === 'string') ||
-				!Array.isArray(status.ignored) || !status.ignored.every(e => typeof e === 'string')) throw new Error('Invalid health service response.')
-			return { snapshot: result.snapshot, status: { checkedAt: status.checkedAt, files: status.files, errors: status.errors, ignored: status.ignored } }
+			const result = await healthRequest(token, 'snapshot')
+			if (!result) throw new Error('Invalid health service response.')
+			return result
 		},
+		async configureHealthFolder(token, folder) {
+			const result = await healthRequest(token, 'config', { method: 'PUT', body: JSON.stringify({ folder }) })
+			if (!result) throw new Error('No export folder was selected.')
+			return result
+		},
+		pickHealthFolder: token => healthRequest(token, 'pick-folder', { method: 'POST' }),
 	}
 }
 

@@ -37,6 +37,7 @@ export interface HealthSnapshot {
   records: DailyRecord[]
 }
 export interface ImportResult { records: DailyRecord[]; ignored: string[] }
+export class UnsupportedExportGranularityError extends Error {}
 
 const NAMES: Record<string, Metric> = {
   step_count: 'steps', active_energy: 'activeEnergy', active_energy_burned: 'activeEnergy',
@@ -110,7 +111,7 @@ export function parseAutoExport(input: unknown): ImportResult {
       const timestamp = typeof point.date === 'string' ? point.date : ''
       const day = timestamp.slice(0, 10)
       if (!isDay(day) || (timestamp.length > 10 && !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?: ?[+-]\d{2}:?\d{2}|Z)$/.test(timestamp))) {
-        throw new Error(`${METRICS[metric].label}: expected a dated daily summary. Choose daily time grouping and aggregated sleep in Health Auto Export.`)
+        throw new UnsupportedExportGranularityError(`${METRICS[metric].label}: expected a dated daily summary. Choose daily time grouping and aggregated sleep in Health Auto Export.`)
       }
       const source = typeof point.source === 'string' && point.source.trim() ? point.source.trim() : 'Export selection'
       if (source.length > 256) throw new Error('Source name is too long.')
@@ -130,7 +131,7 @@ export function parseAutoExport(input: unknown): ImportResult {
       }
       const row: DailyRecord = { metric, day, source, timestamp, value, stages }
       const key = recordKey(row)
-      if (seen.has(key)) throw new Error(`${METRICS[metric].label} has several records for ${day}. Export one daily summary per source; hourly/raw samples cannot be added safely.`)
+      if (seen.has(key)) throw new UnsupportedExportGranularityError(`${METRICS[metric].label} has several records for ${day}. Export one daily summary per source; hourly/raw samples cannot be added safely.`)
       seen.add(key)
       records.push(row)
       if (records.length > MAX_RECORDS) throw new Error('Too many daily records. Export a smaller date range.')

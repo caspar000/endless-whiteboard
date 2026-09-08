@@ -12,27 +12,33 @@ test('daily export → SQLite → HTTP → cards, correction, and offline reload
   const directory = await mkdtemp(join(tmpdir(), 'lifeboard-health-e2e-'))
   const folder = join(directory, 'exports'); await mkdir(folder)
   const database = new HealthDatabase(join(directory, 'health.sqlite'), 'Asia/Tbilisi')
-  const scanner = createScanner(folder, database)
+  const scanner = createScanner(null, database)
   const window = dateWindow('lastWeek', todayIn('Asia/Tbilisi'))
   const dates = daysIn(window.start, window.end)
   const payload = { data: { metrics: [
     { name: 'step_count', units: 'count', data: dates.map(date => ({ date, qty: 6000, source: 'Zepp' })) },
     { name: 'sleep_analysis', units: 'hr', data: dates.map(date => ({ date, totalSleep: 7.5, core: 4, deep: 1, rem: 2, source: 'Zepp' })) },
   ] } }
-  async function save(age: number) {
+  async function save(age: number, scan = true) {
     const path = join(folder, 'daily.json')
     await writeFile(path, JSON.stringify(payload))
     const stamp = new Date(Date.now() - age); await utimes(path, stamp, stamp)
-    await scanner.scan(); await scanner.scan()
+    if (scan) { await scanner.scan(); await scanner.scan() }
   }
-  await save(20000)
+  await save(20000, false)
   const server = createHealthServer({ database, scanner, token: 'e2e-local-token' })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const port = (server.address() as { port: number }).port
   // The production preview has no dev proxy. Relay to the real service with the same server-held
   // authentication as that proxy; parsing, SQLite, HTTP, browser caching and cards remain real.
-  await page.route('**/__lifeboard/health/snapshot', async route => {
-    const response = await page.request.get(`http://127.0.0.1:${port}/health/v1/snapshot`, { headers: { authorization: 'Bearer e2e-local-token' } })
+  await page.route('**/__lifeboard/health/**', async route => {
+    const request = route.request()
+    const endpoint = new URL(request.url()).pathname.split('/').at(-1)
+    const contentType = await request.headerValue('content-type')
+    const response = await page.request.fetch(`http://127.0.0.1:${port}/health/v1/${endpoint}`, {
+      method: request.method(), data: request.postData() ?? undefined,
+      headers: { authorization: 'Bearer e2e-local-token', ...(contentType ? { 'content-type': contentType } : {}) },
+    })
     await route.fulfill({ status: response.status(), contentType: 'application/json', body: await response.text() })
   })
   try {
@@ -40,7 +46,10 @@ test('daily export → SQLite → HTTP → cards, correction, and offline reload
     await skipFirstRunDemo(page)
     await openSettings(page, 'Extensions')
     await page.getByRole('button', { name: 'Apple Health', exact: true }).click()
-    await expect(page.getByText('Connected to the local service.', { exact: false })).toBeVisible()
+    await expect(page.getByText('Choose an export folder to begin.', { exact: false })).toBeVisible()
+    await page.getByLabel('Export folder', { exact: true }).fill(folder)
+    await page.getByRole('button', { name: 'Use this path', exact: true }).click()
+    await expect(page.getByText('Import is ready.', { exact: false })).toBeVisible()
     await expect(page.getByText('14 daily records available offline.', { exact: false })).toBeVisible()
     await backToList(page)
     await createBoard(page)
@@ -67,8 +76,8 @@ test('daily export → SQLite → HTTP → cards, correction, and offline reload
     await expect(steps.locator('.lb-health-number strong')).toHaveText('43,000')
     await waitForPersistedShapes(page, 7)
     await page.screenshot({ path: '/tmp/lifeboard-health-dashboard.png' })
-    await page.unroute('**/__lifeboard/health/snapshot')
-    await page.route('**/__lifeboard/health/snapshot', route => route.abort())
+    await page.unroute('**/__lifeboard/health/**')
+    await page.route('**/__lifeboard/health/**', route => route.abort())
     await page.reload()
     await expect(page.getByTestId('health-steps').locator('.lb-health-number strong')).toHaveText('43,000')
     await expect(page.getByTestId('health-steps')).toContainText('OFFLINE CACHE')

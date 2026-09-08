@@ -1,0 +1,44 @@
+.lb-health-node { box-sizing: border-box; height: 100%; width: 100%; overflow: hidden; padding: 20px 22px; border: 1px solid var(--lb-border-strong); border-radius: 16px; background: var(--lb-surface); color: var(--lb-text); font-family: var(--lb-font); }
+.lb-health-eyebrow { display: flex; justify-content: space-between; gap: 12px; font-size: 9px; font-weight: 650; letter-spacing: 1.35px; color: var(--lb-text-dim); }
+.lb-health-node h3 { font-size: 17px; line-height: 1.3; margin: 10px 0 3px; font-weight: 550; }
+.lb-health-period { font-size: 10px; color: var(--lb-text-dim); }
+.lb-health-number { display: flex; align-items: baseline; gap: 7px; margin-top: 12px; min-height: 40px; }
+.lb-health-number strong { font-size: 31px; font-weight: 550; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.lb-health-number span { font-size: 12px; color: var(--lb-text-dim); }
+.lb-health-number small { margin-left: auto; font-size: 9px; color: var(--lb-text-dim); max-width: 85px; text-align: right; }
+.lb-health-chart svg { display: block; width: 100%; height: 88px; overflow: visible; }
+.lb-health-axis, .lb-health-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; color: var(--lb-text-dim); }
+.lb-health-foot { margin-top: 12px; }
+.lb-health-foot span:last-child { max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-health-note { font-size: 9px; color: var(--lb-text-dim); margin-top: 8px; }
+.lb-health-empty { font-size: 12px; line-height: 1.7; color: var(--lb-text-dim); padding: 20px 0; }
+.lb-health-node--overview { padding: 24px 28px; }
+.lb-health-node--overview h3 { font-size: 23px; }
+.lb-health-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 28px; margin: 24px 0 16px; }
+.lb-health-overview-grid > div { display: flex; flex-direction: column; gap: 5px; }
+.lb-health-overview-grid span { font-size: 10px; color: var(--lb-text-dim); }
+.lb-health-overview-grid strong { font-size: 24px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.lb-health-overview-grid small { font-size: 11px; font-weight: 400; padding-left: 7px; color: var(--lb-text-dim); }
+.lb-health-config { padding: 16px; display: grid; gap: 12px; color: var(--lb-text); }
+.lb-health-config h3, .lb-health-settings h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.lb-health-config label, .lb-health-settings label { display: grid; gap: 7px; font-size: 12px; color: var(--lb-text-dim); }
+.lb-health-config p, .lb-health-settings p { font-size: 12px; color: var(--lb-text-dim); line-height: 1.7; margin: 5px 0; }
+.lb-health-config select, .lb-health-config input, .lb-health-settings input { width: 100%; box-sizing: border-box; background: var(--lb-surface-2); color: var(--lb-text); border: 1px solid var(--lb-border-strong); border-radius: 6px; padding: 8px; font: inherit; }
+.lb-health-config button, .lb-health-settings button { border: 1px solid var(--lb-border-strong); border-radius: 6px; padding: 8px 12px; background: var(--lb-surface-2); color: var(--lb-text); font: inherit; font-size: 12px; cursor: pointer; }
+.lb-health-config button:hover, .lb-health-settings button:hover { background: var(--lb-surface-hover); }
+.lb-health-settings button:disabled { opacity: .5; cursor: default; }
+.lb-health-config-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lb-health-config table, .lb-health-settings table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
+.lb-health-config td, .lb-health-config th, .lb-health-settings td, .lb-health-settings th { border-bottom: 1px solid var(--lb-border); padding: 8px 4px; overflow-wrap: anywhere; }
+.lb-health-config details { max-height: 210px; overflow: auto; font-size: 12px; }
+.lb-health-config summary { cursor: pointer; }
+.lb-health-settings { display: grid; gap: 20px; }
+.lb-health-setup, .lb-health-controls { border: 1px solid var(--lb-border); border-radius: 12px; padding: 22px; background: var(--lb-surface); display: grid; gap: 12px; }
+.lb-health-setup h3 { font-size: 21px; font-weight: 500; }
+.lb-health-settings ol, .lb-health-settings ul { margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.8; color: var(--lb-text-dim); }
+.lb-health-settings li + li { margin-top: 8px; }
+.lb-health-settings strong { color: var(--lb-text); font-weight: 550; }
+.lb-health-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.lb-health-settings .lb-health-error { color: var(--lb-danger); }
+.lb-health-confirm { border: 1px solid var(--lb-border-strong); border-radius: 8px; padding: 12px; }
+.lb-health-confirm button + button { margin-left: 8px; }

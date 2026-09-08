@@ -297,7 +297,7 @@ export const nodeOperations: RegisteredOperation[] = [
 				props[key] = value
 			}
 
-			const patch: TLShapePartial = { id: shape.id, type: shape.type }
+			const patch = { id: shape.id, type: shape.type } as TLShapePartial
 			if (args.x !== undefined) patch.x = args.x
 			if (args.y !== undefined) patch.y = args.y
 			if (Object.keys(props).length) patch.props = props as never

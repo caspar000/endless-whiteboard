@@ -65,4 +65,9 @@ export interface PlatformAdapter {
 	 */
 	fetchExternalJson(url: string): Promise<unknown | null>
 	fetchExternalBlob(url: string): Promise<Blob | null>
+	/** Same-origin local health service. Authentication failures are distinct from an empty dataset. */
+	fetchHealthSnapshot(token: string): Promise<{
+		snapshot: unknown
+		status: { checkedAt: string | null; files: number; errors: string[]; ignored: string[] }
+	}>
 }

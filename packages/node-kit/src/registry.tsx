@@ -156,6 +156,8 @@ export interface NodeDefinition<Props extends object = object> {
 	component: ComponentType<NodeComponentProps<Props>>
 	/** `true` → double-click enters tldraw's editing state and the component gets `isEditing`. */
 	canEdit?: boolean
+	/** Sensitive live views can refuse programmatic agent image exports, including parent frames. */
+	excludeFromAgentImages?: boolean
 	/**
 	 * Every handle scales both axes: the node is a picture, and a picture with the wrong proportions is
 	 * not a smaller picture.

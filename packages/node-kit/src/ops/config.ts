@@ -1,4 +1,4 @@
-import type { T, TLShape } from 'tldraw'
+import type { T, TLShape, TLShapePartial } from 'tldraw'
 import { collectionPatch, collectionValidator, readCollection, type Collection } from '../collections/spec'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'
 import { getNodeDefinition } from '../registry'
@@ -193,7 +193,7 @@ export const configOperations: RegisteredOperation[] = [
 			editor.run(() => {
 				editor.markHistoryStoppingPoint('agent: node.configure')
 				if (nextProps) {
-					editor.updateShape({ id: shape.id, type: shape.type, props: nextProps as never })
+					editor.updateShape({ id: shape.id, type: shape.type, props: nextProps } as TLShapePartial)
 				}
 				// `collectionPatch` rather than `setCollection`: that marks its own stopping point, which
 				// would make configuring props and a collection together two undo steps.

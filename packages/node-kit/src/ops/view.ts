@@ -1,5 +1,6 @@
 import type { Box, Editor, TLShape, TLShapeId } from 'tldraw'
 import { defineOperation, fail, ok, type RegisteredOperation } from '../operations'
+import { getNodeDefinition } from '../registry'
 import {
 	RELATION_VIEWS,
 	RELATION_VIEW_NOTES,
@@ -46,6 +47,24 @@ const MAX_LOOK_SIZE = 2400
  * for the rest of the message, and a picture that arrives is worth more than one that was perfect.
  */
 const MAX_IMAGE_BASE64 = 3.5 * 1024 * 1024
+
+/** A frame/group export also renders its descendants. Check those before exporting any pixels. */
+export function containsPrivateImageContent(editor: Editor, targets: readonly TLShape[]): boolean {
+	const selected = new Set(targets.map(shape => shape.id))
+	const shapes = editor.getCurrentPageShapes()
+	const byId = new Map(shapes.map(shape => [shape.id, shape]))
+	return shapes.some(shape => {
+		if (!getNodeDefinition(shape.type)?.excludeFromAgentImages) return false
+		const seen = new Set<string>()
+		let current: TLShape | undefined = shape
+		while (current && !seen.has(current.id)) {
+			if (selected.has(current.id)) return true
+			seen.add(current.id)
+			current = byId.get(current.parentId as TLShapeId)
+		}
+		return false
+	})
+}
 
 /**
  * How much to shrink the render by, so its longest side lands on `size`.
@@ -248,6 +267,9 @@ export const viewOperations: RegisteredOperation[] = [
 			const region = args.region ?? 'board'
 			const target = lookTarget(editor, region, args.shapeIds)
 			if (!target.ok) return fail(target.error)
+			if (containsPrivateImageContent(editor, target.shapes)) {
+				return fail('This image includes private health cards. Select shapes without health cards or their containing frames to render an agent image.')
+			}
 
 			const size = Math.min(Math.max(args.size ?? DEFAULT_LOOK_SIZE, MIN_LOOK_SIZE), MAX_LOOK_SIZE)
 			const bounds = target.bounds ?? spannedBounds(editor, target.shapes)

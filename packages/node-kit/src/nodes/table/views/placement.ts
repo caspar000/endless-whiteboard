@@ -143,7 +143,7 @@ export function placementPatches(env: PlacementEnv): TLShapePartial[] {
 
 			const target = env.place(view, member, slot)
 			if (isAt(member, target)) continue
-			patches.add({ id: member.id, type: member.type, x: target.x, y: target.y })
+			patches.add({ id: member.id, type: member.type, x: target.x, y: target.y } as TLShapePartial)
 		}
 
 		// The card is as tall as the view says it needs to be, and this is the only thing allowed to say
@@ -172,7 +172,7 @@ export function placementPatches(env: PlacementEnv): TLShapePartial[] {
 		if (!home) continue
 		patches.add(viewHomePatch(shape, null))
 		if (home.adopted === 'query' && !isAt(shape, home)) {
-			patches.add({ id: shape.id, type: shape.type, x: home.x, y: home.y })
+			patches.add({ id: shape.id, type: shape.type, x: home.x, y: home.y } as TLShapePartial)
 		}
 	}
 

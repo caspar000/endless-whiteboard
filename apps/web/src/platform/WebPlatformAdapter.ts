@@ -221,6 +221,26 @@ export function createWebPlatformAdapter(): PlatformAdapter {
 				return { usage: null, quota: null, persisted }
 			}
 		},
+
+		async fetchHealthSnapshot(token) {
+			let response: Response
+			try {
+				response = await fetch('/__lifeboard/health/snapshot', {
+					headers: token ? { authorization: `Bearer ${token}` } : {},
+					cache: 'no-store', signal: AbortSignal.timeout(12_000),
+				})
+			} catch { throw new Error('Health service unavailable. Showing the offline cache.') }
+			if (response.status === 401) throw new Error('Enter the service access key to connect. The key is stored only in memory.')
+			if (!response.ok) throw new Error('Start the local health service with your iCloud export folder. Cached readings remain available.')
+			let data: unknown
+			try { data = await response.json() } catch { throw new Error('No health service at this address. See the Apple Health setup guide.') }
+			const result = data as { snapshot?: unknown; status?: { checkedAt?: unknown; files?: unknown; errors?: unknown; ignored?: unknown } }
+			const status = result?.status
+			if (!status || !(status.checkedAt === null || typeof status.checkedAt === 'string') || typeof status.files !== 'number' ||
+				!Array.isArray(status.errors) || !status.errors.every(e => typeof e === 'string') ||
+				!Array.isArray(status.ignored) || !status.ignored.every(e => typeof e === 'string')) throw new Error('Invalid health service response.')
+			return { snapshot: result.snapshot, status: { checkedAt: status.checkedAt, files: status.files, errors: status.errors, ignored: status.ignored } }
+		},
 	}
 }
 

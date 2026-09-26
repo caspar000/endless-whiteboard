@@ -30,7 +30,14 @@ export function useKeymap(options: {
 	const { getContext } = options
 
 	useEffect(() => {
+		// A `trigger: 'tap'` command whose key is down, waiting to see whether it is a tap or a hold.
+		let pendingTap: { commandId: string; key: string; at: number } | null = null
+
 		const onKeyDown = (event: KeyboardEvent) => {
+			// Anything but the first press of the same key means it was not a tap: a repeat is a hold,
+			// and another key is a chord.
+			if (pendingTap && (event.repeat || event.key !== pendingTap.key)) pendingTap = null
+
 			// Mid-composition keystrokes belong to the IME, whatever they look like.
 			if (event.isComposing) return
 
@@ -48,6 +55,12 @@ export function useKeymap(options: {
 
 			if (!mayFireNow(command?.group, ctx, event)) return
 
+			// Left for tldraw on purpose: until the key comes up, this may be the start of a hold.
+			if (command?.trigger === 'tap') {
+				if (!event.repeat) pendingTap = { commandId: command.id, key: event.key, at: event.timeStamp }
+				return
+			}
+
 			/*
 			 * Taken only now, *after* every guard. Doing it earlier — the obvious way to write this —
 			 * is a bug with teeth: `edit.delete` is bound to Backspace, so preventing default before
@@ -62,10 +75,38 @@ export function useKeymap(options: {
 			void command.run(ctx)
 		}
 
+		// Not stopped: tldraw needs this keyup to end the pan it started on keydown.
+		const onKeyUp = (event: KeyboardEvent) => {
+			const tap = pendingTap
+			if (!tap || event.key !== tap.key) return
+			pendingTap = null
+			if (event.timeStamp - tap.at > TAP_MS) return
+			const command = getCommand(tap.commandId)
+			const ctx = getContext()
+			if (!command || command.when?.(ctx) === false) return
+			void command.run(ctx)
+		}
+
+		// Pressing the pointer while the key is down is Space-drag panning, not a tap.
+		const cancelTap = () => {
+			pendingTap = null
+		}
+
 		window.addEventListener('keydown', onKeyDown, { capture: true })
-		return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+		window.addEventListener('keyup', onKeyUp, { capture: true })
+		window.addEventListener('pointerdown', cancelTap, { capture: true })
+		window.addEventListener('blur', cancelTap)
+		return () => {
+			window.removeEventListener('keydown', onKeyDown, { capture: true })
+			window.removeEventListener('keyup', onKeyUp, { capture: true })
+			window.removeEventListener('pointerdown', cancelTap, { capture: true })
+			window.removeEventListener('blur', cancelTap)
+		}
 	}, [getContext])
 }
+
+/** How long a key may be held and still count as a tap. */
+const TAP_MS = 300
 
 /**
  * Whether a command may fire given what currently has the keyboard.

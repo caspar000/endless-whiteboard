@@ -43,6 +43,18 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// Space itself is the `view.quick-look` command and is listed above; these are the preview's own
+		// keys, bound by its overlay rather than registered.
+		title: 'In Quick look',
+		rows: [
+			[['Space'], 'Hold and drag to pan, as always. A tap opens or closes the preview'],
+			[['←', '→'], 'The previous or next node, in reading order'],
+			[['Enter', 'double-click'], 'Edit the node you are looking at, in place'],
+			[['Esc'], 'Stop editing, then close'],
+			[['click'], 'Anywhere on the blur: close'],
+		],
+	},
+	{
 		// Not commands and not keys: the whole interaction with a kanban or a calendar is a drag, and a
 		// reference that lists every keystroke but none of the gestures would be missing the feature.
 		title: 'On a kanban or a calendar',

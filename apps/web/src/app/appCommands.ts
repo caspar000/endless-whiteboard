@@ -11,6 +11,7 @@ import {
 	type CommandContext,
 } from '@lifeboard/node-kit'
 import { openProperties } from '../canvas/propertiesTarget'
+import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
 import { runTldrawAction } from '../canvas/tldrawUi'
 import { toggleTracing } from '../canvas/tracing'
 import {
@@ -214,6 +215,23 @@ registerCommand({
 	when: onBoard,
 	run: (ctx) => {
 		if (ctx.editor) runTldrawAction(ctx.editor, 'zoom-to-100')
+	},
+})
+
+/**
+ * Space, as a tap: hold-and-drag stays tldraw's pan (see `trigger` on `Command`). Offered while a
+ * preview is open too, so the same key closes it.
+ */
+registerCommand({
+	id: 'view.quick-look',
+	title: 'Quick look — zoom onto the selection and blur the rest',
+	group: CANVAS_GROUP,
+	kbd: 'space',
+	trigger: 'tap',
+	when: (ctx) =>
+		ctx.editor !== null && (getQuickLook(ctx.editor) !== null || canQuickLook(ctx.editor)),
+	run: (ctx) => {
+		if (ctx.editor) toggleQuickLook(ctx.editor)
 	},
 })
 

@@ -110,6 +110,14 @@ export type NodeToolbarIcon = ComponentType<{
 	'aria-hidden'?: boolean | 'true' | 'false'
 }>
 
+/** How much of the screen a node fills in Quick look, and how far it may zoom to get there. */
+export interface QuickLookPreset {
+	/** Fraction of the viewport's width or height, whichever binds first. */
+	fill?: number
+	/** Camera zoom cap; `null` is the canvas's own maximum. */
+	maxZoom?: number | null
+}
+
 /**
  * The single interface every smart node implements — and, unchanged, the future plugin SDK surface
  * (§4.1). A plugin is just something that supplies `NodeDefinition`s; the host already consumes
@@ -194,6 +202,12 @@ export interface NodeDefinition<Props extends object = object> {
 	 * A `'below'` node must **not** render `<NodeStrips>`, or its properties appear twice.
 	 */
 	strips?: 'inline' | 'below'
+	/**
+	 * How Quick look (Space) frames this node. Defaults suit a document: 85% of the screen, at most
+	 * 2.5× zoom, past which text gets comically large. A picture wants `maxZoom: null`, which lets it
+	 * zoom as far as the canvas allows.
+	 */
+	quickLook?: QuickLookPreset
 	/**
 	 * Shapes dragged onto this node mean something — see {@link NodeDropSpec}.
 	 *

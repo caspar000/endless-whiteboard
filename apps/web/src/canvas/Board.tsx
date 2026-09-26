@@ -56,6 +56,8 @@ import { FileImportHandler } from './FileImportHandler'
 import { expressionShapeUtils } from './expressionShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
+import { QuickLookOverlay } from './QuickLookOverlay'
+import { closeQuickLook, getQuickLook } from './quickLook'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
 import { deselectHiddenShapes, getShapeVisibility } from './relationVisibility'
 import { TraceLayer, TraceShapeWrapper } from './TraceLayer'
@@ -160,14 +162,16 @@ function CanvasLayers() {
  * away live — there is no board remount here, unlike a change to the node *types*.
  */
 function CanvasOverlays() {
+	const editor = useEditor()
 	const overlays = useSyncExternalStore(subscribeToCanvasOverlays, getVisibleCanvasOverlays)
+	// An extension's chrome (the dice tray) can land inside Quick look's hole, on top of the node.
+	const looking = useValue('lifeboard:quick-look-open', () => getQuickLook(editor) !== null, [editor])
 	return (
 		<>
 			<SelectionToolbar />
 			<AgentPresence />
-			{overlays.map(({ id, Component }) => (
-				<Component key={id} />
-			))}
+			{!looking && overlays.map(({ id, Component }) => <Component key={id} />)}
+			<QuickLookOverlay />
 		</>
 	)
 }
@@ -328,6 +332,11 @@ export function Board({
 	// Module-scope signal, read here so the container can carry the mode as a class. `useValue` needs
 	// no editor context — it is a signals hook, not a tldraw one.
 	const tracing = useValue('lifeboard:tracing-on', () => isTracing(), [])
+	const quickLook = useValue(
+		'lifeboard:quick-look-on',
+		() => (editor ? getQuickLook(editor) !== null : false),
+		[editor]
+	)
 
 	/**
 	 * The `{…}` helper, for every text editor tldraw draws itself — sticky, text shape, geo label,
@@ -358,7 +367,15 @@ export function Board({
 	return (
 		// The tracing class rides the board's own container rather than the canvas, so the dim can be
 		// one CSS rule over `.tl-shape` and the mode has somewhere to hang its other affordances.
-		<div className={tracing ? 'lb-board lb-board--tracing' : 'lb-board'}>
+		<div
+			className={[
+				'lb-board',
+				tracing && 'lb-board--tracing',
+				quickLook && 'lb-board--quick-look',
+			]
+				.filter(Boolean)
+				.join(' ')}
+		>
 			<Tldraw
 				// The schema version is part of the editor's identity: new node types mean new shape
 				// utils, which `<Tldraw>` only reads on mount.
@@ -458,6 +475,8 @@ export function Board({
 						stopPlacingMembers()
 						stopWatchingDragOut()
 						stopTracking()
+						// Put the camera back, or the board reopens zoomed onto whatever was previewed.
+						closeQuickLook(editor, { animate: false })
 						// Both are module-scope. The properties target is a bare shape id, so a stale one
 						// would make the next board open a panel for a shape that isn't on it.
 						closeProperties()

@@ -102,5 +102,7 @@ export const bookNodeDefinition: NodeDefinition<BookNodeProps> = {
 	// Double-click opens the reader (or the file picker while the node is still a placeholder).
 	canEdit: true,
 	canScroll: true,
+	// A cover is a picture: Quick look may zoom it as far as the canvas goes.
+	quickLook: { maxZoom: null },
 	getLabel: (shape) => shape.props.title || shape.props.fileName || undefined,
 }

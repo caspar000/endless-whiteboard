@@ -40,7 +40,7 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <MousePointer2 size={19} />,
 			kbd: ['V', '1'],
 			blurb:
-				'Click to select, drag to move or resize. Double-click a note to write in it — double-click always means "edit the content".',
+				'Click to select, drag to move or resize. Double-click a note to write in it — double-click always means "edit the content". Tap Space to Quick look it: the board blurs and the node fills the screen.',
 		},
 		{
 			id: 'hand',

@@ -4118,6 +4118,47 @@ button.lb-props__eye:hover {
 	margin-top: 0;
 }
 
+/* ------------------------------------------------------------ quick look */
+/*
+ * Space on a node (see canvas/quickLook.ts). The camera zooms onto the node; this layer blurs the rest
+ * of the board through a hole the overlay cuts with `clip-path`. Lighter than `--lb-backdrop`: the
+ * board should read as pushed back, not gone.
+ */
+.lb-quick-look {
+	position: absolute;
+	inset: 0;
+	pointer-events: all;
+	background: rgb(0 0 0 / 30%);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	animation: lb-quick-look-in 250ms ease-out;
+}
+@keyframes lb-quick-look-in {
+	from {
+		opacity: 0;
+	}
+}
+/* Handles and the selection outline would read as an invitation to resize what you are looking at. */
+.lb-board--quick-look .tl-canvas-overlays {
+	display: none;
+}
+/* The dock stays in view but out of reach, like the rest of the board. */
+.lb-dock-wrap {
+	transition:
+		opacity 250ms ease,
+		filter 250ms ease;
+}
+.lb-board--quick-look .lb-dock-wrap {
+	opacity: 0.35;
+	filter: blur(3px);
+	pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-quick-look {
+		animation: none;
+	}
+}
+
 /* ------------------------------------------------------- the tracing lens */
 /*
  * Pointing at a shape to see what it is wired to (see canvas/tracing.ts).

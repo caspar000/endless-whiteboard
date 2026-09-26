@@ -53,6 +53,13 @@ extension's arrives in it without widening the dock; right-click offers "Add to 
 one at the pointer instead. Double-clicking empty canvas is tldraw's default action. Double-clicking
 the board's name in the tab strip renames it.
 
+**Quick look** — tap <kbd>Space</kbd> on any node, image, sticky, text or frame and the camera zooms
+onto it while the rest of the board blurs. It is the real node, so it can still be edited in place.
+<kbd>←</kbd>/<kbd>→</kbd> step through the selection, or, with one node selected, through its
+neighbours in reading order. A frame counts as one slide. <kbd>Esc</kbd> or a click on the blur puts
+the camera back. Holding Space still pans. A node type sets how far it zooms with
+`NodeDefinition.quickLook` (see `apps/web/src/canvas/quickLook.ts`).
+
 ## Nodes & extensions
 
 The live node types ship as extensions — each a bag of node definitions the app registers at startup

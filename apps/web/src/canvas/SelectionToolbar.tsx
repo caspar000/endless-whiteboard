@@ -45,6 +45,7 @@ import {
 } from '../persistence/removeBackground'
 import { usePlatform } from '../platform/PlatformContext'
 import { openProperties } from './propertiesTarget'
+import { getQuickLook } from './quickLook'
 import { canHaveFillColor, readFillColor, setSelectionFillColor } from './shapeFill'
 
 /**
@@ -507,6 +508,8 @@ export function SelectionToolbar() {
 		'lb:selection-toolbar',
 		() => {
 			if (editor.getEditingShapeId()) return null
+			// A Quick look is for looking; the bar would sit on top of the node.
+			if (getQuickLook(editor)) return null
 			// The same states tldraw's own contextual toolbars use: idle, the mousedown-on-shape
 			// moment (avoids flicker on click), and crop mode. Anything else — translating,
 			// brushing, resizing — hides the bar.

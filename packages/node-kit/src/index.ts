@@ -33,6 +33,7 @@ export {
 	type NodeBaseProps,
 	type NodeComponentProps,
 	type NodeDefinition,
+	type QuickLookPreset,
 	type NodeShape,
 	type NodeToolbarIcon,
 } from './registry'

@@ -132,6 +132,8 @@ export const quoteNodeDefinition: NodeDefinition<QuoteNodeProps> = {
 	 */
 	canEdit: true,
 	// Prose, like the note — its properties belong inside the card, not under it.
+	// Unlike a note, big text is the point of looking at a quote: no zoom cap.
+	quickLook: { maxZoom: null },
 	getLabel: (shape) => quoteTitle(shape.props.text),
 }
 

@@ -71,6 +71,15 @@ export interface Command {
 	 */
 	kbd?: string
 	/**
+	 * `'tap'` runs the command when the key is released quickly, not when it goes down.
+	 *
+	 * For keys that already mean something when *held*. Space is tldraw's hold-to-pan, so Quick look
+	 * cannot claim the keydown without taking panning away. A tap command lets the keydown through
+	 * and fires on keyup only if nothing else happened in between: no other key, no pointer press,
+	 * and no longer than a tap.
+	 */
+	trigger?: 'tap'
+	/**
 	 * Availability, checked by consumers at render and again at invoke. Absent means always. Keep it
 	 * cheap and pure — the palette calls it once per command per keystroke.
 	 */

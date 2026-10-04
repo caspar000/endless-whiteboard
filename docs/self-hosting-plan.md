@@ -1,6 +1,6 @@
 # Self-hosting — implementation plan
 
-Status: **Phase 0 in progress.**
+Status: **Phase 0 done.** Phase 1 next.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.

@@ -1,0 +1,37 @@
+# Copy to /opt/stacks/lifeboard/compose.yaml, next to start.sh and .env. See README.md.
+name: lifeboard
+
+services:
+  lifeboard:
+    container_name: lifeboard
+    # Only git and pnpm on top of Node. The app itself is fetched and built by start.sh on every start,
+    # so this image almost never needs rebuilding.
+    build:
+      dockerfile_inline: |
+        FROM node:26-alpine
+        RUN apk add --no-cache git && npm install -g pnpm@11
+    image: lifeboard-runner:local
+    init: true
+    restart: unless-stopped
+    command: ["sh", "/start.sh"]
+    env_file: .env
+    volumes:
+      - ./start.sh:/start.sh:ro
+      - app:/app
+      - data:/data
+    networks: [proxy-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # The first start builds from scratch before anything listens.
+      start_period: 15m
+
+volumes:
+  app:
+  data:
+
+networks:
+  proxy-net:
+    external: true

@@ -116,6 +116,8 @@ packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (th
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
+apps/server/              @lifeboard/server — serves the built app behind a login, for self-hosting
+deploy/darkroomlab/       the stack that runs apps/server on the Hetzner box (Arcane + Caddy)
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```
 
@@ -532,11 +534,15 @@ downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute 
 paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, and a
 3D dice roll in a production build.
 
-Not started (Phase 2+): sync to a self-hosted server, Tauri packaging, chart nodes, live API nodes,
+Self-hosting is under way (`docs/self-hosting-plan.md`): `apps/server` serves the app behind a
+login, and `deploy/darkroomlab/README.md` covers running it. Sync between devices comes next.
+
+Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system
 is in — and now covers nodes, commands, query-driven commands, operations, queries, hooks, file and
 content imports, shape actions, canvas overlays and an extension's own settings panel; sandboxing and
 a placeholder shape util for uninstalled plugins are what remain).
 
-A free tldraw hobby licence key is still needed before any production deploy; the "made with tldraw"
-watermark stays.
+A tldraw licence key is still needed before any production deploy: without one, tldraw hides the
+canvas 5 seconds after load on a public domain. A free hobby key keeps the "made with tldraw"
+watermark. The key goes in `VITE_TLDRAW_LICENSE_KEY` at build time.

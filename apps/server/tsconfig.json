@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		// Run by Node directly (type stripping), never emitted, so only erasable syntax and real
+		// `.ts` import specifiers.
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"lib": ["ES2024"],
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"types": ["node"]
+	},
+	"include": ["src"]
+}

@@ -46,6 +46,9 @@ export default defineConfig({
 				maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
 				globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
 				navigateFallback: 'index.html',
+				// Served by apps/server, not the app. Answering them from the cache would make the login
+				// page unreachable once the service worker is installed.
+				navigateFallbackDenylist: [/^\/login/, /^\/logout/, /^\/api\//],
 			},
 		}),
 		// Writes stats.html on build so bundle growth is visible (§7).

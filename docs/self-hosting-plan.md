@@ -1,6 +1,6 @@
 # Self-hosting — implementation plan
 
-Status: **Phase 0 done.** Phase 1 next.
+Status: **Phases 0 and 1 built.** Phase 1 is not deployed yet: it needs a tldraw licence key first.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -21,7 +21,7 @@ Decisions taken before this was written:
 | Agent panel | **Not on the server.** Stays a local dev feature for now |
 | Apple Health | **Removed from main** and parked on `experiment/health` |
 | Backups | **No paid backups.** The existing "last backup" reminder covers server vaults and downloads the server's export |
-| tldraw licence | **No key while it's private.** Apply for one before sharing the instance with anyone |
+| tldraw licence | **A key is required to deploy at all.** On a public `https:` origin with no key, tldraw hides the canvas after 5 s, whoever uses it. A free Hobby key (watermark, non-commercial) fits a private instance |
 | Deploy | **Arcane, admin-configurator style.** Restart in Arcane fetches the deploy branch and rebuilds |
 
 ---
@@ -93,8 +93,23 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
 ### Phase 1 — an empty server, deployed
 
 - `apps/server`: Fastify, owner login, serves the built web app.
-- `deploy/darkroomlab/`: Dockerfile, compose, Caddy snippet, `.env.example`.
+- `deploy/darkroomlab/`: compose, `start.sh`, Caddy snippet, `.env.example`.
 - Deployed to `lifeboard.darkroomlab.net` while it still does nothing else.
+
+**As built:**
+
+- **No build step for the server.** Node 26 runs `src/*.ts` directly (type stripping), so `tsc` only
+  typechecks. Phase 2 may change this: the server will import extension schemas, and those packages
+  contain `.tsx`.
+- **No session table.** The cookie holds when the session began, signed with the session secret *and*
+  the password hash. A new password or a new secret logs out every device.
+- **Argon2id from `node:crypto`**, so no native dependency. Hashes are standard PHC strings.
+- **The service worker must not answer `/login`, `/logout` or `/api/*`**, or the login page becomes
+  unreachable once it's installed (`navigateFallbackDenylist` in `apps/web/vite.config.ts`).
+- **For phase 2:** the installed service worker serves the app shell from cache, so an expired session
+  doesn't reach the login page by itself. The first `401` from `/api/*` has to send the app there.
+- **The image is only Node, git and pnpm.** `start.sh` fetches and builds the app on start, with the
+  token passed on the command line so it never lands in `.git/config` on the volume.
 
 ### Phase 2 — sync rooms
 

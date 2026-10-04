@@ -5,7 +5,6 @@ import { collectAssetRefs } from './assetRefs'
 import { waitForAssetUploads } from './assetStore'
 import { readBoardSnapshotResult, waitForPersistFlush, type RawBoardSnapshot } from './tldrawLocalDb'
 import { setPendingRestore } from './pendingRestore'
-import { HEALTH_CACHE_KEY } from './healthCache'
 
 /**
  * Zip backup (§4.4). Layout:
@@ -72,9 +71,6 @@ export async function exportBackup(
 	const exportedBoards: BoardMeta[] = []
 
 	const warnings: string[] = []
-	if (await platform.kv.get(HEALTH_CACHE_KEY)) {
-		warnings.push('Apple Health readings are stored separately. Export a health backup from Settings → Extensions → Apple Health to preserve them alongside these board layouts.')
-	}
 	for (const board of boards) {
 		const result = await readBoardSnapshotResult(board.id)
 

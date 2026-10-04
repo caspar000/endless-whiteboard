@@ -17,6 +17,7 @@ import {
 	readShapePropertyDefs,
 	rollupsToTablesMigrations,
 	itemsToNotesMigrations,
+	removeHealthNodesMigrations,
 	deleteRelationsWithShapes,
 	placeViewMembers,
 	watchViewDragOut,
@@ -130,7 +131,7 @@ function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
  * Order here is not what sequences them — `rollupsToTablesMigrations` declares `dependsOn` — but keeping
  * them in dependency order makes the intent readable.
  */
-const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations]
+const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations]
 
 /**
  * Everything we draw *inside* the camera transform, in paint order.

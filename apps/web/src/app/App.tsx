@@ -34,10 +34,11 @@ import { useTheme } from './useTheme'
 /**
  * How long a closed tab's editor stays mounted after the tab goes away.
  *
- * This is not cosmetic. tldraw writes to IndexedDB on a throttle, and `doPersist()` bails out if the
- * sync client has been disposed — so unmounting the editor within the throttle window **discards the
- * pending write permanently**. Boards whose tab is still open never unmount at all (that is what
- * makes tab switching instant *and* safe); the drain only exists for the moment a tab is closed.
+ * tldraw writes to IndexedDB on a throttle. Before 5.5, unmounting inside the throttle window
+ * discarded the pending write; tldraw now flushes on close, so the drain is a margin rather than the
+ * only safeguard. It still matters for image uploads that finish after the tab closes, which write to
+ * the store and need a live editor to land (see `MAX_DRAIN_MS`). Boards whose tab is still open never
+ * unmount at all, which is what makes tab switching instant.
  */
 const DRAIN_MS = TLDRAW_PERSIST_THROTTLE_MS + 400
 
@@ -181,8 +182,7 @@ export function App() {
 	 *
 	 * A per-editor `updateUserPreferences` rather than the `colorScheme` prop on `<Tldraw>`: that prop is
 	 * in the dependency array of the effect that *constructs* the Editor, so binding it to state would
-	 * remount every editor on a theme change — and unmounting inside tldraw's persistence throttle
-	 * window discards the pending write (see DRAIN_MS above), along with the camera and undo history.
+	 * remount every editor on a theme change, losing the camera and undo history.
 	 *
 	 * Also deliberately not the module-level `setUserPreferences`: replacing the whole preferences object
 	 * out from under mounted editors made their reactive store throw `AtomMap: key not found` on every

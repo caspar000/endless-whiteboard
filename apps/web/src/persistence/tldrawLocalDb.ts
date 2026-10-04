@@ -15,16 +15,13 @@ export const TLDRAW_STORE_PREFIX = 'TLDRAW_DOCUMENT_v2'
 export const TLDRAW_DB_NAME_INDEX_KEY = 'TLDRAW_DB_NAME_INDEX_v2'
 
 /**
- * tldraw throttles writes to IndexedDB (`PERSIST_THROTTLE_MS` in `TLLocalSyncClient.ts`), and it
- * does *not* flush on unload — `close()` is a noop and persists are deliberately skipped once a
- * reload has started. So for a short window after an edit, the edit exists only in memory.
+ * tldraw throttles writes to IndexedDB (`PERSIST_THROTTLE_MS` in `TLLocalSyncClient.ts`). Since 5.5
+ * it flushes on `close()`, `pagehide` and the tab going hidden, but a *mounted* editor still holds the
+ * last edit only in memory for up to this long.
  *
  * That matters here because backup export reads from the database, not from a live editor: exporting
  * immediately after an edit would otherwise silently write a stale board into the zip. `exportBackup`
  * waits out this window first.
- *
- * Residual limitation worth knowing: closing the tab within this window still loses the last edit.
- * That is tldraw's behaviour, not something we can fix from outside without its internals.
  */
 export const TLDRAW_PERSIST_THROTTLE_MS = 350
 

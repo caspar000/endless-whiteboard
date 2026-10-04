@@ -14,19 +14,19 @@
 		"build": "tsc -p tsconfig.json --noEmit"
 	},
 	"peerDependencies": {
-		"@tldraw/store": "5.2.5",
+		"@tldraw/store": "5.5.2",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"tldraw": "5.2.5"
+		"tldraw": "5.5.2"
 	},
 	"devDependencies": {
-		"@tldraw/store": "5.2.5",
-		"@tldraw/tlschema": "5.2.5",
+		"@tldraw/store": "5.5.2",
+		"@tldraw/tlschema": "5.5.2",
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.3",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"tldraw": "5.2.5",
+		"tldraw": "5.5.2",
 		"typescript": "5.9.3",
 		"vitest": "^4.1.10"
 	},

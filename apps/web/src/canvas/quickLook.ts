@@ -154,6 +154,8 @@ function frameShape(editor: Editor, id: TLShapeId, immediate = false): void {
 	const preset = shape && presetFor(shape.type)
 	if (!bounds || !preset) return
 	const viewport = editor.getViewportScreenBounds()
+	// A zero-sized viewport or shape fits to NaN, and `setCamera` throws on that since tldraw 5.5.
+	if (!viewport.w || !viewport.h || !bounds.w || !bounds.h) return
 	const zoomLimit = editor.getCameraOptions().zoomSteps.at(-1)! * editor.getBaseZoom()
 	editor.setCamera(fitCamera(bounds, viewport, preset, zoomLimit), {
 		force: true,

@@ -457,7 +457,7 @@ id needs a store-scoped migration rewriting every record, for a cosmetic gain. `
 loads a real snapshot from every released schema and fails if a migration is missing — verified to
 catch it. See `src/persistence/fixtures/README.md` for how to add a fixture.
 
-**tldraw is pinned to an exact version (5.2.5).** Two files depend on its internals — the local
+**tldraw is pinned to an exact version (5.5.2).** Two files depend on its internals — the local
 IndexedDB naming in `persistence/tldrawLocalDb.ts` (pinned by a test that reads tldraw's own source)
 and the API notes in `docs/`. Re-read both before upgrading.
 
@@ -475,7 +475,7 @@ port to one new file (`TauriPlatformAdapter`).
 
 ## Deliberate deviations from the original plan
 
-- **tldraw 5.2.5, not v4.** v4 was current when the plan was written. Every API the plan relies on
+- **tldraw 5.x (now 5.5.2), not v4.** v4 was current when the plan was written. Every API the plan relies on
   exists in 5.x; the deltas are recorded in `docs/tldraw-api-notes.md`.
 - **Markdown editing is source-based (CodeMirror 6 with live-preview decorations), not TipTap.**
   Markdown is the source of truth, so editing the string is lossless — a rich-text editor

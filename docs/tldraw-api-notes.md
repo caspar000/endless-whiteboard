@@ -1,4 +1,4 @@
-# tldraw API notes (pinned: 5.2.5)
+# tldraw API notes (pinned: 5.5.2)
 
 The plan (`.context/attachments/.../plan.md`) was written against tldraw **v4**. Current stable is
 **5.2.5**, so this project pins 5.2.5. Every API the plan depends on exists in 5.2.5 — verified
@@ -7,7 +7,23 @@ against the shipped `.d.ts` files. The deltas that affect our code are recorded 
 Re-verify this file before any tldraw upgrade (§5 of the plan: "review its changelog before any
 upgrade — internal IndexedDB naming and UI-override APIs are the fragile spots").
 
-## Confirmed present in 5.2.5
+Upgraded to **5.5.2** on 2026-10-04 for `@tldraw/sync` (see `self-hosting-plan.md`). Every section
+below was re-checked against the 5.5.2 source and still holds. What changed, and where it touches us:
+
+- **Persistence flushes on close.** `TLLocalSyncClient.close()`, `pagehide` and a hidden tab now write
+  pending edits. `DRAIN_MS` stays as a margin and for uploads that land after a tab closes.
+- **Deleting a board's database no longer waits for other tabs.** A `blocking()` handler makes the
+  other connection close, so that tab's next write shows tldraw's "can't write" alert.
+- **`setCamera` throws on non-finite values.** Quick Look guards zero-sized viewports and shapes.
+- **Rich text gained Typography and WrapSelection by default.** Stickies and text curl quotes, turn
+  `->` into `→`, and typing `{` over a selection wraps it.
+- **Pasting a URL with one shape selected sets that shape's link** instead of making a bookmark.
+- **Geo shapes gained `flipX`/`flipY`** (a schema migration), so boards opened on 5.5.2 no longer load
+  in 5.2.5, and neither do backups exported from it.
+- **Licence:** a production build on a public `https:` origin with no key is `unlicensed-production`,
+  and the editor hides itself after 5 s (`LicenseProvider.tsx`). Same as 5.2.5.
+
+## Confirmed present in 5.2.5 (and 5.5.2)
 
 | API | Where from | Notes |
 |---|---|---|

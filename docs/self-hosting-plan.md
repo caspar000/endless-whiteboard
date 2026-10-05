@@ -1,7 +1,7 @@
 # Self-hosting — implementation plan
 
-Status: **Phases 0–3 built, nothing deployed.** Boards, their images and files, saved queries and
-extension toggles sync through the server. Phase 4 (moving boards between vaults) is next.
+Status: **All four phases built, nothing deployed.** Everything below works against a local server;
+deploying waits on a tldraw licence key.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -178,6 +178,23 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
 ### Phase 4 — moving boards
 
 - The first-login prompt, then **Move to server** / **Make local**.
+
+**As built:**
+
+- **Both directions keep the board's id**, so open tabs, thumbnails and the star follow it, and both
+  write the destination in full before removing the source (`boards/moveBoard.ts`). A failed move
+  leaves the board where it was.
+- **To the server:** read from the board's live editor if it is open (fresher than IndexedDB), else
+  from disk or a pending import; migrate to today's schema in a throwaway store; upload the files the
+  server lacks; create the server board with the snapshot (`POST /api/boards` with `snapshot`, which
+  seeds the room file and refuses to overwrite one). The local blobs stay as the server board's cache.
+- **To this device:** read `GET /api/boards/:id/snapshot`, download every file it references (any
+  missing file aborts the move), add the local board with the snapshot as a pending restore, then
+  delete the server board.
+- **"Make local" is labelled "Move to this device"**, which says where the board goes.
+- **Surfaces:** the home screen offers to move all local boards once per browser; each board card has
+  the action; ⌘K has *Move board to server* / *Move board to this device* for the open board; Help has a
+  "Your server" section.
 
 ## Deferred
 

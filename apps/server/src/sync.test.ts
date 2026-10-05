@@ -191,6 +191,28 @@ describe('sync', () => {
 		expect(c.get(page.id)).toMatchObject({ name: 'Synced' })
 	})
 
+	it('opens a board that arrived with content, and hands that content back', async () => {
+		const { app, port, cookie } = await startServer()
+		const source = createTLStore({ schema: createBoardSchema() })
+		const page = PageRecordType.create({ name: 'Brought along', index: 'a2' as never })
+		source.put([page])
+		const id = crypto.randomUUID()
+		const created = await app.inject({
+			method: 'POST',
+			url: '/api/boards',
+			headers: { cookie },
+			payload: { id, name: 'Moved', favorite: true, snapshot: source.getStoreSnapshot('document') },
+		})
+		expect(created.json()).toMatchObject({ id, favorite: true })
+
+		const client = await connect(port, cookie, id, 'a')
+		expect(client.get(page.id)).toMatchObject({ name: 'Brought along' })
+
+		const back = await app.inject({ url: `/api/boards/${id}/snapshot`, headers: { cookie } })
+		expect(back.json().store[page.id]).toMatchObject({ name: 'Brought along' })
+		expect(back.json().schema).toBeTruthy()
+	})
+
 	it('closes the socket on a board that does not exist', async () => {
 		const { port, cookie } = await startServer()
 		const ws = new WebSocket(`ws://127.0.0.1:${port}/api/sync/${crypto.randomUUID()}?sessionId=a`, {

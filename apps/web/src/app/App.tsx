@@ -454,6 +454,9 @@ export function App() {
 			// closing it, so ⌘⇧K over an open ⌘K palette types the `>` for you.
 			togglePalette: (seed = '') =>
 				setPalette((current) => (current && current.seed === seed ? null : { seed })),
+			activeBoard: () => api.boards.find((b) => b.id === activeBoardIdRef.current),
+			hasServer: () => api.hasServer,
+			moveBoard: (board) => api.move(board, editors.current.get(board.id)),
 		})
 	})
 
@@ -527,7 +530,8 @@ export function App() {
 	})
 
 
-	const listApi = { ...api, remove: removeBoard }
+	// Moving reads an open board from its live editor: fresher than what tldraw has written to disk.
+	const listApi = { ...api, remove: removeBoard, move: (board: BoardMeta) => api.move(board, editors.current.get(board.id)) }
 
 	const activeBoardId = route.view === 'board' ? route.boardId : null
 	// A board mounting is asynchronous — it waits on its own restore — so registration below has to

@@ -21,6 +21,7 @@ import {
 	COMMAND_PREFIX,
 	NAVIGATE_GROUP,
 } from './paletteItems'
+import type { BoardMeta } from '../boards/boardIndex'
 import { EXTENSIONS_TAB } from './settings/sections'
 import type { Theme } from './useTheme'
 
@@ -49,6 +50,12 @@ export interface AppCommandApi {
 	 * *switch* an already-open palette into command mode instead of shutting it.
 	 */
 	togglePalette(seed?: string): void
+	/** The board open in the canvas, if any. */
+	activeBoard(): BoardMeta | undefined
+	/** Whether a server vault answered: moving a board needs somewhere to move it. */
+	hasServer(): boolean
+	/** Between this device and the server, whichever way it isn't. See `boards/moveBoard.ts`. */
+	moveBoard(board: BoardMeta): Promise<void>
 }
 
 let api: AppCommandApi | null = null
@@ -63,6 +70,34 @@ registerCommand({
 	title: 'New board',
 	group: BOARDS_GROUP,
 	run: () => void api?.createAndOpen(),
+})
+
+/**
+ * The open board, to the other vault. Two commands rather than one toggle, so the palette's title says
+ * where it is going; each is offered only when the board is on the side it moves from.
+ */
+const moveOpenBoard = () => {
+	const board = api?.activeBoard()
+	if (!board) return
+	void api?.moveBoard(board).catch((error: unknown) => {
+		window.alert(`“${board.name}” was not moved. ${error instanceof Error ? error.message : String(error)}`)
+	})
+}
+
+registerCommand({
+	id: 'board.move-to-server',
+	title: 'Move board to server',
+	group: BOARDS_GROUP,
+	when: () => !!api?.hasServer() && api.activeBoard()?.vault === undefined && !!api.activeBoard(),
+	run: moveOpenBoard,
+})
+
+registerCommand({
+	id: 'board.move-to-device',
+	title: 'Move board to this device',
+	group: BOARDS_GROUP,
+	when: () => !!api?.hasServer() && api.activeBoard()?.vault === 'server',
+	run: moveOpenBoard,
 })
 
 registerCommand({

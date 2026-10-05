@@ -9,6 +9,7 @@ import {
 	Spline,
 	Table,
 	Tags,
+	Server,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
@@ -20,6 +21,7 @@ import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
 import { Properties } from './sections/Properties'
 import { Relations } from './sections/Relations'
+import { Server as ServerSection } from './sections/Server'
 import { Shortcuts } from './sections/Shortcuts'
 import { Views } from './sections/Views'
 
@@ -94,6 +96,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Core ideas',
 		icon: <Bot size={15} />,
 		Component: Agent,
+	},
+	{
+		id: 'server',
+		label: 'Your server',
+		title: 'Boards on your server',
+		lede: 'Run Lifeboard on your own server and your boards open from any browser, kept in step live. Without one, everything stays in this browser, as before.',
+		group: 'Core ideas',
+		icon: <Server size={15} />,
+		Component: ServerSection,
 	},
 	{
 		id: 'notes',

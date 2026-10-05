@@ -87,9 +87,22 @@ export async function listServerBoards(): Promise<BoardMeta[] | null> {
 	return ((await (await api('/boards')).json()) as ServerBoard[]).map(toMeta)
 }
 
-export async function createServerBoard(name: string, id?: string): Promise<BoardMeta> {
-	const response = await api('/boards', { method: 'POST', body: JSON.stringify({ name, ...(id ? { id } : {}) }) })
+/** A new server board — empty, or (moving from this device) with its id, star and content. */
+export async function createServerBoard(
+	name: string,
+	id?: string,
+	moved?: { snapshot: unknown; favorite: boolean }
+): Promise<BoardMeta> {
+	const response = await api('/boards', {
+		method: 'POST',
+		body: JSON.stringify({ name, ...(id ? { id } : {}), ...moved }),
+	})
 	return toMeta((await response.json()) as ServerBoard)
+}
+
+/** A server board's content as it is now, in the shape local boards and backups use. */
+export async function readServerBoard(id: string): Promise<{ store: Record<string, unknown>; schema: unknown }> {
+	return (await api(`/boards/${id}/snapshot`)).json() as Promise<{ store: Record<string, unknown>; schema: unknown }>
 }
 
 export async function updateServerBoard(id: string, patch: { name?: string; favorite?: boolean }): Promise<void> {

@@ -52,6 +52,24 @@ export class Rooms {
 		this.room(boardId).room.handleSocketConnect({ sessionId, socket })
 	}
 
+	/**
+	 * Writes a board's first content, for a board arriving from a local vault. Refuses to overwrite: a
+	 * board that already has a file is someone's live board.
+	 */
+	seed(boardId: string, snapshot: BoardSnapshot): void {
+		if (existsSync(this.path(boardId))) throw new Error(`Board ${boardId} already has content.`)
+		const db = new DatabaseSync(this.path(boardId))
+		try {
+			db.exec('PRAGMA journal_mode = WAL')
+			new SQLiteSyncStorage<TLRecord>({
+				sql: new NodeSqliteWrapper(db),
+				snapshot: snapshot as unknown as ConstructorParameters<typeof SQLiteSyncStorage<TLRecord>>[0]['snapshot'],
+			})
+		} finally {
+			db.close()
+		}
+	}
+
 	/** Disconnects everyone, then removes the board's file. */
 	delete(boardId: string): void {
 		this.close(boardId)

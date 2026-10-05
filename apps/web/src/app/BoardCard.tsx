@@ -16,6 +16,8 @@ export function BoardCard({
 	onRename,
 	onToggleFavorite,
 	onDelete,
+	onMove,
+	moveLabel,
 	renaming,
 	onRenameSubmit,
 	onRenameCancel,
@@ -25,6 +27,9 @@ export function BoardCard({
 	onRename: () => void
 	onToggleFavorite: () => void
 	onDelete: () => void
+	/** Offered only when there is somewhere to move it: a server is connected. */
+	onMove?: () => void
+	moveLabel?: string
 	renaming: boolean
 	onRenameSubmit: (name: string) => void
 	onRenameCancel: () => void
@@ -85,6 +90,11 @@ export function BoardCard({
 							<button className="lb-btn lb-btn--tiny" onClick={onRename}>
 								Rename
 							</button>
+							{onMove && (
+								<button className="lb-btn lb-btn--tiny" onClick={onMove}>
+									{moveLabel}
+								</button>
+							)}
 							<button className="lb-btn lb-btn--tiny" onClick={() => setConfirmDelete(true)}>
 								Delete
 							</button>

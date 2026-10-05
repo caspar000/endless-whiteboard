@@ -990,6 +990,30 @@ button {
 	line-height: 1.65;
 }
 
+/* The one-time "move your boards to the server" offer, and progress while boards move. */
+.lb-list__offer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 10px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 12px 14px;
+	margin: 0 0 20px;
+	font-size: 13px;
+}
+.lb-list__offer p {
+	flex: 1 1 32ch;
+	margin: 0;
+	line-height: 1.55;
+}
+.lb-list__status {
+	font-size: 13px;
+	color: var(--lb-text-dim);
+	margin: 0 0 16px;
+}
+
 /* ---------------------------------------------------------------- card grid */
 
 .lb-grid {

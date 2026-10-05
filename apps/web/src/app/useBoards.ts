@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { Editor } from 'tldraw'
 import {
 	createBoard,
 	listBoards,
@@ -7,6 +8,7 @@ import {
 	type BoardMeta,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
+import { moveBoardToDevice, moveBoardToServer } from '../boards/moveBoard'
 import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import {
@@ -26,6 +28,11 @@ export interface BoardsApi {
 	rename(id: string, name: string): Promise<void>
 	setFavorite(id: string, favorite: boolean): Promise<void>
 	remove(id: string): Promise<void>
+	/**
+	 * To the server if it is on this device, and back if it is on the server. `editor` is the board's
+	 * live editor when it is open, which is fresher than what tldraw has written to disk yet.
+	 */
+	move(board: BoardMeta, editor?: Editor): Promise<void>
 	refresh(): Promise<void>
 }
 
@@ -112,11 +119,20 @@ export function useBoards(): BoardsApi {
 		[platform, isServerBoard, refresh]
 	)
 
+	const move = useCallback(
+		async (board: BoardMeta, editor?: Editor) => {
+			if (board.vault === 'server') await moveBoardToDevice(platform, board)
+			else await moveBoardToServer(platform, board, editor)
+			await refresh()
+		},
+		[platform, refresh]
+	)
+
 	// Memoized deliberately, not as micro-optimisation: a fresh object literal here would change
 	// identity on every render, re-running every consumer effect that depends on the API — which is
 	// exactly how the first-run demo seeding used to cancel itself before it could navigate.
 	return useMemo(
-		() => ({ boards, loading, hasServer: server !== null, create, rename, setFavorite, remove, refresh }),
-		[boards, loading, server, create, rename, setFavorite, remove, refresh]
+		() => ({ boards, loading, hasServer: server !== null, create, rename, setFavorite, remove, move, refresh }),
+		[boards, loading, server, create, rename, setFavorite, remove, move, refresh]
 	)
 }

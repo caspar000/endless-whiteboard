@@ -535,9 +535,10 @@ downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute 
 paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, and a
 3D dice roll in a production build.
 
-Self-hosting is under way (`docs/self-hosting-plan.md`): `apps/server` serves the app behind a
-login and syncs server-vault boards live between devices; `deploy/darkroomlab/README.md` covers
-running it. Images on server boards and moving boards between vaults come next.
+Self-hosting is built but not yet deployed (`docs/self-hosting-plan.md`): `apps/server` serves the
+app behind a login and syncs server boards live between devices, with their images and files; boards
+move between this browser and the server either way (Help → Your server). `deploy/darkroomlab/README.md`
+covers running it.
 
 Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system

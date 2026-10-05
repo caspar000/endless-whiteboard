@@ -9,11 +9,20 @@ const BOARD_ID = /^[A-Za-z0-9-]{1,64}$/
 const MAX_NAME = 200
 /** The app refuses imports over 64 MB (`MAX_IMPORT_BYTES`); a little over that, for headroom. */
 const MAX_ASSET_BYTES = 80 * 1024 * 1024
+/** A board's records without its files; the largest real board is well under this. */
+const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
 /** Enough for every asset on a large board in one question. */
 const MAX_HASHES_PER_QUERY = 5000
 
 const isName = (value: unknown): value is string =>
 	typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME
+
+const isSnapshot = (value: unknown): value is { store: Record<string, unknown>; schema: unknown } =>
+	!!value &&
+	typeof value === 'object' &&
+	!!(value as { store?: unknown }).store &&
+	typeof (value as { store?: unknown }).store === 'object' &&
+	!!(value as { schema?: unknown }).schema
 
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string')
@@ -38,14 +47,45 @@ export function registerApi(
 ): void {
 	app.get('/api/boards', async () => vault.list())
 
-	app.post<{ Body: { id?: unknown; name?: unknown } }>('/api/boards', async (request, reply) => {
-		const { id, name } = request.body ?? {}
-		if (!isName(name)) return reply.code(400).send({ error: 'A board needs a name.' })
-		if (id !== undefined && (typeof id !== 'string' || !BOARD_ID.test(id))) {
-			return reply.code(400).send({ error: 'Not a valid board id.' })
+	/**
+	 * A new board, empty or — when it arrives from a local vault — with `snapshot` as its content
+	 * (`{ store, schema }`, already migrated to the current schema by the app).
+	 */
+	app.post<{ Body: { id?: unknown; name?: unknown; favorite?: unknown; snapshot?: unknown } }>(
+		'/api/boards',
+		{ bodyLimit: MAX_SNAPSHOT_BYTES },
+		async (request, reply) => {
+			const { id, name, favorite, snapshot } = request.body ?? {}
+			if (!isName(name)) return reply.code(400).send({ error: 'A board needs a name.' })
+			if (id !== undefined && (typeof id !== 'string' || !BOARD_ID.test(id))) {
+				return reply.code(400).send({ error: 'Not a valid board id.' })
+			}
+			if (snapshot !== undefined && !isSnapshot(snapshot)) {
+				return reply.code(400).send({ error: '`snapshot` is { store, schema }.' })
+			}
+			if (typeof id === 'string' && vault.get(id)) return reply.code(409).send({ error: 'That board already exists.' })
+			const board = vault.create({ ...(typeof id === 'string' ? { id } : {}), name })
+			if (snapshot) {
+				try {
+					rooms.seed(board.id, snapshot)
+				} catch (error) {
+					vault.delete(board.id)
+					rooms.delete(board.id)
+					return reply.code(400).send({ error: `That board's content could not be stored: ${String(error)}` })
+				}
+			}
+			const created = favorite === true ? vault.update(board.id, { favorite: true })! : board
+			return reply.code(201).send(created)
 		}
-		if (typeof id === 'string' && vault.get(id)) return reply.code(409).send({ error: 'That board already exists.' })
-		return reply.code(201).send(vault.create({ ...(typeof id === 'string' ? { id } : {}), name }))
+	)
+
+	/** A board's content as it is now, for moving it to a local vault. */
+	app.get<{ Params: { id: string } }>('/api/boards/:id/snapshot', async (request, reply) => {
+		if (!BOARD_ID.test(request.params.id) || !vault.get(request.params.id)) {
+			return reply.code(404).send({ error: 'No such board.' })
+		}
+		// A board nobody has opened yet has no records; an empty store loads as an empty board.
+		return rooms.readSnapshot(request.params.id) ?? { store: {}, schema: null }
 	})
 
 	app.patch<{ Params: { id: string }; Body: { name?: unknown; favorite?: unknown } }>(

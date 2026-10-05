@@ -12,6 +12,7 @@ import { loadUserBindings } from './app/keymapStore'
 import { loadSavedQueries } from './app/savedQueries'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
+import { pushVaultSetting } from './server/serverVault'
 
 /**
  * The composition root: the one place that decides which extensions this build of the app ships.
@@ -65,7 +66,8 @@ loadUserBindings()
 /**
  * Which extensions the user has switched off — app-wide, like every other preference (see
  * canvasPrefs.ts for the pattern and the localStorage rationale). Loaded synchronously here so the
- * first render already reflects it; no flash of a toolbar that is about to lose a button.
+ * first render already reflects it; no flash of a toolbar that is about to lose a button. With a server
+ * vault, localStorage is the cache and the vault the truth (see app/vaultSettings.ts).
  *
  * Stored as the disabled set: an extension nobody ever touched has no record and defaults to on.
  */
@@ -82,12 +84,14 @@ function loadDisabledExtensions(): string[] {
 	}
 }
 
-export function persistDisabledExtensions(): void {
+/** Saves the set here, and to the server vault unless that is where it just came from. */
+export function persistDisabledExtensions({ push = true }: { push?: boolean } = {}): void {
 	try {
 		localStorage.setItem(DISABLED_KEY, JSON.stringify(getDisabledExtensionIds()))
 	} catch {
 		// Private-mode Safari can throw on write; losing the preference across reloads is fine.
 	}
+	if (push) pushVaultSetting('disabledExtensions', getDisabledExtensionIds())
 }
 
 setDisabledExtensionIds(loadDisabledExtensions())

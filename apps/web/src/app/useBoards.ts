@@ -15,6 +15,7 @@ import {
 	listServerBoards,
 	updateServerBoard,
 } from '../server/serverVault'
+import { syncVaultSettings } from './vaultSettings'
 
 export interface BoardsApi {
 	boards: BoardMeta[]
@@ -42,10 +43,12 @@ export function useBoards(): BoardsApi {
 
 	const refreshServer = useCallback(async () => {
 		try {
-			setServer(await listServerBoards())
+			const boards = await listServerBoards()
+			setServer(boards)
+			if (boards) await syncVaultSettings()
 		} catch (error) {
 			// A server that answered and then failed: keep the boards we last saw rather than hide them.
-			console.error('Lifeboard: could not list the server’s boards.', error)
+			console.error('Lifeboard: could not read the server vault.', error)
 		}
 	}, [])
 

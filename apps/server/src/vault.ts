@@ -45,6 +45,12 @@ export class Vault {
 				favorite INTEGER NOT NULL DEFAULT 0,
 				PRIMARY KEY (vault_id, id)
 			);
+			CREATE TABLE IF NOT EXISTS settings (
+				vault_id TEXT NOT NULL,
+				key TEXT NOT NULL,
+				value TEXT NOT NULL,
+				PRIMARY KEY (vault_id, key)
+			);
 		`)
 	}
 
@@ -93,6 +99,20 @@ export class Vault {
 	delete(id: string): boolean {
 		const result = this.db.prepare('DELETE FROM boards WHERE vault_id = ? AND id = ?').run(DEFAULT_VAULT, id)
 		return result.changes > 0
+	}
+
+	/** Settings that follow the vault rather than the device, as stored JSON values. Unset keys are absent. */
+	settings(): Record<string, unknown> {
+		const rows = this.db
+			.prepare('SELECT key, value FROM settings WHERE vault_id = ?')
+			.all(DEFAULT_VAULT) as unknown as { key: string; value: string }[]
+		return Object.fromEntries(rows.map((row) => [row.key, JSON.parse(row.value)]))
+	}
+
+	setSetting(key: string, value: unknown): void {
+		this.db
+			.prepare('INSERT INTO settings (vault_id, key, value) VALUES (?, ?, ?) ON CONFLICT DO UPDATE SET value = excluded.value')
+			.run(DEFAULT_VAULT, key, JSON.stringify(value))
 	}
 
 	close(): void {

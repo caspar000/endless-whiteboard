@@ -1,4 +1,5 @@
 import { forgetQuery, getUserQueries, registerQuery, type NamedQuery } from '@lifeboard/node-kit'
+import { pushVaultSetting } from '../server/serverVault'
 
 /**
  * The questions the user named, kept across reloads.
@@ -36,12 +37,31 @@ export function loadSavedQueries(): void {
 	}
 }
 
-function persist(): void {
+function persist({ push = true }: { push?: boolean } = {}): void {
 	try {
 		localStorage.setItem(QUERIES_KEY, JSON.stringify(getUserQueries()))
 	} catch {
 		// Private-mode Safari can throw on write; losing the preference across reloads is fine.
 	}
+	if (push) pushVaultSetting('savedQueries', getUserQueries())
+}
+
+/** The current list, for seeding a server vault that has none yet. */
+export function savedQueries(): NamedQuery[] {
+	return getUserQueries()
+}
+
+/**
+ * Takes the server vault's list as the truth: what it lacks is forgotten, what it has is registered.
+ * Malformed entries are dropped one by one, as on load.
+ */
+export function replaceSavedQueries(list: unknown): void {
+	if (!Array.isArray(list)) return
+	const next = list.filter(isNamedQuery)
+	const keep = new Set(next.map((query) => query.name))
+	for (const query of getUserQueries()) if (!keep.has(query.name)) forgetQuery(query.name)
+	for (const query of next) registerQuery(query)
+	persist({ push: false })
 }
 
 /** Registers and remembers, or returns `false` if the registry refused the name. */

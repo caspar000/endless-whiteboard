@@ -1,7 +1,7 @@
 # Self-hosting — implementation plan
 
-Status: **Phases 0–2 built, nothing deployed.** Boards sync live through the server. Still open in
-phase 2: saved queries and enabled extensions per vault. Deploying needs a tldraw licence key.
+Status: **Phases 0–2 built, nothing deployed.** Boards, saved queries and extension toggles sync
+through the server. Phase 3 (images) is next. Deploying needs a tldraw licence key.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -138,7 +138,9 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
   the local blob store until phase 3, and no local snapshot of theirs exists to mark from. Remembered in
   localStorage, so an offline session can't sweep either.
 - **Until phase 3, images on a server board show only in the browser that added them.**
-- **Not done yet:** saved queries and the enabled-extensions set are still per browser.
+- **Saved queries and switched-off extensions follow the vault** (`app/vaultSettings.ts`).
+  localStorage stays the cache, so the first render needs no network; the server's copy wins once it
+  answers, and is pulled again on window focus. The first device to connect seeds a vault that has none.
 - **Dev:** run `apps/server` with `LIFEBOARD_INSECURE_COOKIES=1`, then
   `LIFEBOARD_SERVER_URL=http://127.0.0.1:8790 pnpm dev`. Without the variable, `pnpm dev` is the
   local-only app.

@@ -145,6 +145,21 @@ describe('board index', () => {
 		expect((await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id: '../x', name: 'Bad' } })).statusCode).toBe(400)
 	})
 
+	it('keeps vault settings, and refuses ones it does not know or values of the wrong shape', async () => {
+		const { app, cookie } = await startServer()
+		const put = (key: string, value: unknown) =>
+			app.inject({ method: 'PUT', url: `/api/vault/settings/${key}`, headers: { cookie }, payload: { value } })
+		expect((await put('disabledExtensions', ['lifeboard.dice'])).statusCode).toBe(204)
+		expect((await put('savedQueries', [{ name: 'spend', body: 'sum Price' }])).statusCode).toBe(204)
+		expect((await put('theme', 'dark')).statusCode).toBe(404)
+		expect((await put('constructor', {})).statusCode).toBe(404)
+		expect((await put('savedQueries', [{ name: 1 }])).statusCode).toBe(400)
+		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
+			disabledExtensions: ['lifeboard.dice'],
+			savedQueries: [{ name: 'spend', body: 'sum Price' }],
+		})
+	})
+
 	it('is closed to anyone without a session', async () => {
 		const { app } = await startServer()
 		expect((await app.inject({ url: '/api/boards' })).statusCode).toBe(401)

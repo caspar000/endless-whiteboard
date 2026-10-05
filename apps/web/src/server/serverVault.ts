@@ -11,6 +11,9 @@ import type { BoardMeta } from '../boards/boardIndex'
 
 const SEEN_KEY = 'lifeboard:serverSeen'
 
+/** Whether the server answered in this session; vault settings are only pushed while it does. */
+let available = false
+
 /**
  * Whether this browser has ever had a server vault. Remembered rather than checked live, because the
  * question is asked by local asset GC (`boards/deleteBoard.ts`): server boards keep their images in
@@ -71,10 +74,15 @@ export async function listServerBoards(): Promise<BoardMeta[] | null> {
 	try {
 		status = await fetch('/api/status', { cache: 'no-store' })
 	} catch {
+		available = false
 		return null
 	}
 	const body = status.ok ? ((await status.json().catch(() => null)) as { ok?: boolean } | null) : null
-	if (!body?.ok) return null
+	if (!body?.ok) {
+		available = false
+		return null
+	}
+	available = true
 	markServerSeen()
 	return ((await (await api('/boards')).json()) as ServerBoard[]).map(toMeta)
 }
@@ -90,6 +98,21 @@ export async function updateServerBoard(id: string, patch: { name?: string; favo
 
 export async function deleteServerBoard(id: string): Promise<void> {
 	await api(`/boards/${id}`, { method: 'DELETE' })
+}
+
+/** Settings that follow the vault rather than the device. See `app/vaultSettings.ts`. */
+export type VaultSettingKey = 'savedQueries' | 'disabledExtensions'
+
+export async function getVaultSettings(): Promise<Partial<Record<VaultSettingKey, unknown>>> {
+	return (await (await api('/vault/settings')).json()) as Partial<Record<VaultSettingKey, unknown>>
+}
+
+/** Fire and forget: the local copy is already saved, so a failed push costs only the other devices. */
+export function pushVaultSetting(key: VaultSettingKey, value: unknown): void {
+	if (!available) return
+	void api(`/vault/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }).catch((error) =>
+		console.error(`Lifeboard: could not save ${key} to the server.`, error)
+	)
 }
 
 export function syncUri(boardId: string): string {

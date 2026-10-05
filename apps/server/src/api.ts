@@ -9,7 +9,23 @@ const MAX_NAME = 200
 const isName = (value: unknown): value is string =>
 	typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME
 
-/** The server vault's board index, and the sync socket for each board's content. */
+const isStringArray = (value: unknown): value is string[] =>
+	Array.isArray(value) && value.every((item) => typeof item === 'string')
+
+/**
+ * The settings that follow the vault rather than the device, and what each must look like. Anything
+ * else is refused: the client applies these straight into its registries.
+ */
+const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
+	disabledExtensions: isStringArray,
+	savedQueries: (value) =>
+		Array.isArray(value) &&
+		value.every(
+			(q) => q && typeof q === 'object' && typeof q.name === 'string' && typeof q.body === 'string'
+		),
+}
+
+/** The server vault's board index and settings, and the sync socket for each board's content. */
 export function registerApi(app: FastifyInstance, vault: Vault, rooms: Rooms): void {
 	app.get('/api/boards', async () => vault.list())
 
@@ -44,6 +60,20 @@ export function registerApi(app: FastifyInstance, vault: Vault, rooms: Rooms): v
 		rooms.delete(request.params.id)
 		return reply.code(204).send()
 	})
+
+	app.get('/api/vault/settings', async () => vault.settings())
+
+	app.put<{ Params: { key: string }; Body: { value?: unknown } }>(
+		'/api/vault/settings/:key',
+		async (request, reply) => {
+			// `hasOwn`, or `constructor` and friends would arrive from the prototype as validators.
+			const valid = Object.hasOwn(VAULT_SETTINGS, request.params.key) ? VAULT_SETTINGS[request.params.key] : undefined
+			if (!valid) return reply.code(404).send({ error: 'No such setting.' })
+			if (!valid(request.body?.value)) return reply.code(400).send({ error: 'Not a valid value for that setting.' })
+			vault.setSetting(request.params.key, request.body!.value)
+			return reply.code(204).send()
+		}
+	)
 
 	app.get<{ Params: { id: string }; Querystring: { sessionId?: string } }>(
 		'/api/sync/:id',

@@ -12,6 +12,11 @@ type Editor = {
 	setCurrentPage(id: string): void
 	getCurrentPageShapeIds(): Set<string>
 	zoomToFit(): void
+	store: { allRecords(): { typeName: string; type?: string; fromId?: string; toId?: string; props?: { terminal?: string } }[] }
+	getShape(id: string): { id: string } | undefined
+	getArrowInfo(shape: { id: string }): { isValid: boolean; start: { point: { x: number; y: number } }; end: { point: { x: number; y: number } } } | undefined
+	getShapePageTransform(id: string): { applyToPoint(point: { x: number; y: number }): { x: number; y: number } }
+	getShapePageBounds(id: string): { minX: number; minY: number; maxX: number; maxY: number }
 }
 
 type StoredRecord = { id: string; typeName: string; parentId?: string }
@@ -53,6 +58,29 @@ for (const fixture of ['default-shapes', 'lifeboard']) {
 			await page.waitForTimeout(500)
 			await page.screenshot({ path: testInfo.outputPath(`${fixture}-page-${i + 1}.png`) })
 		}
+
+		// Every bound arrow end is drawn at the shape it is bound to (phase 3).
+		const misses = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: Editor }).editor
+			const out: string[] = []
+			for (const binding of editor.store.allRecords()) {
+				if (binding.typeName !== 'binding' || binding.type !== 'arrow') continue
+				const arrow = editor.getShape(binding.fromId!)!
+				const info = editor.getArrowInfo(arrow)!
+				const end = binding.props!.terminal as 'start' | 'end'
+				const point = editor.getShapePageTransform(arrow.id).applyToPoint(info[end].point)
+				const box = editor.getShapePageBounds(binding.toId!)
+				const slack = 20
+				const inside =
+					point.x >= box.minX - slack &&
+					point.x <= box.maxX + slack &&
+					point.y >= box.minY - slack &&
+					point.y <= box.maxY + slack
+				if (!info.isValid || !inside) out.push(`${arrow.id} ${end}`)
+			}
+			return out
+		})
+		expect(misses).toEqual([])
 
 		expect(errors).toEqual([])
 	})

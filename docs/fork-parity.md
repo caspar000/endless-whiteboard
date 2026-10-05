@@ -25,7 +25,7 @@ and until it does, it must leave them untouched.
 | Id | Format | Arrived | Needed for | Status |
 |---|---|---|---|---|
 | D1 | `richText` (TipTap JSON) instead of `text` on text, note, geo; on arrow labels too | 3.10, 4.0 | Cutover | doing: read and kept, shown as plain text (phase 2); editing is phase 4 |
-| D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | doing: read and written through a terminal adapter (phase 2); the bindings API is phase 3 |
+| D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | done (phase 3) |
 | D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | done (phase 2) |
 | D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | doing: read and kept, elbows drawn straight (phase 2) |
 | D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | doing: read and kept, not drawn (phase 2) |
@@ -43,7 +43,7 @@ keep working).
 
 | Id | API | What uses it here | Needed for | Status |
 |---|---|---|---|---|
-| E1 | Bindings API: `getBindingsFromShape`, `createBindings`, `deleteBindings`, `getArrowBindings`, binding utils, `defaultBindingUtils`, `canBind` options, a binding-deleted side effect | Relations (`node-kit/src/edges.ts`, `relations.ts`) | Cutover | todo |
+| E1 | Bindings API: `getBindingsFromShape`, `createBindings`, `deleteBindings`, `getArrowBindings`, binding utils, `defaultBindingUtils`, `canBind` options, a binding-deleted side effect | Relations (`node-kit/src/edges.ts`, `relations.ts`) | Cutover | done (phase 3) |
 | E2 | Rich text editing: TipTap in text, note, geo and arrow labels; `textOptions.tipTapConfig`; `tipTapDefaultExtensions`; a way to add our own extension | The `{…}` expression helper, every text shape | Cutover | todo |
 | E3 | `run` and `markHistoryStoppingPoint` (the fork has `batch` and `mark`) | 51 + 20 call sites | Cutover | todo |
 | E4 | Shape visibility (`getShapeVisibility` option, `isShapeHidden`) | Hidden relations (`canvas/relationVisibility.ts`) | Cutover | todo |
@@ -55,7 +55,7 @@ keep working).
 | E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | todo |
 | E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | todo |
 | E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | todo |
-| E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | todo |
+| E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | doing: `createTLSchemaFromUtils` (phase 3); the store has `getStoreSnapshot`/`loadStoreSnapshot`; the `getSnapshot`/`loadSnapshot` helpers are open |
 | E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | todo |
 | E15 | External content defaults: `defaultHandleExternalFileContent`/`TextContent`/`UrlContent`, `TLFilesExternalContent` | `canvas/FileImportHandler.tsx` | Cutover | todo |
 | E16 | `TldrawOptions` (`options` prop), `TldrawEditorStoreProps` (`store` / `persistenceKey` props) | `canvas/Board.tsx` | Cutover | todo |

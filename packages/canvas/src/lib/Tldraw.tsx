@@ -27,6 +27,7 @@ import {
 	registerDefaultExternalContentHandlers,
 } from './defaultExternalContentHandlers'
 import { defaultShapeTools } from './defaultShapeTools'
+import { defaultBindingUtils } from './defaultBindingUtils'
 import { defaultShapeUtils } from './defaultShapeUtils'
 import { registerDefaultSideEffects } from './defaultSideEffects'
 import { defaultTools } from './defaultTools'
@@ -69,6 +70,7 @@ export function Tldraw(props: TldrawProps) {
 
 	const components = useShallowObjectIdentity(rest.components ?? {})
 	const shapeUtils = useShallowArrayIdentity(rest.shapeUtils ?? [])
+	const bindingUtils = useShallowArrayIdentity(rest.bindingUtils ?? [])
 	const tools = useShallowArrayIdentity(rest.tools ?? [])
 
 	const withDefaults: TldrawEditorProps = {
@@ -87,6 +89,7 @@ export function Tldraw(props: TldrawProps) {
 			[components]
 		),
 		shapeUtils: useMemo(() => [...defaultShapeUtils, ...shapeUtils], [shapeUtils]),
+		bindingUtils: useMemo(() => [...defaultBindingUtils, ...bindingUtils], [bindingUtils]),
 		tools: useMemo(() => [...defaultTools, ...defaultShapeTools, ...tools], [tools]),
 	}
 

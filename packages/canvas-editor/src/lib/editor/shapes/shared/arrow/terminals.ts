@@ -51,6 +51,15 @@ export function getArrowTerminal(
 	return { type: 'point', x, y }
 }
 
+/**
+ * The binding records at each end of an arrow; an end that isn't attached has none.
+ *
+ * @public
+ */
+export function getArrowBindings(editor: TLArrowBindingLookup, arrow: TLArrowShape) {
+	return { start: editor.getArrowBinding(arrow.id, 'start'), end: editor.getArrowBinding(arrow.id, 'end') }
+}
+
 export function getArrowTerminals(editor: TLArrowBindingLookup, arrow: TLArrowShape) {
 	return { start: getArrowTerminal(editor, arrow, 'start'), end: getArrowTerminal(editor, arrow, 'end') }
 }

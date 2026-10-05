@@ -28,6 +28,7 @@ export {
 export { richTextToPlainText } from './lib/utils/richText'
 export { isValidUrl } from './lib/utils/url'
 export {
+	getArrowBindings,
 	getArrowTerminal,
 	getArrowTerminals,
 	isArrowTerminal,
@@ -42,6 +43,17 @@ export * from '@tldraw/store'
 export * from '@tldraw/tlschema'
 // Shadows the schema package's narrower versions: see shape-types.ts.
 export type { TLHandle, TLShape, TLShapePartial } from './lib/editor/types/shape-types'
+export type { TLBindingCreate, TLBindingUpdate } from './lib/editor/types/binding-types'
+export { ArrowBindingUtil } from './lib/editor/bindings/ArrowBindingUtil'
+export {
+	BindingUtil,
+	type BindingOnChangeOptions,
+	type BindingOnCreateOptions,
+	type BindingOnDeleteOptions,
+	type BindingOnShapeChangeOptions,
+	type BindingOnShapeDeleteOptions,
+	type TLBindingUtilConstructor,
+} from './lib/editor/bindings/BindingUtil'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/utils'
 // eslint-disable-next-line local/no-export-star
@@ -136,7 +148,9 @@ export {
 	type TLUserPreferences,
 } from './lib/config/TLUserPreferences'
 export {
+	createTLSchemaFromUtils,
 	createTLStore,
+	type TLAnyBindingUtilConstructor,
 	type TLStoreEventInfo,
 	type TLStoreOptions,
 } from './lib/config/createTLStore'
@@ -199,6 +213,7 @@ export {
 	type TLResizeMode,
 	type TLShapeUtilCanvasSvgDef,
 	type TLShapeUtilConstructor,
+	type TLShapeUtilCanBindOpts,
 	type TLShapeUtilFlag,
 } from './lib/editor/shapes/ShapeUtil'
 export { GroupShapeUtil } from './lib/editor/shapes/group/GroupShapeUtil'

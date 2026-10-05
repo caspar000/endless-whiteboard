@@ -7,9 +7,12 @@ import {
 	TLRecord,
 	TLStore,
 	TLStoreProps,
+	TLUnknownBinding,
 	TLUnknownShape,
 	createTLSchema,
+	defaultBindingSchemas,
 } from '@tldraw/tlschema'
+import { TLBindingUtilConstructor } from '../editor/bindings/BindingUtil'
 import { TLShapeUtilConstructor } from '../editor/shapes/ShapeUtil'
 import { TLAnyShapeUtilConstructor, checkShapesAndAddCore } from './defaultShapes'
 
@@ -20,6 +23,8 @@ export type TLStoreOptions = {
 } & (
 	| {
 			shapeUtils?: readonly TLAnyShapeUtilConstructor[]
+			/** Binding types beyond the arrow's, which is included whenever the arrow shape is. */
+			bindingUtils?: readonly TLAnyBindingUtilConstructor[]
 			/** The app's own store migrations, run alongside tldraw's when a snapshot loads. */
 			migrations?: readonly MigrationSequence[]
 	  }
@@ -41,12 +46,11 @@ export function createTLStore({ initialData, defaultName = '', ...rest }: TLStor
 			? // we have a schema
 			  rest.schema
 			: // we need a schema
-			  schemaForShapes(
-					currentPageShapesToShapeMap(
-						checkShapesAndAddCore('shapeUtils' in rest && rest.shapeUtils ? rest.shapeUtils : [])
-					),
-					'migrations' in rest ? rest.migrations : undefined
-			  )
+			  createTLSchemaFromUtils({
+					shapeUtils: 'shapeUtils' in rest ? rest.shapeUtils : undefined,
+					bindingUtils: 'bindingUtils' in rest ? rest.bindingUtils : undefined,
+					migrations: 'migrations' in rest ? rest.migrations : undefined,
+			  })
 
 	return new Store({
 		schema,
@@ -85,15 +89,34 @@ const noUsers: Required<TLUserStore> = {
 }
 
 /**
- * Today's schema always includes the arrow binding, whose migrations depend on the arrow shape's, so
- * a store without arrows must leave it out.
+ * The schema for a set of shape and binding utils, with the app's own store migrations.
+ *
+ * Core shapes are always included. The arrow binding comes with the arrow shape (its migrations
+ * depend on the arrow's), and is left out of a store without arrows.
+ *
+ * @public
  */
-export function schemaForShapes(
-	shapes: Record<string, SchemaPropsInfo>,
+export function createTLSchemaFromUtils({
+	shapeUtils = [],
+	bindingUtils = [],
+	migrations,
+}: {
+	shapeUtils?: readonly TLAnyShapeUtilConstructor[]
+	bindingUtils?: readonly TLAnyBindingUtilConstructor[]
 	migrations?: readonly MigrationSequence[]
-) {
-	return createTLSchema({ shapes, migrations, ...(shapes.arrow ? {} : { bindings: {} }) })
+}) {
+	const shapes = currentPageShapesToShapeMap(checkShapesAndAddCore(shapeUtils))
+	const bindings: Record<string, SchemaPropsInfo> = shapes.arrow
+		? { arrow: defaultBindingSchemas.arrow }
+		: {}
+	for (const util of bindingUtils) {
+		bindings[util.type] = { props: util.props, migrations: util.migrations }
+	}
+	return createTLSchema({ shapes, bindings, migrations })
 }
+
+/** @public */
+export type TLAnyBindingUtilConstructor = TLBindingUtilConstructor<TLUnknownBinding>
 
 function currentPageShapesToShapeMap(shapeUtils: TLShapeUtilConstructor<TLUnknownShape>[]) {
 	return Object.fromEntries(

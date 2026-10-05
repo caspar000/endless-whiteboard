@@ -37,7 +37,9 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	static override props = frameShapeProps
 	static override migrations = frameShapeMigrations
 
-	override canBind = () => true
+	override canBind() {
+		return true
+	}
 
 	override canEdit = () => true
 

@@ -27,6 +27,7 @@ import {
 	rotateSelectionHandle,
 } from '@lifeboard/canvas-editor'
 import { withTerminals } from '../lib/shapes/arrow/terminals'
+import { defaultBindingUtils } from '../lib/defaultBindingUtils'
 import { defaultShapeTools } from '../lib/defaultShapeTools'
 import { defaultShapeUtils } from '../lib/defaultShapeUtils'
 import { defaultTools } from '../lib/defaultTools'
@@ -62,11 +63,17 @@ export class TestEditor extends Editor {
 
 		const shapeUtilsWithDefaults = [...defaultShapeUtils, ...(options.shapeUtils ?? [])]
 
+		const bindingUtilsWithDefaults = [...defaultBindingUtils, ...(options.bindingUtils ?? [])]
+
 		super({
 			...options,
 			shapeUtils: [...shapeUtilsWithDefaults],
+			bindingUtils: bindingUtilsWithDefaults,
 			tools: [...defaultTools, ...defaultShapeTools, ...(options.tools ?? [])],
-			store: createTLStore({ shapeUtils: [...shapeUtilsWithDefaults] }),
+			store: createTLStore({
+				shapeUtils: [...shapeUtilsWithDefaults],
+				bindingUtils: bindingUtilsWithDefaults,
+			}),
 			getContainer: () => elm,
 			initialState: 'select',
 		})

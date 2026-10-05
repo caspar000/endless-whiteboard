@@ -269,7 +269,9 @@ describe('Custom shapes', () => {
 
 		override isAspectRatioLocked = (_shape: CardShape) => false
 		override canResize = (_shape: CardShape) => true
-		override canBind = (_shape: CardShape) => true
+		override canBind() {
+			return true
+		}
 
 		override getDefaultProps(): CardShape['props'] {
 			return {

@@ -24,6 +24,20 @@ export interface TLShapeUtilConstructor<
 	migrations?: TLPropsMigrations | MigrationSequence
 }
 
+/**
+ * What `ShapeUtil.canBind` is asked about.
+ *
+ * @public
+ */
+export interface TLShapeUtilCanBindOpts {
+	/** The type of shape the binding starts from, e.g. `arrow`. */
+	fromShapeType: string
+	/** The type of shape being bound to: the util's own. */
+	toShapeType: string
+	/** The type of binding, e.g. `arrow`. */
+	bindingType: string
+}
+
 /** @public */
 export type TLShapeUtilFlag<T> = (shape: T) => boolean
 
@@ -100,12 +114,14 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	canUnmount: TLShapeUtilFlag<Shape> = () => true
 
 	/**
-	 * Whether the shape can be bound to by an arrow.
+	 * Whether a binding may attach to a shape of this type. Asked of the util of the shape being
+	 * bound to (`toShapeType`). Today's form of the question; the 2023 one passed the shape.
 	 *
-	 * @param _otherShape - The other shape attempting to bind to this shape.
 	 * @public
 	 */
-	canBind = <K>(_shape: Shape, _otherShape?: K) => true
+	canBind(_opts: TLShapeUtilCanBindOpts): boolean {
+		return true
+	}
 
 	/**
 	 * Whether the shape can be double clicked to edit.

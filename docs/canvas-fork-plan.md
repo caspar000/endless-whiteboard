@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0, 1 and 2 done** (2026-10-05). Phase 3 next.
+Status: **Phases 0–3 done** (2026-10-05). Phase 4 next.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -169,7 +169,7 @@ record shapes, and every default shape is touched.
   and unbind already. A copy of an arrow that holds terminals keeps them, because 2023 code passes
   stale copies around and relies on what they hold. Binding changes run the checks an arrow change
   used to (bound shape gone, arrow parent), and deleting a shape or arrow takes its bindings, which
-  undo restores. Phase 3 replaces the adapter with a real bindings API.
+  undo restores. Phase 3 put a bindings API under it.
 - **Pasting** migrates the content as one snapshot rather than record by record, because turning 2023
   arrows into bindings is a store-level migration. 2023 clipboard data still pastes.
 - **Strokes** decode with their `dim`: today's mouse strokes are stored as x/y only, and the fork
@@ -200,6 +200,33 @@ other binding types can exist; the editor methods Lifeboard calls.
   binding is gone; undo brings both back.
 
 **Size:** 2–3 weeks.
+
+**As built:**
+
+- **Results:** the editor's 114 tests and the UI package's 1,273 pass (12 new in
+  `src/test/bindings.test.ts`); the lab's five Playwright tests pass, including an arrow drawn between
+  two stickies that follows one, loses its binding when it is deleted, gets it back on undo and keeps
+  it over a reload. Every bound arrow end on the reference boards is drawn at the shape it is bound
+  to.
+- **The API** is the one Lifeboard calls: `getBinding`, `getBindingsFromShape`/`ToShape`/
+  `InvolvingShape`, `createBinding(s)`, `updateBinding(s)`, `deleteBinding(s)` (each an undo step),
+  `getArrowBindings`, `defaultBindingUtils`, `bindingUtils` on `<Tldraw>`, `createTLStore` and the
+  editor, `createTLSchemaFromUtils` (part of E13), and `ShapeUtil.canBind` taking
+  `{ fromShapeType, toShapeType, bindingType }`.
+- **Binding utils** give a type its default props and hooks: after create, change and delete,
+  before delete, and the shape at either end changing or being deleted. When a shape is deleted, its
+  bindings' hooks run first and then the bindings go, all in the same change; store after-delete
+  handlers run once the shape is gone, which Lifeboard's relation cleanup depends on.
+- **Arrows** are `ArrowBindingUtil`: the editor's 2023 arrow rules moved into its hooks unchanged. It
+  joins whenever the arrow shape does, so editors built without it still work. A binding deleted
+  through the API leaves its end where it is drawn; one lost with its shape leaves the end at the
+  anchor, as 2023 did (a test holds it there).
+- **Still inside:** the arrow tool and handle dragging describe ends as 2023 terminals, and
+  `createShapes`/`updateShapes` turn those into binding writes. It is now a thin bridge onto the API
+  rather than a store of its own; rewriting the 2023 arrow code to call the API directly isn't needed
+  for cutover.
+- **Not built:** hooks before create and change, an operation-complete hook, and isolating bindings
+  when shapes are copied apart. Lifeboard uses none of them.
 
 ## Phase 4 — Rich text
 

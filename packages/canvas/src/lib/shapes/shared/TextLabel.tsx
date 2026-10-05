@@ -8,21 +8,22 @@ import {
 	TLDefaultSizeStyle,
 	TLDefaultVerticalAlignStyle,
 	TLShape,
-	stopEventPropagation,
+	isEmptyRichText,
+	useEditor,
+	useValue,
 } from '@lifeboard/canvas-editor'
 import React from 'react'
 import { useDefaultColorTheme } from './ShapeFill'
-import { TextHelpers } from './TextHelpers'
 import { LABEL_FONT_SIZES, TEXT_PROPS } from './default-shape-constants'
 import { isLegacyAlign } from './legacyProps'
-import { useEditableText } from './useEditableText'
+import { RichText } from './RichText'
 
 export const TextLabel = React.memo(function TextLabel<
 	T extends Extract<TLShape, { props: { richText: TLRichText } }>
 >({
 	id,
 	type,
-	text,
+	richText,
 	size,
 	labelColor,
 	font,
@@ -39,29 +40,18 @@ export const TextLabel = React.memo(function TextLabel<
 	align: TLDefaultHorizontalAlignStyle
 	verticalAlign: TLDefaultVerticalAlignStyle
 	wrap?: boolean
-	text: string
+	richText: TLRichText
 	labelColor: TLDefaultColorStyle
 	bounds?: Box2d
 }) {
-	const {
-		rInput,
-		isEmpty,
-		isEditing,
-		handleFocus,
-		handleChange,
-		handleKeyDown,
-		handleBlur,
-		handleInputPointerDown,
-		handleDoubleClick,
-	} = useEditableText(id, type, text)
-
-	const finalText = TextHelpers.normalizeTextForDom(text)
-	const hasText = finalText.length > 0
+	const editor = useEditor()
+	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
+	const isEmpty = isEmptyRichText(richText)
 
 	const legacyAlign = isLegacyAlign(align)
 	const theme = useDefaultColorTheme()
 
-	if (!isEditing && !hasText) {
+	if (!isEditing && isEmpty) {
 		return null
 	}
 
@@ -97,35 +87,7 @@ export const TextLabel = React.memo(function TextLabel<
 					color: theme[labelColor].solid,
 				}}
 			>
-				<div className="tl-text tl-text-content" dir="ltr">
-					{finalText}
-				</div>
-				{isEditing && (
-					<textarea
-						ref={rInput}
-						className="tl-text tl-text-input"
-						name="text"
-						tabIndex={-1}
-						autoComplete="false"
-						autoCapitalize="false"
-						autoCorrect="false"
-						autoSave="false"
-						autoFocus
-						placeholder=""
-						spellCheck="true"
-						wrap="off"
-						dir="auto"
-						datatype="wysiwyg"
-						defaultValue={text}
-						onFocus={handleFocus}
-						onChange={handleChange}
-						onKeyDown={handleKeyDown}
-						onBlur={handleBlur}
-						onContextMenu={stopEventPropagation}
-						onPointerDown={handleInputPointerDown}
-						onDoubleClick={handleDoubleClick}
-					/>
-				)}
+				<RichText shapeId={id} shapeType={type} richText={richText} />
 			</div>
 		</div>
 	)

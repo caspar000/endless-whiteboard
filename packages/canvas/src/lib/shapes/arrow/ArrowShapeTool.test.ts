@@ -1,4 +1,4 @@
-import { IndexKey, TLArrowShape, Vec2d, createShapeId } from '@lifeboard/canvas-editor'
+import { IndexKey, Vec2d, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../../../test/TestEditor'
 
 let editor: TestEditor

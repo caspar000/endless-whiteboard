@@ -16,6 +16,9 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@tiptap/core": "^3.29.2",
+		"@tiptap/pm": "^3.29.2",
+		"@tiptap/starter-kit": "^3.29.2",
 		"@tldraw/state": "5.5.2",
 		"@tldraw/state-react": "5.5.2",
 		"@tldraw/store": "5.5.2",

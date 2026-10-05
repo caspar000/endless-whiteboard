@@ -4,8 +4,9 @@ import {
 	Rectangle2d,
 	ShapeUtil,
 	SvgExportContext,
-	richTextToPlainText,
+	renderHtmlFromRichText,
 	toRichText,
+	trimRichText,
 	TLNoteShape,
 	TLOnEditEndHandler,
 	getDefaultColorTheme,
@@ -62,9 +63,8 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 		const {
 			id,
 			type,
-			props: { color, font, size, align, richText, verticalAlign },
+			props: { color, labelColor, font, size, align, richText, verticalAlign },
 		} = shape
-		const text = richTextToPlainText(richText)
 
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
@@ -94,8 +94,8 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 							size={size}
 							align={align}
 							verticalAlign={verticalAlign}
-							text={text}
-							labelColor="black"
+							richText={richText}
+							labelColor={labelColor}
 							wrap
 						/>
 					</div>
@@ -174,19 +174,9 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLNoteShape> = (shape) => {
-		const { id, type } = shape
-		const text = richTextToPlainText(shape.props.richText)
-
-		if (text.trimEnd() !== text) {
-			this.editor.updateShapes([
-				{
-					id,
-					type,
-					props: {
-						richText: toRichText(text.trimEnd()),
-					},
-				},
-			])
+		const richText = trimRichText(shape.props.richText)
+		if (richText !== shape.props.richText) {
+			this.editor.updateShapes<TLNoteShape>([{ id: shape.id, type: shape.type, props: { richText } }])
 		}
 	}
 }
@@ -194,7 +184,8 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 function getGrowY(editor: Editor, shape: TLNoteShape, prevGrowY = 0) {
 	const PADDING = 17
 
-	const nextTextSize = editor.textMeasure.measureText(richTextToPlainText(shape.props.richText), {
+	const html = renderHtmlFromRichText(shape.props.richText, editor.getTextExtensions())
+	const nextTextSize = editor.textMeasure.measureHtml(html, {
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[shape.props.font],
 		fontSize: LABEL_FONT_SIZES[shape.props.size],

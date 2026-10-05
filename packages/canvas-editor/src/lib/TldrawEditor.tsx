@@ -18,7 +18,7 @@ import { DefaultLoadingScreen } from './components/default-components/DefaultLoa
 import { TLUser, createTLUser } from './config/createTLUser'
 import { TLAnyBindingUtilConstructor } from './config/createTLStore'
 import { TLAnyShapeUtilConstructor } from './config/defaultShapes'
-import { Editor } from './editor/Editor'
+import { Editor, type TLTextOptions } from './editor/Editor'
 import { TLStateNodeConstructor } from './editor/tools/StateNode'
 import { ContainerProvider, useContainer } from './hooks/useContainer'
 import { useCursor } from './hooks/useCursor'
@@ -74,6 +74,12 @@ export interface TldrawEditorBaseProps {
 	 * An array of shape utils to use in the editor.
 	 */
 	shapeUtils?: readonly TLAnyShapeUtilConstructor[]
+
+	/**
+	 * How labels are edited: the TipTap configuration for every text-bearing shape. Keep its identity
+	 * stable; a new object remounts the editor.
+	 */
+	textOptions?: TLTextOptions
 
 	/**
 	 * Binding utils for binding types beyond the arrow's, which comes with the arrow shape.
@@ -275,6 +281,7 @@ function TldrawEditorWithReadyStore({
 	initialState,
 	autoFocus = true,
 	inferDarkMode,
+	textOptions,
 }: Required<
 	TldrawEditorProps & {
 		store: TLStore
@@ -296,6 +303,7 @@ function TldrawEditorWithReadyStore({
 			user,
 			initialState,
 			inferDarkMode,
+			textOptions,
 		})
 		;(window as any).app = editor
 		;(window as any).editor = editor
@@ -304,7 +312,7 @@ function TldrawEditorWithReadyStore({
 		return () => {
 			editor.dispose()
 		}
-	}, [container, shapeUtils, bindingUtils, tools, store, user, initialState, inferDarkMode])
+	}, [container, shapeUtils, bindingUtils, tools, store, user, initialState, inferDarkMode, textOptions])
 
 	const crashingError = useSyncExternalStore(
 		useCallback(

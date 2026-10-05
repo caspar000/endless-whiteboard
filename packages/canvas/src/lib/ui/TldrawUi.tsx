@@ -8,6 +8,7 @@ import { BackToContent } from './components/BackToContent'
 import { DebugPanel } from './components/DebugPanel'
 import { Dialogs } from './components/Dialogs'
 import { FollowingIndicator } from './components/FollowingIndicator'
+import { RichTextToolbar } from './components/RichTextToolbar'
 import { HelpMenu } from './components/HelpMenu'
 import { MenuZone } from './components/MenuZone'
 import { NavigationZone } from './components/NavigationZone/NavigationZone'
@@ -189,6 +190,7 @@ const TldrawUiContent = React.memo(function TldrawUI({
 				<Dialogs />
 				<ToastViewport />
 				<FollowingIndicator />
+				<RichTextToolbar />
 			</div>
 		</ToastProvider>
 	)

@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–3 done** (2026-10-05). Phase 4 next.
+Status: **Phases 0–4 done** (2026-10-05). Phase 5 next.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -242,6 +242,32 @@ auto-size; a basic formatting toolbar; a way to add TipTap extensions (Lifeboard
   extension added through the options shows its menu.
 
 **Size:** 2–3 weeks.
+
+**As built:**
+
+- **Results:** the editor's 123 tests and the UI package's 1,280 pass (rich-text helpers, and
+  measuring, growing and tidying labels); the lab's nine Playwright tests pass. With real typing they
+  edit a text shape, a note, a geo label and an arrow label; make text bold and start a list from the
+  toolbar and find both after a reload; undo a whole edit and undo while typing; and open the menu of
+  a test extension passed through `textOptions`. The reference board's formatted text (italic, code,
+  a bullet list) is drawn as in the phase 0 PNG, and every label on both boards parses with the
+  default extensions.
+- **How it works:** a label not being edited is HTML from `renderHtmlFromRichText`; the one being
+  edited is a TipTap editor in the same place, with the same styles, so nothing moves on entering
+  edit. Shapes are measured from that HTML (`textMeasure.measureHtml`). Ending an edit trims trailing
+  blank lines and spaces inside the document (`trimRichText`), keeping formatting.
+- **The API Lifeboard uses:** `textOptions.tipTapConfig` on `<Tldraw>` (its `extensions` replace the
+  defaults, and draw labels too, not only edit them), `tipTapDefaultExtensions` (StarterKit, so
+  headings, lists, quotes, code, links, underline and strike all read and render),
+  `editor.getRichTextEditor()` for toolbars.
+- **The toolbar** sits above the label being edited: bold, italic, strikethrough, code, bulleted and
+  numbered lists. TipTap's own shortcuts and Markdown-style typing (`- ` for a list) work too.
+- **Undo:** while typing, undo is TipTap's; after the edit, the board's undo takes the whole edit.
+- **Also:** a note's label colour is drawn now (D6). Pressing an arrow's bend handle crashed since
+  phase 2 (it looked up an end called `middle`); fixed, with a test.
+- **Not built:** SVG and PNG export still write labels as plain text (with E11, phase 5). A document
+  holding a node from an extension the app doesn't load is drawn as plain text and edited as far as
+  TipTap can read it.
 
 ## Phase 5 — Everything else Lifeboard calls
 

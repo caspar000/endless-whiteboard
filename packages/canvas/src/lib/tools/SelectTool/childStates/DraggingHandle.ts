@@ -93,7 +93,7 @@ export class DraggingHandle extends StateNode {
 		}
 
 		const initialTerminal =
-			shape.type === 'arrow'
+			shape.type === 'arrow' && (info.handle.id === 'start' || info.handle.id === 'end')
 				? getArrowTerminal(this.editor, shape, info.handle.id as TLArrowEnd)
 				: undefined
 

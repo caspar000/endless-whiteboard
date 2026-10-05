@@ -25,7 +25,13 @@ export {
 	type EmbedDefinition,
 	type TLEmbedShapePermissions,
 } from './lib/embeds/embedDefinitions'
-export { richTextToPlainText } from './lib/utils/richText'
+export {
+	isEmptyRichText,
+	renderHtmlFromRichText,
+	richTextToPlainText,
+	tipTapDefaultExtensions,
+	trimRichText,
+} from './lib/utils/richText'
 export { isValidUrl } from './lib/utils/url'
 export {
 	getArrowBindings,
@@ -179,6 +185,7 @@ export {
 	type TLAnimationOptions,
 	type TLEditorOptions,
 	type TLResizeShapeOptions,
+	type TLTextOptions,
 } from './lib/editor/Editor'
 export {
 	SnapManager,

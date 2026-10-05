@@ -29,7 +29,7 @@ export function asArrowShape<T extends object>(value: T): T extends TLArrowShape
 	return value as never
 }
 
-/** The arrow's label as plain text (it is stored as rich text; see useEditableText). */
+/** The arrow's label as plain text, for hit-testing and measuring. */
 export function arrowLabelText(shape: TLArrowShape): string {
 	return richTextToPlainText(shape.props.richText)
 }

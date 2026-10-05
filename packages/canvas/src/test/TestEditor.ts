@@ -111,6 +111,13 @@ export class TestEditor extends Editor {
 			}
 		}
 
+		// Rich text is measured as its text, a line per block, with the same stand-in.
+		this.textMeasure.measureHtml = (html, opts) => {
+			const container = document.createElement('div')
+			container.innerHTML = html.replace(/<\/(p|h[1-6]|pre)>/g, '$&\n')
+			return this.textMeasure.measureText(container.textContent!.replace(/\n$/, ''), opts)
+		}
+
 		this.textMeasure.measureTextSpans = (textToMeasure, opts) => {
 			const box = this.textMeasure.measureText(textToMeasure, {
 				...opts,

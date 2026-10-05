@@ -1,6 +1,8 @@
 import {
+	renderHtmlFromRichText,
 	IndexKey,
 	toRichText,
+	trimRichText,
 	Arc2d,
 	Box2d,
 	DefaultFontFamilies,
@@ -118,8 +120,9 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		if (arrowLabelText(shape).trim()) {
 			const bodyBounds = bodyGeom.bounds
+			const html = renderHtmlFromRichText(shape.props.richText, this.editor.getTextExtensions())
 
-			const { w, h } = this.editor.textMeasure.measureText(arrowLabelText(shape), {
+			const { w, h } = this.editor.textMeasure.measureHtml(html, {
 				...TEXT_PROPS,
 				fontFamily: FONT_FAMILIES[shape.props.font],
 				fontSize: ARROW_LABEL_FONT_SIZES[shape.props.size],
@@ -132,8 +135,8 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			if (bodyBounds.width > bodyBounds.height) {
 				width = Math.max(Math.min(w, 64), Math.min(bodyBounds.width - 64, w))
 
-				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureText(
-					arrowLabelText(shape),
+				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureHtml(
+					html,
 					{
 						...TEXT_PROPS,
 						fontFamily: FONT_FAMILIES[shape.props.font],
@@ -149,8 +152,8 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			if (width > 16 * ARROW_LABEL_FONT_SIZES[shape.props.size]) {
 				width = 16 * ARROW_LABEL_FONT_SIZES[shape.props.size]
 
-				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureText(
-					arrowLabelText(shape),
+				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureHtml(
+					html,
 					{
 						...TEXT_PROPS,
 						fontFamily: FONT_FAMILIES[shape.props.font],
@@ -662,7 +665,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				</SVGContainer>
 				<ArrowTextLabel
 					id={shape.id}
-					text={arrowLabelText(shape)}
+					richText={shape.props.richText}
 					font={shape.props.font}
 					size={shape.props.size}
 					position={info.middle}
@@ -787,19 +790,9 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLArrowShape> = (shape) => {
-		const { id, type } = shape
-		const text = arrowLabelText(shape)
-
-		if (text.trimEnd() !== text) {
-			this.editor.updateShapes<TLArrowShape>([
-				{
-					id,
-					type,
-					props: {
-						richText: toRichText(text.trimEnd()),
-					},
-				},
-			])
+		const richText = trimRichText(shape.props.richText)
+		if (richText !== shape.props.richText) {
+			this.editor.updateShapes<TLArrowShape>([{ id: shape.id, type: shape.type, props: { richText } }])
 		}
 	}
 

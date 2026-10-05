@@ -97,6 +97,29 @@ export class TextManager {
 	}
 
 	/**
+	 * Measures rendered rich text (see `renderHtmlFromRichText`) the way `measureText` measures plain
+	 * text: the same options, the same element, with the HTML put inside it.
+	 */
+	measureHtml = (html: string, opts: Parameters<TextManager['measureText']>[1]): BoxModel => {
+		const elm = this.getTextElement()
+		elm.classList.add('tl-rich-text')
+		elm.setAttribute('dir', 'ltr')
+		elm.style.setProperty('font-family', opts.fontFamily)
+		elm.style.setProperty('font-style', opts.fontStyle)
+		elm.style.setProperty('font-weight', opts.fontWeight)
+		elm.style.setProperty('font-size', opts.fontSize + 'px')
+		elm.style.setProperty('line-height', opts.lineHeight * opts.fontSize + 'px')
+		elm.style.setProperty('max-width', opts.maxWidth === null ? null : opts.maxWidth + 'px')
+		elm.style.setProperty('min-width', opts.minWidth ?? null)
+		elm.style.setProperty('padding', opts.padding)
+
+		elm.innerHTML = html
+		const rect = elm.getBoundingClientRect()
+
+		return { x: 0, y: 0, w: rect.width, h: rect.height }
+	}
+
+	/**
 	 * Given an html element, measure the position of each span of unbroken
 	 * word/white-space characters within any text nodes it contains.
 	 */

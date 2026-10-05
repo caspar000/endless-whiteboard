@@ -657,3 +657,21 @@ describe('When binding an arrow to an ancestor', () => {
 		expect(arrow.props.end.isPrecise).toBe(true)
 	})
 })
+
+describe('the bend handle', () => {
+	it('can be pressed and dragged without an end to read', () => {
+		const id = createShapeId('bent')
+		editor.createShapes([
+			{ id, type: 'arrow', x: 0, y: 0, props: { start: { x: 0, y: 0 }, end: { x: 300, y: 0 } } },
+		])
+		const arrow = editor.getShape<TLArrowShape>(id)!
+		const middle = editor.getShapeHandles(arrow)!.find((h) => h.id === 'middle')!
+		editor.select(id)
+		editor.pointerDown(150, 0, { target: 'handle', shape: arrow, handle: middle })
+		editor.expectToBeIn('select.pointing_handle')
+		editor.pointerMove(150, 60)
+		editor.expectToBeIn('select.dragging_handle')
+		editor.pointerUp()
+		expect(editor.getShape<TLArrowShape>(id)!.props.bend).not.toBe(0)
+	})
+})

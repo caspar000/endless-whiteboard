@@ -16,7 +16,7 @@ export class PointingHandle extends StateNode {
 		this.info = info
 
 		const initialTerminal =
-			info.shape.type === 'arrow'
+			info.shape.type === 'arrow' && (info.handle.id === 'start' || info.handle.id === 'end')
 				? getArrowTerminal(this.editor, info.shape as TLArrowShape, info.handle.id as TLArrowEnd)
 				: undefined
 

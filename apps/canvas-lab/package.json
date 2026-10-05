@@ -13,6 +13,8 @@
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/canvas-assets": "workspace:*",
 		"@lifeboard/canvas-editor": "workspace:*",
+		"@tiptap/core": "^3.29.2",
+		"@tiptap/pm": "^3.29.2",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8"
 	},

@@ -2,7 +2,6 @@ import {
 	assert,
 	createShapeId,
 	TAU,
-	TLArrowShape,
 	TLArrowShapeTerminal,
 	TLShapeId,
 } from '@lifeboard/canvas-editor'

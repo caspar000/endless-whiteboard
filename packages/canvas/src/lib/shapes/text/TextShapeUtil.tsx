@@ -13,9 +13,11 @@ import {
 	Vec2d,
 	WeakMapCache,
 	getDefaultColorTheme,
+	isEmptyRichText,
+	renderHtmlFromRichText,
 	richTextToPlainText,
 	toRichText,
-	stopEventPropagation,
+	trimRichText,
 	textShapeMigrations,
 	textShapeProps,
 	toDomPrecision,
@@ -25,7 +27,7 @@ import { createTextSvgElementFromSpans } from '../shared/createTextSvgElementFro
 import { FONT_FAMILIES, FONT_SIZES, TEXT_PROPS } from '../shared/default-shape-constants'
 import { getFontDefForExport } from '../shared/defaultStyleDefs'
 import { resizeScaled } from '../shared/resizeScaled'
-import { useEditableText } from '../shared/useEditableText'
+import { RichText } from '../shared/RichText'
 
 const sizeCache = new WeakMapCache<TLTextShape['props'], { height: number; width: number }>()
 
@@ -72,22 +74,10 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 			type,
 			props: { richText, color },
 		} = shape
-		const text = richTextToPlainText(richText)
 
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		const { width, height } = this.getMinDimensions(shape)
-
-		const {
-			rInput,
-			isEmpty,
-			isEditing,
-			handleFocus,
-			handleChange,
-			handleKeyDown,
-			handleBlur,
-			handleInputPointerDown,
-			handleDoubleClick,
-		} = useEditableText(id, type, text)
+		const isEditing = this.editor.getEditingShapeId() === id
 
 		return (
 			<HTMLContainer id={shape.id}>
@@ -95,7 +85,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 					className="tl-text-shape__wrapper tl-text-shadow"
 					data-font={shape.props.font}
 					data-align={shape.props.textAlign}
-					data-hastext={!isEmpty}
+					data-hastext={!isEmptyRichText(richText)}
 					data-isediting={isEditing}
 					data-textwrap={true}
 					style={{
@@ -108,36 +98,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 						color: theme[color].solid,
 					}}
 				>
-					<div className="tl-text tl-text-content" dir="ltr">
-						{text}
-					</div>
-					{isEditing ? (
-						<textarea
-							ref={rInput}
-							className="tl-text tl-text-input"
-							name="text"
-							tabIndex={-1}
-							autoComplete="false"
-							autoCapitalize="false"
-							autoCorrect="false"
-							autoSave="false"
-							autoFocus={isEditing}
-							placeholder=""
-							spellCheck="true"
-							wrap="off"
-							dir="ltr"
-							datatype="wysiwyg"
-							defaultValue={text}
-							onFocus={handleFocus}
-							onChange={handleChange}
-							onKeyDown={handleKeyDown}
-							onBlur={handleBlur}
-							onTouchEnd={stopEventPropagation}
-							onContextMenu={stopEventPropagation}
-							onPointerDown={handleInputPointerDown}
-							onDoubleClick={handleDoubleClick}
-						/>
-					) : null}
+					<RichText shapeId={id} shapeType={type} richText={richText} />
 				</div>
 			</HTMLContainer>
 		)
@@ -261,24 +222,13 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLTextShape> = (shape) => {
-		const { id, type } = shape
-		const text = richTextToPlainText(shape.props.richText)
-		const trimmedText = text.trimEnd()
-
-		if (trimmedText.length === 0) {
+		if (isEmptyRichText(shape.props.richText)) {
 			this.editor.deleteShapes([shape.id])
-		} else {
-			if (trimmedText !== text) {
-				this.editor.updateShapes([
-					{
-						id,
-						type,
-						props: {
-							richText: toRichText(trimmedText),
-						},
-					},
-				])
-			}
+			return
+		}
+		const richText = trimRichText(shape.props.richText)
+		if (richText !== shape.props.richText) {
+			this.editor.updateShapes<TLTextShape>([{ id: shape.id, type: shape.type, props: { richText } }])
 		}
 	}
 
@@ -370,7 +320,6 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 
 function getTextSize(editor: Editor, props: TLTextShape['props']) {
 	const { font, richText, autoSize, size, w } = props
-	const text = richTextToPlainText(richText)
 
 	const minWidth = autoSize ? 16 : Math.max(16, w)
 	const fontSize = FONT_SIZES[size]
@@ -380,7 +329,8 @@ function getTextSize(editor: Editor, props: TLTextShape['props']) {
 		: // `measureText` floors the number so we need to do the same here to avoid issues.
 		  Math.floor(Math.max(minWidth, w))
 
-	const result = editor.textMeasure.measureText(text, {
+	const html = renderHtmlFromRichText(richText, editor.getTextExtensions())
+	const result = editor.textMeasure.measureHtml(html, {
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[font],
 		fontSize: fontSize,

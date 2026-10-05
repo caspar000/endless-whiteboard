@@ -1,12 +1,19 @@
-import { TLArrowShape, TLShapeId, VecLike, stopEventPropagation } from '@lifeboard/canvas-editor'
+import {
+	TLArrowShape,
+	TLRichText,
+	TLShapeId,
+	VecLike,
+	isEmptyRichText,
+	useEditor,
+	useValue,
+} from '@lifeboard/canvas-editor'
 import * as React from 'react'
-import { TextHelpers } from '../../shared/TextHelpers'
+import { RichText } from '../../shared/RichText'
 import { ARROW_LABEL_FONT_SIZES, TEXT_PROPS } from '../../shared/default-shape-constants'
-import { useEditableText } from '../../shared/useEditableText'
 
 export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 	id,
-	text,
+	richText,
 	size,
 	font,
 	position,
@@ -14,27 +21,16 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 	labelColor,
 }: {
 	id: TLShapeId
-	text: string
+	richText: TLRichText
 	position: VecLike
 	width?: number
 	labelColor: string
 } & Pick<TLArrowShape['props'], 'size' | 'font'>) {
-	const {
-		rInput,
-		isEditing,
-		handleFocus,
-		handleBlur,
-		handleKeyDown,
-		handleChange,
-		isEmpty,
-		handleInputPointerDown,
-		handleDoubleClick,
-	} = useEditableText(id, 'arrow', text)
+	const editor = useEditor()
+	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
+	const isEmpty = isEmptyRichText(richText)
 
-	const finalText = TextHelpers.normalizeTextForDom(text)
-	const hasText = finalText.trim().length > 0
-
-	if (!isEditing && !hasText) {
+	if (!isEditing && isEmpty) {
 		return null
 	}
 
@@ -54,36 +50,13 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 			}}
 		>
 			<div className="tl-arrow-label__inner">
-				<p style={{ width: width ? width : '9px' }}>
-					{text ? TextHelpers.normalizeTextForDom(text) : ' '}
-				</p>
-				{isEditing && (
-					// Consider replacing with content-editable
-					<textarea
-						ref={rInput}
-						className="tl-text tl-text-input"
-						name="text"
-						tabIndex={-1}
-						autoComplete="false"
-						autoCapitalize="false"
-						autoCorrect="false"
-						autoSave="false"
-						autoFocus
-						placeholder=""
-						spellCheck="true"
-						wrap="off"
-						dir="auto"
-						datatype="wysiwyg"
-						defaultValue={text}
-						onFocus={handleFocus}
-						onChange={handleChange}
-						onKeyDown={handleKeyDown}
-						onBlur={handleBlur}
-						onContextMenu={stopEventPropagation}
-						onPointerDown={handleInputPointerDown}
-						onDoubleClick={handleDoubleClick}
-					/>
-				)}
+				<RichText
+					shapeId={id}
+					shapeType="arrow"
+					richText={richText}
+					className="tl-arrow-label__text"
+					style={{ width: width ? width : '9px' }}
+				/>
 			</div>
 		</div>
 	)

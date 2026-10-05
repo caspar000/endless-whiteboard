@@ -13,8 +13,10 @@ import {
 	SVGContainer,
 	Stadium2d,
 	SvgExportContext,
+	renderHtmlFromRichText,
 	richTextToPlainText,
 	toRichText,
+	trimRichText,
 	TAU,
 	TLDefaultDashStyle,
 	TLGeoShape,
@@ -363,19 +365,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLGeoShape> = (shape) => {
-		const { id, type } = shape
-		const text = richTextToPlainText(shape.props.richText)
-
-		if (text.trimEnd() !== text) {
-			this.editor.updateShapes([
-				{
-					id,
-					type,
-					props: {
-						richText: toRichText(text.trimEnd()),
-					},
-				},
-			])
+		const richText = trimRichText(shape.props.richText)
+		if (richText !== shape.props.richText) {
+			this.editor.updateShapes<TLGeoShape>([{ id: shape.id, type: shape.type, props: { richText } }])
 		}
 	}
 
@@ -386,8 +378,6 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 
 		const { w, color, labelColor, fill, dash, growY, font, align, verticalAlign, size, richText } =
 			props
-		const text = richTextToPlainText(richText)
-
 		const getShape = () => {
 			const h = props.h + growY
 
@@ -540,7 +530,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 						size={size}
 						align={align}
 						verticalAlign={verticalAlign}
-						text={text}
+						richText={richText}
 						labelColor={labelColor}
 						wrap
 						bounds={props.geo === 'cloud' ? this.getGeometry(shape).bounds : undefined}
@@ -1076,7 +1066,8 @@ function getLabelSize(editor: Editor, shape: TLGeoShape) {
 		xl: 10,
 	}
 
-	const size = editor.textMeasure.measureText(text, {
+	const html = renderHtmlFromRichText(shape.props.richText, editor.getTextExtensions())
+	const size = editor.textMeasure.measureHtml(html, {
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[shape.props.font],
 		fontSize: LABEL_FONT_SIZES[shape.props.size],

@@ -1,5 +1,7 @@
 import { richTextToPlainText } from '../utils/richText'
 import type { TLHandle, TLShape, TLShapePartial } from './types/shape-types'
+import type { Editor as TipTapEditor, EditorOptions as TipTapEditorOptions, Extensions } from '@tiptap/core'
+import { tipTapDefaultExtensions } from '../utils/richText'
 import { ArrowBindingUtil } from './bindings/ArrowBindingUtil'
 import { BindingUtil, TLBindingUtilConstructor } from './bindings/BindingUtil'
 import type { TLBindingCreate, TLBindingUpdate } from './types/binding-types'
@@ -203,6 +205,25 @@ export interface TLEditorOptions {
 	 * Whether to infer dark mode from the user's system preferences. Defaults to false.
 	 */
 	inferDarkMode?: boolean
+	/**
+	 * How labels are edited: the TipTap configuration for text shapes, notes, geo labels and arrow
+	 * labels.
+	 */
+	textOptions?: TLTextOptions
+}
+
+/**
+ * Options for rich text.
+ *
+ * @public
+ */
+export interface TLTextOptions {
+	/**
+	 * Options for the TipTap editor of every label. `extensions` replaces the defaults; start from
+	 * `tipTapDefaultExtensions` to add to them. The same extensions draw labels that aren't being
+	 * edited, so a node an extension adds shows outside editing too.
+	 */
+	tipTapConfig?: Partial<TipTapEditorOptions>
 }
 
 /** @public */
@@ -216,8 +237,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 		getContainer,
 		initialState,
 		inferDarkMode,
+		textOptions,
 	}: TLEditorOptions) {
 		super()
+
+		this.textOptions = textOptions ?? {}
 
 		this.store = store
 
@@ -843,6 +867,38 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 */
 	batch(fn: () => void): this {
 		this.history.batch(fn)
+		return this
+	}
+
+	/* -------------------- Rich text -------------------- */
+
+	private readonly textOptions: TLTextOptions
+
+	/** The rich-text options the editor was made with. @public */
+	getTextOptions(): TLTextOptions {
+		return this.textOptions
+	}
+
+	/** The TipTap extensions labels are edited and drawn with. @public */
+	getTextExtensions(): Extensions {
+		return this.textOptions.tipTapConfig?.extensions ?? tipTapDefaultExtensions
+	}
+
+	private readonly _richTextEditor = atom<TipTapEditor | null>('richTextEditor', null)
+
+	/**
+	 * The TipTap editor of the label being edited, if there is one. Toolbars and menus read it to
+	 * format the selection.
+	 *
+	 * @public
+	 */
+	getRichTextEditor(): TipTapEditor | null {
+		return this._richTextEditor.get()
+	}
+
+	/** Set by the label being edited, and cleared when it stops. @public */
+	setRichTextEditor(editor: TipTapEditor | null): this {
+		this._richTextEditor.set(editor)
 		return this
 	}
 

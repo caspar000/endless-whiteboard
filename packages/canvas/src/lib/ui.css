@@ -551,7 +551,7 @@
 	border-radius: var(--radius-3);
 	background-color: var(--color-panel);
 	box-shadow: var(--shadow-3);
-	z-index: var(--layer-menus);
+	z-index: 300;
 	overflow: hidden;
 	overflow-y: auto;
 	touch-action: auto;
@@ -976,7 +976,7 @@
 /* ---------------------- Menu ---------------------- */
 
 .tlui-menu {
-	z-index: var(--layer-menus);
+	z-index: 300;
 	height: fit-content;
 	width: fit-content;
 	max-height: 80vh;
@@ -1600,4 +1600,58 @@
 .tlui-shortcuts-dialog__key-pair__key {
 	flex: 1;
 	font-size: 12px;
+}
+
+/* ---------------- Rich text toolbar --------------- */
+
+.tlui-rich-text-toolbar {
+	position: fixed;
+	z-index: 300;
+	display: flex;
+	gap: 2px;
+	padding: 4px;
+	transform: translate(-50%, calc(-100% - 12px));
+	border-radius: var(--radius-3);
+	background-color: var(--color-panel);
+	box-shadow: var(--shadow-2);
+	pointer-events: all;
+}
+
+.tlui-rich-text-toolbar__button {
+	min-width: 32px;
+	height: 32px;
+	padding: 0px 6px;
+	border: none;
+	border-radius: var(--radius-2);
+	background: none;
+	color: var(--color-text-1);
+	font-family: var(--tl-font-sans);
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.tlui-rich-text-toolbar__button[data-format='bold'] {
+	font-weight: bold;
+}
+
+.tlui-rich-text-toolbar__button[data-format='italic'] {
+	font-style: italic;
+}
+
+.tlui-rich-text-toolbar__button[data-format='strike'] {
+	text-decoration: line-through;
+}
+
+.tlui-rich-text-toolbar__button[data-format='code'] {
+	font-family: var(--tl-font-mono);
+	font-size: 12px;
+}
+
+.tlui-rich-text-toolbar__button:hover {
+	background-color: var(--color-muted-1);
+}
+
+.tlui-rich-text-toolbar__button[data-active='true'] {
+	background-color: var(--color-selected);
+	color: var(--color-selected-contrast);
 }

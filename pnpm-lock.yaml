@@ -19,6 +19,12 @@ importers:
       '@lifeboard/canvas-editor':
         specifier: workspace:*
         version: link:../../packages/canvas-editor
+      '@tiptap/core':
+        specifier: ^3.29.2
+        version: 3.29.2(@tiptap/pm@3.29.2)
+      '@tiptap/pm':
+        specifier: ^3.29.2
+        version: 3.29.2
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -306,6 +312,12 @@ importers:
       '@radix-ui/react-toast':
         specifier: ^1.1.1
         version: 1.2.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tiptap/core':
+        specifier: ^3.29.2
+        version: 3.29.2(@tiptap/pm@3.29.2)
+      '@tiptap/pm':
+        specifier: ^3.29.2
+        version: 3.29.2
       '@tldraw/state':
         specifier: 5.5.2
         version: 5.5.2
@@ -409,6 +421,15 @@ importers:
 
   packages/canvas-editor:
     dependencies:
+      '@tiptap/core':
+        specifier: ^3.29.2
+        version: 3.29.2(@tiptap/pm@3.29.2)
+      '@tiptap/pm':
+        specifier: ^3.29.2
+        version: 3.29.2
+      '@tiptap/starter-kit':
+        specifier: ^3.29.2
+        version: 3.29.2
       '@tldraw/state':
         specifier: 5.5.2
         version: 5.5.2

@@ -879,6 +879,103 @@ input,
 	text-shadow: none;
 }
 
+/* -------------------- Rich text -------------------- */
+
+/* In a text shape, the editor takes the place of the drawn text. */
+.tl-text-shape__wrapper > .tl-rich-text-editor {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+/* Labels are rich text: drawn as HTML (.tl-text-content) and edited in place by TipTap
+   (.tl-rich-text-editor), with the same rules for both so editing doesn't move anything. */
+
+.tl-rich-text p,
+.tl-rich-text h1,
+.tl-rich-text h2,
+.tl-rich-text h3,
+.tl-rich-text h4,
+.tl-rich-text h5,
+.tl-rich-text h6,
+.tl-rich-text blockquote,
+.tl-rich-text pre {
+	margin: 0px;
+}
+
+/* An empty paragraph still takes a line, as it does while editing. */
+.tl-rich-text p:empty::before {
+	content: '\200b';
+}
+
+.tl-rich-text h1 {
+	font-size: 1.4em;
+}
+
+.tl-rich-text h2 {
+	font-size: 1.25em;
+}
+
+.tl-rich-text h3 {
+	font-size: 1.1em;
+}
+
+.tl-rich-text ul,
+.tl-rich-text ol {
+	margin: 0px;
+	padding-left: 1.3em;
+	text-align: left;
+}
+
+.tl-rich-text blockquote {
+	padding-left: 0.6em;
+	border-left: 2px solid currentColor;
+}
+
+.tl-rich-text code,
+.tl-rich-text pre {
+	font-family: var(--tl-font-mono);
+	font-size: 0.9em;
+}
+
+.tl-rich-text code {
+	padding: 0px 0.2em;
+	border-radius: 3px;
+	background-color: var(--color-muted-1);
+}
+
+.tl-rich-text pre code {
+	padding: 0px;
+	background: none;
+}
+
+.tl-rich-text a {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.tl-rich-text-editor {
+	pointer-events: all;
+	cursor: var(--tl-cursor-text);
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.tl-rich-text-editor .ProseMirror {
+	outline: none;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.tl-rich-text-editor ::selection {
+	background: var(--color-selected);
+	color: var(--color-selected-contrast);
+	text-shadow: none;
+}
+
 /* ------------------- Snap Lines ------------------- */
 
 .tl-snap-line {
@@ -1114,10 +1211,6 @@ input,
 	min-height: auto;
 }
 
-.tl-text-label[data-isediting='true'] p {
-	opacity: 0;
-}
-
 .tl-text-label[data-align='start'],
 .tl-text-label[data-align='start-legacy'] {
 	text-align: left;
@@ -1176,10 +1269,6 @@ input,
 	text-shadow: var(--tl-text-outline);
 }
 
-.tl-arrow-label[data-isediting='true'] p {
-	opacity: 0;
-}
-
 .tl-arrow-label[data-isediting='true'] > .tl-arrow-label__inner {
 	background-color: var(--color-background);
 }
@@ -1196,7 +1285,7 @@ input,
 	align-items: center;
 }
 
-.tl-arrow-label p,
+.tl-arrow-label__text,
 .tl-arrow-label textarea {
 	margin: 0px;
 	padding: 0px;
@@ -1229,7 +1318,7 @@ input,
 	word-spacing: 0px;
 }
 
-.tl-arrow-label p {
+.tl-arrow-label__text {
 	position: relative;
 	height: max-content;
 	z-index: 2;

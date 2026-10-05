@@ -10,7 +10,7 @@ import {
 	createShapeId,
 	createTLStore,
 	noop,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { defaultTools } from '../lib/defaultTools'
 import { GeoShapeUtil } from '../lib/shapes/geo/GeoShapeUtil'
 

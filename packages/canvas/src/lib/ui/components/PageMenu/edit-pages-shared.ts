@@ -1,4 +1,4 @@
-import { Editor, getIndexAbove, getIndexBelow, getIndexBetween, TLPageId } from '@tldraw/editor'
+import { Editor, getIndexAbove, getIndexBelow, getIndexBetween, TLPageId } from '@lifeboard/canvas-editor'
 
 export const onMovePage = (editor: Editor, id: TLPageId, from: number, to: number) => {
 	let index: string

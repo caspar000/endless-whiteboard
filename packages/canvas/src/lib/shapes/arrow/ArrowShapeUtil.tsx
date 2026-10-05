@@ -34,8 +34,8 @@ import {
 	getStraightArrowHandlePath,
 	toDomPrecision,
 	useIsEditing,
-} from '@tldraw/editor'
-import React from 'react'
+} from '@lifeboard/canvas-editor'
+import React, { type JSX } from 'react'
 import { ShapeFill, getShapeFillSvg, useDefaultColorTheme } from '../shared/ShapeFill'
 import { createTextSvgElementFromSpans } from '../shared/createTextSvgElementFromSpans'
 import {

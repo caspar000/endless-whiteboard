@@ -12,7 +12,7 @@ import {
 	canonicalizeRotation,
 	createShapeId,
 	rotateSelectionHandle,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 import { getSnapLines } from './getSnapLines'
 import { roundedBox } from './roundedBox'
@@ -3799,6 +3799,8 @@ describe('nodes that have do not resize', () => {
 // })
 
 describe('bugs', () => {
+	// Every case here is commented out upstream; Vitest, unlike Jest, refuses an empty suite.
+	it.todo('has cases')
 	// it('resizing a zero width shape', () => {
 	//	// Draw shapes can no longer have zero width / height
 	// 	const shapeId = createShapeId()

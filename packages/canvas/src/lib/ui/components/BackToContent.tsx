@@ -1,4 +1,4 @@
-import { useEditor } from '@tldraw/editor'
+import { useEditor } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { useActions } from '../hooks/useActions'
 import { Button } from './primitives/Button'

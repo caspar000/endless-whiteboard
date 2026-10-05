@@ -1,4 +1,4 @@
-import { PngHelpers, debugFlags } from '@tldraw/editor'
+import { PngHelpers, debugFlags } from '@lifeboard/canvas-editor'
 import { getBrowserCanvasMaxSize } from '../../shapes/shared/getBrowserCanvasMaxSize'
 
 /** @public */

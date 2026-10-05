@@ -15,7 +15,7 @@ import {
 	useEditor,
 	useShallowArrayIdentity,
 	useShallowObjectIdentity,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { useCallback, useDebugValue, useLayoutEffect, useMemo, useRef } from 'react'
 import { TldrawHandles } from './canvas/TldrawHandles'
 import { TldrawHoveredShapeIndicator } from './canvas/TldrawHoveredShapeIndicator'
@@ -163,7 +163,7 @@ function InsideOfEditorContext({
 function useEvent<Args extends Array<unknown>, Result>(
 	handler: (...args: Args) => Result
 ): (...args: Args) => Result {
-	const handlerRef = useRef<(...args: Args) => Result>()
+	const handlerRef = useRef<((...args: Args) => Result) | undefined>(undefined)
 
 	useLayoutEffect(() => {
 		handlerRef.current = handler

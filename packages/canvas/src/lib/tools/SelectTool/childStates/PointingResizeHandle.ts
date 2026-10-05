@@ -4,7 +4,7 @@ import {
 	TLEventHandlers,
 	TLPointerEventInfo,
 	TLSelectionHandle,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 export const CursorTypeMap: Record<TLSelectionHandle, TLCursorType> = {
 	bottom: 'ns-resize',

@@ -1,9 +1,9 @@
-import { useEditor } from '@tldraw/editor'
+import { useEditor } from '@lifeboard/canvas-editor'
 import { useCallback, useEffect, useRef } from 'react'
 
 export function useInsertMedia() {
 	const editor = useEditor()
-	const inputRef = useRef<HTMLInputElement>()
+	const inputRef = useRef<HTMLInputElement | undefined>(undefined)
 
 	useEffect(() => {
 		const input = window.document.createElement('input')

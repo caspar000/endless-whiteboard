@@ -1,5 +1,5 @@
 import * as _Dialog from '@radix-ui/react-dialog'
-import { useContainer } from '@tldraw/editor'
+import { useContainer } from '@lifeboard/canvas-editor'
 import React, { useCallback } from 'react'
 import { TLUiDialog, useDialogs } from '../hooks/useDialogsProvider'
 

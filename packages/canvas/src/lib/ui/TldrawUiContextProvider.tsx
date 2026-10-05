@@ -1,4 +1,4 @@
-import { RecursivePartial } from '@tldraw/editor'
+import { RecursivePartial } from '@lifeboard/canvas-editor'
 import { TLUiAssetUrls, useDefaultUiAssetUrlsWithOverrides } from './assetUrls'
 import { ActionsProvider } from './hooks/useActions'
 import { ActionsMenuSchemaProvider } from './hooks/useActionsMenuSchema'

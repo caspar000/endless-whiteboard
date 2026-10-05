@@ -1,4 +1,4 @@
-import { TLHandlesComponent, useEditor, useValue } from '@tldraw/editor'
+import { TLHandlesComponent, useEditor, useValue } from '@lifeboard/canvas-editor'
 
 /** @public */
 export const TldrawHandles: TLHandlesComponent = ({ children }) => {

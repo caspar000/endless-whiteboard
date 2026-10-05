@@ -1,4 +1,4 @@
-import { EMBED_DEFINITIONS, LANGUAGES, RecursivePartial } from '@tldraw/editor'
+import { EMBED_DEFINITIONS, LANGUAGES, RecursivePartial } from '@lifeboard/canvas-editor'
 import { version } from '../ui/version'
 import { TLEditorAssetUrls, defaultEditorAssetUrls } from '../utils/static-assets/assetUrls'
 import { TLUiIconType, iconTypes } from './icon-types'

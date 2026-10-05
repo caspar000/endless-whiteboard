@@ -1,4 +1,4 @@
-import { Vec2d } from '@tldraw/editor'
+import { Vec2d } from '@lifeboard/canvas-editor'
 
 const ROTATING_BOX_SHADOWS = [
 	{

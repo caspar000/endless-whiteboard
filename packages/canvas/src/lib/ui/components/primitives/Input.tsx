@@ -1,4 +1,4 @@
-import { stopEventPropagation, useEditor } from '@tldraw/editor'
+import { stopEventPropagation, useEditor } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 import * as React from 'react'
 import { TLUiTranslationKey } from '../../hooks/useTranslation/TLUiTranslationKey'

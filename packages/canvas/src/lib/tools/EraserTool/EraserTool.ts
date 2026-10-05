@@ -1,4 +1,4 @@
-import { StateNode } from '@tldraw/editor'
+import { StateNode } from '@lifeboard/canvas-editor'
 import { Erasing } from './childStates/Erasing'
 import { Idle } from './childStates/Idle'
 import { Pointing } from './childStates/Pointing'

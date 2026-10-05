@@ -10,8 +10,9 @@ afterEach(() => {
 	editor?.dispose()
 })
 
+// An empty suite upstream; Vitest, unlike Jest, refuses one.
 describe(DrawShapeTool, () => {
-	return
+	it.todo('has tests')
 })
 
 describe('When in the idle state', () => {

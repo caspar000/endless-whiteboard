@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import {
 	TLDefaultShape,
 	TLShapeId,
@@ -7,7 +8,7 @@ import {
 	createShapeId,
 	getIndexAbove,
 	omitFromStackTrace,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 const shapeTypeSymbol = Symbol('shapeJsx')
 

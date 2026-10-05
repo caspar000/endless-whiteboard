@@ -1,4 +1,4 @@
-import { createShapeId, TLArrowShape } from '@tldraw/editor'
+import { createShapeId, TLArrowShape } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor
@@ -32,7 +32,7 @@ const doMockClipboard = () => {
 		},
 	})
 
-	globalThis.ClipboardItem = jest.fn((payload: any) => payload)
+	globalThis.ClipboardItem = jest.fn((payload: any) => payload) as unknown as typeof ClipboardItem
 
 	return context
 }

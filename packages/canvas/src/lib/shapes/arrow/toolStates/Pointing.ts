@@ -1,4 +1,4 @@
-import { StateNode, TLArrowShape, TLEventHandlers, createShapeId } from '@tldraw/editor'
+import { StateNode, TLArrowShape, TLEventHandlers, createShapeId } from '@lifeboard/canvas-editor'
 
 export class Pointing extends StateNode {
 	static override id = 'pointing'

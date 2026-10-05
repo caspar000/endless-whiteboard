@@ -1,5 +1,5 @@
 import { Content, Portal, Root, Trigger } from '@radix-ui/react-dropdown-menu'
-import { useContainer } from '@tldraw/editor'
+import { useContainer } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { TLUiMenuChild } from '../hooks/menuHelpers'
 import { useHelpMenuSchema } from '../hooks/useHelpMenuSchema'

@@ -1,3 +1,8 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+allowBuilds:
+  # The canvas fork depends on core-js, whose install script only prints a banner.
+  core-js: false
+patchedDependencies:
+  '@tldraw/utils@2.0.0-alpha.19': patches/@tldraw__utils@2.0.0-alpha.19.patch

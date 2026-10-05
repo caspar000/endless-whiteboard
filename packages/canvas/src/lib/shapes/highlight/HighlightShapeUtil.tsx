@@ -14,7 +14,7 @@ import {
 	highlightShapeProps,
 	last,
 	rng,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { getHighlightFreehandSettings, getPointsFromSegments } from '../draw/getPath'
 import { useDefaultColorTheme } from '../shared/ShapeFill'
 import { FONT_SIZES } from '../shared/default-shape-constants'

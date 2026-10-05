@@ -1,4 +1,4 @@
-import { Editor, TLShapeId, TLSvgOptions } from '@tldraw/editor'
+import { Editor, TLShapeId, TLSvgOptions } from '@lifeboard/canvas-editor'
 import { getSvgAsImage } from './export'
 
 /** @public */

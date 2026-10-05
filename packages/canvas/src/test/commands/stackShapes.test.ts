@@ -1,4 +1,4 @@
-import { createShapeId } from '@tldraw/editor'
+import { createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 jest.useFakeTimers()

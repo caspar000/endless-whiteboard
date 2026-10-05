@@ -1,4 +1,4 @@
-import { StateNode, TLEventHandlers, TLPointerEvent } from '@tldraw/editor'
+import { StateNode, TLEventHandlers, TLPointerEvent } from '@lifeboard/canvas-editor'
 
 export class PointingCrop extends StateNode {
 	static override id = 'pointing_crop'

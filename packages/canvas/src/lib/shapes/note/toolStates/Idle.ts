@@ -1,4 +1,4 @@
-import { StateNode, TLEventHandlers } from '@tldraw/editor'
+import { StateNode, TLEventHandlers } from '@lifeboard/canvas-editor'
 
 export class Idle extends StateNode {
 	static override id = 'idle'

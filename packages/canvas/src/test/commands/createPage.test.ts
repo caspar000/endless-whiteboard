@@ -1,4 +1,4 @@
-import { MAX_PAGES, PageRecordType } from '@tldraw/editor'
+import { MAX_PAGES, PageRecordType } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor

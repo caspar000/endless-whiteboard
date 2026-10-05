@@ -12,7 +12,7 @@ import {
 	last,
 	sortByIndex,
 	structuredClone,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 const MINIMUM_DISTANCE_BETWEEN_SHIFT_CLICKED_HANDLES = 2
 

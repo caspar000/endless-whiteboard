@@ -1,0 +1,28 @@
+{
+	"name": "@lifeboard/canvas-lab",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "A page that mounts the canvas fork on its own, so each phase of docs/canvas-fork-plan.md is checked before Lifeboard uses it.",
+	"scripts": {
+		"dev": "vite --port 5190",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test:e2e": "playwright test"
+	},
+	"dependencies": {
+		"@lifeboard/canvas": "workspace:*",
+		"@lifeboard/canvas-assets": "workspace:*",
+		"@lifeboard/canvas-editor": "workspace:*",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.62.0",
+		"@types/node": "^26.1.2",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.2.0",
+		"typescript": "5.9.3",
+		"vite": "^8.1.5"
+	}
+}

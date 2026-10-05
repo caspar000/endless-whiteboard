@@ -1,4 +1,4 @@
-import { VecLike } from '@tldraw/editor'
+import { VecLike } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor

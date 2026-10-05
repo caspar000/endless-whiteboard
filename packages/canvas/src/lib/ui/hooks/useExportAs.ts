@@ -1,4 +1,4 @@
-import { TLShapeId, useEditor } from '@tldraw/editor'
+import { TLShapeId, useEditor } from '@lifeboard/canvas-editor'
 import { useCallback } from 'react'
 import { TLExportType, exportAs } from '../../utils/export/exportAs'
 import { useToasts } from './useToastsProvider'

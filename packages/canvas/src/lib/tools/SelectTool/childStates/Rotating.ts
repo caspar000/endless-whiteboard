@@ -10,7 +10,7 @@ import {
 	degreesToRadians,
 	getRotationSnapshot,
 	snapAngle,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { CursorTypeMap } from './PointingResizeHandle'
 
 export class Rotating extends StateNode {

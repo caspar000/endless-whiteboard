@@ -12,7 +12,7 @@ import {
 	VecLike,
 	createShapeId,
 	pointInPolygon,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { getHitShapeOnCanvasPointerDown } from '../../selection-logic/getHitShapeOnCanvasPointerDown'
 import { getShouldEnterCropMode } from '../../selection-logic/getShouldEnterCropModeOnPointerDown'
 import { selectOnCanvasPointerUp } from '../../selection-logic/selectOnCanvasPointerUp'
@@ -440,11 +440,9 @@ export class Idle extends StateNode {
 				// If the only selected shape is editable, then begin editing it
 				const onlySelectedShape = this.editor.getOnlySelectedShape()
 				if (onlySelectedShape && this.shouldStartEditingShape(onlySelectedShape)) {
-					this.startEditingShape(onlySelectedShape, {
-						...info,
-						target: 'shape',
-						shape: onlySelectedShape,
-					})
+					// Bound first: a literal here trips TypeScript's excess-property check on the union.
+					const editingInfo = { ...info, target: 'shape' as const, shape: onlySelectedShape }
+					this.startEditingShape(onlySelectedShape, editingInfo)
 					return
 				}
 

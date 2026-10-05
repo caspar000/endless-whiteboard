@@ -118,6 +118,10 @@ packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connec
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
 apps/server/              @lifeboard/server — the self-hosted server: login, board index, live sync rooms
 packages/schema/          @lifeboard/schema — the shipped extensions and the board schema app and server share
+packages/canvas-editor/   @lifeboard/canvas-editor — fork of tldraw 2.0.0-alpha.19's editor (Apache-2.0, see NOTICE)
+packages/canvas/          @lifeboard/canvas — the fork's shapes, tools and UI
+packages/canvas-assets/   @lifeboard/canvas-assets — the fork's icons, fonts and translations
+apps/canvas-lab/          the fork on its own, where each phase of docs/canvas-fork-plan.md is checked
 deploy/darkroomlab/       the stack that runs apps/server on the Hetzner box (Arcane + Caddy)
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```

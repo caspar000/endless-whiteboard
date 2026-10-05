@@ -17,7 +17,7 @@ import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
 const strict = process.argv.includes('--strict')
-const OPEN = /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|MPL-2\.0|0BSD|BlueOak-1\.0\.0|CC0-1\.0|Unlicense|Python-2\.0|Zlib|OFL-1\.1|CC-BY-4\.0|\(MIT OR [^)]+\)|\([^)]+ OR MIT\))$/
+const OPEN = /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|MPL-2\.0|0BSD|BlueOak-1\.0\.0|CC0-1\.0|Unlicense|Python-2\.0|Zlib|MIT-0|OFL-1\.1|CC-BY-4\.0|\(MIT OR [^)]+\)|\([^)]+ OR MIT\))$/
 
 /** `name@version` for every package the lockfile resolves. */
 function lockedPackages() {

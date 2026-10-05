@@ -1,4 +1,4 @@
-import { stopEventPropagation } from '@tldraw/editor'
+import { stopEventPropagation } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 
 const LINK_ICON =

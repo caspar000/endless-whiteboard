@@ -1,5 +1,5 @@
 import { Trigger } from '@radix-ui/react-dropdown-menu'
-import { SharedStyle, StyleProp, preventDefault } from '@tldraw/editor'
+import { SharedStyle, StyleProp, preventDefault } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { TLUiTranslationKey } from '../../hooks/useTranslation/TLUiTranslationKey'
 import { useTranslation } from '../../hooks/useTranslation/useTranslation'

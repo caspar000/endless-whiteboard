@@ -1,4 +1,4 @@
-import { useEditor, usePresence, useValue } from '@tldraw/editor'
+import { useEditor, usePresence, useValue } from '@lifeboard/canvas-editor'
 
 export function FollowingIndicator() {
 	const editor = useEditor()

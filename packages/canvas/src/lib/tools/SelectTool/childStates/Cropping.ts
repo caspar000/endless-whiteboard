@@ -10,7 +10,7 @@ import {
 	TLShapePartial,
 	Vec2d,
 	deepCopy,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { MIN_CROP_SIZE } from './Crop/crop-constants'
 import { CursorTypeMap } from './PointingResizeHandle'
 

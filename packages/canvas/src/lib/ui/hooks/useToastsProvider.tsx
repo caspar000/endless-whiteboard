@@ -1,4 +1,4 @@
-import { Editor, uniqueId } from '@tldraw/editor'
+import { Editor, uniqueId } from '@lifeboard/canvas-editor'
 import { createContext, useCallback, useContext, useState } from 'react'
 import { TLUiIconType } from '../icon-types'
 

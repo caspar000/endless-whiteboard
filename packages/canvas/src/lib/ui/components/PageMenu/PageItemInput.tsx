@@ -1,4 +1,4 @@
-import { TLPageId, useEditor } from '@tldraw/editor'
+import { TLPageId, useEditor } from '@lifeboard/canvas-editor'
 import { useCallback, useRef } from 'react'
 import { Input } from '../primitives/Input'
 
@@ -33,7 +33,9 @@ export const PageItemInput = function PageItemInput({
 	return (
 		<Input
 			className="tlui-page-menu__item__input"
-			ref={(el) => (rInput.current = el)}
+			ref={(el) => {
+				rInput.current = el
+			}}
 			defaultValue={name}
 			onValueChange={handleChange}
 			onComplete={handleComplete}

@@ -1,4 +1,4 @@
-import { TLFrameShape, TLGeoShape, approximately, createShapeId } from '@tldraw/editor'
+import { TLFrameShape, TLGeoShape, approximately, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor

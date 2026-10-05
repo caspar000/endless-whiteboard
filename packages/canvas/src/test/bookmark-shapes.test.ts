@@ -1,4 +1,4 @@
-import { TLBookmarkShape, createShapeId } from '@tldraw/editor'
+import { TLBookmarkShape, createShapeId } from '@lifeboard/canvas-editor'
 import {
 	BookmarkShapeUtil,
 	getHumanReadableAddress,
@@ -14,8 +14,9 @@ afterEach(() => {
 	editor?.dispose()
 })
 
+// An empty suite upstream; Vitest, unlike Jest, refuses one.
 describe(BookmarkShapeUtil, () => {
-	return
+	it.todo('has tests')
 })
 
 describe('The URL formatter', () => {

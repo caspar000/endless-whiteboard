@@ -5,7 +5,7 @@ import {
 	TLShape,
 	createShapeId,
 	debounce,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 import { TL } from './test-jsx'
 
@@ -511,13 +511,13 @@ describe('getShapeUtil', () => {
 	it('throws if that shape type isnt registered', () => {
 		const myMissingShape = { type: 'missing' } as TLShape
 		expect(() => editor.getShapeUtil(myMissingShape)).toThrowErrorMatchingInlineSnapshot(
-			`"No shape util found for type \\"missing\\""`
+			`[Error: No shape util found for type "missing"]`
 		)
 	})
 
 	it('throws if that type isnt registered', () => {
 		expect(() => editor.getShapeUtil('missing')).toThrowErrorMatchingInlineSnapshot(
-			`"No shape util found for type \\"missing\\""`
+			`[Error: No shape util found for type "missing"]`
 		)
 	})
 })

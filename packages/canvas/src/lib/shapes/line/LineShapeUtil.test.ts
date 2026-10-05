@@ -1,7 +1,8 @@
-import { TLGeoShape, TLLineShape, createShapeId, deepCopy } from '@tldraw/editor'
+import { vi } from 'vitest'
+import { TLGeoShape, TLLineShape, createShapeId, deepCopy } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../../../test/TestEditor'
 
-jest.mock('nanoid', () => {
+vi.mock('nanoid', () => {
 	let i = 0
 	return { nanoid: () => 'id' + i++ }
 })

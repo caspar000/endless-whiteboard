@@ -1,4 +1,4 @@
-import { StateNode } from '@tldraw/editor'
+import { StateNode } from '@lifeboard/canvas-editor'
 import { Idle } from './childStates/Idle'
 import { Lasering } from './childStates/Lasering'
 

@@ -1,5 +1,5 @@
 import * as _ContextMenu from '@radix-ui/react-context-menu'
-import { Editor, preventDefault, useContainer, useEditor, useValue } from '@tldraw/editor'
+import { Editor, preventDefault, useContainer, useEditor, useValue } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 import { forwardRef, useCallback, useState } from 'react'
 import { TLUiMenuChild } from '../hooks/menuHelpers'

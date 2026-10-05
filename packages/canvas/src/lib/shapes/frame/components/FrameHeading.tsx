@@ -7,7 +7,7 @@ import {
 	useEditor,
 	useIsEditing,
 	useValue,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { useCallback, useEffect, useRef } from 'react'
 import { FrameLabelInput } from './FrameLabelInput'
 

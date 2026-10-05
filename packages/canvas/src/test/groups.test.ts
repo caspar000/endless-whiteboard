@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import {
 	Box2d,
 	GroupShapeUtil,
@@ -13,10 +14,10 @@ import {
 	compact,
 	createShapeId,
 	sortByIndex,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
-jest.mock('nanoid', () => {
+vi.mock('nanoid', () => {
 	let i = 0
 	return { nanoid: () => 'id' + i++ }
 })

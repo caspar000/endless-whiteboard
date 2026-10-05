@@ -6,7 +6,7 @@ import {
 	precise,
 	shortAngleDist,
 	toDomPrecision,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { getStrokeOutlineTracks } from './getStrokeOutlinePoints'
 import { getStrokePoints } from './getStrokePoints'
 import { setStrokePointRadii } from './setStrokePointRadii'

@@ -13,7 +13,7 @@ import {
 	useEditor,
 	useIsDarkMode,
 	useQuickReactor,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { MinimapManager } from './MinimapManager'
 

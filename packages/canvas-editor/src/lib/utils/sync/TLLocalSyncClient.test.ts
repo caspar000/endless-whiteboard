@@ -1,13 +1,14 @@
+import { vi } from 'vitest'
 import { PageRecordType } from '@tldraw/tlschema'
 import { promiseWithResolve } from '@tldraw/utils'
 import { createTLStore } from '../../config/createTLStore'
 import { TLLocalSyncClient } from './TLLocalSyncClient'
 import * as idb from './indexedDb'
 
-jest.mock('./indexedDb', () => ({
-	...jest.requireActual('./indexedDb'),
-	storeSnapshotInIndexedDb: jest.fn(() => Promise.resolve()),
-	storeChangesInIndexedDb: jest.fn(() => Promise.resolve()),
+vi.mock('./indexedDb', async () => ({
+	...(await vi.importActual<object>('./indexedDb')),
+	storeSnapshotInIndexedDb: vi.fn(() => Promise.resolve()),
+	storeChangesInIndexedDb: vi.fn(() => Promise.resolve()),
 }))
 
 class BroadcastChannelMock {

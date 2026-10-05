@@ -1,4 +1,4 @@
-import { Box2d, TLGeoShape, createShapeId, resizeBox } from '@tldraw/editor'
+import { Box2d, TLGeoShape, createShapeId, resizeBox } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor

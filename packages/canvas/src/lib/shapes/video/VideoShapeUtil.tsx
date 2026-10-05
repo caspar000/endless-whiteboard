@@ -7,7 +7,7 @@ import {
 	useIsEditing,
 	videoShapeMigrations,
 	videoShapeProps,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import React from 'react'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'

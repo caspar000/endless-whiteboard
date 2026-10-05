@@ -1,4 +1,4 @@
-import { debugFlags, useValue } from '@tldraw/editor'
+import { debugFlags, useValue } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 
 export function useColorSpace(): 'srgb' | 'p3' {

@@ -1,4 +1,4 @@
-import { toDomPrecision } from '@tldraw/editor'
+import { toDomPrecision } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 
 /** @public */

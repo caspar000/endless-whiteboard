@@ -16,7 +16,7 @@ import {
 	snapAngle,
 	toFixed,
 	uniqueId,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { STROKE_SIZES } from '../../shared/default-shape-constants'
 
 type DrawableShape = TLDrawShape | TLHighlightShape

@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phase 0 done** (2026-10-05). Phase 1 next.
+Status: **Phases 0 and 1 done** (2026-10-05). Phase 2 next.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -51,8 +51,9 @@ reports from phase 0 and **fails the build from phase 7 on**, so licensed code c
 - `apps/canvas-lab` — a small Vite app that mounts the fork on its own. Every phase before cutover is
   verified here, not in Lifeboard.
 
-The fork is imported from the GitHub tag `v2.0.0-alpha.19` with its history, so `git log` shows
-exactly what we changed. Work happens on branches stacked on `self-hosting/phase-2`, one per phase
+The fork is imported from the GitHub tag `v2.0.0-alpha.19` as one untouched commit ("Import tldraw
+2.0.0-alpha.19 …"), so diffing against it shows exactly what we changed. Bringing tldraw's whole
+history along would have added their entire monorepo for no benefit. Work happens on branches stacked on `self-hosting/phase-2`, one per phase
 (`canvas-fork/phase-N`), until everything is pushed together.
 
 ---
@@ -104,6 +105,28 @@ shape type is missing.
 - `pnpm check:licences` shows no new licensed packages.
 
 **Size:** 1–2 weeks.
+
+**As built:**
+
+- **Results:** the editor's 111 tests and the UI package's 1,253 pass (the skips and to-dos are
+  upstream's). The lab's two Playwright tests pass: draw, bind an arrow, move, resize, rotate, undo,
+  redo, SVG and PNG export, reload. The licence check finds nothing new.
+- **Compiler settings** are upstream's, per package, not the workspace's stricter ones (F5).
+- **The 2023 data packages strip `@internal` APIs from their published types**, and upstream's editor
+  uses them across packages. Their `src/` ships in the tarball, so `tsconfig` `paths` point the types
+  there. The JavaScript has everything. A two-line pnpm patch fixes their source for today's
+  TypeScript (F4).
+- **Jest to Vitest** without rewriting the tests: `jest` is `vi`; fake timers go on last, or
+  fake-indexeddb captures the fake scheduler and never finishes; snapshots print in Jest 28's format;
+  jsdom's `localStorage` is put back over Node 26's own; three `jest.mock` calls became `vi.mock`,
+  three empty suites got a to-do, two error snapshots were rewritten in Vitest's format.
+- **React 19:** about ten lines of type fixes (refs can be `null`, `JSX` moved into `React`, `useRef`
+  needs an argument).
+- **Two runtime fixes:** icon masks quote their URL (bundlers inline small SVGs as data URLs, and their
+  quotes broke the unquoted `url()`); translations are imported with `?url`, because Vite imports JSON
+  as data.
+- **Found:** the fork reaches tldraw's CDN for assets by default, and links to tldraw in its error
+  screen and three translation strings (F1–F3).
 
 ## Phase 2 — The fork on today's MIT data layer
 

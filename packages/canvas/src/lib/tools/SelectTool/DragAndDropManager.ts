@@ -1,4 +1,4 @@
-import { Editor, TLShape, TLShapeId, Vec2d, compact } from '@tldraw/editor'
+import { Editor, TLShape, TLShapeId, Vec2d, compact } from '@lifeboard/canvas-editor'
 
 const LAG_DURATION = 100
 

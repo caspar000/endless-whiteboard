@@ -1,4 +1,4 @@
-import { TLBaseShape, isValidUrl, track, useEditor } from '@tldraw/editor'
+import { TLBaseShape, isValidUrl, track, useEditor } from '@lifeboard/canvas-editor'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TLUiDialogProps } from '../hooks/useDialogsProvider'
 import { useTranslation } from '../hooks/useTranslation/useTranslation'

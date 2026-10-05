@@ -8,7 +8,7 @@ import {
 	SharedStyleMap,
 	useEditor,
 	useValue,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 const selectToolStyles = [DefaultColorStyle, DefaultDashStyle, DefaultFillStyle, DefaultSizeStyle]
 

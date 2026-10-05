@@ -36,7 +36,8 @@ export const Icon = memo(function Icon({
 			// It seems that passing `WebkitMask` to react will cause a render on each call, no idea why... but this appears to be the fix.
 			// @ts-ignore
 			// eslint-disable-next-line deprecation/deprecation
-			ref.current.style.webkitMask = `url(${asset}) center 100% / 100% no-repeat`
+			// Quoted: bundlers inline small SVGs as data URLs, whose quotes break an unquoted url().
+			ref.current.style.webkitMask = `url("${asset}") center 100% / 100% no-repeat`
 		}
 	}, [ref, asset, icon])
 
@@ -47,7 +48,7 @@ export const Icon = memo(function Icon({
 			className={classNames('tlui-icon', { 'tlui-icon__small': small }, className)}
 			style={{
 				color,
-				mask: `url(${asset}) center 100% / 100% no-repeat`,
+				mask: `url("${asset}") center 100% / 100% no-repeat`,
 				transform: invertIcon ? 'scale(-1, 1)' : undefined,
 			}}
 		/>

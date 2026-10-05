@@ -162,3 +162,16 @@ Unmeasured: how the fork does on Lifeboard's 500-node `perf.spec.ts`. Phase 7 me
 | X3 | Copy as PNG by default (⌘⇧C); paste as plain text (⌘⇧V) | 5.0 | todo |
 | X4 | Export options: `scale`, `pixelRatio`, trim to content (`padding: 'auto'`); custom shapes export without writing `toSvg` | 3.0–5.0 | todo |
 | X5 | Clicks pass through transparent image pixels | 4.5 | todo |
+
+## F — Fork housekeeping
+
+Found while importing the fork (phase 1). Not tldraw features; things the fork does that Lifeboard must
+not ship.
+
+| Id | Item | Needed for | Status |
+|---|---|---|---|
+| F1 | Default icon, font and translation URLs point at tldraw's CDN (`unpkg.com/@tldraw/assets@…`, `ui/assetUrls.ts`, `utils/static-assets/assetUrls.ts`). Make the bundled `@lifeboard/canvas-assets/imports` the default, so nothing is fetched from a third party and the app works offline | Cutover | todo |
+| F2 | The error screen links to tldraw's GitHub issues and Discord (`DefaultErrorFallback.tsx`) | Cutover | todo |
+| F3 | Three translation strings say "tldraw" (the `.tldr` file open/save messages) | Cutover | todo |
+| F4 | The 2023 data packages need a two-line pnpm patch for today's TypeScript (`patches/@tldraw__utils@2.0.0-alpha.19.patch`); goes away with them in phase 2 | Phase 2 | todo |
+| F5 | The fork compiles with upstream's looser settings, not the workspace's (`noUncheckedIndexedAccess`, `noImplicitOverride`, `noImplicitReturns` off) | Backlog | todo |

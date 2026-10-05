@@ -4,7 +4,7 @@ import {
 	TLEventHandlers,
 	TLGroupShape,
 	TLPointerEventInfo,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { selectOnCanvasPointerUp } from '../../selection-logic/selectOnCanvasPointerUp'
 
 export class PointingSelection extends StateNode {

@@ -15,7 +15,7 @@ import {
 	deepCopy,
 	snapAngle,
 	sortByIndex,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 export class DraggingHandle extends StateNode {
 	static override id = 'dragging_handle'

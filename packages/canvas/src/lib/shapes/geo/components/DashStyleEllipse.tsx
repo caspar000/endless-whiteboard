@@ -4,7 +4,7 @@ import {
 	TLShapeId,
 	perimeterOfEllipse,
 	toDomPrecision,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import {
 	ShapeFill,

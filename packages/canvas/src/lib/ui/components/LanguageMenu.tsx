@@ -1,4 +1,4 @@
-import { useEditor } from '@tldraw/editor'
+import { useEditor } from '@lifeboard/canvas-editor'
 import { useCallback } from 'react'
 import { TLUiTranslation } from '../hooks/useTranslation/translations'
 import { useLanguages } from '../hooks/useTranslation/useLanguages'

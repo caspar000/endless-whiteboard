@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import {
 	Box2dModel,
 	Editor,
@@ -23,7 +24,7 @@ import {
 	createShapeId,
 	createTLStore,
 	rotateSelectionHandle,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import { defaultShapeTools } from '../lib/defaultShapeTools'
 import { defaultShapeUtils } from '../lib/defaultShapeUtils'
 import { defaultTools } from '../lib/defaultTools'

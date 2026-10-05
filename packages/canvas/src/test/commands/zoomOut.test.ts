@@ -1,4 +1,4 @@
-import { ZOOMS } from '@tldraw/editor'
+import { ZOOMS } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor

@@ -1,5 +1,5 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import { useContainer } from '@tldraw/editor'
+import { useContainer } from '@lifeboard/canvas-editor'
 import React, { FC } from 'react'
 import { useMenuIsOpen } from '../../hooks/useMenuIsOpen'
 

@@ -1,3 +1,4 @@
+/// <reference path="../../downscale.d.ts" />
 import downscale from 'downscale'
 import { getBrowserCanvasMaxSize } from '../shapes/shared/getBrowserCanvasMaxSize'
 import { isAnimated } from './assets/is-gif-animated'

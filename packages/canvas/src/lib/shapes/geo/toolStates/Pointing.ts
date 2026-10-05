@@ -6,7 +6,7 @@ import {
 	TLGeoShape,
 	createShapeId,
 	getStarBounds,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 export class Pointing extends StateNode {
 	static override id = 'pointing'

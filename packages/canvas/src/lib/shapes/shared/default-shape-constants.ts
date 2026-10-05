@@ -1,4 +1,4 @@
-import { TLDefaultFontStyle, TLDefaultSizeStyle } from '@tldraw/editor'
+import { TLDefaultFontStyle, TLDefaultSizeStyle } from '@lifeboard/canvas-editor'
 
 /** @public */
 export const TEXT_PROPS = {

@@ -18,7 +18,7 @@ import {
 	resizeBox,
 	toDomPrecision,
 	useValue,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 import { useDefaultColorTheme } from '../shared/ShapeFill'
 import { createTextSvgElementFromSpans } from '../shared/createTextSvgElementFromSpans'

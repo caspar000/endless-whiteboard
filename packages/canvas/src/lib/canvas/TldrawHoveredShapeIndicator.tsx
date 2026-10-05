@@ -3,7 +3,7 @@ import {
 	TLHoveredShapeIndicatorComponent,
 	useEditor,
 	useValue,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 /** @public */
 export const TldrawHoveredShapeIndicator: TLHoveredShapeIndicatorComponent = ({ shapeId }) => {

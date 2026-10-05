@@ -1,4 +1,4 @@
-import { useEditor, useValue } from '@tldraw/editor'
+import { useEditor, useValue } from '@lifeboard/canvas-editor'
 import { useCallback, useEffect, useRef } from 'react'
 import { useUiEvents } from './useEventsProvider'
 

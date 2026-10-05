@@ -1,5 +1,5 @@
 import { Range, Root, Thumb, Track } from '@radix-ui/react-slider'
-import { useEditor } from '@tldraw/editor'
+import { useEditor } from '@lifeboard/canvas-editor'
 import { memo, useCallback } from 'react'
 import { TLUiTranslationKey } from '../../hooks/useTranslation/TLUiTranslationKey'
 import { useTranslation } from '../../hooks/useTranslation/useTranslation'

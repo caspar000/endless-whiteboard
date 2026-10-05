@@ -1,4 +1,4 @@
-import { Editor, GeoShapeGeoStyle, useEditor } from '@tldraw/editor'
+import { Editor, GeoShapeGeoStyle, useEditor } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { EmbedDialog } from '../components/EmbedDialog'
 import { TLUiIconType } from '../icon-types'

@@ -1,11 +1,14 @@
 {
-	"extends": "../../config/tsconfig.base.json",
-	"include": ["urls.js", "imports.js", "selfHosted.js", "utils.js", "modules.d.ts"],
-	"exclude": ["node_modules", "dist", ".tsbuild*"],
+	// Upstream extended the monorepo's base config, which isn't part of the fork. Plain JS with
+	// hand-written .d.ts files; nothing here is compiled.
 	"compilerOptions": {
-		"outDir": "./.tsbuild",
-		"rootDir": "src",
-		"resolveJsonModule": false
+		"allowJs": true,
+		"checkJs": false,
+		"noEmit": true,
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"target": "ES2022",
+		"skipLibCheck": true
 	},
-	"references": [{ "path": "../utils" }]
+	"include": ["*.js", "*.d.ts"]
 }

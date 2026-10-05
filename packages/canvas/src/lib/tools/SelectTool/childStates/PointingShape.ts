@@ -7,7 +7,7 @@ import {
 	TLGeoShape,
 	TLPointerEventInfo,
 	TLShape,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 export class PointingShape extends StateNode {
 	static override id = 'pointing_shape'

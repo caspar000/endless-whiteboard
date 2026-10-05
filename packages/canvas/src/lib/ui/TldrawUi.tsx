@@ -1,5 +1,5 @@
 import { ToastProvider } from '@radix-ui/react-toast'
-import { useEditor, useValue } from '@tldraw/editor'
+import { useEditor, useValue } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 import React, { ReactNode } from 'react'
 import { TldrawUiContextProvider, TldrawUiContextProviderProps } from './TldrawUiContextProvider'

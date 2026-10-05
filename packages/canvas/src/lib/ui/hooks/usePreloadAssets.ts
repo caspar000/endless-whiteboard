@@ -43,7 +43,7 @@ const usePreloadFont = (id: string, font: TLTypeFace): PreloadStatus => {
 		let cancelled = false
 		setState(PreloadStatus.WAITING)
 
-		const descriptors: FontFaceDescriptors = {
+		const descriptors = {
 			style,
 			weight,
 			display,
@@ -53,7 +53,8 @@ const usePreloadFont = (id: string, font: TLTypeFace): PreloadStatus => {
 			variant,
 		}
 
-		const fontInstance = new FontFace(id, `url(${url})`, descriptors)
+		// `variant` left the DOM typings after 2023; browsers ignore descriptors they don't know.
+		const fontInstance = new FontFace(id, `url(${url})`, descriptors as FontFaceDescriptors)
 
 		fontInstance
 			.load()

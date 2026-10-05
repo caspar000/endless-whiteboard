@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { BaseBoxShapeUtil, Editor } from '@tldraw/editor'
+import { BaseBoxShapeUtil, Editor } from '@lifeboard/canvas-editor'
 import { useState } from 'react'
 import { Tldraw } from './Tldraw'
 

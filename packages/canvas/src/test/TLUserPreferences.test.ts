@@ -1,4 +1,4 @@
-import { TLUserPreferences, atom, createTLUser } from '@tldraw/editor'
+import { TLUserPreferences, atom, createTLUser } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor

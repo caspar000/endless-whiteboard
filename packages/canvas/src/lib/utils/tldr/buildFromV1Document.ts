@@ -25,7 +25,7 @@ import {
 	Vec2dModel,
 	clamp,
 	createShapeId,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 
 const TLDRAW_V1_VERSION = 15.5
 

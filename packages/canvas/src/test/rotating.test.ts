@@ -1,4 +1,4 @@
-import { Vec2d, createShapeId } from '@tldraw/editor'
+import { Vec2d, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor

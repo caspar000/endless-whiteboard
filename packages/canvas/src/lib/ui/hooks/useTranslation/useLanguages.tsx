@@ -1,4 +1,4 @@
-import { LANGUAGES, TLLanguage, useEditor } from '@tldraw/editor'
+import { LANGUAGES, TLLanguage, useEditor } from '@lifeboard/canvas-editor'
 
 /** @internal */
 export function useLanguages() {

@@ -8,7 +8,7 @@ import {
 	stopEventPropagation,
 	useEditor,
 	useValue,
-} from '@tldraw/editor'
+} from '@lifeboard/canvas-editor'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { INDENT, TextHelpers } from './TextHelpers'
 
@@ -21,7 +21,7 @@ export function useEditableText<T extends Extract<TLShape, { props: { text: stri
 
 	const rInput = useRef<HTMLTextAreaElement>(null)
 	const rSkipSelectOnFocus = useRef(false)
-	const rSelectionRanges = useRef<Range[] | null>()
+	const rSelectionRanges = useRef<Range[] | null | undefined>(undefined)
 
 	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
 

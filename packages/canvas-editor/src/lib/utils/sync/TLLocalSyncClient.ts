@@ -165,6 +165,20 @@ export class TLLocalSyncClient {
 			)
 		)
 
+		// A tab being closed or hidden may never come back, so write what the throttle still holds.
+		if (typeof window !== 'undefined') {
+			const onPageHide = () => this.flush()
+			const onVisibilityChange = () => {
+				if (document.visibilityState === 'hidden') this.flush()
+			}
+			window.addEventListener('pagehide', onPageHide)
+			document.addEventListener('visibilitychange', onVisibilityChange)
+			this.disposables.add(() => {
+				window.removeEventListener('pagehide', onPageHide)
+				document.removeEventListener('visibilitychange', onVisibilityChange)
+			})
+		}
+
 		this.connect(onLoad, onLoadError)
 
 		this.documentTypes = new Set(
@@ -287,13 +301,23 @@ export class TLLocalSyncClient {
 
 	close() {
 		this.debug('closing')
+		// Closing a board right after an edit must not lose it: write it now, and let that write finish.
+		this.isClosing = true
+		this.flush()
+		this.isClosing = false
 		this.didDispose = true
 		this.disposables.forEach((d) => d())
 	}
 
 	private isPersisting = false
+	private isClosing = false
 	private didLastWriteError = false
 	private scheduledPersistTimeout: ReturnType<typeof setTimeout> | null = null
+
+	/** Writes pending changes now, rather than when the throttle would. */
+	flush() {
+		if (this.scheduledPersistTimeout || this.diffQueue.length > 0) this.persistIfNeeded()
+	}
 
 	/**
 	 * Schedule a persist. Persists don't happen immediately: they are throttled to avoid writing too
@@ -369,6 +393,9 @@ export class TLLocalSyncClient {
 		// diffs that come in during the persist will still get tracked
 		const diffQueue = this.diffQueue
 		this.diffQueue = []
+		// A write started by `close()` runs to the end; any other is dropped once the client is closed.
+		const outlivesClose = this.isClosing
+		const didCancel = () => this.didDispose && !outlivesClose
 
 		try {
 			if (this.shouldDoFullDBWrite) {
@@ -377,7 +404,7 @@ export class TLLocalSyncClient {
 					persistenceKey: this.persistenceKey,
 					schema: this.store.schema,
 					snapshot: this.store.serialize(),
-					didCancel: () => this.didDispose,
+					didCancel,
 					sessionId: this.sessionId,
 					sessionStateSnapshot: this.$sessionStateSnapshot.get(),
 				})
@@ -389,7 +416,7 @@ export class TLLocalSyncClient {
 					persistenceKey: this.persistenceKey,
 					changes: diffs,
 					schema: this.store.schema,
-					didCancel: () => this.didDispose,
+					didCancel,
 					sessionId: this.sessionId,
 					sessionStateSnapshot: this.$sessionStateSnapshot.get(),
 				})

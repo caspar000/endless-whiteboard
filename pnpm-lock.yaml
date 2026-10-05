@@ -19,6 +19,12 @@ importers:
       '@lifeboard/canvas-editor':
         specifier: workspace:*
         version: link:../../packages/canvas-editor
+      '@lifeboard/node-kit':
+        specifier: workspace:*
+        version: link:../../packages/node-kit
+      '@lifeboard/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       '@tiptap/core':
         specifier: ^3.29.2
         version: 3.29.2(@tiptap/pm@3.29.2)

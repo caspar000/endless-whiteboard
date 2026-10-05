@@ -92,6 +92,13 @@ function withLabAssetUrls(snapshot: TLStoreSnapshot): TLStoreSnapshot {
 	return { ...snapshot, store }
 }
 
+/** A reference board's snapshot, with its images served by the lab. */
+export async function loadFixtureSnapshot(name: string) {
+	const load = snapshots[`../../../packages/canvas/fixtures/${name}.json`]
+	if (!load) throw Error(`No fixture called ${name}`)
+	return withLabAssetUrls(await load())
+}
+
 export async function loadFixture(name: string) {
 	const load = snapshots[`../../../packages/canvas/fixtures/${name}.json`]
 	if (!load) throw Error(`No fixture called ${name}`)

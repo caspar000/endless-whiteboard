@@ -32,7 +32,7 @@ and until it does, it must leave them untouched.
 | D6 | `labelColor` on notes | 3.4 | Cutover | done (phase 4) |
 | D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | done for reading (phase 2); the mode is backlog |
 | D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |
-| D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | doing: read and kept (phase 2); upload returning `{ src, meta }` is open |
+| D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | done: read and kept (phase 2); upload returns `{ src, meta }` (phase 5) |
 | D10 | Document-scoped `user` records, `dash: 'none'`, comment records — not used by Lifeboard, must survive a load/save untouched | 5.0, 5.3 | Cutover (preserve only) | done (phase 2): load/save round trip of the reference boards |
 
 ## E — Editor APIs Lifeboard calls
@@ -62,7 +62,7 @@ keep working).
 | E17 | `DefaultShapeWrapper`, `TLShapeWrapperProps`, `suffixSafeId`, `useUniqueSafeId` | Trace layer, SVG ids | Cutover | done (phase 5) |
 | E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | done (phase 5) |
 | E19 | Drop-target behaviour as Lifeboard relies on it (`docs/tldraw-api-notes.md`: drag-in fires on drag start, topmost hook wins, `canReceiveNewChildrenOfType` gates the drop) | Kanban, calendar, frames adopting cards | Cutover | done (phase 5) |
-| E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | doing: same names, and databases opened at tldraw 5's version 4 with its `assets` store (phase 2); flush on close and `pagehide` open |
+| E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | done: same names, and databases opened at tldraw 5's version 4 with its `assets` store (phase 2); pending writes flushed on close, `pagehide` and the tab going hidden (phase 5) |
 
 ## U — UI pieces Lifeboard builds on
 

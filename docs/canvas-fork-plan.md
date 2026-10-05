@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–4 done** (2026-10-05). Phase 5 under way: parts A and B done.
+Status: **Phases 0–5 done** (2026-10-05). Next: phase 6, our own sync.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -341,6 +341,27 @@ auto-size; a basic formatting toolbar; a way to add TipTap extensions (Lifeboard
 - **Not built:** wheel behaviour and pan/zoom speeds are stored but the 2023 wheel handling ignores
   them; the crop bar has no zoom slider; the 2023 icon set has no crop or download icon, so those
   buttons are words; `TldrawUiMenuItem` works in the context menu only.
+
+**As built, part C — Lifeboard's nodes in the lab:**
+
+- **`/?lifeboard=reference`** opens the phase 0 reference board in the lab with Lifeboard's own
+  pieces: the shipped extensions, the app's stylesheet, its store migrations, `nodeShapeUtils()`, and
+  the node-kit behaviours the app starts on mount (view members placed, relations deleted with their
+  shapes, cards dragged out of a view). `src/lifeboard.tsx` is loaded through a variable import so
+  the lab's own typecheck doesn't compile node-kit, which needs `noUncheckedIndexedAccess`; the
+  on-fork typecheck covers it.
+- **Playwright, `e2e/lifeboard.spec.ts`:** the board opens with its notes, table total, book card and
+  bold sticky; a table recomputes when a note's price changes; a table switched to kanban places its
+  cards in lanes, and dragging a card to another lane changes its category; two notes joined by a
+  relation stay joined when one moves. `e2e/ui.spec.ts` covers the context menu. All 14 lab tests
+  pass.
+- **Local persistence (E20):** the local client writes pending changes at once on `close()`,
+  `pagehide` and the tab going hidden, and a write started by `close()` is not cancelled.
+- **Results:** the fork's tests (123 and 1,301), the four packages' suites on the fork (979), the
+  app's unit tests on the fork (259), and `typecheck:on-fork` for the four packages and `apps/web`
+  (no errors in their files).
+- **Open, carried to phase 7:** exported images draw rich-text labels as plain text (E11); geo shapes
+  don't draw `flipX`/`flipY` (D5); elbow arrows are drawn straight (D4).
 
 ## Phase 6 — Our own sync
 

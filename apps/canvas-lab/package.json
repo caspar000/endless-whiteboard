@@ -13,6 +13,8 @@
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/canvas-assets": "workspace:*",
 		"@lifeboard/canvas-editor": "workspace:*",
+		"@lifeboard/node-kit": "workspace:*",
+		"@lifeboard/schema": "workspace:*",
 		"@tiptap/core": "^3.29.2",
 		"@tiptap/pm": "^3.29.2",
 		"react": "^19.2.8",

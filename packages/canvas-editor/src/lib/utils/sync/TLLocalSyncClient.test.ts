@@ -166,3 +166,30 @@ test('writes that come in during a persist operation will get persisted afterwar
 	await tick()
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
 })
+
+describe('pending writes are not lost', () => {
+	async function clientWithPendingChange() {
+		const { client } = testClient()
+		await tick()
+		client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
+		await tick()
+		client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' as IndexKey })])
+		expect(idb.storeChangesInIndexedDb).not.toHaveBeenCalled()
+		return client
+	}
+
+	test('closing writes them at once, and the write is not cancelled', async () => {
+		const client = await clientWithPendingChange()
+		client.close()
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
+		const [{ didCancel }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[0]
+		expect(didCancel()).toBe(false)
+	})
+
+	test('the page being left writes them at once', async () => {
+		const client = await clientWithPendingChange()
+		window.dispatchEvent(new Event('pagehide'))
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
+		client.close()
+	})
+})

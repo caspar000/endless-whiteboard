@@ -26,4 +26,18 @@ function fixtureAssetsPlugin(): Plugin {
 	}
 }
 
-export default defineConfig({ plugins: [react(), fixtureAssetsPlugin()] })
+export default defineConfig({
+	plugins: [react(), fixtureAssetsPlugin()],
+	// lifeboard.tsx is loaded through a path Vite can't see (main.tsx); scanning it up front means
+	// Lifeboard's dependencies are ready before the first load instead of re-optimised during it.
+	optimizeDeps: { entries: ['index.html', 'src/lifeboard.tsx'] },
+	resolve: {
+		// Lifeboard's packages import `tldraw`; in the lab that is the fork (phase 5).
+		alias: [
+			{
+				find: /^tldraw$/,
+				replacement: fileURLToPath(new URL('../../packages/canvas/src/index.ts', import.meta.url)),
+			},
+		],
+	},
+})

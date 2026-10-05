@@ -11,7 +11,6 @@ import { nearestMultiple } from '../hooks/useDPRMultiple'
 import { useEditor } from '../hooks/useEditor'
 import { useEditorComponents } from '../hooks/useEditorComponents'
 import { Matrix2d } from '../primitives/Matrix2d'
-import { toDomPrecision } from '../primitives/utils'
 import { OptionalErrorBoundary } from './ErrorBoundary'
 
 /*
@@ -103,6 +102,12 @@ export const Shape = track(function Shape({
 		[editor]
 	)
 
+	// A culled shape stays mounted and is only hidden, as in today's tldraw: what it draws (a table's
+	// value, a view's cards) is still in the page, and scrolling it back in costs no remount.
+	React.useLayoutEffect(() => {
+		setProperty('display', isCulled ? 'none' : 'block')
+	}, [isCulled, setProperty])
+
 	// Set the opacity of the container when the opacity changes
 	React.useLayoutEffect(() => {
 		setProperty('opacity', opacity + '')
@@ -123,21 +128,15 @@ export const Shape = track(function Shape({
 		<>
 			{util.backgroundComponent && (
 				<ShapeWrapper ref={backgroundContainerRef} shape={shape} isBackground>
-					{!isCulled && (
-						<OptionalErrorBoundary fallback={ShapeErrorFallback} onError={annotateError}>
-							<InnerShapeBackground shape={shape} util={util} />
-						</OptionalErrorBoundary>
-					)}
+					<OptionalErrorBoundary fallback={ShapeErrorFallback} onError={annotateError}>
+						<InnerShapeBackground shape={shape} util={util} />
+					</OptionalErrorBoundary>
 				</ShapeWrapper>
 			)}
 			<ShapeWrapper ref={containerRef} shape={shape}>
-				{isCulled ? (
-					<CulledShape shape={shape} />
-				) : (
-					<OptionalErrorBoundary fallback={ShapeErrorFallback as any} onError={annotateError}>
-						<InnerShape shape={shape} util={util} />
-					</OptionalErrorBoundary>
-				)}
+				<OptionalErrorBoundary fallback={ShapeErrorFallback as any} onError={annotateError}>
+					<InnerShape shape={shape} util={util} />
+				</OptionalErrorBoundary>
 			</ShapeWrapper>
 		</>
 	)
@@ -164,25 +163,4 @@ const InnerShapeBackground = React.memo(
 		return useStateTracking('InnerShape:' + shape.type, () => util.backgroundComponent?.(shape))
 	},
 	(prev, next) => prev.shape.props === next.shape.props && prev.shape.meta === next.shape.meta
-)
-
-const CulledShape = React.memo(
-	function CulledShape<T extends TLUnknownShape>({ shape }: { shape: T }) {
-		const editor = useEditor()
-		const bounds = editor.getShapeGeometry(shape as unknown as TLShape).bounds
-
-		return (
-			<div
-				className="tl-shape__culled"
-				style={{
-					transform: `translate(${toDomPrecision(bounds.minX)}px, ${toDomPrecision(
-						bounds.minY
-					)}px)`,
-					width: Math.max(1, toDomPrecision(bounds.width)),
-					height: Math.max(1, toDomPrecision(bounds.height)),
-				}}
-			/>
-		)
-	},
-	() => true
 )

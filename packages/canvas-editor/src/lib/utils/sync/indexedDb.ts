@@ -147,7 +147,8 @@ export async function storeChangesInIndexedDb({
 				} satisfies SessionStateSnapshotRow,
 				sessionId
 			)
-		} else if (sessionStateSnapshot || sessionId) {
+		} else if (sessionStateSnapshot) {
+			// No snapshot is fine: the first write can come before the editor has made its session.
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 
@@ -197,7 +198,8 @@ export async function storeSnapshotInIndexedDb({
 				} satisfies SessionStateSnapshotRow,
 				sessionId
 			)
-		} else if (sessionStateSnapshot || sessionId) {
+		} else if (sessionStateSnapshot) {
+			// No snapshot is fine: the first write can come before the editor has made its session.
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 

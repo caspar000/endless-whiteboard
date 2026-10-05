@@ -118,14 +118,17 @@ export function menuCustom(
 	}
 }
 
-/** @public */
+/**
+ * A menu entry for an action or tool, or `null` when there is none: an app may remove actions (as
+ * Lifeboard removes `toggle-grid`), and every menu leaves out what is gone, as today's tldraw does.
+ *
+ * @public
+ */
 export function menuItem(
-	actionItem: TLUiActionItem | TLUiToolItem,
+	actionItem: TLUiActionItem | TLUiToolItem | undefined,
 	opts = {} as Partial<{ checked: boolean; disabled: boolean }>
-): TLUiMenuItem {
-	if (!actionItem) {
-		throw Error('No action item provided to menuItem')
-	}
+): TLUiMenuItem | null {
+	if (!actionItem) return null
 
 	if (!actionItem.label) {
 		throw Error("Trying to create menu item for action item that doesn't have a label")

@@ -641,13 +641,12 @@ test.describe('an arrow’s properties', () => {
 			})
 		})
 
-		// The label is tldraw's own element, drawn at the arrow's label position; the strip has to
+		// The label is the canvas's own element, drawn at the arrow's label position; the strip has to
 		// clear it. Same anchor, stacked — name on top, data underneath.
-		// tldraw's own label element: `RichTextLabel` renders `tl-text-label` on its wrapper, and the
-		// `data-hastext` attribute is what distinguishes a rendered label from the empty placeholder
-		// every arrow carries.
+		// The arrow's label element is `tl-arrow-label`, and the `data-hastext` attribute is what
+		// distinguishes a rendered label from the empty placeholder every arrow carries.
 		const label = page
-			.locator('.lb-board-host:not([data-hidden]) .tl-text-label[data-hastext="true"]')
+			.locator('.lb-board-host:not([data-hidden]) .tl-arrow-label[data-hastext="true"]')
 			.first()
 		await expect(label).toBeVisible()
 		const labelBox = (await label.boundingBox())!

@@ -113,15 +113,13 @@ test('when a client receives an announce with a newer schema version shortly aft
 	expect(onLoadError).toHaveBeenCalled()
 })
 
-test('the first db write after a client connects is a full db overwrite', async () => {
+test('the first db write after a client connects is a full db overwrite, made as soon as it loads', async () => {
 	const { client } = testClient()
-	await tick()
-	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).not.toHaveBeenCalled()
 
-	client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' as IndexKey })])
+	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
@@ -173,6 +171,7 @@ describe('pending writes are not lost', () => {
 		await tick()
 		client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 		await tick()
+		jest.clearAllMocks()
 		client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' as IndexKey })])
 		expect(idb.storeChangesInIndexedDb).not.toHaveBeenCalled()
 		return client

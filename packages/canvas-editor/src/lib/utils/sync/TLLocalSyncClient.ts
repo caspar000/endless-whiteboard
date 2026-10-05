@@ -291,6 +291,9 @@ export class TLLocalSyncClient {
 				this.channel.close()
 			})
 			onLoad(this)
+			// The first write, a full one, at once rather than after the first edit: an opened board has
+			// its database from then on, as in today's tldraw (Lifeboard's board deletion relies on it).
+			this.persistIfNeeded()
 		} catch (e: any) {
 			this.debug('error loading data from store', e)
 			if (this.didDispose) return

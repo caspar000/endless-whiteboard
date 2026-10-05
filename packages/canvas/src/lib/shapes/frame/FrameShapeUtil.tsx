@@ -3,6 +3,7 @@ import {
 	TLTheme,
 	TLColorMode,
 	BaseBoxShapeUtil,
+	DefaultColorStyle,
 	Geometry2d,
 	Rectangle2d,
 	SVGContainer,
@@ -58,6 +59,15 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	static override migrations = frameShapeMigrations
 
 	override options: TLFrameShapeUtilOptions = { showColors: false }
+
+	/**
+	 * With `showColors`, `color` is the shared colour style, so the style panel and
+	 * `setStyleForSelectedShapes` reach it, as in today's tldraw. The validator is the same either
+	 * way, so the stored records don't change.
+	 */
+	static override propsForOptions(options: TLFrameShapeUtilOptions) {
+		return options.showColors ? { ...frameShapeProps, color: DefaultColorStyle } : undefined
+	}
 
 	/** The fill, stroke and heading colour a frame draws with, after its options. */
 	private paints(shape: TLFrameShape) {

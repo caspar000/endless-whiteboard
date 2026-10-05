@@ -4,6 +4,7 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { agentHostPlugin } from './vite/agentHost'
+import { forkAliases } from './vite/forkAliases'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
 	version: string
@@ -54,6 +55,7 @@ export default defineConfig({
 		// Writes stats.html on build so bundle growth is visible (§7).
 		visualizer({ filename: 'stats.html', gzipSize: true, template: 'treemap' }),
 	],
+	resolve: { alias: forkAliases },
 	build: {
 		target: 'es2022',
 		sourcemap: true,

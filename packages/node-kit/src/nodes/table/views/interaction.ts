@@ -112,26 +112,40 @@ interface HeldShape {
  *   means a card dropped on another lane — or half-hanging off the edge of one — stays put.
  */
 export function watchViewDragOut(editor: Editor): () => void {
-	let held: HeldShape[] = []
 	return react('lifeboard:view-drag-out', () => {
 		if (editor.inputs.getIsDragging()) {
 			// Recorded once, on the first frame of the drag. Re-reading it as the shapes move would compare
 			// each position against itself, and nothing would ever look like it had moved.
-			if (held.length) return
-			held = editor
-				.getSelectedShapeIds()
-				.map((id) => {
-					const shape = editor.getShape(id)
-					return shape ? { id, x: shape.x, y: shape.y } : null
-				})
-				.filter((entry): entry is HeldShape => entry !== null)
+			if (heldByEditor.get(editor)?.length) return
+			heldByEditor.set(
+				editor,
+				editor
+					.getSelectedShapeIds()
+					.map((id) => {
+						const shape = editor.getShape(id)
+						return shape ? { id, x: shape.x, y: shape.y } : null
+					})
+					.filter((entry): entry is HeldShape => entry !== null)
+			)
 			return
 		}
-		if (!held.length) return
-		const released = held
-		held = []
-		freeDraggedOutMembers(editor, released)
+		settleViewDragOut(editor)
 	})
+}
+
+/** The shapes a drag in progress picked up, with where they were. Per editor: every board has its own. */
+const heldByEditor = new WeakMap<Editor, HeldShape[]>()
+
+/**
+ * Judges a drag that has ended, once: frees the cards it took out of their view. Placement calls it
+ * before placing anything, because both wake when the drag ends and nothing orders two reactions;
+ * placement going first would put the card back in its lane before it was judged.
+ */
+export function settleViewDragOut(editor: Editor): void {
+	const released = heldByEditor.get(editor)
+	if (!released?.length || editor.inputs.getIsDragging()) return
+	heldByEditor.delete(editor)
+	freeDraggedOutMembers(editor, released)
 }
 
 /** Removes the lane property from every released shape whose gesture took it off its board. */

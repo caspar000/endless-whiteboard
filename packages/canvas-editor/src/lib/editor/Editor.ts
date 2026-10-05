@@ -111,6 +111,7 @@ import {
 } from '../utils/reordering/reordering'
 import { applyRotationToSnapshotShapes, getRotationSnapshot } from '../utils/rotation'
 import { DEFAULT_THEME, type TLColorMode, type TLTheme } from '../theme/theme'
+import { exportShapeFromDom } from '../utils/exportShapeFromDom'
 import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
 import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
@@ -293,6 +294,20 @@ export interface TLTextOptions {
 }
 
 /** @public */
+/** Boolean fields backed by signals: plain reads and writes, reactive for anything tracking them. */
+function reactiveFlags<K extends string>(names: readonly K[]): Record<K, boolean> {
+	const flags = {} as Record<K, boolean>
+	for (const name of names) {
+		const value = atom(`inputs.${name}`, false)
+		Object.defineProperty(flags, name, {
+			get: () => value.get(),
+			set: (next: boolean) => value.set(next),
+			enumerable: true,
+		})
+	}
+	return flags
+}
+
 export class Editor extends EventEmitter<TLEventMap> {
 	constructor({
 		store,
@@ -3840,9 +3855,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		// If the state is idle, then start the tick
 		if (this._cameraState.__unsafe__getWithoutCapture() === 'idle') {
-			this._lastUpdateRenderingBoundsTimestamp = now // don't render right away
+			// Upstream waited for the camera to stop before showing what came into view. A jump (zoom to
+			// fit, a link to a shape) then showed nothing new for a while, and what the app measures in
+			// those shapes landed late. Culled shapes stay mounted now, so showing them at once is cheap;
+			// a continuous pan still updates at most every CAMERA_MAX_RENDERING_INTERVAL.
+			this._lastUpdateRenderingBoundsTimestamp = now
 			this._cameraState.set('moving')
 			this.on('tick', this._decayCameraStateTimeout)
+			this.updateRenderingBounds()
 		} else {
 			if (now - this._lastUpdateRenderingBoundsTimestamp > CAMERA_MAX_RENDERING_INTERVAL) {
 				this.updateRenderingBounds()
@@ -9235,6 +9255,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 						backgroundSvgElement = outerElement
 					}
 
+					// A shape drawn in HTML with no export of its own: what it shows on the canvas.
+					if (!shapeSvgElement && !backgroundSvgElement) {
+						const fromDom = await exportShapeFromDom(this, shape, exportContext)
+						if (fromDom) {
+							shapeSvgElement = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+							shapeSvgElement.appendChild(fromDom)
+						}
+					}
+
 					if (!shapeSvgElement && !backgroundSvgElement) {
 						const bounds = this.getShapePageBounds(shape)!
 						const elm = window.document.createElementNS('http://www.w3.org/2000/svg', 'rect')
@@ -9317,67 +9346,64 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	inputs = {
-		/** The most recent pointer down's position in the current page space. */
-		originPagePoint: new Vec2d(),
-		/** The most recent pointer down's position in screen space. */
-		originScreenPoint: new Vec2d(),
-		/** The previous pointer position in the current page space. */
-		previousPagePoint: new Vec2d(),
-		/** The previous pointer position in screen space. */
-		previousScreenPoint: new Vec2d(),
-		/** The most recent pointer position in the current page space. */
-		currentPagePoint: new Vec2d(),
-		/** The most recent pointer position in screen space. */
-		currentScreenPoint: new Vec2d(),
-		/** A set containing the currently pressed keys. */
-		keys: new Set<string>(),
-		/** A set containing the currently pressed buttons. */
-		buttons: new Set<number>(),
-		/** Whether the input is from a pe. */
-		isPen: false,
-		/** Whether the shift key is currently pressed. */
-		shiftKey: false,
-		/** Whether the control or command key is currently pressed. */
-		ctrlKey: false,
-		/** Whether the alt or option key is currently pressed. */
-		altKey: false,
-		/** Whether the user is dragging. */
-		isDragging: false,
-		/** Whether the user is pointing. */
-		isPointing: false,
-		/** Whether the user is pinching. */
-		isPinching: false,
-		/** Whether the user is editing. */
-		isEditing: false,
-		/** Whether the user is panning. */
-		isPanning: false,
-		/** Velocity of mouse pointer, in pixels per millisecond */
-		pointerVelocity: new Vec2d(),
+	// The flags (`isDragging`, `shiftKey`, …) are signals behind plain fields: 2023 code reads and
+	// writes them as fields, and today's reactive readers (`react`, `useValue`) see them change.
+	inputs = Object.assign(
+		reactiveFlags([
+			'isPen',
+			'shiftKey',
+			'ctrlKey',
+			'altKey',
+			'isDragging',
+			'isPointing',
+			'isPinching',
+			'isEditing',
+			'isPanning',
+		] as const),
+		{
+			/** The most recent pointer down's position in the current page space. */
+			originPagePoint: new Vec2d(),
+			/** The most recent pointer down's position in screen space. */
+			originScreenPoint: new Vec2d(),
+			/** The previous pointer position in the current page space. */
+			previousPagePoint: new Vec2d(),
+			/** The previous pointer position in screen space. */
+			previousScreenPoint: new Vec2d(),
+			/** The most recent pointer position in the current page space. */
+			currentPagePoint: new Vec2d(),
+			/** The most recent pointer position in screen space. */
+			currentScreenPoint: new Vec2d(),
+			/** A set containing the currently pressed keys. */
+			keys: new Set<string>(),
+			/** A set containing the currently pressed buttons. */
+			buttons: new Set<number>(),
+			/** Velocity of mouse pointer, in pixels per millisecond */
+			pointerVelocity: new Vec2d(),
 
-		// Today's API reads inputs through getters. The screen points here are relative to the
-		// editor's container, as today's are; the fields above are relative to the window.
-		getOriginPagePoint: () => this.inputs.originPagePoint,
-		getOriginScreenPoint: () => this._toContainer(this.inputs.originScreenPoint),
-		getPreviousPagePoint: () => this.inputs.previousPagePoint,
-		getPreviousScreenPoint: () => this._toContainer(this.inputs.previousScreenPoint),
-		getCurrentPagePoint: () => this.inputs.currentPagePoint,
-		getCurrentScreenPoint: () => this._toContainer(this.inputs.currentScreenPoint),
-		getKeys: () => this.inputs.keys,
-		getButtons: () => this.inputs.buttons,
-		getIsPen: () => this.inputs.isPen,
-		getShiftKey: () => this.inputs.shiftKey,
-		getCtrlKey: () => this.inputs.ctrlKey,
-		getMetaKey: () => this.inputs.ctrlKey,
-		getAccelKey: () => this.inputs.ctrlKey,
-		getAltKey: () => this.inputs.altKey,
-		getIsDragging: () => this.inputs.isDragging,
-		getIsPointing: () => this.inputs.isPointing,
-		getIsPinching: () => this.inputs.isPinching,
-		getIsEditing: () => this.inputs.isEditing,
-		getIsPanning: () => this.inputs.isPanning,
-		getPointerVelocity: () => this.inputs.pointerVelocity,
-	}
+			// Today's API reads inputs through getters. The screen points here are relative to the
+			// editor's container, as today's are; the fields above are relative to the window.
+			getOriginPagePoint: () => this.inputs.originPagePoint,
+			getOriginScreenPoint: () => this._toContainer(this.inputs.originScreenPoint),
+			getPreviousPagePoint: () => this.inputs.previousPagePoint,
+			getPreviousScreenPoint: () => this._toContainer(this.inputs.previousScreenPoint),
+			getCurrentPagePoint: () => this.inputs.currentPagePoint,
+			getCurrentScreenPoint: () => this._toContainer(this.inputs.currentScreenPoint),
+			getKeys: () => this.inputs.keys,
+			getButtons: () => this.inputs.buttons,
+			getIsPen: () => this.inputs.isPen,
+			getShiftKey: () => this.inputs.shiftKey,
+			getCtrlKey: () => this.inputs.ctrlKey,
+			getMetaKey: () => this.inputs.ctrlKey,
+			getAccelKey: () => this.inputs.ctrlKey,
+			getAltKey: () => this.inputs.altKey,
+			getIsDragging: () => this.inputs.isDragging,
+			getIsPointing: () => this.inputs.isPointing,
+			getIsPinching: () => this.inputs.isPinching,
+			getIsEditing: () => this.inputs.isEditing,
+			getIsPanning: () => this.inputs.isPanning,
+			getPointerVelocity: () => this.inputs.pointerVelocity,
+		}
+	)
 
 	private _toContainer(point: Vec2d) {
 		const { screenBounds } = this.store.unsafeGetWithoutCapture(TLINSTANCE_ID)!

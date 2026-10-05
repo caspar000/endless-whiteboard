@@ -17,6 +17,7 @@ import {
 	useEditor,
 	useShallowArrayIdentity,
 	useShallowObjectIdentity,
+	TLStateNodeConstructor,
 } from '@lifeboard/canvas-editor'
 import { useCallback, useDebugValue, useLayoutEffect, useMemo, useRef } from 'react'
 import { TldrawHandles } from './canvas/TldrawHandles'
@@ -79,9 +80,9 @@ export function Tldraw(props: TldrawProps) {
 			}),
 			[components]
 		),
-		shapeUtils: useMemo(() => [...defaultShapeUtils, ...shapeUtils], [shapeUtils]),
-		bindingUtils: useMemo(() => [...defaultBindingUtils, ...bindingUtils], [bindingUtils]),
-		tools: useMemo(() => [...defaultTools, ...defaultShapeTools, ...tools], [tools]),
+		shapeUtils: useMemo(() => replacingDefaults('type', defaultShapeUtils, shapeUtils), [shapeUtils]),
+		bindingUtils: useMemo(() => replacingDefaults('type', defaultBindingUtils, bindingUtils), [bindingUtils]),
+		tools: useMemo(() => replacingDefaults<'id', TLStateNodeConstructor>('id', [...defaultTools, ...defaultShapeTools], tools), [tools]),
 	}
 
 	const assets = useDefaultEditorAssetsWithOverrides(rest.assetUrls)
@@ -113,6 +114,19 @@ export function Tldraw(props: TldrawProps) {
 	)
 }
 
+/**
+ * The defaults plus the app's own, where one of the app's takes the place of a default with the same
+ * `type` (utils) or `id` (tools), as today's tldraw does. Lifeboard replaces the frame util so.
+ */
+function replacingDefaults<K extends 'type' | 'id', T extends { [key in K]: string }>(
+	key: K,
+	defaults: readonly T[],
+	custom: readonly T[]
+): T[] {
+	const replaced = new Set(custom.map((item) => item[key]))
+	return [...defaults.filter((item) => !replaced.has(item[key])), ...custom]
+}
+
 /** The canvas, inside the context menu slot (or on its own when an app removes the menu). */
 function CanvasWithContextMenu({
 	ContextMenu,
@@ -126,7 +140,8 @@ function CanvasWithContextMenu({
 
 // We put these hooks into a component here so that they can run inside of the context provided by TldrawEditor.
 function InsideOfEditorContext({
-	maxImageDimension = 1000,
+	// As today's tldraw: only very large images are scaled down here; an app's asset store can do its own.
+	maxImageDimension = 5000,
 	maxAssetSize = 10 * 1024 * 1024, // 10mb
 	acceptedImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'],
 	acceptedVideoMimeTypes = ['video/mp4', 'video/quicktime'],

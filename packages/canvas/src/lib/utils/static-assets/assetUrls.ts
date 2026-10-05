@@ -1,6 +1,6 @@
+import { getAssetUrlsByImport } from '@lifeboard/canvas-assets/imports'
 import { RecursivePartial } from '@lifeboard/canvas-editor'
 import { useMemo } from 'react'
-import { version } from '../../ui/version'
 
 /** @public */
 export type TLEditorAssetUrls = {
@@ -12,15 +12,14 @@ export type TLEditorAssetUrls = {
 	}
 }
 
-/** @public */
-export let defaultEditorAssetUrls: TLEditorAssetUrls = {
-	fonts: {
-		draw: `https://unpkg.com/@tldraw/assets@${version}/fonts/Shantell_Sans-Normal-SemiBold.woff2`,
-		serif: `https://unpkg.com/@tldraw/assets@${version}/fonts/IBMPlexSerif-Medium.woff2`,
-		sansSerif: `https://unpkg.com/@tldraw/assets@${version}/fonts/IBMPlexSans-Medium.woff2`,
-		monospace: `https://unpkg.com/@tldraw/assets@${version}/fonts/IBMPlexMono-Medium.woff2`,
-	},
-}
+/**
+ * The fonts bundled with the app from `@lifeboard/canvas-assets`. Upstream pointed these at a CDN;
+ * the fork never loads anything from one, so a board works offline and nothing is fetched from
+ * tldraw's servers.
+ *
+ * @public
+ */
+export let defaultEditorAssetUrls: TLEditorAssetUrls = { fonts: getAssetUrlsByImport().fonts }
 
 /** @public */
 export function setDefaultEditorAssetUrls(assetUrls: TLEditorAssetUrls) {

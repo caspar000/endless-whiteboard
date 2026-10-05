@@ -27,4 +27,10 @@ export function useDarkMode() {
 			container.classList.remove('tl-theme__force-sRGB')
 		}
 	}, [editor, container, forceSrgb, isDarkMode])
+
+	// Today's tldraw marks a focused editor's container, and apps style and test against it.
+	const isFocused = useValue('is focused', () => editor.getInstanceState().isFocused, [editor])
+	React.useEffect(() => {
+		container.classList.toggle('tl-container__focused', isFocused)
+	}, [container, isFocused])
 }

@@ -34,6 +34,7 @@ and until it does, it must leave them untouched.
 | D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |
 | D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | done: read and kept (phase 2); upload returns `{ src, meta }` (phase 5) |
 | D10 | Document-scoped `user` records, `dash: 'none'`, comment records — not used by Lifeboard, must survive a load/save untouched | 5.0, 5.3 | Cutover (preserve only) | done (phase 2): load/save round trip of the reference boards |
+| D11 | Fill styles `fill` (full colour) and `lined-fill` (hatching over a fill) | 3.x | Cutover | doing (phase 7): `fill` drawn; `lined-fill` drawn as the pattern |
 
 ## E — Editor APIs Lifeboard calls
 
@@ -53,7 +54,7 @@ keep working).
 | E8 | `focus`, `blur`, `getIsFocused`, `markEventAsHandled`, `canEditShape` | Keyboard handling, tab switching, Quick Look | Cutover | done (phase 5) |
 | E9 | `onHandleDrag` on shape utils, `TLHandleDragInfo` | Shift-to-hide while drawing a relation | Cutover | done (phase 5) |
 | E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | done (phase 5) |
-| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | doing: `toImage` (phase 5); export still draws labels as plain text |
+| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | doing: `toImage` (phase 5); shapes drawn in HTML export their content (phase 7); text, note and geo labels still export as plain text |
 | E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | done (phase 5): default indicator from geometry; `getIndicatorPath` accepted, outline from geometry |
 | E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | done (phase 3–5) |
 | E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | done (phase 5) |

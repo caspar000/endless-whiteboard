@@ -49,8 +49,15 @@ export const ShapeFill = React.memo(function ShapeFill({ theme, d, color, fill }
 		case 'semi': {
 			return <path fill={theme.solid} d={d} />
 		}
-		case 'pattern': {
+		case 'pattern':
+		// Today's hatched fill. Drawn as the pattern until the fork has its own hatching (lines over
+		// a solid fill): close, and the shape stays filled rather than empty.
+		case 'lined-fill': {
 			return <PatternFill theme={theme} color={color} fill={fill} d={d} />
+		}
+		// Today's full-strength fill, in the colour itself rather than its light `semi` tint.
+		case 'fill': {
+			return <path fill={override.fillColor ?? theme[color].solid} d={d} />
 		}
 	}
 })
@@ -83,7 +90,7 @@ export function getShapeFillSvg({ d, color, fill, theme }: ShapeFillProps) {
 		return
 	}
 
-	if (fill === 'pattern') {
+	if (fill === 'pattern' || fill === 'lined-fill') {
 		const gEl = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		const path1El = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 		path1El.setAttribute('d', d)
@@ -107,9 +114,11 @@ export function getShapeFillSvg({ d, color, fill, theme }: ShapeFillProps) {
 			break
 		}
 		case 'solid': {
-			{
-				path.setAttribute('fill', theme[color].semi)
-			}
+			path.setAttribute('fill', theme[color].semi)
+			break
+		}
+		case 'fill': {
+			path.setAttribute('fill', theme[color].solid)
 			break
 		}
 	}

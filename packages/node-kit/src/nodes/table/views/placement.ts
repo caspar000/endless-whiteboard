@@ -7,6 +7,7 @@ import type { TableResult } from '../query'
 import type { TableNodeProps } from '../spec'
 import { getViewDefinition } from './index'
 import type { LaneMember } from './kanbanLayout'
+import { settleViewDragOut } from './interaction'
 import { hasViewHome, isPlaceableBy, readViewHome, viewHomePatch } from './ownership'
 
 /**
@@ -191,6 +192,8 @@ export function placementPatches(env: PlacementEnv): TLShapePartial[] {
  */
 export function placeViewMembers(editor: Editor): () => void {
 	return react('lifeboard:view-placement', () => {
+		// A drag that just ended may have taken cards out; they are judged before anything is placed.
+		settleViewDragOut(editor)
 		const shapes = editor.getCurrentPageShapes()
 		// The cheap gate, before touching the property registry or any query: the overwhelming majority of
 		// boards have no view that manages its own geometry, and this effect runs on every change to the

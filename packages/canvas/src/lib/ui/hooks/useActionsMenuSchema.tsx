@@ -2,6 +2,7 @@ import { Editor, useEditor, useValue } from '@lifeboard/canvas-editor'
 import React, { useMemo } from 'react'
 import {
 	TLUiMenuSchema,
+	compactMenuItems,
 	menuItem,
 	useAllowGroup,
 	useAllowUngroup,
@@ -55,7 +56,7 @@ export const ActionsMenuSchemaProvider = ({
 	const isZoomedTo100 = useValue('zoom is 1', () => editor.getZoomLevel() === 1, [editor])
 
 	const actionTLUiMenuSchema = useMemo<TLUiMenuSchema>(() => {
-		const results = [
+		const results = compactMenuItems([
 			menuItem(actions['align-left'], { disabled: !twoSelected }),
 			menuItem(actions['align-center-horizontal'], { disabled: !twoSelected }),
 			menuItem(actions['align-right'], { disabled: !twoSelected }),
@@ -82,7 +83,7 @@ export const ActionsMenuSchemaProvider = ({
 				: allowUngroup
 				? menuItem(actions['ungroup'])
 				: menuItem(actions['group'], { disabled: !twoSelected }),
-		]
+		])
 
 		if (overrides) {
 			return overrides(editor, results, { actions, oneSelected, twoSelected, threeSelected })

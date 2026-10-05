@@ -1,7 +1,7 @@
+import { getAssetUrlsByImport } from '@lifeboard/canvas-assets/imports'
 import { EMBED_DEFINITIONS, LANGUAGES, RecursivePartial } from '@lifeboard/canvas-editor'
-import { version } from '../ui/version'
 import { TLEditorAssetUrls, defaultEditorAssetUrls } from '../utils/static-assets/assetUrls'
-import { TLUiIconType, iconTypes } from './icon-types'
+import { TLUiIconType } from './icon-types'
 
 export type TLUiAssetUrls = TLEditorAssetUrls & {
 	icons: Record<TLUiIconType | Exclude<string, TLUiIconType>, string>
@@ -12,26 +12,22 @@ export type TLUiAssetUrls = TLEditorAssetUrls & {
 /** @public */
 export type TLUiAssetUrlOverrides = RecursivePartial<TLUiAssetUrls>
 
+const bundled = getAssetUrlsByImport()
+
+/**
+ * Icons, translations and embed icons bundled with the app, as the fonts are (see
+ * `defaultEditorAssetUrls`). Today's language list is longer than the 2023 translations; the
+ * languages without one get English.
+ */
 export let defaultUiAssetUrls: TLUiAssetUrls = {
+	...bundled,
 	...defaultEditorAssetUrls,
-	icons: Object.fromEntries(
-		iconTypes.map((name) => [
-			name,
-			`https://unpkg.com/@tldraw/assets@${version}/icons/icon/${name}.svg`,
-		])
-	) as Record<TLUiIconType, string>,
 	translations: Object.fromEntries(
-		LANGUAGES.map((lang) => [
-			lang.locale,
-			`https://unpkg.com/@tldraw/assets@${version}/translations/${lang.locale}.json`,
+		LANGUAGES.map(({ locale }) => [
+			locale,
+			(bundled.translations as Record<string, string | undefined>)[locale] ?? bundled.translations.en,
 		])
-	) as Record<(typeof LANGUAGES)[number]['locale'], string>,
-	embedIcons: Object.fromEntries(
-		EMBED_DEFINITIONS.map((def) => [
-			def.type,
-			`https://unpkg.com/@tldraw/assets@${version}/embed-icons/${def.type}.png`,
-		])
-	) as Record<(typeof EMBED_DEFINITIONS)[number]['type'], string>,
+	) as TLUiAssetUrls['translations'],
 }
 
 /** @internal */

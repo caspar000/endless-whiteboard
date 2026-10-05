@@ -119,16 +119,32 @@ export function useCanvasEvents() {
 
 			async function onDrop(e: React.DragEvent<Element>) {
 				preventDefault(e)
-				if (!e.dataTransfer?.files?.length) return
+				const data = e.dataTransfer
+				if (!data) return
+				const point = editor.screenToPage({ x: e.clientX, y: e.clientY })
 
-				const files = Array.from(e.dataTransfer.files)
+				if (data.files?.length) {
+					await editor.putExternalContent({
+						type: 'files',
+						files: Array.from(data.files),
+						point,
+						ignoreParent: false,
+					})
+					return
+				}
 
-				await editor.putExternalContent({
-					type: 'files',
-					files,
-					point: editor.screenToPage({ x: e.clientX, y: e.clientY }),
-					ignoreParent: false,
-				})
+				// A dropped link or text, as today's tldraw takes them; upstream took files only.
+				// `text/uri-list` is one URL per line, with `#` lines as comments.
+				const url = data
+					.getData('text/uri-list')
+					.split(/\r?\n/)
+					.find((line) => line && !line.startsWith('#'))
+				if (url) {
+					await editor.putExternalContent({ type: 'url', url, point })
+					return
+				}
+				const text = data.getData('text/plain')
+				if (text) await editor.putExternalContent({ type: 'text', text, point })
 			}
 
 			function onClick(e: React.MouseEvent) {

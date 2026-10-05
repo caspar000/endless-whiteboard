@@ -90,7 +90,8 @@ export async function getSvgAsImage(
 		)
 	)
 
-	if (!blob) return null
+	// The pixel density goes in a PNG chunk; JPEG and WebP have no such chunk, so they go as drawn.
+	if (!blob || type !== 'png') return blob
 
 	const view = new DataView(await blob.arrayBuffer())
 	return PngHelpers.setPhysChunk(view, effectiveScale, {

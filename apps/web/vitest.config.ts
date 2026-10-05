@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { forkAliases } from './vite/forkAliases'
 
 /**
  * Separate from `vite.config.ts` on purpose: unit tests have no use for the PWA plugin or the bundle
@@ -6,6 +7,7 @@ import { defineConfig } from 'vitest/config'
  * fails with "Playwright Test did not expect test.describe() to be called here").
  */
 export default defineConfig({
+	resolve: { alias: forkAliases },
 	test: {
 		include: ['src/**/*.test.ts'],
 		exclude: ['e2e/**', 'node_modules/**', 'dist/**'],

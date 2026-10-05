@@ -72,8 +72,15 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 				this.options = { ...this.options, ...options }
 			}
 		}
+		const props = (this as unknown as typeof ShapeUtil).propsForOptions?.(options)
+		if (props) (Configured as unknown as typeof ShapeUtil).props = props
 		return Configured as unknown as T
 	}
+	/**
+	 * Props that depend on `configure`'s options, such as a frame whose `color` becomes a style when it
+	 * shows colours. Without it, a configured util keeps the props of the util it configures.
+	 */
+	static propsForOptions?(options: object): RecordProps<TLUnknownShape> | undefined
 	static props?: RecordProps<TLUnknownShape>
 	// Props-only migrations, or a full record sequence (today's arrow shape ships one).
 	static migrations?: TLPropsMigrations | MigrationSequence

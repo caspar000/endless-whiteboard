@@ -350,11 +350,6 @@ input,
 	contain: size layout;
 }
 
-.tl-shape__culled {
-	position: relative;
-	background-color: var(--color-culled);
-}
-
 /* ---------------- Shape Containers ---------------- */
 
 .tl-svg-container {

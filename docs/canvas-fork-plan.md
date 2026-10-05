@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–6 done** (2026-10-05). Next: phase 7, cutover.
+Status: **Phases 0–6 done** (2026-10-05). Phase 7 under way: part A done (the app runs on the fork).
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -457,6 +457,50 @@ alongside them once phase 2 is done.
 **Size:** 2–4 weeks.
 
 **After this phase, deploying needs no licence key from anyone.**
+
+**As built, part A — the app on the fork through an alias:**
+
+- **The alias:** `apps/web/vite/forkAliases.ts` points `tldraw` and `tldraw/tldraw.css` at
+  `packages/canvas` in the Vite and Vitest configs. `LIFEBOARD_TLDRAW_5=1` turns it off, for
+  comparing against tldraw 5 while the cutover is under way. Types still come from tldraw 5 until
+  the imports are rewritten; `pnpm typecheck:on-fork apps/web` checks the app against the fork's.
+- **Result:** all 158 e2e tests pass against a production build on the fork (the first run passed
+  none, because the app didn't load), and so do the app's 259 unit tests.
+- **What the fork needed, each found by a failing test:**
+  - The app's utils and tools replace defaults of the same `type` or `id`, as in today's tldraw.
+    Lifeboard replaces the frame.
+  - Menus leave out actions an app removed, instead of throwing.
+  - Images draw as an `<img>` with their alt text.
+  - The focused editor's container carries `tl-container__focused`.
+  - The canvas takes dropped links and text, not only files.
+  - Off-screen shapes stay mounted and are hidden. Culling also updates when a camera move
+    starts, not 64 ms after it stops, so what comes into view shows at once.
+  - The local store writes a board's database as soon as it loads.
+  - `ShapeUtil.configure` can change a util's props (`propsForOptions`). A frame with
+    `showColors` gets `color` as a real colour style.
+  - Today's `fill` style is drawn; `lined-fill` is drawn as the pattern.
+  - JPEG and WebP exports no longer go through the PNG metadata step, which threw.
+  - The inputs' flags (`isDragging` and the rest) are signals, so reactions see them change.
+  - Icons, fonts and translations come from the bundled `@lifeboard/canvas-assets`, not a CDN.
+    The 13 languages the 2023 translations lack fall back to English.
+  - The default `maxImageDimension` is 5000, as today, so the app's own downscaling (2048) applies.
+- **Shapes drawn in HTML export their content (E11):** a shape with no `toSvg` (every Lifeboard
+  node) is exported from its element on the canvas: copied into a `<foreignObject>` with computed
+  styles inline and images and fonts embedded (`utils/exportShapeFromDom.ts`). Thumbnails and the
+  agent's view show the cards as they look. The demo board exports in about 0.3 s.
+- **In Lifeboard's own code:** the view placement pass and the drag-out check both wake when a
+  drag ends, and nothing orders two reactions. Placement now judges a finished drag-out first
+  (`settleViewDragOut`), so a card dragged out of a kanban is never snapped back before it's freed.
+  On tldraw 5 the order happened to be right.
+- **One test changed:** `relations.spec.ts` looked for tldraw 5's label element
+  (`.tl-text-label`); the fork's arrow label is `.tl-arrow-label`. The behaviour it checks is
+  unchanged.
+- **Still to do in this phase:**
+  - Rewrite the imports and remove the licensed packages. The app compiles against the fork
+    only through `typecheck:on-fork` today, because the fork can't compile under the app's
+    stricter settings (F5).
+  - Record `perf.spec.ts` numbers against tldraw 5.
+  - The hand checklist.
 
 ## Phase 8 onward — The backlog, at your pace
 

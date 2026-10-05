@@ -145,14 +145,15 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 				>
 					<div className="tl-image-container" style={containerStyle}>
 						{url ? (
-							<div
+							// An <img> rather than upstream's background image, so the alt text reaches
+							// assistive tech, as in today's tldraw.
+							<img
 								className="tl-image"
+								src={!shape.props.playing || reduceMotion ? staticFrameSrc : url}
+								alt={shape.props.altText}
 								style={{
 									// Flipped images (stored since tldraw 2.4) draw mirrored.
 									transform: `scale(${shape.props.flipX ? -1 : 1}, ${shape.props.flipY ? -1 : 1})`,
-									backgroundImage: `url(${
-										!shape.props.playing || reduceMotion ? staticFrameSrc : url
-									})`,
 								}}
 								draggable={false}
 							/>

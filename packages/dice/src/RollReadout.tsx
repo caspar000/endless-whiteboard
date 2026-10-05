@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useEditor, useValue } from 'tldraw'
+import { useEditor, useValue } from '@lifeboard/canvas'
 import { DieIcon, toneFor } from './DieIcon'
 import { clearRolls, type ActiveRoll } from './rolls'
 

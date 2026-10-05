@@ -1,22 +1,12 @@
 {
-	"extends": "../../packages/canvas/tsconfig.json",
+	// The workspace's settings, as the app's: the fork is read through its declarations
+	// (`pnpm types:canvas`), so the lab no longer compiles the fork's sources under upstream's settings.
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"types": ["node", "vite/client"],
+		"noEmit": true,
 		// canvas-sync imports with `.ts` specifiers, so Node can run the lab's sync server directly.
 		"allowImportingTsExtensions": true,
-		// `paths` replaces the base's, so the data packages' mappings are repeated; `tldraw` is the fork,
-		// for Lifeboard's packages (lifeboard.tsx).
-		"paths": {
-			"tldraw": ["../../packages/canvas/src/index.ts"],
-			"@tldraw/state": ["../../packages/canvas-editor/node_modules/@tldraw/state/src/index.ts"],
-			"@tldraw/state-react": ["../../packages/canvas-editor/node_modules/@tldraw/state-react/src/index.ts"],
-			"@tldraw/store": ["../../packages/canvas-editor/node_modules/@tldraw/store/src/index.ts"],
-			"@tldraw/tlschema": ["../../packages/canvas-editor/node_modules/@tldraw/tlschema/src/index.ts"],
-			"@tldraw/utils": ["../../packages/canvas-editor/node_modules/@tldraw/utils/src/index.ts"],
-			"@tldraw/validate": ["../../packages/canvas-editor/node_modules/@tldraw/validate/src/index.ts"]
-		}
+		"types": ["node", "vite/client"]
 	},
-	"include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "sync-server.ts"],
-	// Loaded at run time only; see main.tsx.
-	"exclude": ["src/lifeboard.tsx"]
+	"include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "sync-server.ts"]
 }

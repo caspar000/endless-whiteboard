@@ -1,4 +1,4 @@
-import { atom } from 'tldraw'
+import { atom } from '@lifeboard/canvas'
 
 /**
  * The aura's look, as numbers — and as something you can drag.

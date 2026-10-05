@@ -12,7 +12,7 @@ import {
 	type NodeComponentProps,
 } from '@lifeboard/node-kit'
 import { memo } from 'react'
-import { useValue } from 'tldraw'
+import { useValue } from '@lifeboard/canvas'
 import { toggleTaskAt } from './tasks'
 import type { NoteNodeProps } from './definition'
 import { MarkdownView } from './MarkdownView'

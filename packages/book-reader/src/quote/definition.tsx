@@ -4,7 +4,7 @@ import {
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
 import { Quote } from 'lucide-react'
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { QuoteNodeComponent } from './QuoteNodeComponent'
 
 export const QUOTE_NODE_TYPE = 'node.quote'

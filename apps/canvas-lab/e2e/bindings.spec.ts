@@ -39,7 +39,10 @@ test('an arrow between two stickies follows them and goes with them', async ({ p
 	// Draw the arrow with the pointer, centre to centre.
 	const [from, to] = await run(
 		page,
-		(editor) => ['shape:one', 'shape:two'].map((id) => editor.pageToScreen(editor.getShapePageBounds(id).center)),
+		(editor) => {
+			const screen = (id: string) => editor.pageToScreen(editor.getShapePageBounds(id).center)
+			return [screen('shape:one'), screen('shape:two')] as const
+		},
 		null
 	)
 	await run(page, (editor) => editor.setCurrentTool('arrow'), null)

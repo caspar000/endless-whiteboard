@@ -8,7 +8,7 @@ import {
 	useToasts,
 	useTranslation,
 	type TLFilesExternalContent,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
 
 /**

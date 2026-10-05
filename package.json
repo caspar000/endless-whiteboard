@@ -8,13 +8,13 @@
     "agent:build": "pnpm --filter @lifeboard/mcp-server build && pnpm --filter @lifeboard/agent-host build",
     "build": "pnpm --filter @lifeboard/node-kit build && pnpm --filter @lifeboard/web build && pnpm --filter @lifeboard/server build",
     "agent": "pnpm agent:build && pnpm --filter @lifeboard/agent-host start",
-    "typecheck": "pnpm -r typecheck",
+    "prepare": "pnpm types:canvas",
+    "types:canvas": "pnpm --filter @lifeboard/canvas-editor build:types && pnpm --filter @lifeboard/canvas build:types",
+    "typecheck": "pnpm types:canvas && pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @lifeboard/web test:e2e",
     "lint": "pnpm -r --if-present lint",
     "server": "pnpm --filter @lifeboard/server start",
-    "check:licences": "node scripts/check-licences.mjs",
-    "test:on-fork": "node scripts/fork-suites/run.mjs",
-    "typecheck:on-fork": "node scripts/fork-suites/typecheck.mjs"
+    "check:licences": "node scripts/check-licences.mjs"
   }
 }

@@ -3,7 +3,7 @@ import '../extensions'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { STORE_MIGRATIONS } from '@lifeboard/schema'
-import { createTLStore, defaultBindingUtils, loadSnapshot, type TLStoreSnapshot } from 'tldraw'
+import { createTLStore, defaultBindingUtils, loadSnapshot, type TLStoreSnapshot } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from '../canvas/boardShapeUtils'
 

@@ -36,7 +36,7 @@ import {
 	type TLShape,
 	type TLShapeId,
 	type TLVideoShape,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { hashFromAssetSrc, assetSrcForHash, isManagedAssetSrc } from '../persistence/assetStore'
 import { sha256Hex } from '../persistence/hash'
 import {

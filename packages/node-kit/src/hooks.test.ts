@@ -8,7 +8,7 @@ import {
 	registerHooks,
 } from './hooks'
 import { clearNodeRegistry, setExtensionEnabled } from './registry'
-import type { Editor, TLShape } from 'tldraw'
+import type { Editor, TLShape } from '@lifeboard/canvas'
 
 const EDITOR = {} as Editor
 const SHAPE = { id: 'shape:a', type: 'node.markdown' } as unknown as TLShape

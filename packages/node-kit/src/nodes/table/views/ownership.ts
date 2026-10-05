@@ -1,4 +1,4 @@
-import { T, type TLShape, type TLShapePartial } from 'tldraw'
+import { T, type TLShape, type TLShapePartial } from '@lifeboard/canvas'
 import type { ShapeWithMeta } from '../../../properties/values'
 
 /**

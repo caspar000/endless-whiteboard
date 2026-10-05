@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { stopEventPropagation, useValue } from 'tldraw'
+import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { NodeEditorPopover } from '../../NodeEditorPopover'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { NodeComponentProps } from '../../registry'

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useEditor, useValue } from 'tldraw'
+import { useEditor, useValue } from '@lifeboard/canvas'
 import {
 	closeQuickLook,
 	getQuickLook,

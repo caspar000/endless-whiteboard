@@ -1,4 +1,4 @@
-import { T, type Editor, type TLShape, type TLShapePartial } from 'tldraw'
+import { T, type Editor, type TLShape, type TLShapePartial } from '@lifeboard/canvas'
 import {
 	SUMMARY_OPS,
 	tableSourceValidator,

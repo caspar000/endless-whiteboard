@@ -1,4 +1,4 @@
-import { createComputedCache, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { createComputedCache, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { getCurrentRates, mergeRates, type ManualRates } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import { EMPTY_EDGE_INDEX } from '../../edges'

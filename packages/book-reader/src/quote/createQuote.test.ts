@@ -1,5 +1,5 @@
 import { isHiddenRelation, setAssetBridge } from '@lifeboard/node-kit'
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addQuoteToBoard } from './createQuote'
 

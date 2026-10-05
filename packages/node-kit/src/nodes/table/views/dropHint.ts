@@ -1,4 +1,4 @@
-import { atom } from 'tldraw'
+import { atom } from '@lifeboard/canvas'
 
 /**
  * Which lane of which view is lit up while a drag hovers over it.

@@ -1,6 +1,6 @@
 import '../extensions'
 import { createBoardSchema, STORE_MIGRATIONS } from '@lifeboard/schema'
-import { createTLSchemaFromUtils, defaultBindingUtils } from 'tldraw'
+import { createTLSchemaFromUtils, defaultBindingUtils } from '@lifeboard/canvas'
 import { expect, it } from 'vitest'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 

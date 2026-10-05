@@ -2,7 +2,7 @@ import { memo, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
-import { useImageOrVideoAsset, type TLAssetId } from 'tldraw'
+import { useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
 
 /**
  * Rendered markdown. `react-markdown` builds React elements rather than assigning `innerHTML`, and

@@ -1,5 +1,5 @@
 import { createNodeShape, createProperty, updateShapeProperties } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { ActiveRoll } from '../rolls'
 import { ROLL_NODE_TYPE, rollNodeDefinition } from './definition'
 import { encodeDice } from './encode'

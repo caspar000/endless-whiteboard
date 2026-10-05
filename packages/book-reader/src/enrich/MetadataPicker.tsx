@@ -1,7 +1,7 @@
 import { NodeEditorPopover, type NodeShape } from '@lifeboard/node-kit'
 import { Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { BookNodeProps } from '../definition'
 import { applyMatch } from './applyMatch'
 import { closeEnrich } from './enrichTarget'

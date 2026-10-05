@@ -1,5 +1,5 @@
 import { setBoardBridge, type BoardBridge, type BoardSummary } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { BoardMeta } from '../boards/boardIndex'
 
 /**

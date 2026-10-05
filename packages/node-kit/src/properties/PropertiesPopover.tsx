@@ -1,6 +1,6 @@
 import { Eye, EyeOff, GripVertical } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useValue, type Editor, type TLShape } from 'tldraw'
+import { useValue, type Editor, type TLShape } from '@lifeboard/canvas'
 import { CollectionEditor } from '../collections/CollectionEditor'
 import { readCollection } from '../collections/spec'
 import { NodeEditorPopover } from '../NodeEditorPopover'

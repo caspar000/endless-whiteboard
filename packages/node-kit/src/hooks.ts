@@ -1,4 +1,4 @@
-import type { Editor, TLShape } from 'tldraw'
+import type { Editor, TLShape } from '@lifeboard/canvas'
 import { readShapeProperties } from './properties/values'
 import type { PropertyValue } from './properties/types'
 import { isExtensionEnabled } from './registry'

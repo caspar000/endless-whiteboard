@@ -1,4 +1,4 @@
-import { BaseBoxShapeTool, type TLStateNodeConstructor } from 'tldraw'
+import { BaseBoxShapeTool, type TLStateNodeConstructor } from '@lifeboard/canvas'
 import { getNodeDefinitions } from '@lifeboard/node-kit'
 
 /**

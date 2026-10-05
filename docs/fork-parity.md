@@ -175,4 +175,4 @@ not ship.
 | F2 | The error screen links to tldraw's GitHub issues and Discord (`DefaultErrorFallback.tsx`) | Cutover | todo |
 | F3 | Three translation strings say "tldraw" (the `.tldr` file open/save messages) | Cutover | todo |
 | F4 | The 2023 data packages need a two-line pnpm patch for today's TypeScript (`patches/@tldraw__utils@2.0.0-alpha.19.patch`); goes away with them in phase 2 | Phase 2 | todo |
-| F5 | The fork compiles with upstream's looser settings, not the workspace's (`noUncheckedIndexedAccess`, `noImplicitOverride`, `noImplicitReturns` off) | Backlog | todo |
+| F5 | The fork compiles with upstream's looser settings, not the workspace's (`noUncheckedIndexedAccess`, `noImplicitOverride`, `noImplicitReturns` off) | Backlog | doing: consumers compile against the fork's declarations (phase 7), so this no longer blocks them; about 1,800 errors to fix in the fork itself |

@@ -1,4 +1,4 @@
-import { useValue } from 'tldraw'
+import { useValue } from '@lifeboard/canvas'
 import { dateGroupProperty } from '../spec'
 import {
 	CALENDAR_METRICS,

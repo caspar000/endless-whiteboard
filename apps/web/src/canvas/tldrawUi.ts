@@ -1,4 +1,4 @@
-import type { Editor, TLUiActionsContextType, TLUiToolsContextType } from 'tldraw'
+import type { Editor, TLUiActionsContextType, TLUiToolsContextType } from '@lifeboard/canvas'
 
 /**
  * tldraw's own actions and tools, reachable from outside its React context.

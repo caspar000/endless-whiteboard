@@ -1,4 +1,4 @@
-import { Arc2d, Edge2d, Group2d, Polyline2d, Rectangle2d, Vec } from 'tldraw'
+import { Arc2d, Edge2d, Group2d, Polyline2d, Rectangle2d, Vec } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import { arrowStripAnchor } from './arrowAnchor'
 

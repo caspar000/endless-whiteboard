@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useEditor } from 'tldraw'
+import { useEditor } from '@lifeboard/canvas'
 import { DieIcon } from './DieIcon'
 import type { Hand } from './hand'
 import { DIE_KINDS } from './kinds'

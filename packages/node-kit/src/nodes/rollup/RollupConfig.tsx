@@ -1,4 +1,4 @@
-import { useValue, type Editor } from 'tldraw'
+import { useValue, type Editor } from '@lifeboard/canvas'
 import { listValuesOf } from '../../facts'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import { isListType, isNumericType } from '../../properties/types'

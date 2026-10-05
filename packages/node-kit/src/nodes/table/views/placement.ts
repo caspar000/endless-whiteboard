@@ -1,4 +1,4 @@
-import { react, type Editor, type TLShape, type TLShapeId, type TLShapePartial } from 'tldraw'
+import { react, type Editor, type TLShape, type TLShapeId, type TLShapePartial } from '@lifeboard/canvas'
 import { propertyMap, readPropertyRegistry } from '../../../properties/schema'
 import type { PropertyDef } from '../../../properties/types'
 import { TABLE_NODE_TYPE } from '../definition'

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { stopEventPropagation, useValue, type Editor, type TLShapeId } from 'tldraw'
+import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 
 /**
  * The floating panel a node shows while it is being edited (the item field editor, the rollup config).

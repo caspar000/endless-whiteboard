@@ -14,7 +14,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react'
-import { useEditor, useValue } from 'tldraw'
+import { useEditor, useValue } from '@lifeboard/canvas'
 import { formatKbd, isMacPlatform } from '../app/paletteItems'
 import { isNodeMenuOpen, setNodeMenuOpen, toggleNodeMenu } from './nodeMenuState'
 import { toolIdForNodeType } from './nodeTools'

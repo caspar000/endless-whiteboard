@@ -1,5 +1,5 @@
 import { isHiddenRelation, isRelation, isRelationDrawn, readRelationView } from '@lifeboard/node-kit'
-import { react, type Editor, type TLShape } from 'tldraw'
+import { react, type Editor, type TLShape } from '@lifeboard/canvas'
 import { getTrace } from './tracing'
 
 /**

@@ -1,4 +1,4 @@
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 
 /**
  * A minimal stand-in for the handful of `Editor` methods the property layer touches.

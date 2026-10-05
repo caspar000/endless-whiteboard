@@ -39,8 +39,8 @@ import {
 	type TLStoreWithStatus,
 	type TldrawEditorStoreProps,
 	type TLTextOptions,
-} from 'tldraw'
-import 'tldraw/tldraw.css'
+} from '@lifeboard/canvas'
+import '@lifeboard/canvas/canvas.css'
 import { STORE_MIGRATIONS } from '@lifeboard/schema'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
 import { seedDemoBoard } from '../boards/demoBoard'

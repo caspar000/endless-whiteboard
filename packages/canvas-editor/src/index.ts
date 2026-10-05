@@ -1,4 +1,7 @@
-/// <reference path="./lib/es2025-base64.d.ts" />
+import './lib/es2025-base64'
+// Brings starter-kit's command typings (`toggleBold` and the rest) to anything compiled against the
+// fork's declarations.
+export type { StarterKitOptions } from '@tiptap/starter-kit'
 // Important! don't move this tlschema re-export to lib/index.ts, doing so causes esbuild to produce
 // incorrect output. https://github.com/evanw/esbuild/issues/1737
 

@@ -1,5 +1,5 @@
 import { collectAssetRefs, createBoardSchema } from '@lifeboard/schema'
-import { createTLStore, loadSnapshot, type Editor, type TLStoreSnapshot } from 'tldraw'
+import { createTLStore, loadSnapshot, type Editor, type TLStoreSnapshot } from '@lifeboard/canvas'
 import { waitForAssetUploads } from '../persistence/assetStore'
 import { clearPendingRestore, setPendingRestore, takePendingRestore } from '../persistence/pendingRestore'
 import {

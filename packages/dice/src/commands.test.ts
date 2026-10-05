@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CommandContext } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { diceCommandSource } from './commands'
 import { clearRolls, getActiveRoll } from './rolls'
 

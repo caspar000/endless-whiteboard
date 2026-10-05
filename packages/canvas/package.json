@@ -6,15 +6,19 @@
 	"license": "Apache-2.0",
 	"type": "module",
 	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"types": "./types/index.d.ts",
 	"exports": {
-		".": "./src/index.ts",
+		".": {
+			"types": "./types/index.d.ts",
+			"default": "./src/index.ts"
+		},
 		"./ui.css": "./src/lib/ui.css",
 		"./canvas.css": "./src/lib/canvas.css"
 	},
 	"scripts": {
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"test": "vitest run"
+		"test": "vitest run",
+		"build:types": "tsc -p tsconfig.types.json"
 	},
 	"dependencies": {
 		"@lifeboard/canvas-assets": "workspace:*",

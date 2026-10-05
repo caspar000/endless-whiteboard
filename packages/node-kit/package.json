@@ -16,8 +16,7 @@
 	"peerDependencies": {
 		"@tldraw/store": "5.5.2",
 		"react": "^19.0.0",
-		"react-dom": "^19.0.0",
-		"tldraw": "5.5.2"
+		"react-dom": "^19.0.0"
 	},
 	"devDependencies": {
 		"@tldraw/store": "5.5.2",
@@ -26,13 +25,13 @@
 		"@types/react-dom": "^19.2.3",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"tldraw": "5.5.2",
 		"typescript": "5.9.3",
 		"vitest": "^4.1.10"
 	},
 	"dependencies": {
 		"@codemirror/state": "^6.7.1",
 		"@codemirror/view": "^6.43.7",
+		"@lifeboard/canvas": "workspace:*",
 		"@tiptap/core": "^3.12.1",
 		"@tiptap/pm": "^3.12.1",
 		"lucide-react": "^1.28.0"

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import {
 	FIELD_TYPES,
 	coerceFieldValue,

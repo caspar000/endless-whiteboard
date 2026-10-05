@@ -11,7 +11,7 @@ import {
 	type TLHandleDragInfo,
 	type TLNoteShape,
 	type TLTextShape,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { FILL_COLOR_META, getNextFillColor, readFillColor } from './shapeFill'
 
 /**

@@ -18,7 +18,7 @@ import {
 	useValue,
 	type TLComponents,
 	type TLUiOverrides,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
 import { nativeToolKbds, nodeToolKbds } from './toolKeys'

@@ -7,7 +7,7 @@ import type {
 	RegisteredOperation,
 } from '@lifeboard/node-kit'
 import { requiredParams } from '@lifeboard/node-kit'
-import type { TLShapeId } from 'tldraw'
+import type { TLShapeId } from '@lifeboard/canvas'
 import type { BoardMeta } from '../boards/boardIndex'
 
 /**

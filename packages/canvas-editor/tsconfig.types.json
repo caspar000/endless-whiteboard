@@ -1,0 +1,16 @@
+{
+	// Declarations for the app to compile against (docs/fork-parity.md F5): the fork's sources only
+	// compile under upstream's looser settings, and a consumer with stricter ones can't check them.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"rootDir": "src",
+		"outDir": "types",
+		"incremental": true,
+		"tsBuildInfoFile": "types/.tsbuildinfo"
+	},
+	"include": ["src"],
+	"exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
+}

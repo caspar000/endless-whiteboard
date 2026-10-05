@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { CollectionStrip } from './collections/CollectionStrip'
 import { PropertyStrip } from './properties/PropertyStrip'
 import type { ShapeWithMeta } from './properties/values'

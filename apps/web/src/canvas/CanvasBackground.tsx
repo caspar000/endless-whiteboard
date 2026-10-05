@@ -1,4 +1,4 @@
-import { DefaultGrid, useEditor, useValue } from 'tldraw'
+import { DefaultGrid, useEditor, useValue } from '@lifeboard/canvas'
 import { useCanvasPrefs } from '../app/canvasPrefs'
 import { DottedPaper } from './DottedPaper'
 

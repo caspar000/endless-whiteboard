@@ -10,7 +10,7 @@
  * stored value stays exactly what was typed, in the currency it was typed in. Writing a converted
  * amount back would let a rate change silently rewrite someone's data.
  */
-import { atom } from 'tldraw'
+import { atom } from '@lifeboard/canvas'
 
 /** A set of rates expressed against one base — `rates[code]` is how many `code` one `base` buys. */
 export interface RateTable {

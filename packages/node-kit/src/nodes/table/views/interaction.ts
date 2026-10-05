@@ -1,4 +1,4 @@
-import { react, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { react, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { propertyMap, readPropertyRegistry } from '../../../properties/schema'
 import { emptyValueForType, type PropertyValue } from '../../../properties/types'
 import { updateShapeProperties } from '../../../properties/values'

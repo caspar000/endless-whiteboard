@@ -1,4 +1,4 @@
-import { createShapeId, toRichText, type Editor, type TLShapeId } from 'tldraw'
+import { createShapeId, toRichText, type Editor, type TLShapeId } from '@lifeboard/canvas'
 
 /**
  * tldraw's own shapes, offered to an agent beside the registered node types.

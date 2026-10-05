@@ -1,5 +1,5 @@
 import { NodeStrips, hasCollection, hasStripsBelow } from '@lifeboard/node-kit'
-import { useEditor, useValue, type Editor, type TLArrowShape, type TLShape } from 'tldraw'
+import { useEditor, useValue, type Editor, type TLArrowShape, type TLShape } from '@lifeboard/canvas'
 import { arrowStripAnchor } from './arrowAnchor'
 
 /**

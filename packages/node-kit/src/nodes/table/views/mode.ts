@@ -1,4 +1,4 @@
-import type { Editor, TLShapeId, TLShapePartial } from 'tldraw'
+import type { Editor, TLShapeId, TLShapePartial } from '@lifeboard/canvas'
 import { readPropertyRegistry } from '../../../properties/schema'
 import type { LayoutMode, TableNodeProps } from '../spec'
 import { getViewDefinition } from './index'

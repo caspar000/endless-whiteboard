@@ -67,7 +67,7 @@ function standInShapeUtils(snapshot: TLStoreSnapshot) {
 						</HTMLContainer>
 					)
 				}
-				indicator(shape: TLUnknownShape) {
+				override indicator(shape: TLUnknownShape) {
 					const { w, h } = size(shape)
 					return <rect width={w} height={h} />
 				}

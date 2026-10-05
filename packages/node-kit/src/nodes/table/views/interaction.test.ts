@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { TLShape } from 'tldraw'
+import type { TLShape } from '@lifeboard/canvas'
 import { fakeEditor, makeShape } from '../../../properties/fakeEditor'
 import type { PropertyDef } from '../../../properties/types'
 import { readShapeProperties } from '../../../properties/values'

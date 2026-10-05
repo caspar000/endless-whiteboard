@@ -1,4 +1,4 @@
-import { atom, type TLShapeId } from 'tldraw'
+import { atom, type TLShapeId } from '@lifeboard/canvas'
 
 /**
  * Which shape's properties panel is open, if any.

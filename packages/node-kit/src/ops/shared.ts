@@ -1,4 +1,4 @@
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { reportAgentActivity, type AgentActivityKind } from '../agentPresence'
 import { textPropFor } from '../nodes/insert'
 import type { OperationContext, JsonValue, ParamSpec } from '../operations'

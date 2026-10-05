@@ -3,7 +3,7 @@ import {
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
 import { Dices } from 'lucide-react'
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { RollCard } from './RollCard'
 
 export const ROLL_NODE_TYPE = 'node.roll'

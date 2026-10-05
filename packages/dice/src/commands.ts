@@ -1,5 +1,5 @@
 import type { Command, CommandContext, CommandSource } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { DieIcon } from './DieIcon'
 import { clearHand, getHand, loadDie } from './hand'
 import { DIE_KINDS, type DieKind } from './kinds'

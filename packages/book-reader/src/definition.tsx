@@ -4,7 +4,7 @@ import {
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
 import { BookOpen } from 'lucide-react'
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { BookNodeComponent } from './BookNodeComponent'
 
 export const BOOK_NODE_TYPE = 'node.book'

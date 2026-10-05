@@ -1,4 +1,4 @@
-import { createShapeId, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { createShapeId, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 
 /**
  * Drawing and undrawing a relation, and deciding whether it is drawn at all.

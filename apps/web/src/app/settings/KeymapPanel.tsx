@@ -41,7 +41,7 @@ export function KeymapPanel() {
 			<h2>Shortcuts</h2>
 			<p className="lb-settings__hint">
 				Press <em>Change</em> and then the keys you want. Anything the app does not claim is left to
-				the canvas, so tldraw&rsquo;s own editing shortcuts keep working.
+				the canvas, so its own editing shortcuts keep working.
 			</p>
 
 			<div className="lb-keymap">

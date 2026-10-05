@@ -1,4 +1,4 @@
-import { atom, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { atom, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import type { BoardBridge, BoardSummary } from '../boardBridge'
 import { getNativeShape } from '../nodes/native'
 import type { OperationContext } from '../operations'

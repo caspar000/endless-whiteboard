@@ -37,7 +37,7 @@ import {
 	useValue,
 	type Editor,
 	type StyleProp,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
 import { getNextFillColor, setNextFillColor } from './shapeFill'
 import { isTracing, toggleTracing } from './tracing'

@@ -1,4 +1,4 @@
-import type { TLShapeId } from 'tldraw'
+import type { TLShapeId } from '@lifeboard/canvas'
 import { EDGE_DIRECTIONS, edgesTouching, type Edge } from '../edges'
 import { getPageEdges } from '../nodes/rollup/engine'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'

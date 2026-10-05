@@ -5,7 +5,7 @@ import {
 	registerCommand,
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { INSERT_GROUP } from '../app/paletteItems'
 
 /**

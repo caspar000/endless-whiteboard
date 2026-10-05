@@ -18,7 +18,7 @@ import {
 	defaultShapeUtils,
 	type TLAnyShapeUtilConstructor,
 	type TLSchema,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 
 /**
  * Every extension this build ships, in registration order (which is also toolbar order).

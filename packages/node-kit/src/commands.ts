@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { isExtensionEnabled, subscribeToNodeDefinitions, type NodeToolbarIcon } from './registry'
 
 /**

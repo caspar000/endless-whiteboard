@@ -1,7 +1,8 @@
 # Self-hosting — implementation plan
 
-Status: **All four phases built, nothing deployed.** Everything below works against a local server;
-deploying waits on a tldraw licence key.
+Status: **All four phases built, nothing deployed.** Everything below works against a local server.
+Deploying waited on a tldraw licence key; since the canvas fork's cutover (`docs/canvas-fork-plan.md`,
+phase 7) none is needed, and deploying waits only on that phase finishing.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -22,7 +23,7 @@ Decisions taken before this was written:
 | Agent panel | **Not on the server.** Stays a local dev feature for now |
 | Apple Health | **Removed from main** and parked on `experiment/health` |
 | Backups | **No paid backups.** The existing "last backup" reminder covers server vaults and downloads the server's export |
-| tldraw licence | **A key is required to deploy at all.** On a public `https:` origin with no key, tldraw hides the canvas after 5 s, whoever uses it. Patching that out is not an option: tldraw is source-available, not open source, and its licence forbids it ("not to disable, change, or interfere with the Software's License Key enforcement"). Local development needs no key. A trial (100 days) or Hobby key when deploying |
+| tldraw licence | **Superseded 2026-10-05: the app runs on an Apache-2.0 fork and needs no key.** Before that: **a key is required to deploy at all.** On a public `https:` origin with no key, tldraw hides the canvas after 5 s, whoever uses it. Patching that out is not an option: tldraw is source-available, not open source, and its licence forbids it ("not to disable, change, or interfere with the Software's License Key enforcement"). Local development needs no key. A trial (100 days) or Hobby key when deploying |
 | Deploy | **Arcane, admin-configurator style.** Restart in Arcane fetches the deploy branch and rebuilds |
 
 ---

@@ -1,5 +1,5 @@
 import { optionHue } from '@lifeboard/node-kit'
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import { QUOTE_NODE_TYPE } from '../quote/definition'
 import { collectHighlights } from './highlights'

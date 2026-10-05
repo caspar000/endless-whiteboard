@@ -1,4 +1,4 @@
-import type { Editor, JsonValue } from 'tldraw'
+import type { Editor, JsonValue } from '@lifeboard/canvas'
 import { propertyDefValidator, propertyIdFromName, type PropertyDef } from './types'
 
 /**

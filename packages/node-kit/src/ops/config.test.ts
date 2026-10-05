@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearBoardBridge } from '../boardBridge'
 import { clearCommandRegistry } from '../commands'

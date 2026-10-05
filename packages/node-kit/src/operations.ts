@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { getBoardBridge, type BoardBridge } from './boardBridge'
 import { registerCommand, type Command, type CommandContext } from './commands'
 import { isExtensionEnabled, subscribeToNodeDefinitions } from './registry'

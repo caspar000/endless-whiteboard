@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { fieldValidator, type NodeField } from '../../fields'
 import { emptyPropsMigrations } from '../../migrations'
 import { TAGS_PROPERTY_ID, type PropertyValue } from '../../properties/types'

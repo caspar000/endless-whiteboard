@@ -1699,10 +1699,10 @@ test.describe('canvas grid', () => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
-		// Switching to tldraw's grid must not switch snapping on with it — that coupling is the whole
-		// reason the grid is drawn from the Background slot rather than tldraw's own.
+		// Switching to the canvas's own (Classic) grid must not switch snapping on with it — that coupling
+		// is the whole reason the grid is drawn from the Background slot rather than the canvas's own.
 		await openCanvasSettings(page)
-		await page.getByRole('button', { name: 'tldraw', exact: true }).click()
+		await page.getByRole('button', { name: 'Classic', exact: true }).click()
 		await openDemoBoard(page)
 		await expect(nativeGrid(page)).toHaveCount(1)
 		await expect(ourPaper(page)).toHaveCount(0)

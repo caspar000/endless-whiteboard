@@ -1,5 +1,5 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
-import type { Editor, TLShape } from 'tldraw'
+import type { Editor, TLShape } from '@lifeboard/canvas'
 import { BOOK_NODE_TYPE } from './definition'
 import { openEnrich } from './enrich/enrichTarget'
 import { BOOK_FILE_SUFFIXES } from './formats'

@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react'
-import { stopEventPropagation, useImageOrVideoAsset, type TLAssetId } from 'tldraw'
+import { stopEventPropagation, useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
 import { fieldKeyLabel, formatFieldValue } from '../../fields'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import type { ItemNodeProps } from './definition'

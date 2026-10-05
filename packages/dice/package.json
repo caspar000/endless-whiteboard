@@ -15,8 +15,7 @@
 	},
 	"peerDependencies": {
 		"react": "^19.0.0",
-		"react-dom": "^19.0.0",
-		"tldraw": "5.5.2"
+		"react-dom": "^19.0.0"
 	},
 	"devDependencies": {
 		"@tldraw/tlschema": "5.5.2",
@@ -25,14 +24,14 @@
 		"@types/three": "^0.185.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"tldraw": "5.5.2",
 		"typescript": "5.9.3",
 		"vitest": "^4.1.10"
 	},
 	"dependencies": {
+		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
+		"cannon-es": "^0.20.0",
 		"lucide-react": "^1.28.0",
-		"three": "^0.185.1",
-		"cannon-es": "^0.20.0"
+		"three": "^0.185.1"
 	}
 }

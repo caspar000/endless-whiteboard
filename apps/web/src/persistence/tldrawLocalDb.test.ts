@@ -1,6 +1,4 @@
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
 	TLDRAW_DB_NAME_INDEX_KEY,
@@ -12,28 +10,16 @@ import {
  * The integration test the plan asks for (§4.4, risk table: "tldraw internal DB naming (board
  * delete) → single wrapper function + integration test; exact-version pin").
  *
- * Rather than trusting a comment, this reads the constants back out of the installed tldraw source
- * and asserts ours still match. If a version bump renames them, this fails loudly — instead of
- * board deletion silently leaving canvas data on disk forever.
+ * Rather than trusting a comment, this reads the constants back out of the canvas fork's local
+ * persistence source and asserts ours still match. The fork kept tldraw's names so existing boards
+ * open; if a change renames them, this fails loudly instead of board deletion silently leaving
+ * canvas data on disk forever.
  */
 function readTldrawLocalIndexedDbSource(): string {
-	const require = createRequire(import.meta.url)
-	// `tldraw` blocks deep imports via "exports", so resolve the entry and walk to the editor's
-	// shipped `src/`, which is what we need to read the constants from.
-	const tldrawEntry = require.resolve('tldraw')
-	let dir = dirname(tldrawEntry)
-	for (let i = 0; i < 6; i++) {
-		try {
-			const candidate = join(
-				dir,
-				'node_modules/@tldraw/editor/src/lib/utils/sync/LocalIndexedDb.ts'
-			)
-			return readFileSync(candidate, 'utf8')
-		} catch {
-			dir = dirname(dir)
-		}
-	}
-	throw new Error('Could not locate @tldraw/editor LocalIndexedDb.ts to verify DB naming')
+	return readFileSync(
+		new URL('../../../../packages/canvas-editor/src/lib/utils/sync/indexedDb.ts', import.meta.url),
+		'utf8'
+	)
 }
 
 describe('tldraw local IndexedDB naming', () => {
@@ -59,7 +45,8 @@ describe('tldraw local IndexedDB naming', () => {
 		// boards — so it is pinned too.
 		expect(source).toContain("Records: 'records'")
 		expect(source).toContain("Schema: 'schema'")
-		expect(source).toMatch(/openDB<StoreName>\(storeId,\s*4\b/)
+		expect(source).toMatch(/const DB_VERSION = 4\b/)
+		expect(source).toMatch(/openDB<StoreName>\(storeId,\s*DB_VERSION\b/)
 	})
 
 	it('still stores the serialized schema under the key "schema"', () => {

@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { emptyPropsMigrations } from '../../migrations'
 import type { NodeDefinition } from '../../registry'
 import {

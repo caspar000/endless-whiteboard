@@ -1,4 +1,4 @@
-import { Group2d, Vec, type Geometry2d } from 'tldraw'
+import { Group2d, Vec, type Geometry2d } from '@lifeboard/canvas'
 
 /**
  * Where an arrow's properties hang from.

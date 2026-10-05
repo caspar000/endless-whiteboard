@@ -9,8 +9,8 @@ import {
 	type TableNodeProps,
 } from '@lifeboard/node-kit'
 import { NOTE_NODE_TYPE } from '@lifeboard/note-markdown'
-import type { Editor, TLShapeId, TLShapePartial } from 'tldraw'
-import { createShapeId } from 'tldraw'
+import type { Editor, TLShapeId, TLShapePartial } from '@lifeboard/canvas'
+import { createShapeId } from '@lifeboard/canvas'
 
 /**
  * The first-run demo board: the user's real shopping use case, reproduced so the product explains

@@ -1,5 +1,5 @@
 import { edgesTouching, getPageEdges, otherEnd, type EdgeIndex } from '@lifeboard/node-kit'
-import { atom, computed, react, type Computed, type Editor, type TLShapeId } from 'tldraw'
+import { atom, computed, react, type Computed, type Editor, type TLShapeId } from '@lifeboard/canvas'
 
 /**
  * The tracing lens: point at a shape and see what it is wired to.

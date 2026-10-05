@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useEditor } from 'tldraw'
+import { useEditor } from '@lifeboard/canvas'
 import { markRollSettled, type ActiveRoll } from './rolls'
 import type { Stage } from './three/stage'
 

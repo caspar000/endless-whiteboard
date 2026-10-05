@@ -1,5 +1,5 @@
 import type { AssetBridge } from '@lifeboard/node-kit'
-import type { TLAsset, TLAssetStore } from 'tldraw'
+import type { TLAsset, TLAssetStore } from '@lifeboard/canvas'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { downscaleImage } from './downscale'
 import { sha256Hex } from './hash'

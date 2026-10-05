@@ -1,4 +1,4 @@
-import type { Box, Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Box, Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { defineOperation, fail, ok, type RegisteredOperation } from '../operations'
 import {
 	RELATION_VIEWS,

@@ -13,7 +13,7 @@ import {
 	readShapeProperties,
 	readShapePropertyUnits,
 } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { EXPRESSION_PREFIX, splitSaveClause } from './paletteItems'
 
 /**

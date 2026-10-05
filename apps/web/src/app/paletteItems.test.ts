@@ -1,5 +1,5 @@
 import { defineOperation, type Command, type CommandContext } from '@lifeboard/node-kit'
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import type { BoardMeta } from '../boards/boardIndex'
 import {

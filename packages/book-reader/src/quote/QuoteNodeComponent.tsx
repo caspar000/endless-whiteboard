@@ -1,6 +1,6 @@
 import { NodeStrips, useAssetUrl, type NodeComponentProps } from '@lifeboard/node-kit'
 import { memo } from 'react'
-import { useValue, type TLShapeId } from 'tldraw'
+import { useValue, type TLShapeId } from '@lifeboard/canvas'
 import type { BookNodeProps } from '../definition'
 import { BookReaderOverlay } from '../reader/BookReaderOverlay'
 import type { QuoteNodeProps } from './definition'

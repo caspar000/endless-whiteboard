@@ -1,4 +1,4 @@
-import { useValue } from 'tldraw'
+import { useValue } from '@lifeboard/canvas'
 import { choiceStyle } from '../../../properties/options'
 import { EMPTY_GROUP_KEY } from '../query'
 import { getDropHint } from './dropHint'

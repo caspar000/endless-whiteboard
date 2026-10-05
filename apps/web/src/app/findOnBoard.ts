@@ -1,5 +1,5 @@
 import { getNodeDefinition, getPageFacts } from '@lifeboard/node-kit'
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import type { BoardShapeRef } from './paletteItems'
 
 /**

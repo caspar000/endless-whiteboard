@@ -3,7 +3,7 @@ import {
 	EDGE_DIRECTION_LABELS,
 	type EdgeDirection,
 } from '../../edges'
-import { useValue, type Editor } from 'tldraw'
+import { useValue, type Editor } from '@lifeboard/canvas'
 import { currenciesUsed, getCurrentRates, normaliseCurrency } from '../../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../../properties/schema'
 import type { PropertyDef } from '../../properties/types'

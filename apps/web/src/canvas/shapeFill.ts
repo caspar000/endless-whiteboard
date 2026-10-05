@@ -6,7 +6,7 @@ import {
 	type TLDefaultColorStyle,
 	type TLShape,
 	type TLShapePartial,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 
 /**
  * A shape's fill colour, independent of its border colour.

@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 
 /**
  * How much of the board's wiring is drawn — a property of the *board*, not of any relation on it.

@@ -4,7 +4,7 @@ import {
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
 import { NotepadText } from 'lucide-react'
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { MarkdownNodeComponent } from './MarkdownNodeComponent'
 
 /**

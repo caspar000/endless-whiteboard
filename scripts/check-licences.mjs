@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Lists every package in the lockfile that is under the tldraw licence, which forbids production use
- * without a key (docs/canvas-engine-options.md). Lifeboard is moving to an Apache-2.0 fork, and this is
- * what keeps licensed code from coming back once it has gone.
- *
- *   pnpm check:licences            report only
- *   pnpm check:licences --strict   exit 1 if anything is found (from the cutover phase on)
+ * Fails if any package in the lockfile is under the tldraw licence, which forbids production use
+ * without a key (docs/canvas-engine-options.md). Lifeboard runs on an Apache-2.0 fork since the
+ * cutover (docs/canvas-fork-plan.md, phase 7), and this keeps licensed code from coming back.
  *
  * The licence is read from each installed package, not assumed from its name: tldraw's data packages
  * (`@tldraw/store`, `tlschema`, `state`, `utils`, `validate`) are MIT, and the 2023 releases the fork
@@ -16,8 +13,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
-const strict = process.argv.includes('--strict')
 const OPEN = /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|MPL-2\.0|0BSD|BlueOak-1\.0\.0|CC0-1\.0|Unlicense|Python-2\.0|Zlib|MIT-0|OFL-1\.1|CC-BY-4\.0|\(MIT OR [^)]+\)|\([^)]+ OR MIT\))$/
+
+/** Under the tldraw licence by name, whether or not a copy is installed to read the licence from. */
+const LICENSED_NAMES = new Set(['tldraw', '@tldraw/editor', '@tldraw/driver', '@tldraw/sync', '@tldraw/sync-core'])
 
 /** `name@version` for every package the lockfile resolves. */
 function lockedPackages() {
@@ -49,6 +48,10 @@ for (const id of lockedPackages()) {
 	const name = id.slice(0, at)
 	const version = id.slice(at + 1)
 	const licence = licenceOf(name, version)
+	if (LICENSED_NAMES.has(name)) {
+		licensed.push(`${id}  (${licence ?? 'not installed'})`)
+		continue
+	}
 	if (licence === null || OPEN.test(licence)) continue
 	if (name === 'tldraw' || name.startsWith('@tldraw/')) licensed.push(`${id}  (${licence})`)
 	else unclear.push(`${id}  (${licence})`)
@@ -65,4 +68,4 @@ if (unclear.length) {
 	for (const line of unclear.sort()) console.log(`  ${line}`)
 }
 
-if (strict && licensed.length) process.exit(1)
+if (licensed.length) process.exit(1)

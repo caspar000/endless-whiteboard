@@ -5,7 +5,7 @@ import { Segmented, Toggle } from './controls'
 
 const GRID_STYLES: { value: GridStyle; label: string }[] = [
 	{ value: 'lifeboard', label: 'Lifeboard' },
-	{ value: 'native', label: 'tldraw' },
+	{ value: 'native', label: 'Classic' },
 ]
 
 /** The paper every board is drawn on: whether it shows, what it looks like, and whether it pulls. */

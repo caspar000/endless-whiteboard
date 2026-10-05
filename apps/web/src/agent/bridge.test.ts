@@ -7,7 +7,7 @@ import {
 	setBoardBridge,
 	type BoardBridge,
 } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleServerMessage, type BridgeDeps } from './bridge'
 import type { ClientMessage } from './protocol'

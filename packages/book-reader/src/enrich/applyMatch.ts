@@ -1,5 +1,5 @@
 import { createProperty, getAssetBridge, updateShapeProperties } from '@lifeboard/node-kit'
-import type { Editor, TLShapeId, TLShapePartial } from 'tldraw'
+import type { Editor, TLShapeId, TLShapePartial } from '@lifeboard/canvas'
 import { BOOK_NODE_TYPE } from '../definition'
 import { fetchCover, workUrl, type BookMatch } from './openLibrary'
 

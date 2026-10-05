@@ -1,5 +1,5 @@
 import { Table } from 'lucide-react'
-import { T, type TLShape } from 'tldraw'
+import { T, type TLShape } from '@lifeboard/canvas'
 import { defineNode, type Extension } from '../../extensions'
 import { createShapePropsMigrationIds, createShapePropsMigrationSequence } from '../../migrations'
 import type { NodeDefinition } from '../../registry'

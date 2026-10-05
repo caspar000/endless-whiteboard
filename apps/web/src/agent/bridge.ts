@@ -6,7 +6,7 @@ import {
 	subscribeToOperations,
 	type OperationResult,
 } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import {
 	applyChatEvent,
 	loadHistory,

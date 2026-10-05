@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { stopEventPropagation, useValue } from 'tldraw'
+import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { fieldKeyLabel } from '../../fields'
 import type { NodeComponentProps } from '../../registry'
 import { formatRollupValue } from './aggregate'

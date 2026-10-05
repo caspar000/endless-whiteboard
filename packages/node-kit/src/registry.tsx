@@ -13,7 +13,7 @@ import {
 	type TLShapePartial,
 	type TLShapeUtilCanBindOpts,
 	resizeBox,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import type { ComponentType } from 'react'
 import type { PropertyValue } from './properties/types'
 import type { ShapeProperties } from './properties/values'

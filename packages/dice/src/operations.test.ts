@@ -4,7 +4,7 @@ import {
 	runOperation,
 	type OperationContext,
 } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { diceExtension } from './extension'
 import { clearRolls, getActiveRoll } from './rolls'

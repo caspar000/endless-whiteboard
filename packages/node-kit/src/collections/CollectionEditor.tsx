@@ -1,4 +1,4 @@
-import type { Editor, TLShape } from 'tldraw'
+import type { Editor, TLShape } from '@lifeboard/canvas'
 import { summaryLabel, summaryOpsForType } from '../nodes/table/spec'
 import type { PropertyDef } from '../properties/types'
 import { defaultCollection, setCollection, type Collection } from './spec'

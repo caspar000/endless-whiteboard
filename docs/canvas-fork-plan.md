@@ -502,6 +502,30 @@ alongside them once phase 2 is done.
   - Record `perf.spec.ts` numbers against tldraw 5.
   - The hand checklist.
 
+**As built, part B — the imports rewritten, the licensed packages gone:**
+
+- **Imports:** `tldraw` became `@lifeboard/canvas` in 143 files, and `tldraw/tldraw.css` became
+  `@lifeboard/canvas/canvas.css`. `@tldraw/store` and the other MIT data packages stay as they are.
+  Every package that depended on `tldraw` now depends on `@lifeboard/canvas`.
+- **Declarations, for F5:** under the workspace's settings the fork has about 1,800 errors, too many
+  to fix as part of the cutover. Instead, `canvas-editor` and `canvas` emit declarations
+  (`tsconfig.types.json` → `types/`, about 7 s), and their `exports` give TypeScript the
+  declarations and Vite the sources. `pnpm types:canvas` builds them; the root `prepare` and
+  `typecheck` scripts run it. Two things had to reach consumers through the declarations: the ES2025
+  base64 globals tlschema uses (now a module with `declare global`), and starter-kit's TipTap
+  command typings (the editor re-exports one starter-kit type, which brings the augmentation along).
+- **What went away:** the Vite and Vitest aliases, `pnpm test:on-fork` and `typecheck:on-fork`
+  (`scripts/fork-suites/`), and the lab's variable import of its Lifeboard mode. The lab now
+  compiles under the workspace's strict settings, like the app.
+- **Licences:** no package under the tldraw licence is in the lockfile (`tldraw`, `@tldraw/editor`,
+  `@tldraw/driver`, `@tldraw/sync`, `@tldraw/sync-core`). `pnpm check:licences` now fails if one comes
+  back, by name as well as by the licence it declares.
+- **Wording:** the grid style once labelled "tldraw" is "Classic" (the value stored is unchanged), and
+  the keymap panel no longer names tldraw. The README, `docs/self-hosting-plan.md` and the deploy
+  `.env.example` no longer ask for a licence key.
+- **`tldrawLocalDb.test.ts`** pinned the database names by reading tldraw's own source in
+  `node_modules`; it reads the fork's `indexedDb.ts` now.
+
 ## Phase 8 onward — The backlog, at your pace
 
 Everything in `docs/fork-parity.md` marked **Backlog**: B, I, A, L, P, X and S4–S7. Each item is its

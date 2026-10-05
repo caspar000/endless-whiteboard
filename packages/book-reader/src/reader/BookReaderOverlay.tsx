@@ -27,7 +27,7 @@ import {
 	type Editor,
 	type TLShapeId,
 	type TLShapePartial,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { READING_PROGRESS_PROPERTY, type BookNodeProps } from '../definition'
 import { addQuoteToBoard, type NewQuote } from '../quote/createQuote'
 import { highlightProperty } from '../quote/definition'

@@ -1,4 +1,4 @@
-import type { Editor, JsonValue } from 'tldraw'
+import type { Editor, JsonValue } from '@lifeboard/canvas'
 import { fieldValidator, type NodeField } from '../../fields'
 import { toTemplateFields } from './definition'
 

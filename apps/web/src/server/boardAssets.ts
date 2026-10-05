@@ -1,5 +1,5 @@
 import { collectAssetRefs } from '@lifeboard/schema'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { missingServerAssets, uploadServerAsset } from './serverVault'
 

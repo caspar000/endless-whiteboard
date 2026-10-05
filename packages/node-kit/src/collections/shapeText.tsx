@@ -1,4 +1,4 @@
-import { useValue, type Editor, type TLShape, type TLShapeId } from 'tldraw'
+import { useValue, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { getPageEdges, getPageFacts } from '../nodes/rollup/engine'
 import { getCurrentRates } from '../properties/rates'
 import { propertyMap, readPropertyRegistry } from '../properties/schema'

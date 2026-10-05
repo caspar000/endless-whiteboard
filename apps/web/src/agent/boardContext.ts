@@ -1,5 +1,5 @@
 import { shapeLabel } from '@lifeboard/node-kit'
-import { react, type Editor } from 'tldraw'
+import { react, type Editor } from '@lifeboard/canvas'
 
 /**
  * What the agent is told about the board before it is told anything else.

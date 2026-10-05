@@ -1,4 +1,4 @@
-import type { Editor, JsonObject, TLShape, TLShapePartial } from 'tldraw'
+import type { Editor, JsonObject, TLShape, TLShapePartial } from '@lifeboard/canvas'
 import { parsePropertyRegistry, propertyMap, readPropertyRegistry } from './schema'
 import { propertyValueValidator, type PropertyDef, type PropertyValue } from './types'
 

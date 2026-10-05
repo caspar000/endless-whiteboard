@@ -4,7 +4,7 @@ import {
 	updateShapeProperties,
 	type FileImport,
 } from '@lifeboard/node-kit'
-import { createShapeId, type Editor, type TLShapeId } from 'tldraw'
+import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { BOOK_NODE_TYPE, bookNodeDefinition, type BookNodeProps } from './definition'
 import { extractBookInfo, type BookInfo } from './extract'
 import { BOOK_FILE_SUFFIXES, detectBookFormat, titleFromFileName, type BookFormat } from './formats'

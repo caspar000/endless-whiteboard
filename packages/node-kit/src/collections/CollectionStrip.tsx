@@ -1,4 +1,4 @@
-import { useValue, type Editor } from 'tldraw'
+import { useValue, type Editor } from '@lifeboard/canvas'
 import { getPageEdges, getPageFacts } from '../nodes/rollup/engine'
 import { formatCurrency, formatNumber } from '../properties/format'
 import { getCurrentRates } from '../properties/rates'

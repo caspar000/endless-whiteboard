@@ -6,7 +6,7 @@ import {
 	hasPendingAssetUploads,
 	waitForAssetUploads,
 } from './assetStore'
-import type { TLAsset } from 'tldraw'
+import type { TLAsset } from '@lifeboard/canvas'
 
 // `upload` downscales before hashing, which needs canvas/bitmap APIs this environment doesn't have.
 // Stubbed to pass the bytes through, because what's under test is the in-flight *bookkeeping*, not

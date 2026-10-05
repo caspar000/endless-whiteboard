@@ -1,6 +1,6 @@
 import { getAgentActivity, subscribeToAgentActivity, type AgentActivity } from '@lifeboard/node-kit'
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { useEditor, useValue } from 'tldraw'
+import { useEditor, useValue } from '@lifeboard/canvas'
 import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
 
 /**

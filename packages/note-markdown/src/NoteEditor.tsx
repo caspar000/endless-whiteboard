@@ -4,7 +4,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { expressionHelper, readPropertyRegistry } from '@lifeboard/node-kit'
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { stopEventPropagation, type Editor as TldrawEditor } from 'tldraw'
+import { stopEventPropagation, type Editor as TldrawEditor } from '@lifeboard/canvas'
 import { editingKeymap } from './editingKeymap'
 import { livePreview } from './livePreview'
 

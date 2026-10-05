@@ -27,7 +27,7 @@ import {
 	loadSnapshot,
 	type JsonObject,
 	type TLStoreSnapshot,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 
 /**
  * The §7 guardrail: "keep fixture snapshots from each release and a test that `loadSnapshot`s all of

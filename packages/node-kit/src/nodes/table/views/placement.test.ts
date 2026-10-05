@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { TLShape, TLShapePartial } from 'tldraw'
+import type { TLShape, TLShapePartial } from '@lifeboard/canvas'
 import type { PropertyDef } from '../../../properties/types'
 import { TABLE_NODE_TYPE } from '../definition'
 import { EMPTY_TABLE, type TableGroup, type TableResult } from '../query'

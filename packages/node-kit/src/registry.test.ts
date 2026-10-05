@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import {
 	ITEM_NODE_TYPE,
 	ROLLUP_NODE_TYPE,

@@ -9,7 +9,7 @@ import {
 	removeHealthNodesMigrations,
 	rollupsToTablesMigrations,
 } from '@lifeboard/node-kit'
-import { createTLStore, defaultBindingUtils, defaultShapeUtils, loadSnapshot, type TLStoreSnapshot } from 'tldraw'
+import { createTLStore, defaultBindingUtils, defaultShapeUtils, loadSnapshot, type TLStoreSnapshot } from '@lifeboard/canvas'
 
 const fixture = fileURLToPath(new URL('./fixtures/health/v0.1.0-health.json', import.meta.url))
 

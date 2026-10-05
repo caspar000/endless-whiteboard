@@ -1,4 +1,4 @@
-import { modulate, suffixSafeId, useEditor, useUniqueSafeId, useValue } from 'tldraw'
+import { modulate, suffixSafeId, useEditor, useUniqueSafeId, useValue } from '@lifeboard/canvas'
 
 /**
  * The default dotted-paper grid — the `lifeboard` grid style (see CanvasBackground.tsx).

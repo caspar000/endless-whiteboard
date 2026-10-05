@@ -1,4 +1,4 @@
-import type { T, TLShape, TLShapePartial } from 'tldraw'
+import type { T, TLShape, TLShapePartial } from '@lifeboard/canvas'
 import { collectionPatch, collectionValidator, readCollection, type Collection } from '../collections/spec'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'
 import { getNodeDefinition } from '../registry'

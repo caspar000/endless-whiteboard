@@ -1,7 +1,7 @@
 import { Highlighter, LayoutTemplate, Palette, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { stopEventPropagation } from 'tldraw'
+import { stopEventPropagation } from '@lifeboard/canvas'
 import { Colour, HuePicker, Range, Select, Switch } from './controls'
 import { BOOK_FONTS } from './fonts'
 import { typingElsewhere } from './keys'

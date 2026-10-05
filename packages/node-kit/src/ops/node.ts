@@ -1,4 +1,4 @@
-import type { TLShapeId, TLShapePartial } from 'tldraw'
+import type { TLShapeId, TLShapePartial } from '@lifeboard/canvas'
 import { createNodeShape, textPropFor } from '../nodes/insert'
 import { createNativeShape, getNativeShape, NATIVE_SHAPES } from '../nodes/native'
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'

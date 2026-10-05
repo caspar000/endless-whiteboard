@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 
 /**
  * A board as anything outside the app sees it. Declared structurally rather than imported from the

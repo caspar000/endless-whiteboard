@@ -1,4 +1,4 @@
-import { createShapeId, type Editor, type TLShapeId } from 'tldraw'
+import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import type { NodeDefinition } from '../registry'
 
 /**

@@ -4,7 +4,7 @@ import {
 	getAssetBridge,
 	updateShapeProperties,
 } from '@lifeboard/node-kit'
-import { createShapeId, type Editor, type TLShapeId } from 'tldraw'
+import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { highlightProperty, QUOTE_MIN_HEIGHT, QUOTE_NODE_TYPE, type HighlightTag } from './definition'
 
 /** Gap between the book and the column of quotes taken from it. */

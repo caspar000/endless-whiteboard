@@ -1,4 +1,4 @@
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
 
 /**
  * Where the agent is working, so the board can show it.

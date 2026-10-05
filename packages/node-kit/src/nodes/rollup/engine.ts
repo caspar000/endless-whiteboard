@@ -5,7 +5,7 @@ import {
 	type Editor,
 	type TLShape,
 	type TLShapeId,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import {
 	areEdgeIndexesEqual,
 	buildEdgeIndex,

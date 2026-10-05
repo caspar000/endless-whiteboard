@@ -1,4 +1,4 @@
-import { useValue, type Editor } from 'tldraw'
+import { useValue, type Editor } from '@lifeboard/canvas'
 import { formatPropertyValue, numericPropertyValue } from './format'
 import { linkHref } from './link'
 import { choiceStyle } from './options'

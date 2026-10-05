@@ -1,4 +1,4 @@
-import type { TLShape } from 'tldraw'
+import type { TLShape } from '@lifeboard/canvas'
 import type { Command, CommandContext } from '../../../commands'
 import { getViewDefinitions } from './index'
 import { setViewMode } from './mode'

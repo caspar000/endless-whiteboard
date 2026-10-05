@@ -1,4 +1,4 @@
-import { createShapePropsMigrationSequence, type TLPropsMigrations } from 'tldraw'
+import { createShapePropsMigrationSequence, type TLPropsMigrations } from '@lifeboard/canvas'
 
 /**
  * Every node ships a migration sequence from v1, even when empty (§7). An empty sequence is not
@@ -15,4 +15,4 @@ export function emptyPropsMigrations(): TLPropsMigrations {
 	return createShapePropsMigrationSequence({ sequence: [] })
 }
 
-export { createShapePropsMigrationIds, createShapePropsMigrationSequence } from 'tldraw'
+export { createShapePropsMigrationIds, createShapePropsMigrationSequence } from '@lifeboard/canvas'

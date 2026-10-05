@@ -1,5 +1,5 @@
 import type { CommandContext } from '@lifeboard/node-kit'
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import { bookCommands } from './commands'
 import { BOOK_NODE_TYPE } from './definition'

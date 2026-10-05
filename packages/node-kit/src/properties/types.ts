@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 
 /**
  * The property type system — the replacement for the old per-node "field" system.

@@ -28,8 +28,11 @@ const shapes = (page: Page) =>
 async function drag(page: Page, tool: string, from: { x: number; y: number }, to: { x: number; y: number }) {
 	await page.evaluate((t) => (window as unknown as { editor: Editor }).editor.setCurrentTool(t), tool)
 	const [a, b] = await page.evaluate(
-		([p, q]) => [p, q].map((pt) => (window as unknown as { editor: Editor }).editor.pageToScreen(pt)),
-		[from, to]
+		(points) => {
+			const { editor } = window as unknown as { editor: Editor }
+			return [editor.pageToScreen(points.from), editor.pageToScreen(points.to)] as const
+		},
+		{ from, to }
 	)
 	await page.mouse.move(a.x, a.y)
 	await page.mouse.down()
@@ -63,7 +66,8 @@ test('draws, connects, edits and survives a reload', async ({ page }) => {
 	const [rect, note] = await page.evaluate(() => {
 		const editor = (window as unknown as { editor: Editor }).editor
 		const all = editor.getCurrentPageShapes()
-		return ['geo', 'note'].map((t) => editor.getShapePageBounds(all.find((s) => s.type === t)!.id).center)
+		const centre = (type: string) => editor.getShapePageBounds(all.find((s) => s.type === type)!.id).center
+		return [centre('geo'), centre('note')] as const
 	})
 	await drag(page, 'arrow', rect, note)
 	expect(await shapes(page)).toEqual(['arrow', 'draw', 'geo', 'note', 'text'])

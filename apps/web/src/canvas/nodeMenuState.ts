@@ -1,4 +1,4 @@
-import { atom, type Atom, type Editor } from 'tldraw'
+import { atom, type Atom, type Editor } from '@lifeboard/canvas'
 
 /**
  * Whether the dock's node picker is open — the searchable grid of node types (see `NodeMenu.tsx`).

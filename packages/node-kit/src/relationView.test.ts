@@ -1,4 +1,4 @@
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import {
 	DEFAULT_RELATION_VIEW,

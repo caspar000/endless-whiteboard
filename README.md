@@ -123,7 +123,9 @@ packages/canvas/          @lifeboard/canvas — the fork's shapes, tools and UI
 packages/canvas-assets/   @lifeboard/canvas-assets — the fork's icons, fonts and translations
 apps/canvas-lab/          the fork on its own, where each phase of docs/canvas-fork-plan.md is checked
 deploy/darkroomlab/       the stack that runs apps/server on the Hetzner box (Arcane + Caddy)
-docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
+docs/canvas-fork-plan.md  the fork's plan, phase by phase, with what was built
+docs/fork-parity.md       what the fork has and lacks against tldraw 5
+docs/tldraw-api-notes.md  the tldraw API surface the app was written against (5.5.2)
 ```
 
 `node-kit` is a package, not a folder, because it is exactly the code that becomes the plugin SDK,
@@ -464,16 +466,20 @@ id needs a store-scoped migration rewriting every record, for a cosmetic gain. `
 loads a real snapshot from every released schema and fails if a migration is missing — verified to
 catch it. See `src/persistence/fixtures/README.md` for how to add a fixture.
 
-**tldraw is pinned to an exact version (5.5.2).** Two files depend on its internals — the local
-IndexedDB naming in `persistence/tldrawLocalDb.ts` (pinned by a test that reads tldraw's own source)
-and the API notes in `docs/`. Re-read both before upgrading.
+**The canvas is our fork, `@lifeboard/canvas`:** tldraw 2.0.0-alpha.19 (Apache-2.0) moved onto
+today's MIT data packages (`docs/canvas-fork-plan.md`). It keeps tldraw's names (`Editor`, `ShapeUtil`,
+`<Tldraw>`), so "tldraw" in this README means the fork; `docs/fork-parity.md` lists what it still lacks
+against tldraw 5. The app compiles against the fork's declarations, not its sources, because those use
+upstream's looser compiler settings: `pnpm types:canvas` builds them, and runs on install and before
+`pnpm typecheck`. The local IndexedDB naming in `persistence/tldrawLocalDb.ts` is pinned by a test that
+reads the fork's persistence source.
 
 **Aggregations must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero
 re-aggregations during a drag on a 500-node board. In dev, a badge in the bottom-left shows the
 counters live. If that number starts climbing during drags, the facts `isEqual` stage has been broken.
 
-**tldraw persists on a 350 ms throttle and does not flush on unload.** Two consequences the app works
-around: leaving a board keeps its editor mounted briefly so the write lands (`DRAIN_MS` in
+**The canvas persists on a 350 ms throttle.** It flushes when the page is left or hidden, but a mounted
+editor holds the last edit in memory for up to that long. Two consequences the app works around: leaving a board keeps its editor mounted briefly so the write lands (`DRAIN_MS` in
 `app/App.tsx`), and backup export waits out the window before reading from disk. Both are load-bearing
 — removing either silently loses the last edit.
 
@@ -550,6 +556,5 @@ is in — and now covers nodes, commands, query-driven commands, operations, que
 content imports, shape actions, canvas overlays and an extension's own settings panel; sandboxing and
 a placeholder shape util for uninstalled plugins are what remain).
 
-A tldraw licence key is still needed before any production deploy: without one, tldraw hides the
-canvas 5 seconds after load on a public domain. A free hobby key keeps the "made with tldraw"
-watermark. The key goes in `VITE_TLDRAW_LICENSE_KEY` at build time.
+No licence key is needed to deploy: the canvas is the Apache-2.0 fork, and no package under the
+tldraw licence is installed. `pnpm check:licences` fails if one ever comes back.

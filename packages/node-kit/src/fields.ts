@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { coercePropertyValue, formatPropertyValue, numericPropertyValue } from './properties/format'
 import {
 	nameFromPropertyKey,

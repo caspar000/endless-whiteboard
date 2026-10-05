@@ -4,6 +4,8 @@ import {
 	TLColorMode,
 	BaseBoxShapeUtil,
 	DefaultColorStyle,
+	RecordProps,
+	TLUnknownShape,
 	Geometry2d,
 	Rectangle2d,
 	SVGContainer,
@@ -65,7 +67,9 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	 * `setStyleForSelectedShapes` reach it, as in today's tldraw. The validator is the same either
 	 * way, so the stored records don't change.
 	 */
-	static override propsForOptions(options: TLFrameShapeUtilOptions) {
+	static override propsForOptions(
+		options: TLFrameShapeUtilOptions
+	): RecordProps<TLUnknownShape> | undefined {
 		return options.showColors ? { ...frameShapeProps, color: DefaultColorStyle } : undefined
 	}
 

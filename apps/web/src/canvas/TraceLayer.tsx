@@ -5,7 +5,7 @@ import {
 	useValue,
 	type Editor,
 	type TLShapeWrapperProps,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { loopOutline, tracedOutlines, type TracedOutlines } from './auraGeometry'
 import { useAuraPhase } from './auraPhase'
 import { getAuraPreset, type AuraPreset } from './auraPreset'

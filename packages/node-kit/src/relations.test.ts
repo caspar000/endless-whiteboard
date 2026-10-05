@@ -1,4 +1,4 @@
-import type { Editor, TLShape, TLShapeId } from 'tldraw'
+import type { Editor, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { describe, expect, it } from 'vitest'
 import { buildEdgeIndex, type Edge } from './edges'
 import { makeShape } from './properties/fakeEditor'

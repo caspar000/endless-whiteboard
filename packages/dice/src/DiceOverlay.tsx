@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
-import { useEditor } from 'tldraw'
+import { useEditor } from '@lifeboard/canvas'
 import { DiceStage } from './DiceStage'
 import { DiceTray } from './DiceTray'
 import { HeldDice } from './HeldDice'

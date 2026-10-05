@@ -11,3 +11,6 @@ test-results/
 stats.html
 *.tsbuildinfo
 apps/server/data/
+# The canvas fork's declarations (`pnpm types:canvas`), built on install and before typechecking.
+packages/canvas-editor/types/
+packages/canvas/types/

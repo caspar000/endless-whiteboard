@@ -1,4 +1,4 @@
-import { Group2d, type Editor, type TLShapeId } from 'tldraw'
+import { Group2d, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import {
 	auraLoops,
 	type ContourPoint,

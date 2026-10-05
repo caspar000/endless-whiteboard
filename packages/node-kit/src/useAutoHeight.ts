@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 
 /**
  * Grows a node's `h` to fit its rendered content.

@@ -1,4 +1,4 @@
-import { AssetRecordType, createShapeId, type TLAssetId, type TLImageAsset } from 'tldraw'
+import { AssetRecordType, createShapeId, type TLAssetId, type TLImageAsset } from '@lifeboard/canvas'
 import { getAssetBridge } from '../assets'
 import { defineOperation, fail, ok, type RegisteredOperation } from '../operations'
 import { BOARD_ID_PARAM, reportAgentWork, resolveEditor } from './shared'

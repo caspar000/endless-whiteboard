@@ -1,6 +1,6 @@
 import { rollupStats } from '@lifeboard/node-kit'
 import { useEffect, useState } from 'react'
-import { useEditor } from 'tldraw'
+import { useEditor } from '@lifeboard/canvas'
 
 /**
  * The dev-mode recompute counter from §4.3 — milestone 6's acceptance check and the standing

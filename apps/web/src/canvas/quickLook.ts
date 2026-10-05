@@ -7,7 +7,7 @@ import {
 	type TLCamera,
 	type TLCameraOptions,
 	type TLShapeId,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 
 /**
  * Quick look: tap Space on a node and the camera zooms onto it while the rest of the board blurs.

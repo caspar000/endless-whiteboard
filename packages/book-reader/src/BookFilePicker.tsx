@@ -1,5 +1,5 @@
 import { NodeEditorPopover, type NodeShape } from '@lifeboard/node-kit'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { BookNodeProps } from './definition'
 import { BOOK_FILE_SUFFIXES } from './formats'
 import { loadBookIntoShape } from './importBook'

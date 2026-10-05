@@ -3,7 +3,7 @@ import {
 	defaultShapeUtils,
 	FrameShapeUtil,
 	type TLAnyShapeUtilConstructor,
-} from 'tldraw'
+} from '@lifeboard/canvas'
 import { expressionShapeUtils } from './expressionShapeUtils'
 
 /**

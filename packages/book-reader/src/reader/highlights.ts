@@ -5,7 +5,7 @@ import {
 	readPropertyRegistry,
 	readShapeProperties,
 } from '@lifeboard/node-kit'
-import type { Editor, TLShapeId } from 'tldraw'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { QUOTE_NODE_TYPE, type QuoteNodeProps } from '../quote/definition'
 import type { Highlight } from './types'
 

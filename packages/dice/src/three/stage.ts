@@ -9,7 +9,7 @@ import {
 	ShadowMaterial,
 	WebGLRenderer,
 } from 'three'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import type { RolledDie } from '../roll'
 import { toneFor } from '../DieIcon'
 import { geometryFor, inkResultFace, materialsFor, resultInk } from './mesh'

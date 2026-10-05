@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { Editor } from 'tldraw'
+import type { Editor } from '@lifeboard/canvas'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import {
 	registerCommand,

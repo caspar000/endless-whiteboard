@@ -1,4 +1,4 @@
-import { T } from 'tldraw'
+import { T } from '@lifeboard/canvas'
 import { EDGE_DIRECTIONS, type EdgeDirection } from '../../edges'
 import { isNumericType, type PropertyDef, type PropertyType } from '../../properties/types'
 

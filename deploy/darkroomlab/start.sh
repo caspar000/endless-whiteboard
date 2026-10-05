@@ -15,7 +15,7 @@ log() { echo "[lifeboard] $*"; }
 serve() {
 	cd "$1"
 	unset GITHUB_TOKEN
-	LIFEBOARD_REVISION=$(cat REVISION) exec node apps/server/src/main.ts
+	LIFEBOARD_REVISION=$(cat REVISION) exec node --enable-source-maps apps/server/dist/main.js
 }
 
 # The token goes on the command line only, never into .git/config on the volume.

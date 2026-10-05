@@ -15,6 +15,9 @@ services:
     restart: unless-stopped
     command: ["sh", "/start.sh"]
     env_file: .env
+    environment:
+      # The named volume below. Anywhere else would be inside a build, and gone on the next deploy.
+      LIFEBOARD_DATA_DIR: /data
     volumes:
       - ./start.sh:/start.sh:ro
       - app:/app

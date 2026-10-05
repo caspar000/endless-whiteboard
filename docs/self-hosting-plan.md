@@ -1,6 +1,7 @@
 # Self-hosting — implementation plan
 
-Status: **Phases 0 and 1 built.** Phase 1 is not deployed yet: it needs a tldraw licence key first.
+Status: **Phases 0–2 built, nothing deployed.** Boards sync live through the server. Still open in
+phase 2: saved queries and enabled extensions per vault. Deploying needs a tldraw licence key.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -118,6 +119,31 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
 - `TLSocketRoom` per board on `SQLiteSyncStorage`.
 - A server vault in the client: `<Board>` gets a `useSync` store instead of `persistenceKey`.
 - Vault-level state over REST.
+
+**As built:**
+
+- **No schema-only entry points.** The extensions import fine in plain Node (the app's unit tests
+  already did it), so the server *bundles* them instead: `apps/server` is built with Vite's SSR mode,
+  everything inlined. `@lifeboard/schema` is the one list of shipped extensions and the store
+  migrations; the app registers from it and the server builds its schema from it.
+  `canvas/boardSchema.test.ts` fails if the two schemas ever differ.
+- **Server layout:** `data/vault.sqlite` holds the board index; `data/rooms/<board>.sqlite` holds one
+  board each (`node:sqlite`, no native dependency). A room opens on first connect and closes a few
+  seconds after the last client leaves. The server bumps a board's "last edited" from the edits it
+  receives, so clients don't.
+- **The client** merges both lists in `useBoards`. New boards go to the server when one answered.
+  The server list is refetched on window focus. Local boards are marked "only on this device" in the
+  sidebar when both kinds are listed.
+- **Asset GC is off in any browser that has ever seen a server.** Server boards keep their images in
+  the local blob store until phase 3, and no local snapshot of theirs exists to mark from. Remembered in
+  localStorage, so an offline session can't sweep either.
+- **Until phase 3, images on a server board show only in the browser that added them.**
+- **Not done yet:** saved queries and the enabled-extensions set are still per browser.
+- **Dev:** run `apps/server` with `LIFEBOARD_INSECURE_COOKIES=1`, then
+  `LIFEBOARD_SERVER_URL=http://127.0.0.1:8790 pnpm dev`. Without the variable, `pnpm dev` is the
+  local-only app.
+- **The preview browser can't show live sync**: it barely runs `requestAnimationFrame`, which tldraw's
+  sync client sends and applies changes on. Headless Playwright shows edits arriving in ~30 ms.
 
 ### Phase 3 — assets and safety
 

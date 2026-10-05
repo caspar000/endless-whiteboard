@@ -22,6 +22,7 @@ beforeAll(async () => {
 		LIFEBOARD_PASSWORD_HASH: await hashPassword(PASSWORD),
 		LIFEBOARD_SESSION_SECRET: 'x'.repeat(32),
 		LIFEBOARD_WEB_DIR: webDir,
+		LIFEBOARD_DATA_DIR: mkdtempSync(join(tmpdir(), 'lb-data-')),
 		LIFEBOARD_REVISION: 'abc123',
 	})
 })

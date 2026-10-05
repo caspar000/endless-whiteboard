@@ -10,3 +10,4 @@ playwright-report/
 test-results/
 stats.html
 *.tsbuildinfo
+apps/server/data/

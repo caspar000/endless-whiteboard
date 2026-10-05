@@ -116,7 +116,8 @@ packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (th
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
-apps/server/              @lifeboard/server — serves the built app behind a login, for self-hosting
+apps/server/              @lifeboard/server — the self-hosted server: login, board index, live sync rooms
+packages/schema/          @lifeboard/schema — the shipped extensions and the board schema app and server share
 deploy/darkroomlab/       the stack that runs apps/server on the Hetzner box (Arcane + Caddy)
 docs/tldraw-api-notes.md  pinned tldraw API surface and v5 deltas — read before upgrading
 ```
@@ -535,7 +536,8 @@ paper, board thumbnails, the palette, an agent building a board end to end over 
 3D dice roll in a production build.
 
 Self-hosting is under way (`docs/self-hosting-plan.md`): `apps/server` serves the app behind a
-login, and `deploy/darkroomlab/README.md` covers running it. Sync between devices comes next.
+login and syncs server-vault boards live between devices; `deploy/darkroomlab/README.md` covers
+running it. Images on server boards and moving boards between vaults come next.
 
 Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system

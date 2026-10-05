@@ -8,6 +8,7 @@ import {
 	readBoardSnapshotResult,
 	waitForPersistFlush,
 } from '../persistence/tldrawLocalDb'
+import { hasEverHadServer } from '../server/serverVault'
 import { listBoards, removeBoardFromIndex } from './boardIndex'
 
 /**
@@ -53,6 +54,10 @@ export async function deleteBoard(platform: PlatformAdapter, boardId: string): P
  * next delete, which costs disk; getting it wrong destroys a photo. The asymmetry decides the design.
  */
 async function collectUnreferencedAssets(platform: PlatformAdapter): Promise<void> {
+	// Server boards keep their images in this same blob store, and no snapshot of theirs is on disk to
+	// mark from. Until assets sync to the server, a browser that has ever had one never sweeps.
+	if (hasEverHadServer()) return
+
 	await waitForAssetUploads()
 	await waitForPersistFlush()
 

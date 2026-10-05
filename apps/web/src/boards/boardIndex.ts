@@ -12,6 +12,11 @@ export interface BoardMeta {
 	updatedAt: number
 	/** Pinned to the Favourites section of the home sidebar. */
 	favorite?: boolean
+	/**
+	 * Where the board lives. Absent means this browser's IndexedDB, which is every board written before
+	 * servers existed; `'server'` means the server vault, synced live (see `server/serverVault.ts`).
+	 */
+	vault?: 'server'
 }
 
 const INDEX_KEY = 'boards'

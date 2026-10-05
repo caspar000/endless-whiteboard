@@ -1,19 +1,20 @@
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
+import fastifyWebsocket from '@fastify/websocket'
+import { createBoardSchema } from '@lifeboard/schema'
 import Fastify, { type FastifyServerOptions } from 'fastify'
+import { registerApi } from './api.ts'
 import { registerAuth } from './auth.ts'
 import type { ServerConfig } from './config.ts'
+import { Rooms } from './rooms.ts'
+import { Vault } from './vault.ts'
 
 /** Files that must be re-checked on every load, or a deploy never reaches a browser that has the old one. */
 const ALWAYS_REVALIDATE = /(^|\/)(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$/
 
 export async function buildApp(config: ServerConfig, options: FastifyServerOptions = {}) {
-	if (!existsSync(join(config.webDir, 'index.html'))) {
-		throw new Error(`No built web app in ${config.webDir}. Run \`pnpm build\` first.`)
-	}
-
 	// Behind Caddy: `request.ip` must be the client's address, or the login limiter counts Caddy.
 	const app = Fastify({ trustProxy: true, ...options })
 
@@ -24,8 +25,28 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 	})
 
 	registerAuth(app, config)
+	await app.register(fastifyWebsocket)
 
 	app.get('/api/status', async () => ({ ok: true, revision: config.revision }))
+
+	mkdirSync(config.dataDir, { recursive: true })
+	const vault = new Vault(join(config.dataDir, 'vault.sqlite'))
+	const rooms = new Rooms({
+		dir: join(config.dataDir, 'rooms'),
+		schema: createBoardSchema(),
+		onChange: (boardId) => vault.touch(boardId),
+		log: app.log,
+	})
+	app.addHook('onClose', async () => {
+		rooms.closeAll()
+		vault.close()
+	})
+	registerApi(app, vault, rooms)
+
+	if (!existsSync(join(config.webDir, 'index.html'))) {
+		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)
+		return app
+	}
 
 	await app.register(fastifyStatic, {
 		root: config.webDir,

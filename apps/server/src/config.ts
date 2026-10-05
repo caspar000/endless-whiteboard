@@ -4,8 +4,10 @@ import { isPasswordHash } from './password.ts'
 export interface ServerConfig {
 	port: number
 	host: string
-	/** The built web app (`apps/web/dist`). */
+	/** The built web app (`apps/web/dist`). Without one the server is API-only, for `vite dev` to proxy to. */
 	webDir: string
+	/** Where the vault index and each board's room database live. */
+	dataDir: string
 	passwordHash: string
 	sessionSecret: string
 	/** Off only for plain-http local runs; browsers drop `Secure` cookies over http. */
@@ -37,6 +39,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		port,
 		host: env.HOST ?? '0.0.0.0',
 		webDir: env.LIFEBOARD_WEB_DIR ?? DEFAULT_WEB_DIR,
+		dataDir: env.LIFEBOARD_DATA_DIR ?? 'data',
 		passwordHash,
 		sessionSecret,
 		secureCookies: env.LIFEBOARD_INSECURE_COOKIES !== '1',

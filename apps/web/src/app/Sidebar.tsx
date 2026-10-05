@@ -9,6 +9,7 @@ import {
 	Plus,
 	Settings,
 	Star,
+	HardDrive,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
@@ -54,6 +55,8 @@ export function Sidebar({
 	onNewBoard: () => void
 }) {
 	const favorites = boards.filter((board) => board.favorite)
+	// Only worth saying once there are two kinds side by side.
+	const mixed = boards.some((board) => board.vault === 'server') && boards.some((board) => !board.vault)
 	const [allBoardsExpanded, setAllBoardsExpanded] = useState(loadAllBoardsExpanded)
 
 	const toggleAllBoards = () => {
@@ -170,6 +173,7 @@ export function Sidebar({
 										key={board.id}
 										board={board}
 										active={view === 'board' && board.id === activeBoardId}
+										deviceOnly={mixed && !board.vault}
 										collapsed={collapsed}
 										onOpen={onOpenBoard}
 									/>
@@ -222,12 +226,15 @@ function BoardLink({
 	board,
 	active,
 	favorite = false,
+	deviceOnly = false,
 	collapsed,
 	onOpen,
 }: {
 	board: BoardMeta
 	active: boolean
 	favorite?: boolean
+	/** A local board shown next to server ones: it exists in this browser and nowhere else. */
+	deviceOnly?: boolean
 	collapsed: boolean
 	onOpen: (board: BoardMeta) => void
 }) {
@@ -238,13 +245,19 @@ function BoardLink({
 			onClick={() => onOpen(board)}
 			aria-current={active ? 'page' : undefined}
 			aria-label={board.name}
-			title={collapsed ? board.name : undefined}
+			title={deviceOnly ? `${board.name} — only on this device` : collapsed ? board.name : undefined}
 		>
 			<span
 				className={favorite ? 'lb-sidebar__icon lb-sidebar__icon--star' : 'lb-sidebar__icon'}
 				aria-hidden="true"
 			>
-				{favorite ? <Star size={13} fill="currentColor" /> : <PanelsTopLeft size={14} />}
+				{favorite ? (
+					<Star size={13} fill="currentColor" />
+				) : deviceOnly ? (
+					<HardDrive size={14} />
+				) : (
+					<PanelsTopLeft size={14} />
+				)}
 			</span>
 			<span className="lb-sidebar__label">{board.name}</span>
 		</button>

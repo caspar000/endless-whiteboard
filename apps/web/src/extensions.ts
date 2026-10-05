@@ -1,13 +1,9 @@
-import { bookReaderExtension } from '@lifeboard/book-reader'
-import { diceExtension } from '@lifeboard/dice'
 import {
 	getDisabledExtensionIds,
 	registerCoreOperations,
-	registerExtension,
 	setDisabledExtensionIds,
-	tablesExtension,
 } from '@lifeboard/node-kit'
-import { markdownNoteExtension } from '@lifeboard/note-markdown'
+import { registerShippedExtensions } from '@lifeboard/schema'
 // Imported for its side effect: installs the app's `BoardBridge` at module scope, which the
 // operations registered below cannot run without.
 import './agent/boardBridge'
@@ -19,19 +15,15 @@ import { registerToolCommands } from './canvas/toolCommands'
 
 /**
  * The composition root: the one place that decides which extensions this build of the app ships.
- * A new extension — first-party or, later, a plugin loader's — is one `registerExtension` line here.
+ * A new first-party extension is one line in `SHIPPED_EXTENSIONS` (@lifeboard/schema), which the
+ * sync server reads too.
  *
  * Runs at module scope on purpose. Consumers read the registry at *their* module scope (Board.tsx
  * builds its shape utils and tools there), so this module must be evaluated first — which Board.tsx
  * guarantees by importing it before anything that touches the registry. Registration is idempotent,
  * so a second evaluation (HMR, a test importing this alongside Board) is harmless.
  */
-registerExtension(markdownNoteExtension)
-registerExtension(tablesExtension)
-registerExtension(bookReaderExtension)
-// Contributes no node types — only canvas chrome, commands and an operation. Registered here all the
-// same: the composition root is the list of what this build ships, not the list of what has shapes.
-registerExtension(diceExtension)
+registerShippedExtensions()
 
 // Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
 // After the registrations above, deliberately: it reads what they just put there.

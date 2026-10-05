@@ -1,16 +1,11 @@
 {
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		// Run by Node directly (type stripping), never emitted, so only erasable syntax and real
-		// `.ts` import specifiers.
-		"module": "NodeNext",
-		"moduleResolution": "nodenext",
-		"lib": ["ES2024"],
+		// Bundled by Vite (see vite.config.ts), because the schema it imports is the app's own TypeScript
+		// and TSX. `.ts` specifiers keep the few files Node runs directly (the password CLI) runnable.
 		"noEmit": true,
 		"allowImportingTsExtensions": true,
-		"erasableSyntaxOnly": true,
-		"verbatimModuleSyntax": true,
-		"types": ["node"]
+		"types": ["node", "vite/client"]
 	},
 	"include": ["src"]
 }

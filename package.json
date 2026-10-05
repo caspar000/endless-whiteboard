@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm agent:build && pnpm --filter @lifeboard/web dev",
     "agent:build": "pnpm --filter @lifeboard/mcp-server build && pnpm --filter @lifeboard/agent-host build",
-    "build": "pnpm --filter @lifeboard/node-kit build && pnpm --filter @lifeboard/web build",
+    "build": "pnpm --filter @lifeboard/node-kit build && pnpm --filter @lifeboard/web build && pnpm --filter @lifeboard/server build",
     "agent": "pnpm agent:build && pnpm --filter @lifeboard/agent-host start",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

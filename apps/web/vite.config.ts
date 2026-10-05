@@ -58,4 +58,18 @@ export default defineConfig({
 		target: 'es2022',
 		sourcemap: true,
 	},
+	// Opt-in, so plain `pnpm dev` stays the local-only app with no server to reach: run apps/server with
+	// LIFEBOARD_INSECURE_COOKIES=1, then `LIFEBOARD_SERVER_URL=http://127.0.0.1:8790 pnpm dev`.
+	...(process.env.LIFEBOARD_SERVER_URL
+		? {
+				server: {
+					proxy: Object.fromEntries(
+						['/api', '/login', '/logout'].map((path) => [
+							path,
+							{ target: process.env.LIFEBOARD_SERVER_URL, ws: true },
+						])
+					),
+				},
+			}
+		: {}),
 })

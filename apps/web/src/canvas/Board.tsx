@@ -3,21 +3,16 @@
 import '../extensions'
 import {
 	clearAgentActivity,
-	createNodeShapeUtil,
 	fireBoardOpen,
 	installBoardHooks,
 	registerHooks,
 	PropertiesPopover,
-	getNodeDefinitions,
 	getNodeTypesVersion,
 	getVisibleCanvasOverlays,
 	subscribeToCanvasOverlays,
 	subscribeToNodeDefinitions,
 	mergeProperties,
 	readShapePropertyDefs,
-	rollupsToTablesMigrations,
-	itemsToNotesMigrations,
-	removeHealthNodesMigrations,
 	deleteRelationsWithShapes,
 	placeViewMembers,
 	watchViewDragOut,
@@ -27,11 +22,9 @@ import {
 } from '@lifeboard/node-kit'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
-	FrameShapeUtil,
 	Tldraw,
 	createShapeId,
 	type Editor,
-	type TLAnyShapeUtilConstructor,
 	type TLComponents,
 	type TldrawOptions,
 	type TLEventInfo,
@@ -40,9 +33,13 @@ import {
 	useTools,
 	useValue,
 	tipTapDefaultExtensions,
+	type TLAnyShapeUtilConstructor,
+	type TLStoreWithStatus,
+	type TldrawEditorStoreProps,
 	type TLTextOptions,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
+import { STORE_MIGRATIONS } from '@lifeboard/schema'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
 import { seedDemoBoard } from '../boards/demoBoard'
 import { usePlatform } from '../platform/PlatformContext'
@@ -54,7 +51,9 @@ import { AgentPresence } from './AgentPresence'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { FileImportHandler } from './FileImportHandler'
-import { expressionShapeUtils } from './expressionShapeUtils'
+import { useSync } from '@tldraw/sync'
+import { syncUri } from '../server/serverVault'
+import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
 import { QuickLookOverlay } from './QuickLookOverlay'
@@ -74,64 +73,6 @@ import { RollupDebugBadge } from './RollupDebugBadge'
  * own (§4.4). `key={boardId}` forces a clean remount when switching boards, so no state leaks
  * between them.
  */
-
-/**
- * Built per *schema version*, not per render: rebuilding shape utils on every render would recreate
- * every shape's class identity and defeat tldraw's caching. Both lists come from the same registry,
- * so a node type can never end up with a shape util but no tool (or vice versa).
- *
- * Keyed on `getNodeTypesVersion()` rather than computed once at module scope, because a type that
- * appears *after* this module is evaluated would otherwise never get a util — the editor would then
- * throw "No shape util found for type …" the moment anything created one, taking the board down.
- * That happens whenever vite HMR re-evaluates an extension, and it is exactly what a runtime-loaded
- * plugin will do on purpose. In a production build the version never changes after startup, so this
- * is computed once there too.
- */
-function buildShapeUtils(): TLAnyShapeUtilConstructor[] {
-	return getNodeDefinitions().map(createNodeShapeUtil)
-}
-
-/**
- * The frame, made a container rather than a card: no fill, a colourable border.
- *
- * A frame's default body is opaque, which on a whiteboard is the wrong way round — you group things
- * with a frame to say "these belong together", not to hide the paper under them. `getCustomDisplayValues`
- * is tldraw's own merge hook over `getDefaultDisplayValues`, so this replaces the fill and nothing else.
- *
- * `showColors: true` is what makes the border colourable at all: it is the flag that registers the
- * frame's existing `color` prop as a real `DefaultColorStyle` style prop, so `setStyleForSelectedShapes`
- * reaches it and the border, heading and label all derive from it. The prop is already in the schema
- * either way (`getDefaultProps` has always returned `color: 'black'`), so turning this on needs no
- * migration — nothing about what is stored changes.
- *
- * Replacing a built-in works because `<Tldraw>` merges by shape type
- * (`mergeArraysAndReplaceDefaults('type', …)`), so a `frame` util here takes the default's place.
- */
-const frameShapeUtil = FrameShapeUtil.configure({
-	showColors: true,
-	getCustomDisplayValues: () => ({
-		// Both, because the fill is read from whichever of the two `showColors` selects.
-		fillColor: 'transparent',
-		showColorsFillColor: 'transparent',
-	}),
-})
-
-function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
-	return [
-		...buildShapeUtils(),
-		frameShapeUtil,
-		// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
-		...expressionShapeUtils,
-	]
-}
-
-/**
- * Migrations that rewrite records across types, rather than one shape's props.
- *
- * Order here is not what sequences them — `rollupsToTablesMigrations` declares `dependsOn` — but keeping
- * them in dependency order makes the intent readable.
- */
-const storeMigrations = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations]
 
 /**
  * Everything we draw *inside* the camera transform, in paint order.
@@ -290,19 +231,60 @@ function PropertiesPanel() {
 	return <PropertiesPopover shape={shape} editor={editor} onClose={closeProperties} />
 }
 
-export function Board({
-	board,
-	seedDemo = false,
-	onEditor,
-}: {
+interface BoardProps {
 	board: BoardMeta
 	seedDemo?: boolean
 	/** Reports the live editor to the shell, which uses it to capture a thumbnail on tab switch. */
 	onEditor?: (editor: Editor | null) => void
+}
+
+/**
+ * A board from this browser's IndexedDB, or one from the server vault kept in sync over a socket. The
+ * canvas is the same either way; only where its store comes from differs.
+ */
+export function Board(props: BoardProps) {
+	return props.board.vault === 'server' ? <SyncedBoard {...props} /> : <BoardCanvas {...props} />
+}
+
+/**
+ * The server holds the truth: `useSync` loads the board from it, sends every edit to it, and applies
+ * everyone else's. Its store is built before `<Tldraw>` sees any utils, so it gets the full set — and
+ * the canvas gets the same array, so the schema and the drawing can never come from different classes.
+ */
+function SyncedBoard(props: BoardProps) {
+	const platform = usePlatform()
+	const schemaVersion = useSyncExternalStore(subscribeToNodeDefinitions, getNodeTypesVersion)
+	const shapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
+	const storeShapeUtils = useMemo(() => buildStoreShapeUtils(shapeUtils), [shapeUtils])
+	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
+	const store = useSync({
+		uri: syncUri(props.board.id),
+		assets,
+		shapeUtils: storeShapeUtils,
+		migrations: STORE_MIGRATIONS,
+	})
+
+	if (store.status === 'loading') return <div className="lb-board__loading">Opening board…</div>
+	if (store.status === 'error') {
+		return <div className="lb-board__loading">This board could not be opened from the server: {store.error.message}</div>
+	}
+	return <BoardCanvas {...props} store={store} shapeUtils={shapeUtils} />
+}
+
+function BoardCanvas({
+	board,
+	seedDemo = false,
+	onEditor,
+	store,
+	shapeUtils: givenShapeUtils,
+}: BoardProps & {
+	/** A synced board's store. Without one the board persists to IndexedDB itself. */
+	store?: TLStoreWithStatus
+	shapeUtils?: TLAnyShapeUtilConstructor[]
 }) {
 	const platform = usePlatform()
 	const [restore, setRestore] = useState<{ ready: boolean; snapshot?: RawBoardSnapshot }>({
-		ready: false,
+		ready: store !== undefined,
 	})
 
 	/**
@@ -311,12 +293,14 @@ export function Board({
 	 * production build; it moves when HMR re-evaluates an extension, or when a plugin is loaded later.
 	 */
 	const schemaVersion = useSyncExternalStore(subscribeToNodeDefinitions, getNodeTypesVersion)
-	const shapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
+	const builtShapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
+	const shapeUtils = givenShapeUtils ?? builtShapeUtils
 	const nodeTools = useMemo(createNodeTools, [schemaVersion])
 
 	// An imported board carries its snapshot in KV until first open; handing it to <Tldraw> is what
 	// makes tldraw run migrations on it (see persistence/pendingRestore.ts).
 	useEffect(() => {
+		if (store) return
 		let cancelled = false
 		void takePendingRestore(platform.kv, board.id).then((snapshot) => {
 			if (!cancelled) setRestore({ ready: true, ...(snapshot ? { snapshot } : {}) })
@@ -324,7 +308,7 @@ export function Board({
 		return () => {
 			cancelled = true
 		}
-	}, [platform, board.id])
+	}, [platform, board.id, store])
 
 	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
 
@@ -365,6 +349,20 @@ export function Board({
 
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
 
+	const storeProps: TldrawEditorStoreProps = store
+		? { store }
+		: {
+				persistenceKey: persistenceKeyForBoard(board.id),
+				// A synced store was built with its assets already; this one is built by <Tldraw>.
+				assets,
+				...(restore.snapshot ? { snapshot: restore.snapshot as never } : {}),
+				// Store-scoped migrations run *before* validation on every load path — the IndexedDB
+				// read, the `snapshot` above, and the fixture tests. That ordering is the only reason a
+				// shape type can be retired at all: an unregistered type is a validation failure, not a
+				// stale record, so the repair has to happen before the check.
+				migrations: STORE_MIGRATIONS,
+			}
+
 	return (
 		// The tracing class rides the board's own container rather than the canvas, so the dim can be
 		// one CSS rule over `.tl-shape` and the mode has somewhere to hang its other affordances.
@@ -381,14 +379,8 @@ export function Board({
 				// The schema version is part of the editor's identity: new node types mean new shape
 				// utils, which `<Tldraw>` only reads on mount.
 				key={`${board.id}:${schemaVersion}`}
-				persistenceKey={persistenceKeyForBoard(board.id)}
-				{...(restore.snapshot ? { snapshot: restore.snapshot as never } : {})}
+				{...storeProps}
 				shapeUtils={shapeUtils}
-				// Store-scoped migrations run *before* validation on every load path — the IndexedDB
-				// read, the `snapshot` prop above, and the fixture tests. That ordering is the only
-				// reason a shape type can be retired at all: an unregistered type is a validation
-				// failure, not a stale record, so the repair has to happen before the check.
-				migrations={storeMigrations}
 				tools={nodeTools}
 				overrides={nodeUiOverrides}
 				components={canvasComponents}
@@ -419,7 +411,6 @@ export function Board({
 				// persistence throttle window discards the pending write (see DRAIN_MS in app/App.tsx),
 				// along with the camera, selection and undo history.
 				colorScheme="dark"
-				assets={assets}
 				maxAssetSize={MAX_IMPORT_BYTES}
 				onMount={(editor) => {
 					// The pending snapshot has now been loaded and is being persisted by tldraw, so
@@ -439,10 +430,10 @@ export function Board({
 					setEditor(editor)
 					onEditor?.(editor)
 
-					const stopTracking = trackBoardActivity(
-						editor,
-						() => void touchBoard(platform.kv, board.id)
-					)
+					// A server board's "last edited" is kept by the server, from the edits it receives.
+					const stopTracking = store
+						? () => {}
+						: trackBoardActivity(editor, () => void touchBoard(platform.kv, board.id))
 					// Every extension's reactions, plus the core hook above. One installer, because they
 					// all hang off the same two side effects.
 					const stopHooks = installBoardHooks(editor)

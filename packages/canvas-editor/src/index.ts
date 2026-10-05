@@ -11,6 +11,7 @@ export {
 	transaction,
 	whyAmIRunning,
 	type Atom,
+	type Computed,
 	type Signal,
 } from '@tldraw/state'
 export {
@@ -298,6 +299,7 @@ export { useLocalStore } from './lib/hooks/useLocalStore'
 export { usePeerIds } from './lib/hooks/usePeerIds'
 export { usePresence } from './lib/hooks/usePresence'
 export { useSelectionEvents } from './lib/hooks/useSelectionEvents'
+export { useImageOrVideoAsset } from './lib/hooks/useImageOrVideoAsset'
 export { useTLStore } from './lib/hooks/useTLStore'
 export { useTransform } from './lib/hooks/useTransform'
 export {
@@ -312,6 +314,12 @@ export {
 } from './lib/primitives/Box2d'
 export { Matrix2d, type Matrix2dModel } from './lib/primitives/Matrix2d'
 export { Vec2d, type VecLike } from './lib/primitives/Vec2d'
+// Today's names for the 2023 classes (docs/fork-parity.md E18).
+export { Box2d as Box } from './lib/primitives/Box2d'
+export { Vec2d as Vec } from './lib/primitives/Vec2d'
+// Typed for the fork's TLShape; shadows the store's (see the file).
+export { createComputedCache } from './lib/utils/createComputedCache'
+export type { TLHistoryMode } from './lib/editor/managers/HistoryManager'
 export { EASINGS } from './lib/primitives/easings'
 export { Arc2d } from './lib/primitives/geometry/Arc2d'
 export { Circle2d } from './lib/primitives/geometry/Circle2d'
@@ -381,6 +389,8 @@ export {
 } from './lib/utils/SharedStylesMap'
 export { WeakMapCache } from './lib/utils/WeakMapCache'
 export { dataUrlToFile } from './lib/utils/assets'
+export { getSvgAsDataUrl, getSvgAsImage } from './lib/utils/export'
+export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {
 	loopToHtmlElement,

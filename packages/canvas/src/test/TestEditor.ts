@@ -57,7 +57,7 @@ declare global {
 }
 
 export class TestEditor extends Editor {
-	constructor(options: Partial<Omit<TLEditorOptions, 'store'>> = {}) {
+	constructor(options: Partial<TLEditorOptions> = {}) {
 		const elm = document.createElement('div')
 		elm.tabIndex = 0
 
@@ -70,10 +70,12 @@ export class TestEditor extends Editor {
 			shapeUtils: [...shapeUtilsWithDefaults],
 			bindingUtils: bindingUtilsWithDefaults,
 			tools: [...defaultTools, ...defaultShapeTools, ...(options.tools ?? [])],
-			store: createTLStore({
-				shapeUtils: [...shapeUtilsWithDefaults],
-				bindingUtils: bindingUtilsWithDefaults,
-			}),
+			store:
+				options.store ??
+				createTLStore({
+					shapeUtils: [...shapeUtilsWithDefaults],
+					bindingUtils: bindingUtilsWithDefaults,
+				}),
 			getContainer: () => elm,
 			initialState: 'select',
 		})

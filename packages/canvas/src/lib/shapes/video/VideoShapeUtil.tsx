@@ -1,4 +1,5 @@
 import {
+	useImageOrVideoAsset,
 	BaseBoxShapeUtil,
 	HTMLContainer,
 	TLVideoShape,
@@ -74,7 +75,7 @@ const TLVideoUtilComponent = track(function TLVideoUtilComponent(props: {
 	const { shape, videoUtil } = props
 	const showControls =
 		videoUtil.editor.getShapeGeometry(shape).bounds.w * videoUtil.editor.getZoomLevel() >= 110
-	const asset = shape.props.assetId ? videoUtil.editor.getAsset(shape.props.assetId) : null
+	const { url } = useImageOrVideoAsset({ assetId: shape.props.assetId, width: shape.props.w })
 	const { time, playing } = shape.props
 	const isEditing = useIsEditing(shape.id)
 	const prefersReducedMotion = usePrefersReducedMotion()
@@ -183,7 +184,7 @@ const TLVideoUtilComponent = track(function TLVideoUtilComponent(props: {
 		<>
 			<HTMLContainer id={shape.id}>
 				<div className="tl-counter-scaled">
-					{asset?.props.src ? (
+					{url ? (
 						<video
 							ref={rVideo}
 							style={isEditing ? { pointerEvents: 'all' } : undefined}
@@ -204,7 +205,7 @@ const TLVideoUtilComponent = track(function TLVideoUtilComponent(props: {
 							onLoadedData={handleLoadedData}
 							hidden={!isLoaded}
 						>
-							<source src={asset.props.src} />
+							<source src={url} />
 						</video>
 					) : null}
 				</div>

@@ -14,6 +14,7 @@ import {
 	TLDefaultTextAlignStyle,
 	TLDefaultSizeStyle,
 	TLOpacityType,
+	TLShape,
 	TLShapeId,
 	Vec2d,
 	VecLike,
@@ -43,6 +44,9 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 		assets: [],
 		schema: editor.store.schema.serialize(),
 	}
+
+	// Partial shapes: putting the content fills in the props Excalidraw has no equivalent for.
+	const pushShape = (shape: object) => tldrawContent.shapes.push(shape as TLShape)
 
 	const groupShapeIdToChildren = new Map<string, TLShapeId[]>()
 	const rotatedElements = new Map<TLShapeId, number>()
@@ -123,7 +127,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 				const colorToUse =
 					element.backgroundColor === 'transparent' ? element.strokeColor : element.backgroundColor
 
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'geo',
 					props: {
@@ -142,7 +146,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 				break
 			}
 			case 'freedraw': {
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'draw',
 					props: {
@@ -166,7 +170,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 			case 'line': {
 				const indices = getIndices(element.points.length)
 
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'line',
 					props: {
@@ -205,7 +209,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 				const startTargetId = excElementIdsToTldrawShapeIds.get(element.startBinding?.elementId)
 				const endTargetId = excElementIdsToTldrawShapeIds.get(element.endBinding?.elementId)
 
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'arrow',
 					props: {
@@ -249,7 +253,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 			case 'text': {
 				const { size, scale } = getFontSizeAndScale(element.fontSize)
 
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'text',
 					props: {
@@ -283,7 +287,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 					meta: {},
 				})
 
-				tldrawContent.shapes.push({
+				pushShape({
 					...base,
 					type: 'image',
 					props: {

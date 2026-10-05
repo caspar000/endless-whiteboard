@@ -16,6 +16,8 @@ import {
 	compact,
 	createShapeId,
 	getHashForString,
+	FileHelpers,
+	dataUrlToFile,
 } from '@lifeboard/canvas-editor'
 import { FONT_FAMILIES, FONT_SIZES, TEXT_PROPS } from './shapes/shared/default-shape-constants'
 import { containBoxSize, getResizedImageDataUrl, isGifAnimated } from './utils/assets/assets'
@@ -43,88 +45,58 @@ export function registerDefaultExternalContentHandlers(
 		acceptedVideoMimeTypes,
 	}: TLExternalContentProps
 ) {
-	// files -> asset
+	// files -> asset, stored through the store's asset store (docs/fork-parity.md E10)
 	editor.registerExternalAssetHandler('file', async ({ file }) => {
-		return await new Promise((resolve, reject) => {
-			if (
-				!acceptedImageMimeTypes.includes(file.type) &&
-				!acceptedVideoMimeTypes.includes(file.type)
-			) {
-				console.warn(`File type not allowed: ${file.type}`)
-				reject()
-			}
+		const isImageType = acceptedImageMimeTypes.includes(file.type)
+		if (!isImageType && !acceptedVideoMimeTypes.includes(file.type)) {
+			throw Error(`File type not allowed: ${file.type}`)
+		}
+		if (file.size > maxAssetSize) {
+			throw Error(
+				`File size too big: ${(file.size / 1024).toFixed()}kb > ${(maxAssetSize / 1024).toFixed()}kb`
+			)
+		}
 
-			if (file.size > maxAssetSize) {
-				console.warn(
-					`File size too big: ${(file.size / 1024).toFixed()}kb > ${(
-						maxAssetSize / 1024
-					).toFixed()}kb`
+		const measured = isImageType
+			? await MediaHelpers.getImageSize(file)
+			: await MediaHelpers.getVideoSize(file)
+		let size: { w: number; h: number } = { w: measured.w, h: measured.h }
+		const isAnimated = isImageType ? file.type === 'image/gif' && (await isGifAnimated(file)) : true
+
+		// Large JPEGs and PNGs are scaled down before they are stored, as in 2023.
+		let toStore: File = file
+		if (isFinite(maxImageDimension) && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+			const resized = containBoxSize(size, { w: maxImageDimension, h: maxImageDimension })
+			if (resized !== size) {
+				const dataUrl = await getResizedImageDataUrl(
+					await FileHelpers.blobToDataUrl(file),
+					resized.w,
+					resized.h,
+					{ type: file.type, quality: 0.92 }
 				)
-				reject()
+				toStore = await dataUrlToFile(dataUrl, file.name, file.type)
+				size = resized
 			}
+		}
 
-			const reader = new FileReader()
-			reader.onerror = () => reject(reader.error)
-			reader.onload = async () => {
-				let dataUrl = reader.result as string
+		const asset = AssetRecordType.create({
+			id: AssetRecordType.createId(),
+			type: isImageType ? 'image' : 'video',
+			typeName: 'asset',
+			props: {
+				name: file.name,
+				src: null,
+				w: size.w,
+				h: size.h,
+				mimeType: file.type,
+				isAnimated,
+				fileSize: toStore.size,
+			},
+			meta: {},
+		}) as TLAsset
 
-				// Hack to make .mov videos work via dataURL.
-				if (file.type === 'video/quicktime' && dataUrl.includes('video/quicktime')) {
-					dataUrl = dataUrl.replace('video/quicktime', 'video/mp4')
-				}
-
-				const isImageType = acceptedImageMimeTypes.includes(file.type)
-
-				let size: {
-					w: number
-					h: number
-				}
-				let isAnimated: boolean
-
-				if (isImageType) {
-					size = await MediaHelpers.getImageSize(file)
-					isAnimated = file.type === 'image/gif' && (await isGifAnimated(file))
-				} else {
-					isAnimated = true
-					size = await MediaHelpers.getVideoSize(file)
-				}
-
-				if (isFinite(maxImageDimension)) {
-					const resizedSize = containBoxSize(size, { w: maxImageDimension, h: maxImageDimension })
-					if (size !== resizedSize && (file.type === 'image/jpeg' || file.type === 'image/png')) {
-						size = resizedSize
-					}
-				}
-
-				// Always rescale the image
-				if (file.type === 'image/jpeg' || file.type === 'image/png') {
-					dataUrl = await getResizedImageDataUrl(dataUrl, size.w, size.h, {
-						type: file.type,
-						quality: 0.92,
-					})
-				}
-
-				const assetId: TLAssetId = AssetRecordType.createId(getHashForString(dataUrl))
-
-				const asset = AssetRecordType.create({
-					id: assetId,
-					type: isImageType ? 'image' : 'video',
-					typeName: 'asset',
-					props: {
-						name: file.name,
-						src: dataUrl,
-						w: size.w,
-						h: size.h,
-						mimeType: file.type,
-						isAnimated,
-					},
-				})
-
-				resolve(asset)
-			}
-
-			reader.readAsDataURL(file)
-		})
+		const { src, meta } = await editor.uploadAsset(asset, toStore)
+		return { ...asset, props: { ...asset.props, src }, meta: { ...asset.meta, ...meta } } as TLAsset
 	})
 
 	// urls -> bookmark asset
@@ -420,7 +392,7 @@ export async function createShapesForAssets(
 					opacity: 1,
 					props: {
 						assetId: asset.id,
-						url: asset.props.src,
+						url: asset.props.src ?? '',
 					},
 				})
 

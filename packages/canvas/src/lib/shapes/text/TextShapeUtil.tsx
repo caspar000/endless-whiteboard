@@ -221,6 +221,10 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		}
 	}
 
+	override getText(shape: TLTextShape) {
+		return richTextToPlainText(shape.props.richText)
+	}
+
 	override onEditEnd: TLOnEditEndHandler<TLTextShape> = (shape) => {
 		if (isEmptyRichText(shape.props.richText)) {
 			this.editor.deleteShapes([shape.id])

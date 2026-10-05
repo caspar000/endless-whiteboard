@@ -70,7 +70,8 @@ function RichTextEditor({ shapeId, shapeType, className, style }: RichTextProps)
 
 	useLayoutEffect(() => {
 		const element = rContainer.current
-		const shape = editor.getShape<TLUnknownShape & { props: { richText: TLRichText } }>(shapeId)
+		// Every shape that draws a label this way has `richText`.
+		const shape = editor.getShape(shapeId) as (TLUnknownShape & { props: { richText: TLRichText } }) | undefined
 		if (!element || !shape) return
 
 		const config: Partial<TipTapEditorOptions> = editor.getTextOptions().tipTapConfig ?? {}

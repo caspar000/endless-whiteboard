@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
+	useImageOrVideoAsset,
 	BaseBoxShapeUtil,
 	HTMLContainer,
 	TLImageShape,
@@ -81,6 +82,8 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 		const [staticFrameSrc, setStaticFrameSrc] = useState('')
 
 		const asset = shape.props.assetId ? this.editor.getAsset(shape.props.assetId) : undefined
+		// Where to load it from: the store's asset store decides (docs/fork-parity.md E10).
+		const { url } = useImageOrVideoAsset({ assetId: shape.props.assetId, width: shape.props.w })
 
 		if (asset?.type === 'bookmark') {
 			throw Error("Bookmark assets can't be rendered as images")
@@ -103,10 +106,10 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 			(asset?.props.mimeType?.includes('video') || asset?.props.mimeType?.includes('gif'))
 
 		useEffect(() => {
-			if (asset?.props.src && 'mimeType' in asset.props && asset?.props.mimeType === 'image/gif') {
+			if (url && 'mimeType' in (asset?.props ?? {}) && asset?.props.mimeType === 'image/gif') {
 				let cancelled = false
 				const run = async () => {
-					const newStaticFrame = await getStateFrame(asset.props.src!)
+					const newStaticFrame = await getStateFrame(url)
 					if (cancelled) return
 					if (newStaticFrame) {
 						setStaticFrameSrc(newStaticFrame)
@@ -118,18 +121,18 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 					cancelled = true
 				}
 			}
-		}, [prefersReducedMotion, asset?.props])
+		}, [prefersReducedMotion, asset?.props, url])
 
 		return (
 			<>
-				{asset?.props.src && showCropPreview && (
+				{url && showCropPreview && (
 					<div style={containerStyle}>
 						<div
 							className="tl-image"
 							style={{
 								opacity: 0.1,
 								backgroundImage: `url(${
-									!shape.props.playing || reduceMotion ? staticFrameSrc : asset.props.src
+									!shape.props.playing || reduceMotion ? staticFrameSrc : url
 								})`,
 							}}
 							draggable={false}
@@ -141,12 +144,14 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 					style={{ overflow: 'hidden', width: shape.props.w, height: shape.props.h }}
 				>
 					<div className="tl-image-container" style={containerStyle}>
-						{asset?.props.src ? (
+						{url ? (
 							<div
 								className="tl-image"
 								style={{
+									// Flipped images (stored since tldraw 2.4) draw mirrored.
+									transform: `scale(${shape.props.flipX ? -1 : 1}, ${shape.props.flipY ? -1 : 1})`,
 									backgroundImage: `url(${
-										!shape.props.playing || reduceMotion ? staticFrameSrc : asset.props.src
+										!shape.props.playing || reduceMotion ? staticFrameSrc : url
 									})`,
 								}}
 								draggable={false}
@@ -176,7 +181,10 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		const asset = shape.props.assetId ? this.editor.getAsset(shape.props.assetId) : null
 
-		let src = asset?.props.src || ''
+		let src =
+			(await this.editor.resolveAssetUrl(shape.props.assetId, { shouldResolveToOriginal: true })) ||
+			asset?.props.src ||
+			''
 		if (src && src.startsWith('http')) {
 			// If it's a remote image, we need to fetch it and convert it to a data URI
 			src = (await getDataURIFromURL(src)) || ''

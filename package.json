@@ -13,6 +13,8 @@
     "test:e2e": "pnpm --filter @lifeboard/web test:e2e",
     "lint": "pnpm -r --if-present lint",
     "server": "pnpm --filter @lifeboard/server start",
-    "check:licences": "node scripts/check-licences.mjs"
+    "check:licences": "node scripts/check-licences.mjs",
+    "test:on-fork": "node scripts/fork-suites/run.mjs",
+    "typecheck:on-fork": "node scripts/fork-suites/typecheck.mjs"
   }
 }

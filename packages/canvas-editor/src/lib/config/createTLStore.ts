@@ -20,6 +20,11 @@ import { TLAnyShapeUtilConstructor, checkShapesAndAddCore } from './defaultShape
 export type TLStoreOptions = {
 	initialData?: SerializedStore<TLRecord>
 	defaultName?: string
+	/**
+	 * Where files go and how asset URLs are found. Without one, files are kept in the asset record
+	 * as data URLs, as the 2023 editor did.
+	 */
+	assets?: TLAssetStore
 } & (
 	| {
 			shapeUtils?: readonly TLAnyShapeUtilConstructor[]
@@ -40,7 +45,12 @@ export type TLStoreEventInfo = HistoryEntry<TLRecord>
  * @param opts - Options for creating the store.
  *
  * @public */
-export function createTLStore({ initialData, defaultName = '', ...rest }: TLStoreOptions): TLStore {
+export function createTLStore({
+	initialData,
+	defaultName = '',
+	assets,
+	...rest
+}: TLStoreOptions): TLStore {
 	const schema =
 		'schema' in rest && rest.schema
 			? // we have a schema
@@ -57,8 +67,8 @@ export function createTLStore({ initialData, defaultName = '', ...rest }: TLStor
 		initialData,
 		props: {
 			defaultName,
-			// Today's store asks for these; the 2023 editor manages assets and users itself.
-			assets: inlineAssetStore,
+			assets: assets ? { ...inlineAssetStore, ...assets } : inlineAssetStore,
+			// Today's store asks for this; the 2023 editor manages users itself.
 			users: noUsers,
 			onMount: () => {},
 		},

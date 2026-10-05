@@ -16,6 +16,8 @@ import { OptionalErrorBoundary } from './components/ErrorBoundary'
 import { DefaultErrorFallback } from './components/default-components/DefaultErrorFallback'
 import { DefaultLoadingScreen } from './components/default-components/DefaultLoadingScreen'
 import { TLUser, createTLUser } from './config/createTLUser'
+import type { MigrationSequence } from '@tldraw/store'
+import type { TLAssetStore } from '@tldraw/tlschema'
 import { TLAnyBindingUtilConstructor } from './config/createTLStore'
 import { TLAnyShapeUtilConstructor } from './config/defaultShapes'
 import { Editor, type TLTextOptions } from './editor/Editor'
@@ -56,6 +58,10 @@ export type TldrawEditorProps = TldrawEditorBaseProps &
 				persistenceKey?: string
 				sessionId?: string
 				defaultName?: string
+				/** Where files go and how asset URLs are found; see `createTLStore`. */
+				assets?: TLAssetStore
+				/** The app's own store migrations; see `createTLStore`. */
+				migrations?: readonly MigrationSequence[]
 		  }
 	)
 
@@ -212,12 +218,24 @@ export const TldrawEditor = memo(function TldrawEditor({
 function TldrawEditorWithOwnStore(
 	props: Required<TldrawEditorProps & { store: undefined; user: TLUser }, 'shapeUtils' | 'bindingUtils' | 'tools'>
 ) {
-	const { defaultName, snapshot, initialData, shapeUtils, bindingUtils, persistenceKey, sessionId, user } =
-		props
+	const {
+		defaultName,
+		snapshot,
+		initialData,
+		shapeUtils,
+		bindingUtils,
+		persistenceKey,
+		sessionId,
+		user,
+		assets,
+		migrations,
+	} = props
 
 	const syncedStore = useLocalStore({
 		shapeUtils,
 		bindingUtils,
+		assets,
+		migrations,
 		initialData,
 		persistenceKey,
 		sessionId,

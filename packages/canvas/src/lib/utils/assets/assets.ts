@@ -1,6 +1,6 @@
 /// <reference path="../../../downscale.d.ts" />
 import downscale from 'downscale'
-import { getBrowserCanvasMaxSize } from '../../shapes/shared/getBrowserCanvasMaxSize'
+import { getBrowserCanvasMaxSize } from '@lifeboard/canvas-editor'
 import { isAnimated } from './is-gif-animated'
 
 type BoxWidthHeight = {

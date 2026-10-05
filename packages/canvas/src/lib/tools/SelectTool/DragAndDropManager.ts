@@ -14,6 +14,9 @@ export class DragAndDropManager {
 
 	first = true
 
+	/** Where the pointer was at the last update, to tell a move from a repeat. */
+	private lastPoint = new Vec2d()
+
 	updateDroppingNode(movingShapes: TLShape[], cb: () => void) {
 		if (this.first) {
 			this.prevDroppingShapeId =
@@ -21,6 +24,15 @@ export class DragAndDropManager {
 				null
 			this.first = false
 		}
+
+		// Shapes still over the same target, and the pointer moved: tell it, on this frame.
+		const point = this.editor.inputs.currentPagePoint
+		if (this.prevDroppingShapeId && !point.equals(this.lastPoint)) {
+			const target = this.editor.getShape(this.prevDroppingShapeId)
+			const shapes = compact(movingShapes.map((shape) => this.editor.getShape(shape.id)))
+			if (target) this.hint(target, this.editor.getShapeUtil(target).onDragShapesOver?.(target, shapes))
+		}
+		this.lastPoint = point.clone()
 
 		if (this.droppingNodeTimer === null) {
 			this.setDragTimer(movingShapes, LAG_DURATION * 10, cb)
@@ -64,13 +76,10 @@ export class DragAndDropManager {
 		}
 
 		if (nextDroppingShape) {
-			const res = this.editor
-				.getShapeUtil(nextDroppingShape)
-				.onDragShapesOver?.(nextDroppingShape, movingShapes)
-
-			if (res && res.shouldHint) {
-				this.editor.setHintingShapes([nextDroppingShape.id])
-			}
+			this.hint(
+				nextDroppingShape,
+				this.editor.getShapeUtil(nextDroppingShape).onDragShapesIn?.(nextDroppingShape, movingShapes)
+			)
 		} else {
 			// If we're dropping onto the page, then clear hinting ids
 			this.editor.setHintingShapes([])
@@ -82,6 +91,10 @@ export class DragAndDropManager {
 		this.prevDroppingShapeId = nextDroppingShapeId
 	}
 
+	private hint(target: TLShape, result: { shouldHint: boolean } | void) {
+		if (result?.shouldHint) this.editor.setHintingShapes([target.id])
+	}
+
 	dropShapes(shapes: TLShape[]) {
 		const { prevDroppingShapeId } = this
 
@@ -90,7 +103,10 @@ export class DragAndDropManager {
 		if (prevDroppingShapeId) {
 			const shape = this.editor.getShape(prevDroppingShapeId)
 			if (!shape) return
-			this.editor.getShapeUtil(shape).onDropShapesOver?.(shape, shapes)
+			const util = this.editor.getShapeUtil(shape)
+			// Only shapes the target can take arrive; with none, there is no drop.
+			const receivable = shapes.filter((s) => util.canReceiveNewChildrenOfType(shape, s.type))
+			if (receivable.length > 0) util.onDropShapesOver?.(shape, receivable)
 		}
 	}
 

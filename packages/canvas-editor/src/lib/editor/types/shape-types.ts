@@ -1,7 +1,7 @@
 import type {
 	TLArrowShape,
-	TLDefaultShape,
 	TLHandle as TLSchemaHandle,
+	TLShape as TLSchemaShape,
 	TLShapeId,
 	TLUnknownShape,
 	VecModel,
@@ -9,13 +9,14 @@ import type {
 import type { TLArrowShapeTerminal } from '../shapes/shared/arrow/terminals'
 
 /**
- * Every shape the editor may hold: the default shapes, or any custom type.
+ * Every shape type registered in the schema's `TLGlobalShapePropsMap`: the default shapes, and any an
+ * app adds by augmenting that map, as tldraw 5 does (Lifeboard registers its nodes so). Checking
+ * `shape.type` narrows the props.
  *
- * This is 2023's definition. Today's `@tldraw/tlschema` narrows `TLShape` to the types registered
- * through `TLGlobalShapePropsMap`, which the 2023 editor was not written for; everything the store holds
- * is still assignable to this one.
+ * 2023's `TLShape` also took shapes of any type. Code that handles unregistered types, such as a
+ * `ShapeUtil` for a test shape, uses `TLUnknownShape`.
  */
-export type TLShape = TLDefaultShape | TLUnknownShape
+export type TLShape = TLSchemaShape
 
 /**
  * What an arrow's props may hold when written: either end can be a 2023-style terminal, which

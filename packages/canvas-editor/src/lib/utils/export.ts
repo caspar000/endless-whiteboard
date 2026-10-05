@@ -1,5 +1,6 @@
-import { PngHelpers, debugFlags } from '@lifeboard/canvas-editor'
-import { getBrowserCanvasMaxSize } from '../../shapes/shared/getBrowserCanvasMaxSize'
+import { PngHelpers } from '@tldraw/utils'
+import { debugFlags } from './debug-flags'
+import { getBrowserCanvasMaxSize } from './getBrowserCanvasMaxSize'
 
 /** @public */
 export async function getSvgAsImage(

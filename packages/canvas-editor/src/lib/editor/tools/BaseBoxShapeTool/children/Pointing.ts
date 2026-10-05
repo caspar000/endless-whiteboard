@@ -94,7 +94,8 @@ export class Pointing extends StateNode {
 			},
 		])
 
-		const shape = this.editor.getShape<TLBaseBoxShape>(id)!
+		// A box shape of whatever type this tool makes, which the schema's shape map may not list.
+		const shape = this.editor.getShape(id)!
 		const { w, h } = this.editor.getShapeUtil(shape).getDefaultProps() as TLBaseBoxShape['props']
 		const delta = new Vec2d(w / 2, h / 2)
 

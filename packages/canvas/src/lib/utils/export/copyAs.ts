@@ -1,5 +1,5 @@
 import { Editor, TLShapeId, TLSvgOptions } from '@lifeboard/canvas-editor'
-import { getSvgAsImage } from './export'
+import { getSvgAsImage } from '@lifeboard/canvas-editor'
 
 /** @public */
 export type TLCopyType = 'svg' | 'png' | 'jpeg' | 'json'

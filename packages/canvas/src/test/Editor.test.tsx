@@ -509,7 +509,7 @@ describe('getShapeUtil', () => {
 	})
 
 	it('throws if that shape type isnt registered', () => {
-		const myMissingShape = { type: 'missing' } as TLShape
+		const myMissingShape = { type: 'missing' } as unknown as TLShape
 		expect(() => editor.getShapeUtil(myMissingShape)).toThrowErrorMatchingInlineSnapshot(
 			`[Error: No shape util found for type "missing"]`
 		)

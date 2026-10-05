@@ -364,6 +364,10 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		})
 	}
 
+	override getText(shape: TLGeoShape) {
+		return richTextToPlainText(shape.props.richText)
+	}
+
 	override onEditEnd: TLOnEditEndHandler<TLGeoShape> = (shape) => {
 		const richText = trimRichText(shape.props.richText)
 		if (richText !== shape.props.richText) {

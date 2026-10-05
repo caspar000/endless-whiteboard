@@ -28,7 +28,7 @@ and until it does, it must leave them untouched.
 | D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | done (phase 3) |
 | D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | done (phase 2) |
 | D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | doing: read and kept, elbows drawn straight (phase 2) |
-| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | doing: read and kept, not drawn (phase 2) |
+| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | doing: images draw flipped (phase 5); geo flips not drawn |
 | D6 | `labelColor` on notes | 3.4 | Cutover | done (phase 4) |
 | D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | done for reading (phase 2); the mode is backlog |
 | D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |
@@ -45,23 +45,23 @@ keep working).
 |---|---|---|---|---|
 | E1 | Bindings API: `getBindingsFromShape`, `createBindings`, `deleteBindings`, `getArrowBindings`, binding utils, `defaultBindingUtils`, `canBind` options, a binding-deleted side effect | Relations (`node-kit/src/edges.ts`, `relations.ts`) | Cutover | done (phase 3) |
 | E2 | Rich text editing: TipTap in text, note, geo and arrow labels; `textOptions.tipTapConfig`; `tipTapDefaultExtensions`; a way to add our own extension | The `{…}` expression helper, every text shape | Cutover | done (phase 4) |
-| E3 | `run` and `markHistoryStoppingPoint` (the fork has `batch` and `mark`) | 51 + 20 call sites | Cutover | todo |
+| E3 | `run` and `markHistoryStoppingPoint` (the fork has `batch` and `mark`) | 51 + 20 call sites | Cutover | done (phase 5) |
 | E4 | Shape visibility (`getShapeVisibility` option, `isShapeHidden`) | Hidden relations (`canvas/relationVisibility.ts`) | Cutover | todo |
 | E5 | Camera options: `getCameraOptions`/`setCameraOptions`, zoom steps, `getBaseZoom`, locking | Quick Look (`canvas/quickLook.ts`) | Cutover | todo |
 | E6 | `ShapeUtil.configure()` | Frame (`showColors`, transparent fill), geo (fill colour in meta) | Cutover (subclassing is acceptable) | todo |
 | E7 | Theme and colour API: `getCurrentTheme`, `getColorMode`, `getColorValue`, the `colorScheme` prop | Dark/light, fill and swatch colours | Cutover | todo |
-| E8 | `focus`, `blur`, `getIsFocused`, `markEventAsHandled`, `canEditShape` | Keyboard handling, tab switching, Quick Look | Cutover | todo |
+| E8 | `focus`, `blur`, `getIsFocused`, `markEventAsHandled`, `canEditShape` | Keyboard handling, tab switching, Quick Look | Cutover | done (phase 5) |
 | E9 | `onHandleDrag` on shape utils, `TLHandleDragInfo` | Shift-to-hide while drawing a relation | Cutover | todo |
-| E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | todo |
-| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | todo; export still draws labels as plain text |
-| E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | todo |
+| E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | done (phase 5) |
+| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | doing: `toImage` (phase 5); export still draws labels as plain text |
+| E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | done (phase 5): default indicator from geometry; `getIndicatorPath` accepted, outline from geometry |
 | E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | doing: `createTLSchemaFromUtils` (phase 3); the store has `getStoreSnapshot`/`loadStoreSnapshot`; the `getSnapshot`/`loadSnapshot` helpers are open |
-| E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | todo |
+| E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | done (phase 5) |
 | E15 | External content defaults: `defaultHandleExternalFileContent`/`TextContent`/`UrlContent`, `TLFilesExternalContent` | `canvas/FileImportHandler.tsx` | Cutover | todo |
-| E16 | `TldrawOptions` (`options` prop), `TldrawEditorStoreProps` (`store` / `persistenceKey` props) | `canvas/Board.tsx` | Cutover | todo |
+| E16 | `TldrawOptions` (`options` prop), `TldrawEditorStoreProps` (`store` / `persistenceKey` props) | `canvas/Board.tsx` | Cutover | doing: `assets`, `migrations`, `textOptions`, `bindingUtils` props (phases 3–5); `options` open |
 | E17 | `DefaultShapeWrapper`, `TLShapeWrapperProps`, `suffixSafeId`, `useUniqueSafeId` | Trace layer, SVG ids | Cutover | todo |
-| E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | todo |
-| E19 | Drop-target behaviour as Lifeboard relies on it (`docs/tldraw-api-notes.md`: drag-in fires on drag start, topmost hook wins, `canReceiveNewChildrenOfType` gates the drop) | Kanban, calendar, frames adopting cards | Cutover | todo |
+| E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | doing: `Box`, `Vec` (phase 5); `TLComponents` open |
+| E19 | Drop-target behaviour as Lifeboard relies on it (`docs/tldraw-api-notes.md`: drag-in fires on drag start, topmost hook wins, `canReceiveNewChildrenOfType` gates the drop) | Kanban, calendar, frames adopting cards | Cutover | done (phase 5) |
 | E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | doing: same names, and databases opened at tldraw 5's version 4 with its `assets` store (phase 2); flush on close and `pagehide` open |
 
 ## U — UI pieces Lifeboard builds on

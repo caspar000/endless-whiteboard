@@ -457,6 +457,9 @@ importers:
       '@use-gesture/react':
         specifier: ^10.2.27
         version: 10.3.1(react@19.2.8)
+      canvas-size:
+        specifier: ^1.2.6
+        version: 1.2.6
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
@@ -494,6 +497,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/canvas-size':
+        specifier: ^1.2.2
+        version: 1.2.2
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14

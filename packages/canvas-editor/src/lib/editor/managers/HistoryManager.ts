@@ -16,6 +16,9 @@ type CommandFn<Data> = (...args: any[]) =>
 type ExtractData<Fn> = Fn extends CommandFn<infer Data> ? Data : never
 type ExtractArgs<Fn> = Parameters<Extract<Fn, (...args: any[]) => any>>
 
+/** How the history records commands; see `Editor.run`. @public */
+export type TLHistoryMode = 'record' | 'record-preserveRedoStack' | 'ignore'
+
 export class HistoryManager<
 	CTX extends {
 		emit: (name: 'change-history' | 'mark-history', ...args: any) => void
@@ -24,6 +27,23 @@ export class HistoryManager<
 	_undos = atom<Stack<TLHistoryEntry>>('HistoryManager.undos', stack()) // Updated by each action that includes and undo
 	_redos = atom<Stack<TLHistoryEntry>>('HistoryManager.redos', stack()) // Updated when a user undoes
 	_batchDepth = 0 // A flag for whether the user is in a batch operation
+
+	/**
+	 * How commands are recorded right now: normally, not at all (`ignore`), or without clearing the
+	 * redo stack. Set for the length of a call by `withMode`.
+	 */
+	private _mode: TLHistoryMode = 'record'
+
+	/** Runs `fn` with commands recorded as `mode` says, then restores the previous mode. */
+	withMode(mode: TLHistoryMode, fn: () => void) {
+		const previous = this._mode
+		this._mode = mode
+		try {
+			fn()
+		} finally {
+			this._mode = previous
+		}
+	}
 
 	constructor(
 		private readonly ctx: CTX,
@@ -81,7 +101,10 @@ export class HistoryManager<
 				return this.ctx
 			}
 
-			const { data, ephemeral, squashing, preservesRedoStack } = result
+			const { data, squashing } = result
+			const ephemeral = result.ephemeral || this._mode === 'ignore'
+			const preservesRedoStack =
+				result.preservesRedoStack || this._mode === 'record-preserveRedoStack'
 
 			this.ignoringUpdates((undos, redos) => {
 				handle.do(data)
@@ -118,7 +141,7 @@ export class HistoryManager<
 					)
 				}
 
-				if (!result.preservesRedoStack) {
+				if (!preservesRedoStack) {
 					this._redos.set(stack())
 				}
 

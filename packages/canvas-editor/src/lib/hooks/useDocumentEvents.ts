@@ -56,6 +56,9 @@ export function useDocumentEvents() {
 		if (!isAppFocused) return
 
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Something on the canvas dealt with this key already (see Editor.markEventAsHandled).
+			if (editor.wasEventAlreadyHandled(e)) return
+			editor.markEventAsHandled(e)
 			if (
 				e.altKey &&
 				// todo: When should we allow the alt key to be used? Perhaps states should declare which keys matter to them?
@@ -171,6 +174,8 @@ export function useDocumentEvents() {
 		}
 
 		const handleKeyUp = (e: KeyboardEvent) => {
+			if (editor.wasEventAlreadyHandled(e)) return
+			editor.markEventAsHandled(e)
 			if ((e as any).isKilled) return
 			;(e as any).isKilled = true
 

@@ -5,6 +5,7 @@ import {
 	ShapeUtil,
 	SvgExportContext,
 	renderHtmlFromRichText,
+	richTextToPlainText,
 	toRichText,
 	trimRichText,
 	TLNoteShape,
@@ -171,6 +172,10 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 		}
 
 		return getGrowY(this.editor, next, prev.props.growY)
+	}
+
+	override getText(shape: TLNoteShape) {
+		return richTextToPlainText(shape.props.richText)
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLNoteShape> = (shape) => {

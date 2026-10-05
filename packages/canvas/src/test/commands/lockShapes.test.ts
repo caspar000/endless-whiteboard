@@ -1,4 +1,4 @@
-import { createShapeId } from '@lifeboard/canvas-editor'
+import { TLShape, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor
@@ -156,7 +156,7 @@ describe('Locked shapes', () => {
 		const frame = editor.getShape(ids.lockedFrame)!
 		const frameUtil = editor.getShapeUtil(frame)
 
-		expect(frameUtil.canReceiveNewChildrenOfType(frame, 'box')).toBe(false)
+		expect(frameUtil.canReceiveNewChildrenOfType(frame, 'box' as TLShape['type'])).toBe(false)
 		const shape = editor.getShape(ids.lockedShapeA)!
 		expect(frameUtil.canDropShapes(frame, [shape])).toBe(false)
 	})

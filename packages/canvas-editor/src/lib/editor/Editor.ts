@@ -110,6 +110,7 @@ import {
 	sortByIndex,
 } from '../utils/reordering/reordering'
 import { applyRotationToSnapshotShapes, getRotationSnapshot } from '../utils/rotation'
+import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
 import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
 import {
@@ -123,7 +124,7 @@ import { parentsToChildren } from './derivations/parentsToChildren'
 import { deriveShapeIdsInCurrentPage } from './derivations/shapeIdsInCurrentPage'
 import { ClickManager } from './managers/ClickManager'
 import { EnvironmentManager } from './managers/EnvironmentManager'
-import { HistoryManager } from './managers/HistoryManager'
+import { HistoryManager, type TLHistoryMode } from './managers/HistoryManager'
 import { ScribbleManager } from './managers/ScribbleManager'
 import { SideEffectManager } from './managers/SideEffectManager'
 import { SnapManager } from './managers/SnapManager'
@@ -868,6 +869,123 @@ export class Editor extends EventEmitter<TLEventMap> {
 	batch(fn: () => void): this {
 		this.history.batch(fn)
 		return this
+	}
+
+	/**
+	 * Runs a change as one step: everything `fn` does lands together. `history` says how it is
+	 * recorded: as usual, without clearing the redo stack, or not at all (for writes that aren't the
+	 * person's doing, like a cached height or a reading position).
+	 *
+	 * @public
+	 */
+	run(fn: () => void, opts: { history?: TLHistoryMode } = {}): this {
+		this.history.batch(() => {
+			if (opts.history) this.history.withMode(opts.history, fn)
+			else fn()
+		})
+		return this
+	}
+
+	/**
+	 * Marks a point in the history that undo stops at, and returns its id (for `bailToMark` and
+	 * `squashToMark`).
+	 *
+	 * @public
+	 */
+	markHistoryStoppingPoint(name?: string): string {
+		const id = `${name ?? 'stop'}:${uniqueId()}`
+		this.mark(id)
+		return id
+	}
+
+	/* ------------------- Assets ------------------- */
+
+	/**
+	 * Stores a file through the store's asset store, and returns where it went (`src`) with anything
+	 * the store wants kept beside it (`meta`).
+	 *
+	 * @public
+	 */
+	async uploadAsset(asset: TLAsset, file: File, abortSignal?: AbortSignal) {
+		return this.store.props.assets.upload(asset, file, abortSignal)
+	}
+
+	/**
+	 * The URL to show an asset at, from the store's asset store. `screenScale` is how large it is drawn
+	 * on screen relative to its own size, so a store can pick a resolution.
+	 *
+	 * @public
+	 */
+	async resolveAssetUrl(
+		assetId: TLAssetId | null,
+		{ screenScale = 1, shouldResolveToOriginal = false }: { screenScale?: number; shouldResolveToOriginal?: boolean } = {}
+	): Promise<string | null> {
+		const asset = assetId ? this.getAsset(assetId) : undefined
+		if (!asset) return null
+		const dpr = this.getInstanceState().devicePixelRatio
+		const steppedScreenScale = Math.max(1 / 8, 2 ** Math.ceil(Math.log2(screenScale)))
+		const networkEffectiveType =
+			(navigator as Navigator & { connection?: { effectiveType?: string } }).connection?.effectiveType ?? null
+		return (
+			(await this.store.props.assets.resolve(asset, {
+				screenScale,
+				steppedScreenScale,
+				dpr,
+				networkEffectiveType,
+				shouldResolveToOriginal,
+			})) ?? null
+		)
+	}
+
+	/* ------------------- Events and focus ------------------- */
+
+	private readonly _handledEvents = new WeakSet<Event>()
+
+	/**
+	 * Marks a DOM event as handled, so the editor's own listeners leave it alone. The way for UI on
+	 * the canvas to keep a key or a press it has dealt with.
+	 *
+	 * @public
+	 */
+	markEventAsHandled(e: Event | { nativeEvent: Event }): void {
+		this._handledEvents.add('nativeEvent' in e ? e.nativeEvent : e)
+	}
+
+	/** Whether `markEventAsHandled` was called for this event. @public */
+	wasEventAlreadyHandled(e: Event | { nativeEvent: Event }): boolean {
+		return this._handledEvents.has('nativeEvent' in e ? e.nativeEvent : e)
+	}
+
+	/** Whether the editor has the keyboard. @public */
+	getIsFocused(): boolean {
+		return this.getInstanceState().isFocused
+	}
+
+	/** Gives the editor the keyboard. @public */
+	focus({ focusContainer = true }: { focusContainer?: boolean } = {}): this {
+		if (focusContainer) this.getContainer().focus()
+		this.updateInstanceState({ isFocused: true })
+		return this
+	}
+
+	/** Takes the keyboard away from the editor. @public */
+	blur({ blurContainer = true }: { blurContainer?: boolean } = {}): this {
+		if (blurContainer) this.getContainer().blur()
+		this.updateInstanceState({ isFocused: false })
+		return this
+	}
+
+	/**
+	 * Whether a shape can be edited now: its util allows it, and the board isn't read-only (unless the
+	 * shape is editable in read-only mode).
+	 *
+	 * @public
+	 */
+	canEditShape(shape: TLShape | TLShapeId): boolean {
+		const record = typeof shape === 'string' ? this.getShape(shape) : shape
+		if (!record) return false
+		const util = this.getShapeUtil(record)
+		return this.getInstanceState().isReadonly ? util.canEditInReadOnly(record) : util.canEdit(record)
 	}
 
 	/* -------------------- Rich text -------------------- */
@@ -2868,12 +2986,23 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	zoomToBounds(bounds: Box2d, targetZoom?: number, animation?: TLAnimationOptions): this {
+	zoomToBounds(
+		bounds: Box2d,
+		opts?:
+			| number
+			| { targetZoom?: number; inset?: number; animation?: TLAnimationOptions },
+		animation?: TLAnimationOptions
+	): this {
 		if (!this._canMoveCamera.get()) return this
+		// Today's form takes one options object; 2023's took the zoom and animation as arguments.
+		const targetZoom = typeof opts === 'number' ? opts : opts?.targetZoom
+		if (typeof opts === 'object') animation = opts.animation ?? animation
 
 		const viewportScreenBounds = this.getViewportScreenBounds()
 
-		const inset = Math.min(256, viewportScreenBounds.width * 0.28)
+		const inset =
+			(typeof opts === 'object' ? opts.inset : undefined) ??
+			Math.min(256, viewportScreenBounds.width * 0.28)
 
 		let zoom = clamp(
 			Math.min(
@@ -3333,6 +3462,26 @@ export class Editor extends EventEmitter<TLEventMap> {
 			y: (point.y + cy) * cz + screenBounds.y,
 			z: point.z ?? 0.5,
 		}
+	}
+
+	/**
+	 * Converts a point in page space to one relative to the editor's container (`pageToScreen` is
+	 * relative to the window).
+	 *
+	 * @public
+	 */
+	pageToViewport(point: VecLike) {
+		const { x: cx, y: cy, z: cz = 1 } = this.getCamera()
+		return { x: (point.x + cx) * cz, y: (point.y + cy) * cz, z: point.z ?? 0.5 }
+	}
+
+	/** The selection's bounds relative to the editor's container, if anything is selected. @public */
+	getSelectionScreenBounds(): Box2d | undefined {
+		const bounds = this.getSelectionPageBounds()
+		if (!bounds) return undefined
+		const { x, y } = this.pageToViewport(bounds.point)
+		const z = this.getZoomLevel()
+		return new Box2d(x, y, bounds.width * z, bounds.height * z)
 	}
 
 	// Following
@@ -4411,7 +4560,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	getShapeOutlineSegments<T extends TLShape>(shape: T | T['id']): Vec2d[][] {
+	getShapeOutlineSegments<T extends TLUnknownShape>(shape: T | T['id']): Vec2d[][] {
 		return (
 			this._getShapeOutlineSegmentsCache().get(typeof shape === 'string' ? shape : shape.id) ??
 			EMPTY_ARRAY
@@ -4437,7 +4586,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @param shape - The shape (or shape id) to get the handles for.
 	 * @public
 	 */
-	getShapeHandles<T extends TLShape>(shape: T | T['id']): TLHandle[] | undefined {
+	getShapeHandles<T extends TLUnknownShape>(shape: T | T['id']): TLHandle[] | undefined {
 		return this._getShapeHandlesCache().get(typeof shape === 'string' ? shape : shape.id)
 	}
 
@@ -5607,9 +5756,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 		for (let i = currentPageShapesSorted.length - 1; i >= 0; i--) {
 			const shape = currentPageShapesSorted[i]
 
+			const util = this.getShapeUtil(shape)
 			if (
-				// only allow shapes that can receive children
-				!this.getShapeUtil(shape).canDropShapes(shape, droppingShapes) ||
+				// a drop target is a shape whose util has a drag-and-drop hook, and agrees to this drop
+				!(util.onDragShapesIn || util.onDragShapesOver || util.onDragShapesOut || util.onDropShapesOver) ||
+				!util.canDropShapes(shape, droppingShapes) ||
 				// don't allow dropping a shape on itself or one of it's children
 				droppingShapes.find((s) => s.id === shape.id || this.hasAncestor(shape, s.id))
 			) {
@@ -6504,7 +6655,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			const translateStartChange = this.getShapeUtil(shape).onTranslateStart?.({
 				...shape,
 				...change,
-			})
+			} as TLShape)
 
 			if (translateStartChange) {
 				changes.push({ ...change, ...translateStartChange })
@@ -7070,7 +7221,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	createShape<T extends TLUnknownShape>(shape: OptionalKeys<TLShapePartial<T>, 'id'>): this {
-		this._createShapes([shape])
+		this._createShapes([shape as OptionalKeys<TLShapePartial, 'id'>])
 		return this
 	}
 
@@ -7104,7 +7255,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 			remove.push(...write.remove)
 			return { ...shape, id, props: write.props } as typeof shape
 		})
-		this._createShapes(translated)
+		// Shapes of any type the editor has a util for; the schema's shape map may not list them.
+		this._createShapes(translated as OptionalKeys<TLShapePartial, 'id'>[])
 		this._writeBindings(put, remove)
 		return this
 	}
@@ -7622,7 +7774,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// Detach first: a binding's util pins the end it leaves where it is drawn, and the update that
 		// follows then moves it to where this write says.
 		this._writeBindings([], remove)
-		this._updateShapes(compactedPartials, historyOptions)
+		this._updateShapes(compactedPartials as TLShapePartial[], historyOptions)
 		this._writeBindings(put, [])
 		return this
 	}
@@ -8726,6 +8878,45 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/**
+	 * Draws shapes as an image: SVG, or PNG, JPEG or WebP. `scale` is page units to image units;
+	 * `pixelRatio` (raster formats only, 2 unless given) multiplies the pixels on top of that. The
+	 * width and height returned are the image's, in its own pixels.
+	 *
+	 * @public
+	 */
+	async toImage(
+		shapes: TLShapeId[] | TLShape[],
+		opts: Partial<TLSvgOptions> & {
+			format?: 'svg' | 'png' | 'jpeg' | 'webp'
+			pixelRatio?: number
+			quality?: number
+		} = {}
+	): Promise<{ blob: Blob; width: number; height: number }> {
+		const { format = 'png', pixelRatio = format === 'svg' ? 1 : 2, quality = 0.92, ...svgOpts } = opts
+		const svg = await this.getSvg(shapes, svgOpts)
+		if (!svg) throw Error('There is nothing to draw')
+		const width = Number(svg.getAttribute('width'))
+		const height = Number(svg.getAttribute('height'))
+
+		if (format === 'svg') {
+			const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' })
+			return { blob, width, height }
+		}
+
+		const blob = await getSvgAsImage(svg, this.environment.isSafari, {
+			type: format,
+			quality,
+			scale: pixelRatio,
+		})
+		if (!blob) throw Error('Could not draw the image')
+		// The browser may have capped the canvas; read the size that came out.
+		const bitmap = await createImageBitmap(blob)
+		const size = { width: bitmap.width, height: bitmap.height }
+		bitmap.close()
+		return { blob, ...size }
+	}
+
+	/**
 	 * Get an exported SVG of the given shapes.
 	 *
 	 * @param ids - The shapes (or shape ids) to export.
@@ -8994,6 +9185,34 @@ export class Editor extends EventEmitter<TLEventMap> {
 		isPanning: false,
 		/** Velocity of mouse pointer, in pixels per millisecond */
 		pointerVelocity: new Vec2d(),
+
+		// Today's API reads inputs through getters. The screen points here are relative to the
+		// editor's container, as today's are; the fields above are relative to the window.
+		getOriginPagePoint: () => this.inputs.originPagePoint,
+		getOriginScreenPoint: () => this._toContainer(this.inputs.originScreenPoint),
+		getPreviousPagePoint: () => this.inputs.previousPagePoint,
+		getPreviousScreenPoint: () => this._toContainer(this.inputs.previousScreenPoint),
+		getCurrentPagePoint: () => this.inputs.currentPagePoint,
+		getCurrentScreenPoint: () => this._toContainer(this.inputs.currentScreenPoint),
+		getKeys: () => this.inputs.keys,
+		getButtons: () => this.inputs.buttons,
+		getIsPen: () => this.inputs.isPen,
+		getShiftKey: () => this.inputs.shiftKey,
+		getCtrlKey: () => this.inputs.ctrlKey,
+		getMetaKey: () => this.inputs.ctrlKey,
+		getAccelKey: () => this.inputs.ctrlKey,
+		getAltKey: () => this.inputs.altKey,
+		getIsDragging: () => this.inputs.isDragging,
+		getIsPointing: () => this.inputs.isPointing,
+		getIsPinching: () => this.inputs.isPinching,
+		getIsEditing: () => this.inputs.isEditing,
+		getIsPanning: () => this.inputs.isPanning,
+		getPointerVelocity: () => this.inputs.pointerVelocity,
+	}
+
+	private _toContainer(point: Vec2d) {
+		const { screenBounds } = this.store.unsafeGetWithoutCapture(TLINSTANCE_ID)!
+		return new Vec2d(point.x - screenBounds.x, point.y - screenBounds.y, point.z)
 	}
 
 	/**

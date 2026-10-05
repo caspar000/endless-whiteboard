@@ -1,3 +1,4 @@
+import type { TLUnknownShape } from '@tldraw/tlschema'
 import type { TLShape } from '../editor/types/shape-types'
 import { track, useQuickReactor, useStateTracking } from '@tldraw/state-react'
 import {
@@ -146,7 +147,7 @@ export const Shape = track(function Shape({
 })
 
 const InnerShape = React.memo(
-	function InnerShape<T extends TLShape>({ shape, util }: { shape: T; util: ShapeUtil<T> }) {
+	function InnerShape<T extends TLUnknownShape>({ shape, util }: { shape: T; util: ShapeUtil<T> }) {
 		return useStateTracking('InnerShape:' + shape.type, () => util.component(shape))
 	},
 	(prev, next) =>
@@ -156,7 +157,7 @@ const InnerShape = React.memo(
 )
 
 const InnerShapeBackground = React.memo(
-	function InnerShapeBackground<T extends TLShape>({
+	function InnerShapeBackground<T extends TLUnknownShape>({
 		shape,
 		util,
 	}: {
@@ -169,9 +170,9 @@ const InnerShapeBackground = React.memo(
 )
 
 const CulledShape = React.memo(
-	function CulledShape<T extends TLShape>({ shape }: { shape: T }) {
+	function CulledShape<T extends TLUnknownShape>({ shape }: { shape: T }) {
 		const editor = useEditor()
-		const bounds = editor.getShapeGeometry(shape).bounds
+		const bounds = editor.getShapeGeometry(shape as unknown as TLShape).bounds
 
 		return (
 			<div

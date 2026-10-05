@@ -1,5 +1,6 @@
 import { vi } from 'vitest'
 import {
+	TLDefaultFillStyle,
 	Box2d,
 	GroupShapeUtil,
 	TLArrowShape,
@@ -40,7 +41,7 @@ const box = (
 	y: number,
 	w = 10,
 	h = 10,
-	fill = 'solid'
+	fill: TLDefaultFillStyle = 'solid'
 ): TLShapePartial => ({
 	type: 'geo',
 	id,
@@ -1746,7 +1747,7 @@ describe('moving handles within a group', () => {
 
 		editor.pointerDown(60, 60, {
 			target: 'handle',
-			shape: arrow,
+			shape: editor.getShape(arrow.id)!,
 			handle: editor.getShapeHandles<TLArrowShape>(arrow.id)!.find((h) => h.id === 'end'),
 		})
 

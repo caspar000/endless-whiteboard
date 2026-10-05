@@ -1,5 +1,6 @@
 import {
 	renderHtmlFromRichText,
+	richTextToPlainText,
 	IndexKey,
 	toRichText,
 	trimRichText,
@@ -787,6 +788,10 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				)}
 			</g>
 		)
+	}
+
+	override getText(shape: TLArrowShape) {
+		return richTextToPlainText(shape.props.richText)
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLArrowShape> = (shape) => {

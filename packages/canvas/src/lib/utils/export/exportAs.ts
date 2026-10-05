@@ -1,5 +1,5 @@
 import { Editor, TLFrameShape, TLShapeId, TLSvgOptions } from '@lifeboard/canvas-editor'
-import { getSvgAsDataUrl, getSvgAsImage } from './export'
+import { getSvgAsDataUrl, getSvgAsImage } from '@lifeboard/canvas-editor'
 
 /** @public */
 export type TLExportType = 'svg' | 'png' | 'jpeg' | 'webp' | 'json'

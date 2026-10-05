@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–4 done** (2026-10-05). Phase 5 next.
+Status: **Phases 0–4 done** (2026-10-05). Phase 5 under way: part A done.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -284,6 +284,36 @@ auto-size; a basic formatting toolbar; a way to add TipTap extensions (Lifeboard
 - A checklist in `docs/fork-parity.md`: every E and U item marked done with its commit.
 
 **Size:** 3–5 weeks.
+
+**As built, part A — Lifeboard's packages on the fork:**
+
+- **The gate holds.** `pnpm test:on-fork` runs node-kit's, note-markdown's, book-reader's and dice's
+  suites with `tldraw` pointed at the fork: 979 tests pass, unchanged. They mostly run on fake
+  editors, so the sharper check is `pnpm typecheck:on-fork`, which compiles the four packages against
+  the fork: no errors in their files (it started at 91).
+- **`TLShape` is today's closed union** of the shape types registered in `TLGlobalShapePropsMap`, so
+  Lifeboard's `shape.type === 'node.rollup'` narrows its props as it does on tldraw 5. Code for an
+  unregistered type (a test's custom shape) uses `TLUnknownShape`.
+- **Shape utils:** `ShapeUtil`'s flags and hooks are methods, so Lifeboard's method overrides compile
+  (the 2023 utils' arrow-function overrides still do). New: `getText`, a default `indicator` drawn
+  from the shape's geometry (a `getIndicatorPath` is accepted; the fork can't read a `Path2D` back,
+  and for Lifeboard's nodes the two are the same rectangle), and `onDragShapesIn`.
+- **Drop targets (E19)** as `docs/tldraw-api-notes.md` records them: a shape whose util has any of the
+  four hooks is a target, topmost first; `onDragShapesIn` on arrival, `onDragShapesOver` on later
+  moves, `onDragShapesOut` on leaving; `onDropShapesOver` only receives what
+  `canReceiveNewChildrenOfType` accepts. Frames adopt shapes in `onDragShapesIn`.
+- **Editor:** `run` with `history: 'ignore' | 'record-preserveRedoStack'`, `markHistoryStoppingPoint`,
+  `markEventAsHandled` (honoured by the editor's key and pointer listeners), `getIsFocused`/`focus`/
+  `blur`, `canEditShape`, `pageToViewport`, `getSelectionScreenBounds`, `zoomToBounds` with an options
+  object, input getters (`inputs.getCurrentPagePoint()` and the rest; screen points relative to the
+  container, as today), `toImage`, a typed `createComputedCache`, `Box`/`Vec` names.
+- **Assets (E10):** `createTLStore` and `<Tldraw>` take the app's asset store (`assets`) and store
+  migrations; `editor.uploadAsset`/`resolveAssetUrl`; `useImageOrVideoAsset`. Images and videos load
+  through the store, dropped files are uploaded through it, and flipped images draw mirrored.
+- **One difference to know:** an `ignore`d write to a record that a recorded change also touched is
+  undone with that change (the fork's undo restores whole records). Lifeboard's ignored writes are to
+  other records, or re-derive themselves (auto-height).
+- **Tests:** `src/test/todaysApi.test.ts` covers the above; the four lab Playwright files still pass.
 
 ## Phase 6 — Our own sync
 

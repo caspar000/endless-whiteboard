@@ -1,4 +1,4 @@
-import { createShapeId } from '@lifeboard/canvas-editor'
+import { IndexKey, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor
@@ -113,7 +113,7 @@ describe('PointingHandle', () => {
 		editor.pointerDown(150, 150, {
 			target: 'handle',
 			shape,
-			handle: { id: 'start', type: 'vertex', index: 'a1', x: 0, y: 0 },
+			handle: { id: 'start', type: 'vertex', index: 'a1' as IndexKey, x: 0, y: 0 },
 		})
 		editor.expectToBeIn('select.pointing_handle')
 
@@ -126,7 +126,7 @@ describe('PointingHandle', () => {
 		editor.pointerDown(150, 150, {
 			target: 'handle',
 			shape,
-			handle: { id: 'start', type: 'vertex', index: 'a1', x: 0, y: 0 },
+			handle: { id: 'start', type: 'vertex', index: 'a1' as IndexKey, x: 0, y: 0 },
 		})
 		editor.expectToBeIn('select.pointing_handle')
 		editor.cancel()
@@ -141,7 +141,7 @@ describe('DraggingHandle', () => {
 		editor.pointerDown(150, 150, {
 			target: 'handle',
 			shape,
-			handle: { id: 'start', type: 'vertex', index: 'a1', x: 0, y: 0 },
+			handle: { id: 'start', type: 'vertex', index: 'a1' as IndexKey, x: 0, y: 0 },
 		})
 		editor.pointerMove(100, 100)
 		editor.expectToBeIn('select.dragging_handle')
@@ -157,7 +157,7 @@ describe('DraggingHandle', () => {
 		editor.pointerDown(150, 150, {
 			target: 'handle',
 			shape,
-			handle: { id: 'start', type: 'vertex', index: 'a1', x: 0, y: 0 },
+			handle: { id: 'start', type: 'vertex', index: 'a1' as IndexKey, x: 0, y: 0 },
 		})
 		editor.pointerMove(100, 100)
 		editor.expectToBeIn('select.dragging_handle')
@@ -216,7 +216,7 @@ describe('When double clicking the selection edge', () => {
 			.selectAll()
 			.deleteShapes(editor.getSelectedShapeIds())
 			.selectNone()
-			.createShapes([{ id, type: 'text', x: 100, y: 100, props: { scale: 2, text: 'hello' } }])
+			.createShapes([{ id, type: 'text', x: 100, y: 100, props: { scale: 2, richText: toRichText('hello') } }])
 			.select(id)
 			.doubleClick(100, 100, { target: 'selection', handle: 'left' })
 
@@ -233,7 +233,7 @@ describe('When double clicking the selection edge', () => {
 				{
 					id,
 					type: 'text',
-					props: { scale: 2, autoSize: false, w: 200, text: 'hello' },
+					props: { scale: 2, autoSize: false, w: 200, richText: toRichText('hello') },
 				},
 			])
 			.select(id)
@@ -256,7 +256,7 @@ describe('When double clicking the selection edge', () => {
 				{
 					id,
 					type: 'text',
-					props: { scale: 2, autoSize: false, w: 200, text: 'hello' },
+					props: { scale: 2, autoSize: false, w: 200, richText: toRichText('hello') },
 				},
 			])
 			.select(id)
@@ -304,10 +304,10 @@ describe('When editing shapes', () => {
 		}
 
 		editor.createShapes([
-			{ id: ids.geo1, type: 'geo', props: { text: 'hello world ' } },
-			{ id: ids.geo2, type: 'geo', props: { text: 'hello world ' } },
-			{ id: ids.text1, type: 'text', props: { text: 'hello world ' } },
-			{ id: ids.text2, type: 'text', props: { text: 'hello world ' } },
+			{ id: ids.geo1, type: 'geo', props: { richText: toRichText('hello world ') } },
+			{ id: ids.geo2, type: 'geo', props: { richText: toRichText('hello world ') } },
+			{ id: ids.text1, type: 'text', props: { richText: toRichText('hello world ') } },
+			{ id: ids.text2, type: 'text', props: { richText: toRichText('hello world ') } },
 		])
 	})
 

@@ -1,4 +1,4 @@
-import { Box2d, Editor, TLGeoShape, TLNoteShape } from '@lifeboard/canvas-editor'
+import { Box2d, Editor, TLGeoShape, TLNoteShape, richTextToPlainText } from '@lifeboard/canvas-editor'
 import { createTextSvgElementFromSpans } from './createTextSvgElementFromSpans'
 import { LABEL_FONT_SIZES, TEXT_PROPS } from './default-shape-constants'
 import { getLegacyOffsetX } from './legacyProps'
@@ -31,7 +31,7 @@ export function getTextLabelSvgElement({
 		offsetX: 0,
 	}
 
-	const spans = editor.textMeasure.measureTextSpans(shape.props.text, opts)
+	const spans = editor.textMeasure.measureTextSpans(richTextToPlainText(shape.props.richText), opts)
 	const offsetX = getLegacyOffsetX(shape.props.align, padding, spans, bounds.width)
 	if (offsetX) {
 		opts.offsetX = offsetX

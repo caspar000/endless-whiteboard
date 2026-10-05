@@ -11,13 +11,22 @@ const Table = {
 	Records: 'records',
 	Schema: 'schema',
 	SessionState: 'session_state',
+	// tldraw 5 keeps uploaded files here when there's no asset store. The fork doesn't use it, but
+	// keeps it so a board's database stays as tldraw left it.
+	Assets: 'assets',
 } as const
+
+/**
+ * The database version. tldraw 5 is at 4 (it added the assets store); opening its databases at a
+ * lower version fails, so every board Lifeboard saved before the fork would not load.
+ */
+const DB_VERSION = 4
 
 type StoreName = (typeof Table)[keyof typeof Table]
 
 async function withDb<T>(storeId: string, cb: (db: IDBPDatabase<StoreName>) => Promise<T>) {
 	addDbName(storeId)
-	const db = await openDB<StoreName>(storeId, 3, {
+	const db = await openDB<StoreName>(storeId, DB_VERSION, {
 		upgrade(database) {
 			if (!database.objectStoreNames.contains(Table.Records)) {
 				database.createObjectStore(Table.Records)
@@ -27,6 +36,9 @@ async function withDb<T>(storeId: string, cb: (db: IDBPDatabase<StoreName>) => P
 			}
 			if (!database.objectStoreNames.contains(Table.SessionState)) {
 				database.createObjectStore(Table.SessionState)
+			}
+			if (!database.objectStoreNames.contains(Table.Assets)) {
+				database.createObjectStore(Table.Assets)
 			}
 		},
 	})

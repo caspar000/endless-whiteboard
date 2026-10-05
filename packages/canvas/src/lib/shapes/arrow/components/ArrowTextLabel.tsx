@@ -12,10 +12,13 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 	position,
 	width,
 	labelColor,
-}: { id: TLShapeId; position: VecLike; width?: number; labelColor: string } & Pick<
-	TLArrowShape['props'],
-	'text' | 'size' | 'font'
->) {
+}: {
+	id: TLShapeId
+	text: string
+	position: VecLike
+	width?: number
+	labelColor: string
+} & Pick<TLArrowShape['props'], 'size' | 'font'>) {
 	const {
 		rInput,
 		isEditing,

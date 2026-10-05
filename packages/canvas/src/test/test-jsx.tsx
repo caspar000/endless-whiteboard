@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import {
+	IndexKey,
 	TLDefaultShape,
 	TLShapeId,
 	TLShapePartial,
@@ -53,7 +54,7 @@ export function shapesFromJsx(shapes: JSX.Element | Array<JSX.Element>) {
 	const currentPageShapes: Array<TLShapePartial> = []
 
 	function addChildren(children: JSX.Element | Array<JSX.Element>, parentId?: TLShapeId) {
-		let nextIndex = 'a0'
+		let nextIndex = 'a0' as IndexKey
 
 		for (const el of Array.isArray(children) ? children : [children]) {
 			const shapeType = (el.type as any)[shapeTypeSymbol] as string

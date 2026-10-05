@@ -355,12 +355,10 @@ describe('flipping rotated shapes', () => {
 		editor.selectAll().deleteShapes(editor.getSelectedShapeIds())
 		const props: Partial<TLArrowShapeProps> = {
 			start: {
-				type: 'point',
 				x: 0,
 				y: 0,
 			},
 			end: {
-				type: 'point',
 				x: 100,
 				y: 0,
 			},
@@ -407,7 +405,7 @@ describe('flipping rotated shapes', () => {
 	const getStartAndEndPoints = (id: TLShapeId) => {
 		const transform = editor.getShapePageTransform(id)
 		if (!transform) throw new Error('no transform')
-		const arrow = editor.getShape<TLArrowShape>(id)!
+		const arrow = editor.getArrowWithTerminals(id)
 		if (arrow.props.start.type !== 'point' || arrow.props.end.type !== 'point')
 			throw new Error('not a point')
 		const start = Matrix2d.applyToPoint(transform, arrow.props.start)

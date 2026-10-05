@@ -222,3 +222,67 @@ describe(storeChangesInIndexedDb, () => {
 	`)
 	})
 })
+
+describe('a board saved by tldraw 5.5', () => {
+	// The layout tldraw 5.5 leaves in the browser, as read from a Lifeboard board: database version 4,
+	// an `assets` store next to the other three, and session state rows like this one.
+	async function saveAsTldraw55(name: string) {
+		// tldraw lists its databases in localStorage too, under the same key.
+		localStorage.setItem('TLDRAW_DB_NAME_INDEX_v2', JSON.stringify([name]))
+		await new Promise<void>((resolve, reject) => {
+			const request = indexedDB.open(name, 4)
+			request.onupgradeneeded = () => {
+				for (const store of ['records', 'schema', 'session_state', 'assets']) {
+					request.result.createObjectStore(store)
+				}
+			}
+			request.onsuccess = () => {
+				const db = request.result
+				const tx = db.transaction(['records', 'schema', 'session_state', 'assets'], 'readwrite')
+				tx.objectStore('records').put({ id: 'page:page', typeName: 'page', name: 'Page 1' }, 'page:page')
+				tx.objectStore('schema').put(schema.serialize(), 'schema')
+				tx.objectStore('session_state').put(
+					{
+						id: 'TLDRAW_INSTANCE_STATE_V1_session',
+						updatedAt: 1,
+						snapshot: {
+							version: 0,
+							currentPageId: 'page:page',
+							exportBackground: true,
+							isFocusMode: false,
+							isDebugMode: false,
+							isToolLocked: false,
+							isGridMode: false,
+							pageStates: [],
+						},
+					},
+					'TLDRAW_INSTANCE_STATE_V1_session'
+				)
+				tx.objectStore('assets').put(new Blob(['file']), 'asset:file')
+				tx.oncomplete = () => {
+					db.close()
+					resolve()
+				}
+				tx.onerror = () => reject(tx.error)
+			}
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	it('opens, with its records and session state, and keeps its assets store', async () => {
+		await saveAsTldraw55('TLDRAW_DOCUMENT_v2lifeboard-board')
+
+		const data = await loadDataFromStore({ persistenceKey: 'lifeboard-board' })
+		expect(data?.records).toEqual([{ id: 'page:page', typeName: 'page', name: 'Page 1' }])
+		expect(data?.sessionStateSnapshot?.currentPageId).toBe('page:page')
+
+		const stores = await new Promise<string[]>((resolve) => {
+			const request = indexedDB.open('TLDRAW_DOCUMENT_v2lifeboard-board')
+			request.onsuccess = () => {
+				resolve([...request.result.objectStoreNames])
+				request.result.close()
+			}
+		})
+		expect(stores).toContain('assets')
+	})
+})

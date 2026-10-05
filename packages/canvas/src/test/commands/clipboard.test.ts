@@ -244,11 +244,11 @@ describe('When copying and pasting', () => {
 
 		const box1a = shapesAfter[0]
 		const box2a = shapesAfter[1]
-		const arrow1a = shapesAfter[2] as TLArrowShape
+		const arrow1a = editor.getArrowWithTerminals(shapesAfter[2])
 
 		const box1b = shapesAfter[3]
 		const box2b = shapesAfter[4]
-		const arrow1b = shapesAfter[5]
+		const arrow1b = editor.getArrowWithTerminals(shapesAfter[5])
 
 		// The new shapes should match the old shapes, except for their id and the arrow's bindings!
 		expect(shapesAfter.length).toBe(shapesBefore.length * 2)
@@ -413,6 +413,8 @@ describe('When copying and pasting', () => {
 		])
 
 		const shapesBefore = editor.getCurrentPageShapes()
+		// Read before the cut deletes the arrow's bindings.
+		const arrowBefore = editor.getArrowWithTerminals(shapesBefore[2])
 
 		editor.selectAll().cut()
 
@@ -426,16 +428,13 @@ describe('When copying and pasting', () => {
 		expect(shapesAfter.length).toBe(shapesBefore.length)
 		expect(shapesAfter[0]).toMatchObject({ ...shapesBefore[0], id: shapesAfter[0].id })
 		expect(shapesAfter[1]).toMatchObject({ ...shapesBefore[1], id: shapesAfter[1].id })
-		expect(shapesAfter[2]).toMatchObject({
-			...shapesBefore[2],
+		expect(editor.getArrowWithTerminals(shapesAfter[2])).toMatchObject({
+			...arrowBefore,
 			id: shapesAfter[2].id,
 			props: {
-				...shapesBefore[2].props,
-				start: {
-					...(shapesBefore[2] as TLArrowShape).props.start,
-					boundShapeId: shapesAfter[0].id,
-				},
-				end: { ...(shapesBefore[2] as TLArrowShape).props.end, boundShapeId: shapesAfter[1].id },
+				...arrowBefore.props,
+				start: { ...arrowBefore.props.start, boundShapeId: shapesAfter[0].id },
+				end: { ...arrowBefore.props.end, boundShapeId: shapesAfter[1].id },
 			},
 		})
 	})

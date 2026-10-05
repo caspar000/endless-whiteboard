@@ -1,5 +1,5 @@
 import { richTextToPlainText } from '../utils/richText'
-import type { TLShape, TLShapePartial } from './types/shape-types'
+import type { TLHandle, TLShape, TLShapePartial } from './types/shape-types'
 import { getDefaultColorTheme } from '../theme/defaultColorTheme'
 import { EMPTY_ARRAY, atom, computed, transact } from '@tldraw/state'
 import { ComputedCache, RecordType } from '@tldraw/store'
@@ -10,6 +10,7 @@ import {
 	StyleProp,
 	TLArrowBinding,
 	TLArrowShape,
+	TLBinding,
 	TLBindingId,
 	TLRecord,
 	TLUserId,
@@ -23,7 +24,6 @@ import {
 	TLFrameShape,
 	TLGeoShape,
 	TLGroupShape,
-	TLHandle,
 	TLINSTANCE_ID,
 	TLImageAsset,
 	TLInstance,
@@ -479,6 +479,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 			if (record.parentId && isShapeId(record.parentId)) {
 				invalidParents.add(record.parentId)
 			}
+			// an arrow's own bindings go with it
+			if (record.type === 'arrow') {
+				const ends = this._getArrowBindingsByArrow().get()[record.id]
+				const own = compact([ends?.start?.id, ends?.end?.id])
+				if (own.length) this.store.remove(own)
+			}
 			// clean up any arrows bound to this shape
 			const bindings = this._getArrowBindingsIndex().get()[record.id]
 			if (bindings?.length) {
@@ -606,6 +612,18 @@ export class Editor extends EventEmitter<TLEventMap> {
 				arrowDidUpdate(record)
 			}
 		})
+
+		// Attaching or detaching an arrow end was a change to the arrow in 2023. It is a binding record
+		// now, so the same checks (bound shape still there and on the arrow's page, arrow parent) run
+		// when one changes; this is also what drops a binding that redo puts back to a deleted shape.
+		const arrowBindingDidChange = (binding: TLBinding) => {
+			if (binding.type !== 'arrow') return
+			const arrow = this.getShape(binding.fromId)
+			if (arrow && this.isShapeOfType<TLArrowShape>(arrow, 'arrow')) arrowDidUpdate(arrow)
+		}
+		this.sideEffects.registerAfterCreateHandler('binding', arrowBindingDidChange)
+		this.sideEffects.registerAfterChangeHandler('binding', (_prev, next) => arrowBindingDidChange(next))
+		this.sideEffects.registerAfterDeleteHandler('binding', arrowBindingDidChange)
 
 		this.sideEffects.registerAfterCreateHandler('page', (record) => {
 			const cameraId = CameraRecordType.createId(record.id)
@@ -944,6 +962,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** Whether the camera may move. See updateInstanceState. @internal */
 	private readonly _canMoveCamera = atom('canMoveCamera', true)
+
+	/** Whether the camera may move; set through `updateInstanceState({ canMoveCamera })`. @public */
+	getCanMoveCamera() {
+		return this._canMoveCamera.get()
+	}
 
 	/** @internal */
 	@computed
@@ -5683,28 +5706,26 @@ export class Editor extends EventEmitter<TLEventMap> {
 				) {
 					const info = this.getArrowInfo(shape)
 					// An end stays attached only if the shape it is attached to is duplicated too, and then
-					// to the copy. Otherwise it is pinned where it is. Written as 2023-style terminals:
-					// createShapes turns them into points and binding records.
+					// to the copy. Otherwise it is pinned where it is. Written as 2023-style terminals, which
+					// the copy's geometry below reads instead of the original's bindings (they share an id
+					// until the end); createShapes turns them into points and binding records.
 					const ends: Partial<Record<TLArrowEnd, TLArrowShapeTerminal>> = {}
+					const copies: Partial<Record<TLArrowEnd, TLShapeId>> = {}
 					for (const end of ['start', 'end'] as const) {
 						const terminal = getArrowTerminal(this, shape, end)
 						if (terminal.type !== 'binding') continue
 						const copyId = idsMap.get(terminal.boundShapeId)
 						if (copyId) {
-							ends[end] = { ...terminal, boundShapeId: copyId }
+							ends[end] = terminal
+							copies[end] = copyId
 						} else {
-							const { x, y } = info?.isValid ? info[end].point : getArrowTerminalsInArrowSpace(this, shape)[end]
+							const { x, y } = info?.isValid
+								? info[end].point
+								: getArrowTerminalsInArrowSpace(this, shape)[end]
 							ends[end] = { type: 'point', x, y }
 						}
+						;(newShape.props as unknown as Record<string, unknown>)[end] = ends[end]
 					}
-					const pinned = (end: TLArrowEnd) => {
-						const terminal = ends[end]
-						return terminal?.type === 'point'
-							? { x: terminal.x, y: terminal.y }
-							: (newShape as TLArrowShape).props[end]
-					}
-					newShape.props.start = pinned('start')
-					newShape.props.end = pinned('end')
 
 					const infoAfter = getIsArrowStraight(newShape)
 						? getStraightArrowInfo(this, newShape)
@@ -5721,10 +5742,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 						}
 					}
 
+					// As in 2023, the bend is measured against the original shapes; now point at the copies.
 					for (const end of ['start', 'end'] as const) {
 						const terminal = ends[end]
-						if (terminal?.type === 'binding') {
-							;(newShape.props as unknown as Record<string, unknown>)[end] = terminal
+						const copyId = copies[end]
+						if (terminal?.type === 'binding' && copyId) {
+							;(newShape.props as unknown as Record<string, unknown>)[end] = {
+								...terminal,
+								boundShapeId: copyId,
+							}
 						}
 					}
 				}
@@ -7650,9 +7676,23 @@ export class Editor extends EventEmitter<TLEventMap> {
 				})
 			)
 
+			// Bindings to or from the deleted shapes are removed with them; keep them so undo restores
+			// them. In 2023 they were part of the arrow snapshots above.
+			const bindings = this.store.query
+				.records('binding')
+				.get()
+				.filter((binding) => allIds.has(binding.fromId) || allIds.has(binding.toId))
+
 			const postSelectedShapeIds = prevSelectedShapeIds.filter((id) => !allIds.has(id))
 
-			return { data: { deletedIds, snapshots, prevSelectedShapeIds, postSelectedShapeIds } }
+			return {
+				data: {
+					deletedIds,
+					snapshots: [...snapshots, ...bindings] as TLRecord[],
+					prevSelectedShapeIds,
+					postSelectedShapeIds,
+				},
+			}
 		},
 		{
 			do: ({ deletedIds, postSelectedShapeIds }) => {
@@ -7663,7 +7703,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				}))
 			},
 			undo: ({ snapshots, prevSelectedShapeIds }) => {
-				this.store.put(snapshots as TLRecord[])
+				this.store.put(snapshots)
 				this.store.update(this.getCurrentPageState().id, (state) => ({
 					...state,
 					selectedShapeIds: prevSelectedShapeIds,
@@ -8210,6 +8250,49 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/**
+	 * Brings content from a clipboard or file up to this schema.
+	 *
+	 * Content from older versions can need store-scoped migrations: 2023 arrows hold their
+	 * connections, which are binding records today. So the content is migrated as one snapshot, and
+	 * any bindings that come out of it go back onto their arrows as terminals, which is the form the
+	 * rest of putContent works with (see getContent).
+	 */
+	private _migrateContent(content: TLContent): TLContent {
+		const records: TLRecord[] = [...content.shapes, ...(content.assets ?? [])] as TLRecord[]
+		const result = this.store.schema.migrateStoreSnapshot({
+			store: Object.fromEntries(records.map((record) => [record.id, record])),
+			schema: content.schema,
+		})
+		if (result.type === 'error') {
+			throw Error(`Could not put content:\ncould not migrate content\nreason:${result.reason}`)
+		}
+		const migrated = result.value as Record<string, TLRecord>
+
+		for (const record of Object.values(migrated)) {
+			if (record.typeName !== 'binding' || record.type !== 'arrow') continue
+			const arrow = migrated[record.fromId]
+			if (arrow?.typeName !== 'shape') continue
+			const { terminal, normalizedAnchor, isExact, isPrecise } = (record as TLArrowBinding).props
+			const terminalValue: TLArrowShapeTerminal = {
+				type: 'binding',
+				boundShapeId: record.toId,
+				normalizedAnchor,
+				isExact,
+				isPrecise,
+			}
+			;(arrow.props as Record<string, unknown>)[terminal] = terminalValue
+		}
+
+		return {
+			...content,
+			shapes: compact(content.shapes.map((shape) => migrated[shape.id] as TLShape | undefined)),
+			assets: compact(
+				(content.assets ?? []).map((asset) => migrated[asset.id] as TLAsset | undefined)
+			),
+		}
+	}
+
+	/**
 	 * Place content into the editor.
 	 *
 	 * @param content - The content.
@@ -8240,7 +8323,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// decide on a parent for the put shapes; if the parent is among the put shapes(?) then use its parent
 
 		const currentPageId = this.getCurrentPageId()
-		const { assets, shapes, rootShapeIds } = content
+		const { assets, shapes, rootShapeIds } = this._migrateContent(content)
 
 		const idMap = new Map<any, TLShapeId>(shapes.map((shape) => [shape.id, createShapeId()]))
 
@@ -8376,23 +8459,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 			return this
 		}
 
-		// Migrate the new shapes
-
 		let assetsToCreate: TLAsset[] = []
 
 		if (assets) {
-			for (let i = 0; i < assets.length; i++) {
-				const asset = assets[i]
-				const result = this.store.schema.migratePersistedRecord(asset, content.schema)
-				if (result.type === 'success') {
-					assets[i] = result.value as TLAsset
-				} else {
-					throw Error(
-						`Could not put content:\ncould not migrate content for asset:\n${asset.id}\n${asset.type}\nreason:${result.reason}`
-					)
-				}
-			}
-
 			const assetsToUpdate: (TLImageAsset | TLVideoAsset)[] = []
 
 			assetsToCreate = assets
@@ -8437,18 +8506,6 @@ export class Editor extends EventEmitter<TLEventMap> {
 					)
 				)
 			})
-		}
-
-		for (let i = 0; i < newShapes.length; i++) {
-			const shape = newShapes[i]
-			const result = this.store.schema.migratePersistedRecord(shape as TLRecord, content.schema)
-			if (result.type === 'success') {
-				newShapes[i] = result.value as TLShape
-			} else {
-				throw Error(
-					`Could not put content:\ncould not migrate content for shape:\n${shape.id}, ${shape.type}\nreason:${result.reason}`
-				)
-			}
 		}
 
 		this.batch(() => {

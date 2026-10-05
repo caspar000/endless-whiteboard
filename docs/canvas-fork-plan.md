@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0 and 1 done** (2026-10-05). Phase 2 next.
+Status: **Phases 0, 1 and 2 done** (2026-10-05). Phase 3 next.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -150,6 +150,40 @@ shape type is missing.
 
 **Size:** 3–5 weeks. This is the riskiest phase: the 2023 shape code was written against older
 record shapes, and every default shape is touched.
+
+**As built:**
+
+- **Results:** the editor's 114 tests and the UI package's 1,261 pass, and all three packages
+  typecheck. `packages/canvas/src/test/referenceBoards.test.ts` loads both reference boards and the
+  app's persistence fixtures into the fork, mounts an editor on each, saves, and gets every record
+  back unchanged. The lab opens the reference boards (`?fixture=lifeboard`, `?fixture=default-shapes`)
+  with no console errors and every shape on its page; its Playwright run also passes the phase 1 smoke
+  test, updated for today's records.
+- **Side by side with the PNGs,** shapes are where they were. Still different, as planned: rich text
+  shows as plain text, the elbow arrow is straight, the sticky's label colour, flipped images and
+  geos, and the `fill` fill style (B6) aren't drawn. Lifeboard's own nodes show as labelled boxes
+  until cutover.
+- **Arrows went further than planned.** The 2023 arrow code reads and writes 2023-style terminals; a
+  small adapter rebuilds them from binding records on read, and `createShapes`/`updateShapes` turn
+  them back into points and bindings on write, as one undo step. So arrows bind, follow their shapes
+  and unbind already. A copy of an arrow that holds terminals keeps them, because 2023 code passes
+  stale copies around and relies on what they hold. Binding changes run the checks an arrow change
+  used to (bound shape gone, arrow parent), and deleting a shape or arrow takes its bindings, which
+  undo restores. Phase 3 replaces the adapter with a real bindings API.
+- **Pasting** migrates the content as one snapshot rather than record by record, because turning 2023
+  arrows into bindings is a store-level migration. 2023 clipboard data still pastes.
+- **Strokes** decode with their `dim`: today's mouse strokes are stored as x/y only, and the fork
+  writes them that way too.
+- **Found and fixed (E20):** tldraw 5.5 keeps boards in IndexedDB at database version 4, with an extra
+  `assets` store, read from a board the app saved. The fork opened them at version 3, which fails,
+  so no existing board would have loaded. The fork now opens at 4 and keeps the store; a test builds
+  that layout.
+- **API additions:** `createTLStore` takes the app's own store `migrations`, the fork's `TLHandle`
+  keeps `canBind`, `isValidUrl` and `getCanMoveCamera` came back, and `ShapeUtil.migrations` accepts
+  a full migration sequence (today's arrow has one).
+- **Tests changed:** they write today's formats (rich text, encoded strokes, line points) and read
+  arrows through `TestEditor.getArrowWithTerminals`. A few upstream tests leaned on 2023 quirks: one
+  mutated a frozen record, one passed a page id as an index.
 
 ## Phase 3 — Connected arrows as binding records
 

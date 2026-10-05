@@ -65,9 +65,9 @@ describe('When dragging the line', () => {
 			x: 0,
 			y: 0,
 			props: {
-				handles: {
-					start: { id: 'start', index: 'a1', type: 'vertex', x: 0, y: 0 },
-					end: { id: 'end', index: 'a2', type: 'vertex', x: 10, y: 10 },
+				points: {
+					a1: { id: 'a1', index: 'a1', x: 0, y: 0 },
+					a2: { id: 'a2', index: 'a2', x: 10, y: 10 },
 				},
 			},
 		})
@@ -128,7 +128,7 @@ describe('When extending the line with the shift-key in tool-lock mode', () => {
 
 		const line = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 		assert(editor.isShapeOfType<TLLineShape>(line, 'line'))
-		const handles = Object.values(line.props.handles)
+		const handles = Object.values(line.props.points)
 		expect(handles.length).toBe(3)
 	})
 
@@ -145,7 +145,7 @@ describe('When extending the line with the shift-key in tool-lock mode', () => {
 
 		const line = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 		assert(editor.isShapeOfType<TLLineShape>(line, 'line'))
-		const handles = Object.values(line.props.handles)
+		const handles = Object.values(line.props.points)
 		expect(handles.length).toBe(2)
 	})
 
@@ -163,7 +163,7 @@ describe('When extending the line with the shift-key in tool-lock mode', () => {
 
 		const line = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 		assert(editor.isShapeOfType<TLLineShape>(line, 'line'))
-		const handles = Object.values(line.props.handles)
+		const handles = Object.values(line.props.points)
 		expect(handles.length).toBe(3)
 	})
 
@@ -183,7 +183,7 @@ describe('When extending the line with the shift-key in tool-lock mode', () => {
 
 		const line = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 		assert(editor.isShapeOfType<TLLineShape>(line, 'line'))
-		const handles = Object.values(line.props.handles)
+		const handles = Object.values(line.props.points)
 		expect(handles.length).toBe(3)
 	})
 
@@ -205,7 +205,7 @@ describe('When extending the line with the shift-key in tool-lock mode', () => {
 
 		const line = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 		assert(editor.isShapeOfType<TLLineShape>(line, 'line'))
-		const handles = Object.values(line.props.handles)
+		const handles = Object.values(line.props.points)
 		expect(handles.length).toBe(3)
 	})
 })

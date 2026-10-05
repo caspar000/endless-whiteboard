@@ -15,9 +15,11 @@ import { defaultTools } from '../lib/defaultTools'
 import { GeoShapeUtil } from '../lib/shapes/geo/GeoShapeUtil'
 
 function checkAllShapes(editor: Editor, shapes: string[]) {
-	expect(Object.keys(editor!.store.schema.types.shape.migrations.subTypeMigrations!)).toStrictEqual(
-		shapes
-	)
+	// Each shape type in the schema has a props migration sequence named after it.
+	const sequences = Object.keys(editor!.store.schema.migrations)
+	expect(
+		sequences.filter((id) => id.startsWith('com.tldraw.shape.')).map((id) => id.slice(17))
+	).toStrictEqual(shapes)
 
 	expect(Object.keys(editor!.shapeUtils)).toStrictEqual(shapes)
 }

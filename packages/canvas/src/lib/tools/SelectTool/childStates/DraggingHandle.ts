@@ -2,7 +2,7 @@ import {
 	Matrix2d,
 	StateNode,
 	TLArrowShape,
-	TLArrowShapeTerminal,
+	TLArrowEnd,
 	TLCancelEvent,
 	TLEnterEventHandler,
 	TLEventHandlers,
@@ -12,6 +12,8 @@ import {
 	TLShapeId,
 	TLShapePartial,
 	Vec2d,
+	getArrowTerminal,
+	isArrowTerminal,
 	snapAngle,
 	sortByIndex,
 } from '@lifeboard/canvas-editor'
@@ -90,7 +92,10 @@ export class DraggingHandle extends StateNode {
 			}
 		}
 
-		const initialTerminal = shape.props[info.handle.id as 'start' | 'end']
+		const initialTerminal =
+			shape.type === 'arrow'
+				? getArrowTerminal(this.editor, shape, info.handle.id as TLArrowEnd)
+				: undefined
 
 		this.isPrecise = false
 
@@ -279,9 +284,10 @@ export class DraggingHandle extends StateNode {
 
 		// Arrows
 		if (initialHandle.canBind) {
-			const bindingAfter = (next.props as any)[initialHandle.id] as TLArrowShapeTerminal | undefined
+			// onHandleChange returns the end as a terminal; the editor turns it into a binding on write.
+			const bindingAfter = (next.props as Record<string, unknown>)[initialHandle.id]
 
-			if (bindingAfter?.type === 'binding') {
+			if (isArrowTerminal(bindingAfter) && bindingAfter.type === 'binding') {
 				if (hintingShapeIds[0] !== bindingAfter.boundShapeId) {
 					editor.setHintingShapes([bindingAfter.boundShapeId])
 					this.pointingId = bindingAfter.boundShapeId

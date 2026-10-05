@@ -38,6 +38,10 @@ export function getArrowTerminal(
 	arrow: TLArrowShape,
 	end: TLArrowEnd
 ): TLArrowShapeTerminal {
+	// A copy that already holds terminals keeps them. 2023 code passes such copies around and expects
+	// what they hold, not what the store holds now.
+	const held: unknown = arrow.props[end]
+	if (isArrowTerminal(held)) return held
 	const binding = editor.getArrowBinding(arrow.id, end)
 	if (binding) {
 		const { normalizedAnchor, isExact, isPrecise } = binding.props

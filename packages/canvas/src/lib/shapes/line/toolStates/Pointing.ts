@@ -1,4 +1,5 @@
 import {
+	IndexKey,
 	Matrix2d,
 	StateNode,
 	TLEventHandlers,
@@ -50,7 +51,7 @@ export class Pointing extends StateNode {
 				new Vec2d(this.shape.x, this.shape.y)
 			)
 
-			let nextEndHandleIndex: string, nextEndHandleId: string, nextEndHandle: TLHandle
+			let nextEndHandleIndex: IndexKey, nextEndHandleId: string, nextEndHandle: TLHandle
 
 			const nextPoint = Vec2d.Sub(currentPagePoint, shapePagePoint)
 
@@ -69,7 +70,8 @@ export class Pointing extends StateNode {
 			} else {
 				// Otherwise, we'll create a new end handle
 				nextEndHandleIndex = getIndexAbove(endHandle.index)
-				nextEndHandleId = 'handle:' + nextEndHandleIndex
+				// Keyed by its index, like every stored line point today.
+				nextEndHandleId = nextEndHandleIndex
 				nextEndHandle = {
 					id: nextEndHandleId,
 					type: 'vertex',
@@ -80,16 +82,16 @@ export class Pointing extends StateNode {
 				}
 			}
 
-			const nextHandles = structuredClone(this.shape.props.handles)
-
-			nextHandles[nextEndHandle.id] = nextEndHandle
+			const nextPoints = structuredClone(this.shape.props.points)
+			const { id: pointId, index, x, y } = nextEndHandle
+			nextPoints[pointId] = { id: pointId, index, x, y }
 
 			this.editor.updateShapes([
 				{
 					id: this.shape.id,
 					type: this.shape.type,
 					props: {
-						handles: nextHandles,
+						points: nextPoints,
 					},
 				},
 			])

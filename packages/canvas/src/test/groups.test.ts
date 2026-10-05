@@ -1558,7 +1558,7 @@ describe('binding bug', () => {
 		editor.setCurrentTool('arrow')
 		// go from A to group A
 		editor.pointerDown(5, 5).pointerMove(25, 5).pointerUp()
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 		expect(arrow.props.start).toMatchObject({ boundShapeId: ids.boxA })
 		expect(arrow.props.end).toMatchObject({ type: 'point' })
 	})
@@ -1604,7 +1604,7 @@ describe('bindings', () => {
 		editor.setCurrentTool('arrow')
 		// go from E to group C (not hovering over a leaf box)
 		editor.pointerDown(5, 25).pointerMove(35, 5).pointerUp()
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.props.start).toMatchObject({ boundShapeId: ids.boxE })
 		expect(arrow.props.end).toMatchObject({ type: 'point' })
@@ -1615,7 +1615,7 @@ describe('bindings', () => {
 		// go from group C (not hovering over a leaf box) to E
 		editor.pointerDown(35, 5).pointerMove(5, 25).pointerUp()
 
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.props.start).toMatchObject({ type: 'point' })
 		expect(arrow.props.end).toMatchObject({ boundShapeId: ids.boxE })
@@ -1624,7 +1624,7 @@ describe('bindings', () => {
 		editor.setCurrentTool('arrow')
 		// go from A to E
 		editor.pointerDown(5, 5).pointerMove(5, 25).pointerUp()
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.parentId).toBe(editor.getCurrentPageId())
 
@@ -1636,7 +1636,7 @@ describe('bindings', () => {
 		editor.setCurrentTool('arrow')
 		// go from A to B
 		editor.pointerDown(5, 5).pointerMove(25, 5).pointerUp()
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.parentId).toBe(groupAId)
 		expect(arrow.props.start).toMatchObject({ boundShapeId: ids.boxA })
@@ -1647,7 +1647,7 @@ describe('bindings', () => {
 		editor.setCurrentTool('arrow')
 		// go from E to B
 		editor.pointerDown(5, 25).pointerMove(27, 7).pointerMove(25, 5).pointerUp()
-		const arrow = onlySelectedShape() as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.parentId).toBe(editor.getCurrentPageId())
 		expect(arrow.props.start).toMatchObject({ boundShapeId: ids.boxE })
@@ -1719,7 +1719,7 @@ describe('moving handles within a group', () => {
 
 		editor.pointerDown(50, 50).pointerMove(60, 60).pointerUp(60, 60)
 
-		let arrow = onlySelectedShape() as TLArrowShape
+		let arrow = editor.getArrowWithTerminals(onlySelectedShape())
 
 		expect(arrow.parentId).toBe(groupA.id)
 
@@ -1747,7 +1747,7 @@ describe('moving handles within a group', () => {
 		editor.pointerDown(60, 60, {
 			target: 'handle',
 			shape: arrow,
-			handle: editor.getShapeHandles<TLArrowShape>(arrow)!.find((h) => h.id === 'end'),
+			handle: editor.getShapeHandles<TLArrowShape>(arrow.id)!.find((h) => h.id === 'end'),
 		})
 
 		editor.expectToBeIn('select.pointing_handle')
@@ -1755,7 +1755,7 @@ describe('moving handles within a group', () => {
 		editor.expectToBeIn('select.dragging_handle')
 		editor.pointerMove(60, -10)
 
-		arrow = editor.getShape(arrow.id)!
+		arrow = editor.getArrowWithTerminals(arrow.id)
 
 		expect(arrow.parentId).toBe(groupA.id)
 

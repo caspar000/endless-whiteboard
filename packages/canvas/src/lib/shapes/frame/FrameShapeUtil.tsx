@@ -42,7 +42,8 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	override canEdit = () => true
 
 	override getDefaultProps(): TLFrameShape['props'] {
-		return { w: 160 * 2, h: 90 * 2, name: '' }
+		// `color` is today's frame colour; the 2023 frame draws in the theme's default ink regardless.
+		return { w: 160 * 2, h: 90 * 2, name: '', color: 'black' }
 	}
 
 	override getGeometry(shape: TLFrameShape): Geometry2d {

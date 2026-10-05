@@ -11,64 +11,21 @@ Object {
   "props": Object {
     "color": "black",
     "dash": "draw",
-    "handles": Object {
-      "end": Object {
-        "canBind": false,
-        "id": "end",
-        "index": "a2",
-        "type": "vertex",
-        "x": 100,
-        "y": 700,
-      },
-      "start": Object {
-        "canBind": false,
-        "id": "start",
+    "points": Object {
+      "a1": Object {
+        "id": "a1",
         "index": "a1",
-        "type": "vertex",
         "x": 0,
         "y": 0,
       },
-    },
-    "size": "m",
-    "spline": "line",
-  },
-  "rotation": 0,
-  "type": "line",
-  "typeName": "shape",
-  "x": 150,
-  "y": 150,
-}
-`;
-
-exports[`Misc resizes: line shape after resize 1`] = `
-Object {
-  "id": "shape:line1",
-  "index": "a1",
-  "isLocked": false,
-  "meta": Object {},
-  "opacity": 1,
-  "parentId": "page:page",
-  "props": Object {
-    "color": "black",
-    "dash": "draw",
-    "handles": Object {
-      "end": Object {
-        "canBind": false,
-        "id": "end",
+      "a2": Object {
+        "id": "a2",
         "index": "a2",
-        "type": "vertex",
         "x": 100,
         "y": 700,
       },
-      "start": Object {
-        "canBind": false,
-        "id": "start",
-        "index": "a1",
-        "type": "vertex",
-        "x": 0,
-        "y": 0,
-      },
     },
+    "scale": 1,
     "size": "m",
     "spline": "line",
   },

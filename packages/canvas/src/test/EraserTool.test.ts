@@ -1,4 +1,5 @@
 import { createShapeId } from '@lifeboard/canvas-editor'
+import { encodeSegments } from '../lib/shapes/draw/segments'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor
@@ -71,7 +72,7 @@ beforeEach(() => {
 			x: 0,
 			y: 300,
 			props: {
-				segments: [
+				segments: encodeSegments([
 					{
 						type: 'free',
 						points: [
@@ -82,7 +83,7 @@ beforeEach(() => {
 							{ x: 100, y: 100 },
 						],
 					},
-				],
+				]),
 			},
 		},
 	])

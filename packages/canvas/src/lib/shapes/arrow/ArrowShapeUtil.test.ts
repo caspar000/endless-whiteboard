@@ -189,7 +189,7 @@ describe('Other cases when arrow are moved', () => {
 		// When box one is not selected, unbinds box1 and keeps binding to box2
 		editor.nudgeShapes(editor.getSelectedShapeIds(), { x: 0, y: -1 })
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: { type: 'binding', boundShapeId: ids.box1 },
 				end: { type: 'binding', boundShapeId: ids.box2 },
@@ -200,7 +200,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.select(ids.arrow1)
 		editor.nudgeShapes(editor.getSelectedShapeIds(), { x: 0, y: -1 })
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: { start: { type: 'point' }, end: { type: 'point' } },
 		})
 	})
@@ -213,7 +213,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.alignShapes(editor.getSelectedShapeIds(), 'right')
 		jest.advanceTimersByTime(1000)
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: { type: 'binding', boundShapeId: ids.box1 },
 				end: { type: 'binding', boundShapeId: ids.box2 },
@@ -225,7 +225,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.alignShapes(editor.getSelectedShapeIds(), 'top')
 		jest.advanceTimersByTime(1000)
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: {
 					type: 'point',
@@ -248,7 +248,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.distributeShapes(editor.getSelectedShapeIds(), 'horizontal')
 		jest.advanceTimersByTime(1000)
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: {
 					type: 'binding',
@@ -267,7 +267,7 @@ describe('Other cases when arrow are moved', () => {
 		jest.advanceTimersByTime(1000)
 
 		// The arrow didn't actually move
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: {
 					type: 'binding',
@@ -285,7 +285,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.distributeShapes(editor.getSelectedShapeIds(), 'vertical')
 		jest.advanceTimersByTime(1000)
 
-		expect(editor.getShape(ids.arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(ids.arrow1)).toMatchObject({
 			props: {
 				start: {
 					type: 'point',
@@ -310,8 +310,9 @@ describe('Other cases when arrow are moved', () => {
 			.groupShapes(editor.getSelectedShapeIds())
 
 		editor.setCurrentTool('arrow').pointerDown(1000, 1000).pointerMove(50, 350).pointerUp(50, 350)
-		let arrow = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
-		assert(editor.isShapeOfType<TLArrowShape>(arrow, 'arrow'))
+		let arrow = editor.getArrowWithTerminals(
+			editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
+		)
 		assert(arrow.props.end.type === 'binding')
 		expect(arrow.props.end.boundShapeId).toBe(ids.box3)
 
@@ -319,8 +320,7 @@ describe('Other cases when arrow are moved', () => {
 		editor.selectAll().nudgeShapes(editor.getSelectedShapeIds(), { x: 0, y: 1 })
 
 		// arrow should still be bound to box3
-		arrow = editor.getShape(arrow.id)!
-		assert(editor.isShapeOfType<TLArrowShape>(arrow, 'arrow'))
+		arrow = editor.getArrowWithTerminals(arrow.id)
 		assert(arrow.props.end.type === 'binding')
 		expect(arrow.props.end.boundShapeId).toBe(ids.box3)
 	})
@@ -332,7 +332,7 @@ describe('When a shape it rotated', () => {
 
 		const arrow = editor.getCurrentPageShapes()[editor.getCurrentPageShapes().length - 1]
 
-		expect(editor.getShape(arrow.id)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow.id)).toMatchObject({
 			props: {
 				start: { type: 'point' },
 				end: {
@@ -347,7 +347,7 @@ describe('When a shape it rotated', () => {
 
 		editor.pointerMove(225, 350)
 
-		expect(editor.getShape(arrow.id)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow.id)).toMatchObject({
 			props: {
 				start: { type: 'point' },
 				end: { type: 'binding', boundShapeId: ids.box2 },
@@ -355,7 +355,7 @@ describe('When a shape it rotated', () => {
 		})
 
 		const anchor = (
-			editor.getShape<TLArrowShape>(arrow.id)!.props.end as TLArrowShapeTerminal & {
+			editor.getArrowWithTerminals(arrow.id).props.end as TLArrowShapeTerminal & {
 				type: 'binding'
 			}
 		).normalizedAnchor
@@ -389,7 +389,7 @@ describe('resizing', () => {
 
 			.expectToBeIn('select.resizing')
 
-		expect(editor.getShape(arrow1.id)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow1.id)).toMatchObject({
 			x: 0,
 			y: 0,
 			props: {
@@ -404,7 +404,7 @@ describe('resizing', () => {
 			},
 		})
 
-		expect(editor.getShape(arrow2.id)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow2.id)).toMatchObject({
 			x: 100,
 			y: 200,
 			props: {
@@ -446,13 +446,13 @@ describe('resizing', () => {
 
 			.expectToBeIn('select.resizing')
 
-		expect(editor.getShape(arrow1.id)).toCloselyMatchObject({
+		expect(editor.getArrowWithTerminals(arrow1.id)).toCloselyMatchObject({
 			props: {
 				bend: -50,
 			},
 		})
 
-		expect(editor.getShape(arrow2.id)).toCloselyMatchObject({
+		expect(editor.getArrowWithTerminals(arrow2.id)).toCloselyMatchObject({
 			props: {
 				bend: 0,
 			},
@@ -460,13 +460,13 @@ describe('resizing', () => {
 
 		editor.pointerMove(150, 300)
 
-		expect(editor.getShape(arrow1.id)).toCloselyMatchObject({
+		expect(editor.getArrowWithTerminals(arrow1.id)).toCloselyMatchObject({
 			props: {
 				bend: 50,
 			},
 		})
 
-		expect(editor.getShape(arrow2.id)).toCloselyMatchObject({
+		expect(editor.getArrowWithTerminals(arrow2.id)).toCloselyMatchObject({
 			props: {
 				bend: 0,
 			},
@@ -515,7 +515,7 @@ describe("an arrow's parents", () => {
 		editor.pointerDown(15, 15).pointerMove(50, 50)
 		const arrowId = editor.getOnlySelectedShape()!.id
 
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
 				end: { type: 'binding', boundShapeId: frameId },
@@ -526,7 +526,7 @@ describe("an arrow's parents", () => {
 		// move arrow to b
 		editor.pointerMove(15, 85)
 		expect(editor.getShape(arrowId)?.parentId).toBe(frameId)
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
 				end: { type: 'binding', boundShapeId: boxBid },
@@ -536,7 +536,7 @@ describe("an arrow's parents", () => {
 		// move back to empty space
 		editor.pointerMove(50, 50)
 		expect(editor.getShape(arrowId)?.parentId).toBe(editor.getCurrentPageId())
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
 				end: { type: 'binding', boundShapeId: frameId },
@@ -550,7 +550,7 @@ describe("an arrow's parents", () => {
 		editor.pointerDown(15, 15).pointerMove(15, 85).pointerUp()
 		const arrowId = editor.getOnlySelectedShape()!.id
 
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			parentId: frameId,
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
@@ -559,7 +559,7 @@ describe("an arrow's parents", () => {
 		})
 		// move b outside of frame
 		editor.select(boxBid).translateSelection(200, 0)
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			parentId: editor.getCurrentPageId(),
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
@@ -573,7 +573,7 @@ describe("an arrow's parents", () => {
 		editor.setCurrentTool('arrow')
 		editor.pointerDown(15, 15).pointerMove(115, 15).pointerUp()
 		const arrowId = editor.getOnlySelectedShape()!.id
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			parentId: editor.getCurrentPageId(),
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },
@@ -584,7 +584,7 @@ describe("an arrow's parents", () => {
 		// move c inside of frame
 		editor.select(boxCid).translateSelection(-40, 0)
 
-		expect(editor.getShape(arrowId)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrowId)).toMatchObject({
 			parentId: frameId,
 			props: {
 				start: { type: 'binding', boundShapeId: boxAid },

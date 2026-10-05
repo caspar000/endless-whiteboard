@@ -1,9 +1,9 @@
-import type { TLShape, TLShapePartial } from '../types/shape-types'
+import type { MigrationSequence } from '@tldraw/store'
+import type { TLHandle, TLShape, TLShapePartial } from '../types/shape-types'
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
 	RecordProps,
 	TLPropsMigrations,
-	TLHandle,
 	TLUnknownShape,
 } from '@tldraw/tlschema'
 import { Box2d } from '../../primitives/Box2d'
@@ -21,7 +21,7 @@ export interface TLShapeUtilConstructor<
 	new (editor: Editor): U
 	type: T['type']
 	props?: RecordProps<T>
-	migrations?: TLPropsMigrations
+	migrations?: TLPropsMigrations | MigrationSequence
 }
 
 /** @public */
@@ -37,7 +37,8 @@ export interface TLShapeUtilCanvasSvgDef {
 export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	constructor(public editor: Editor) {}
 	static props?: RecordProps<TLUnknownShape>
-	static migrations?: TLPropsMigrations
+	// Props-only migrations, or a full record sequence (today's arrow shape ships one).
+	static migrations?: TLPropsMigrations | MigrationSequence
 
 	/**
 	 * The type of the shape util, which should match the shape's type.

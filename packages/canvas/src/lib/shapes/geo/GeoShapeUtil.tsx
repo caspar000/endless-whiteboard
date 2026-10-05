@@ -13,6 +13,8 @@ import {
 	SVGContainer,
 	Stadium2d,
 	SvgExportContext,
+	richTextToPlainText,
+	toRichText,
 	TAU,
 	TLDefaultDashStyle,
 	TLGeoShape,
@@ -80,11 +82,14 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			dash: 'draw',
 			size: 'm',
 			font: 'draw',
-			text: '',
+			richText: toRichText(''),
 			align: 'middle',
 			verticalAlign: 'middle',
 			growY: 0,
 			url: '',
+			scale: 1,
+			flipX: false,
+			flipY: false,
 		}
 	}
 
@@ -308,7 +313,10 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			}
 			case 'check-box':
 			case 'x-box':
-			case 'rectangle': {
+			// Geo types added after 2023 (`heart`; docs/fork-parity.md B6) have an outline here only as a
+			// rectangle, until they get their own.
+			case 'rectangle':
+			default: {
 				body = new Rectangle2d({
 					width: w,
 					height: h,
@@ -355,19 +363,16 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLGeoShape> = (shape) => {
-		const {
-			id,
-			type,
-			props: { text },
-		} = shape
+		const { id, type } = shape
+		const text = richTextToPlainText(shape.props.richText)
 
-		if (text.trimEnd() !== shape.props.text) {
+		if (text.trimEnd() !== text) {
 			this.editor.updateShapes([
 				{
 					id,
 					type,
 					props: {
-						text: text.trimEnd(),
+						richText: toRichText(text.trimEnd()),
 					},
 				},
 			])
@@ -379,8 +384,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 
 		const strokeWidth = STROKE_SIZES[props.size]
 
-		const { w, color, labelColor, fill, dash, growY, font, align, verticalAlign, size, text } =
+		const { w, color, labelColor, fill, dash, growY, font, align, verticalAlign, size, richText } =
 			props
+		const text = richTextToPlainText(richText)
 
 		const getShape = () => {
 			const h = props.h + growY
@@ -775,7 +781,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			}
 		}
 
-		if (props.text) {
+		if (richTextToPlainText(props.richText)) {
 			const bounds = this.editor.getShapeGeometry(shape).bounds
 
 			ctx.addExportDef(getFontDefForExport(shape.props.font))
@@ -829,7 +835,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		let overShrinkX = 0
 		let overShrinkY = 0
 
-		if (shape.props.text.trim()) {
+		if (richTextToPlainText(shape.props.richText).trim()) {
 			let newW = Math.max(Math.abs(w), MIN_SIZE_WITH_LABEL)
 			let newH = Math.max(Math.abs(h), MIN_SIZE_WITH_LABEL)
 
@@ -895,7 +901,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 
 	override onBeforeCreate = (shape: TLGeoShape) => {
-		if (!shape.props.text) {
+		if (!richTextToPlainText(shape.props.richText)) {
 			if (shape.props.growY) {
 				// No text / some growY, set growY to 0
 				return {
@@ -936,8 +942,8 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 
 	override onBeforeUpdate = (prev: TLGeoShape, next: TLGeoShape) => {
-		const prevText = prev.props.text
-		const nextText = next.props.text
+		const prevText = richTextToPlainText(prev.props.richText)
+		const nextText = richTextToPlainText(next.props.richText)
 
 		if (
 			prevText === nextText &&
@@ -1049,7 +1055,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 }
 
 function getLabelSize(editor: Editor, shape: TLGeoShape) {
-	const text = shape.props.text
+	const text = richTextToPlainText(shape.props.richText)
 
 	if (!text) {
 		return { w: 0, h: 0 }

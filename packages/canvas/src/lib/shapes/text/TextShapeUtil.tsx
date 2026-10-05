@@ -13,6 +13,8 @@ import {
 	Vec2d,
 	WeakMapCache,
 	getDefaultColorTheme,
+	richTextToPlainText,
+	toRichText,
 	stopEventPropagation,
 	textShapeMigrations,
 	textShapeProps,
@@ -38,9 +40,9 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 			color: 'black',
 			size: 'm',
 			w: 8,
-			text: '',
+			richText: toRichText(''),
 			font: 'draw',
-			align: 'middle',
+			textAlign: 'middle',
 			autoSize: true,
 			scale: 1,
 		}
@@ -68,8 +70,9 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		const {
 			id,
 			type,
-			props: { text, color },
+			props: { richText, color },
 		} = shape
+		const text = richTextToPlainText(richText)
 
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		const { width, height } = this.getMinDimensions(shape)
@@ -91,7 +94,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 				<div
 					className="tl-text-shape__wrapper tl-text-shadow"
 					data-font={shape.props.font}
-					data-align={shape.props.align}
+					data-align={shape.props.textAlign}
 					data-hastext={!isEmpty}
 					data-isediting={isEditing}
 					data-textwrap={true}
@@ -152,7 +155,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		const bounds = this.editor.getShapeGeometry(shape).bounds
-		const text = shape.props.text
+		const text = richTextToPlainText(shape.props.richText)
 
 		const width = bounds.width / (shape.props.scale ?? 1)
 		const height = bounds.height / (shape.props.scale ?? 1)
@@ -160,7 +163,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		const opts = {
 			fontSize: FONT_SIZES[shape.props.size],
 			fontFamily: DefaultFontFamilies[shape.props.font],
-			textAlign: shape.props.align,
+			textAlign: shape.props.textAlign,
 			verticalTextAlign: 'middle' as const,
 			width,
 			height,
@@ -246,7 +249,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		if (!shape.props.autoSize) return
 
 		// Only center if the shape is empty when created.
-		if (shape.props.text.trim()) return
+		if (richTextToPlainText(shape.props.richText).trim()) return
 
 		const bounds = this.getMinDimensions(shape)
 
@@ -258,24 +261,20 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLTextShape> = (shape) => {
-		const {
-			id,
-			type,
-			props: { text },
-		} = shape
-
-		const trimmedText = shape.props.text.trimEnd()
+		const { id, type } = shape
+		const text = richTextToPlainText(shape.props.richText)
+		const trimmedText = text.trimEnd()
 
 		if (trimmedText.length === 0) {
 			this.editor.deleteShapes([shape.id])
 		} else {
-			if (trimmedText !== shape.props.text) {
+			if (trimmedText !== text) {
 				this.editor.updateShapes([
 					{
 						id,
 						type,
 						props: {
-							text: text.trimEnd(),
+							richText: toRichText(trimmedText),
 						},
 					},
 				])
@@ -288,11 +287,11 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 
 		const styleDidChange =
 			prev.props.size !== next.props.size ||
-			prev.props.align !== next.props.align ||
+			prev.props.textAlign !== next.props.textAlign ||
 			prev.props.font !== next.props.font ||
 			(prev.props.scale !== 1 && next.props.scale === 1)
 
-		const textDidChange = prev.props.text !== next.props.text
+		const textDidChange = prev.props.richText !== next.props.richText
 
 		// Only update position if either changed
 		if (!styleDidChange && !textDidChange) return
@@ -310,7 +309,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 
 		let delta: Vec2d | undefined
 
-		switch (next.props.align) {
+		switch (next.props.textAlign) {
 			case 'middle': {
 				delta = new Vec2d((wB - wA) / 2, textDidChange ? 0 : (hB - hA) / 2)
 				break
@@ -370,7 +369,8 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 }
 
 function getTextSize(editor: Editor, props: TLTextShape['props']) {
-	const { font, text, autoSize, size, w } = props
+	const { font, richText, autoSize, size, w } = props
+	const text = richTextToPlainText(richText)
 
 	const minWidth = autoSize ? 16 : Math.max(16, w)
 	const fontSize = FONT_SIZES[size]

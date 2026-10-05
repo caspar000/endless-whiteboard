@@ -1,8 +1,11 @@
 /* eslint-disable no-inner-declarations */
 
 import {
+	TLRichText,
 	TLShape,
 	TLUnknownShape,
+	richTextToPlainText,
+	toRichText,
 	getPointerInfo,
 	preventDefault,
 	stopEventPropagation,
@@ -12,7 +15,12 @@ import {
 import React, { useCallback, useEffect, useRef } from 'react'
 import { INDENT, TextHelpers } from './TextHelpers'
 
-export function useEditableText<T extends Extract<TLShape, { props: { text: string } }>>(
+/**
+ * Editing a shape's label as plain text. Boards store labels as rich text (TipTap JSON); until the fork
+ * edits rich text (docs/fork-parity.md E2), the label is shown and edited as its plain text, and an edit
+ * writes it back as a one-paragraph-per-line document. Formatting on a label survives until it's edited.
+ */
+export function useEditableText<T extends Extract<TLShape, { props: { richText: TLRichText } }>>(
 	id: T['id'],
 	type: T['type'],
 	text: string
@@ -44,10 +52,10 @@ export function useEditableText<T extends Extract<TLShape, { props: { text: stri
 			const elm = rInput.current
 			if (!elm) return
 
-			const shape = editor.getShape<TLShape & { props: { text: string } }>(id)
+			const shape = editor.getShape<TLShape & { props: { richText: TLRichText } }>(id)
 
 			if (shape) {
-				elm.value = shape.props.text
+				elm.value = richTextToPlainText(shape.props.richText)
 				if (elm.value.length && !skipSelect) {
 					elm.select()
 				}
@@ -143,8 +151,8 @@ export function useEditableText<T extends Extract<TLShape, { props: { text: stri
 			}
 			// ----------------------------
 
-			editor.updateShapes<TLUnknownShape & { props: { text: string } }>([
-				{ id, type, props: { text } },
+			editor.updateShapes<TLUnknownShape & { props: { richText: TLRichText } }>([
+				{ id, type, props: { richText: toRichText(text) } },
 			])
 		},
 		[editor, id, type, isEditing]

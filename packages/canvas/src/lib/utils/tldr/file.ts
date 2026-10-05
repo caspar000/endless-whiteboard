@@ -40,23 +40,31 @@ export interface TldrawFile {
 	records: UnknownRecord[]
 }
 
+// Files written before tldraw 2.0 beta carry a v1 schema; today's carry v2 migration sequences.
+const schemaV1Validator = T.object({
+	schemaVersion: T.literal(1),
+	storeVersion: T.positiveInteger,
+	recordVersions: T.dict(
+		T.string,
+		T.object({
+			version: T.positiveInteger,
+			subTypeVersions: T.dict(T.string, T.positiveInteger).optional(),
+			subTypeKey: T.string.optional(),
+		})
+	),
+})
+
+const schemaV2Validator = T.object({
+	schemaVersion: T.literal(2),
+	sequences: T.dict(T.string, T.positiveInteger),
+})
+
 const tldrawFileValidator: T.Validator<TldrawFile> = T.object({
 	tldrawFileFormatVersion: T.nonZeroInteger,
-	schema: T.object({
-		schemaVersion: T.positiveInteger,
-		storeVersion: T.positiveInteger,
-		recordVersions: T.dict(
-			T.string,
-			T.object({
-				version: T.positiveInteger,
-				subTypeVersions: T.dict(T.string, T.positiveInteger).optional(),
-				subTypeKey: T.string.optional(),
-			})
-		),
-	}),
+	schema: T.or(schemaV1Validator, schemaV2Validator),
 	records: T.arrayOf(
 		T.object({
-			id: T.string as T.Validator<RecordId<any>>,
+			id: T.string as unknown as T.Validator<UnknownRecord['id']>,
 			typeName: T.string,
 		}).allowUnknownProperties()
 	),
@@ -168,7 +176,7 @@ export async function serializeTldrawJson(store: TLStore): Promise<string> {
 					let assetSrcToSave
 					try {
 						// try to save the asset as a base64 string
-						assetSrcToSave = await FileHelpers.fileToBase64(
+						assetSrcToSave = await FileHelpers.blobToDataUrl(
 							await (await fetch(record.props.src)).blob()
 						)
 					} catch {

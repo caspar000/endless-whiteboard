@@ -306,7 +306,7 @@ export class MinimapManager {
 		let collaborator: TLInstancePresence
 		for (let i = 0; i < this.collaborators.length; i++) {
 			collaborator = this.collaborators[i]
-			if (collaborator.currentPageId !== currentPageId) {
+			if (collaborator.currentPageId !== currentPageId || !collaborator.cursor) {
 				continue
 			}
 

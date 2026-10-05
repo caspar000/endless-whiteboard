@@ -18,6 +18,7 @@ type Editor = {
 	undo(): void
 	redo(): void
 	getSvg(ids: string[]): Promise<SVGElement | undefined>
+	getArrowBinding(arrowId: string, end: 'start' | 'end'): { toId: string } | undefined
 	updateInstanceState(state: object): void
 }
 
@@ -47,10 +48,15 @@ test('draws, connects, edits and survives a reload', async ({ page }) => {
 	// A rectangle and a sticky, made directly; a stroke and an arrow, made with the pointer.
 	await page.evaluate(() => {
 		const editor = (window as unknown as { editor: Editor }).editor
+		// Labels are rich text (TipTap JSON) since the fork moved to today's records.
+		const richText = (text: string) => ({
+			type: 'doc',
+			content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+		})
 		editor.createShapes([
 			{ type: 'geo', x: 100, y: 100, props: { w: 160, h: 100, geo: 'rectangle' } },
-			{ type: 'note', x: 500, y: 100, props: { text: 'A sticky' } },
-			{ type: 'text', x: 100, y: 400, props: { text: 'Some text' } },
+			{ type: 'note', x: 500, y: 100, props: { richText: richText('A sticky') } },
+			{ type: 'text', x: 100, y: 400, props: { richText: richText('Some text') } },
 		])
 	})
 	await drag(page, 'draw', { x: 120, y: 300 }, { x: 320, y: 320 })
@@ -62,12 +68,13 @@ test('draws, connects, edits and survives a reload', async ({ page }) => {
 	await drag(page, 'arrow', rect, note)
 	expect(await shapes(page)).toEqual(['arrow', 'draw', 'geo', 'note', 'text'])
 
-	// In 2023 an arrow kept its connection in its own props (fork-parity.md D2).
+	// Both ends are attached: binding records, as today's boards store them (fork-parity.md D2).
 	const ends = await page.evaluate(() => {
-		const arrow = (window as unknown as { editor: Editor }).editor.getCurrentPageShapes().find((s) => s.type === 'arrow')!
-		return [(arrow.props.start as { type: string }).type, (arrow.props.end as { type: string }).type]
+		const editor = (window as unknown as { editor: Editor }).editor
+		const arrow = editor.getCurrentPageShapes().find((s) => s.type === 'arrow')!
+		return (['start', 'end'] as const).map((end) => editor.getArrowBinding(arrow.id, end)?.toId.length ?? 0)
 	})
-	expect(ends).toEqual(['binding', 'binding'])
+	expect(ends.every((length) => length > 0)).toBe(true)
 
 	// Move, resize and rotate the rectangle; the arrow follows it.
 	const before = await page.evaluate(() => {

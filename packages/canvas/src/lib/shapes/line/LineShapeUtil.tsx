@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
+	IndexKey,
 	CubicSpline2d,
 	Polyline2d,
 	SVGContainer,
@@ -48,26 +49,12 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 			size: 'm',
 			color: 'black',
 			spline: 'line',
-			handles: {
-				start: {
-					id: 'start',
-					type: 'vertex',
-					canBind: false,
-					canSnap: true,
-					index: 'a1',
-					x: 0,
-					y: 0,
-				},
-				end: {
-					id: 'end',
-					type: 'vertex',
-					canBind: false,
-					canSnap: true,
-					index: 'a2',
-					x: 0.1,
-					y: 0.1,
-				},
+			// Today's lines store bare points, each keyed by its own index (docs/fork-parity.md D-line).
+			points: {
+				a1: { id: 'a1', index: 'a1' as IndexKey, x: 0, y: 0 },
+				a2: { id: 'a2', index: 'a2' as IndexKey, x: 0.1, y: 0.1 },
 			},
+			scale: 1,
 		}
 	}
 
@@ -78,11 +65,12 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 
 	override getHandles(shape: TLLineShape) {
 		return handlesCache.get(shape.props, () => {
-			const handles = shape.props.handles
-
 			const spline = getGeometryForLineShape(shape)
 
-			const sortedHandles = Object.values(handles).sort(sortByIndex)
+			// The 2023 code thinks in vertex handles; today's records hold bare points.
+			const sortedHandles: TLHandle[] = Object.values(shape.props.points)
+				.sort(sortByIndex)
+				.map((point) => ({ ...point, type: 'vertex' as const, canSnap: true }))
 			const results = sortedHandles.slice()
 
 			// Add "create" handles between each vertex handle
@@ -114,16 +102,16 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	override onResize: TLOnResizeHandler<TLLineShape> = (shape, info) => {
 		const { scaleX, scaleY } = info
 
-		const handles = structuredClone(shape.props.handles)
+		const points = structuredClone(shape.props.points)
 
-		Object.values(shape.props.handles).forEach(({ id, x, y }) => {
-			handles[id].x = x * scaleX
-			handles[id].y = y * scaleY
+		Object.values(shape.props.points).forEach(({ id, x, y }) => {
+			points[id]!.x = x * scaleX
+			points[id]!.y = y * scaleY
 		})
 
 		return {
 			props: {
-				handles,
+				points,
 			},
 		}
 	}
@@ -131,40 +119,13 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	override onHandleChange: TLOnHandleChangeHandler<TLLineShape> = (shape, { handle }) => {
 		const next = structuredClone(shape)
 
-		switch (handle.id) {
-			case 'start':
-			case 'end': {
-				next.props.handles[handle.id] = {
-					...next.props.handles[handle.id],
-					x: handle.x,
-					y: handle.y,
-				}
-				break
-			}
-
-			default: {
-				const id = 'handle:' + handle.index
-				const existing = shape.props.handles[id]
-
-				if (existing) {
-					next.props.handles[id] = {
-						...existing,
-						x: handle.x,
-						y: handle.y,
-					}
-				} else {
-					next.props.handles[id] = {
-						id,
-						type: 'vertex',
-						canBind: false,
-						index: handle.index,
-						x: handle.x,
-						y: handle.y,
-					}
-				}
-
-				break
-			}
+		// Moving a vertex moves the point it stands for; dragging a "create" handle (between two
+		// vertices) adds a point there, keyed by its index like every point today.
+		const existing = shape.props.points[handle.id]
+		if (existing) {
+			next.props.points[handle.id] = { ...existing, x: handle.x, y: handle.y }
+		} else {
+			next.props.points[handle.index] = { id: handle.index, index: handle.index, x: handle.x, y: handle.y }
 		}
 
 		return next
@@ -406,8 +367,8 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 
 /** @public */
 export function getGeometryForLineShape(shape: TLLineShape): CubicSpline2d | Polyline2d {
-	const { spline, handles } = shape.props
-	const handlePoints = Object.values(handles).sort(sortByIndex).map(Vec2d.From)
+	const { spline, points } = shape.props
+	const handlePoints = Object.values(points).sort(sortByIndex).map(Vec2d.From)
 
 	switch (spline) {
 		case 'cubic': {

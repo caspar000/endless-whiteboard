@@ -26,6 +26,7 @@ export {
 	type TLEmbedShapePermissions,
 } from './lib/embeds/embedDefinitions'
 export { richTextToPlainText } from './lib/utils/richText'
+export { isValidUrl } from './lib/utils/url'
 export {
 	getArrowTerminal,
 	getArrowTerminals,
@@ -40,7 +41,7 @@ export * from '@tldraw/store'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/tlschema'
 // Shadows the schema package's narrower versions: see shape-types.ts.
-export type { TLShape, TLShapePartial } from './lib/editor/types/shape-types'
+export type { TLHandle, TLShape, TLShapePartial } from './lib/editor/types/shape-types'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/utils'
 // eslint-disable-next-line local/no-export-star

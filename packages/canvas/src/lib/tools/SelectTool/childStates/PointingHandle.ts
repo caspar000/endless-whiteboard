@@ -1,4 +1,11 @@
-import { StateNode, TLArrowShape, TLEventHandlers, TLPointerEventInfo } from '@lifeboard/canvas-editor'
+import {
+	StateNode,
+	TLArrowEnd,
+	TLArrowShape,
+	TLEventHandlers,
+	TLPointerEventInfo,
+	getArrowTerminal,
+} from '@lifeboard/canvas-editor'
 
 export class PointingHandle extends StateNode {
 	static override id = 'pointing_handle'
@@ -8,7 +15,10 @@ export class PointingHandle extends StateNode {
 	override onEnter = (info: TLPointerEventInfo & { target: 'handle' }) => {
 		this.info = info
 
-		const initialTerminal = (info.shape as TLArrowShape).props[info.handle.id as 'start' | 'end']
+		const initialTerminal =
+			info.shape.type === 'arrow'
+				? getArrowTerminal(this.editor, info.shape as TLArrowShape, info.handle.id as TLArrowEnd)
+				: undefined
 
 		if (initialTerminal?.type === 'binding') {
 			this.editor.setHintingShapes([initialTerminal.boundShapeId])

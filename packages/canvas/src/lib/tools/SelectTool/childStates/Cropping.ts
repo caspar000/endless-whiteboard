@@ -5,7 +5,7 @@ import {
 	TLEnterEventHandler,
 	TLEventHandlers,
 	TLImageShape,
-	TLImageShapeCrop,
+	TLShapeCrop,
 	TLPointerEventInfo,
 	TLShapePartial,
 	Vec2d,
@@ -71,7 +71,7 @@ export class Cropping extends StateNode {
 		})
 	}
 
-	private getDefaultCrop = (): TLImageShapeCrop => ({
+	private getDefaultCrop = (): TLShapeCrop => ({
 		topLeft: { x: 0, y: 0 },
 		bottomRight: { x: 1, y: 1 },
 	})
@@ -186,7 +186,7 @@ export class Cropping extends StateNode {
 		newPoint.add(pointDelta.rot(shape.rotation))
 
 		const partial: TLShapePartial<
-			TLBaseShape<string, { w: number; h: number; crop: TLImageShapeCrop }>
+			TLBaseShape<string, { w: number; h: number; crop: TLShapeCrop }>
 		> = {
 			id: shape.id,
 			type: shape.type,

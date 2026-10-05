@@ -60,11 +60,11 @@ it('creates new bindings for arrows when pasting', async () => {
 
 	const box1a = shapesAfter[0]
 	const box2a = shapesAfter[1]
-	const arrow1a = shapesAfter[2] as TLArrowShape
+	const arrow1a = editor.getArrowWithTerminals(shapesAfter[2])
 
 	const box1b = shapesAfter[3]
 	const box2b = shapesAfter[4]
-	const arrow1b = shapesAfter[5]
+	const arrow1b = editor.getArrowWithTerminals(shapesAfter[5])
 
 	// The new shapes should match the old shapes, except for their id and the arrow's bindings!
 	expect(shapesAfter.length).toBe(shapesBefore.length * 2)

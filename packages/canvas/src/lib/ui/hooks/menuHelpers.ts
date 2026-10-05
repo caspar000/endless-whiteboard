@@ -151,14 +151,8 @@ function shapesWithUnboundArrows(editor: Editor) {
 
 	return selectedShapes.filter((shape) => {
 		if (!shape) return false
-		if (
-			editor.isShapeOfType<TLArrowShape>(shape, 'arrow') &&
-			shape.props.start.type === 'binding'
-		) {
-			return false
-		}
-		if (editor.isShapeOfType<TLArrowShape>(shape, 'arrow') && shape.props.end.type === 'binding') {
-			return false
+		if (editor.isShapeOfType<TLArrowShape>(shape, 'arrow')) {
+			return !editor.getArrowBinding(shape.id, 'start') && !editor.getArrowBinding(shape.id, 'end')
 		}
 		return true
 	})
@@ -183,15 +177,9 @@ function shapesWithArrowsBoundToThem(editor: Editor) {
 	})
 	// We want to get all the arrows that are either unbound or bound to one of the selected shapes
 	const groupableArrows = arrows.filter((arrow) => {
-		if (arrow.props.start.type === 'binding') {
-			if (!otherShapesMap.has(arrow.props.start.boundShapeId)) {
-				return false
-			}
-		}
-		if (arrow.props.end.type === 'binding') {
-			if (!otherShapesMap.has(arrow.props.end.boundShapeId)) {
-				return false
-			}
+		for (const end of ['start', 'end'] as const) {
+			const binding = editor.getArrowBinding(arrow.id, end)
+			if (binding && !otherShapesMap.has(binding.toId)) return false
 		}
 		return true
 	})

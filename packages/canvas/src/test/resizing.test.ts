@@ -12,7 +12,9 @@ import {
 	canonicalizeRotation,
 	createShapeId,
 	rotateSelectionHandle,
+	toRichText,
 } from '@lifeboard/canvas-editor'
+import { encodeSegments } from '../lib/shapes/draw/segments'
 import { TestEditor } from './TestEditor'
 import { getSnapLines } from './getSnapLines'
 import { roundedBox } from './roundedBox'
@@ -905,7 +907,7 @@ describe('When resizing a shape with children', () => {
 					x: 100,
 					y: 100,
 					props: {
-						segments: [
+						segments: encodeSegments([
 							{
 								type: 'free',
 								points: [
@@ -913,7 +915,7 @@ describe('When resizing a shape with children', () => {
 									{ x: 100, y: 100, z: 0.5 },
 								],
 							},
-						],
+						]),
 					},
 				},
 			])
@@ -3851,8 +3853,8 @@ it('uses the cross cursor when create resizing', () => {
 describe('Resizing text from the right edge', () => {
 	it('Resizes text from the right edge', () => {
 		const id = createShapeId()
-		editor.createShapes([{ id, type: 'text', props: { text: 'H' } }])
-		editor.updateShapes([{ id, type: 'text', props: { text: 'Hello World' } }]) // auto size
+		editor.createShapes([{ id, type: 'text', props: { richText: toRichText('H') } }])
+		editor.updateShapes([{ id, type: 'text', props: { richText: toRichText('Hello World') } }]) // auto size
 
 		editor.select(id)
 
@@ -3870,7 +3872,7 @@ describe('Resizing text from the right edge', () => {
 		editor.expectShapeToMatch({
 			id,
 			type: 'text',
-			props: { text: 'Hello World', w: bounds.width + 5 },
+			props: { richText: toRichText('Hello World'), w: bounds.width + 5 },
 		})
 	})
 
@@ -3878,8 +3880,8 @@ describe('Resizing text from the right edge', () => {
 		editor.updateInstanceState({ isCoarsePointer: true })
 
 		const id = createShapeId()
-		editor.createShapes([{ id, type: 'text', props: { text: 'H' } }])
-		editor.updateShapes([{ id, type: 'text', props: { text: 'Hello World' } }]) // auto size
+		editor.createShapes([{ id, type: 'text', props: { richText: toRichText('H') } }])
+		editor.updateShapes([{ id, type: 'text', props: { richText: toRichText('Hello World') } }]) // auto size
 
 		editor.select(id)
 
@@ -3897,7 +3899,7 @@ describe('Resizing text from the right edge', () => {
 		editor.expectShapeToMatch({
 			id,
 			type: 'text',
-			props: { text: 'Hello World', w: bounds.width + 10 },
+			props: { richText: toRichText('Hello World'), w: bounds.width + 10 },
 		})
 	})
 })

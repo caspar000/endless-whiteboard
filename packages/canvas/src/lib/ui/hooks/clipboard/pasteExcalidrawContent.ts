@@ -2,6 +2,7 @@ import {
 	AssetRecordType,
 	Box2d,
 	Editor,
+	IndexKey,
 	TLArrowShapeArrowheadStyle,
 	TLAssetId,
 	TLContent,
@@ -10,6 +11,7 @@ import {
 	TLDefaultFillStyle,
 	TLDefaultFontStyle,
 	TLDefaultHorizontalAlignStyle,
+	TLDefaultTextAlignStyle,
 	TLDefaultSizeStyle,
 	TLOpacityType,
 	TLShapeId,
@@ -20,8 +22,9 @@ import {
 	getIndexAbove,
 	getIndices,
 	isShapeId,
-	uniqueId,
+	toRichText,
 } from '@lifeboard/canvas-editor'
+import { encodeSegments } from '../../../shapes/draw/segments'
 
 /**
  * When the clipboard has excalidraw content, paste it into the scene.
@@ -63,7 +66,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 		}
 	})
 
-	let index = 'a1'
+	let index = 'a1' as IndexKey
 
 	for (const element of elements) {
 		if (skipIds.has(element.id)) {
@@ -130,7 +133,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 						h: element.height,
 						size: strokeWidthsToSizes[element.strokeWidth] ?? 'draw',
 						color: colorsToColors[colorToUse] ?? 'black',
-						text,
+						richText: toRichText(text),
 						align,
 						dash: getDash(element),
 						fill: getFill(element),
@@ -146,7 +149,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 						dash: getDash(element),
 						size: strokeWidthsToSizes[element.strokeWidth],
 						color: colorsToColors[element.strokeColor] ?? 'black',
-						segments: [
+						segments: encodeSegments([
 							{
 								type: 'free',
 								points: element.points.map(([x, y, z = 0.5]: number[]) => ({
@@ -155,14 +158,12 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 									z,
 								})),
 							},
-						],
+						]),
 					},
 				})
 				break
 			}
 			case 'line': {
-				const start = element.points[0]
-				const end = element.points[element.points.length - 1]
 				const indices = getIndices(element.points.length)
 
 				tldrawContent.shapes.push({
@@ -173,37 +174,13 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 						size: strokeWidthsToSizes[element.strokeWidth],
 						color: colorsToColors[element.strokeColor] ?? 'black',
 						spline: element.roundness ? 'cubic' : 'line',
-						handles: {
-							start: {
-								id: 'start',
-								type: 'vertex',
-								index: indices[0],
-								x: start[0],
-								y: start[1],
-							},
-							end: {
-								id: 'end',
-								type: 'vertex',
-								index: indices[indices.length - 1],
-								x: end[0],
-								y: end[1],
-							},
-							...Object.fromEntries(
-								element.points.slice(1, -1).map(([x, y]: number[], i: number) => {
-									const id = uniqueId()
-									return [
-										id,
-										{
-											id,
-											type: 'vertex',
-											index: indices[i + 1],
-											x,
-											y,
-										},
-									]
-								})
-							),
-						},
+						// Today's line points are keyed by their index (docs/fork-parity.md D4).
+						points: Object.fromEntries(
+							element.points.map(([x, y]: number[], i: number) => {
+								const index = indices[i]
+								return [index, { id: index, index, x, y }]
+							})
+						),
 					},
 				})
 				break
@@ -232,7 +209,7 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 					...base,
 					type: 'arrow',
 					props: {
-						text,
+						richText: toRichText(text),
 						bend: getBend(element, start, end),
 						dash: getDash(element),
 						size: strokeWidthsToSizes[element.strokeWidth] ?? 'm',
@@ -280,8 +257,8 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 						scale,
 						font: fontFamilyToFontType[element.fontFamily] ?? 'draw',
 						color: colorsToColors[element.strokeColor] ?? 'black',
-						text: element.text,
-						align: textAlignToAlignTypes[element.textAlign],
+						richText: toRichText(element.text),
+						textAlign: textAlignToAlignTypes[element.textAlign],
 					},
 				})
 				break
@@ -465,7 +442,8 @@ const fillStylesToFillType: Record<string, TLDefaultFillStyle> = {
 	solid: 'solid',
 }
 
-const textAlignToAlignTypes: Record<string, TLDefaultHorizontalAlignStyle> = {
+// Text-align values are valid horizontal aligns too, so geo labels and text shapes share this map.
+const textAlignToAlignTypes: Record<string, TLDefaultTextAlignStyle> = {
 	left: 'start',
 	center: 'middle',
 	right: 'end',

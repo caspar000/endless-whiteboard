@@ -1,4 +1,4 @@
-import { TLShape, createShapeId } from '@lifeboard/canvas-editor'
+import { TLShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor
@@ -146,7 +146,7 @@ describe('with hitLabels=true', () => {
 	it('hits geo shape label behind overlapping hollow shape', () => {
 		// label is empty
 		expect(editor.getShapeAtPoint({ x: 350, y: 350 }, opts)?.id).toBe(ids.box3)
-		editor.updateShape({ id: ids.box2, type: 'geo', props: { text: 'hello' } })
+		editor.updateShape({ id: ids.box2, type: 'geo', props: { richText: toRichText('hello') } })
 		expect(editor.getShapeAtPoint({ x: 350, y: 350 }, opts)?.id).toBe(ids.box2)
 	})
 })

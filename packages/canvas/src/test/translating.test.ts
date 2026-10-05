@@ -1612,7 +1612,7 @@ describe('translating a shape with a bound shape', () => {
 		editor.pointerDown(150, 150, ids.box1).pointerMove(0, 0)
 
 		expect(editor.getShape(ids.box1)).toMatchObject({ x: -50, y: -50 })
-		expect(editor.getShape(arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow1)).toMatchObject({
 			props: { start: { type: 'binding' }, end: { type: 'binding' } },
 		})
 	})
@@ -1650,14 +1650,14 @@ describe('translating a shape with a bound shape', () => {
 		editor.pointerDown(150, 150, ids.box1).pointerMove(0, 0, { altKey: true })
 
 		expect(editor.getShape(ids.box1)).toMatchObject({ x: 100, y: 100 })
-		expect(editor.getShape(arrow1)).toMatchObject({
+		expect(editor.getArrowWithTerminals(arrow1)).toMatchObject({
 			props: { start: { type: 'binding' }, end: { type: 'binding' } },
 		})
 
 		const newArrow = editor
 			.getCurrentPageShapes()
 			.find((s) => editor.isShapeOfType<TLArrowShape>(s, 'arrow') && s.id !== arrow1)
-		expect(newArrow).toMatchObject({
+		expect(editor.getArrowWithTerminals(newArrow)).toMatchObject({
 			props: { start: { type: 'binding' }, end: { type: 'point' } },
 		})
 	})

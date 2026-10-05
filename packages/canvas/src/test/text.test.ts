@@ -1,4 +1,4 @@
-import { createShapeId } from '@lifeboard/canvas-editor'
+import { createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor
@@ -20,8 +20,8 @@ describe('When editing text', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
-					align: 'middle',
+					richText: toRichText('Hello'),
+					textAlign: 'middle',
 					scale: 2,
 				},
 			},
@@ -32,7 +32,7 @@ describe('When editing text', () => {
 				id,
 				type: 'text',
 				props: {
-					text: 'Hello\nworld!',
+					richText: toRichText('Hello\nworld!'),
 				},
 			},
 		])
@@ -55,15 +55,15 @@ describe('When editing text', () => {
 				y: 0,
 				rotation: Math.PI / 2,
 				props: {
-					text: 'Hello',
-					align: 'middle',
+					richText: toRichText('Hello'),
+					textAlign: 'middle',
 					scale: 2,
 				},
 			},
 		])
 
 		const boundsA = editor.getShapePageBounds(id)!
-		editor.updateShapes([{ id, type: 'text', props: { text: 'Hello, world!' } }])
+		editor.updateShapes([{ id, type: 'text', props: { richText: toRichText('Hello, world!') } }])
 		const boundsB = editor.getShapePageBounds(id)!
 		expect(boundsA.x).toBeCloseTo(boundsB.x)
 		expect(boundsA.y).not.toBeCloseTo(boundsB.y)
@@ -80,8 +80,8 @@ describe('When editing text', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
-					align: 'start',
+					richText: toRichText('Hello'),
+					textAlign: 'start',
 					scale: 2,
 				},
 			},
@@ -92,7 +92,7 @@ describe('When editing text', () => {
 				id,
 				type: 'text',
 				props: {
-					text: 'Hello\nworld!',
+					richText: toRichText('Hello\nworld!'),
 				},
 			},
 		])
@@ -114,8 +114,8 @@ describe('When editing text', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
-					align: 'end',
+					richText: toRichText('Hello'),
+					textAlign: 'end',
 					scale: 2,
 				},
 			},
@@ -126,7 +126,7 @@ describe('When editing text', () => {
 				id,
 				type: 'text',
 				props: {
-					text: 'Hello\nworld!',
+					richText: toRichText('Hello\nworld!'),
 				},
 			},
 		])
@@ -150,9 +150,9 @@ describe('When changing text size', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
+					richText: toRichText('Hello'),
 					size: 'm',
-					align: 'middle',
+					textAlign: 'middle',
 					scale: 2,
 				},
 			},
@@ -185,9 +185,9 @@ describe('When changing text size', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
+					richText: toRichText('Hello'),
 					size: 'm',
-					align: 'start',
+					textAlign: 'start',
 					scale: 2,
 				},
 			},
@@ -220,9 +220,9 @@ describe('When changing text size', () => {
 				x: 0,
 				y: 0,
 				props: {
-					text: 'Hello',
+					richText: toRichText('Hello'),
 					size: 'm',
-					align: 'end',
+					textAlign: 'end',
 					scale: 2,
 				},
 			},
@@ -258,7 +258,7 @@ it('preserves the top left when the text has text', () => {
 			x: 0,
 			y: 0,
 			props: {
-				text: 'Hello',
+				richText: toRichText('Hello'),
 			},
 		},
 	])

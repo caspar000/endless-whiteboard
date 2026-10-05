@@ -5,6 +5,7 @@ import {
 	SharedStyle,
 	TLGeoShape,
 	TLGroupShape,
+	toRichText,
 } from '@lifeboard/canvas-editor'
 import { TestEditor, createDefaultShapes, defaultShapesIds } from './TestEditor'
 import { TL } from './test-jsx'
@@ -103,7 +104,7 @@ describe('Editor.styles', () => {
 				type: 'geo',
 				props: {
 					align: 'start',
-					text: 'hello world this is a long sentence that should wrap',
+					richText: toRichText('hello world this is a long sentence that should wrap'),
 					w: 100,
 					url: 'https://aol.com',
 					verticalAlign: 'start',

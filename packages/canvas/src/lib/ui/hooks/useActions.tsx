@@ -408,7 +408,7 @@ export function ActionsProvider({ overrides, children }: ActionsProviderProps) {
 					trackEvent('duplicate-shapes', { source })
 					const ids = editor.getSelectedShapeIds()
 					const commonBounds = Box2d.Common(compact(ids.map((id) => editor.getShapePageBounds(id))))
-					const offset = editor.getInstanceState().canMoveCamera
+					const offset = editor.getCanMoveCamera()
 						? {
 								x: commonBounds.width + 10,
 								y: 0,

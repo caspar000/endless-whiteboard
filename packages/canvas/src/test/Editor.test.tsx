@@ -582,11 +582,11 @@ describe('snapshots', () => {
 
 		// now serialize
 
-		const snapshot = editor.store.getSnapshot()
+		const snapshot = editor.store.getStoreSnapshot()
 
 		const newEditor = new TestEditor()
 
-		newEditor.store.loadSnapshot(snapshot)
+		newEditor.store.loadStoreSnapshot(snapshot)
 
 		expect(editor.store.serialize()).toEqual(newEditor.store.serialize())
 	})

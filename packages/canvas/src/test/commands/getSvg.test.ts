@@ -1,4 +1,4 @@
-import { DefaultDashStyle, SVG_PADDING, createShapeId } from '@lifeboard/canvas-editor'
+import { DefaultDashStyle, SVG_PADDING, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../TestEditor'
 
 let editor: TestEditor
@@ -22,7 +22,7 @@ beforeEach(() => {
 			props: {
 				w: 100,
 				h: 100,
-				text: 'Hello world',
+				richText: toRichText('Hello world'),
 			},
 		},
 		{

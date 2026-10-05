@@ -1,3 +1,4 @@
+import { decodeSegments } from '../draw/segments'
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
 	Circle2d,
@@ -41,6 +42,9 @@ export class HighlightShapeUtil extends ShapeUtil<TLHighlightShape> {
 	override getDefaultProps(): TLHighlightShape['props'] {
 		return {
 			segments: [],
+			scale: 1,
+			scaleX: 1,
+			scaleY: 1,
 			color: 'black',
 			size: 'm',
 			isComplete: false,
@@ -92,7 +96,7 @@ export class HighlightShapeUtil extends ShapeUtil<TLHighlightShape> {
 	indicator(shape: TLHighlightShape) {
 		const forceSolid = useForceSolid()
 		const strokeWidth = getStrokeWidth(shape)
-		const allPointsFromSegments = getPointsFromSegments(shape.props.segments)
+		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		let sw = strokeWidth
 		if (!forceSolid && !shape.props.isPen && allPointsFromSegments.length === 1) {
@@ -127,26 +131,12 @@ export class HighlightShapeUtil extends ShapeUtil<TLHighlightShape> {
 	}
 
 	override onResize: TLOnResizeHandler<TLHighlightShape> = (shape, info) => {
-		const { scaleX, scaleY } = info
-
-		const newSegments: TLDrawShapeSegment[] = []
-
-		for (const segment of shape.props.segments) {
-			newSegments.push({
-				...segment,
-				points: segment.points.map(({ x, y, z }) => {
-					return {
-						x: scaleX * x,
-						y: scaleY * y,
-						z,
-					}
-				}),
-			})
-		}
-
+		// Stored strokes resize lazily: the points stay as they are and the stroke's scale changes
+		// (docs/fork-parity.md D3). `shape` is the stroke as the resize began.
 		return {
 			props: {
-				segments: newSegments,
+				scaleX: shape.props.scaleX * info.scaleX,
+				scaleY: shape.props.scaleY * info.scaleY,
 			},
 		}
 	}
@@ -171,7 +161,7 @@ function getHighlightStrokePoints(
 	strokeWidth: number,
 	forceSolid: boolean
 ) {
-	const allPointsFromSegments = getPointsFromSegments(shape.props.segments)
+	const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 	const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
 
 	let sw = strokeWidth
@@ -194,7 +184,7 @@ function getHighlightSvgPath(shape: TLHighlightShape, strokeWidth: number, force
 	const solidStrokePath =
 		strokePoints.length > 1
 			? getSvgPathFromStrokePoints(strokePoints, false)
-			: getShapeDot(shape.props.segments[0].points[0])
+			: getShapeDot(decodeSegments(shape.props)[0]!.points[0]!)
 
 	return { solidStrokePath, sw }
 }
@@ -251,5 +241,6 @@ function getStrokeWidth(shape: TLHighlightShape) {
 }
 
 function getIsDot(shape: TLHighlightShape) {
-	return shape.props.segments.length === 1 && shape.props.segments[0].points.length < 2
+	const segments = decodeSegments(shape.props)
+	return segments.length === 1 && segments[0]!.points.length < 2
 }

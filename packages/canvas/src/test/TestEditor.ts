@@ -9,6 +9,7 @@ import {
 	RotateCorner,
 	SelectionHandle,
 	TAU,
+	TLArrowShape,
 	TLContent,
 	TLEditorOptions,
 	TLEventInfo,
@@ -25,6 +26,7 @@ import {
 	createTLStore,
 	rotateSelectionHandle,
 } from '@lifeboard/canvas-editor'
+import { withTerminals } from '../lib/shapes/arrow/terminals'
 import { defaultShapeTools } from '../lib/defaultShapeTools'
 import { defaultShapeUtils } from '../lib/defaultShapeUtils'
 import { defaultTools } from '../lib/defaultTools'
@@ -204,9 +206,21 @@ export class TestEditor extends Editor {
 		}).toCloselyMatchObject({ x, y, z })
 	}
 
+	/**
+	 * An arrow with its ends as 2023-style terminals, rebuilt from its binding records, which is how
+	 * these tests reason about attachment. Throws if the shape isn't an arrow.
+	 */
+	getArrowWithTerminals = (shape: TLShape | TLShapeId | null | undefined) => {
+		const arrow = typeof shape === 'string' ? this.getShape(shape) : shape
+		if (!arrow || !this.isShapeOfType<TLArrowShape>(arrow, 'arrow')) throw Error('not an arrow')
+		return withTerminals(this, arrow)
+	}
+
 	expectShapeToMatch = (...model: RequiredKeys<TLShapePartial, 'id'>[]) => {
 		model.forEach((model) => {
-			const shape = this.getShape(model.id)!
+			const stored = this.getShape(model.id)!
+			// Arrows are compared in 2023 terms: bound ends as terminals, not points.
+			const shape = stored.type === 'arrow' ? this.getArrowWithTerminals(stored) : stored
 			const next = { ...shape, ...model }
 			expect(shape).toCloselyMatchObject(next)
 		})

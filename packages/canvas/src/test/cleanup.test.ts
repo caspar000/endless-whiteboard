@@ -22,8 +22,10 @@ beforeEach(() => {
 	editor = new TestEditor()
 })
 
+// The arrow on the page, with its ends as 2023 terminals; undefined while there is none.
 function arrow() {
-	return editor.getCurrentPageShapes().find((s) => s.type === 'arrow') as TLArrowShape
+	const shape = editor.getCurrentPageShapes().find((s) => s.type === 'arrow')
+	return shape && editor.getArrowWithTerminals(shape)
 }
 
 describe('restoring bound arrows', () => {
@@ -44,29 +46,29 @@ describe('restoring bound arrows', () => {
 	it('removes bound arrows on delete, restores them on undo but only when change was done by user', () => {
 		editor.mark('deleting')
 		editor.deleteShapes([ids.box2])
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 		editor.undo()
-		expect(arrow().props.end.type).toBe('binding')
+		expect(arrow()!.props.end.type).toBe('binding')
 		editor.redo()
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 	})
 
 	it('removes / restores multiple bindings', () => {
 		editor.mark('deleting')
-		expect(arrow().props.start.type).toBe('binding')
-		expect(arrow().props.end.type).toBe('binding')
+		expect(arrow()!.props.start.type).toBe('binding')
+		expect(arrow()!.props.end.type).toBe('binding')
 
 		editor.deleteShapes([ids.box1, ids.box2])
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 
 		editor.undo()
-		expect(arrow().props.start.type).toBe('binding')
-		expect(arrow().props.end.type).toBe('binding')
+		expect(arrow()!.props.start.type).toBe('binding')
+		expect(arrow()!.props.end.type).toBe('binding')
 
 		editor.redo()
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 	})
 })
 
@@ -77,8 +79,8 @@ describe('restoring bound arrows multiplayer', () => {
 
 		editor.setCurrentTool('arrow').pointerMove(0, 50).pointerDown().pointerMove(150, 50).pointerUp()
 
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('binding')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('binding')
 
 		// Merge a change from a remote source that deletes box 2
 		editor.store.mergeRemoteChanges(() => {
@@ -89,8 +91,8 @@ describe('restoring bound arrows multiplayer', () => {
 		expect(editor.getShape(ids.box2)).toBeUndefined()
 		// arrow is still there, but without its binding
 		expect(arrow()).not.toBeUndefined()
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 
 		editor.undo() // undo creating the arrow
 
@@ -101,8 +103,8 @@ describe('restoring bound arrows multiplayer', () => {
 
 		expect(editor.getShape(ids.box2)).toBeUndefined()
 		expect(arrow()).not.toBeUndefined()
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('point')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('point')
 
 		editor.undo() // undo creating arrow
 
@@ -121,7 +123,7 @@ describe('restoring bound arrows multiplayer', () => {
 		editor.redo() // redo creating arrow
 
 		// box is back! arrow should be bound
-		expect(arrow().props.start.type).toBe('point')
-		expect(arrow().props.end.type).toBe('binding')
+		expect(arrow()!.props.start.type).toBe('point')
+		expect(arrow()!.props.end.type).toBe('binding')
 	})
 })

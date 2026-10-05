@@ -1,3 +1,4 @@
+import { decodeSegments } from './segments'
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
 	Box2d,
@@ -44,6 +45,9 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	override getDefaultProps(): TLDrawShape['props'] {
 		return {
 			segments: [],
+			scale: 1,
+			scaleX: 1,
+			scaleY: 1,
 			color: 'black',
 			fill: 'none',
 			dash: 'draw',
@@ -55,7 +59,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	}
 
 	getGeometry(shape: TLDrawShape) {
-		const points = getPointsFromSegments(shape.props.segments)
+		const points = getPointsFromSegments(decodeSegments(shape.props))
 		const strokeWidth = STROKE_SIZES[shape.props.size]
 
 		// A dot
@@ -94,7 +98,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 		const theme = useDefaultColorTheme()
 		const forceSolid = useForceSolid()
 		const strokeWidth = STROKE_SIZES[shape.props.size]
-		const allPointsFromSegments = getPointsFromSegments(shape.props.segments)
+		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
 
@@ -163,7 +167,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	indicator(shape: TLDrawShape) {
 		const forceSolid = useForceSolid()
 		const strokeWidth = STROKE_SIZES[shape.props.size]
-		const allPointsFromSegments = getPointsFromSegments(shape.props.segments)
+		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		let sw = strokeWidth
 		if (
@@ -193,7 +197,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 		const { color } = shape.props
 
 		const strokeWidth = STROKE_SIZES[shape.props.size]
-		const allPointsFromSegments = getPointsFromSegments(shape.props.segments)
+		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
 
@@ -256,26 +260,12 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	}
 
 	override onResize: TLOnResizeHandler<TLDrawShape> = (shape, info) => {
-		const { scaleX, scaleY } = info
-
-		const newSegments: TLDrawShapeSegment[] = []
-
-		for (const segment of shape.props.segments) {
-			newSegments.push({
-				...segment,
-				points: segment.points.map(({ x, y, z }) => {
-					return {
-						x: toFixed(scaleX * x),
-						y: toFixed(scaleY * y),
-						z,
-					}
-				}),
-			})
-		}
-
+		// Stored strokes resize lazily: the points stay as they are and the stroke's scale changes
+		// (docs/fork-parity.md D3). `shape` is the stroke as the resize began.
 		return {
 			props: {
-				segments: newSegments,
+				scaleX: shape.props.scaleX * info.scaleX,
+				scaleY: shape.props.scaleY * info.scaleY,
 			},
 		}
 	}
@@ -294,5 +284,6 @@ function getDot(point: VecLike, sw: number) {
 }
 
 function getIsDot(shape: TLDrawShape) {
-	return shape.props.segments.length === 1 && shape.props.segments[0].points.length < 2
+	const segments = decodeSegments(shape.props)
+	return segments.length === 1 && segments[0]!.points.length < 2
 }

@@ -24,16 +24,16 @@ and until it does, it must leave them untouched.
 
 | Id | Format | Arrived | Needed for | Status |
 |---|---|---|---|---|
-| D1 | `richText` (TipTap JSON) instead of `text` on text, note, geo; on arrow labels too | 3.10, 4.0 | Cutover | todo |
-| D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | todo |
-| D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | todo |
-| D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | todo |
-| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | todo |
-| D6 | `labelColor` on notes | 3.4 | Cutover | todo |
-| D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | todo |
-| D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | todo |
-| D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | todo |
-| D10 | Document-scoped `user` records, `dash: 'none'`, comment records — not used by Lifeboard, must survive a load/save untouched | 5.0, 5.3 | Cutover (preserve only) | todo |
+| D1 | `richText` (TipTap JSON) instead of `text` on text, note, geo; on arrow labels too | 3.10, 4.0 | Cutover | doing: read and kept, shown as plain text (phase 2); editing is phase 4 |
+| D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | doing: read and written through a terminal adapter (phase 2); the bindings API is phase 3 |
+| D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | done (phase 2) |
+| D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | doing: read and kept, elbows drawn straight (phase 2) |
+| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | doing: read and kept, not drawn (phase 2) |
+| D6 | `labelColor` on notes | 3.4 | Cutover | doing: read and kept, not drawn (phase 2) |
+| D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | done for reading (phase 2); the mode is backlog |
+| D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |
+| D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | doing: read and kept (phase 2); upload returning `{ src, meta }` is open |
+| D10 | Document-scoped `user` records, `dash: 'none'`, comment records — not used by Lifeboard, must survive a load/save untouched | 5.0, 5.3 | Cutover (preserve only) | done (phase 2): load/save round trip of the reference boards |
 
 ## E — Editor APIs Lifeboard calls
 
@@ -62,7 +62,7 @@ keep working).
 | E17 | `DefaultShapeWrapper`, `TLShapeWrapperProps`, `suffixSafeId`, `useUniqueSafeId` | Trace layer, SVG ids | Cutover | todo |
 | E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | todo |
 | E19 | Drop-target behaviour as Lifeboard relies on it (`docs/tldraw-api-notes.md`: drag-in fires on drag start, topmost hook wins, `canReceiveNewChildrenOfType` gates the drop) | Kanban, calendar, frames adopting cards | Cutover | todo |
-| E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | todo |
+| E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | doing: same names, and databases opened at tldraw 5's version 4 with its `assets` store (phase 2); flush on close and `pagehide` open |
 
 ## U — UI pieces Lifeboard builds on
 

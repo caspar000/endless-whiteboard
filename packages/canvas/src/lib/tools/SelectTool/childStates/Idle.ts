@@ -490,7 +490,6 @@ export class Idle extends StateNode {
 				x,
 				y,
 				props: {
-					text: '',
 					autoSize: true,
 				},
 			},

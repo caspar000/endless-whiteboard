@@ -1,4 +1,5 @@
 import {
+	toRichText,
 	AssetRecordType,
 	Editor,
 	MAX_SHAPES_PER_PAGE,
@@ -12,6 +13,7 @@ import {
 	TLDefaultDashStyle,
 	TLDefaultFontStyle,
 	TLDefaultHorizontalAlignStyle,
+	TLDefaultTextAlignStyle,
 	TLDefaultSizeStyle,
 	TLDrawShape,
 	TLGeoShape,
@@ -26,6 +28,7 @@ import {
 	clamp,
 	createShapeId,
 } from '@lifeboard/canvas-editor'
+import { encodeSegments } from '../../shapes/draw/segments'
 
 const TLDRAW_V1_VERSION = 15.5
 
@@ -188,7 +191,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									...inCommon,
 									type: 'note',
 									props: {
-										text: v1Shape.text ?? '',
+										richText: toRichText(v1Shape.text ?? ''),
 										color: getV2Color(v1Shape.style.color),
 										size: getV2Size(v1Shape.style.size),
 										font: getV2Font(v1Shape.style.font),
@@ -207,7 +210,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 										geo: 'rectangle',
 										w: coerceDimension(v1Shape.size[0]),
 										h: coerceDimension(v1Shape.size[1]),
-										text: v1Shape.label ?? '',
+										richText: toRichText(v1Shape.label ?? ''),
 										fill: getV2Fill(v1Shape.style.isFilled, v1Shape.style.color),
 										labelColor: getV2Color(v1Shape.style.color),
 										color: getV2Color(v1Shape.style.color),
@@ -226,7 +229,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									id: inCommon.id,
 									type: 'geo',
 									props: {
-										text: v1Shape.label ?? '',
+										richText: toRichText(v1Shape.label ?? ''),
 									},
 								},
 							])
@@ -281,7 +284,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									id: inCommon.id,
 									type: 'geo',
 									props: {
-										text: v1Shape.label ?? '',
+										richText: toRichText(v1Shape.label ?? ''),
 									},
 								},
 							])
@@ -336,7 +339,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									id: inCommon.id,
 									type: 'geo',
 									props: {
-										text: v1Shape.label ?? '',
+										richText: toRichText(v1Shape.label ?? ''),
 									},
 								},
 							])
@@ -382,7 +385,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 										dash: getV2Dash(v1Shape.style.dash),
 										isPen: false,
 										isComplete: v1Shape.isComplete,
-										segments: [{ type: 'free', points: v1Shape.points.map(getV2Point) }],
+										segments: encodeSegments([{ type: 'free', points: v1Shape.points.map(getV2Point) }]),
 									},
 								},
 							])
@@ -401,7 +404,7 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									...inCommon,
 									type: 'arrow',
 									props: {
-										text: v1Shape.label ?? '',
+										richText: toRichText(v1Shape.label ?? ''),
 										color: getV2Color(v1Shape.style.color),
 										labelColor: getV2Color(v1Shape.style.color),
 										size: getV2Size(v1Shape.style.size),
@@ -410,12 +413,10 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 										arrowheadStart: getV2Arrowhead(v1Shape.decorations?.start),
 										arrowheadEnd: getV2Arrowhead(v1Shape.decorations?.end),
 										start: {
-											type: 'point',
 											x: coerceNumber(v1Shape.handles.start.point[0]),
 											y: coerceNumber(v1Shape.handles.start.point[1]),
 										},
 										end: {
-											type: 'point',
 											x: coerceNumber(v1Shape.handles.end.point[0]),
 											y: coerceNumber(v1Shape.handles.end.point[1]),
 										},
@@ -432,11 +433,11 @@ export function buildFromV1Document(editor: Editor, document: LegacyTldrawDocume
 									...inCommon,
 									type: 'text',
 									props: {
-										text: v1Shape.text ?? ' ',
+										richText: toRichText(v1Shape.text ?? ' '),
 										color: getV2Color(v1Shape.style.color),
 										size: getV2TextSize(v1Shape.style.size),
 										font: getV2Font(v1Shape.style.font),
-										align: getV2Align(v1Shape.style.textAlign),
+										textAlign: getV2TextAlign(v1Shape.style.textAlign),
 										scale: v1Shape.style.scale ?? 1,
 									},
 								},
@@ -1132,6 +1133,11 @@ function getV2Color(color: ColorStyle | undefined): TLDefaultColorStyle {
 
 function getV2Font(font: FontStyle | undefined): TLDefaultFontStyle {
 	return font ? v1FontsToV2Fonts[font] ?? 'draw' : 'draw'
+}
+
+function getV2TextAlign(align: AlignStyle | undefined): TLDefaultTextAlignStyle {
+	// The v1 map only yields start, middle and end, which is what text shapes take.
+	return getV2Align(align) as TLDefaultTextAlignStyle
 }
 
 function getV2Align(align: AlignStyle | undefined): TLDefaultHorizontalAlignStyle {

@@ -1,16 +1,16 @@
 import {
 	Editor,
 	TLBaseShape,
-	TLImageShapeCrop,
+	TLShapeCrop,
 	TLShapePartial,
 	Vec2d,
 } from '@lifeboard/canvas-editor'
 
-export type ShapeWithCrop = TLBaseShape<string, { w: number; h: number; crop: TLImageShapeCrop }>
+export type ShapeWithCrop = TLBaseShape<string, { w: number; h: number; crop: TLShapeCrop }>
 
 export function getTranslateCroppedImageChange(
 	editor: Editor,
-	shape: TLBaseShape<string, { w: number; h: number; crop: TLImageShapeCrop }>,
+	shape: TLBaseShape<string, { w: number; h: number; crop: TLShapeCrop }>,
 	delta: Vec2d
 ) {
 	if (!shape) {

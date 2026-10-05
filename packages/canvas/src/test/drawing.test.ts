@@ -1,4 +1,5 @@
 import { TLDrawShape, TLHighlightShape, last } from '@lifeboard/canvas-editor'
+import { decodeSegments } from '../lib/shapes/draw/segments'
 import { TestEditor } from './TestEditor'
 
 jest.useFakeTimers()
@@ -31,9 +32,9 @@ for (const toolType of ['draw', 'highlight'] as const) {
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
 			expect(shape.type).toBe(toolType)
-			expect(shape.props.segments.length).toBe(1)
+			expect(decodeSegments(shape.props).length).toBe(1)
 
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.type).toBe('free')
 		})
 
@@ -50,9 +51,9 @@ for (const toolType of ['draw', 'highlight'] as const) {
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
 			expect(shape.type).toBe(toolType)
-			expect(shape.props.segments.length).toBe(1)
+			expect(decodeSegments(shape.props).length).toBe(1)
 
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.type).toBe('straight')
 		})
 
@@ -60,9 +61,9 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			editor.setCurrentTool(toolType).pointerDown(10, 10).pointerMove(20, 20)
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape.props.segments.length).toBe(1)
+			expect(decodeSegments(shape.props).length).toBe(1)
 
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.type).toBe('free')
 		})
 
@@ -70,9 +71,9 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			editor.setCurrentTool(toolType).keyDown('Shift').pointerDown(10, 10).pointerMove(20, 20)
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape.props.segments.length).toBe(1)
+			expect(decodeSegments(shape.props).length).toBe(1)
 
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.type).toBe('straight')
 
 			const points = segment.points
@@ -91,11 +92,11 @@ for (const toolType of ['draw', 'highlight'] as const) {
 				.pointerUp()
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape.props.segments.length).toBe(3)
+			expect(decodeSegments(shape.props).length).toBe(3)
 
-			expect(shape.props.segments[0].type).toBe('free')
-			expect(shape.props.segments[1].type).toBe('straight')
-			expect(shape.props.segments[2].type).toBe('free')
+			expect(decodeSegments(shape.props)[0].type).toBe('free')
+			expect(decodeSegments(shape.props)[1].type).toBe('straight')
+			expect(decodeSegments(shape.props)[2].type).toBe('free')
 		})
 
 		it('Switches between segment types when shift is pressed / released (starting with shift down)', () => {
@@ -111,11 +112,11 @@ for (const toolType of ['draw', 'highlight'] as const) {
 				.pointerUp()
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape.props.segments.length).toBe(3)
+			expect(decodeSegments(shape.props).length).toBe(3)
 
-			expect(shape.props.segments[0].type).toBe('straight')
-			expect(shape.props.segments[1].type).toBe('free')
-			expect(shape.props.segments[2].type).toBe('straight')
+			expect(decodeSegments(shape.props)[0].type).toBe('straight')
+			expect(decodeSegments(shape.props)[1].type).toBe('free')
+			expect(decodeSegments(shape.props)[2].type).toBe('straight')
 		})
 
 		it('Extends previously drawn line when shift is held', () => {
@@ -127,15 +128,15 @@ for (const toolType of ['draw', 'highlight'] as const) {
 				.pointerDown(20, 20)
 
 			const shape1 = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape1.props.segments.length).toBe(2)
-			expect(shape1.props.segments[0].type).toBe('straight')
-			expect(shape1.props.segments[1].type).toBe('straight')
+			expect(decodeSegments(shape1.props).length).toBe(2)
+			expect(decodeSegments(shape1.props)[0].type).toBe('straight')
+			expect(decodeSegments(shape1.props)[1].type).toBe('straight')
 
 			editor.pointerUp().pointerDown(30, 30).pointerUp()
 
 			const shape2 = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape2.props.segments.length).toBe(3)
-			expect(shape2.props.segments[2].type).toBe('straight')
+			expect(decodeSegments(shape2.props).length).toBe(3)
+			expect(decodeSegments(shape2.props)[2].type).toBe('straight')
 		})
 
 		it('Does not extends previously drawn line after switching to another tool', () => {
@@ -152,12 +153,12 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			expect(editor.getCurrentPageShapes()).toHaveLength(2)
 
 			const shape1 = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape1.props.segments.length).toBe(1)
-			expect(shape1.props.segments[0].type).toBe('free')
+			expect(decodeSegments(shape1.props).length).toBe(1)
+			expect(decodeSegments(shape1.props)[0].type).toBe('free')
 
 			const shape2 = editor.getCurrentPageShapes()[1] as DrawableShape
-			expect(shape2.props.segments.length).toBe(1)
-			expect(shape2.props.segments[0].type).toBe('straight')
+			expect(decodeSegments(shape2.props).length).toBe(1)
+			expect(decodeSegments(shape2.props)[0].type).toBe('straight')
 		})
 
 		it('Snaps to 15 degree angle when shift is held', () => {
@@ -173,7 +174,7 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			editor.setCurrentTool(toolType).keyDown('Shift').pointerDown(0, 0).pointerMove(x, y)
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.points[1].x).toBeCloseTo(snappedX)
 			expect(segment.points[1].y).toBeCloseTo(snappedY)
 		})
@@ -187,7 +188,7 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			editor.setCurrentTool(toolType).keyDown('Meta').pointerDown(0, 0).pointerMove(x, y)
 
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment = shape.props.segments[0]
+			const segment = decodeSegments(shape.props)[0]
 			expect(segment.points[1].x).toBeCloseTo(x)
 			expect(segment.points[1].y).toBeCloseTo(y)
 		})
@@ -206,13 +207,13 @@ for (const toolType of ['draw', 'highlight'] as const) {
 				.pointerMove(1, 0)
 
 			const shape1 = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment1 = last(shape1.props.segments)!
+			const segment1 = last(decodeSegments(shape1.props))!
 			const point1 = last(segment1.points)!
 			expect(point1.x).toBe(1)
 
 			editor.keyDown('Meta')
 			const shape2 = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment2 = last(shape2.props.segments)!
+			const segment2 = last(decodeSegments(shape2.props))!
 			const point2 = last(segment2.points)!
 			expect(point2.x).toBe(0)
 		})
@@ -231,13 +232,13 @@ for (const toolType of ['draw', 'highlight'] as const) {
 				.pointerMove(1, 5)
 
 			const shape1 = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment1 = last(shape1.props.segments)!
+			const segment1 = last(decodeSegments(shape1.props))!
 			const point1 = last(segment1.points)!
 			expect(point1.x).toBe(1)
 
 			editor.keyDown('Meta')
 			const shape2 = editor.getCurrentPageShapes()[0] as DrawableShape
-			const segment2 = last(shape2.props.segments)!
+			const segment2 = last(decodeSegments(shape2.props))!
 			const point2 = last(segment2.points)!
 			expect(point2.x).toBe(0)
 		})
@@ -256,7 +257,7 @@ for (const toolType of ['draw', 'highlight'] as const) {
 			editor.setCurrentTool(toolType).pointerDown(0, 0).pointerMove(5, 5).cancel()
 			expect(editor.getCurrentPageShapes()).toHaveLength(1)
 			const shape = editor.getCurrentPageShapes()[0] as DrawableShape
-			expect(shape.props.segments.length).toBe(1)
+			expect(decodeSegments(shape.props).length).toBe(1)
 		})
 	})
 }

@@ -554,7 +554,7 @@ describe('frame shapes', () => {
 		editor.setCurrentTool('arrow')
 		editor.pointerDown(150, 150).pointerMove(250, 250).pointerUp(250, 250)
 
-		const arrow = editor.getOnlySelectedShape()! as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(editor.getOnlySelectedShape())
 
 		expect(arrow.props.start).toMatchObject({ boundShapeId: frameId })
 		expect(arrow.props.end).toMatchObject({ type: 'point' })
@@ -579,7 +579,7 @@ describe('frame shapes', () => {
 		editor.setCurrentTool('arrow')
 		editor.pointerDown(150, 150).pointerMove(190, 190).pointerUp(190, 190)
 
-		const arrow = editor.getOnlySelectedShape()! as TLArrowShape
+		const arrow = editor.getArrowWithTerminals(editor.getOnlySelectedShape())
 
 		expect(arrow.props.start).toMatchObject({ boundShapeId: boxId })
 		expect(arrow.props.end).toMatchObject({ boundShapeId: frameId })
@@ -695,7 +695,7 @@ describe('frame shapes', () => {
 		editor.pointerDown(500, 500).pointerMove(375, 375)
 
 		// Check if the arrow's handles remain points
-		let arrow = editor.getOnlySelectedShape()! as TLArrowShape
+		let arrow = editor.getArrowWithTerminals(editor.getOnlySelectedShape())
 		expect(arrow.props.start).toMatchObject({
 			type: 'point',
 			x: 0,
@@ -711,7 +711,7 @@ describe('frame shapes', () => {
 		editor.pointerMove(175, 175).pointerUp(175, 175)
 
 		// Check if arrow's end handle is bound to the inner box
-		arrow = editor.getOnlySelectedShape()! as TLArrowShape
+		arrow = editor.getArrowWithTerminals(editor.getOnlySelectedShape())
 		expect(arrow.props.end).toMatchObject({ boundShapeId: innerBoxId })
 	})
 

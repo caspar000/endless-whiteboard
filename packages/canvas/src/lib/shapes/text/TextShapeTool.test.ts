@@ -1,3 +1,4 @@
+import { toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../../../test/TestEditor'
 import { TextShapeTool } from './TextShapeTool'
 
@@ -22,7 +23,7 @@ describe(TextShapeTool, () => {
 		editor.expectToBeIn('select.editing_shape')
 		// This comes from the component, not the state chart
 		editor.updateShapes([
-			{ ...editor.getCurrentPageShapes()[0]!, type: 'text', props: { text: 'Hello' } },
+			{ ...editor.getCurrentPageShapes()[0]!, type: 'text', props: { richText: toRichText('Hello') } },
 		])
 		// Deselect the editing shape
 		editor.cancel()
@@ -31,7 +32,7 @@ describe(TextShapeTool, () => {
 		editor.expectShapeToMatch({
 			id: editor.getCurrentPageShapes()[0].id,
 			type: 'text',
-			props: { text: 'Hello' },
+			props: { richText: toRichText('Hello') },
 		})
 
 		editor.undo()
@@ -45,7 +46,7 @@ describe(TextShapeTool, () => {
 		editor.expectShapeToMatch({
 			id: editor.getCurrentPageShapes()[0].id,
 			type: 'text',
-			props: { text: 'Hello' },
+			props: { richText: toRichText('Hello') },
 		})
 	})
 })

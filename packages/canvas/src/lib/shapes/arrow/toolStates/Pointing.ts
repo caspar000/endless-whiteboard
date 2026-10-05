@@ -1,4 +1,11 @@
-import { StateNode, TLArrowShape, TLEventHandlers, createShapeId } from '@lifeboard/canvas-editor'
+import {
+	StateNode,
+	TLArrowShape,
+	TLEventHandlers,
+	createShapeId,
+	isArrowTerminal,
+} from '@lifeboard/canvas-editor'
+import { asArrowShape, withTerminals } from '../terminals'
 
 export class Pointing extends StateNode {
 	static override id = 'pointing'
@@ -112,7 +119,7 @@ export class Pointing extends StateNode {
 
 		if (change) {
 			const startTerminal = change.props?.start
-			if (startTerminal?.type === 'binding') {
+			if (isArrowTerminal(startTerminal) && startTerminal.type === 'binding') {
 				this.editor.setHintingShapes([startTerminal.boundShapeId])
 			}
 			this.editor.updateShapes([change], { squashing: true })
@@ -130,10 +137,14 @@ export class Pointing extends StateNode {
 		const handles = this.editor.getShapeHandles(shape)
 		if (!handles) throw Error(`expected handles for arrow`)
 
-		const shapeWithOutEndOffset = {
-			...shape,
-			props: { ...shape.props, end: { ...shape.props.end, x: 0, y: 0 } },
-		}
+		// Both updates below start from this copy, so the second one writes the first one's end back.
+		// The drag that follows relies on that, as it did in 2023.
+		const withEnds = withTerminals(this.editor, shape)
+		const end = withEnds.props.end
+		const shapeWithOutEndOffset = asArrowShape({
+			...withEnds,
+			props: { ...withEnds.props, end: end.type === 'point' ? { ...end, x: 0, y: 0 } : end },
+		})
 
 		// end update
 		{
@@ -149,7 +160,7 @@ export class Pointing extends StateNode {
 
 			if (change) {
 				const endTerminal = change.props?.end
-				if (endTerminal?.type === 'binding') {
+				if (isArrowTerminal(endTerminal) && endTerminal.type === 'binding') {
 					this.editor.setHintingShapes([endTerminal.boundShapeId])
 				}
 				this.editor.updateShapes([change], { squashing: true })

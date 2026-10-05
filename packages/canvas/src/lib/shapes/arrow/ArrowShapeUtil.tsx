@@ -1,4 +1,6 @@
 import {
+	IndexKey,
+	toRichText,
 	Arc2d,
 	Box2d,
 	DefaultFontFamilies,
@@ -56,6 +58,8 @@ let globalRenderIndex = 0
 export const ARROW_END_OFFSET = 0.1
 
 /** @public */
+import { arrowLabelText, asArrowShape, withTerminals } from './terminals'
+
 export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	static override type = 'arrow' as const
 	static override props = arrowShapeProps
@@ -77,12 +81,17 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			color: 'black',
 			labelColor: 'black',
 			bend: 0,
-			start: { type: 'point', x: 0, y: 0 },
-			end: { type: 'point', x: 2, y: 0 },
+			start: { x: 0, y: 0 },
+			end: { x: 2, y: 0 },
 			arrowheadStart: 'none',
 			arrowheadEnd: 'arrow',
-			text: '',
+			richText: toRichText(''),
 			font: 'draw',
+			// Fields today's arrow has that 2023's didn't: drawn as a curve, label in the middle.
+			kind: 'arc',
+			labelPosition: 0.5,
+			scale: 1,
+			elbowMidPoint: 0.5,
 		}
 	}
 
@@ -105,10 +114,10 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		let labelGeom: Rectangle2d | undefined
 
-		if (shape.props.text.trim()) {
+		if (arrowLabelText(shape).trim()) {
 			const bodyBounds = bodyGeom.bounds
 
-			const { w, h } = this.editor.textMeasure.measureText(shape.props.text, {
+			const { w, h } = this.editor.textMeasure.measureText(arrowLabelText(shape), {
 				...TEXT_PROPS,
 				fontFamily: FONT_FAMILIES[shape.props.font],
 				fontSize: ARROW_LABEL_FONT_SIZES[shape.props.size],
@@ -122,7 +131,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				width = Math.max(Math.min(w, 64), Math.min(bodyBounds.width - 64, w))
 
 				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureText(
-					shape.props.text,
+					arrowLabelText(shape),
 					{
 						...TEXT_PROPS,
 						fontFamily: FONT_FAMILIES[shape.props.font],
@@ -139,7 +148,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				width = 16 * ARROW_LABEL_FONT_SIZES[shape.props.size]
 
 				const { w: squishedWidth, h: squishedHeight } = this.editor.textMeasure.measureText(
-					shape.props.text,
+					arrowLabelText(shape),
 					{
 						...TEXT_PROPS,
 						fontFamily: FONT_FAMILIES[shape.props.font],
@@ -174,7 +183,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			{
 				id: 'start',
 				type: 'vertex',
-				index: 'a0',
+				index: 'a0' as IndexKey,
 				x: info.start.handle.x,
 				y: info.start.handle.y,
 				canBind: true,
@@ -182,7 +191,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			{
 				id: 'middle',
 				type: 'virtual',
-				index: 'a2',
+				index: 'a2' as IndexKey,
 				x: info.middle.x,
 				y: info.middle.y,
 				canBind: false,
@@ -190,7 +199,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			{
 				id: 'end',
 				type: 'vertex',
-				index: 'a3',
+				index: 'a3' as IndexKey,
 				x: info.end.handle.x,
 				y: info.end.handle.y,
 				canBind: true,
@@ -223,7 +232,8 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		// Start or end, pointing the arrow...
 
-		const next = structuredClone(shape) as TLArrowShape
+		// Ends as 2023 terminals; the editor stores the result as points and binding records.
+		const next = withTerminals(this.editor, structuredClone(shape))
 
 		const pageTransform = this.editor.getShapePageTransform(next.id)!
 		const pointInPageSpace = pageTransform.applyToPoint(handle)
@@ -236,7 +246,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				x: handle.x,
 				y: handle.y,
 			}
-			return next
+			return asArrowShape(next)
 		}
 
 		const point = this.editor.getShapePageTransform(shape.id)!.applyToPoint(handle)
@@ -257,7 +267,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				x: handle.x,
 				y: handle.y,
 			}
-			return next
+			return asArrowShape(next)
 		}
 
 		// we've got a target! the handle is being dragged over a shape, bind to it
@@ -331,13 +341,13 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			}
 		}
 
-		return next
+		return asArrowShape(next)
 	}
 
 	override onTranslateStart: TLOnTranslateStartHandler<TLArrowShape> = (shape) => {
-		const startBindingId =
-			shape.props.start.type === 'binding' ? shape.props.start.boundShapeId : null
-		const endBindingId = shape.props.end.type === 'binding' ? shape.props.end.boundShapeId : null
+		const terminals = withTerminals(this.editor, shape).props
+		const startBindingId = terminals.start.type === 'binding' ? terminals.start.boundShapeId : null
+		const endBindingId = terminals.end.type === 'binding' ? terminals.end.boundShapeId : null
 
 		// If at least one bound shape is in the selection, do nothing;
 		// If no bound shapes are in the selection, unbind any bound shapes
@@ -356,23 +366,15 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		const { start, end } = getArrowTerminalsInArrowSpace(this.editor, shape)
 
-		return {
+		return asArrowShape({
 			id: shape.id,
 			type: shape.type,
 			props: {
 				...shape.props,
-				start: {
-					type: 'point',
-					x: start.x,
-					y: start.y,
-				},
-				end: {
-					type: 'point',
-					x: end.x,
-					y: end.y,
-				},
+				start: { type: 'point' as const, x: start.x, y: start.y },
+				end: { type: 'point' as const, x: end.x, y: end.y },
 			},
-		}
+		})
 	}
 
 	override onResize: TLOnResizeHandler<TLArrowShape> = (shape, info) => {
@@ -380,7 +382,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		const terminals = getArrowTerminalsInArrowSpace(this.editor, shape)
 
-		const { start, end } = structuredClone<TLArrowShape['props']>(shape.props)
+		const { start, end } = withTerminals(this.editor, structuredClone(shape)).props
 		let { bend } = shape.props
 
 		// Rescale start handle if it's not bound to a shape
@@ -447,15 +449,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			}
 		}
 
-		const next = {
-			props: {
-				start,
-				end,
-				bend,
-			},
-		}
-
-		return next
+		return asArrowShape({ props: { start, end, bend } }) as { props: Partial<TLArrowShape['props']> }
 	}
 
 	override onDoubleClickHandle = (
@@ -533,8 +527,9 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				}
 			)
 
+			const terminals = withTerminals(this.editor, shape).props
 			handlePath =
-				shape.props.start.type === 'binding' || shape.props.end.type === 'binding' ? (
+				terminals.start.type === 'binding' || terminals.end.type === 'binding' ? (
 					<path
 						className="tl-arrow-hint"
 						d={info.isStraight ? getStraightArrowHandlePath(info) : getCurvedArrowHandlePath(info)}
@@ -542,19 +537,19 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 						strokeDashoffset={strokeDashoffset}
 						strokeWidth={sw}
 						markerStart={
-							shape.props.start.type === 'binding'
-								? shape.props.start.isExact
+							terminals.start.type === 'binding'
+								? terminals.start.isExact
 									? ''
-									: shape.props.start.isPrecise
+									: terminals.start.isPrecise
 									? 'url(#arrowhead-cross)'
 									: 'url(#arrowhead-dot)'
 								: ''
 						}
 						markerEnd={
-							shape.props.end.type === 'binding'
-								? shape.props.end.isExact
+							terminals.end.type === 'binding'
+								? terminals.end.isExact
 									? ''
-									: shape.props.end.isPrecise
+									: terminals.end.isPrecise
 									? 'url(#arrowhead-cross)'
 									: 'url(#arrowhead-dot)'
 								: ''
@@ -572,7 +567,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			}
 		)
 
-		const labelGeometry = shape.props.text.trim()
+		const labelGeometry = arrowLabelText(shape).trim()
 			? (this.editor.getShapeGeometry<Group2d>(shape).children[1] as Rectangle2d)
 			: null
 
@@ -661,7 +656,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				</SVGContainer>
 				<ArrowTextLabel
 					id={shape.id}
-					text={shape.props.text}
+					text={arrowLabelText(shape)}
 					font={shape.props.font}
 					size={shape.props.size}
 					position={info.middle}
@@ -679,7 +674,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		const geometry = this.editor.getShapeGeometry<Group2d>(shape)
 		const bounds = geometry.bounds
 
-		const labelGeometry = shape.props.text.trim() ? (geometry.children[1] as Rectangle2d) : null
+		const labelGeometry = arrowLabelText(shape).trim() ? (geometry.children[1] as Rectangle2d) : null
 
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const isEditing = useIsEditing(shape.id)
@@ -786,19 +781,16 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLArrowShape> = (shape) => {
-		const {
-			id,
-			type,
-			props: { text },
-		} = shape
+		const { id, type } = shape
+		const text = arrowLabelText(shape)
 
-		if (text.trimEnd() !== shape.props.text) {
+		if (text.trimEnd() !== text) {
 			this.editor.updateShapes<TLArrowShape>([
 				{
 					id,
 					type,
 					props: {
-						text: text.trimEnd(),
+						richText: toRichText(text.trimEnd()),
 					},
 				},
 			])
@@ -827,7 +819,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		const geometry = this.editor.getShapeGeometry<Group2d>(shape)
 		const bounds = geometry.bounds
 
-		const labelGeometry = shape.props.text.trim() ? (geometry.children[1] as Rectangle2d) : null
+		const labelGeometry = arrowLabelText(shape).trim() ? (geometry.children[1] as Rectangle2d) : null
 
 		const maskId = (shape.id + '_clip').replace(':', '_')
 
@@ -952,7 +944,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 			const textElm = createTextSvgElementFromSpans(
 				this.editor,
-				this.editor.textMeasure.measureTextSpans(shape.props.text, opts),
+				this.editor.textMeasure.measureTextSpans(arrowLabelText(shape), opts),
 				opts
 			)
 			textElm.setAttribute('fill', theme[shape.props.labelColor].solid)

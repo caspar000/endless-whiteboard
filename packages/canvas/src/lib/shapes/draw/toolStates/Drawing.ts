@@ -1,10 +1,10 @@
+import { decodeSegments, encodeSegments, type PointSegment } from '../segments'
 import {
 	DRAG_DISTANCE,
 	Matrix2d,
 	StateNode,
 	TLDefaultSizeStyle,
 	TLDrawShape,
-	TLDrawShapeSegment,
 	TLEventHandlers,
 	TLHighlightShape,
 	TLPointerEventInfo,
@@ -150,7 +150,7 @@ export class Drawing extends StateNode {
 		return this.shapeType !== 'highlight'
 	}
 
-	getIsClosed(segments: TLDrawShapeSegment[], size: TLDefaultSizeStyle) {
+	getIsClosed(segments: PointSegment[], size: TLDefaultSizeStyle) {
 		if (!this.canClose()) return false
 
 		const strokeWidth = STROKE_SIZES[size]
@@ -191,7 +191,7 @@ export class Drawing extends StateNode {
 
 				this.didJustShiftClickToExtendPreviousShapeLine = true
 
-				const prevSegment = last(shape.props.segments)
+				const prevSegment = last(decodeSegments(shape.props))
 				if (!prevSegment) throw Error('Expected a previous segment!')
 				const prevPoint = last(prevSegment.points)
 				if (!prevPoint) throw Error('Expected a previous point!')
@@ -200,7 +200,7 @@ export class Drawing extends StateNode {
 
 				const pressure = this.isPen ? this.info.point.z! * 1.25 : 0.5
 
-				const newSegment: TLDrawShapeSegment = {
+				const newSegment: PointSegment = {
 					type: this.segmentMode,
 					points: [
 						{
@@ -223,7 +223,7 @@ export class Drawing extends StateNode {
 				)
 				this.pagePointWhereCurrentSegmentChanged = prevPointPageSpace
 				this.pagePointWhereNextSegmentChanged = null
-				const segments = [...shape.props.segments, newSegment]
+				const segments = [...decodeSegments(shape.props), newSegment]
 
 				this.currentLineLength = this.getLineLength(segments)
 
@@ -231,7 +231,7 @@ export class Drawing extends StateNode {
 					id: shape.id,
 					type: this.shapeType,
 					props: {
-						segments,
+						segments: encodeSegments(segments, shape.props),
 					},
 				}
 
@@ -261,7 +261,7 @@ export class Drawing extends StateNode {
 				y: originPagePoint.y,
 				props: {
 					isPen: this.isPen,
-					segments: [
+					segments: encodeSegments([
 						{
 							type: this.segmentMode,
 							points: [
@@ -272,7 +272,7 @@ export class Drawing extends StateNode {
 								},
 							],
 						},
-					],
+					]),
 				},
 			},
 		])
@@ -295,7 +295,7 @@ export class Drawing extends StateNode {
 
 		if (!shape) return
 
-		const { segments } = shape.props
+		const segments = decodeSegments(shape.props)
 
 		const { x, y, z } = this.editor.getPointInShapeSpace(shape, inputs.currentPagePoint).toFixed()
 
@@ -329,7 +329,7 @@ export class Drawing extends StateNode {
 					const prevLastPoint = last(prevSegment.points)
 					if (!prevLastPoint) throw Error('Expected a previous last point!')
 
-					let newSegment: TLDrawShapeSegment
+					let newSegment: PointSegment
 
 					const newLastPoint = this.editor
 						.getPointInShapeSpace(shape, this.pagePointWhereCurrentSegmentChanged)
@@ -361,7 +361,7 @@ export class Drawing extends StateNode {
 						id,
 						type: this.shapeType,
 						props: {
-							segments: [...segments, newSegment],
+							segments: encodeSegments([...segments, newSegment], shape.props),
 						},
 					}
 
@@ -409,7 +409,7 @@ export class Drawing extends StateNode {
 
 					// Create the new free segment and interpolate the points between where the last line
 					// ended and where the pointer is now
-					const newFreeSegment: TLDrawShapeSegment = {
+					const newFreeSegment: PointSegment = {
 						type: 'free',
 						points: [
 							...Vec2d.PointsBetween(prevPoint, newPoint, 6).map((p) => p.toFixed().toJson()),
@@ -423,7 +423,7 @@ export class Drawing extends StateNode {
 						id,
 						type: this.shapeType,
 						props: {
-							segments: finalSegments,
+							segments: encodeSegments(finalSegments, shape.props),
 						},
 					}
 
@@ -467,7 +467,7 @@ export class Drawing extends StateNode {
 
 				let newPoint = this.editor.getPointInShapeSpace(shape, currentPagePoint).toFixed().toJson()
 				let didSnap = false
-				let snapSegment: TLDrawShapeSegment | undefined = undefined
+				let snapSegment: PointSegment | undefined = undefined
 
 				const shouldSnap = this.editor.user.getIsSnapMode() ? !ctrlKey : ctrlKey
 
@@ -565,7 +565,7 @@ export class Drawing extends StateNode {
 					id,
 					type: this.shapeType,
 					props: {
-						segments: newSegments,
+						segments: encodeSegments(newSegments, shape.props),
 					},
 				}
 
@@ -610,7 +610,7 @@ export class Drawing extends StateNode {
 					id,
 					type: this.shapeType,
 					props: {
-						segments: newSegments,
+						segments: encodeSegments(newSegments, shape.props),
 					},
 				}
 
@@ -639,12 +639,12 @@ export class Drawing extends StateNode {
 							y: toFixed(currentPagePoint.y),
 							props: {
 								isPen: this.isPen,
-								segments: [
+								segments: encodeSegments([
 									{
 										type: 'free',
 										points: [{ x: 0, y: 0, z: this.isPen ? +(z! * 1.25).toFixed() : 0.5 }],
 									},
-								],
+								]),
 							},
 						},
 					])
@@ -660,7 +660,7 @@ export class Drawing extends StateNode {
 		}
 	}
 
-	private getLineLength(segments: TLDrawShapeSegment[]) {
+	private getLineLength(segments: PointSegment[]) {
 		let length = 0
 
 		for (const segment of segments) {

@@ -1,4 +1,5 @@
 import {
+	toRichText,
 	AssetRecordType,
 	Editor,
 	MediaHelpers,
@@ -81,11 +82,11 @@ export function registerDefaultExternalContentHandlers(
 				let isAnimated: boolean
 
 				if (isImageType) {
-					size = await MediaHelpers.getImageSizeFromSrc(dataUrl)
+					size = await MediaHelpers.getImageSize(file)
 					isAnimated = file.type === 'image/gif' && (await isGifAnimated(file))
 				} else {
 					isAnimated = true
-					size = await MediaHelpers.getVideoSizeFromSrc(dataUrl)
+					size = await MediaHelpers.getVideoSize(file)
 				}
 
 				if (isFinite(maxImageDimension)) {
@@ -156,6 +157,7 @@ export function registerDefaultExternalContentHandlers(
 				src: url,
 				description: meta.description,
 				image: meta.image,
+				favicon: '',
 				title: meta.title,
 			},
 			meta: {},
@@ -286,7 +288,7 @@ export function registerDefaultExternalContentHandlers(
 		let w: number
 		let h: number
 		let autoSize: boolean
-		let align = 'middle' as TLTextShapeProps['align']
+		let align = 'middle' as TLTextShapeProps['textAlign']
 
 		const isMultiLine = textToPaste.split('\n').length > 1
 
@@ -338,9 +340,9 @@ export function registerDefaultExternalContentHandlers(
 				x: p.x - w / 2,
 				y: p.y - h / 2,
 				props: {
-					text: textToPaste,
+					richText: toRichText(textToPaste),
 					// if the text has more than one line, align it to the left
-					align,
+					textAlign: align,
 					autoSize,
 					w,
 				},

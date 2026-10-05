@@ -4,6 +4,8 @@ import {
 	Rectangle2d,
 	ShapeUtil,
 	SvgExportContext,
+	richTextToPlainText,
+	toRichText,
 	TLNoteShape,
 	TLOnEditEndHandler,
 	getDefaultColorTheme,
@@ -33,13 +35,17 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 	getDefaultProps(): TLNoteShape['props'] {
 		return {
 			color: 'black',
+			labelColor: 'black',
 			size: 'm',
-			text: '',
+			richText: toRichText(''),
 			font: 'draw',
 			align: 'middle',
 			verticalAlign: 'middle',
 			growY: 0,
 			url: '',
+			fontSizeAdjustment: 0,
+			scale: 1,
+			textLastEditedBy: null,
 		}
 	}
 
@@ -56,8 +62,9 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 		const {
 			id,
 			type,
-			props: { color, font, size, align, text, verticalAlign },
+			props: { color, font, size, align, richText, verticalAlign },
 		} = shape
+		const text = richTextToPlainText(richText)
 
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
@@ -156,7 +163,7 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 
 	override onBeforeUpdate = (prev: TLNoteShape, next: TLNoteShape) => {
 		if (
-			prev.props.text === next.props.text &&
+			prev.props.richText === next.props.richText &&
 			prev.props.font === next.props.font &&
 			prev.props.size === next.props.size
 		) {
@@ -167,19 +174,16 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 	}
 
 	override onEditEnd: TLOnEditEndHandler<TLNoteShape> = (shape) => {
-		const {
-			id,
-			type,
-			props: { text },
-		} = shape
+		const { id, type } = shape
+		const text = richTextToPlainText(shape.props.richText)
 
-		if (text.trimEnd() !== shape.props.text) {
+		if (text.trimEnd() !== text) {
 			this.editor.updateShapes([
 				{
 					id,
 					type,
 					props: {
-						text: text.trimEnd(),
+						richText: toRichText(text.trimEnd()),
 					},
 				},
 			])
@@ -190,7 +194,7 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 function getGrowY(editor: Editor, shape: TLNoteShape, prevGrowY = 0) {
 	const PADDING = 17
 
-	const nextTextSize = editor.textMeasure.measureText(shape.props.text, {
+	const nextTextSize = editor.textMeasure.measureText(richTextToPlainText(shape.props.richText), {
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[shape.props.font],
 		fontSize: LABEL_FONT_SIZES[shape.props.size],

@@ -1,5 +1,5 @@
 import { atom } from '@tldraw/state'
-import { HistoryEntry, SerializedStore, Store, StoreSchema } from '@tldraw/store'
+import { HistoryEntry, MigrationSequence, SerializedStore, Store, StoreSchema } from '@tldraw/store'
 import {
 	TLAssetStore,
 	TLUserStore,
@@ -18,7 +18,11 @@ export type TLStoreOptions = {
 	initialData?: SerializedStore<TLRecord>
 	defaultName?: string
 } & (
-	| { shapeUtils?: readonly TLAnyShapeUtilConstructor[] }
+	| {
+			shapeUtils?: readonly TLAnyShapeUtilConstructor[]
+			/** The app's own store migrations, run alongside tldraw's when a snapshot loads. */
+			migrations?: readonly MigrationSequence[]
+	  }
 	| { schema?: StoreSchema<TLRecord, TLStoreProps> }
 )
 
@@ -40,7 +44,8 @@ export function createTLStore({ initialData, defaultName = '', ...rest }: TLStor
 			  schemaForShapes(
 					currentPageShapesToShapeMap(
 						checkShapesAndAddCore('shapeUtils' in rest && rest.shapeUtils ? rest.shapeUtils : [])
-					)
+					),
+					'migrations' in rest ? rest.migrations : undefined
 			  )
 
 	return new Store({
@@ -83,8 +88,11 @@ const noUsers: Required<TLUserStore> = {
  * Today's schema always includes the arrow binding, whose migrations depend on the arrow shape's, so
  * a store without arrows must leave it out.
  */
-export function schemaForShapes(shapes: Record<string, SchemaPropsInfo>) {
-	return createTLSchema({ shapes, ...(shapes.arrow ? {} : { bindings: {} }) })
+export function schemaForShapes(
+	shapes: Record<string, SchemaPropsInfo>,
+	migrations?: readonly MigrationSequence[]
+) {
+	return createTLSchema({ shapes, migrations, ...(shapes.arrow ? {} : { bindings: {} }) })
 }
 
 function currentPageShapesToShapeMap(shapeUtils: TLShapeUtilConstructor<TLUnknownShape>[]) {

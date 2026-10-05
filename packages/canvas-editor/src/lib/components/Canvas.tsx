@@ -1,6 +1,7 @@
+import type { TLHandle } from '../editor/types/shape-types'
 import { react } from '@tldraw/state'
 import { track, useQuickReactor, useValue } from '@tldraw/state-react'
-import { TLHandle, TLShapeId } from '@tldraw/tlschema'
+import { TLShapeId } from '@tldraw/tlschema'
 import { dedupe, modulate, objectMapValues } from '@tldraw/utils'
 import classNames from 'classnames'
 import React from 'react'

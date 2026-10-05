@@ -1,4 +1,4 @@
-import { TLFrameShape, TLGeoShape, createShapeId } from '@lifeboard/canvas-editor'
+import { TLFrameShape, TLGeoShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 let editor: TestEditor
@@ -62,7 +62,7 @@ describe('Hovering shapes', () => {
 		editor.pointerMove(50, 50)
 		expect(editor.getHoveredShapeId()).toBe(null)
 
-		editor.updateShape({ id: ids.box1, type: 'geo', props: { text: 'hello' } })
+		editor.updateShape({ id: ids.box1, type: 'geo', props: { richText: toRichText('hello') } })
 
 		// oh there's text now? hover it
 		editor.pointerMove(50, 50)
@@ -70,7 +70,7 @@ describe('Hovering shapes', () => {
 	})
 
 	it('selects a shape with a full label on pointer down', () => {
-		editor.updateShape({ id: ids.box1, type: 'geo', props: { text: 'hello' } })
+		editor.updateShape({ id: ids.box1, type: 'geo', props: { richText: toRichText('hello') } })
 
 		editor.pointerMove(50, 50)
 		editor.pointerDown()

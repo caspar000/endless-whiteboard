@@ -1,6 +1,5 @@
-import type { TLShape } from './shape-types'
+import type { TLHandle, TLShape } from './shape-types'
 import {
-	TLHandle,
 	VecModel,
 } from '@tldraw/tlschema'
 import { VecLike } from '../../primitives/Vec2d'

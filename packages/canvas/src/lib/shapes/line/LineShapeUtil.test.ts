@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import { TLGeoShape, TLLineShape, createShapeId } from '@lifeboard/canvas-editor'
+import { IndexKey, TLGeoShape, TLLineShape, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../../../test/TestEditor'
 
 vi.mock('nanoid', () => {
@@ -24,23 +24,9 @@ beforeEach(() => {
 				x: 150,
 				y: 150,
 				props: {
-					handles: {
-						start: {
-							id: 'start',
-							type: 'vertex',
-							canBind: false,
-							index: 'a1',
-							x: 0,
-							y: 0,
-						},
-						end: {
-							id: 'end',
-							type: 'vertex',
-							canBind: false,
-							index: 'a2',
-							x: 100,
-							y: 100,
-						},
+					points: {
+						a1: { id: 'a1', index: 'a1' as IndexKey, x: 0, y: 0 },
+						a2: { id: 'a2', index: 'a2' as IndexKey, x: 100, y: 100 },
 					},
 				},
 			},
@@ -62,8 +48,9 @@ describe('Translating', () => {
 	it('updates the line when rotated', () => {
 		editor.select(id)
 
+		// 2023 mutated the stored record here; today's store freezes records, so update it instead.
+		editor.updateShapes([{ id, type: 'line', rotation: Math.PI / 2 }])
 		const shape = editor.getShape<TLLineShape>(id)!
-		shape.rotation = Math.PI / 2
 
 		editor.pointerDown(250, 250, { target: 'shape', shape: shape })
 		editor.pointerMove(300, 400) // Move shape by 50, 150
@@ -86,7 +73,7 @@ it('create new handle', () => {
 		handle: {
 			id: 'mid-0',
 			type: 'create',
-			index: 'a1V',
+			index: 'a1V' as IndexKey,
 			x: 50,
 			y: 50,
 		},
@@ -97,16 +84,9 @@ it('create new handle', () => {
 	editor.expectShapeToMatch({
 		id: id,
 		props: {
-			handles: {
-				...shape.props.handles,
-				'handle:a1V': {
-					id: 'handle:a1V',
-					type: 'vertex',
-					canBind: false,
-					index: 'a1V',
-					x: 200,
-					y: 200,
-				},
+			points: {
+				...shape.props.points,
+				a1V: { id: 'a1V', index: 'a1V', x: 200, y: 200 },
 			},
 		},
 	})
@@ -116,7 +96,7 @@ describe('Misc', () => {
 	it('preserves handle positions on spline type change', () => {
 		editor.select(id)
 		const shape = editor.getShape<TLLineShape>(id)!
-		const prevHandles = structuredClone(shape.props.handles)
+		const prevPoints = structuredClone(shape.props.points)
 
 		editor.updateShapes([
 			{
@@ -131,7 +111,7 @@ describe('Misc', () => {
 			id,
 			props: {
 				spline: 'cubic',
-				handles: prevHandles,
+				points: prevPoints,
 			},
 		})
 	})

@@ -29,7 +29,6 @@ export class Pointing extends StateNode {
 					x: originPagePoint.x,
 					y: originPagePoint.y,
 					props: {
-						text: '',
 						autoSize: false,
 						w: 20,
 					},
@@ -86,7 +85,6 @@ export class Pointing extends StateNode {
 					x,
 					y,
 					props: {
-						text: '',
 						autoSize: true,
 					},
 				},

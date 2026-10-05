@@ -1,4 +1,5 @@
 import {
+	richTextToPlainText,
 	Editor,
 	TLArrowShape,
 	TLBookmarkShape,
@@ -524,7 +525,7 @@ const handleNativeOrMenuCopy = (editor: Editor) => {
 					editor.isShapeOfType<TLGeoShape>(shape, 'geo') ||
 					editor.isShapeOfType<TLArrowShape>(shape, 'arrow')
 				) {
-					return shape.props.text
+					return richTextToPlainText(shape.props.richText)
 				}
 				if (
 					editor.isShapeOfType<TLBookmarkShape>(shape, 'bookmark') ||

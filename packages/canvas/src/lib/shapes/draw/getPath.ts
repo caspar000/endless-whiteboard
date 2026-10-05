@@ -1,10 +1,10 @@
+import type { PointSegment } from './segments'
 import {
 	EASINGS,
 	PI,
 	SIN,
 	TLDefaultDashStyle,
 	TLDrawShape,
-	TLDrawShapeSegment,
 	Vec2d,
 } from '@lifeboard/canvas-editor'
 import { StrokeOptions } from '../shared/freehand/types'
@@ -80,7 +80,7 @@ export function getFreehandOptions(
 	}
 }
 
-export function getPointsFromSegments(segments: TLDrawShapeSegment[]) {
+export function getPointsFromSegments(segments: PointSegment[]) {
 	const points: Vec2d[] = []
 
 	for (const segment of segments) {
@@ -101,6 +101,8 @@ export function getPointsFromSegments(segments: TLDrawShapeSegment[]) {
 export function getDrawShapeStrokeDashArray(shape: TLDrawShape, strokeWidth: number) {
 	return {
 		draw: 'none',
+		// Since tldraw 5.0 a stroke can have no dash pattern set at all.
+		none: 'none',
 		solid: `none`,
 		dotted: `0.1 ${strokeWidth * 2}`,
 		dashed: `${strokeWidth * 2} ${strokeWidth * 2}`,

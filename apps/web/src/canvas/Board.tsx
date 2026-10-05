@@ -20,10 +20,12 @@ import {
 	expressionSuggestExtension,
 	readPropertyRegistry,
 } from '@lifeboard/node-kit'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
 	Tldraw,
 	createShapeId,
+	createTLStore,
+	defaultBindingUtils,
 	type Editor,
 	type TLComponents,
 	type TldrawOptions,
@@ -51,7 +53,7 @@ import { AgentPresence } from './AgentPresence'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { FileImportHandler } from './FileImportHandler'
-import { useSync } from '@tldraw/sync'
+import { useSyncedStore } from '@lifeboard/canvas-sync/react'
 import { uploadBoardAssets } from '../server/boardAssets'
 import { fetchServerAsset, syncUri } from '../server/serverVault'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
@@ -248,9 +250,9 @@ export function Board(props: BoardProps) {
 }
 
 /**
- * The server holds the truth: `useSync` loads the board from it, sends every edit to it, and applies
- * everyone else's. Its store is built before `<Tldraw>` sees any utils, so it gets the full set — and
- * the canvas gets the same array, so the schema and the drawing can never come from different classes.
+ * The server holds the truth: `useSyncedStore` loads the board from it, sends every edit to it, and
+ * applies everyone else's. Its store is built before `<Tldraw>` sees any utils, so it gets the full set —
+ * and the canvas gets the same array, so the schema and the drawing can never come from different classes.
  */
 function SyncedBoard(props: BoardProps) {
 	const platform = usePlatform()
@@ -258,12 +260,17 @@ function SyncedBoard(props: BoardProps) {
 	const shapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
 	const storeShapeUtils = useMemo(() => buildStoreShapeUtils(shapeUtils), [shapeUtils])
 	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs, fetchServerAsset), [platform])
-	const store = useSync({
-		uri: syncUri(props.board.id),
-		assets,
-		shapeUtils: storeShapeUtils,
-		migrations: STORE_MIGRATIONS,
-	})
+	const createStore = useCallback(
+		() =>
+			createTLStore({
+				shapeUtils: storeShapeUtils,
+				bindingUtils: defaultBindingUtils,
+				migrations: STORE_MIGRATIONS,
+				assets,
+			}),
+		[storeShapeUtils, assets]
+	)
+	const store = useSyncedStore({ uri: syncUri(props.board.id), createStore })
 
 	if (store.status === 'loading') return <div className="lb-board__loading">Opening board…</div>
 	if (store.status === 'error') {

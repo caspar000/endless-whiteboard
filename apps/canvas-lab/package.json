@@ -7,12 +7,14 @@
 	"scripts": {
 		"dev": "vite --port 5190",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"sync-server": "node sync-server.ts"
 	},
 	"dependencies": {
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/canvas-assets": "workspace:*",
 		"@lifeboard/canvas-editor": "workspace:*",
+		"@lifeboard/canvas-sync": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
 		"@lifeboard/schema": "workspace:*",
 		"@tiptap/core": "^3.29.2",
@@ -22,11 +24,15 @@
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.62.0",
+		"@tldraw/tlschema": "5.5.2",
+		"@tldraw/utils": "5.5.2",
 		"@types/node": "^26.1.2",
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.3",
+		"@types/ws": "^8.18.1",
 		"@vitejs/plugin-react": "^5.2.0",
 		"typescript": "5.9.3",
-		"vite": "^8.1.5"
+		"vite": "^8.1.5",
+		"ws": "^8.21.3"
 	}
 }

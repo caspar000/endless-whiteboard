@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–5 done** (2026-10-05). Next: phase 6, our own sync.
+Status: **Phases 0–6 done** (2026-10-05). Next: phase 7, cutover.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -383,6 +383,59 @@ alongside them once phase 2 is done.
   edit, restart, the edit arrives.
 
 **Size:** 3–4 weeks.
+
+**As built:**
+
+- **`packages/canvas-sync`** (`@lifeboard/canvas-sync`), our own code on the MIT store:
+  - `protocol.ts`: the messages, record ops and schema comparison;
+  - `SyncRoom`: the server side, with storage passed in;
+  - `SyncClient` and `ReconnectingWebSocket`: the client side;
+  - `useSyncedStore` (`/react`) and `SqliteRoomStorage` (`/sqlite`, Node only).
+- **The protocol:**
+  - A client connects with its schema and the last clock it saw. The server answers with what
+    changed since then, or with the whole board when it can't tell (another epoch, or past the
+    tombstone horizon).
+  - A push applies whole or not at all. Every record in it must be a document record that passes its
+    type's validator.
+  - Changes travel as field patches, one level deeper for `props` and `meta`. So two people editing
+    different props of one shape both keep their edit; on the same field, the server's order wins.
+  - The client keeps the server's version of each record it has unconfirmed edits to, and lays its
+    edits over others' changes as they arrive.
+  - Edits made while disconnected go out after the reconnect.
+  - Schemas must match exactly. A client that is behind is told to reload; one that is ahead is told
+    the server needs updating. A room stored under an older schema is migrated when it opens.
+- **The server (S2):** `apps/server/src/rooms.ts` runs one `SyncRoom` per board.
+  - Storage is three tables: `room_meta`, `room_records`, `room_tombstones`.
+  - The server seeds a new board with its document and page, so two clients opening it at once don't
+    each make a page.
+  - `@tldraw/sync-core` is gone from `apps/server`.
+- **Old rooms (S3):** a file still in sync-core's layout is read with plain SQL on first open and
+  rewritten in one transaction that also drops the old tables. The layout was observed from a room
+  that sync-core 5.5.2 wrote through our server; it is kept as
+  `packages/canvas-sync/src/fixtures/sync-core-room.sqlite`.
+- **The client (S1):**
+  - `SyncedBoard` in `apps/web` uses `useSyncedStore` with tldraw 5's own `createTLStore`. That store
+    is the MIT one underneath, so the app runs on our sync today, before cutover.
+  - `@tldraw/sync` is gone from `apps/web`.
+  - `pnpm check:licences` no longer finds either sync package in the lockfile.
+- **The lab:** `?sync=<room>` keeps a board in sync with `sync-server.ts`, which runs under plain
+  `node` (canvas-sync's source is erasable TypeScript with `.ts` specifiers).
+- **Tests:**
+
+  | Where | What |
+  |---|---|
+  | canvas-sync, 28 tests | ops, two clients, edits to different and to the same field, rebasing over a change that arrives first, refused pushes, reconnecting (after a server restart, and past the horizon), schema mismatch, a closed room, eight seeded random runs with three clients that must end equal to the server, SQLite storage, the old layout |
+  | apps/server, 22 tests | the sync tests rewritten on our client, plus a refused push and malformed message, and an old-format room opening with its shapes |
+  | Lab Playwright, `e2e/sync.spec.ts` | an edit reaches the other page in under a second; an edit made while the server is down arrives after a restart and is on disk |
+
+  The other lab tests, the app's unit tests and the on-fork checks still pass.
+- **Not tested:** the real app's server mode in a browser, which needs a built server. The server
+  tests cover the board schema, and the lab covers the same hook.
+- **Differences from tldraw sync:**
+  - No presence: other people's cursors are S4, backlog.
+  - Edits made offline survive a reconnect but not a reload (S5).
+  - The fork's undo restores whole records, so undoing a change can overwrite someone else's later
+    change to the same shape.
 
 ## Phase 7 — Cutover
 

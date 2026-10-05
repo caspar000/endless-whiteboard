@@ -15,9 +15,10 @@
 		"@fastify/cookie": "^11.1.2",
 		"@fastify/static": "^10.1.5",
 		"@fastify/websocket": "^11.3.3",
+		"@lifeboard/canvas-sync": "workspace:*",
 		"@lifeboard/schema": "workspace:*",
-		"@tldraw/sync-core": "5.5.2",
 		"@tldraw/tlschema": "5.5.2",
+		"@tldraw/utils": "5.5.2",
 		"fastify": "^5.12.5",
 		"fflate": "^0.8.3"
 	},

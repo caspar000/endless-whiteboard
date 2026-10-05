@@ -2,6 +2,8 @@
 	"extends": "../../packages/canvas/tsconfig.json",
 	"compilerOptions": {
 		"types": ["node", "vite/client"],
+		// canvas-sync imports with `.ts` specifiers, so Node can run the lab's sync server directly.
+		"allowImportingTsExtensions": true,
 		// `paths` replaces the base's, so the data packages' mappings are repeated; `tldraw` is the fork,
 		// for Lifeboard's packages (lifeboard.tsx).
 		"paths": {
@@ -14,7 +16,7 @@
 			"@tldraw/validate": ["../../packages/canvas-editor/node_modules/@tldraw/validate/src/index.ts"]
 		}
 	},
-	"include": ["src", "e2e", "vite.config.ts", "playwright.config.ts"],
+	"include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "sync-server.ts"],
 	// Loaded at run time only; see main.tsx.
 	"exclude": ["src/lifeboard.tsx"]
 }

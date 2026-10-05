@@ -14,11 +14,11 @@
   },
   "dependencies": {
     "@lifeboard/book-reader": "workspace:*",
+    "@lifeboard/canvas-sync": "workspace:*",
     "@lifeboard/dice": "workspace:*",
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@lifeboard/schema": "workspace:*",
-    "@tldraw/sync": "5.5.2",
     "@tldraw/tlschema": "5.5.2",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",

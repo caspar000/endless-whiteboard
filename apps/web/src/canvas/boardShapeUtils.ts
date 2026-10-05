@@ -54,7 +54,7 @@ export function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
 
 /**
  * The full set a board's store is built from, as `<Tldraw>` assembles it: tldraw's defaults with ours
- * replacing them by type. `useSync` builds its store before `<Tldraw>` sees any utils, so a synced
+ * replacing them by type. `useSyncedStore` builds its store before `<Tldraw>` sees any utils, so a synced
  * board has to be handed this list rather than ours alone.
  */
 export function buildStoreShapeUtils(utils: TLAnyShapeUtilConstructor[]): TLAnyShapeUtilConstructor[] {

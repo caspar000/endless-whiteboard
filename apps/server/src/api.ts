@@ -170,16 +170,10 @@ export function registerApi(
 		}
 	)
 
-	app.get<{ Params: { id: string }; Querystring: { sessionId?: string } }>(
-		'/api/sync/:id',
-		{ websocket: true },
-		(socket, request) => {
-			const { id } = request.params
-			const sessionId = request.query.sessionId
-			// 4404 rather than an HTTP 404: the upgrade has already happened by the time a handler runs.
-			if (!BOARD_ID.test(id) || !vault.get(id)) return socket.close(4404, 'No such board.')
-			if (!sessionId) return socket.close(4400, 'Missing sessionId.')
-			rooms.connect(id, sessionId, socket)
-		}
-	)
+	app.get<{ Params: { id: string } }>('/api/sync/:id', { websocket: true }, (socket, request) => {
+		const { id } = request.params
+		// 4404 rather than an HTTP 404: the upgrade has already happened by the time a handler runs.
+		if (!BOARD_ID.test(id) || !vault.get(id)) return socket.close(4404, 'No such board.')
+		rooms.connect(id, socket)
+	})
 }

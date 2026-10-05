@@ -1,18 +1,13 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import {
-	NodeSqliteWrapper,
-	SQLiteSyncStorage,
-	TLSocketRoom,
-	type RoomSnapshot,
-	type WebSocketMinimal,
-} from '@tldraw/sync-core'
-import type { TLRecord, TLSchema } from '@tldraw/tlschema'
+import { SyncRoom, type RoomSocket, type SyncRoomOptions } from '@lifeboard/canvas-sync'
+import { SqliteRoomStorage } from '@lifeboard/canvas-sync/sqlite'
+import { DocumentRecordType, PageRecordType, TLDOCUMENT_ID, type TLRecord, type TLSchema } from '@tldraw/tlschema'
+import type { IndexKey } from '@tldraw/utils'
 
 interface OpenRoom {
-	room: TLSocketRoom<TLRecord, void>
-	storage: SQLiteSyncStorage<TLRecord>
+	room: SyncRoom<TLRecord>
 	db: DatabaseSync
 }
 
@@ -22,10 +17,11 @@ export interface BoardSnapshot {
 	schema: unknown
 }
 
-const toBoardSnapshot = (snapshot: RoomSnapshot): BoardSnapshot => ({
-	store: Object.fromEntries(snapshot.documents.map((doc) => [doc.state.id, doc.state])),
-	schema: snapshot.schema,
-})
+/** The socket of one connection, as `@fastify/websocket` hands it over. */
+export interface ServerSocket extends RoomSocket {
+	on(event: 'message', listener: (data: Buffer) => void): unknown
+	on(event: 'close', listener: () => void): unknown
+}
 
 interface RoomsOptions {
 	dir: string
@@ -36,10 +32,11 @@ interface RoomsOptions {
 }
 
 /**
- * One `TLSocketRoom` per open board, each over its own SQLite file in `dir`.
+ * One `SyncRoom` per open board, each over its own SQLite file in `dir`.
  *
  * A room opens on the first connection and closes with the last, so the server holds only the boards
- * someone is looking at. One file per board makes deleting a board deleting a file.
+ * someone is looking at. One file per board makes deleting a board deleting a file. A file still in
+ * tldraw sync-core's layout is moved to ours the first time it is opened.
  */
 export class Rooms {
 	private readonly open = new Map<string, OpenRoom>()
@@ -48,22 +45,31 @@ export class Rooms {
 		mkdirSync(options.dir, { recursive: true })
 	}
 
-	connect(boardId: string, sessionId: string, socket: WebSocketMinimal): void {
-		this.room(boardId).room.handleSocketConnect({ sessionId, socket })
+	connect(boardId: string, socket: ServerSocket): void {
+		let session
+		try {
+			session = this.room(boardId).room.join(socket)
+		} catch (error) {
+			this.options.log?.error(`Board ${boardId} could not be opened`, error)
+			socket.close(1011, 'This board could not be opened.')
+			return
+		}
+		socket.on('message', (data) => session.receive(data.toString()))
+		socket.on('close', () => session.leave())
 	}
 
 	/**
 	 * Writes a board's first content, for a board arriving from a local vault. Refuses to overwrite: a
-	 * board that already has a file is someone's live board.
+	 * board that already has a file is someone's live board. Throws if the content doesn't validate.
 	 */
 	seed(boardId: string, snapshot: BoardSnapshot): void {
 		if (existsSync(this.path(boardId))) throw new Error(`Board ${boardId} already has content.`)
-		const db = new DatabaseSync(this.path(boardId))
+		const db = this.openDb(boardId)
 		try {
-			db.exec('PRAGMA journal_mode = WAL')
-			new SQLiteSyncStorage<TLRecord>({
-				sql: new NodeSqliteWrapper(db),
-				snapshot: snapshot as unknown as ConstructorParameters<typeof SQLiteSyncStorage<TLRecord>>[0]['snapshot'],
+			new SyncRoom<TLRecord>({
+				schema: this.options.schema,
+				storage: new SqliteRoomStorage(db),
+				initial: snapshot as SyncRoomOptions<TLRecord>['initial'],
 			})
 		} finally {
 			db.close()
@@ -83,11 +89,15 @@ export class Rooms {
 	 */
 	readSnapshot(boardId: string): BoardSnapshot | null {
 		const open = this.open.get(boardId)
-		if (open && !open.room.isClosed()) return toBoardSnapshot(open.storage.getSnapshot())
+		if (open && !open.room.isClosed()) return open.room.getSnapshot()
 		if (!existsSync(this.path(boardId))) return null
-		const db = new DatabaseSync(this.path(boardId))
+		const db = this.openDb(boardId)
 		try {
-			return toBoardSnapshot(new SQLiteSyncStorage<TLRecord>({ sql: new NodeSqliteWrapper(db) }).getSnapshot())
+			const state = new SqliteRoomStorage<TLRecord>(db).load()
+			if (!state) return null
+			const store: Record<string, TLRecord> = {}
+			for (const [id, { record }] of state.records) store[id] = record
+			return { store, schema: state.schema }
 		} finally {
 			db.close()
 		}
@@ -101,23 +111,32 @@ export class Rooms {
 		return join(this.options.dir, `${boardId}.sqlite`)
 	}
 
+	private openDb(boardId: string): DatabaseSync {
+		const db = new DatabaseSync(this.path(boardId))
+		db.exec('PRAGMA journal_mode = WAL')
+		return db
+	}
+
 	private room(boardId: string): OpenRoom {
 		const existing = this.open.get(boardId)
 		if (existing && !existing.room.isClosed()) return existing
 
-		const db = new DatabaseSync(this.path(boardId))
-		db.exec('PRAGMA journal_mode = WAL')
-		const storage = new SQLiteSyncStorage<TLRecord>({ sql: new NodeSqliteWrapper(db) })
-		storage.onChange(() => this.options.onChange(boardId))
-		const room = new TLSocketRoom<TLRecord, void>({
-			storage,
-			schema: this.options.schema,
-			...(this.options.log ? { log: this.options.log } : {}),
-			onSessionRemoved: (_room, { numSessionsRemaining }) => {
-				if (numSessionsRemaining === 0) this.close(boardId)
-			},
-		})
-		const entry = { room, storage, db }
+		const db = this.openDb(boardId)
+		let room: SyncRoom<TLRecord>
+		try {
+			room = new SyncRoom<TLRecord>({
+				schema: this.options.schema,
+				storage: new SqliteRoomStorage(db),
+				initial: emptyBoard(this.options.schema),
+				onChange: () => this.options.onChange(boardId),
+				onEmpty: () => this.close(boardId),
+				...(this.options.log ? { log: this.options.log } : {}),
+			})
+		} catch (error) {
+			db.close()
+			throw error
+		}
+		const entry = { room, db }
 		this.open.set(boardId, entry)
 		return entry
 	}
@@ -128,5 +147,20 @@ export class Rooms {
 		this.open.delete(boardId)
 		if (!entry.room.isClosed()) entry.room.close()
 		entry.db.close()
+	}
+}
+
+/**
+ * A new board's first records: the document and one page, with the ids an empty editor would give
+ * them. Made here rather than by the first client, so two clients opening a new board at once don't
+ * each make a page.
+ */
+function emptyBoard(schema: TLSchema) {
+	return {
+		store: {
+			[TLDOCUMENT_ID]: DocumentRecordType.create({ id: TLDOCUMENT_ID }),
+			'page:page': PageRecordType.create({ id: PageRecordType.createId('page'), name: 'Page 1', index: 'a1' as IndexKey }),
+		} as Record<string, TLRecord>,
+		schema: schema.serialize(),
 	}
 }

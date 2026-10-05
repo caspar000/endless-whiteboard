@@ -76,13 +76,13 @@ keep working).
 
 ## S — Sync and presence
 
-tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used.
+tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. Ours is `packages/canvas-sync`.
 
 | Id | Piece | What uses it here | Needed for | Status |
 |---|---|---|---|---|
-| S1 | Client sync: send store diffs, apply remote ones, reconnect from a clock | Server-vault boards (`useSync` in `canvas/Board.tsx`) | Cutover | todo |
-| S2 | Server rooms: one per board, SQLite storage, validation and migration against the shared schema | `apps/server/src/rooms.ts` | Cutover | todo |
-| S3 | Moving existing server rooms from sync-core's SQLite layout to ours | Any room created before cutover | Cutover | todo |
+| S1 | Client sync: send store diffs, apply remote ones, reconnect from a clock | Server-vault boards (`useSync` in `canvas/Board.tsx`) | Cutover | done (phase 6): `SyncClient`, `useSyncedStore` in `packages/canvas-sync` |
+| S2 | Server rooms: one per board, SQLite storage, validation and migration against the shared schema | `apps/server/src/rooms.ts` | Cutover | done (phase 6): `SyncRoom`, `SqliteRoomStorage` |
+| S3 | Moving existing server rooms from sync-core's SQLite layout to ours | Any room created before cutover | Cutover | done (phase 6): on first open, plain SQL |
 | S4 | Presence: other users' cursors and selections | Not used yet (the agent cursor is our own) | Backlog | todo |
 | S5 | Offline edits for server boards: a local copy and an outbox (tldraw sync never had this) | Mobile phase | Backlog | todo |
 | S6 | Who created and last edited a shape | Not used | Backlog | todo |

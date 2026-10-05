@@ -1,0 +1,825 @@
+{
+	"store": {
+		"shape:cexNL5C4wynyCCeL0MEZR": {
+			"x": 330,
+			"y": 440,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 120,
+					"category": "lighting",
+					"tags": [
+						"decor"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:cexNL5C4wynyCCeL0MEZR",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Desk lamp",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a6hWM",
+			"typeName": "shape"
+		},
+		"shape:k5UQ6SQTgdbwPRZE2rKvl": {
+			"x": 1380,
+			"y": 420,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:k5UQ6SQTgdbwPRZE2rKvl",
+			"type": "node.quote",
+			"parentId": "page:page",
+			"index": "aBweE",
+			"props": {
+				"text": "",
+				"imageSrc": "",
+				"sourceId": "",
+				"location": "",
+				"locationLabel": "",
+				"rects": "",
+				"autoHeight": true,
+				"w": 280,
+				"h": 64
+			},
+			"typeName": "shape"
+		},
+		"shape:mknOtNrMKi6T7oXDxh6IS": {
+			"x": 1740,
+			"y": 0,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:mknOtNrMKi6T7oXDxh6IS",
+			"type": "node.roll",
+			"parentId": "page:page",
+			"index": "aChM6",
+			"props": {
+				"notation": "",
+				"faces": "",
+				"modifier": 0,
+				"total": 0,
+				"autoHeight": true,
+				"w": 168,
+				"h": 74
+			},
+			"typeName": "shape"
+		},
+		"user:pwcRByabSkqD3298YKu2Y": {
+			"name": "",
+			"color": "#02B1CC",
+			"imageUrl": "",
+			"meta": {},
+			"id": "user:pwcRByabSkqD3298YKu2Y",
+			"typeName": "user"
+		},
+		"shape:H7cSG_s4Qz_mZO9MooQIN": {
+			"x": 580,
+			"y": 140,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 240,
+					"category": "desk",
+					"tags": [
+						"furniture"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:H7cSG_s4Qz_mZO9MooQIN",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Monitor arm",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a4fWj",
+			"typeName": "shape"
+		},
+		"shape:ytuH8wElQkYeTCc-a574c": {
+			"x": 80,
+			"y": 440,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 320,
+					"category": "lighting",
+					"tags": [
+						"decor"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:ytuH8wElQkYeTCc-a574c",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Floor lamp",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a5zzjV",
+			"typeName": "shape"
+		},
+		"shape:hdi90DNuMkRnzAatrvc40": {
+			"x": 880,
+			"y": 330,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:hdi90DNuMkRnzAatrvc40",
+			"type": "node.table",
+			"props": {
+				"title": "Everything",
+				"source": {
+					"shapeTypes": null,
+					"scope": "page",
+					"frameId": null,
+					"filters": [
+						{
+							"propertyId": "price",
+							"op": "isNotEmpty",
+							"value": null
+						}
+					]
+				},
+				"columns": [
+					{
+						"key": "__label",
+						"summary": "count",
+						"width": 2
+					},
+					{
+						"key": "price",
+						"summary": "sum",
+						"width": 1
+					}
+				],
+				"groupBy": "category",
+				"sorts": [
+					{
+						"key": "price",
+						"dir": "desc"
+					}
+				],
+				"layout": {
+					"mode": "table",
+					"maxRows": 12
+				},
+				"rates": {},
+				"w": 380,
+				"h": 292
+			},
+			"parentId": "page:page",
+			"index": "a9YOf",
+			"typeName": "shape"
+		},
+		"binding:LxaZ5otGq571BYyjpJs5Q": {
+			"meta": {},
+			"id": "binding:LxaZ5otGq571BYyjpJs5Q",
+			"type": "arrow",
+			"fromId": "shape:3mvZSnPUB3-HmLzDQjO3b",
+			"toId": "shape:J1ctzNZA7UMqLx5j8wFH9",
+			"props": {
+				"isPrecise": false,
+				"isExact": false,
+				"normalizedAnchor": {
+					"x": 0.5,
+					"y": 0.5
+				},
+				"snap": "center",
+				"terminal": "end"
+			},
+			"typeName": "binding"
+		},
+		"shape:J1ctzNZA7UMqLx5j8wFH9": {
+			"x": 80,
+			"y": 140,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 2399,
+					"category": "desk",
+					"tags": [
+						"furniture"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:J1ctzNZA7UMqLx5j8wFH9",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Standing desk",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a2uXX",
+			"typeName": "shape"
+		},
+		"binding:KuFQt_0Yt3xWMYDrYT4jR": {
+			"meta": {},
+			"id": "binding:KuFQt_0Yt3xWMYDrYT4jR",
+			"type": "arrow",
+			"fromId": "shape:3mvZSnPUB3-HmLzDQjO3b",
+			"toId": "shape:Kol6PIfFKD0MLdeuBS08b",
+			"props": {
+				"isPrecise": false,
+				"isExact": false,
+				"normalizedAnchor": {
+					"x": 0.5,
+					"y": 0.5
+				},
+				"snap": "center",
+				"terminal": "start"
+			},
+			"typeName": "binding"
+		},
+		"shape:Kol6PIfFKD0MLdeuBS08b": {
+			"x": 80,
+			"y": -150,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:Kol6PIfFKD0MLdeuBS08b",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Home office shopping\n\nEvery card below is a **note** that carries properties — a price and a category, the same way a photo or a sticky note could.\n\n- Double-click a note to write in it\n- Right-click one and choose **Properties** to add or edit its data\n- The **▦ table** nodes on the right show everything with a price, live",
+				"autoHeight": false,
+				"w": 480,
+				"h": 210
+			},
+			"parentId": "page:page",
+			"index": "a1nz9",
+			"typeName": "shape"
+		},
+		"binding:ppbOfHBZlJvJRi-PODL6s": {
+			"meta": {},
+			"id": "binding:ppbOfHBZlJvJRi-PODL6s",
+			"type": "arrow",
+			"fromId": "shape:78cPhrFX6Z1c2xKG7Rcp4",
+			"toId": "shape:J1ctzNZA7UMqLx5j8wFH9",
+			"props": {
+				"isPrecise": false,
+				"isExact": false,
+				"normalizedAnchor": {
+					"x": 0.5,
+					"y": 0.5
+				},
+				"snap": "center",
+				"terminal": "end"
+			},
+			"typeName": "binding"
+		},
+		"shape:SXdxbZfSm90fINUWKcwCq": {
+			"x": 580,
+			"y": 440,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 480,
+					"category": "soft",
+					"tags": [
+						"decor"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:SXdxbZfSm90fINUWKcwCq",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Rug",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a79H2",
+			"typeName": "shape"
+		},
+		"binding:4dwTqW11Trx2N0tN1MXkZ": {
+			"meta": {},
+			"id": "binding:4dwTqW11Trx2N0tN1MXkZ",
+			"type": "arrow",
+			"fromId": "shape:78cPhrFX6Z1c2xKG7Rcp4",
+			"toId": "shape:Kol6PIfFKD0MLdeuBS08b",
+			"props": {
+				"isPrecise": false,
+				"isExact": false,
+				"normalizedAnchor": {
+					"x": 0.5,
+					"y": 0.5
+				},
+				"snap": "center",
+				"terminal": "start"
+			},
+			"typeName": "binding"
+		},
+		"shape:ulCmPELN4gdMJuA2AhDur": {
+			"x": 1380,
+			"y": 0,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:ulCmPELN4gdMJuA2AhDur",
+			"type": "node.book",
+			"parentId": "page:page",
+			"index": "aAJJf",
+			"props": {
+				"fileSrc": "",
+				"fileName": "",
+				"format": "",
+				"title": "",
+				"author": "",
+				"coverSrc": "",
+				"pageCount": 0,
+				"location": "",
+				"autoHeight": true,
+				"w": 200,
+				"h": 300
+			},
+			"typeName": "shape"
+		},
+		"shape:78cPhrFX6Z1c2xKG7Rcp4": {
+			"x": 319.9999942419664,
+			"y": -14.99999769678658,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:relHidden": true
+			},
+			"id": "shape:78cPhrFX6Z1c2xKG7Rcp4",
+			"type": "arrow",
+			"props": {
+				"kind": "arc",
+				"elbowMidPoint": 0.5,
+				"dash": "draw",
+				"size": "m",
+				"fill": "none",
+				"color": "black",
+				"labelColor": "black",
+				"bend": 0,
+				"start": {
+					"x": 0,
+					"y": 0
+				},
+				"end": {
+					"x": -64.99997984688238,
+					"y": 122.24997754366888
+				},
+				"arrowheadStart": "none",
+				"arrowheadEnd": "arrow",
+				"richText": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph"
+						}
+					]
+				},
+				"labelPosition": 0.5,
+				"font": "draw",
+				"scale": 1
+			},
+			"parentId": "page:page",
+			"index": "a2wzwN",
+			"typeName": "shape"
+		},
+		"shape:qq5eBMGHlRhjlJCN1X3_-": {
+			"x": 330,
+			"y": 140,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {
+				"lifeboard:props": {
+					"price": 850,
+					"category": "desk",
+					"tags": [
+						"furniture"
+					]
+				},
+				"lifeboard:propDefs": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "shape:qq5eBMGHlRhjlJCN1X3_-",
+			"type": "node.markdown",
+			"props": {
+				"md": "# Desk chair",
+				"autoHeight": true,
+				"w": 220,
+				"h": 119
+			},
+			"parentId": "page:page",
+			"index": "a3FV6",
+			"typeName": "shape"
+		},
+		"shape:bf7YIaGbiMP5zKE3XYpr3": {
+			"x": 880,
+			"y": 140,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:bf7YIaGbiMP5zKE3XYpr3",
+			"type": "node.table",
+			"props": {
+				"title": "Total spend",
+				"source": {
+					"shapeTypes": null,
+					"scope": "page",
+					"frameId": null,
+					"filters": [
+						{
+							"propertyId": "price",
+							"op": "isNotEmpty",
+							"value": null
+						}
+					]
+				},
+				"columns": [
+					{
+						"key": "price",
+						"summary": "sum",
+						"width": 1
+					}
+				],
+				"groupBy": null,
+				"sorts": [],
+				"layout": {
+					"mode": "value",
+					"maxRows": 12
+				},
+				"rates": {},
+				"w": 280,
+				"h": 109
+			},
+			"parentId": "page:page",
+			"index": "a8ihX",
+			"typeName": "shape"
+		},
+		"shape:BX48xsK2JXtgpBzGpmWZm": {
+			"x": 1740,
+			"y": 320,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:BX48xsK2JXtgpBzGpmWZm",
+			"type": "note",
+			"props": {
+				"color": "black",
+				"richText": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{
+									"type": "text",
+									"text": "A sticky with "
+								},
+								{
+									"type": "text",
+									"text": "bold",
+									"marks": [
+										{
+											"type": "bold"
+										}
+									]
+								},
+								{
+									"type": "text",
+									"text": " text"
+								}
+							]
+						}
+					]
+				},
+				"size": "m",
+				"font": "draw",
+				"align": "middle",
+				"verticalAlign": "middle",
+				"labelColor": "black",
+				"growY": 0,
+				"fontSizeAdjustment": 1,
+				"url": "",
+				"scale": 1,
+				"textLastEditedBy": null
+			},
+			"parentId": "page:page",
+			"index": "aDOiM",
+			"typeName": "shape"
+		},
+		"shape:3mvZSnPUB3-HmLzDQjO3b": {
+			"x": 319.9999942419664,
+			"y": -45.00001928941265,
+			"rotation": 0,
+			"isLocked": false,
+			"opacity": 1,
+			"meta": {},
+			"id": "shape:3mvZSnPUB3-HmLzDQjO3b",
+			"type": "arrow",
+			"props": {
+				"kind": "arc",
+				"elbowMidPoint": 0.5,
+				"dash": "draw",
+				"size": "m",
+				"fill": "none",
+				"color": "black",
+				"labelColor": "black",
+				"bend": 0,
+				"start": {
+					"x": 0,
+					"y": 0
+				},
+				"end": {
+					"x": -86.66663979584317,
+					"y": 163.0000146829857
+				},
+				"arrowheadStart": "none",
+				"arrowheadEnd": "arrow",
+				"richText": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph"
+						}
+					]
+				},
+				"labelPosition": 0.5,
+				"font": "draw",
+				"scale": 1
+			},
+			"parentId": "page:page",
+			"index": "a2z0yx",
+			"typeName": "shape"
+		},
+		"page:page": {
+			"meta": {},
+			"id": "page:page",
+			"name": "Page 1",
+			"index": "a1",
+			"typeName": "page"
+		},
+		"document:document": {
+			"gridSize": 10,
+			"name": "",
+			"meta": {
+				"lifeboard:properties": [
+					{
+						"id": "price",
+						"name": "Price",
+						"type": "financial",
+						"unit": "GEL"
+					},
+					{
+						"id": "category",
+						"name": "Category",
+						"type": "select",
+						"options": [
+							"desk",
+							"lighting",
+							"soft"
+						]
+					},
+					{
+						"id": "tags",
+						"name": "Tags",
+						"type": "multiSelect",
+						"options": [
+							"furniture",
+							"decor"
+						]
+					}
+				]
+			},
+			"id": "document:document",
+			"typeName": "document"
+		}
+	},
+	"schema": {
+		"schemaVersion": 2,
+		"sequences": {
+			"com.tldraw.store": 5,
+			"com.tldraw.asset": 1,
+			"com.tldraw.camera": 1,
+			"com.tldraw.document": 2,
+			"com.tldraw.instance": 26,
+			"com.tldraw.instance_page_state": 5,
+			"com.tldraw.page": 1,
+			"com.tldraw.instance_presence": 6,
+			"com.tldraw.pointer": 1,
+			"com.tldraw.shape": 4,
+			"com.tldraw.user": 1,
+			"com.tldraw.asset.image": 6,
+			"com.tldraw.asset.video": 5,
+			"com.tldraw.asset.bookmark": 2,
+			"com.tldraw.shape.group": 0,
+			"com.tldraw.shape.bookmark": 2,
+			"com.tldraw.shape.draw": 5,
+			"com.tldraw.shape.line": 5,
+			"com.tldraw.shape.highlight": 4,
+			"com.tldraw.shape.embed": 4,
+			"com.tldraw.shape.image": 5,
+			"com.tldraw.shape.video": 4,
+			"com.tldraw.shape.node.item": 0,
+			"com.tldraw.shape.node.rollup": 0,
+			"com.tldraw.shape.node.markdown": 1,
+			"com.tldraw.shape.node.table": 1,
+			"com.tldraw.shape.node.book": 1,
+			"com.tldraw.shape.node.quote": 1,
+			"com.tldraw.shape.node.roll": 0,
+			"com.tldraw.shape.frame": 1,
+			"com.tldraw.shape.note": 13,
+			"com.tldraw.shape.text": 4,
+			"com.tldraw.shape.geo": 12,
+			"com.tldraw.shape.arrow": 8,
+			"com.tldraw.binding.arrow": 1,
+			"com.lifeboard.itemsToNotes": 1,
+			"com.lifeboard.rollupsToTables": 1,
+			"com.lifeboard.removeHealthNodes": 1
+		}
+	}
+}

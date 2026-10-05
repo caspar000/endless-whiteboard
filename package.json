@@ -12,6 +12,7 @@
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @lifeboard/web test:e2e",
     "lint": "pnpm -r --if-present lint",
-    "server": "pnpm --filter @lifeboard/server start"
+    "server": "pnpm --filter @lifeboard/server start",
+    "check:licences": "node scripts/check-licences.mjs"
   }
 }

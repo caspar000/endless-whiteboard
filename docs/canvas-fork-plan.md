@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Plan, waiting for review.** Nothing below has started.
+Status: **Phase 0 done** (2026-10-05). Phase 1 next.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -70,11 +70,22 @@ exactly what we changed. Work happens on branches stacked on `self-hosting/phase
 3. Record what each fixture board looks like now: a PNG per board, rendered by today's app.
 
 **Verify**
-- `pnpm check:licences` prints the four licensed packages and nothing else.
+- `pnpm check:licences` prints the five licensed packages (`tldraw`, `@tldraw/editor`, `@tldraw/driver`,
+  `@tldraw/sync`, `@tldraw/sync-core`). It also lists the Claude Agent SDK, which is proprietary but runs
+  only in the local agent host, never in the app or the server.
 - The fixtures load in today's app through `snapshot-fixtures.test.ts`.
 - The PNGs are committed next to the fixtures.
 
 **Size:** about half a week.
+
+**As built:** `scripts/check-licences.mjs` reads the licence from each installed package rather than
+guessing from names, and found five licensed packages, not four (`@tldraw/driver` too). The boards
+are `packages/canvas/fixtures/lifeboard.json` and `default-shapes.json`, made by
+`apps/web/scripts/capture-reference-boards.mjs` with real pointer gestures where the stored format
+depends on them (strokes, arrows). `apps/web/src/persistence/reference-boards.test.ts` holds today's
+app to "every document record loads unchanged", which is the bar phase 2 has to meet. Gestures over
+an embed are swallowed by its iframe; the script keeps strokes clear of it and fails if any expected
+shape type is missing.
 
 ## Phase 1 — The fork, as it was
 
@@ -191,8 +202,8 @@ alongside them once phase 2 is done.
 1. Point Lifeboard at the fork: first with a Vite and Vitest alias (`tldraw` → `packages/canvas`),
    then rewrite the imports.
 2. Port what the alias can't cover: the UI overrides, the selection toolbar, the context menu.
-3. Remove `tldraw`, `@tldraw/editor`, `@tldraw/sync` and `@tldraw/sync-core` from every
-   `package.json`. Switch `pnpm check:licences` to fail on any of them.
+3. Remove `tldraw`, `@tldraw/editor`, `@tldraw/driver`, `@tldraw/sync` and `@tldraw/sync-core` from
+   every `package.json`. Switch `pnpm check:licences` to fail on any of them.
 
 **Verify**
 - **The full unit and e2e suites pass.** The 158 e2e tests are the parity gate for what Lifeboard does

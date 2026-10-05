@@ -1,4 +1,5 @@
-// Runs node-kit's, note-markdown's, book-reader's and dice's unit suites against the canvas fork.
+// Runs node-kit's, note-markdown's, book-reader's and dice's unit suites against the canvas fork
+// (and apps/web's, when named).
 // `node scripts/fork-suites/run.mjs [package…]`; exits non-zero if any suite fails.
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +11,10 @@ const packages = process.argv.slice(2).length
 
 let failed = false
 for (const name of packages) {
-	const root = fileURLToPath(new URL(`../../packages/${name}`, import.meta.url))
+	// A bare name is a package; a path (apps/web) is taken as it is.
+	const root = fileURLToPath(
+		new URL(name.includes('/') ? `../../${name}` : `../../packages/${name}`, import.meta.url)
+	)
 	console.log(`\n== ${name}`)
 	const result = spawnSync('pnpm', ['exec', 'vitest', 'run', '--config', config, '--root', root], {
 		cwd: root,

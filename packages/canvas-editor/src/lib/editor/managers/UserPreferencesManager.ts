@@ -13,6 +13,10 @@ export class UserPreferencesManager {
 	updateUserPreferences = (userPreferences: Partial<TLUserPreferences>) => {
 		this.user.setUserPreferences({
 			...this.user.userPreferences.get(),
+			// The 2023 dark-mode toggle sets `isDarkMode`; it should win over an earlier colour scheme.
+			...('isDarkMode' in userPreferences && !('colorScheme' in userPreferences)
+				? { colorScheme: null }
+				: {}),
 			...userPreferences,
 		})
 	}
@@ -37,10 +41,22 @@ export class UserPreferencesManager {
 	}
 
 	@computed getIsDarkMode() {
-		return (
-			this.user.userPreferences.get().isDarkMode ??
-			(this.inferDarkMode ? userPrefersDarkUI() : false)
-		)
+		const { colorScheme, isDarkMode } = this.user.userPreferences.get()
+		if (colorScheme === 'dark') return true
+		if (colorScheme === 'light') return false
+		if (colorScheme === 'system') return userPrefersDarkUI()
+		return isDarkMode ?? (this.inferDarkMode ? userPrefersDarkUI() : false)
+	}
+
+	/** The colour scheme chosen: light, dark or the system's. @public */
+	@computed getColorScheme(): 'light' | 'dark' | 'system' {
+		const { colorScheme, isDarkMode } = this.user.userPreferences.get()
+		return colorScheme ?? (isDarkMode === true ? 'dark' : isDarkMode === false ? 'light' : 'system')
+	}
+
+	/** Whether the canvas's keyboard shortcuts work. @public */
+	@computed getAreKeyboardShortcutsEnabled() {
+		return this.user.userPreferences.get().areKeyboardShortcutsEnabled ?? true
 	}
 
 	/**

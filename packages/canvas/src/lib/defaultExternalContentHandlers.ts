@@ -15,6 +15,9 @@ import {
 	VecLike,
 	compact,
 	createShapeId,
+	TLFilesExternalContent,
+	TLTextExternalContent,
+	TLUrlExternalContent,
 	getHashForString,
 	FileHelpers,
 	dataUrlToFile,
@@ -195,180 +198,23 @@ export function registerDefaultExternalContentHandlers(
 	})
 
 	// files
-	editor.registerExternalContentHandler('files', async ({ point, files }) => {
-		const position =
-			point ??
-			(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
-
-		const pagePoint = new Vec2d(position.x, position.y)
-
-		const assets: TLAsset[] = []
-
-		await Promise.all(
-			files.map(async (file, i) => {
-				if (file.size > maxAssetSize) {
-					console.warn(
-						`File size too big: ${(file.size / 1024).toFixed()}kb > ${(
-							maxAssetSize / 1024
-						).toFixed()}kb`
-					)
-					return null
-				}
-
-				// Use mime type instead of file ext, this is because
-				// window.navigator.clipboard does not preserve file names
-				// of copied files.
-				if (!file.type) {
-					throw new Error('No mime type')
-				}
-
-				// We can only accept certain extensions (either images or a videos)
-				if (!acceptedImageMimeTypes.concat(acceptedVideoMimeTypes).includes(file.type)) {
-					console.warn(`${file.name} not loaded - Extension not allowed.`)
-					return null
-				}
-
-				try {
-					const asset = await editor.getAssetForExternalContent({ type: 'file', file })
-
-					if (!asset) {
-						throw Error('Could not create an asset')
-					}
-
-					assets[i] = asset
-				} catch (error) {
-					console.error(error)
-					return null
-				}
-			})
-		)
-
-		createShapesForAssets(editor, compact(assets), pagePoint)
-	})
+	editor.registerExternalContentHandler('files', (content) =>
+		defaultHandleExternalFileContent(editor, content, {
+			maxAssetSize,
+			acceptedImageMimeTypes,
+			acceptedVideoMimeTypes,
+		})
+	)
 
 	// text
-	editor.registerExternalContentHandler('text', async ({ point, text }) => {
-		const p =
-			point ??
-			(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
-
-		const defaultProps = editor.getShapeUtil<TLTextShape>('text').getDefaultProps()
-
-		const textToPaste = cleanupText(text)
-
-		// Measure the text with default values
-		let w: number
-		let h: number
-		let autoSize: boolean
-		let align = 'middle' as TLTextShapeProps['textAlign']
-
-		const isMultiLine = textToPaste.split('\n').length > 1
-
-		// check whether the text contains the most common characters in RTL languages
-		const isRtl = isRightToLeftLanguage(textToPaste)
-
-		if (isMultiLine) {
-			align = isMultiLine ? (isRtl ? 'end' : 'start') : 'middle'
-		}
-
-		const rawSize = editor.textMeasure.measureText(textToPaste, {
-			...TEXT_PROPS,
-			fontFamily: FONT_FAMILIES[defaultProps.font],
-			fontSize: FONT_SIZES[defaultProps.size],
-			maxWidth: null,
-		})
-
-		const minWidth = Math.min(
-			isMultiLine ? editor.getViewportPageBounds().width * 0.9 : 920,
-			Math.max(200, editor.getViewportPageBounds().width * 0.9)
-		)
-
-		if (rawSize.w > minWidth) {
-			const shrunkSize = editor.textMeasure.measureText(textToPaste, {
-				...TEXT_PROPS,
-				fontFamily: FONT_FAMILIES[defaultProps.font],
-				fontSize: FONT_SIZES[defaultProps.size],
-				maxWidth: minWidth,
-			})
-			w = shrunkSize.w
-			h = shrunkSize.h
-			autoSize = false
-			align = isRtl ? 'end' : 'start'
-		} else {
-			// autosize is fine
-			w = rawSize.w
-			h = rawSize.h
-			autoSize = true
-		}
-
-		if (p.y - h / 2 < editor.getViewportPageBounds().minY + 40) {
-			p.y = editor.getViewportPageBounds().minY + 40 + h / 2
-		}
-
-		editor.createShapes<TLTextShape>([
-			{
-				id: createShapeId(),
-				type: 'text',
-				x: p.x - w / 2,
-				y: p.y - h / 2,
-				props: {
-					richText: toRichText(textToPaste),
-					// if the text has more than one line, align it to the left
-					textAlign: align,
-					autoSize,
-					w,
-				},
-			},
-		])
-	})
+	editor.registerExternalContentHandler('text', (content) =>
+		defaultHandleExternalTextContent(editor, content)
+	)
 
 	// url
-	editor.registerExternalContentHandler('url', async ({ point, url }) => {
-		// try to paste as an embed first
-		const embedInfo = getEmbedInfo(url)
-
-		if (embedInfo) {
-			return editor.putExternalContent({
-				type: 'embed',
-				url: embedInfo.url,
-				point,
-				embed: embedInfo.definition,
-			})
-		}
-
-		const position =
-			point ??
-			(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
-
-		const assetId: TLAssetId = AssetRecordType.createId(getHashForString(url))
-		const shape = createEmptyBookmarkShape(editor, url, position)
-
-		// Use an existing asset if we have one, or else else create a new one
-		let asset = editor.getAsset(assetId) as TLAsset
-		let shouldAlsoCreateAsset = false
-		if (!asset) {
-			shouldAlsoCreateAsset = true
-			const bookmarkAsset = await editor.getAssetForExternalContent({ type: 'url', url })
-			if (!bookmarkAsset) throw Error('Could not create an asset')
-			asset = bookmarkAsset
-		}
-
-		editor.batch(() => {
-			if (shouldAlsoCreateAsset) {
-				editor.createAssets([asset])
-			}
-
-			editor.updateShapes([
-				{
-					id: shape.id,
-					type: shape.type,
-					props: {
-						assetId: asset.id,
-					},
-				},
-			])
-		})
-	})
+	editor.registerExternalContentHandler('url', (content) =>
+		defaultHandleExternalUrlContent(editor, content)
+	)
 }
 
 export async function createShapesForAssets(
@@ -504,4 +350,223 @@ export function createEmptyBookmarkShape(
 	})
 
 	return editor.getShape(partial.id) as TLBookmarkShape
+}
+
+/** Options for the default file handler; Lifeboard passes its own size limit and toasts. @public */
+export interface TLDefaultExternalContentHandlerOpts {
+	maxAssetSize?: number
+	acceptedImageMimeTypes?: readonly string[]
+	acceptedVideoMimeTypes?: readonly string[]
+	toasts?: { addToast(toast: { title: string; description?: string; severity?: 'success' | 'info' | 'warning' | 'error' }): unknown }
+	msg?: (key: string) => string
+}
+
+/** @public */
+export const DEFAULT_ACCEPTED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml']
+/** @public */
+export const DEFAULT_ACCEPTED_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime']
+/** @public */
+export const DEFAULT_MAX_ASSET_SIZE = 10 * 1024 * 1024
+
+/**
+ * Dropped or pasted files: images and videos become shapes, through the asset store. What an app
+ * doesn't take itself can be handed on to this.
+ *
+ * @public
+ */
+export async function defaultHandleExternalFileContent(
+	editor: Editor,
+	{ point, files }: TLFilesExternalContent,
+	{
+		maxAssetSize = DEFAULT_MAX_ASSET_SIZE,
+		acceptedImageMimeTypes = DEFAULT_ACCEPTED_IMAGE_MIME_TYPES,
+		acceptedVideoMimeTypes = DEFAULT_ACCEPTED_VIDEO_MIME_TYPES,
+		toasts,
+		msg,
+	}: TLDefaultExternalContentHandlerOpts = {}
+) {
+	const position =
+		point ??
+		(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
+
+	const pagePoint = new Vec2d(position.x, position.y)
+
+	const assets: TLAsset[] = []
+
+	await Promise.all(
+		files.map(async (file, i) => {
+			if (file.size > maxAssetSize) {
+				toasts?.addToast({
+					title: msg?.('assets.files.size-too-big') ?? 'File too large',
+					description: file.name,
+					severity: 'error',
+				})
+				console.warn(
+					`File size too big: ${(file.size / 1024).toFixed()}kb > ${(
+						maxAssetSize / 1024
+					).toFixed()}kb`
+				)
+				return null
+			}
+
+			// Use mime type instead of file ext, this is because
+			// window.navigator.clipboard does not preserve file names
+			// of copied files.
+			if (!file.type) {
+				throw new Error('No mime type')
+			}
+
+			// We can only accept certain extensions (either images or a videos)
+			if (!acceptedImageMimeTypes.concat(acceptedVideoMimeTypes).includes(file.type)) {
+				console.warn(`${file.name} not loaded - Extension not allowed.`)
+				return null
+			}
+
+			try {
+				const asset = await editor.getAssetForExternalContent({ type: 'file', file })
+
+				if (!asset) {
+					throw Error('Could not create an asset')
+				}
+
+				assets[i] = asset
+			} catch (error) {
+				console.error(error)
+				return null
+			}
+		})
+	)
+
+	createShapesForAssets(editor, compact(assets), pagePoint)
+}
+
+/** Dropped or pasted text: a text shape, sized to it. @public */
+export async function defaultHandleExternalTextContent(
+	editor: Editor,
+	{ point, text }: TLTextExternalContent
+) {
+	const p =
+		point ??
+		(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
+
+	const defaultProps = editor.getShapeUtil<TLTextShape>('text').getDefaultProps()
+
+	const textToPaste = cleanupText(text)
+
+	// Measure the text with default values
+	let w: number
+	let h: number
+	let autoSize: boolean
+	let align = 'middle' as TLTextShapeProps['textAlign']
+
+	const isMultiLine = textToPaste.split('\n').length > 1
+
+	// check whether the text contains the most common characters in RTL languages
+	const isRtl = isRightToLeftLanguage(textToPaste)
+
+	if (isMultiLine) {
+		align = isMultiLine ? (isRtl ? 'end' : 'start') : 'middle'
+	}
+
+	const rawSize = editor.textMeasure.measureText(textToPaste, {
+		...TEXT_PROPS,
+		fontFamily: FONT_FAMILIES[defaultProps.font],
+		fontSize: FONT_SIZES[defaultProps.size],
+		maxWidth: null,
+	})
+
+	const minWidth = Math.min(
+		isMultiLine ? editor.getViewportPageBounds().width * 0.9 : 920,
+		Math.max(200, editor.getViewportPageBounds().width * 0.9)
+	)
+
+	if (rawSize.w > minWidth) {
+		const shrunkSize = editor.textMeasure.measureText(textToPaste, {
+			...TEXT_PROPS,
+			fontFamily: FONT_FAMILIES[defaultProps.font],
+			fontSize: FONT_SIZES[defaultProps.size],
+			maxWidth: minWidth,
+		})
+		w = shrunkSize.w
+		h = shrunkSize.h
+		autoSize = false
+		align = isRtl ? 'end' : 'start'
+	} else {
+		// autosize is fine
+		w = rawSize.w
+		h = rawSize.h
+		autoSize = true
+	}
+
+	if (p.y - h / 2 < editor.getViewportPageBounds().minY + 40) {
+		p.y = editor.getViewportPageBounds().minY + 40 + h / 2
+	}
+
+	editor.createShapes<TLTextShape>([
+		{
+			id: createShapeId(),
+			type: 'text',
+			x: p.x - w / 2,
+			y: p.y - h / 2,
+			props: {
+				richText: toRichText(textToPaste),
+				// if the text has more than one line, align it to the left
+				textAlign: align,
+				autoSize,
+				w,
+			},
+		},
+	])
+}
+
+/** A dropped or pasted link: an embed if it is one, a bookmark card otherwise. @public */
+export async function defaultHandleExternalUrlContent(
+	editor: Editor,
+	{ point, url }: TLUrlExternalContent,
+	_opts: TLDefaultExternalContentHandlerOpts = {}
+) {
+	// try to paste as an embed first
+	const embedInfo = getEmbedInfo(url)
+
+	if (embedInfo) {
+		return editor.putExternalContent({
+			type: 'embed',
+			url: embedInfo.url,
+			point,
+			embed: embedInfo.definition,
+		})
+	}
+
+	const position =
+		point ??
+		(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
+
+	const assetId: TLAssetId = AssetRecordType.createId(getHashForString(url))
+	const shape = createEmptyBookmarkShape(editor, url, position)
+
+	// Use an existing asset if we have one, or else else create a new one
+	let asset = editor.getAsset(assetId) as TLAsset
+	let shouldAlsoCreateAsset = false
+	if (!asset) {
+		shouldAlsoCreateAsset = true
+		const bookmarkAsset = await editor.getAssetForExternalContent({ type: 'url', url })
+		if (!bookmarkAsset) throw Error('Could not create an asset')
+		asset = bookmarkAsset
+	}
+
+	editor.batch(() => {
+		if (shouldAlsoCreateAsset) {
+			editor.createAssets([asset])
+		}
+
+		editor.updateShapes([
+			{
+				id: shape.id,
+				type: shape.type,
+				props: {
+					assetId: asset.id,
+				},
+			},
+		])
+	})
 }

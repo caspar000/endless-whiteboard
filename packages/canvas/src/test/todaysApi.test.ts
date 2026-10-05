@@ -6,10 +6,17 @@ import {
 	TLBaseBoxShape,
 	TLShape,
 	TLShapeId,
+	DEFAULT_THEME,
+	Edge2d,
+	Vec2d,
 	createShapeId,
 	createTLStore,
+	getColorValue,
+	getSnapshot,
+	loadSnapshot,
 } from '@lifeboard/canvas-editor'
 import { defaultShapeUtils } from '../lib/defaultShapeUtils'
+import { GeoShapeUtil } from '../lib/shapes/geo/GeoShapeUtil'
 import { TestEditor } from './TestEditor'
 
 /**
@@ -215,5 +222,88 @@ describe('drop targets (E19)', () => {
 		editor.pointerUp()
 		expect(heard).toContain('in')
 		expect(heard.some((h) => h.startsWith('drop'))).toBe(false)
+	})
+})
+
+describe('shape visibility (E4)', () => {
+	it('hides shapes from hit-testing and rendering, and children with their parent', () => {
+		const frame = createShapeId('frame')
+		const child = createShapeId('child')
+		const hidden = new Set<string>([frame])
+		const viewer = new TestEditor({ getShapeVisibility: (shape) => (hidden.has(shape.id) ? 'hidden' : 'inherit') })
+		viewer.createShapes([
+			{ id: frame, type: 'frame', x: 0, y: 0, props: { w: 200, h: 200 } },
+			{ id: child, type: 'geo', parentId: frame, x: 10, y: 10, props: { w: 50, h: 50, fill: 'solid' } },
+		])
+		expect(viewer.isShapeHidden(frame)).toBe(true)
+		expect(viewer.isShapeHidden(child)).toBe(true)
+		expect(viewer.getShapeAtPoint({ x: 30, y: 30 }, { hitInside: true })).toBeUndefined()
+		expect(viewer.getCurrentPageRenderingShapesSorted().map((s) => s.id)).not.toContain(child)
+		viewer.dispose()
+	})
+})
+
+describe('camera options (E5)', () => {
+	it('locks the camera against the person, not against a forced move', () => {
+		editor.setCameraOptions({ isLocked: true })
+		expect(editor.getCameraOptions().isLocked).toBe(true)
+		const before = editor.getCamera()
+		editor.zoomIn()
+		expect(editor.getCamera()).toEqual(before)
+		editor.zoomToBounds(editor.getShapePageBounds(box)!, { targetZoom: 1, force: true })
+		expect(editor.getCamera()).not.toEqual(before)
+		editor.setCameraOptions({ isLocked: false })
+		expect(editor.getCanMoveCamera()).toBe(true)
+	})
+
+	it('zooms through the zoom steps it is given', () => {
+		editor.setCameraOptions({ zoomSteps: [0.5, 1, 3] })
+		editor.resetZoom()
+		editor.zoomIn()
+		expect(editor.getZoomLevel()).toBe(3)
+		expect(editor.getBaseZoom()).toBe(1)
+	})
+})
+
+describe('theme and colour scheme (E7)', () => {
+	it('follows the colour scheme preference, and the 2023 dark-mode toggle still works', () => {
+		editor.user.updateUserPreferences({ colorScheme: 'dark' })
+		expect(editor.getColorMode()).toBe('dark')
+		editor.user.updateUserPreferences({ isDarkMode: false })
+		expect(editor.getColorMode()).toBe('light')
+		const colors = editor.getCurrentTheme().colors[editor.getColorMode()]
+		expect(getColorValue(colors, 'blue', 'solid')).toBe(colors.blue.solid)
+		expect(getColorValue(colors, 'blue', 'fill')).toBe(colors.blue.semi)
+	})
+})
+
+describe('configured shape utils (E6)', () => {
+	it('carries its options into a new util class of the same type', () => {
+		const Configured = GeoShapeUtil.configure({ getCustomDisplayValues: () => ({ fillColor: 'red' }) })
+		expect(Configured.type).toBe('geo')
+		const util = new Configured(editor)
+		expect(util.options.getCustomDisplayValues?.(editor, editor.getShape(box)!, DEFAULT_THEME, 'light')).toEqual({
+			fillColor: 'red',
+		})
+		expect(new GeoShapeUtil(editor).options).toEqual({})
+	})
+})
+
+describe('snapshots (E13)', () => {
+	it('saves a document and session, and loads them into a new store', () => {
+		const saved = getSnapshot(editor.store)
+		const other = new TestEditor()
+		loadSnapshot(other.store, { document: saved.document })
+		expect(other.getShape(box)).toEqual(editor.getShape(box))
+		other.dispose()
+	})
+})
+
+describe('geometry (E14 neighbours)', () => {
+	it('finds points along an edge, wrapping outside 0 to 1', () => {
+		const edge = new Edge2d({ start: new Vec2d(0, 0), end: new Vec2d(200, 0) })
+		expect(edge.interpolateAlongEdge(0.25).x).toBeCloseTo(50)
+		expect(edge.interpolateAlongEdge(1).x).toBeCloseTo(200)
+		expect(edge.interpolateAlongEdge(1.25).x).toBeCloseTo(50)
 	})
 })

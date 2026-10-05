@@ -1,7 +1,8 @@
 import * as _ContextMenu from '@radix-ui/react-context-menu'
 import { Editor, preventDefault, useContainer, useEditor, useValue } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
-import { forwardRef, useCallback, useState } from 'react'
+import { ReactElement, ReactNode, useCallback, useState } from 'react'
+import { TLUiContextMenuProps } from '../hooks/useTldrawUiComponents'
 import { TLUiMenuChild } from '../hooks/menuHelpers'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { useContextMenuSchema } from '../hooks/useContextMenuSchema'
@@ -15,13 +16,17 @@ import { Button } from './primitives/Button'
 import { Icon } from './primitives/Icon'
 import { Kbd } from './primitives/Kbd'
 
-/** @public */
-export interface TLUiContextMenuProps {
-	children: any
-}
-
-/** @public */
-export const ContextMenu = function ContextMenu({ children }: { children: any }) {
+/**
+ * The canvas's context menu. `canvas` is what right-clicking opens it on; `children` are its items,
+ * by default `DefaultContextMenuContent` (the standard actions). An app composes its own by putting
+ * `TldrawUiMenuGroup`s and `TldrawUiMenuItem`s before or after that.
+ *
+ * @public
+ */
+export const DefaultContextMenu = function DefaultContextMenu({
+	canvas,
+	children,
+}: TLUiContextMenuProps) {
 	const editor = useEditor()
 
 	const contextTLUiMenuSchema = useContextMenuSchema()
@@ -82,7 +87,8 @@ export const ContextMenu = function ContextMenu({ children }: { children: any })
 		[editor]
 	)
 
-	const disabled = !selectToolActive || noItemsToShow
+	// With items of its own, the menu has something to show even when the standard ones don't.
+	const disabled = !selectToolActive || (children === undefined && noItemsToShow)
 
 	return (
 		<_ContextMenu.Root dir="ltr" onOpenChange={handleOpenChange}>
@@ -91,16 +97,24 @@ export const ContextMenu = function ContextMenu({ children }: { children: any })
 				dir="ltr"
 				disabled={disabled}
 			>
-				{children}
+				{canvas}
 			</_ContextMenu.Trigger>
 			<_ContextMenu.Portal container={container}>
-				<ContextMenuContent />
+				<_ContextMenu.Content
+					className="tlui-menu scrollable"
+					alignOffset={-4}
+					collisionPadding={4}
+					onContextMenu={preventDefault}
+				>
+					{children ?? <DefaultContextMenuContent />}
+				</_ContextMenu.Content>
 			</_ContextMenu.Portal>
 		</_ContextMenu.Root>
 	)
 }
 
-const ContextMenuContent = forwardRef(function ContextMenuContent() {
+/** The standard context menu items, from the menu schema and `overrides`. @public */
+export const DefaultContextMenuContent = function DefaultContextMenuContent() {
 	const editor = useEditor()
 	const msg = useTranslation()
 	const menuSchema = useContextMenuSchema()
@@ -219,16 +233,62 @@ const ContextMenuContent = forwardRef(function ContextMenuContent() {
 		}
 	}
 
+	return <>{menuSchema.map((item) => getContextMenuItem(editor, item, null, 0))}</>
+}
+
+/** A group of items in the context menu, with a divider from the next. @public */
+export function TldrawUiMenuGroup({ id, children }: { id: string; children?: ReactNode }) {
 	return (
-		<_ContextMenu.Portal container={container}>
-			<_ContextMenu.Content
-				className="tlui-menu scrollable"
-				alignOffset={-4}
-				collisionPadding={4}
-				onContextMenu={preventDefault}
-			>
-				{menuSchema.map((item) => getContextMenuItem(editor, item, null, 0))}
-			</_ContextMenu.Content>
-		</_ContextMenu.Portal>
+		<_ContextMenu.Group dir="ltr" className="tlui-menu__group" data-testid={`menu-item.${id}`}>
+			{children}
+		</_ContextMenu.Group>
 	)
-})
+}
+
+/**
+ * An item in the context menu: a label, an optional icon (an icon name or any element) and keyboard
+ * shortcut, and what it does.
+ *
+ * @public
+ */
+export function TldrawUiMenuItem({
+	id,
+	label,
+	icon,
+	kbd,
+	disabled,
+	readonlyOk,
+	onSelect,
+}: {
+	id: string
+	label?: string
+	icon?: TLUiIconType | ReactElement
+	kbd?: string
+	disabled?: boolean
+	readonlyOk?: boolean
+	onSelect(source: 'context-menu'): void
+}) {
+	const msg = useTranslation()
+	const isReadonly = useReadonly()
+	if (isReadonly && !readonlyOk) return null
+	const text = label ? msg(label) : undefined
+	return (
+		<_ContextMenu.Item dir="ltr" asChild disabled={disabled} onSelect={() => onSelect('context-menu')}>
+			<button
+				type="button"
+				className="tlui-button tlui-button__menu"
+				data-testid={`menu-item.${id}`}
+				title={text}
+				disabled={disabled}
+			>
+				{typeof icon === 'string' ? <Icon small icon={icon} /> : icon}
+				{text && (
+					<span className="tlui-button__label" draggable={false}>
+						{text}
+					</span>
+				)}
+				{kbd && <Kbd>{kbd}</Kbd>}
+			</button>
+		</_ContextMenu.Item>
+	)
+}

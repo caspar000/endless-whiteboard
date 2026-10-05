@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import {
 	ANIMATION_MEDIUM_MS,
 	Box2d,
@@ -38,7 +39,7 @@ export interface TLUiActionItem<
 	TransationKey extends string = string,
 	IconType extends string = string
 > {
-	icon?: IconType
+	icon?: IconType | ReactElement
 	id: string
 	kbd?: string
 	title?: string
@@ -46,7 +47,8 @@ export interface TLUiActionItem<
 	menuLabel?: TransationKey
 	shortcutsLabel?: TransationKey
 	contextMenuLabel?: TransationKey
-	readonlyOk: boolean
+	/** Whether it works on a read-only board. Off unless given. */
+	readonlyOk?: boolean
 	checkbox?: boolean
 	onSelect: (source: TLUiEventSource) => Promise<void> | void
 }

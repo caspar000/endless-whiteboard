@@ -270,7 +270,8 @@ export class DraggingHandle extends StateNode {
 			}
 		}
 
-		const changes = util.onHandleChange?.(shape, {
+		const changes = util.onHandleDrag(shape, {
+			isCreatingShape: this.info.isCreating,
 			handle: {
 				...initialHandle,
 				x: point.x,

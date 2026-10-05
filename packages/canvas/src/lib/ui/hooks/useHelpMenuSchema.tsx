@@ -1,6 +1,7 @@
 import { Editor, TLLanguage, compact, track, useEditor } from '@lifeboard/canvas-editor'
 import React, { useMemo } from 'react'
-import { KeyboardShortcutsDialog } from '../components/KeyboardShortcutsDialog'
+import { DefaultKeyboardShortcutsDialog } from '../components/KeyboardShortcutsDialog'
+import { useTldrawUiComponents } from './useTldrawUiComponents'
 import { TLUiMenuSchema, menuCustom, menuGroup, menuItem } from './menuHelpers'
 import { useActions } from './useActions'
 import { useDialogs } from './useDialogsProvider'
@@ -45,6 +46,8 @@ export const HelpMenuSchemaProvider = track(function HelpMenuSchemaProvider({
 
 	const { languages, currentLanguage } = useLanguages()
 	const { addDialog } = useDialogs()
+	// The app's shortcuts dialog if it has one (`components.KeyboardShortcutsDialog`).
+	const ShortcutsDialog = useTldrawUiComponents().KeyboardShortcutsDialog ?? DefaultKeyboardShortcutsDialog
 
 	const helpTLUiMenuSchema = useMemo<TLUiMenuSchema>(() => {
 		const helpTLUiMenuSchema = compact([
@@ -56,7 +59,7 @@ export const HelpMenuSchemaProvider = track(function HelpMenuSchemaProvider({
 					label: 'help-menu.keyboard-shortcuts',
 					readonlyOk: true,
 					onSelect() {
-						addDialog({ component: KeyboardShortcutsDialog })
+						addDialog({ component: (props) => <ShortcutsDialog {...props} /> })
 					},
 				})
 			),
@@ -84,6 +87,7 @@ export const HelpMenuSchemaProvider = track(function HelpMenuSchemaProvider({
 		threeSelected,
 		currentLanguage,
 		addDialog,
+		ShortcutsDialog,
 	])
 
 	return (

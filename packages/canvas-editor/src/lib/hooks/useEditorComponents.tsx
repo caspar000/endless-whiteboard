@@ -50,6 +50,10 @@ import {
 } from '../components/default-components/DefaultSnapLine'
 import { DefaultSpinner, TLSpinnerComponent } from '../components/default-components/DefaultSpinner'
 import { DefaultSvgDefs, TLSvgDefsComponent } from '../components/default-components/DefaultSvgDefs'
+import {
+	DefaultShapeWrapper,
+	TLShapeWrapperComponent,
+} from '../components/default-components/DefaultShapeWrapper'
 
 export interface BaseEditorComponents {
 	Background: TLBackgroundComponent
@@ -74,6 +78,7 @@ export interface BaseEditorComponents {
 	OnTheCanvas: TLOnTheCanvas
 	InFrontOfTheCanvas: TLInFrontOfTheCanvas
 	LoadingScreen: TLLoadingScreenComponent
+	ShapeWrapper: TLShapeWrapperComponent
 }
 
 // These will always have defaults
@@ -126,6 +131,7 @@ export function EditorComponentsProvider({ overrides, children }: ComponentsCont
 					SelectionForeground: DefaultSelectionForeground,
 					HoveredShapeIndicator: DefaultHoveredShapeIndicator,
 					OnTheCanvas: null,
+					ShapeWrapper: DefaultShapeWrapper,
 					InFrontOfTheCanvas: null,
 					...overrides,
 				}),

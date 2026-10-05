@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import { Editor, GeoShapeGeoStyle, useEditor } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { EmbedDialog } from '../components/EmbedDialog'
@@ -15,10 +16,12 @@ export interface TLUiToolItem<
 	id: string
 	label: TranslationKey
 	shortcutsLabel?: TranslationKey
-	icon: IconType
+	/** An icon name, or any element (an app's own glyph). */
+	icon: IconType | ReactElement
 	onSelect: (source: TLUiEventSource) => void
 	kbd?: string
-	readonlyOk: boolean
+	/** Whether it works on a read-only board. Off unless given. */
+	readonlyOk?: boolean
 	meta?: {
 		[key: string]: any
 	}

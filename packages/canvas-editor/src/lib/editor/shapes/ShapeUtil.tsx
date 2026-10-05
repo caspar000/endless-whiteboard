@@ -50,6 +50,30 @@ export interface TLShapeUtilCanvasSvgDef {
 /** @public */
 export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	constructor(public editor: Editor) {}
+
+	/** Options the util was set up with; see `configure`. Each util declares its own. @public */
+	options: object = {}
+
+	/**
+	 * This util with some of its options changed, as a new util class to pass to the editor in its
+	 * place (same type, same shapes).
+	 *
+	 * @public
+	 */
+	static configure<T extends abstract new (editor: Editor) => ShapeUtil<TLUnknownShape>>(
+		this: T,
+		options: Partial<InstanceType<T>['options']>
+	): T {
+		const Base = this as unknown as new (editor: Editor) => ShapeUtil<TLUnknownShape>
+		// Abstract only to TypeScript: the class it extends is a concrete util.
+		abstract class Configured extends Base {
+			constructor(editor: Editor) {
+				super(editor)
+				this.options = { ...this.options, ...options }
+			}
+		}
+		return Configured as unknown as T
+	}
 	static props?: RecordProps<TLUnknownShape>
 	// Props-only migrations, or a full record sequence (today's arrow shape ships one).
 	static migrations?: TLPropsMigrations | MigrationSequence
@@ -522,6 +546,16 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	onHandleChange?(...args: Parameters<TLOnHandleChangeHandler<Shape>>): ReturnType<TLOnHandleChangeHandler<Shape>>
 
 	/**
+	 * A handle is being dragged: today's name for `onHandleChange`, with whether the drag is creating
+	 * the shape. Override either; the editor calls this one, which hands over to `onHandleChange`.
+	 *
+	 * @public
+	 */
+	onHandleDrag(shape: Shape, info: TLHandleDragInfo<Shape>): TLShapePartial<Shape> | void {
+		return this.onHandleChange?.(shape, info)
+	}
+
+	/**
 	 * Not currently used.
 	 *
 	 * @internal
@@ -666,6 +700,19 @@ export type TLOnHandleChangeHandler<T extends TLUnknownShape> = (
 		initial?: T | undefined
 	}
 ) => TLShapePartial<T> | void
+
+/**
+ * What `onHandleDrag` hears about a handle being dragged.
+ *
+ * @public
+ */
+export interface TLHandleDragInfo<T extends TLUnknownShape> {
+	handle: TLHandle
+	isPrecise: boolean
+	/** Whether this drag is creating the shape (drawing a new arrow, say) rather than editing it. */
+	isCreatingShape: boolean
+	initial?: T | undefined
+}
 
 /** @public */
 export type TLOnClickHandler<T extends TLUnknownShape> = (shape: T) => TLShapePartial<T> | void

@@ -22,6 +22,7 @@ function Toast({ toast }: { toast: TLUiToast }) {
 		<T.Root
 			onOpenChange={onOpenChange}
 			className="tlui-toast__container"
+			data-severity={toast.severity}
 			duration={toast.keepOpen ? Infinity : 5000}
 		>
 			{toast.icon && (

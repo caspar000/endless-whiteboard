@@ -1,4 +1,7 @@
 import {
+	Editor,
+	TLTheme,
+	TLColorMode,
 	BaseBoxShapeUtil,
 	Geometry2d,
 	Rectangle2d,
@@ -32,10 +35,43 @@ export function defaultEmptyAs(str: string, dflt: string) {
 }
 
 /** @public */
+/**
+ * Options for `FrameShapeUtil.configure`.
+ *
+ * @public
+ */
+export interface TLFrameShapeUtilOptions {
+	/** Whether a frame draws in its own `color` (border and heading), rather than the default ink. */
+	showColors?: boolean
+	/** Paints to use in place of the defaults: the fill, with and without `showColors`. */
+	getCustomDisplayValues?(
+		editor: Editor,
+		shape: TLFrameShape,
+		theme: TLTheme,
+		colorMode: TLColorMode
+	): { fillColor?: string; showColorsFillColor?: string }
+}
+
 export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	static override type = 'frame' as const
 	static override props = frameShapeProps
 	static override migrations = frameShapeMigrations
+
+	override options: TLFrameShapeUtilOptions = { showColors: false }
+
+	/** The fill, stroke and heading colour a frame draws with, after its options. */
+	private paints(shape: TLFrameShape) {
+		const theme = this.editor.getCurrentTheme()
+		const mode = this.editor.getColorMode()
+		const colors = theme.colors[mode]
+		const custom = this.options.getCustomDisplayValues?.(this.editor, shape, theme, mode) ?? {}
+		const showColors = this.options.showColors === true
+		return {
+			fill: (showColors ? custom.showColorsFillColor : custom.fillColor) ?? colors.solid,
+			stroke: showColors ? colors[shape.props.color].solid : colors.text,
+			heading: showColors ? colors[shape.props.color].solid : undefined,
+		}
+	}
 
 	override canBind() {
 		return true
@@ -59,7 +95,7 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	override component(shape: TLFrameShape) {
 		const bounds = this.editor.getShapeGeometry(shape).bounds
 		// eslint-disable-next-line react-hooks/rules-of-hooks
-		const theme = useDefaultColorTheme()
+		const paints = this.paints(shape)
 
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const isCreating = useValue(
@@ -83,8 +119,8 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 						className={classNames('tl-frame__body', { 'tl-frame__creating': isCreating })}
 						width={bounds.width}
 						height={bounds.height}
-						fill={theme.solid}
-						stroke={theme.text}
+						fill={paints.fill}
+						stroke={paints.stroke}
 					/>
 				</SVGContainer>
 				{isCreating ? null : (
@@ -93,6 +129,7 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 						name={shape.props.name}
 						width={bounds.width}
 						height={bounds.height}
+						color={paints.heading}
 					/>
 				)}
 			</>
@@ -106,8 +143,9 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 		const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
 		rect.setAttribute('width', shape.props.w.toString())
 		rect.setAttribute('height', shape.props.h.toString())
-		rect.setAttribute('fill', theme.solid)
-		rect.setAttribute('stroke', theme.black.solid)
+		const paints = this.paints(shape)
+		rect.setAttribute('fill', paints.fill)
+		rect.setAttribute('stroke', paints.stroke)
 		rect.setAttribute('stroke-width', '1')
 		rect.setAttribute('rx', '1')
 		rect.setAttribute('ry', '1')

@@ -21,6 +21,13 @@ export {
 	type TLDefaultColorThemeColor,
 } from './lib/theme/defaultColorTheme'
 export {
+	DEFAULT_THEME,
+	getColorValue,
+	type TLColorMode,
+	type TLColorVariant,
+	type TLTheme,
+} from './lib/theme/theme'
+export {
 	EMBED_DEFINITIONS,
 	embedShapePermissionDefaults,
 	type EmbedDefinition,
@@ -72,6 +79,7 @@ export {
 	type TLOnMountHandler,
 	type TldrawEditorBaseProps,
 	type TldrawEditorProps,
+	type TldrawEditorStoreProps,
 } from './lib/TldrawEditor'
 export { Canvas } from './lib/components/Canvas'
 export {
@@ -184,10 +192,21 @@ export {
 export {
 	Editor,
 	type TLAnimationOptions,
+	type TLCameraMoveOptions,
+	type TLCameraOptions,
 	type TLEditorOptions,
 	type TLResizeShapeOptions,
 	type TLTextOptions,
+	type TldrawOptions,
+	defaultTldrawOptions,
 } from './lib/editor/Editor'
+export { getSnapshot, loadSnapshot, type TLEditorSnapshot } from './lib/config/TLEditorSnapshot'
+export {
+	DefaultShapeWrapper,
+	type TLShapeWrapperComponent,
+	type TLShapeWrapperProps,
+} from './lib/components/default-components/DefaultShapeWrapper'
+export { suffixSafeId, useUniqueSafeId, type SafeId } from './lib/utils/safeId'
 export {
 	SnapManager,
 	type GapsSnapLine,
@@ -221,6 +240,7 @@ export {
 	type TLResizeMode,
 	type TLShapeUtilCanvasSvgDef,
 	type TLShapeUtilConstructor,
+	type TLHandleDragInfo,
 	type TLShapeUtilCanBindOpts,
 	type TLShapeUtilFlag,
 } from './lib/editor/shapes/ShapeUtil'
@@ -278,6 +298,9 @@ export {
 	type TLExternalAssetContent,
 	type TLExternalContent,
 	type TLExternalContentSource,
+	type TLFilesExternalContent,
+	type TLTextExternalContent,
+	type TLUrlExternalContent,
 } from './lib/editor/types/external-content'
 export {
 	type TLCommand,

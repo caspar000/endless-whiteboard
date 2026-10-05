@@ -2,6 +2,8 @@ import {
 	BaseBoxShapeUtil,
 	DefaultFontFamilies,
 	Editor,
+	TLColorMode,
+	TLTheme,
 	Ellipse2d,
 	Geometry2d,
 	Group2d,
@@ -29,6 +31,7 @@ import {
 	getDefaultColorTheme,
 	getPolygonVertices,
 } from '@lifeboard/canvas-editor'
+import { ShapeFillOverride, ShapeFillOverrideContext } from '../shared/ShapeFill'
 
 import { HyperlinkButton } from '../shared/HyperlinkButton'
 import { TextLabel } from '../shared/TextLabel'
@@ -62,14 +65,33 @@ import {
 } from './components/SolidStyleOval'
 import { SolidStylePolygon, SolidStylePolygonSvg } from './components/SolidStylePolygon'
 
+const NO_FILL_OVERRIDE: ShapeFillOverride = {}
+
 const LABEL_PADDING = 16
 const MIN_SIZE_WITH_LABEL = 17 * 3
 
 /** @public */
+/**
+ * Options for `GeoShapeUtil.configure`.
+ *
+ * @public
+ */
+export interface TLGeoShapeUtilOptions {
+	/** Paints to use in place of the ones the shape's colour gives; see `ShapeFillOverride`. */
+	getCustomDisplayValues?(
+		editor: Editor,
+		shape: TLGeoShape,
+		theme: TLTheme,
+		colorMode: TLColorMode
+	): ShapeFillOverride
+}
+
 export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	static override type = 'geo' as const
 	static override props = geoShapeProps
 	static override migrations = geoShapeMigrations
+
+	override options: TLGeoShapeUtilOptions = {}
 
 	override canEdit = () => true
 
@@ -519,9 +541,19 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			}
 		}
 
+		const fillOverride =
+			this.options.getCustomDisplayValues?.(
+				this.editor,
+				shape,
+				this.editor.getCurrentTheme(),
+				this.editor.getColorMode()
+			) ?? NO_FILL_OVERRIDE
+
 		return (
 			<>
-				<SVGContainer id={id}>{getShape()}</SVGContainer>
+				<ShapeFillOverrideContext.Provider value={fillOverride}>
+					<SVGContainer id={id}>{getShape()}</SVGContainer>
+				</ShapeFillOverrideContext.Provider>
 				<HTMLContainer
 					id={shape.id}
 					style={{ overflow: 'hidden', width: shape.props.w, height: shape.props.h + props.growY }}
@@ -894,7 +926,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		}
 	}
 
-	override onBeforeCreate = (shape: TLGeoShape) => {
+	override onBeforeCreate(shape: TLGeoShape) {
 		if (!richTextToPlainText(shape.props.richText)) {
 			if (shape.props.growY) {
 				// No text / some growY, set growY to 0

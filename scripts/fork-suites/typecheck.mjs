@@ -14,7 +14,8 @@ const packages = process.argv.slice(2).length
 
 let total = 0
 for (const name of packages) {
-	const dir = `${repo}packages/${name}/`
+	// A bare name is a package; a path (apps/web) is taken as it is.
+	const dir = name.includes('/') ? `${repo}${name}/` : `${repo}packages/${name}/`
 	const config = `${dir}tsconfig.fork.json`
 	writeFileSync(
 		config,

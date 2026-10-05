@@ -1,6 +1,7 @@
 import { RecursivePartial } from '@lifeboard/canvas-editor'
 import { TLUiAssetUrls, useDefaultUiAssetUrlsWithOverrides } from './assetUrls'
 import { ActionsProvider } from './hooks/useActions'
+import { TLUiComponents, TldrawUiComponentsProvider } from './hooks/useTldrawUiComponents'
 import { ActionsMenuSchemaProvider } from './hooks/useActionsMenuSchema'
 import { AssetUrlsProvider } from './hooks/useAssetUrls'
 import { BreakPointProvider } from './hooks/useBreakpoint'
@@ -33,6 +34,11 @@ export interface TldrawUiContextProviderProps {
 	overrides?: TLUiOverrides | TLUiOverrides[]
 
 	/**
+	 * Replacements for parts of the UI; see `TLUiComponents`.
+	 */
+	components?: TLUiComponents
+
+	/**
 	 * Callback for when an event occurs in the UI.
 	 */
 	onUiEvent?: TLUiEventHandler
@@ -54,9 +60,11 @@ export function TldrawUiContextProvider({
 	assetUrls,
 	onUiEvent,
 	forceMobile,
+	components,
 	children,
 }: TldrawUiContextProviderProps) {
 	return (
+		<TldrawUiComponentsProvider value={components ?? NO_COMPONENTS}>
 		<AssetUrlsProvider assetUrls={useDefaultUiAssetUrlsWithOverrides(assetUrls)}>
 			<TranslationProvider overrides={useMergedTranslationOverrides(overrides)}>
 				<UiEventsProvider onEvent={onUiEvent}>
@@ -70,8 +78,11 @@ export function TldrawUiContextProvider({
 				</UiEventsProvider>
 			</TranslationProvider>
 		</AssetUrlsProvider>
+		</TldrawUiComponentsProvider>
 	)
 }
+
+const NO_COMPONENTS: TLUiComponents = {}
 function InternalProviders({
 	overrides,
 	children,

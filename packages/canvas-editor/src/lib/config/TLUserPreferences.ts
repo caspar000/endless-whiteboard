@@ -19,6 +19,10 @@ export interface TLUserPreferences {
 	isDarkMode?: boolean | null
 	animationSpeed?: number | null
 	isSnapMode?: boolean | null
+	/** Today's way to choose the theme; `system` follows the OS. Wins over `isDarkMode` when set. */
+	colorScheme?: 'light' | 'dark' | 'system' | null
+	/** Whether the canvas's keyboard shortcuts work. */
+	areKeyboardShortcutsEnabled?: boolean | null
 }
 
 interface UserDataSnapshot {
@@ -40,16 +44,19 @@ const userTypeValidator: T.Validator<TLUserPreferences> = T.object<TLUserPrefere
 	isDarkMode: T.boolean.nullable().optional(),
 	animationSpeed: T.number.nullable().optional(),
 	isSnapMode: T.boolean.nullable().optional(),
+	colorScheme: T.literalEnum('light', 'dark', 'system').nullable().optional(),
+	areKeyboardShortcutsEnabled: T.boolean.nullable().optional(),
 })
 
 const Versions = {
 	AddAnimationSpeed: 1,
 	AddIsSnapMode: 2,
 	MakeFieldsNullable: 3,
+	AddColorSchemeAndShortcuts: 4,
 } as const
 
 const userMigrations = defineMigrations({
-	currentVersion: Versions.MakeFieldsNullable,
+	currentVersion: Versions.AddColorSchemeAndShortcuts,
 	migrators: {
 		[Versions.AddAnimationSpeed]: {
 			up: (user) => {
@@ -85,6 +92,10 @@ const userMigrations = defineMigrations({
 					isSnapMode: user.isSnapMode ?? defaultUserPreferences.isSnapMode,
 				}
 			},
+		},
+		[Versions.AddColorSchemeAndShortcuts]: {
+			up: (user: TLUserPreferences) => user,
+			down: ({ colorScheme: _, areKeyboardShortcutsEnabled: __, ...user }: TLUserPreferences) => user,
 		},
 	},
 })

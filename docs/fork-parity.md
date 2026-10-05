@@ -46,21 +46,21 @@ keep working).
 | E1 | Bindings API: `getBindingsFromShape`, `createBindings`, `deleteBindings`, `getArrowBindings`, binding utils, `defaultBindingUtils`, `canBind` options, a binding-deleted side effect | Relations (`node-kit/src/edges.ts`, `relations.ts`) | Cutover | done (phase 3) |
 | E2 | Rich text editing: TipTap in text, note, geo and arrow labels; `textOptions.tipTapConfig`; `tipTapDefaultExtensions`; a way to add our own extension | The `{…}` expression helper, every text shape | Cutover | done (phase 4) |
 | E3 | `run` and `markHistoryStoppingPoint` (the fork has `batch` and `mark`) | 51 + 20 call sites | Cutover | done (phase 5) |
-| E4 | Shape visibility (`getShapeVisibility` option, `isShapeHidden`) | Hidden relations (`canvas/relationVisibility.ts`) | Cutover | todo |
-| E5 | Camera options: `getCameraOptions`/`setCameraOptions`, zoom steps, `getBaseZoom`, locking | Quick Look (`canvas/quickLook.ts`) | Cutover | todo |
-| E6 | `ShapeUtil.configure()` | Frame (`showColors`, transparent fill), geo (fill colour in meta) | Cutover (subclassing is acceptable) | todo |
-| E7 | Theme and colour API: `getCurrentTheme`, `getColorMode`, `getColorValue`, the `colorScheme` prop | Dark/light, fill and swatch colours | Cutover | todo |
+| E4 | Shape visibility (`getShapeVisibility` option, `isShapeHidden`) | Hidden relations (`canvas/relationVisibility.ts`) | Cutover | done (phase 5) |
+| E5 | Camera options: `getCameraOptions`/`setCameraOptions`, zoom steps, `getBaseZoom`, locking | Quick Look (`canvas/quickLook.ts`) | Cutover | done (phase 5); wheel behaviour and speeds not applied |
+| E6 | `ShapeUtil.configure()` | Frame (`showColors`, transparent fill), geo (fill colour in meta) | Cutover (subclassing is acceptable) | done (phase 5) |
+| E7 | Theme and colour API: `getCurrentTheme`, `getColorMode`, `getColorValue`, the `colorScheme` prop | Dark/light, fill and swatch colours | Cutover | done (phase 5) |
 | E8 | `focus`, `blur`, `getIsFocused`, `markEventAsHandled`, `canEditShape` | Keyboard handling, tab switching, Quick Look | Cutover | done (phase 5) |
-| E9 | `onHandleDrag` on shape utils, `TLHandleDragInfo` | Shift-to-hide while drawing a relation | Cutover | todo |
+| E9 | `onHandleDrag` on shape utils, `TLHandleDragInfo` | Shift-to-hide while drawing a relation | Cutover | done (phase 5) |
 | E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | done (phase 5) |
 | E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | doing: `toImage` (phase 5); export still draws labels as plain text |
 | E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | done (phase 5): default indicator from geometry; `getIndicatorPath` accepted, outline from geometry |
-| E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | doing: `createTLSchemaFromUtils` (phase 3); the store has `getStoreSnapshot`/`loadStoreSnapshot`; the `getSnapshot`/`loadSnapshot` helpers are open |
+| E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | done (phase 3–5) |
 | E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | done (phase 5) |
-| E15 | External content defaults: `defaultHandleExternalFileContent`/`TextContent`/`UrlContent`, `TLFilesExternalContent` | `canvas/FileImportHandler.tsx` | Cutover | todo |
-| E16 | `TldrawOptions` (`options` prop), `TldrawEditorStoreProps` (`store` / `persistenceKey` props) | `canvas/Board.tsx` | Cutover | doing: `assets`, `migrations`, `textOptions`, `bindingUtils` props (phases 3–5); `options` open |
-| E17 | `DefaultShapeWrapper`, `TLShapeWrapperProps`, `suffixSafeId`, `useUniqueSafeId` | Trace layer, SVG ids | Cutover | todo |
-| E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | doing: `Box`, `Vec` (phase 5); `TLComponents` open |
+| E15 | External content defaults: `defaultHandleExternalFileContent`/`TextContent`/`UrlContent`, `TLFilesExternalContent` | `canvas/FileImportHandler.tsx` | Cutover | done (phase 5) |
+| E16 | `TldrawOptions` (`options` prop), `TldrawEditorStoreProps` (`store` / `persistenceKey` props) | `canvas/Board.tsx` | Cutover | done (phase 5); `options` holds the limits only |
+| E17 | `DefaultShapeWrapper`, `TLShapeWrapperProps`, `suffixSafeId`, `useUniqueSafeId` | Trace layer, SVG ids | Cutover | done (phase 5) |
+| E18 | Names that changed: `Vec`/`Box` (fork: `Vec2d`/`Box2d`), `TLComponents` (fork: `TLEditorComponents`) | Everywhere | Cutover (aliases) | done (phase 5) |
 | E19 | Drop-target behaviour as Lifeboard relies on it (`docs/tldraw-api-notes.md`: drag-in fires on drag start, topmost hook wins, `canReceiveNewChildrenOfType` gates the drop) | Kanban, calendar, frames adopting cards | Cutover | done (phase 5) |
 | E20 | Local persistence behaviour: same IndexedDB names (the fork already uses `TLDRAW_DOCUMENT_v2`), flush on close and `pagehide` | Existing local boards, `persistence/tldrawLocalDb.ts` | Cutover | doing: same names, and databases opened at tldraw 5's version 4 with its `assets` store (phase 2); flush on close and `pagehide` open |
 
@@ -68,11 +68,11 @@ keep working).
 
 | Id | Piece | What uses it here | Needed for | Status |
 |---|---|---|---|---|
-| U1 | Contextual toolbar (`TldrawUiContextualToolbar`), toolbar button | `canvas/SelectionToolbar.tsx` | Cutover | todo |
-| U2 | Image and video toolbar contents (crop, replace, download, alt text) | Selection toolbar for media | Cutover | todo |
-| U3 | Composable menus: `TldrawUiMenuItem`, `TldrawUiMenuGroup`, `DefaultContextMenu`(+`Content`) | Context menu (`canvas/uiOverrides.tsx`) | Cutover | todo |
-| U4 | `DefaultKeyboardShortcutsDialog`(+`Content`) | Keyboard shortcuts dialog | Cutover | todo |
-| U5 | The `components` override slots as Lifeboard uses them (Toolbar, Background, InFrontOfTheCanvas, Grid, MenuPanel, StylePanel, ContextMenu) | `canvas/Board.tsx` | Cutover | todo |
+| U1 | Contextual toolbar (`TldrawUiContextualToolbar`), toolbar button | `canvas/SelectionToolbar.tsx` | Cutover | done (phase 5) |
+| U2 | Image and video toolbar contents (crop, replace, download, alt text) | Selection toolbar for media | Cutover | done (phase 5); no zoom slider while cropping |
+| U3 | Composable menus: `TldrawUiMenuItem`, `TldrawUiMenuGroup`, `DefaultContextMenu`(+`Content`) | Context menu (`canvas/uiOverrides.tsx`) | Cutover | done (phase 5): context menu |
+| U4 | `DefaultKeyboardShortcutsDialog`(+`Content`) | Keyboard shortcuts dialog | Cutover | done (phase 5) |
+| U5 | The `components` override slots as Lifeboard uses them (Toolbar, Background, InFrontOfTheCanvas, Grid, MenuPanel, StylePanel, ContextMenu) | `canvas/Board.tsx` | Cutover | done (phase 5) |
 
 ## S — Sync and presence
 

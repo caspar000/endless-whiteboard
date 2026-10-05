@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 /**
  * Runs a Lifeboard package's own unit suite with `tldraw` swapped for the canvas fork
@@ -10,4 +10,6 @@ const canvas = fileURLToPath(new URL('./src/index.ts', import.meta.url))
 
 export default defineConfig({
 	resolve: { alias: [{ find: /^tldraw$/, replacement: canvas }] },
+	// Playwright specs are not unit tests (apps/web keeps them in e2e/).
+	test: { exclude: [...configDefaults.exclude, 'e2e/**'] },
 })

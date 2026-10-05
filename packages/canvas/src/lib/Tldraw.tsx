@@ -1,4 +1,6 @@
+import type { ComponentType } from 'react'
 import {
+	TldrawEditorStoreProps,
 	Canvas,
 	Editor,
 	ErrorScreen,
@@ -32,27 +34,14 @@ import { defaultShapeUtils } from './defaultShapeUtils'
 import { registerDefaultSideEffects } from './defaultSideEffects'
 import { defaultTools } from './defaultTools'
 import { TldrawUi, TldrawUiProps } from './ui/TldrawUi'
-import { ContextMenu } from './ui/components/ContextMenu'
+import { DefaultContextMenu } from './ui/components/ContextMenu'
+import { TLComponents, TLUiContextMenuProps } from './ui/hooks/useTldrawUiComponents'
 import { usePreloadAssets } from './ui/hooks/usePreloadAssets'
 import { useDefaultEditorAssetsWithOverrides } from './utils/static-assets/assetUrls'
 
 /** @public */
 export type TldrawProps = TldrawEditorBaseProps &
-	(
-		| {
-				store: TLStore | TLStoreWithStatus
-		  }
-		| {
-				store?: undefined
-				persistenceKey?: string
-				sessionId?: string
-				defaultName?: string
-				/**
-				 * A snapshot to load for the store's initial data / schema.
-				 */
-				snapshot?: StoreSnapshot<TLRecord>
-		  }
-	) &
+	TldrawEditorStoreProps &
 	TldrawUiProps &
 	Partial<TLExternalContentProps>
 
@@ -68,12 +57,14 @@ export function Tldraw(props: TldrawProps) {
 		...rest
 	} = props
 
-	const components = useShallowObjectIdentity(rest.components ?? {})
+	const components = useShallowObjectIdentity(
+		(rest.components ?? {}) as Record<string, unknown>
+	) as TLComponents
 	const shapeUtils = useShallowArrayIdentity(rest.shapeUtils ?? [])
 	const bindingUtils = useShallowArrayIdentity(rest.bindingUtils ?? [])
 	const tools = useShallowArrayIdentity(rest.tools ?? [])
 
-	const withDefaults: TldrawEditorProps = {
+	const withDefaults: TldrawEditorProps & { components: TLComponents } = {
 		initialState: 'select',
 		...rest,
 		components: useMemo(
@@ -108,9 +99,7 @@ export function Tldraw(props: TldrawProps) {
 	return (
 		<TldrawEditor {...withDefaults}>
 			<TldrawUi {...withDefaults}>
-				<ContextMenu>
-					<Canvas />
-				</ContextMenu>
+				<CanvasWithContextMenu ContextMenu={components.ContextMenu} />
 				<InsideOfEditorContext
 					maxImageDimension={maxImageDimension}
 					maxAssetSize={maxAssetSize}
@@ -122,6 +111,17 @@ export function Tldraw(props: TldrawProps) {
 			</TldrawUi>
 		</TldrawEditor>
 	)
+}
+
+/** The canvas, inside the context menu slot (or on its own when an app removes the menu). */
+function CanvasWithContextMenu({
+	ContextMenu,
+}: {
+	ContextMenu: ComponentType<TLUiContextMenuProps> | null | undefined
+}) {
+	if (ContextMenu === null) return <Canvas />
+	const Menu = ContextMenu ?? DefaultContextMenu
+	return <Menu canvas={<Canvas />} />
 }
 
 // We put these hooks into a component here so that they can run inside of the context provided by TldrawEditor.

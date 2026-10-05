@@ -11,6 +11,8 @@ export interface TLUiToast {
 	actions?: TLUiToastAction[]
 	keepOpen?: boolean
 	closeLabel?: string
+	/** How the toast is styled: an error stands out from a confirmation. */
+	severity?: 'success' | 'info' | 'warning' | 'error'
 }
 
 /** @public */

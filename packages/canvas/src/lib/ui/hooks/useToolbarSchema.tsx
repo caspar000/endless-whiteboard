@@ -15,7 +15,7 @@ export function toolbarItem(toolItem: TLUiToolItem): TLUiToolbarItem {
 	return {
 		id: toolItem.id,
 		type: 'item',
-		readonlyOk: toolItem.readonlyOk,
+		readonlyOk: toolItem.readonlyOk ?? false,
 		toolItem,
 	}
 }

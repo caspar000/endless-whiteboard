@@ -11,6 +11,15 @@ export { TldrawSelectionBackground } from './lib/canvas/TldrawSelectionBackgroun
 export { TldrawSelectionForeground } from './lib/canvas/TldrawSelectionForeground'
 export { defaultShapeTools } from './lib/defaultShapeTools'
 export { defaultBindingUtils } from './lib/defaultBindingUtils'
+export {
+	DEFAULT_ACCEPTED_IMAGE_MIME_TYPES,
+	DEFAULT_ACCEPTED_VIDEO_MIME_TYPES,
+	DEFAULT_MAX_ASSET_SIZE,
+	defaultHandleExternalFileContent,
+	defaultHandleExternalTextContent,
+	defaultHandleExternalUrlContent,
+	type TLDefaultExternalContentHandlerOpts,
+} from './lib/defaultExternalContentHandlers'
 export { defaultShapeUtils } from './lib/defaultShapeUtils'
 export { defaultTools } from './lib/defaultTools'
 export { ArrowShapeTool } from './lib/shapes/arrow/ArrowShapeTool'
@@ -45,7 +54,31 @@ export {
 	type TldrawUiContextProviderProps,
 } from './lib/ui/TldrawUiContextProvider'
 export { setDefaultUiAssetUrls, type TLUiAssetUrlOverrides } from './lib/ui/assetUrls'
-export { ContextMenu, type TLUiContextMenuProps } from './lib/ui/components/ContextMenu'
+export {
+	TldrawUiContextualToolbar,
+	TldrawUiToolbarButton,
+} from './lib/ui/components/ContextualToolbar'
+export {
+	DefaultImageToolbarContent,
+	DefaultVideoToolbarContent,
+} from './lib/ui/components/MediaToolbarContent'
+export {
+	DefaultKeyboardShortcutsDialog,
+	DefaultKeyboardShortcutsDialogContent,
+} from './lib/ui/components/KeyboardShortcutsDialog'
+export {
+	DefaultContextMenu,
+	DefaultContextMenuContent,
+	TldrawUiMenuGroup,
+	TldrawUiMenuItem,
+} from './lib/ui/components/ContextMenu'
+export {
+	useTldrawUiComponents,
+	type TLComponents,
+	type TLUiComponents,
+	type TLUiContextMenuProps,
+	type TLUiKeyboardShortcutsDialogProps,
+} from './lib/ui/hooks/useTldrawUiComponents'
 export { OfflineIndicator } from './lib/ui/components/OfflineIndicator/OfflineIndicator'
 export { Spinner } from './lib/ui/components/Spinner'
 export { Button, type TLUiButtonProps } from './lib/ui/components/primitives/Button'

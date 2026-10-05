@@ -6,6 +6,7 @@ import {
 } from '@tldraw/tlschema'
 import * as React from 'react'
 import { ShapeUtil } from '../editor/shapes/ShapeUtil'
+import { DefaultShapeWrapper } from './default-components/DefaultShapeWrapper'
 import { nearestMultiple } from '../hooks/useDPRMultiple'
 import { useEditor } from '../hooks/useEditor'
 import { useEditorComponents } from '../hooks/useEditorComponents'
@@ -43,7 +44,8 @@ export const Shape = track(function Shape({
 }) {
 	const editor = useEditor()
 
-	const { ShapeErrorFallback } = useEditorComponents()
+	const { ShapeErrorFallback, ShapeWrapper: ShapeWrapperOrNull } = useEditorComponents()
+	const ShapeWrapper = ShapeWrapperOrNull ?? DefaultShapeWrapper
 
 	const containerRef = React.useRef<HTMLDivElement>(null)
 	const backgroundContainerRef = React.useRef<HTMLDivElement>(null)
@@ -120,20 +122,15 @@ export const Shape = track(function Shape({
 	return (
 		<>
 			{util.backgroundComponent && (
-				<div
-					ref={backgroundContainerRef}
-					className="tl-shape tl-shape-background"
-					data-shape-type={shape.type}
-					draggable={false}
-				>
+				<ShapeWrapper ref={backgroundContainerRef} shape={shape} isBackground>
 					{!isCulled && (
 						<OptionalErrorBoundary fallback={ShapeErrorFallback} onError={annotateError}>
 							<InnerShapeBackground shape={shape} util={util} />
 						</OptionalErrorBoundary>
 					)}
-				</div>
+				</ShapeWrapper>
 			)}
-			<div ref={containerRef} className="tl-shape" data-shape-type={shape.type} draggable={false}>
+			<ShapeWrapper ref={containerRef} shape={shape}>
 				{isCulled ? (
 					<CulledShape shape={shape} />
 				) : (
@@ -141,7 +138,7 @@ export const Shape = track(function Shape({
 						<InnerShape shape={shape} util={util} />
 					</OptionalErrorBoundary>
 				)}
-			</div>
+			</ShapeWrapper>
 		</>
 	)
 })

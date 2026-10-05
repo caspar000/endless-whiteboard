@@ -23,6 +23,7 @@ import { useBreakpoint } from './hooks/useBreakpoint'
 import { useNativeClipboardEvents } from './hooks/useClipboardEvents'
 import { useEditorEvents } from './hooks/useEditorEvents'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useTldrawUiComponents } from './hooks/useTldrawUiComponents'
 import { useTranslation } from './hooks/useTranslation/useTranslation'
 
 /**
@@ -136,6 +137,8 @@ const TldrawUiContent = React.memo(function TldrawUI({
 	useEditorEvents()
 
 	const { 'toggle-focus-mode': toggleFocus } = useActions()
+	// Parts an app has replaced or removed (`components`); undefined keeps the default.
+	const { MenuPanel, StylePanel: StylePanelSlot, Toolbar: ToolbarSlot } = useTldrawUiComponents()
 
 	return (
 		<ToastProvider>
@@ -159,7 +162,7 @@ const TldrawUiContent = React.memo(function TldrawUI({
 					<>
 						<div className="tlui-layout__top">
 							<div className="tlui-layout__top__left">
-								<MenuZone />
+								{MenuPanel === undefined ? <MenuZone /> : MenuPanel && <MenuPanel />}
 								<div className="tlui-helper-buttons">
 									<ExitPenMode />
 									<BackToContent />
@@ -169,9 +172,9 @@ const TldrawUiContent = React.memo(function TldrawUI({
 							<div className="tlui-layout__top__center">{topZone}</div>
 							<div className="tlui-layout__top__right">
 								{shareZone}
-								{breakpoint >= 5 && !isReadonlyMode && (
+								{breakpoint >= 5 && !isReadonlyMode && StylePanelSlot !== null && (
 									<div className="tlui-style-panel__wrapper">
-										<StylePanel />
+										{StylePanelSlot ? <StylePanelSlot /> : <StylePanel />}
 									</div>
 								)}
 							</div>
@@ -179,7 +182,7 @@ const TldrawUiContent = React.memo(function TldrawUI({
 						<div className="tlui-layout__bottom">
 							<div className="tlui-layout__bottom__main">
 								<NavigationZone />
-								<Toolbar />
+								{ToolbarSlot === undefined ? <Toolbar /> : ToolbarSlot && <ToolbarSlot />}
 								{breakpoint >= 4 && <HelpMenu />}
 							</div>
 							{isDebugMode && <DebugPanel renderDebugMenuItems={renderDebugMenuItems ?? null} />}

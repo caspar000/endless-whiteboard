@@ -5,8 +5,32 @@ import { TLUiTranslationKey } from '../hooks/useTranslation/TLUiTranslationKey'
 import { useTranslation } from '../hooks/useTranslation/useTranslation'
 import * as Dialog from './primitives/Dialog'
 import { Kbd } from './primitives/Kbd'
+import { TLUiKeyboardShortcutsDialogProps } from '../hooks/useTldrawUiComponents'
 
-export const KeyboardShortcutsDialog = () => {
+/**
+ * The keyboard shortcuts dialog: a title and close button around `children`, by default
+ * `DefaultKeyboardShortcutsDialogContent` (the shortcuts of every action and tool).
+ *
+ * @public
+ */
+export function DefaultKeyboardShortcutsDialog({ children }: TLUiKeyboardShortcutsDialogProps) {
+	const msg = useTranslation()
+	return (
+		<>
+			<Dialog.Header className="tlui-shortcuts-dialog__header">
+				<Dialog.Title>{msg('shortcuts-dialog.title')}</Dialog.Title>
+				<Dialog.CloseButton />
+			</Dialog.Header>
+			<Dialog.Body className="tlui-shortcuts-dialog__body">
+				{children ?? <DefaultKeyboardShortcutsDialogContent />}
+			</Dialog.Body>
+			<div className="tlui-dialog__scrim" />
+		</>
+	)
+}
+
+/** The shortcuts of every action and tool, grouped. @public */
+export function DefaultKeyboardShortcutsDialogContent() {
 	const msg = useTranslation()
 	const isReadonly = useReadonly()
 	const shortcutsItems = useKeyboardShortcutsSchema()
@@ -47,16 +71,5 @@ export const KeyboardShortcutsDialog = () => {
 		}
 	}
 
-	return (
-		<>
-			<Dialog.Header className="tlui-shortcuts-dialog__header">
-				<Dialog.Title>{msg('shortcuts-dialog.title')}</Dialog.Title>
-				<Dialog.CloseButton />
-			</Dialog.Header>
-			<Dialog.Body className="tlui-shortcuts-dialog__body">
-				{shortcutsItems.map(getKeyboardShortcutItem)}
-			</Dialog.Body>
-			<div className="tlui-dialog__scrim" />
-		</>
-	)
+	return <>{shortcutsItems.map(getKeyboardShortcutItem)}</>
 }

@@ -2,23 +2,24 @@ import { StoreSnapshot } from '@tldraw/store'
 import { TLRecord } from '@tldraw/tlschema'
 import { areObjectsShallowEqual } from '@tldraw/utils'
 import { useState } from 'react'
+import { TLEditorSnapshot, loadSnapshot } from '../config/TLEditorSnapshot'
 import { TLStoreOptions, createTLStore } from '../config/createTLStore'
 
 /** @public */
 type UseTLStoreOptions = TLStoreOptions & {
-	snapshot?: StoreSnapshot<TLRecord>
+	snapshot?: StoreSnapshot<TLRecord> | Partial<TLEditorSnapshot>
 }
 
 function createStore(opts: UseTLStoreOptions) {
 	const store = createTLStore(opts)
 	if (opts.snapshot) {
-		store.loadStoreSnapshot(opts.snapshot)
+		loadSnapshot(store, opts.snapshot)
 	}
 	return { store, opts }
 }
 
 /** @public */
-export function useTLStore(opts: TLStoreOptions & { snapshot?: StoreSnapshot<TLRecord> }) {
+export function useTLStore(opts: UseTLStoreOptions) {
 	const [current, setCurrent] = useState(() => createStore(opts))
 
 	if (!areObjectsShallowEqual(current.opts, opts)) {

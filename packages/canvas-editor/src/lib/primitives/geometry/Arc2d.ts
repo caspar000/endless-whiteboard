@@ -19,7 +19,8 @@ export class Arc2d extends Geometry2d {
 	constructor(
 		config: Omit<Geometry2dOptions, 'isFilled' | 'isClosed'> & {
 			center: Vec2d
-			radius: number
+			/** Defaults to the distance from the centre to the start, as today's `Arc2d` works it out. */
+			radius?: number
 			start: Vec2d
 			end: Vec2d
 			sweepFlag: number
@@ -27,7 +28,8 @@ export class Arc2d extends Geometry2d {
 		}
 	) {
 		super({ ...config, isFilled: false, isClosed: false })
-		const { center, radius, sweepFlag, largeArcFlag, start, end } = config
+		const { center, sweepFlag, largeArcFlag, start, end } = config
+		const radius = config.radius ?? Vec2d.Dist(center, start)
 		if (start.equals(end)) throw Error(`Arc must have different start and end points.`)
 
 		// ensure that the start and end are clockwise

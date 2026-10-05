@@ -76,6 +76,31 @@ export abstract class Geometry2d {
 		)
 	}
 
+	/**
+	 * The point a fraction `t` of the way along the outline, from its first vertex (a closed outline
+	 * includes the edge back to the start). 1 is the end; beyond 0 to 1, `t` wraps: 1.25 is a quarter
+	 * of the way round again.
+	 *
+	 * @public
+	 */
+	interpolateAlongEdge(t: number): Vec2d {
+		const points = this.isClosed ? [...this.vertices, this.vertices[0]] : this.vertices
+		if (points.length < 2) return points[0]?.clone() ?? new Vec2d()
+		const lengths = points.slice(1).map((p, i) => Vec2d.Dist(points[i], p))
+		const total = lengths.reduce((sum, length) => sum + length, 0)
+		if (total === 0) return points[0].clone()
+		// 0 to 1 runs start to end; only values outside that wrap.
+		const f = t < 0 || t > 1 ? ((t % 1) + 1) % 1 : t
+		let distance = f * total
+		for (let i = 0; i < lengths.length; i++) {
+			if (distance <= lengths[i] || i === lengths.length - 1) {
+				return Vec2d.Lrp(points[i], points[i + 1], lengths[i] ? Math.min(1, distance / lengths[i]) : 0)
+			}
+			distance -= lengths[i]
+		}
+		return points[points.length - 1].clone()
+	}
+
 	_vertices: Vec2d[] | undefined
 
 	// eslint-disable-next-line no-restricted-syntax

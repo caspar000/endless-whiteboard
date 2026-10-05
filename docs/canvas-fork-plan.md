@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–4 done** (2026-10-05). Phase 5 under way: part A done.
+Status: **Phases 0–4 done** (2026-10-05). Phase 5 under way: parts A and B done.
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -314,6 +314,33 @@ auto-size; a basic formatting toolbar; a way to add TipTap extensions (Lifeboard
   undone with that change (the fork's undo restores whole records). Lifeboard's ignored writes are to
   other records, or re-derive themselves (auto-height).
 - **Tests:** `src/test/todaysApi.test.ts` covers the above; the four lab Playwright files still pass.
+
+**As built, part B — the app compiles against the fork:**
+
+- **Results:** `pnpm typecheck:on-fork apps/web` reports no errors in the app's files (82 at the
+  start, and more behind them). `node scripts/fork-suites/run.mjs apps/web` runs the app's own unit
+  tests on the fork: all 259 pass, including the fixture tests that load real boards with
+  Lifeboard's migrations through the fork's `createTLStore`/`loadSnapshot`. The fork's tests, the
+  four packages' suites and the lab's ten Playwright tests still pass.
+- **Editor:** shape visibility (`getShapeVisibility` prop, `isShapeHidden`; hidden shapes leave
+  rendering, export, hit-testing and brushing), camera options (`isLocked`, zoom steps, `force` on
+  every camera move, `getBaseZoom`), the theme API (`getCurrentTheme`, `getColorMode`,
+  `getColorValue`, a `colorScheme` preference and prop), `ShapeUtil.configure` (geo fill override,
+  frame `showColors`), `onHandleDrag` with `isCreatingShape`, `options`/`menus`, `getSnapshot`/
+  `loadSnapshot` (and editor snapshots in the `snapshot` prop), the `ShapeWrapper` slot, safe ids,
+  `Geometry2d.interpolateAlongEdge`, a keyboard-shortcuts preference.
+- **Content:** `defaultHandleExternalFileContent`/`TextContent`/`UrlContent` are the fork's
+  handlers, exported, so an app can claim some content and hand the rest on.
+- **UI:** `<Tldraw components>` takes UI slots too (`TLComponents`): `ContextMenu`,
+  `KeyboardShortcutsDialog`, `MenuPanel`, `StylePanel`, `Toolbar`, and `ImageToolbar`/`VideoToolbar`
+  (none by default). The context menu composes: `DefaultContextMenu`, `DefaultContextMenuContent`,
+  `TldrawUiMenuGroup`, `TldrawUiMenuItem`; so does the shortcuts dialog. New:
+  `TldrawUiContextualToolbar`, `TldrawUiToolbarButton`, `DefaultImageToolbarContent` (replace,
+  crop, download, alt text; Done while cropping) and `DefaultVideoToolbarContent`. Toasts take a
+  severity; actions and tools may leave out `readonlyOk` and use any element as an icon.
+- **Not built:** wheel behaviour and pan/zoom speeds are stored but the 2023 wheel handling ignores
+  them; the crop bar has no zoom slider; the 2023 icon set has no crop or download icon, so those
+  buttons are words; `TldrawUiMenuItem` works in the context menu only.
 
 ## Phase 6 — Our own sync
 

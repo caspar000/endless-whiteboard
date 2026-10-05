@@ -20,7 +20,8 @@ import type { MigrationSequence } from '@tldraw/store'
 import type { TLAssetStore } from '@tldraw/tlschema'
 import { TLAnyBindingUtilConstructor } from './config/createTLStore'
 import { TLAnyShapeUtilConstructor } from './config/defaultShapes'
-import { Editor, type TLTextOptions } from './editor/Editor'
+import { Editor, type TLEditorOptions, type TLTextOptions, type TldrawOptions } from './editor/Editor'
+import type { TLEditorSnapshot } from './config/TLEditorSnapshot'
 import { TLStateNodeConstructor } from './editor/tools/StateNode'
 import { ContainerProvider, useContainer } from './hooks/useContainer'
 import { useCursor } from './hooks/useCursor'
@@ -46,14 +47,21 @@ import { TLStoreWithStatus } from './utils/sync/StoreWithStatus'
  *
  * @public
  **/
-export type TldrawEditorProps = TldrawEditorBaseProps &
-	(
+export type TldrawEditorProps = TldrawEditorBaseProps & TldrawEditorStoreProps
+
+/**
+ * Where the editor's records come from: a store you made, or one it makes (from a snapshot, initial
+ * data or local persistence).
+ *
+ * @public
+ */
+export type TldrawEditorStoreProps =
 		| {
 				store: TLStore | TLStoreWithStatus
 		  }
 		| {
 				store?: undefined
-				snapshot?: StoreSnapshot<TLRecord>
+				snapshot?: StoreSnapshot<TLRecord> | Partial<TLEditorSnapshot>
 				initialData?: SerializedStore<TLRecord>
 				persistenceKey?: string
 				sessionId?: string
@@ -63,7 +71,6 @@ export type TldrawEditorProps = TldrawEditorBaseProps &
 				/** The app's own store migrations; see `createTLStore`. */
 				migrations?: readonly MigrationSequence[]
 		  }
-	)
 
 /**
  * Base props for the {@link @tldraw/tldraw#Tldraw} and {@link TldrawEditor} components.
@@ -86,6 +93,17 @@ export interface TldrawEditorBaseProps {
 	 * stable; a new object remounts the editor.
 	 */
 	textOptions?: TLTextOptions
+
+	/**
+	 * The colour scheme a new editor starts in, until the user chooses (`user.updateUserPreferences`).
+	 */
+	colorScheme?: 'light' | 'dark' | 'system'
+
+	/** Limits and other settings; see `TldrawOptions`. Keep its identity stable. */
+	options?: Partial<TldrawOptions>
+
+	/** Which shapes are drawn; see `TLEditorOptions.getShapeVisibility`. Keep its identity stable. */
+	getShapeVisibility?: TLEditorOptions['getShapeVisibility']
 
 	/**
 	 * Binding utils for binding types beyond the arrow's, which comes with the arrow shape.
@@ -300,6 +318,9 @@ function TldrawEditorWithReadyStore({
 	autoFocus = true,
 	inferDarkMode,
 	textOptions,
+	getShapeVisibility,
+	colorScheme,
+	options,
 }: Required<
 	TldrawEditorProps & {
 		store: TLStore
@@ -322,7 +343,12 @@ function TldrawEditorWithReadyStore({
 			initialState,
 			inferDarkMode,
 			textOptions,
+			getShapeVisibility,
+			options,
 		})
+		if (colorScheme && !user.userPreferences.get().colorScheme) {
+			editor.user.updateUserPreferences({ colorScheme })
+		}
 		;(window as any).app = editor
 		;(window as any).editor = editor
 		setEditor(editor)
@@ -330,7 +356,20 @@ function TldrawEditorWithReadyStore({
 		return () => {
 			editor.dispose()
 		}
-	}, [container, shapeUtils, bindingUtils, tools, store, user, initialState, inferDarkMode, textOptions])
+		}, [
+		container,
+		shapeUtils,
+		bindingUtils,
+		tools,
+		store,
+		user,
+		initialState,
+		inferDarkMode,
+		textOptions,
+		getShapeVisibility,
+		colorScheme,
+		options,
+	])
 
 	const crashingError = useSyncExternalStore(
 		useCallback(

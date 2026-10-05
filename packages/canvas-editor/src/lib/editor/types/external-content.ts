@@ -53,4 +53,11 @@ export type TLExternalContent = {
 )
 
 /** @public */
+export type TLTextExternalContent = Extract<TLExternalContent, { type: 'text' }>
+/** @public */
+export type TLFilesExternalContent = Extract<TLExternalContent, { type: 'files' }>
+/** @public */
+export type TLUrlExternalContent = Extract<TLExternalContent, { type: 'url' }>
+
+/** @public */
 export type TLExternalAssetContent = { type: 'file'; file: File } | { type: 'url'; url: string }

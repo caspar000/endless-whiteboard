@@ -110,6 +110,7 @@ import {
 	sortByIndex,
 } from '../utils/reordering/reordering'
 import { applyRotationToSnapshotShapes, getRotationSnapshot } from '../utils/rotation'
+import { DEFAULT_THEME, type TLColorMode, type TLTheme } from '../theme/theme'
 import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
 import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
@@ -152,11 +153,64 @@ import { TLCommandHistoryOptions } from './types/history-types'
 import { OptionalKeys, RequiredKeys, TLSvgOptions } from './types/misc-types'
 import { TLResizeHandle } from './types/selection-types'
 
+/**
+ * Limits and other settings. Read through `editor.options`; the fork's own limits are fixed for now.
+ *
+ * @public
+ */
+export interface TldrawOptions {
+	maxShapesPerPage: number
+	maxPages: number
+}
+
+/** @public */
+export const defaultTldrawOptions: TldrawOptions = {
+	maxShapesPerPage: MAX_SHAPES_PER_PAGE,
+	maxPages: MAX_PAGES,
+}
+
 /** @public */
 export type TLAnimationOptions = Partial<{
 	duration: number
 	easing: (t: number) => number
 }>
+
+/**
+ * How a camera move happens, as today's camera methods take it: `animation`, and `force` to move a
+ * camera that is locked (`setCameraOptions({ isLocked: true })`). The 2023 form, the animation
+ * object on its own, is still accepted.
+ *
+ * @public
+ */
+export interface TLCameraMoveOptions {
+	animation?: TLAnimationOptions
+	immediate?: boolean
+	force?: boolean
+}
+
+function cameraMove(opts: TLAnimationOptions | TLCameraMoveOptions | undefined) {
+	if (opts && ('animation' in opts || 'force' in opts || 'immediate' in opts)) {
+		const move = opts as TLCameraMoveOptions
+		return { animation: move.immediate ? undefined : move.animation, force: move.force === true }
+	}
+	return { animation: opts as TLAnimationOptions | undefined, force: false }
+}
+
+/**
+ * Camera options, as today's editor has them.
+ *
+ * @public
+ */
+export interface TLCameraOptions {
+	/** Whether the person can move the camera. Moves with `force` still happen. */
+	isLocked: boolean
+	/** The zoom levels zooming in and out steps through; the first and last are the limits. */
+	zoomSteps: number[]
+	/** What the mouse wheel does. */
+	wheelBehavior: 'pan' | 'zoom' | 'none'
+	panSpeed: number
+	zoomSpeed: number
+}
 
 /** @public */
 export type TLResizeShapeOptions = Partial<{
@@ -211,6 +265,17 @@ export interface TLEditorOptions {
 	 * labels.
 	 */
 	textOptions?: TLTextOptions
+	/** Limits and other settings; see `TldrawOptions`. */
+	options?: Partial<TldrawOptions>
+	/**
+	 * Which shapes are drawn: `hidden` takes a shape (and what it contains) out of rendering,
+	 * hit-testing, hovering, brush selection and export; `visible` shows it inside a hidden parent;
+	 * `inherit` follows the parent. A view, not data: nothing is written to the store.
+	 */
+	getShapeVisibility?: (
+		shape: TLShape,
+		editor: Editor
+	) => 'visible' | 'hidden' | 'inherit' | null | undefined
 }
 
 /**
@@ -239,10 +304,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 		initialState,
 		inferDarkMode,
 		textOptions,
+		getShapeVisibility,
+		options,
 	}: TLEditorOptions) {
 		super()
 
+		this.options = { ...defaultTldrawOptions, ...options }
+
 		this.textOptions = textOptions ?? {}
+		this._getShapeVisibility = getShapeVisibility
 
 		this.store = store
 
@@ -988,6 +1058,52 @@ export class Editor extends EventEmitter<TLEventMap> {
 		return this.getInstanceState().isReadonly ? util.canEditInReadOnly(record) : util.canEdit(record)
 	}
 
+	/** Limits and other settings the editor was made with. @public */
+	readonly options: TldrawOptions
+
+	/** Menus open over the canvas. @public */
+	readonly menus = {
+		hasAnyOpenMenus: () => this.getIsMenuOpen(),
+		getOpenMenus: () => this.getInstanceState().openMenus,
+	}
+
+	/* -------------------- Theme -------------------- */
+
+	/** The theme shapes and UI draw with. @public */
+	getCurrentTheme(): TLTheme {
+		return DEFAULT_THEME
+	}
+
+	/** Which palette of the theme is in use: light or dark, from the user's colour scheme. @public */
+	getColorMode(): TLColorMode {
+		return this.user.getIsDarkMode() ? 'dark' : 'light'
+	}
+
+	/* -------------------- Visibility -------------------- */
+
+	private readonly _getShapeVisibility: TLEditorOptions['getShapeVisibility']
+
+	@computed
+	private _getShapeHiddenCache() {
+		return this.store.createComputedCache<boolean, TLShape>('isShapeHidden', (shape) => {
+			const own = this._getShapeVisibility?.(shape, this)
+			if (own === 'hidden') return true
+			if (own === 'visible') return false
+			return isShapeId(shape.parentId) ? this.isShapeHidden(shape.parentId) : false
+		})
+	}
+
+	/**
+	 * Whether a shape is hidden by the `getShapeVisibility` option, its own answer or a parent's.
+	 *
+	 * @public
+	 */
+	isShapeHidden(shape: TLShape | TLShapeId): boolean {
+		if (!this._getShapeVisibility) return false
+		const id = typeof shape === 'string' ? shape : shape.id
+		return this._getShapeHiddenCache().get(id) === true
+	}
+
 	/* -------------------- Rich text -------------------- */
 
 	private readonly textOptions: TLTextOptions
@@ -1237,9 +1353,48 @@ export class Editor extends EventEmitter<TLEventMap> {
 	/** Whether the camera may move. See updateInstanceState. @internal */
 	private readonly _canMoveCamera = atom('canMoveCamera', true)
 
-	/** Whether the camera may move; set through `updateInstanceState({ canMoveCamera })`. @public */
+	/**
+	 * Whether the camera may move: not locked by `setCameraOptions({ isLocked })` or 2023's
+	 * `updateInstanceState({ canMoveCamera })`.
+	 *
+	 * @public
+	 */
 	getCanMoveCamera() {
 		return this._canMoveCamera.get()
+	}
+
+	private readonly _cameraOptions = atom<Omit<TLCameraOptions, 'isLocked'>>('cameraOptions', {
+		zoomSteps: [...ZOOMS],
+		wheelBehavior: 'pan',
+		panSpeed: 1,
+		zoomSpeed: 1,
+	})
+
+	/** The camera options in effect. @public */
+	getCameraOptions(): TLCameraOptions {
+		return { ...this._cameraOptions.get(), isLocked: !this._canMoveCamera.get() }
+	}
+
+	/**
+	 * Changes camera options. The zoom steps are what zooming in and out goes through, and their ends
+	 * are the zoom limits.
+	 *
+	 * @public
+	 */
+	setCameraOptions(opts: Partial<TLCameraOptions>): this {
+		const { isLocked, ...rest } = opts
+		if (isLocked !== undefined) this._canMoveCamera.set(!isLocked)
+		this._cameraOptions.update((current) => ({ ...current, ...rest }))
+		return this
+	}
+
+	/** The zoom that counts as 100%. The fork has no camera constraints, so it is always 1. @public */
+	getBaseZoom(): number {
+		return 1
+	}
+
+	private getZoomSteps() {
+		return this._cameraOptions.get().zoomSteps
 	}
 
 	/** @internal */
@@ -2688,7 +2843,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	setCamera(point: VecLike, animation?: TLAnimationOptions): this {
+	setCamera(point: VecLike, opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation } = cameraMove(opts)
 		const x = Number.isFinite(point.x) ? point.x : 0
 		const y = Number.isFinite(point.y) ? point.y : 0
 		const z = Number.isFinite(point.z) ? point.z! : this.getZoomLevel()
@@ -2725,8 +2881,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	centerOnPoint(point: VecLike, animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	centerOnPoint(point: VecLike, opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const { width: pw, height: ph } = this.getViewportPageBounds()
 
@@ -2773,8 +2930,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	zoomToFit(animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	zoomToFit(opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const ids = [...this.getCurrentPageShapeIds()]
 		if (ids.length <= 0) return this
@@ -2799,8 +2957,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	resetZoom(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	resetZoom(point = this.getViewportScreenCenter(), opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 		const { x, y } = point
@@ -2826,16 +2985,18 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	zoomIn(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	zoomIn(point = this.getViewportScreenCenter(), opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 
-		let zoom = MAX_ZOOM
+		const steps = this.getZoomSteps()
+		let zoom = steps[steps.length - 1]
 
-		for (let i = 1; i < ZOOMS.length; i++) {
-			const z1 = ZOOMS[i - 1]
-			const z2 = ZOOMS[i]
+		for (let i = 1; i < steps.length; i++) {
+			const z1 = steps[i - 1]
+			const z2 = steps[i]
 			if (z2 - cz <= (z2 - z1) / 2) continue
 			zoom = z2
 			break
@@ -2864,16 +3025,18 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	zoomOut(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	zoomOut(point = this.getViewportScreenCenter(), opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 
-		let zoom = MIN_ZOOM
+		const steps = this.getZoomSteps()
+		let zoom = steps[0]
 
-		for (let i = ZOOMS.length - 1; i > 0; i--) {
-			const z1 = ZOOMS[i - 1]
-			const z2 = ZOOMS[i]
+		for (let i = steps.length - 1; i > 0; i--) {
+			const z1 = steps[i - 1]
+			const z2 = steps[i]
 			if (z2 - cz >= (z2 - z1) / 2) continue
 			zoom = z1
 			break
@@ -2905,8 +3068,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	zoomToSelection(animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	zoomToSelection(opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		const selectionPageBounds = this.getSelectionPageBounds()
 		if (!selectionPageBounds) return this
@@ -2924,8 +3088,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	panZoomIntoView(ids: TLShapeId[], animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	panZoomIntoView(ids: TLShapeId[], opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 
 		if (ids.length <= 0) return this
 		const selectionBounds = Box2d.Common(compact(ids.map((id) => this.getShapePageBounds(id))))
@@ -2990,10 +3155,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 		bounds: Box2d,
 		opts?:
 			| number
-			| { targetZoom?: number; inset?: number; animation?: TLAnimationOptions },
+			| { targetZoom?: number; inset?: number; animation?: TLAnimationOptions; force?: boolean },
 		animation?: TLAnimationOptions
 	): this {
-		if (!this._canMoveCamera.get()) return this
+		const force = typeof opts === 'object' && 'force' in opts && opts.force === true
+		if (!this._canMoveCamera.get() && !force) return this
 		// Today's form takes one options object; 2023's took the zoom and animation as arguments.
 		const targetZoom = typeof opts === 'number' ? opts : opts?.targetZoom
 		if (typeof opts === 'object') animation = opts.animation ?? animation
@@ -3041,8 +3207,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @param offset - The offset in the current page space.
 	 * @param animation - The animation options.
 	 */
-	pan(offset: VecLike, animation?: TLAnimationOptions): this {
-		if (!this._canMoveCamera.get()) return this
+	pan(offset: VecLike, opts?: TLAnimationOptions | TLCameraMoveOptions): this {
+		const { animation, force } = cameraMove(opts)
+		if (!this._canMoveCamera.get() && !force) return this
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 		this.setCamera({ x: cx + offset.x / cz, y: cy + offset.y / cz, z: cz }, animation)
 		return this
@@ -3724,7 +3891,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
 			const shape = this.getShape(id)
-			if (!shape) return
+			if (!shape || this.isShapeHidden(shape)) return
 
 			opacity *= shape.opacity
 			let isCulled = false
@@ -5047,7 +5214,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				? this.getCurrentPageRenderingShapesSorted()
 				: this.getCurrentPageShapesSorted()
 		).filter((shape) => {
-			if (this.isShapeOfType(shape, 'group')) return false
+			if (this.isShapeOfType(shape, 'group') || this.isShapeHidden(shape)) return false
 			const pageMask = this.getShapeMask(shape)
 			if (pageMask && !pointInPolygon(point, pageMask)) return false
 			if (filter) return filter(shape)
@@ -5207,7 +5374,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 		point: VecLike,
 		opts = {} as { margin?: number; hitInside?: boolean }
 	): TLShape[] {
-		return this.getCurrentPageShapes().filter((shape) => this.isPointInShape(shape, point, opts))
+		return this.getCurrentPageShapes().filter(
+			(shape) => !this.isShapeHidden(shape) && this.isPointInShape(shape, point, opts)
+		)
 	}
 
 	/**

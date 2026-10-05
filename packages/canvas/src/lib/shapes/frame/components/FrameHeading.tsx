@@ -16,11 +16,14 @@ export const FrameHeading = function FrameHeading({
 	name,
 	width,
 	height,
+	color,
 }: {
 	id: TLShapeId
 	name: string
 	width: number
 	height: number
+	/** The heading's colour, when the frame shows its own (`showColors`). */
+	color?: string
 }) {
 	const editor = useEditor()
 	const pageRotation = useValue(
@@ -104,6 +107,7 @@ export const FrameHeading = function FrameHeading({
 				}px + var(--space-5))`,
 				bottom: '100%',
 				transform: `${labelTranslate} scale(var(--tl-scale)) translateX(calc(-1 * var(--space-3))`,
+				...(color ? { color } : {}),
 			}}
 			onPointerDown={handlePointerDown}
 		>

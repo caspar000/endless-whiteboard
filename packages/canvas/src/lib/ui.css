@@ -1655,3 +1655,30 @@
 	background-color: var(--color-selected);
 	color: var(--color-selected-contrast);
 }
+
+/* --------------- Contextual toolbar --------------- */
+
+.tlui-contextual-toolbar {
+	position: absolute;
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 4px;
+	transform: translate(-50%, calc(-100% - 12px));
+	border-radius: var(--radius-3);
+	background-color: var(--color-panel);
+	box-shadow: var(--shadow-2);
+	pointer-events: all;
+	white-space: nowrap;
+}
+
+/* ---------------------- Toasts -------------------- */
+
+.tlui-toast__container[data-severity='error'] {
+	border-left: 3px solid var(--color-warn);
+}
+
+.tlui-toast__container[data-severity='success'] {
+	border-left: 3px solid var(--color-success, #2b8a3e);
+}

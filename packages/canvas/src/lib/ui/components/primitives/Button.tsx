@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import classnames from 'classnames'
 import * as React from 'react'
 import { TLUiTranslationKey } from '../../hooks/useTranslation/TLUiTranslationKey'
@@ -12,9 +13,10 @@ export interface TLUiButtonProps extends React.HTMLAttributes<HTMLButtonElement>
 	loading?: boolean // TODO: loading spinner
 	disabled?: boolean
 	label?: TLUiTranslationKey | Exclude<string, TLUiTranslationKey>
-	icon?: TLUiIconType | Exclude<string, TLUiIconType>
+	/** An icon name, or any element (an app's own glyph). */
+	icon?: TLUiIconType | Exclude<string, TLUiIconType> | ReactElement
 	spinner?: boolean
-	iconLeft?: TLUiIconType | Exclude<string, TLUiIconType>
+	iconLeft?: TLUiIconType | Exclude<string, TLUiIconType> | ReactElement
 	smallIcon?: boolean
 	kbd?: string
 	isChecked?: boolean
@@ -51,7 +53,10 @@ export const Button = React.forwardRef<HTMLButtonElement, TLUiButtonProps>(funct
 			title={props.title ?? labelStr}
 			className={classnames('tlui-button', `tlui-button__${type}`, props.className)}
 		>
-			{iconLeft && <Icon icon={iconLeft} className="tlui-button__icon-left" small />}
+			{iconLeft && typeof iconLeft !== 'string' && iconLeft}
+			{iconLeft && typeof iconLeft === 'string' && (
+				<Icon icon={iconLeft} className="tlui-button__icon-left" small />
+			)}
 			{children}
 			{label && (
 				<span className="tlui-button__label" draggable={false}>
@@ -60,7 +65,8 @@ export const Button = React.forwardRef<HTMLButtonElement, TLUiButtonProps>(funct
 				</span>
 			)}
 			{kbd && <Kbd>{kbd}</Kbd>}
-			{icon && !spinner && (
+			{icon && !spinner && typeof icon !== 'string' && icon}
+			{icon && !spinner && typeof icon === 'string' && (
 				<Icon icon={icon} small={!!label || smallIcon} invertIcon={invertIcon} />
 			)}
 			{spinner && <Spinner />}

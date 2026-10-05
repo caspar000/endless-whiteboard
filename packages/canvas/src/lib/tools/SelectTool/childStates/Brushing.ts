@@ -95,7 +95,10 @@ export class Brushing extends StateNode {
 
 	private hitTestShapes() {
 		const zoomLevel = this.editor.getZoomLevel()
-		const currentPageShapes = this.editor.getCurrentPageShapes()
+		// Hidden shapes (getShapeVisibility) can't be brushed.
+		const currentPageShapes = this.editor
+			.getCurrentPageShapes()
+			.filter((shape) => !this.editor.isShapeHidden(shape))
 		const currentPageId = this.editor.getCurrentPageId()
 		const {
 			inputs: { originPagePoint, currentPagePoint, shiftKey, ctrlKey },

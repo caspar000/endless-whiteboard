@@ -139,7 +139,7 @@ export function menuItem(
 		actionItem,
 		disabled,
 		checked,
-		readonlyOk: actionItem.readonlyOk,
+		readonlyOk: actionItem.readonlyOk ?? false,
 	}
 }
 

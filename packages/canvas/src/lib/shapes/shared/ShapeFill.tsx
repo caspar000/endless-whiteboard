@@ -21,13 +21,30 @@ export function useDefaultColorTheme() {
 	return getDefaultColorTheme({ isDarkMode: useIsDarkMode() })
 }
 
+/**
+ * Paints a shape util can put in place of the ones its colour gives, for the fills inside it (today's
+ * `getCustomDisplayValues`; Lifeboard's geo shapes keep a fill colour of their own).
+ *
+ * @public
+ */
+export interface ShapeFillOverride {
+	/** What a solid fill paints. */
+	fillColor?: string
+	/** The colour under a pattern fill, and what it paints when zoomed too far out for the pattern. */
+	patternFillFallbackColor?: string
+}
+
+/** @public */
+export const ShapeFillOverrideContext = React.createContext<ShapeFillOverride>({})
+
 export const ShapeFill = React.memo(function ShapeFill({ theme, d, color, fill }: ShapeFillProps) {
+	const override = React.useContext(ShapeFillOverrideContext)
 	switch (fill) {
 		case 'none': {
 			return null
 		}
 		case 'solid': {
-			return <path fill={theme[color].semi} d={d} />
+			return <path fill={override.fillColor ?? theme[color].semi} d={d} />
 		}
 		case 'semi': {
 			return <path fill={theme.solid} d={d} />
@@ -44,14 +61,15 @@ const PatternFill = function PatternFill({ d, color, theme }: ShapeFillProps) {
 
 	const intZoom = Math.ceil(zoomLevel)
 	const teenyTiny = editor.getZoomLevel() <= 0.18
+	const override = React.useContext(ShapeFillOverrideContext)
 
 	return (
 		<>
-			<path fill={theme[color].pattern} d={d} />
+			<path fill={override.patternFillFallbackColor ?? theme[color].pattern} d={d} />
 			<path
 				fill={
 					teenyTiny
-						? theme[color].semi
+						? override.patternFillFallbackColor ?? theme[color].semi
 						: `url(#${HASH_PATTERN_ZOOM_NAMES[`${intZoom}_${theme.id}`]})`
 				}
 				d={d}

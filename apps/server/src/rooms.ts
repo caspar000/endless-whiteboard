@@ -1,13 +1,31 @@
-import { mkdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { NodeSqliteWrapper, SQLiteSyncStorage, TLSocketRoom, type WebSocketMinimal } from '@tldraw/sync-core'
+import {
+	NodeSqliteWrapper,
+	SQLiteSyncStorage,
+	TLSocketRoom,
+	type RoomSnapshot,
+	type WebSocketMinimal,
+} from '@tldraw/sync-core'
 import type { TLRecord, TLSchema } from '@tldraw/tlschema'
 
 interface OpenRoom {
 	room: TLSocketRoom<TLRecord, void>
+	storage: SQLiteSyncStorage<TLRecord>
 	db: DatabaseSync
 }
+
+/** A board's content in the form the app's backups use: records by id, plus the schema they were written with. */
+export interface BoardSnapshot {
+	store: Record<string, unknown>
+	schema: unknown
+}
+
+const toBoardSnapshot = (snapshot: RoomSnapshot): BoardSnapshot => ({
+	store: Object.fromEntries(snapshot.documents.map((doc) => [doc.state.id, doc.state])),
+	schema: snapshot.schema,
+})
 
 interface RoomsOptions {
 	dir: string
@@ -40,6 +58,23 @@ export class Rooms {
 		for (const suffix of ['', '-wal', '-shm']) rmSync(this.path(boardId) + suffix, { force: true })
 	}
 
+	/**
+	 * The board as it is now, for export and asset GC. `null` for a board nobody has opened yet, which
+	 * has no content and so references nothing. Throws if the file is there but unreadable: callers
+	 * must not mistake that for an empty board.
+	 */
+	readSnapshot(boardId: string): BoardSnapshot | null {
+		const open = this.open.get(boardId)
+		if (open && !open.room.isClosed()) return toBoardSnapshot(open.storage.getSnapshot())
+		if (!existsSync(this.path(boardId))) return null
+		const db = new DatabaseSync(this.path(boardId))
+		try {
+			return toBoardSnapshot(new SQLiteSyncStorage<TLRecord>({ sql: new NodeSqliteWrapper(db) }).getSnapshot())
+		} finally {
+			db.close()
+		}
+	}
+
 	closeAll(): void {
 		for (const boardId of [...this.open.keys()]) this.close(boardId)
 	}
@@ -64,7 +99,7 @@ export class Rooms {
 				if (numSessionsRemaining === 0) this.close(boardId)
 			},
 		})
-		const entry = { room, db }
+		const entry = { room, storage, db }
 		this.open.set(boardId, entry)
 		return entry
 	}

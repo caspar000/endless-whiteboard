@@ -1,4 +1,5 @@
-import { mkdtempSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdtempSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createBoardSchema } from '@lifeboard/schema'
@@ -8,9 +9,14 @@ import {
 	type TLPersistentClientSocket,
 	type TLSocketStatusChangeEvent,
 } from '@tldraw/sync-core'
-import { atom, createTLStore, PageRecordType, type TLStore } from 'tldraw'
+import { unzipSync } from 'fflate'
+import { AssetRecordType, atom, createTLStore, PageRecordType, type TLStore } from 'tldraw'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from './app.ts'
+import { AssetFiles } from './assets.ts'
+import { collectGarbage } from './gc.ts'
+import { Rooms } from './rooms.ts'
+import { Vault } from './vault.ts'
 import { SESSION_COOKIE } from './auth.ts'
 import { loadConfig, type ServerConfig } from './config.ts'
 import { hashPassword } from './password.ts'
@@ -192,5 +198,74 @@ describe('sync', () => {
 		} as unknown as string[])
 		const code = await new Promise<number>((resolve) => ws.addEventListener('close', (e) => resolve(e.code)))
 		expect(code).toBe(4404)
+	})
+})
+
+describe('assets', () => {
+	const bytes = Buffer.from('a picture, notionally')
+	const hash = createHash('sha256').update(bytes).digest('hex')
+	const put = (app: Awaited<ReturnType<typeof startServer>>['app'], cookie: string, h: string, body: Buffer) =>
+		app.inject({ method: 'PUT', url: `/api/assets/${h}`, headers: { cookie, 'content-type': 'application/octet-stream' }, payload: body })
+
+	it('stores bytes under their hash, refuses bytes that do not match it, and serves them back inert', async () => {
+		const { app, cookie } = await startServer()
+		const missing = () => app.inject({ method: 'POST', url: '/api/assets/missing', headers: { cookie }, payload: { hashes: [hash] } })
+		expect((await missing()).json()).toEqual({ missing: [hash] })
+
+		expect((await put(app, cookie, hash, Buffer.from('something else'))).statusCode).toBe(422)
+		expect((await put(app, cookie, hash, bytes)).statusCode).toBe(204)
+		expect((await missing()).json()).toEqual({ missing: [] })
+
+		const res = await app.inject({ url: `/api/assets/${hash}`, headers: { cookie } })
+		expect(res.rawPayload.equals(bytes)).toBe(true)
+		expect(res.headers['content-type']).toBe('application/octet-stream')
+		expect(res.headers['cache-control']).toContain('immutable')
+		expect((await app.inject({ url: '/api/assets/../vault.sqlite', headers: { cookie } })).statusCode).toBe(404)
+	})
+
+	it('exports the vault in the app’s backup format', async () => {
+		const { app, port, cookie } = await startServer()
+		const board = await createBoard(app, cookie, 'Exported')
+		await put(app, cookie, hash, bytes)
+		const client = await connect(port, cookie, board.id, 'a')
+		client.put([AssetRecordType.create({ type: 'image', props: { name: 'p', src: `asset:${hash}`, w: 1, h: 1, mimeType: 'image/png', isAnimated: false } })])
+		await new Promise((r) => setTimeout(r, 300))
+
+		const zip = unzipSync(new Uint8Array((await app.inject({ url: '/api/export', headers: { cookie } })).rawPayload))
+		const manifest = JSON.parse(new TextDecoder().decode(zip['manifest.json']))
+		expect(manifest).toMatchObject({ formatVersion: 1, boards: expect.arrayContaining([expect.objectContaining({ id: board.id })]) })
+		expect(JSON.parse(new TextDecoder().decode(zip[`boards/${board.id}.json`]))).toHaveProperty('schema')
+		expect(Buffer.from(zip[`assets/${hash}`]!).equals(bytes)).toBe(true)
+	})
+})
+
+describe('asset GC', () => {
+	it('sweeps only files that are unreferenced and older than a day', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'lb-gc-'))
+		const vault = new Vault(join(dir, 'vault.sqlite'))
+		const rooms = new Rooms({ dir: join(dir, 'rooms'), schema: createBoardSchema(), onChange: () => {} })
+		const assets = new AssetFiles(join(dir, 'assets'))
+		const file = (text: string) => {
+			const b = Buffer.from(text)
+			const h = createHash('sha256').update(b).digest('hex')
+			assets.put(h, b)
+			return h
+		}
+		const kept = file('referenced')
+		const old = file('orphaned, old')
+		const young = file('orphaned, just uploaded')
+		const twoDaysAgo = (Date.now() - 2 * 86_400_000) / 1000
+		for (const h of [kept, old]) utimesSync(join(dir, 'assets', h), twoDaysAgo, twoDaysAgo)
+
+		const board = vault.create({ name: 'Has a picture' })
+		const fakeRooms = { readSnapshot: (id: string) => (id === board.id ? { store: { a: { typeName: 'asset', props: { src: `asset:${kept}` } } }, schema: {} } : null) }
+		expect(collectGarbage(vault, fakeRooms as unknown as Rooms, assets)).toEqual({ deleted: 1 })
+		expect(assets.has(kept) && assets.has(young) && !assets.has(old)).toBe(true)
+
+		// An image still uploading means nothing can be said about what is referenced.
+		const pending = { readSnapshot: () => ({ store: { a: { typeName: 'asset', props: { src: '' } } }, schema: {} }) }
+		expect(collectGarbage(vault, pending as unknown as Rooms, assets)).toHaveProperty('skipped')
+		rooms.closeAll()
+		vault.close()
 	})
 })

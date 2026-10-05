@@ -115,6 +115,55 @@ export function pushVaultSetting(key: VaultSettingKey, value: unknown): void {
 	)
 }
 
+const downloads = new Map<string, Promise<Blob | null>>()
+
+/**
+ * Retries a 404 a few times: the record pointing at a blob reaches other devices through the sync
+ * room before the device that added it has finished uploading the bytes.
+ */
+async function download(hash: string): Promise<Blob | null> {
+	for (const wait of [0, 1000, 2000, 4000]) {
+		if (wait) await new Promise((resolve) => setTimeout(resolve, wait))
+		try {
+			const response = await fetch(`/api/assets/${hash}`)
+			if (response.ok) return await response.blob()
+			if (response.status !== 404) return null
+		} catch {
+			return null
+		}
+	}
+	return null
+}
+
+/**
+ * A blob this browser doesn't have, from the server vault — or `null` without a server, or if it lacks
+ * it too. One request per hash however many shapes ask at once.
+ */
+export function fetchServerAsset(hash: string): Promise<Blob | null> {
+	if (!available) return Promise.resolve(null)
+	let pending = downloads.get(hash)
+	if (!pending) {
+		pending = download(hash).finally(() => downloads.delete(hash))
+		downloads.set(hash, pending)
+	}
+	return pending
+}
+
+/** Of these hashes, the ones the server has no file for. */
+export async function missingServerAssets(hashes: string[]): Promise<string[]> {
+	const response = await api('/assets/missing', { method: 'POST', body: JSON.stringify({ hashes }) })
+	return ((await response.json()) as { missing: string[] }).missing
+}
+
+export async function uploadServerAsset(hash: string, blob: Blob): Promise<void> {
+	await api(`/assets/${hash}`, { method: 'PUT', body: blob, headers: { 'content-type': 'application/octet-stream' } })
+}
+
+/** Every server board and the files they use, in the app's own backup format (importable as copies). */
+export async function downloadServerBackup(): Promise<Blob> {
+	return (await api('/export')).blob()
+}
+
 export function syncUri(boardId: string): string {
 	const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
 	return `${scheme}://${location.host}/api/sync/${boardId}`

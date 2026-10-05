@@ -10,6 +10,12 @@ function snapshot(...records: unknown[]): RawBoardSnapshot {
 	return { store, schema: {} }
 }
 
+/** Real hashes are 64 hex characters, and only those count — see `isManagedAssetSrc`. */
+const AAA = 'a'.repeat(64)
+const BBB = 'b'.repeat(64)
+const CAFE = 'c'.repeat(64)
+const FACADE = 'f'.repeat(64)
+
 const asset = (src: unknown) => ({
 	typeName: 'asset',
 	id: 'asset:1',
@@ -19,12 +25,12 @@ const asset = (src: unknown) => ({
 describe('collectAssetRefs', () => {
 	it('collects the hashes of managed assets', () => {
 		const refs = collectAssetRefs(
-			snapshot(asset('asset:aaa'), asset('asset:bbb'), {
+			snapshot(asset(`asset:${AAA}`), asset(`asset:${BBB}`), {
 				typeName: 'shape',
 				type: 'image',
 			})
 		)
-		expect([...refs.hashes].sort()).toEqual(['aaa', 'bbb'])
+		expect([...refs.hashes].sort()).toEqual([AAA, BBB])
 		expect(refs.pending).toBe(false)
 	})
 
@@ -44,8 +50,8 @@ describe('collectAssetRefs', () => {
 
 	it('still reports the hashes it did find alongside a pending one', () => {
 		// GC abstains on `pending`, but export needs the known hashes regardless.
-		const refs = collectAssetRefs(snapshot(asset('asset:aaa'), asset('')))
-		expect([...refs.hashes]).toEqual(['aaa'])
+		const refs = collectAssetRefs(snapshot(asset(`asset:${AAA}`), asset('')))
+		expect([...refs.hashes]).toEqual([AAA])
 		expect(refs.pending).toBe(true)
 	})
 
@@ -62,10 +68,10 @@ describe('collectAssetRefs', () => {
 			snapshot({
 				typeName: 'shape',
 				type: 'node.book',
-				props: { fileSrc: 'asset:facade', coverSrc: 'asset:cafe', title: 'Dune', pageCount: 412 },
+				props: { fileSrc: `asset:${FACADE}`, coverSrc: `asset:${CAFE}`, title: 'Dune', pageCount: 412 },
 			})
 		)
-		expect([...refs.hashes].sort()).toEqual(['cafe', 'facade'])
+		expect([...refs.hashes].sort()).toEqual([CAFE, FACADE])
 		expect(refs.pending).toBe(false)
 	})
 
@@ -74,10 +80,10 @@ describe('collectAssetRefs', () => {
 			snapshot({
 				typeName: 'shape',
 				type: 'node.future',
-				props: { gallery: [{ src: 'asset:aaa' }, { src: 'asset:bbb' }] },
+				props: { gallery: [{ src: `asset:${AAA}` }, { src: `asset:${BBB}` }] },
 			})
 		)
-		expect([...refs.hashes].sort()).toEqual(['aaa', 'bbb'])
+		expect([...refs.hashes].sort()).toEqual([AAA, BBB])
 	})
 
 	it('does not treat shape props as pending, and ignores non-asset strings in them', () => {
@@ -88,5 +94,12 @@ describe('collectAssetRefs', () => {
 		// Extension nodes store bytes *before* creating the shape, so an empty src means "no file",
 		// never "upload in flight" — unlike an asset record's empty src.
 		expect(refs.pending).toBe(false)
+	})
+	it('does not mistake tldraw asset record ids for blobs', () => {
+		// An image shape points at its asset *record*, whose id also starts with `asset:`.
+		const refs = collectAssetRefs(
+			snapshot({ typeName: 'shape', type: 'image', props: { assetId: 'asset:2038128137' } })
+		)
+		expect(refs.hashes.size).toBe(0)
 	})
 })

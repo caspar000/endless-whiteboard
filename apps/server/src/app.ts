@@ -6,6 +6,8 @@ import fastifyWebsocket from '@fastify/websocket'
 import { createBoardSchema } from '@lifeboard/schema'
 import Fastify, { type FastifyServerOptions } from 'fastify'
 import { registerApi } from './api.ts'
+import { AssetFiles } from './assets.ts'
+import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
 import { registerAuth } from './auth.ts'
 import type { ServerConfig } from './config.ts'
 import { Rooms } from './rooms.ts'
@@ -37,11 +39,14 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		onChange: (boardId) => vault.touch(boardId),
 		log: app.log,
 	})
+	const assets = new AssetFiles(join(config.dataDir, 'assets'))
+	const stopGc = scheduleGarbageCollection(() => collectGarbage(vault, rooms, assets), app.log)
 	app.addHook('onClose', async () => {
+		stopGc()
 		rooms.closeAll()
 		vault.close()
 	})
-	registerApi(app, vault, rooms)
+	registerApi(app, { vault, rooms, assets, appVersion: config.revision ?? 'dev' })
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {
 		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)

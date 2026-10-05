@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getLastBackupAt } from '../../boards/boardIndex'
+import { getLastBackupAt, getLastServerBackupAt, setLastServerBackupAt } from '../../boards/boardIndex'
 import { backupFileName, exportBackup, importBackup } from '../../persistence/backup'
 import { usePlatform } from '../../platform/PlatformContext'
 import type { StorageEstimate } from '../../platform/PlatformAdapter'
+import { downloadServerBackup } from '../../server/serverVault'
 import type { BoardsApi } from '../useBoards'
 
 const APP_VERSION = __APP_VERSION__
@@ -40,12 +41,14 @@ export function StoragePanel({
 	const platform = usePlatform()
 	const [estimate, setEstimate] = useState<StorageEstimate | null>(null)
 	const [lastBackup, setLastBackup] = useState<number | null>(null)
-	const [busy, setBusy] = useState<'export' | 'import' | null>(null)
+	const [lastServerBackup, setLastServerBackup] = useState<number | null>(null)
+	const [busy, setBusy] = useState<'export' | 'import' | 'server' | null>(null)
 	const [message, setMessage] = useState<string | null>(null)
 
 	const refreshStatus = useCallback(async () => {
 		setEstimate(await platform.estimateStorage())
 		setLastBackup(await getLastBackupAt(platform.kv))
+		setLastServerBackup(await getLastServerBackupAt(platform.kv))
 	}, [platform])
 
 	useEffect(() => {
@@ -97,7 +100,26 @@ export function StoragePanel({
 		}
 	}
 
+	const onServerExport = async () => {
+		setBusy('server')
+		setMessage(null)
+		try {
+			const blob = await downloadServerBackup()
+			await platform.saveFile(`lifeboard-server-${new Date().toISOString().slice(0, 10)}.zip`, blob)
+			await setLastServerBackupAt(platform.kv)
+			setMessage(`Downloaded the server’s boards and files (${formatBytes(blob.size)}).`)
+			await refreshStatus()
+		} catch (err) {
+			setMessage(`Server backup failed: ${err instanceof Error ? err.message : String(err)}`)
+		} finally {
+			setBusy(null)
+		}
+	}
+
+	const localBoards = api.boards.filter((board) => !board.vault)
+	const serverBoards = api.boards.filter((board) => board.vault === 'server')
 	const staleBackup = lastBackup === null || daysSince(lastBackup) >= 7
+	const staleServerBackup = lastServerBackup === null || daysSince(lastServerBackup) >= 7
 
 	return (
 		<section className="lb-settings">
@@ -134,7 +156,7 @@ export function StoragePanel({
 				</p>
 			)}
 
-			{staleBackup && api.boards.length > 0 && (
+			{staleBackup && localBoards.length > 0 && (
 				<p className="lb-settings__warn">
 					{lastBackup === null
 						? 'You have never exported a backup.'
@@ -144,12 +166,50 @@ export function StoragePanel({
 
 			<div className="lb-settings__actions">
 				<button className="lb-btn" onClick={onExport} disabled={busy !== null}>
-					{busy === 'export' ? 'Exporting…' : 'Export backup (.zip)'}
+					{busy === 'export'
+						? 'Exporting…'
+						: api.hasServer
+							? 'Export this device’s boards (.zip)'
+							: 'Export backup (.zip)'}
 				</button>
 				<button className="lb-btn" onClick={onImport} disabled={busy !== null}>
 					{busy === 'import' ? 'Importing…' : 'Import backup'}
 				</button>
 			</div>
+
+			{api.hasServer && (
+				<>
+					<h3>Server vault</h3>
+					<p>
+						The server keeps the only copy of its boards. Download one now and then, and keep it
+						somewhere that isn’t the server. It imports here like any backup, as local copies.
+					</p>
+					<dl className="lb-settings__stats">
+						<div>
+							<dt>Last server backup</dt>
+							<dd>
+								{lastServerBackup === null
+									? 'never'
+									: daysSince(lastServerBackup) === 0
+										? 'today'
+										: `${daysSince(lastServerBackup)} days ago`}
+							</dd>
+						</div>
+					</dl>
+					{staleServerBackup && serverBoards.length > 0 && (
+						<p className="lb-settings__warn">
+							{lastServerBackup === null
+								? 'You have never downloaded a backup of the server’s boards.'
+								: `Your last server backup was ${daysSince(lastServerBackup)} days ago.`}
+						</p>
+					)}
+					<div className="lb-settings__actions">
+						<button className="lb-btn" onClick={onServerExport} disabled={busy !== null}>
+							{busy === 'server' ? 'Downloading…' : 'Download server backup (.zip)'}
+						</button>
+					</div>
+				</>
+			)}
 
 			{message && <p className="lb-settings__message">{message}</p>}
 		</section>

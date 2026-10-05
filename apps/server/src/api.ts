@@ -1,10 +1,16 @@
 import type { FastifyInstance } from 'fastify'
+import { isAssetHash, type AssetFiles } from './assets.ts'
+import { exportVault } from './exportZip.ts'
 import type { Rooms } from './rooms.ts'
 import type { Vault } from './vault.ts'
 
 /** Board ids become file names, so only what a UUID can contain. */
 const BOARD_ID = /^[A-Za-z0-9-]{1,64}$/
 const MAX_NAME = 200
+/** The app refuses imports over 64 MB (`MAX_IMPORT_BYTES`); a little over that, for headroom. */
+const MAX_ASSET_BYTES = 80 * 1024 * 1024
+/** Enough for every asset on a large board in one question. */
+const MAX_HASHES_PER_QUERY = 5000
 
 const isName = (value: unknown): value is string =>
 	typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME
@@ -26,7 +32,10 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 }
 
 /** The server vault's board index and settings, and the sync socket for each board's content. */
-export function registerApi(app: FastifyInstance, vault: Vault, rooms: Rooms): void {
+export function registerApi(
+	app: FastifyInstance,
+	{ vault, rooms, assets, appVersion }: { vault: Vault; rooms: Rooms; assets: AssetFiles; appVersion: string }
+): void {
 	app.get('/api/boards', async () => vault.list())
 
 	app.post<{ Body: { id?: unknown; name?: unknown } }>('/api/boards', async (request, reply) => {
@@ -59,6 +68,52 @@ export function registerApi(app: FastifyInstance, vault: Vault, rooms: Rooms): v
 		if (!vault.delete(request.params.id)) return reply.code(404).send({ error: 'No such board.' })
 		rooms.delete(request.params.id)
 		return reply.code(204).send()
+	})
+
+	app.addContentTypeParser(
+		'application/octet-stream',
+		{ parseAs: 'buffer', bodyLimit: MAX_ASSET_BYTES },
+		(_request, body, done) => done(null, body)
+	)
+
+	/** Which of these the server lacks, so a client uploads only those. */
+	app.post<{ Body: { hashes?: unknown } }>('/api/assets/missing', async (request, reply) => {
+		const hashes = request.body?.hashes
+		if (!Array.isArray(hashes) || hashes.length > MAX_HASHES_PER_QUERY || !hashes.every((h) => typeof h === 'string' && isAssetHash(h))) {
+			return reply.code(400).send({ error: '`hashes` is a list of SHA-256 hex strings.' })
+		}
+		return { missing: hashes.filter((hash) => !assets.has(hash)) }
+	})
+
+	app.put<{ Params: { hash: string }; Body: Buffer }>('/api/assets/:hash', async (request, reply) => {
+		const { hash } = request.params
+		if (!isAssetHash(hash)) return reply.code(400).send({ error: 'Not an asset hash.' })
+		if (!Buffer.isBuffer(request.body)) return reply.code(415).send({ error: 'Send the bytes as application/octet-stream.' })
+		if (!assets.put(hash, request.body)) return reply.code(422).send({ error: 'The bytes do not match that hash.' })
+		return reply.code(204).send()
+	})
+
+	app.get<{ Params: { hash: string } }>('/api/assets/:hash', async (request, reply) => {
+		const { hash } = request.params
+		if (!isAssetHash(hash) || !assets.has(hash)) return reply.code(404).send({ error: 'No such asset.' })
+		return reply
+			// Content-addressed: the bytes behind this URL can never change.
+			.header('cache-control', 'private, max-age=31536000, immutable')
+			// Opaque bytes, never rendered by the browser as a page: an uploaded SVG or HTML file must not
+			// run as this origin. The app reads these through fetch and makes its own object URLs.
+			.header('content-type', 'application/octet-stream')
+			.header('x-content-type-options', 'nosniff')
+			.header('content-disposition', 'attachment')
+			.header('content-length', assets.size(hash))
+			.send(assets.read(hash))
+	})
+
+	app.get('/api/export', async (_request, reply) => {
+		const date = new Date().toISOString().slice(0, 10)
+		return reply
+			.header('content-type', 'application/zip')
+			.header('content-disposition', `attachment; filename="lifeboard-server-${date}.zip"`)
+			.send(exportVault(vault, rooms, assets, appVersion))
 	})
 
 	app.get('/api/vault/settings', async () => vault.settings())

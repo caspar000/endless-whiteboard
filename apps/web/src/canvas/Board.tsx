@@ -52,7 +52,8 @@ import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { FileImportHandler } from './FileImportHandler'
 import { useSync } from '@tldraw/sync'
-import { syncUri } from '../server/serverVault'
+import { uploadBoardAssets } from '../server/boardAssets'
+import { fetchServerAsset, syncUri } from '../server/serverVault'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -256,7 +257,7 @@ function SyncedBoard(props: BoardProps) {
 	const schemaVersion = useSyncExternalStore(subscribeToNodeDefinitions, getNodeTypesVersion)
 	const shapeUtils = useMemo(buildBoardShapeUtils, [schemaVersion])
 	const storeShapeUtils = useMemo(() => buildStoreShapeUtils(shapeUtils), [shapeUtils])
-	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
+	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs, fetchServerAsset), [platform])
 	const store = useSync({
 		uri: syncUri(props.board.id),
 		assets,
@@ -310,7 +311,7 @@ function BoardCanvas({
 		}
 	}, [platform, board.id, store])
 
-	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs), [platform])
+	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs, fetchServerAsset), [platform])
 
 	const [editor, setEditor] = useState<Editor | null>(null)
 
@@ -434,6 +435,8 @@ function BoardCanvas({
 					const stopTracking = store
 						? () => {}
 						: trackBoardActivity(editor, () => void touchBoard(platform.kv, board.id))
+					// And its files are kept by the server too, so other devices can show them.
+					const stopUploading = store ? uploadBoardAssets(editor, platform.blobs) : () => {}
 					// Every extension's reactions, plus the core hook above. One installer, because they
 					// all hang off the same two side effects.
 					const stopHooks = installBoardHooks(editor)
@@ -467,6 +470,7 @@ function BoardCanvas({
 						stopPlacingMembers()
 						stopWatchingDragOut()
 						stopTracking()
+						stopUploading()
 						// Put the camera back, or the board reopens zoomed onto whatever was previewed.
 						closeQuickLook(editor, { animate: false })
 						// Both are module-scope. The properties target is a bare shape id, so a stale one

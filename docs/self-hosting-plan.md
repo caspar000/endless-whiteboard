@@ -1,7 +1,7 @@
 # Self-hosting — implementation plan
 
-Status: **Phases 0–2 built, nothing deployed.** Boards, saved queries and extension toggles sync
-through the server. Phase 3 (images) is next. Deploying needs a tldraw licence key.
+Status: **Phases 0–3 built, nothing deployed.** Boards, their images and files, saved queries and
+extension toggles sync through the server. Phase 4 (moving boards between vaults) is next.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.
@@ -22,7 +22,7 @@ Decisions taken before this was written:
 | Agent panel | **Not on the server.** Stays a local dev feature for now |
 | Apple Health | **Removed from main** and parked on `experiment/health` |
 | Backups | **No paid backups.** The existing "last backup" reminder covers server vaults and downloads the server's export |
-| tldraw licence | **A key is required to deploy at all.** On a public `https:` origin with no key, tldraw hides the canvas after 5 s, whoever uses it. A free Hobby key (watermark, non-commercial) fits a private instance |
+| tldraw licence | **A key is required to deploy at all.** On a public `https:` origin with no key, tldraw hides the canvas after 5 s, whoever uses it. Patching that out is not an option: tldraw is source-available, not open source, and its licence forbids it ("not to disable, change, or interfere with the Software's License Key enforcement"). Local development needs no key. A trial (100 days) or Hobby key when deploying |
 | Deploy | **Arcane, admin-configurator style.** Restart in Arcane fetches the deploy branch and rebuilds |
 
 ---
@@ -137,7 +137,6 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
 - **Asset GC is off in any browser that has ever seen a server.** Server boards keep their images in
   the local blob store until phase 3, and no local snapshot of theirs exists to mark from. Remembered in
   localStorage, so an offline session can't sweep either.
-- **Until phase 3, images on a server board show only in the browser that added them.**
 - **Saved queries and switched-off extensions follow the vault** (`app/vaultSettings.ts`).
   localStorage stays the cache, so the first render needs no network; the server's copy wins once it
   answers, and is pulled again on window focus. The first device to connect seeds a vault that has none.
@@ -151,6 +150,30 @@ Follows the box's convention (see `/opt/stacks/admin-configurator` for the patte
 
 - Asset endpoints, the server-backed asset bridge and `TLAssetStore`.
 - Server GC and export. The backup reminder covers server vaults.
+
+**As built:**
+
+- **Uploads follow the board, not the upload path.** A server board watches its own records and asks
+  the server which referenced hashes it lacks (`server/boardAssets.ts`), then uploads those from the
+  local blob store. One mechanism covers tldraw images, book files, covers and quote images, and will
+  cover boards moved in from a local vault.
+- **Downloads are a fallback in the existing resolvers.** A blob missing locally is fetched from
+  `/api/assets/<hash>` and saved locally on the way through. A 404 is retried for a few seconds, because
+  the record reaches other devices before its bytes finish uploading.
+- **The server checks every upload against its hash** (`422` otherwise), serves blobs as
+  `application/octet-stream` with `nosniff` (an uploaded SVG never runs as the origin), and caches them
+  as `immutable`.
+- **Server GC** runs a minute after start and then daily. It sweeps files that no board references and
+  that are older than a day, and skips the whole sweep if any board is unreadable or has an image still
+  uploading.
+- **Export** (`/api/export`) streams the vault in the app's backup format v1, so it imports as local
+  copies. Settings → Storage has a "Server vault" section with its own "last backup" and nag, kept
+  apart from the local one.
+- **Fixed on the way:** the reference walk counted tldraw's asset *record ids* (`asset:2038128137`,
+  found in image shapes' `assetId`) as blob hashes. `isManagedAssetSrc` now requires `asset:` plus 64
+  hex characters.
+- **Still conservative:** local asset GC stays off in any browser that has seen a server. A blob added
+  to a server board offline is only on this device until the board reconnects.
 
 ### Phase 4 — moving boards
 

@@ -1,3 +1,4 @@
+export * from './assets'
 import { bookReaderExtension } from '@lifeboard/book-reader'
 import { diceExtension } from '@lifeboard/dice'
 import {

@@ -21,6 +21,7 @@ export interface BoardMeta {
 
 const INDEX_KEY = 'boards'
 const LAST_BACKUP_KEY = 'lastBackupAt'
+const LAST_SERVER_BACKUP_KEY = 'lastServerBackupAt'
 const DEMO_SEEDED_KEY = 'demoSeeded'
 
 export function newBoardId(): string {
@@ -119,6 +120,18 @@ export async function getLastBackupAt(kv: KvStore): Promise<number | null> {
 
 export async function setLastBackupAt(kv: KvStore, at = Date.now()): Promise<void> {
 	await kv.set(LAST_BACKUP_KEY, at)
+}
+
+/**
+ * The server vault's backups are counted apart: exporting this device's boards says nothing about
+ * whether the server's are saved anywhere but the server.
+ */
+export async function getLastServerBackupAt(kv: KvStore): Promise<number | null> {
+	return (await kv.get<number>(LAST_SERVER_BACKUP_KEY)) ?? null
+}
+
+export async function setLastServerBackupAt(kv: KvStore, at = Date.now()): Promise<void> {
+	await kv.set(LAST_SERVER_BACKUP_KEY, at)
 }
 
 export async function wasDemoSeeded(kv: KvStore): Promise<boolean> {

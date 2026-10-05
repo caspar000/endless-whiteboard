@@ -3,6 +3,9 @@ import type { TLAsset, TLAssetStore } from 'tldraw'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { downscaleImage } from './downscale'
 import { sha256Hex } from './hash'
+import { assetSrcForHash, hashFromAssetSrc, isManagedAssetSrc } from '@lifeboard/schema'
+
+export { ASSET_URL_PREFIX, assetSrcForHash, hashFromAssetSrc, isManagedAssetSrc } from '@lifeboard/schema'
 
 /**
  * Custom `TLAssetStore` over our content-addressed `BlobStore` (§4.4).
@@ -14,19 +17,6 @@ import { sha256Hex } from './hash'
  * `src` is stored as `asset:<sha256>`. That URL form is stable, portable across boards, and
  * survives export/import untouched, because the hash *is* the identity of the bytes.
  */
-export const ASSET_URL_PREFIX = 'asset:'
-
-export function isManagedAssetSrc(src: string | null | undefined): src is string {
-	return typeof src === 'string' && src.startsWith(ASSET_URL_PREFIX)
-}
-
-export function hashFromAssetSrc(src: string): string {
-	return src.slice(ASSET_URL_PREFIX.length)
-}
-
-export function assetSrcForHash(hash: string): string {
-	return `${ASSET_URL_PREFIX}${hash}`
-}
 
 /**
  * Object URLs are cached per hash and never revoked for the lifetime of the page: a revoked URL
@@ -92,12 +82,31 @@ export function waitForAssetUploads(timeoutMs = 10_000): Promise<void> {
 	})
 }
 
+/**
+ * Where a blob this browser lacks can come from: the server vault, for a board synced from another
+ * device. Returns `null` when there is nowhere to ask.
+ */
+export type FetchMissingBlob = (hash: string) => Promise<Blob | null>
+
+/** The local blob, or the server's copy saved locally on the way through. */
+async function getOrFetchBlob(blobs: BlobStore, hash: string, fetchMissing?: FetchMissingBlob): Promise<Blob | null> {
+	const local = await blobs.get(hash)
+	if (local || !fetchMissing) return local ?? null
+	const fetched = await fetchMissing(hash)
+	if (fetched) await blobs.put(hash, fetched)
+	return fetched
+}
+
 /** Blob → cached object URL, shared by tldraw's asset resolve and the extension bridge below. */
-async function resolveHashToUrl(blobs: BlobStore, hash: string): Promise<string | null> {
+async function resolveHashToUrl(
+	blobs: BlobStore,
+	hash: string,
+	fetchMissing?: FetchMissingBlob
+): Promise<string | null> {
 	const cached = objectUrlCache.get(hash)
 	if (cached) return cached
 
-	const blob = await blobs.get(hash)
+	const blob = await getOrFetchBlob(blobs, hash, fetchMissing)
 	if (!blob) return null
 
 	// A concurrent resolve for the same hash may have populated the cache while we awaited.
@@ -118,7 +127,7 @@ async function resolveHashToUrl(blobs: BlobStore, hash: string): Promise<string 
  * `store` is awaited by its callers *before* they create the shape that references the hash, so
  * unlike tldraw's floating uploads there is no pending window for the drain or GC to worry about.
  */
-export function createAssetBridge(blobs: BlobStore): AssetBridge {
+export function createAssetBridge(blobs: BlobStore, fetchMissing?: FetchMissingBlob): AssetBridge {
 	return {
 		async store(blob: Blob) {
 			const hash = await sha256Hex(blob)
@@ -127,16 +136,16 @@ export function createAssetBridge(blobs: BlobStore): AssetBridge {
 		},
 		async resolveUrl(src: string) {
 			if (!isManagedAssetSrc(src)) return null
-			return resolveHashToUrl(blobs, hashFromAssetSrc(src))
+			return resolveHashToUrl(blobs, hashFromAssetSrc(src), fetchMissing)
 		},
 		async getBlob(src: string) {
 			if (!isManagedAssetSrc(src)) return null
-			return (await blobs.get(hashFromAssetSrc(src))) ?? null
+			return getOrFetchBlob(blobs, hashFromAssetSrc(src), fetchMissing)
 		},
 	}
 }
 
-export function createLifeboardAssetStore(blobs: BlobStore): TLAssetStore {
+export function createLifeboardAssetStore(blobs: BlobStore, fetchMissing?: FetchMissingBlob): TLAssetStore {
 	return {
 		async upload(_asset: TLAsset, file: File) {
 			uploadsInFlight++
@@ -162,7 +171,7 @@ export function createLifeboardAssetStore(blobs: BlobStore): TLAssetStore {
 			if (!src) return null
 			// Assets that aren't ours (e.g. a bookmark's remote image) pass through untouched.
 			if (!isManagedAssetSrc(src)) return src
-			return resolveHashToUrl(blobs, hashFromAssetSrc(src))
+			return resolveHashToUrl(blobs, hashFromAssetSrc(src), fetchMissing)
 		},
 
 		// `remove` is intentionally not implemented. Blobs are shared by content across boards,

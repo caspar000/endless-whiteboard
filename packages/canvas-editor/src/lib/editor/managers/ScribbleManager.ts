@@ -1,4 +1,4 @@
-import { TLScribble, Vec2dModel } from '@tldraw/tlschema'
+import { TLScribble, VecModel } from '@tldraw/tlschema'
 import { Vec2d } from '../../primitives/Vec2d'
 import { uniqueId } from '../../utils/uniqueId'
 import { Editor } from '../Editor'
@@ -9,8 +9,8 @@ type ScribbleItem = {
 	scribble: TLScribble
 	timeoutMs: number
 	delayRemaining: number
-	prev: null | Vec2dModel
-	next: null | Vec2dModel
+	prev: null | VecModel
+	next: null | VecModel
 }
 
 /** @public */

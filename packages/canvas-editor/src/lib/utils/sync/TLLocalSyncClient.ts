@@ -3,7 +3,6 @@ import {
 	RecordsDiff,
 	SerializedSchema,
 	UnknownRecord,
-	compareSchemas,
 	squashRecordDiffs,
 } from '@tldraw/store'
 import { TLStore } from '@tldraw/tlschema'
@@ -19,6 +18,27 @@ import { showCantReadFromIndexDbAlert, showCantWriteToIndexDbAlert } from './ale
 import { loadDataFromStore, storeChangesInIndexedDb, storeSnapshotInIndexedDb } from './indexedDb'
 
 /** How should we debounce persists? */
+/**
+ * -1 if `ours` is older than `theirs`, 1 if newer, 0 if the same.
+ *
+ * Today's schemas are a version per migration sequence. Ours is older if theirs has a sequence we
+ * don't, or a later version of one we share. The 2023 store's `compareSchemas` did this for the
+ * old numeric format, which is gone.
+ */
+function compareSchemas(ours: SerializedSchema, theirs: SerializedSchema): -1 | 0 | 1 {
+	const versions = (schema: SerializedSchema): Record<string, number> =>
+		'sequences' in schema ? schema.sequences : {}
+	const a = versions(ours)
+	const b = versions(theirs)
+	for (const [id, version] of Object.entries(b)) {
+		if (!(id in a) || a[id]! < version) return -1
+	}
+	for (const [id, version] of Object.entries(a)) {
+		if (!(id in b) || b[id]! < version) return 1
+	}
+	return 0
+}
+
 const PERSIST_THROTTLE_MS = 350
 /** If we're in an error state, how long should we wait before retrying a write? */
 const PERSIST_RETRY_THROTTLE_MS = 10_000

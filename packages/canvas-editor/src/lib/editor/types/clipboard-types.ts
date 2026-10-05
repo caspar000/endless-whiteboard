@@ -1,5 +1,9 @@
+import type { TLShape } from './shape-types'
 import { SerializedSchema } from '@tldraw/store'
-import { TLAsset, TLShape, TLShapeId } from '@tldraw/tlschema'
+import {
+	TLAsset,
+	TLShapeId,
+} from '@tldraw/tlschema'
 
 /** @public */
 export interface TLContent {

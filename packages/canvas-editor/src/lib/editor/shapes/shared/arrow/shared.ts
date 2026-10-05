@@ -1,8 +1,13 @@
-import { TLArrowShape, TLArrowShapeTerminal, TLShape, TLShapeId } from '@tldraw/tlschema'
+import type { TLShape } from '../../../types/shape-types'
+import {
+	TLArrowShape,
+	TLShapeId,
+} from '@tldraw/tlschema'
 import { Matrix2d } from '../../../../primitives/Matrix2d'
 import { Vec2d } from '../../../../primitives/Vec2d'
 import { Group2d } from '../../../../primitives/geometry/Group2d'
 import { Editor } from '../../../Editor'
+import { getArrowTerminals, type TLArrowShapeTerminal } from './terminals'
 
 export function getIsArrowStraight(shape: TLArrowShape) {
 	return Math.abs(shape.props.bend) < 8 // snap to +-8px
@@ -86,9 +91,11 @@ export function getArrowTerminalsInArrowSpace(editor: Editor, shape: TLArrowShap
 	let startBoundShapeId: TLShapeId | undefined
 	let endBoundShapeId: TLShapeId | undefined
 
-	if (shape.props.start.type === 'binding' && shape.props.end.type === 'binding') {
-		startBoundShapeId = shape.props.start.boundShapeId
-		endBoundShapeId = shape.props.end.boundShapeId
+	// The arrow's ends as 2023 described them, rebuilt from its points and binding records.
+	const terminals = getArrowTerminals(editor, shape)
+	if (terminals.start.type === 'binding' && terminals.end.type === 'binding') {
+		startBoundShapeId = terminals.start.boundShapeId
+		endBoundShapeId = terminals.end.boundShapeId
 	}
 
 	const boundShapeRelationships = getBoundShapeRelationships(
@@ -100,14 +107,14 @@ export function getArrowTerminalsInArrowSpace(editor: Editor, shape: TLArrowShap
 	const start = getArrowTerminalInArrowSpace(
 		editor,
 		arrowPageTransform,
-		shape.props.start,
+		terminals.start,
 		boundShapeRelationships === 'double-bound' || boundShapeRelationships === 'start-contains-end'
 	)
 
 	const end = getArrowTerminalInArrowSpace(
 		editor,
 		arrowPageTransform,
-		shape.props.end,
+		terminals.end,
 		boundShapeRelationships === 'double-bound' || boundShapeRelationships === 'end-contains-start'
 	)
 

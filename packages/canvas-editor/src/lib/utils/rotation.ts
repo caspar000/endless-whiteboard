@@ -1,4 +1,7 @@
-import { isShapeId, TLShape, TLShapePartial } from '@tldraw/tlschema'
+import type { TLShape, TLShapePartial } from '../editor/types/shape-types'
+import {
+	isShapeId,
+} from '@tldraw/tlschema'
 import { structuredClone } from '@tldraw/utils'
 import { Editor } from '../editor/Editor'
 import { Matrix2d } from '../primitives/Matrix2d'

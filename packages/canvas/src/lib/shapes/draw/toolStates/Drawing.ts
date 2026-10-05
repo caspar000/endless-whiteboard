@@ -10,7 +10,7 @@ import {
 	TLPointerEventInfo,
 	TLShapePartial,
 	Vec2d,
-	Vec2dModel,
+	VecModel,
 	createShapeId,
 	last,
 	snapAngle,
@@ -449,7 +449,7 @@ export class Drawing extends StateNode {
 				if (!pagePointWhereCurrentSegmentChanged)
 					throw Error('We should have a point where the segment changed')
 
-				let pagePoint: Vec2dModel
+				let pagePoint: VecModel
 				let shouldSnapToAngle = false
 
 				if (this.didJustShiftClickToExtendPreviousShapeLine) {
@@ -473,7 +473,7 @@ export class Drawing extends StateNode {
 
 				if (shouldSnap) {
 					if (newSegments.length > 2) {
-						let nearestPoint: Vec2dModel | undefined = undefined
+						let nearestPoint: VecModel | undefined = undefined
 						let minDistance = 8 / this.editor.getZoomLevel()
 
 						// Don't try to snap to the last two segments

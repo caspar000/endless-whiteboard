@@ -1,4 +1,4 @@
-import { Box2d, TLShape, Vec2d, Vec2dModel } from '@lifeboard/canvas-editor'
+import { Box2d, TLShape, Vec2d, VecModel } from '@lifeboard/canvas-editor'
 
 export function resizeScaled(
 	shape: Extract<TLShape, { props: { scale: number } }>,
@@ -8,7 +8,7 @@ export function resizeScaled(
 		scaleY,
 		newPoint,
 	}: {
-		newPoint: Vec2dModel
+		newPoint: VecModel
 		initialBounds: Box2d
 		scaleX: number
 		scaleY: number

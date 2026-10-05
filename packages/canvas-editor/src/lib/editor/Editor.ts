@@ -1,3 +1,6 @@
+import { richTextToPlainText } from '../utils/richText'
+import type { TLShape, TLShapePartial } from './types/shape-types'
+import { getDefaultColorTheme } from '../theme/defaultColorTheme'
 import { EMPTY_ARRAY, atom, computed, transact } from '@tldraw/state'
 import { ComputedCache, RecordType } from '@tldraw/store'
 import {
@@ -5,7 +8,11 @@ import {
 	InstancePageStateRecordType,
 	PageRecordType,
 	StyleProp,
+	TLArrowBinding,
 	TLArrowShape,
+	TLBindingId,
+	TLRecord,
+	TLUserId,
 	TLAsset,
 	TLAssetId,
 	TLAssetPartial,
@@ -25,14 +32,11 @@ import {
 	TLPage,
 	TLPageId,
 	TLParentId,
-	TLShape,
 	TLShapeId,
-	TLShapePartial,
 	TLStore,
 	TLUnknownShape,
 	TLVideoAsset,
 	createShapeId,
-	getDefaultColorTheme,
 	getShapePropKeysByStyle,
 	isPageId,
 	isShape,
@@ -44,12 +48,12 @@ import {
 	assert,
 	compact,
 	dedupe,
-	deepCopy,
 	getOwnProperty,
 	hasOwnProperty,
 	sortById,
 	structuredClone,
 	warnDeprecatedGetter,
+	type IndexKey,
 } from '@tldraw/utils'
 import { EventEmitter } from 'eventemitter3'
 import { TLUser, createTLUser } from '../config/createTLUser'
@@ -100,7 +104,14 @@ import {
 } from '../utils/reordering/reordering'
 import { applyRotationToSnapshotShapes, getRotationSnapshot } from '../utils/rotation'
 import { uniqueId } from '../utils/uniqueId'
-import { arrowBindingsIndex } from './derivations/arrowBindingsIndex'
+import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
+import {
+	getArrowTerminal,
+	isArrowTerminal,
+	resolveArrowTerminalWrite,
+	type TLArrowEnd,
+	type TLArrowShapeTerminal,
+} from './shapes/shared/arrow/terminals'
 import { parentsToChildren } from './derivations/parentsToChildren'
 import { deriveShapeIdsInCurrentPage } from './derivations/shapeIdsInCurrentPage'
 import { ClickManager } from './managers/ClickManager'
@@ -216,8 +227,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const allShapeUtils = checkShapesAndAddCore(shapeUtils)
 
+		// Every shape type registered in the schema has a props migration sequence named after it.
+		const SHAPE_SEQUENCE = 'com.tldraw.shape.'
 		const shapeTypesInSchema = new Set(
-			Object.keys(store.schema.types.shape.migrations.subTypeMigrations!)
+			Object.keys(store.schema.migrations)
+				.filter((id) => id.startsWith(SHAPE_SEQUENCE))
+				.map((id) => id.slice(SHAPE_SEQUENCE.length))
 		)
 		for (const shapeUtil of allShapeUtils) {
 			if (!shapeTypesInSchema.has(shapeUtil.type)) {
@@ -279,9 +294,10 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const reparentArrow = (arrowId: TLArrowShape['id']) => {
 			const arrow = this.getShape<TLArrowShape>(arrowId)
 			if (!arrow) return
-			const { start, end } = arrow.props
-			const startShape = start.type === 'binding' ? this.getShape(start.boundShapeId) : undefined
-			const endShape = end.type === 'binding' ? this.getShape(end.boundShapeId) : undefined
+			const startBinding = this.getArrowBinding(arrow.id, 'start')
+			const endBinding = this.getArrowBinding(arrow.id, 'end')
+			const startShape = startBinding ? this.getShape(startBinding.toId) : undefined
+			const endShape = endBinding ? this.getShape(endBinding.toId) : undefined
 
 			const parentPageId = this.getAncestorPageId(arrow)
 			if (!parentPageId) return
@@ -325,7 +341,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				return
 			}
 
-			let finalIndex: string
+			let finalIndex: IndexKey
 
 			const higherSiblings = this.getSortedChildIdsForParent(highestSibling.parentId)
 				.map((id) => this.getShape(id)!)
@@ -366,18 +382,21 @@ export class Editor extends EventEmitter<TLEventMap> {
 			}
 		}
 
+		// Straight to the store, as in 2023: this runs inside other changes, not as its own undo step.
 		const unbindArrowTerminal = (arrow: TLArrowShape, handleId: 'start' | 'end') => {
 			const { x, y } = getArrowTerminalsInArrowSpace(this, arrow)[handleId]
-			this.store.put([{ ...arrow, props: { ...arrow.props, [handleId]: { type: 'point', x, y } } }])
+			const binding = this.getArrowBinding(arrow.id, handleId)
+			if (binding) this.store.remove([binding.id])
+			this.store.put([{ ...arrow, props: { ...arrow.props, [handleId]: { x, y } } }])
 		}
 
 		const arrowDidUpdate = (arrow: TLArrowShape) => {
 			// if the shape is an arrow and its bound shape is on another page
 			// or was deleted, unbind it
 			for (const handle of ['start', 'end'] as const) {
-				const terminal = arrow.props[handle]
-				if (terminal.type !== 'binding') continue
-				const boundShape = this.getShape(terminal.boundShapeId)
+				const binding = this.getArrowBinding(arrow.id, handle)
+				if (!binding) continue
+				const boundShape = this.getShape(binding.toId)
 				const isShapeInSamePageAsArrow =
 					this.getAncestorPageId(arrow) === this.getAncestorPageId(boundShape)
 				if (!boundShape || !isShapeInSamePageAsArrow) {
@@ -923,6 +942,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	/* --------------------- Arrows --------------------- */
 	// todo: move these to tldraw or replace with a bindings API
 
+	/** Whether the camera may move. See updateInstanceState. @internal */
+	private readonly _canMoveCamera = atom('canMoveCamera', true)
+
 	/** @internal */
 	@computed
 	private _getArrowBindingsIndex() {
@@ -939,6 +961,47 @@ export class Editor extends EventEmitter<TLEventMap> {
 	getArrowsBoundTo(shapeId: TLShapeId) {
 		return this._getArrowBindingsIndex().get()[shapeId] || EMPTY_ARRAY
 	}
+
+	/** @internal */
+	@computed
+	private _getArrowBindingsByArrow() {
+		return arrowBindingsByArrow(this)
+	}
+
+	/**
+	 * The binding record at one end of an arrow, if that end is attached to a shape. Connections are
+	 * records of their own now, not part of the arrow (docs/fork-parity.md D2).
+	 *
+	 * @public
+	 */
+	getArrowBinding(arrowId: TLShapeId, end: TLArrowEnd): TLArrowBinding | undefined {
+		return this._getArrowBindingsByArrow().get()[arrowId]?.[end]
+	}
+
+	/**
+	 * Writes and deletes arrow binding records as one undoable step.
+	 *
+	 * @internal
+	 */
+	private _writeArrowBindings = this.history.createCommand(
+		'writeArrowBindings',
+		(put: TLArrowBinding[], remove: TLBindingId[]) => {
+			if (!put.length && !remove.length) return null
+			// Everything this step replaces or deletes, so undo can put it back as it was.
+			const before = compact([...put.map((b) => b.id), ...remove].map((id) => this.store.get(id)))
+			return { data: { put, remove, before } }
+		},
+		{
+			do: ({ put, remove }) => {
+				this.store.remove(remove)
+				this.store.put(put)
+			},
+			undo: ({ put, before }) => {
+				this.store.remove(put.map((b) => b.id))
+				this.store.put(before)
+			},
+		}
+	)
 
 	@computed
 	private getArrowInfoCache() {
@@ -1258,9 +1321,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	updateInstanceState(
-		partial: Partial<Omit<TLInstance, 'currentPageId'>>,
+		partial: Partial<Omit<TLInstance, 'currentPageId'>> & { canMoveCamera?: boolean },
 		historyOptions?: TLCommandHistoryOptions
 	): this {
+		// `canMoveCamera` was an instance field in 2023; today's record has no such field, so the editor
+		// keeps it (docs/fork-parity.md E5 replaces it with camera options).
+		const { canMoveCamera, ...instancePartial } = partial
+		if (canMoveCamera !== undefined) this._canMoveCamera.set(canMoveCamera)
+		partial = instancePartial
 		this._updateInstanceState(partial, { ephemeral: true, squashing: true, ...historyOptions })
 
 		if (partial.isChangingStyle !== undefined) {
@@ -2386,7 +2454,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	centerOnPoint(point: VecLike, animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const { width: pw, height: ph } = this.getViewportPageBounds()
 
@@ -2434,7 +2502,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	zoomToFit(animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const ids = [...this.getCurrentPageShapeIds()]
 		if (ids.length <= 0) return this
@@ -2460,7 +2528,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	resetZoom(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 		const { x, y } = point
@@ -2487,7 +2555,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	zoomIn(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 
@@ -2525,7 +2593,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	zoomOut(point = this.getViewportScreenCenter(), animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 
@@ -2566,7 +2634,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	zoomToSelection(animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const selectionPageBounds = this.getSelectionPageBounds()
 		if (!selectionPageBounds) return this
@@ -2585,7 +2653,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	panZoomIntoView(ids: TLShapeId[], animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		if (ids.length <= 0) return this
 		const selectionBounds = Box2d.Common(compact(ids.map((id) => this.getShapePageBounds(id))))
@@ -2647,7 +2715,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	zoomToBounds(bounds: Box2d, targetZoom?: number, animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const viewportScreenBounds = this.getViewportScreenBounds()
 
@@ -2691,7 +2759,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @param animation - The animation options.
 	 */
 	pan(offset: VecLike, animation?: TLAnimationOptions): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 		const { x: cx, y: cy, z: cz } = this.getCamera()
 		this.setCamera({ x: cx + offset.x / cz, y: cy + offset.y / cz, z: cz }, animation)
 		return this
@@ -2798,7 +2866,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			speedThreshold?: number
 		}
 	): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		this.stopCameraAnimation()
 
@@ -2843,12 +2911,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 */
 	animateToUser(userId: string): this {
 		const presences = this.store.query.records('instance_presence', () => ({
-			userId: { eq: userId },
+			userId: { eq: userId as TLUserId },
 		}))
 
 		const presence = [...presences.get()]
 			.sort((a, b) => {
-				return a.lastActivityTimestamp - b.lastActivityTimestamp
+				return (a.lastActivityTimestamp ?? 0) - (b.lastActivityTimestamp ?? 0)
 			})
 			.pop()
 
@@ -2869,16 +2937,16 @@ export class Editor extends EventEmitter<TLEventMap> {
 			// Only animate the camera if the user is on the same page as us
 			const options = isOnSamePage ? { duration: 500 } : undefined
 
-			this.centerOnPoint(presence.cursor, options)
+			if (presence.cursor) this.centerOnPoint(presence.cursor, options)
 
 			// Highlight the user's cursor
 			const { highlightedUserIds } = this.getInstanceState()
-			this.updateInstanceState({ highlightedUserIds: [...highlightedUserIds, userId] })
+			this.updateInstanceState({ highlightedUserIds: [...highlightedUserIds, userId as TLUserId] })
 
 			// Unhighlight the user's cursor after a few seconds
 			setTimeout(() => {
 				const highlightedUserIds = [...this.getInstanceState().highlightedUserIds]
-				const index = highlightedUserIds.indexOf(userId)
+				const index = highlightedUserIds.indexOf(userId as TLUserId)
 				if (index < 0) return
 				highlightedUserIds.splice(index, 1)
 				this.updateInstanceState({ highlightedUserIds })
@@ -2894,7 +2962,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	animateToShape(shapeId: TLShapeId, opts: TLAnimationOptions = DEFAULT_ANIMATION_OPTIONS): this {
-		if (!this.getInstanceState().canMoveCamera) return this
+		if (!this._canMoveCamera.get()) return this
 
 		const activeArea = this.getViewportScreenBounds().clone().expandBy(-32)
 		const viewportAspectRatio = activeArea.width / activeArea.height
@@ -3124,7 +3192,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 */
 	startFollowingUser(userId: string): this {
 		const leaderPresences = this.store.query.records('instance_presence', () => ({
-			userId: { eq: userId },
+			userId: { eq: userId as TLUserId },
 		}))
 
 		const thisUserId = this.user.getId()
@@ -3141,7 +3209,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		transact(() => {
 			this.stopFollowingUser()
 
-			this.updateInstanceState({ followingUserId: userId }, { ephemeral: true })
+			this.updateInstanceState({ followingUserId: userId as TLUserId }, { ephemeral: true })
 		})
 
 		const cancel = () => {
@@ -3155,10 +3223,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 			// Stop following if we can't find the user
 			const leaderPresence = [...leaderPresences.get()]
 				.sort((a, b) => {
-					return a.lastActivityTimestamp - b.lastActivityTimestamp
+					return (a.lastActivityTimestamp ?? 0) - (b.lastActivityTimestamp ?? 0)
 				})
 				.pop()
-			if (!leaderPresence) {
+			// A presence that hasn't reported its camera or screen yet can't be followed (both are nullable now).
+			if (!leaderPresence || !leaderPresence.camera || !leaderPresence.screenBounds) {
 				this.stopFollowingUser()
 				return
 			}
@@ -4121,9 +4190,30 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/* --------------------- Shapes --------------------- */
 
+	/**
+	 * A per-shape computed cache. Today's store types its caches by its own record union, which the
+	 * fork's wider `TLShape` (see shape-types.ts) isn't part of, so the cast lives here once.
+	 *
+	 * @internal
+	 */
+	private _createShapeCache<Result>(
+		name: string,
+		derive: (shape: TLShape) => Result | undefined,
+		areRecordsEqual?: (a: TLShape, b: TLShape) => boolean
+	): ComputedCache<Result, TLShape> {
+		const cache = this.store.createComputedCache<Result, TLRecord>(
+			name,
+			(record) => derive(record as TLShape),
+			areRecordsEqual
+				? { areRecordsEqual: (a, b) => areRecordsEqual(a as TLShape, b as TLShape) }
+				: undefined
+		)
+		return cache as unknown as ComputedCache<Result, TLShape>
+	}
+
 	@computed
 	private _getShapeGeometryCache(): ComputedCache<Geometry2d, TLShape> {
-		return this.store.createComputedCache(
+		return this._createShapeCache(
 			'bounds',
 			(shape) => this.getShapeUtil(shape).getGeometry(shape),
 			(a, b) => a.props === b.props
@@ -4149,7 +4239,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** @internal */
 	@computed private _getShapeOutlineSegmentsCache(): ComputedCache<Vec2d[][], TLShape> {
-		return this.store.createComputedCache('outline-segments', (shape) => {
+		return this._createShapeCache('outline-segments', (shape) => {
 			return this.getShapeUtil(shape).getOutlineSegments(shape)
 		})
 	}
@@ -4176,7 +4266,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** @internal */
 	@computed private _getShapeHandlesCache(): ComputedCache<TLHandle[] | undefined, TLShape> {
-		return this.store.createComputedCache('handles', (shape) => {
+		return this._createShapeCache('handles', (shape) => {
 			return this.getShapeUtil(shape).getHandles?.(shape)
 		})
 	}
@@ -4225,7 +4315,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @internal
 	 */
 	@computed private _getShapePageTransformCache(): ComputedCache<Matrix2d, TLShape> {
-		return this.store.createComputedCache<Matrix2d, TLShape>('pageTransformCache', (shape) => {
+		return this._createShapeCache<Matrix2d>('pageTransformCache', (shape) => {
 			if (isPageId(shape.parentId)) {
 				return this.getShapeLocalTransform(shape)
 			}
@@ -4279,7 +4369,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** @internal */
 	@computed private _getShapePageBoundsCache(): ComputedCache<Box2d, TLShape> {
-		return this.store.createComputedCache<Box2d, TLShape>('pageBoundsCache', (shape) => {
+		return this._createShapeCache<Box2d>('pageBoundsCache', (shape) => {
 			const pageTransform = this._getShapePageTransformCache().get(shape.id)
 
 			if (!pageTransform) return new Box2d()
@@ -4315,7 +4405,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @internal
 	 */
 	@computed private _getShapeClipPathCache(): ComputedCache<string, TLShape> {
-		return this.store.createComputedCache<string, TLShape>('clipPathCache', (shape) => {
+		return this._createShapeCache<string>('clipPathCache', (shape) => {
 			const pageMask = this._getShapeMaskCache().get(shape.id)
 			if (!pageMask) return undefined
 			if (pageMask.length === 0) {
@@ -4352,7 +4442,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** @internal */
 	@computed private _getShapeMaskCache(): ComputedCache<Vec2d[], TLShape> {
-		return this.store.createComputedCache('pageMaskCache', (shape) => {
+		return this._createShapeCache('pageMaskCache', (shape) => {
 			if (isPageId(shape.parentId)) return undefined
 
 			const frameAncestors = this.getShapeAncestors(shape.id).filter((shape) =>
@@ -4673,7 +4763,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				this.isShapeOfType<TLArrowShape>(shape, 'arrow') ||
 				(this.isShapeOfType<TLGeoShape>(shape, 'geo') && shape.props.fill === 'none')
 			) {
-				if (shape.props.text.trim()) {
+				if (richTextToPlainText(shape.props.richText).trim()) {
 					// let's check whether the shape has a label and check that
 					for (const childGeometry of (geometry as Group2d).children) {
 						if (childGeometry.isLabel && childGeometry.isPointInBounds(pointInShapeSpace)) {
@@ -5154,7 +5244,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	reparentShapes(shapes: TLShapeId[] | TLShape[], parentId: TLParentId, insertIndex?: string) {
+	reparentShapes(shapes: TLShapeId[] | TLShape[], parentId: TLParentId, insertIndex?: IndexKey) {
 		const ids =
 			typeof shapes[0] === 'string' ? (shapes as TLShapeId[]) : shapes.map((s) => (s as TLShape).id)
 		if (ids.length === 0) return this
@@ -5167,7 +5257,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const parentPageRotation = parentTransform.rotation()
 
-		let indices: string[] = []
+		let indices: IndexKey[] = []
 
 		const sibs = compact(this.getSortedChildIdsForParent(parentId).map((id) => this.getShape(id)))
 
@@ -5256,12 +5346,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
-	getHighestIndexForParent(parent: TLParentId | TLPage | TLShape): string {
+	getHighestIndexForParent(parent: TLParentId | TLPage | TLShape): IndexKey {
 		const parentId = typeof parent === 'string' ? parent : parent.id
 		const children = this._parentIdsToChildIds.get()[parentId]
 
 		if (!children || children.length === 0) {
-			return 'a1'
+			return 'a1' as IndexKey
 		}
 		const shape = this.getShape(children[children.length - 1])!
 		return getIndexAbove(shape.index)
@@ -5585,58 +5675,36 @@ export class Editor extends EventEmitter<TLEventMap> {
 					? getIndexBetween(shape.index, siblingAbove.index)
 					: getIndexAbove(shape.index)
 
-				let newShape: TLShape = deepCopy(shape)
+				let newShape: TLShape = structuredClone(shape)
 
 				if (
 					this.isShapeOfType<TLArrowShape>(shape, 'arrow') &&
 					this.isShapeOfType<TLArrowShape>(newShape, 'arrow')
 				) {
 					const info = this.getArrowInfo(shape)
-					let newStartShapeId: TLShapeId | undefined = undefined
-					let newEndShapeId: TLShapeId | undefined = undefined
-
-					if (shape.props.start.type === 'binding') {
-						newStartShapeId = idsMap.get(shape.props.start.boundShapeId)
-
-						if (!newStartShapeId) {
-							if (info?.isValid) {
-								const { x, y } = info.start.point
-								newShape.props.start = {
-									type: 'point',
-									x,
-									y,
-								}
-							} else {
-								const { start } = getArrowTerminalsInArrowSpace(this, shape)
-								newShape.props.start = {
-									type: 'point',
-									x: start.x,
-									y: start.y,
-								}
-							}
+					// An end stays attached only if the shape it is attached to is duplicated too, and then
+					// to the copy. Otherwise it is pinned where it is. Written as 2023-style terminals:
+					// createShapes turns them into points and binding records.
+					const ends: Partial<Record<TLArrowEnd, TLArrowShapeTerminal>> = {}
+					for (const end of ['start', 'end'] as const) {
+						const terminal = getArrowTerminal(this, shape, end)
+						if (terminal.type !== 'binding') continue
+						const copyId = idsMap.get(terminal.boundShapeId)
+						if (copyId) {
+							ends[end] = { ...terminal, boundShapeId: copyId }
+						} else {
+							const { x, y } = info?.isValid ? info[end].point : getArrowTerminalsInArrowSpace(this, shape)[end]
+							ends[end] = { type: 'point', x, y }
 						}
 					}
-
-					if (shape.props.end.type === 'binding') {
-						newEndShapeId = idsMap.get(shape.props.end.boundShapeId)
-						if (!newEndShapeId) {
-							if (info?.isValid) {
-								const { x, y } = info.end.point
-								newShape.props.end = {
-									type: 'point',
-									x,
-									y,
-								}
-							} else {
-								const { end } = getArrowTerminalsInArrowSpace(this, shape)
-								newShape.props.start = {
-									type: 'point',
-									x: end.x,
-									y: end.y,
-								}
-							}
-						}
+					const pinned = (end: TLArrowEnd) => {
+						const terminal = ends[end]
+						return terminal?.type === 'point'
+							? { x: terminal.x, y: terminal.y }
+							: (newShape as TLArrowShape).props[end]
 					}
+					newShape.props.start = pinned('start')
+					newShape.props.end = pinned('end')
 
 					const infoAfter = getIsArrowStraight(newShape)
 						? getStraightArrowInfo(this, newShape)
@@ -5653,12 +5721,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 						}
 					}
 
-					if (newShape.props.start.type === 'binding' && newStartShapeId) {
-						newShape.props.start.boundShapeId = newStartShapeId
-					}
-
-					if (newShape.props.end.type === 'binding' && newEndShapeId) {
-						newShape.props.end.boundShapeId = newEndShapeId
+					for (const end of ['start', 'end'] as const) {
+						const terminal = ends[end]
+						if (terminal?.type === 'binding') {
+							;(newShape.props as unknown as Record<string, unknown>)[end] = terminal
+						}
 					}
 				}
 
@@ -6019,7 +6086,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					if (!shape) return false
 
 					if (this.isShapeOfType<TLArrowShape>(shape, 'arrow')) {
-						if (shape.props.start.type === 'binding' || shape.props.end.type === 'binding') {
+						if (this.getArrowBinding(shape.id, 'start') || this.getArrowBinding(shape.id, 'end')) {
 							return false
 						}
 					}
@@ -6165,7 +6232,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					if (!shape) return false
 
 					if (this.isShapeOfType<TLArrowShape>(shape, 'arrow')) {
-						if (shape.props.start.type === 'binding' || shape.props.end.type === 'binding') {
+						if (this.getArrowBinding(shape.id, 'start') || this.getArrowBinding(shape.id, 'end')) {
 							return false
 						}
 					}
@@ -6867,7 +6934,20 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (!Array.isArray(shapes)) {
 			throw Error('Editor.createShapes: must provide an array of shapes or shape partials')
 		}
-		this._createShapes(shapes)
+		// An arrow may arrive with 2023-style ends (`{ type: 'binding', … }`): store points, and the
+		// bindings beside it. Ids are settled here so the bindings can name their arrow.
+		const put: TLArrowBinding[] = []
+		const remove: TLBindingId[] = []
+		const translated = shapes.map((shape) => {
+			if (shape.type !== 'arrow' || !shape.props) return shape
+			const id = shape.id ?? createShapeId()
+			const write = resolveArrowTerminalWrite(this, id, undefined, shape.props as Record<string, unknown>)
+			put.push(...write.put)
+			remove.push(...write.remove)
+			return { ...shape, id, props: write.props } as typeof shape
+		})
+		this._createShapes(translated)
+		this._writeArrowBindings(put, remove)
 		return this
 	}
 
@@ -6981,7 +7061,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				// Get the highest index among the parents of each of the
 				// the shapes being created; we'll increment from there.
 
-				const parentIndices = new Map<string, string>()
+				const parentIndices = new Map<string, IndexKey>()
 
 				const shapeRecordsToCreate: TLShape[] = []
 
@@ -7054,7 +7134,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					}
 				})
 
-				this.store.put(shapeRecordsToCreate)
+				this.store.put(shapeRecordsToCreate as TLRecord[])
 			},
 			undo: ({ partials }) => {
 				this.store.remove(partials.map((p) => p.id))
@@ -7369,7 +7449,20 @@ export class Editor extends EventEmitter<TLEventMap> {
 			return true
 		})
 
+		// As in createShapes: 2023-style arrow ends become points plus binding records.
+		const put: TLArrowBinding[] = []
+		const remove: TLBindingId[] = []
+		compactedPartials = compactedPartials.map((partial) => {
+			if (partial.type !== 'arrow' || !partial.props) return partial
+			const previous = this.getShape<TLArrowShape>(partial.id)?.props
+			const write = resolveArrowTerminalWrite(this, partial.id, previous, partial.props as Record<string, unknown>)
+			put.push(...write.put)
+			remove.push(...write.remove)
+			return { ...partial, props: write.props } as typeof partial
+		})
+
 		this._updateShapes(compactedPartials, historyOptions)
+		this._writeArrowBindings(put, remove)
 		return this
 	}
 
@@ -7460,10 +7553,10 @@ export class Editor extends EventEmitter<TLEventMap> {
 						result[i] = next
 					}
 				}
-				this.store.put(result)
+				this.store.put(result as TLRecord[])
 			},
 			undo: ({ snapshots }) => {
-				this.store.put(Object.values(snapshots))
+				this.store.put(Object.values(snapshots) as TLRecord[])
 			},
 			squash(prevData, nextData) {
 				return {
@@ -7570,7 +7663,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 				}))
 			},
 			undo: ({ snapshots, prevSelectedShapeIds }) => {
-				this.store.put(snapshots)
+				this.store.put(snapshots as TLRecord[])
 				this.store.update(this.getCurrentPageState().id, (state) => ({
 					...state,
 					selectedShapeIds: prevSelectedShapeIds,
@@ -8042,55 +8135,20 @@ export class Editor extends EventEmitter<TLEventMap> {
 			shape = structuredClone(shape) as typeof shape
 
 			if (this.isShapeOfType<TLArrowShape>(shape, 'arrow')) {
-				const startBindingId =
-					shape.props.start.type === 'binding' ? shape.props.start.boundShapeId : undefined
-
-				const endBindingId =
-					shape.props.end.type === 'binding' ? shape.props.end.boundShapeId : undefined
-
+				// Copied content carries 2023-style terminals in the arrow's props (putContent remaps their
+				// ids, and createShapes turns them back into bindings). An end stays attached only if the
+				// shape it is attached to is copied too; otherwise it is pinned where it appears.
 				const info = this.getArrowInfo(shape)
-
-				if (shape.props.start.type === 'binding') {
-					if (!shapesForContent.some((s) => s.id === startBindingId)) {
-						// Uh oh, the arrow's bound-to shape isn't among the shapes
-						// that we're getting the content for. We should try to adjust
-						// the arrow so that it appears in the place it would be
-						if (info?.isValid) {
-							const { x, y } = info.start.point
-							shape.props.start = {
-								type: 'point',
-								x,
-								y,
-							}
-						} else {
-							const { start } = getArrowTerminalsInArrowSpace(this, shape)
-							shape.props.start = {
-								type: 'point',
-								x: start.x,
-								y: start.y,
-							}
-						}
+				const copiedIds = new Set(shapesForContent.map((s) => s.id))
+				for (const end of ['start', 'end'] as const) {
+					const terminal = getArrowTerminal(this, shape, end)
+					if (terminal.type !== 'binding') continue
+					if (copiedIds.has(terminal.boundShapeId)) {
+						;(shape.props as unknown as Record<string, unknown>)[end] = terminal
+						continue
 					}
-				}
-
-				if (shape.props.end.type === 'binding') {
-					if (!shapesForContent.some((s) => s.id === endBindingId)) {
-						if (info?.isValid) {
-							const { x, y } = info.end.point
-							shape.props.end = {
-								type: 'point',
-								x,
-								y,
-							}
-						} else {
-							const { end } = getArrowTerminalsInArrowSpace(this, shape)
-							shape.props.end = {
-								type: 'point',
-								x: end.x,
-								y: end.y,
-							}
-						}
-					}
+					const { x, y } = info?.isValid ? info[end].point : getArrowTerminalsInArrowSpace(this, shape)[end]
+					shape.props[end] = { x, y }
 				}
 
 				const infoAfter = getIsArrowStraight(shape)
@@ -8264,13 +8322,13 @@ export class Editor extends EventEmitter<TLEventMap> {
 			let newShape: TLShape
 
 			if (preserveIds) {
-				newShape = deepCopy(shape)
+				newShape = structuredClone(shape)
 				idMap.set(shape.id, shape.id)
 			} else {
 				const id = idMap.get(shape.id)!
 
 				// Create the new shape (new except for the id)
-				newShape = deepCopy({ ...shape, id })
+				newShape = structuredClone({ ...shape, id })
 			}
 
 			if (rootShapeIds.includes(shape.id)) {
@@ -8292,18 +8350,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 			}
 
 			if (this.isShapeOfType<TLArrowShape>(newShape, 'arrow')) {
-				if (newShape.props.start.type === 'binding') {
-					const mappedId = idMap.get(newShape.props.start.boundShapeId)
-					newShape.props.start = mappedId
-						? { ...newShape.props.start, boundShapeId: mappedId }
-						: // this shouldn't happen, if you copy an arrow but not it's bound shape it should
-						  // convert the binding to a point at the time of copying
-						  { type: 'point', x: 0, y: 0 }
-				}
-				if (newShape.props.end.type === 'binding') {
-					const mappedId = idMap.get(newShape.props.end.boundShapeId)
-					newShape.props.end = mappedId
-						? { ...newShape.props.end, boundShapeId: mappedId }
+				// Copied arrows carry 2023-style terminals (see getContent): point them at the pasted
+				// shapes. createShapes turns the result into points and binding records.
+				const props = newShape.props as unknown as Record<string, unknown>
+				for (const end of ['start', 'end'] as const) {
+					const terminal = props[end]
+					if (!isArrowTerminal(terminal) || terminal.type !== 'binding') continue
+					const mappedId = idMap.get(terminal.boundShapeId)
+					props[end] = mappedId
+						? { ...terminal, boundShapeId: mappedId }
 						: // this shouldn't happen, if you copy an arrow but not it's bound shape it should
 						  // convert the binding to a point at the time of copying
 						  { type: 'point', x: 0, y: 0 }
@@ -8386,7 +8441,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		for (let i = 0; i < newShapes.length; i++) {
 			const shape = newShapes[i]
-			const result = this.store.schema.migratePersistedRecord(shape, content.schema)
+			const result = this.store.schema.migratePersistedRecord(shape as TLRecord, content.schema)
 			if (result.type === 'success') {
 				newShapes[i] = result.value as TLShape
 			} else {
@@ -9006,7 +9061,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 			switch (type) {
 				case 'pinch': {
-					if (!this.getInstanceState().canMoveCamera) return
+					if (!this._canMoveCamera.get()) return
 					this._updateInputsFromEvent(info)
 
 					switch (info.name) {
@@ -9070,7 +9125,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					}
 				}
 				case 'wheel': {
-					if (!this.getInstanceState().canMoveCamera) return
+					if (!this._canMoveCamera.get()) return
 
 					this._updateInputsFromEvent(info)
 

@@ -24,7 +24,6 @@ import {
 	Vec2d,
 	arrowShapeMigrations,
 	arrowShapeProps,
-	deepCopy,
 	getArrowTerminalsInArrowSpace,
 	getArrowheadPathForType,
 	getCurvedArrowHandlePath,
@@ -224,7 +223,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		// Start or end, pointing the arrow...
 
-		const next = deepCopy(shape) as TLArrowShape
+		const next = structuredClone(shape) as TLArrowShape
 
 		const pageTransform = this.editor.getShapePageTransform(next.id)!
 		const pointInPageSpace = pageTransform.applyToPoint(handle)
@@ -381,7 +380,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		const terminals = getArrowTerminalsInArrowSpace(this.editor, shape)
 
-		const { start, end } = deepCopy<TLArrowShape['props']>(shape.props)
+		const { start, end } = structuredClone<TLArrowShape['props']>(shape.props)
 		let { bend } = shape.props
 
 		// Rescale start handle if it's not bound to a shape

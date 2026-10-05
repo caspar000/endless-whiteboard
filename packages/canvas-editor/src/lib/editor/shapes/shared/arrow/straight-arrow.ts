@@ -8,6 +8,7 @@ import {
 } from '../../../../primitives/intersect'
 import { Editor } from '../../../Editor'
 import { TLArrowInfo } from './arrow-types'
+import { getArrowTerminal } from './terminals'
 import {
 	BOUND_ARROW_OFFSET,
 	BoundShapeInfo,
@@ -50,8 +51,8 @@ export function getStraightArrowInfo(editor: Editor, shape: TLArrowShape): TLArr
 
 	// Update the arrowhead points using intersections with the bound shapes, if any.
 
-	const startShapeInfo = getBoundShapeInfoForTerminal(editor, start)
-	const endShapeInfo = getBoundShapeInfoForTerminal(editor, end)
+	const startShapeInfo = getBoundShapeInfoForTerminal(editor, getArrowTerminal(editor, shape, 'start'))
+	const endShapeInfo = getBoundShapeInfoForTerminal(editor, getArrowTerminal(editor, shape, 'end'))
 
 	const arrowPageTransform = editor.getShapePageTransform(shape)!
 

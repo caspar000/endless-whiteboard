@@ -1,3 +1,4 @@
+/// <reference path="./lib/es2025-base64.d.ts" />
 // Important! don't move this tlschema re-export to lib/index.ts, doing so causes esbuild to produce
 // incorrect output. https://github.com/evanw/esbuild/issues/1737
 
@@ -6,21 +7,40 @@ export {
 	atom,
 	computed,
 	react,
-	track,
 	transact,
 	transaction,
-	useComputed,
-	useQuickReactor,
-	useReactor,
-	useValue,
 	whyAmIRunning,
 	type Atom,
 	type Signal,
 } from '@tldraw/state'
+export {
+	DefaultColorThemePalette,
+	getDefaultColorTheme,
+	type TLDefaultColorTheme,
+	type TLDefaultColorThemeColor,
+} from './lib/theme/defaultColorTheme'
+export {
+	EMBED_DEFINITIONS,
+	embedShapePermissionDefaults,
+	type EmbedDefinition,
+	type TLEmbedShapePermissions,
+} from './lib/embeds/embedDefinitions'
+export { richTextToPlainText } from './lib/utils/richText'
+export {
+	getArrowTerminal,
+	getArrowTerminals,
+	isArrowTerminal,
+	type TLArrowEnd,
+	type TLArrowShapeTerminal,
+} from './lib/editor/shapes/shared/arrow/terminals'
+// The React bindings moved to their own package after 2023.
+export { track, useComputed, useQuickReactor, useReactor, useValue } from '@tldraw/state-react'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/store'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/tlschema'
+// Shadows the schema package's narrower versions: see shape-types.ts.
+export type { TLShape, TLShapePartial } from './lib/editor/types/shape-types'
 // eslint-disable-next-line local/no-export-star
 export * from '@tldraw/utils'
 // eslint-disable-next-line local/no-export-star

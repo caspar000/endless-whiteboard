@@ -1,3 +1,4 @@
+import type { IndexKey } from '@tldraw/utils'
 import { vi } from 'vitest'
 import { PageRecordType } from '@tldraw/tlschema'
 import { promiseWithResolve } from '@tldraw/utils'
@@ -70,7 +71,8 @@ test('the client connects on instantiation, announcing its schema', async () => 
 	expect(channel.postMessage).toHaveBeenCalledTimes(1)
 	const [msg] = channel.postMessage.mock.calls[0]
 
-	expect(msg).toMatchObject({ type: 'announce', schema: { recordVersions: {} } })
+	// Today's schemas are a version per migration sequence (2023's had `recordVersions`).
+	expect(msg).toMatchObject({ type: 'announce', schema: { schemaVersion: 2, sequences: expect.any(Object) } })
 })
 
 test('when a client receives an announce with a newer schema version it reloads itself', async () => {
@@ -81,9 +83,10 @@ test('when a client receives an announce with a newer schema version it reloads 
 	channel.onmessage?.({
 		data: {
 			type: 'announce',
+			// Newer: a migration sequence this client has never heard of.
 			schema: {
 				...client.serializedSchema,
-				schemaVersion: client.serializedSchema.schemaVersion + 1,
+				sequences: { ...(client.serializedSchema as { sequences: object }).sequences, 'com.example.newer': 1 },
 			},
 		},
 	} as any)
@@ -99,9 +102,10 @@ test('when a client receives an announce with a newer schema version shortly aft
 	channel.onmessage?.({
 		data: {
 			type: 'announce',
+			// Newer: a migration sequence this client has never heard of.
 			schema: {
 				...client.serializedSchema,
-				schemaVersion: client.serializedSchema.schemaVersion + 1,
+				sequences: { ...(client.serializedSchema as { sequences: object }).sequences, 'com.example.newer': 1 },
 			},
 		},
 	} as any)
@@ -112,12 +116,12 @@ test('when a client receives an announce with a newer schema version shortly aft
 test('the first db write after a client connects is a full db overwrite', async () => {
 	const { client } = testClient()
 	await tick()
-	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' })])
+	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).not.toHaveBeenCalled()
 
-	client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' })])
+	client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' as IndexKey })])
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
@@ -126,12 +130,12 @@ test('the first db write after a client connects is a full db overwrite', async 
 test('it clears the diff queue after every write', async () => {
 	const { client } = testClient()
 	await tick()
-	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' })])
+	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 	await tick()
 	// @ts-expect-error
 	expect(client.diffQueue.length).toBe(0)
 
-	client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' })])
+	client.store.put([PageRecordType.create({ name: 'test2', index: 'a1' as IndexKey })])
 	await tick()
 	// @ts-expect-error
 	expect(client.diffQueue.length).toBe(0)
@@ -143,7 +147,7 @@ test('writes that come in during a persist operation will get persisted afterwar
 
 	const { client } = testClient()
 	await tick()
-	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' })])
+	client.store.put([PageRecordType.create({ name: 'test', index: 'a0' as IndexKey })])
 	await tick()
 
 	// we should have called into idb but not resolved the promise yet
@@ -151,7 +155,7 @@ test('writes that come in during a persist operation will get persisted afterwar
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(0)
 
 	// if another change comes in, loads of time can pass, but nothing else should get called
-	client.store.put([PageRecordType.create({ name: 'test', index: 'a2' })])
+	client.store.put([PageRecordType.create({ name: 'test', index: 'a2' as IndexKey })])
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(0)

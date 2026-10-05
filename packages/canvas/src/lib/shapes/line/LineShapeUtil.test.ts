@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import { TLGeoShape, TLLineShape, createShapeId, deepCopy } from '@lifeboard/canvas-editor'
+import { TLGeoShape, TLLineShape, createShapeId } from '@lifeboard/canvas-editor'
 import { TestEditor } from '../../../test/TestEditor'
 
 vi.mock('nanoid', () => {
@@ -116,7 +116,7 @@ describe('Misc', () => {
 	it('preserves handle positions on spline type change', () => {
 		editor.select(id)
 		const shape = editor.getShape<TLLineShape>(id)!
-		const prevHandles = deepCopy(shape.props.handles)
+		const prevHandles = structuredClone(shape.props.handles)
 
 		editor.updateShapes([
 			{

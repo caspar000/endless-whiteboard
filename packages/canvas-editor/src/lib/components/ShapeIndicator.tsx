@@ -1,5 +1,8 @@
-import { useStateTracking, useValue } from '@tldraw/state'
-import { TLShape, TLShapeId } from '@tldraw/tlschema'
+import type { TLShape } from '../editor/types/shape-types'
+import { useStateTracking, useValue } from '@tldraw/state-react'
+import {
+	TLShapeId,
+} from '@tldraw/tlschema'
 import classNames from 'classnames'
 import * as React from 'react'
 import { useEditor } from '../..'

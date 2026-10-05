@@ -1,6 +1,9 @@
+import { atom } from '@tldraw/state'
 import { HistoryEntry, SerializedStore, Store, StoreSchema } from '@tldraw/store'
 import {
-	SchemaShapeInfo,
+	TLAssetStore,
+	TLUserStore,
+	SchemaPropsInfo,
 	TLRecord,
 	TLStore,
 	TLStoreProps,
@@ -34,24 +37,59 @@ export function createTLStore({ initialData, defaultName = '', ...rest }: TLStor
 			? // we have a schema
 			  rest.schema
 			: // we need a schema
-			  createTLSchema({
-					shapes: currentPageShapesToShapeMap(
+			  schemaForShapes(
+					currentPageShapesToShapeMap(
 						checkShapesAndAddCore('shapeUtils' in rest && rest.shapeUtils ? rest.shapeUtils : [])
-					),
-			  })
+					)
+			  )
 
 	return new Store({
 		schema,
 		initialData,
 		props: {
 			defaultName,
+			// Today's store asks for these; the 2023 editor manages assets and users itself.
+			assets: inlineAssetStore,
+			users: noUsers,
+			onMount: () => {},
 		},
 	})
 }
 
+/**
+ * Assets as the 2023 editor stores them: the asset record's own `src`, inlined as a data URL when a
+ * file is uploaded. Apps that keep files elsewhere (Lifeboard does) replace this.
+ */
+const inlineAssetStore: Required<TLAssetStore> = {
+	upload: async (_asset, file) => ({
+		src: await new Promise<string>((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onload = () => resolve(reader.result as string)
+			reader.onerror = () => reject(reader.error)
+			reader.readAsDataURL(file)
+		}),
+	}),
+	resolve: (asset) => asset.props.src,
+	remove: async () => {},
+}
+
+/** No user records: the 2023 editor keeps the current user in its own preferences. */
+const noUsers: Required<TLUserStore> = {
+	currentUser: atom('currentUser', null),
+	resolve: () => atom('user', null),
+}
+
+/**
+ * Today's schema always includes the arrow binding, whose migrations depend on the arrow shape's, so
+ * a store without arrows must leave it out.
+ */
+export function schemaForShapes(shapes: Record<string, SchemaPropsInfo>) {
+	return createTLSchema({ shapes, ...(shapes.arrow ? {} : { bindings: {} }) })
+}
+
 function currentPageShapesToShapeMap(shapeUtils: TLShapeUtilConstructor<TLUnknownShape>[]) {
 	return Object.fromEntries(
-		shapeUtils.map((s): [string, SchemaShapeInfo] => [
+		shapeUtils.map((s): [string, SchemaPropsInfo] => [
 			s.type,
 			{
 				props: s.props,

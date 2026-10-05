@@ -2,7 +2,7 @@ import {
 	PI,
 	TLDefaultSizeStyle,
 	Vec2d,
-	Vec2dModel,
+	VecModel,
 	clockwiseAngleDist,
 	getPointOnCircle,
 	rng,
@@ -19,12 +19,12 @@ function getPillCircumference(width: number, height: number) {
 type PillSection =
 	| {
 			type: 'straight'
-			start: Vec2dModel
-			delta: Vec2dModel
+			start: VecModel
+			delta: VecModel
 	  }
 	| {
 			type: 'arc'
-			center: Vec2dModel
+			center: VecModel
 			startAngle: number
 	  }
 
@@ -360,9 +360,9 @@ export function inkyCloudSvgPath(
 }
 
 export function pointsOnArc(
-	startPoint: Vec2dModel,
-	endPoint: Vec2dModel,
-	center: Vec2dModel | null,
+	startPoint: VecModel,
+	endPoint: VecModel,
+	center: VecModel | null,
 	radius: number,
 	numPoints: number
 ): Vec2d[] {

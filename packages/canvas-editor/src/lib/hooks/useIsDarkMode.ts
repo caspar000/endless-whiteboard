@@ -1,4 +1,4 @@
-import { useValue } from '@tldraw/state'
+import { useValue } from '@tldraw/state-react'
 import { useEditor } from './useEditor'
 
 /** @public */

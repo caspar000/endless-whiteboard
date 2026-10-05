@@ -1,3 +1,4 @@
+import type { TLShape } from '../types/shape-types'
 import { computed, isUninitialized, RESET_VALUE, withDiff } from '@tldraw/state'
 import { IncrementalSetConstructor } from '@tldraw/store'
 import {
@@ -5,7 +6,6 @@ import {
 	isShape,
 	isShapeId,
 	TLPageId,
-	TLShape,
 	TLShapeId,
 	TLStore,
 } from '@tldraw/tlschema'

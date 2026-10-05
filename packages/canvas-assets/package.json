@@ -16,6 +16,6 @@
 		"./embed-icons/*": "./embed-icons/*"
 	},
 	"dependencies": {
-		"@tldraw/utils": "2.0.0-alpha.19"
+		"@tldraw/utils": "5.5.2"
 	}
 }

@@ -4,7 +4,7 @@ import {
 	TLResizeHandle,
 	TLResizeMode,
 	Vec2d,
-	Vec2dModel,
+	VecModel,
 } from '@lifeboard/canvas-editor'
 
 /** @public */
@@ -19,7 +19,7 @@ export type ResizeBoxOptions = Partial<{
 export function resizeBox(
 	shape: TLBaseBoxShape,
 	info: {
-		newPoint: Vec2dModel
+		newPoint: VecModel
 		handle: TLResizeHandle
 		mode: TLResizeMode
 		scaleX: number

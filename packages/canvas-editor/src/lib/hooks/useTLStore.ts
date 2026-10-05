@@ -12,7 +12,7 @@ type UseTLStoreOptions = TLStoreOptions & {
 function createStore(opts: UseTLStoreOptions) {
 	const store = createTLStore(opts)
 	if (opts.snapshot) {
-		store.loadSnapshot(opts.snapshot)
+		store.loadStoreSnapshot(opts.snapshot)
 	}
 	return { store, opts }
 }

@@ -10,7 +10,6 @@ import {
 	TLOnResizeHandler,
 	Vec2d,
 	WeakMapCache,
-	deepCopy,
 	getDefaultColorTheme,
 	getIndexBetween,
 	lineShapeMigrations,
@@ -115,7 +114,7 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	override onResize: TLOnResizeHandler<TLLineShape> = (shape, info) => {
 		const { scaleX, scaleY } = info
 
-		const handles = deepCopy(shape.props.handles)
+		const handles = structuredClone(shape.props.handles)
 
 		Object.values(shape.props.handles).forEach(({ id, x, y }) => {
 			handles[id].x = x * scaleX
@@ -130,7 +129,7 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	}
 
 	override onHandleChange: TLOnHandleChangeHandler<TLLineShape> = (shape, { handle }) => {
-		const next = deepCopy(shape)
+		const next = structuredClone(shape)
 
 		switch (handle.id) {
 			case 'start':

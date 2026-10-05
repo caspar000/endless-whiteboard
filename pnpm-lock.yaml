@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  '@tldraw/utils@2.0.0-alpha.19': aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d
-
 importers:
 
   .: {}
@@ -309,6 +306,24 @@ importers:
       '@radix-ui/react-toast':
         specifier: ^1.1.1
         version: 1.2.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tldraw/state':
+        specifier: 5.5.2
+        version: 5.5.2
+      '@tldraw/state-react':
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tldraw/store':
+        specifier: 5.5.2
+        version: 5.5.2(react@19.2.8)
+      '@tldraw/tlschema':
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tldraw/utils':
+        specifier: 5.5.2
+        version: 5.5.2
+      '@tldraw/validate':
+        specifier: 5.5.2
+        version: 5.5.2
       canvas-size:
         specifier: ^1.2.6
         version: 1.2.6
@@ -389,26 +404,29 @@ importers:
   packages/canvas-assets:
     dependencies:
       '@tldraw/utils':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)
+        specifier: 5.5.2
+        version: 5.5.2
 
   packages/canvas-editor:
     dependencies:
       '@tldraw/state':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19(react@19.2.8)
+        specifier: 5.5.2
+        version: 5.5.2
+      '@tldraw/state-react':
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tldraw/store':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19(react@19.2.8)
+        specifier: 5.5.2
+        version: 5.5.2(react@19.2.8)
       '@tldraw/tlschema':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19(react@19.2.8)
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tldraw/utils':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)
+        specifier: 5.5.2
+        version: 5.5.2
       '@tldraw/validate':
-        specifier: 2.0.0-alpha.19
-        version: 2.0.0-alpha.19
+        specifier: 5.5.2
+        version: 5.5.2
       '@types/core-js':
         specifier: ^2.5.5
         version: 2.5.8
@@ -461,6 +479,9 @@ importers:
       '@types/lodash.isequal':
         specifier: ^4.5.8
         version: 4.5.8
+      '@types/lodash.isequalwith':
+        specifier: ^4.4.9
+        version: 4.4.9
       '@types/lodash.throttle':
         specifier: ^4.1.9
         version: 4.1.9
@@ -3106,17 +3127,9 @@ packages:
       react: ^18.2.0 || ^19.2.1
       react-dom: ^18.2.0 || ^19.2.1
 
-  '@tldraw/state@2.0.0-alpha.19':
-    resolution: {integrity: sha512-rD1UbAuc346aGmE0Z0YW84GN0Xe2clRtF6TQhdzhKUtcwWyapT2TcNS0jqNvYnlHFWyAU61ZbPR2i+LSLsSJGQ==}
-    peerDependencies:
-      react: ^18
-
   '@tldraw/state@5.5.2':
     resolution: {integrity: sha512-e5c01kKlHhmNHALRH19gTlaJihJac8m/TrMkyqe3dajQMu1QQsuVhIbD9tIY7E2qbQ1s7rp+9dPP2gDkpG6CaQ==}
     engines: {node: '>=22.12.0'}
-
-  '@tldraw/store@2.0.0-alpha.19':
-    resolution: {integrity: sha512-NuaaV81sWflxNiB62LT6FK8yyDvocCMbTCWvqsoicn8X7N0pUijOtWCcxXUxQhaRwt+F5D68KRrZYG5v1MzfGA==}
 
   '@tldraw/store@5.5.2':
     resolution: {integrity: sha512-PoULEs90/BqvwtfcVnajI7/7TesxGtz+UmXjWdFLCYGy7Y86MmIBLYobT6WwQ6jv3dGVQy4kcRREtADHY6iFpA==}
@@ -3138,9 +3151,6 @@ packages:
       react: ^18.2.0 || ^19.2.1
       react-dom: ^18.2.0 || ^19.2.1
 
-  '@tldraw/tlschema@2.0.0-alpha.19':
-    resolution: {integrity: sha512-TSsFMv6r4oNN6aRxPrAjgo07O2oTu343Ts0NI2JJMG7/sxucDZAmWElKOpdIP+PkdUqQ+He1nasCHFWjT+BXsQ==}
-
   '@tldraw/tlschema@5.5.2':
     resolution: {integrity: sha512-9CNN1gyuMPP/Bhy4z0c/sfX21r9beFIzMjxckofJqOJMUqy5sIoERJSYMBa3rJj1EjeSbM7gicR71bZ+CexHYA==}
     engines: {node: '>=22.12.0'}
@@ -3148,15 +3158,9 @@ packages:
       react: ^18.2.0 || ^19.2.1
       react-dom: ^18.2.0 || ^19.2.1
 
-  '@tldraw/utils@2.0.0-alpha.19':
-    resolution: {integrity: sha512-3GjBAcm9xqr0gdHrk2rcyoZlOjxORt7q2e93qC2S0zgH/xLmcMaY/so31kkbb8cW3Zm6C/hjtdwF54msea2q3g==}
-
   '@tldraw/utils@5.5.2':
     resolution: {integrity: sha512-8fEom5kUIooSHoxgGKhR5WJoPK9ouV/xG99nwID+is7dFIxB2I7wv5ZjqO4hXFDPOBWHE6AM5aV3Ml2kjQMwsA==}
     engines: {node: '>=22.12.0'}
-
-  '@tldraw/validate@2.0.0-alpha.19':
-    resolution: {integrity: sha512-A5az5hUK5NSF7UCVXTJnfpB8mdWTDzt4TFtHHC6rB+4XC22vDyk6rWT5CT0QgWgsX3DS43J1jHtYg3SnlVJ0Bg==}
 
   '@tldraw/validate@5.5.2':
     resolution: {integrity: sha512-+VbUevzE17Bmx0nbAJoTCZlpQKTC7jkgSr+2E/Zna7/9yrRCf2QYfYbudUBRmrbul6F0k1s69XJ1C/rr9TSNfg==}
@@ -3225,6 +3229,9 @@ packages:
 
   '@types/lodash.isequal@4.5.8':
     resolution: {integrity: sha512-uput6pg4E/tj2LGxCZo9+y27JNyB2OZuuI/T5F+ylVDYuqICLG2/ktjxx0v6GvVntAf8TvEzeQLcV0ffRirXuA==}
+
+  '@types/lodash.isequalwith@4.4.9':
+    resolution: {integrity: sha512-uLXidHwVTfYeaHRipKT/pjl10PFTGM0rHLyfANSSfEJvwtFmRACmQb2y6i8eZbcOCtX+BSxOKa+JzzCTxmQ32g==}
 
   '@types/lodash.throttle@4.1.9':
     resolution: {integrity: sha512-PCPVfpfueguWZQB7pJQK890F2scYKoDUL3iM522AptHWn7d5NQmeS/LTEHIcLr5PaTzl3dK2Z0xSUHHTHwaL5g==}
@@ -8413,22 +8420,9 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@tldraw/state@2.0.0-alpha.19(react@19.2.8)':
-    dependencies:
-      react: 19.2.8
-
   '@tldraw/state@5.5.2':
     dependencies:
       '@tldraw/utils': 5.5.2
-
-  '@tldraw/store@2.0.0-alpha.19(react@19.2.8)':
-    dependencies:
-      '@tldraw/state': 2.0.0-alpha.19(react@19.2.8)
-      '@tldraw/utils': 2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)
-      lodash.isequal: 4.5.0
-      nanoid: 4.0.2
-    transitivePeerDependencies:
-      - react
 
   '@tldraw/store@5.5.2(react@19.2.8)':
     dependencies:
@@ -8468,16 +8462,6 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@tldraw/tlschema@2.0.0-alpha.19(react@19.2.8)':
-    dependencies:
-      '@tldraw/state': 2.0.0-alpha.19(react@19.2.8)
-      '@tldraw/store': 2.0.0-alpha.19(react@19.2.8)
-      '@tldraw/utils': 2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)
-      '@tldraw/validate': 2.0.0-alpha.19
-      nanoid: 4.0.2
-    transitivePeerDependencies:
-      - react
-
   '@tldraw/tlschema@5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@tldraw/state': 5.5.2
@@ -8487,18 +8471,12 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@tldraw/utils@2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)': {}
-
   '@tldraw/utils@5.5.2':
     dependencies:
       lodash.isequal: 4.5.0
       lodash.isequalwith: 4.4.0
       lodash.throttle: 4.1.1
       lodash.uniq: 4.5.0
-
-  '@tldraw/validate@2.0.0-alpha.19':
-    dependencies:
-      '@tldraw/utils': 2.0.0-alpha.19(patch_hash=aa08eda8f40c939ab35744b4becf48fb3ab299397c8721c362ca337ec4c83b0d)
 
   '@tldraw/validate@5.5.2':
     dependencies:
@@ -8582,6 +8560,10 @@ snapshots:
       pretty-format: 29.7.0
 
   '@types/lodash.isequal@4.5.8':
+    dependencies:
+      '@types/lodash': 4.17.25
+
+  '@types/lodash.isequalwith@4.4.9':
     dependencies:
       '@types/lodash': 4.17.25
 

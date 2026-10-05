@@ -1,4 +1,5 @@
-import { useValue } from '@tldraw/state'
+import type { TLUserId } from '@tldraw/tlschema'
+import { useValue } from '@tldraw/state-react'
 import { TLInstancePresence } from '@tldraw/tlschema'
 import { useMemo } from 'react'
 import { useEditor } from './useEditor'
@@ -13,7 +14,7 @@ export function usePresence(userId: string): TLInstancePresence | null {
 
 	const $presences = useMemo(() => {
 		return editor.store.query.records('instance_presence', () => ({
-			userId: { eq: userId },
+			userId: { eq: userId as TLUserId },
 		}))
 	}, [editor, userId])
 
@@ -23,7 +24,7 @@ export function usePresence(userId: string): TLInstancePresence | null {
 			return $presences
 				.get()
 				.slice()
-				.sort((a, b) => b.lastActivityTimestamp - a.lastActivityTimestamp)[0]
+				.sort((a, b) => (b.lastActivityTimestamp ?? 0) - (a.lastActivityTimestamp ?? 0))[0]
 		},
 		[]
 	)

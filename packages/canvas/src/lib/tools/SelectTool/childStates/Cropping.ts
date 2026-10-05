@@ -9,7 +9,6 @@ import {
 	TLPointerEventInfo,
 	TLShapePartial,
 	Vec2d,
-	deepCopy,
 } from '@lifeboard/canvas-editor'
 import { MIN_CROP_SIZE } from './Crop/crop-constants'
 import { CursorTypeMap } from './PointingResizeHandle'
@@ -92,7 +91,7 @@ export class Cropping extends StateNode {
 		const change = currentPagePoint.clone().sub(originPagePoint).rot(-shape.rotation)
 
 		const crop = props.crop ?? this.getDefaultCrop()
-		const newCrop = deepCopy(crop)
+		const newCrop = structuredClone(crop)
 
 		const newPoint = new Vec2d(shape.x, shape.y)
 		const pointDelta = new Vec2d(0, 0)

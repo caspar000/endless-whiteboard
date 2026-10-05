@@ -6,7 +6,6 @@ import {
 	TLOnDoubleClickHandler,
 	TLShapePartial,
 	Vec2d,
-	deepCopy,
 	imageShapeMigrations,
 	imageShapeProps,
 	toDomPrecision,
@@ -252,7 +251,7 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 			return
 		}
 
-		const crop = deepCopy(props.crop) || {
+		const crop = structuredClone(props.crop) || {
 			topLeft: { x: 0, y: 0 },
 			bottomRight: { x: 1, y: 1 },
 		}

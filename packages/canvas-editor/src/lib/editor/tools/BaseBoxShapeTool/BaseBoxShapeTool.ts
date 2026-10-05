@@ -1,4 +1,4 @@
-import { TLShape } from '@tldraw/tlschema'
+import type { TLShape } from '../../types/shape-types'
 import { StateNode } from '../StateNode'
 import { Idle } from './children/Idle'
 import { Pointing } from './children/Pointing'

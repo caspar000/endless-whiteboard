@@ -1,4 +1,4 @@
-import { EmbedDefinition } from '@tldraw/tlschema'
+import type { EmbedDefinition } from '../../embeds/embedDefinitions'
 import { VecLike } from '../../primitives/Vec2d'
 import { TLContent } from './clipboard-types'
 

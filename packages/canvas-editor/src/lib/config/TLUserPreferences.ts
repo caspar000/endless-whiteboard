@@ -1,5 +1,5 @@
 import { atom } from '@tldraw/state'
-import { defineMigrations, migrate } from '@tldraw/store'
+import { defineMigrations, migrate } from '../utils/legacyMigrations'
 import { getDefaultTranslationLocale } from '@tldraw/tlschema'
 import { T } from '@tldraw/validate'
 import { uniqueId } from '../utils/uniqueId'

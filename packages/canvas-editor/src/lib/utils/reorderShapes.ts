@@ -1,4 +1,9 @@
-import { TLParentId, TLShape, TLShapeId, TLShapePartial } from '@tldraw/tlschema'
+import type { IndexKey } from '@tldraw/utils'
+import type { TLShape, TLShapePartial } from '../editor/types/shape-types'
+import {
+	TLParentId,
+	TLShapeId,
+} from '@tldraw/tlschema'
 import { compact } from '@tldraw/utils'
 import { Editor } from '../editor/Editor'
 import { getIndicesBetween, sortByIndex } from './reordering/reordering'
@@ -63,8 +68,8 @@ function reorderToBack(moving: Set<TLShape>, children: TLShape[], changes: TLSha
 	// If all of the children are moving, there's nothing to do
 	if (moving.size === len) return
 
-	let below: string | undefined
-	let above: string | undefined
+	let below: IndexKey | undefined
+	let above: IndexKey | undefined
 
 	// Starting at the bottom of this parent's children...
 	for (let i = 0; i < len; i++) {
@@ -112,8 +117,8 @@ function reorderToFront(moving: Set<TLShape>, children: TLShape[], changes: TLSh
 	// If all of the children are moving, there's nothing to do
 	if (moving.size === len) return
 
-	let below: string | undefined
-	let above: string | undefined
+	let below: IndexKey | undefined
+	let above: IndexKey | undefined
 
 	// Starting at the top of this parent's children...
 	for (let i = len - 1; i > -1; i--) {

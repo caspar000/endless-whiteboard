@@ -1,6 +1,14 @@
+import type { ComputedCache } from '@tldraw/store'
+import type { TLRecord } from '@tldraw/tlschema'
+import type { TLShape } from '../types/shape-types'
 import { atom, computed, EMPTY_ARRAY } from '@tldraw/state'
-import { TLGroupShape, TLParentId, TLShape, TLShapeId, Vec2dModel } from '@tldraw/tlschema'
-import { dedupe, deepCopy, warnDeprecatedGetter } from '@tldraw/utils'
+import {
+	TLGroupShape,
+	TLParentId,
+	TLShapeId,
+	VecModel,
+} from '@tldraw/tlschema'
+import { dedupe, warnDeprecatedGetter } from '@tldraw/utils'
 import {
 	Box2d,
 	flipSelectionHandleX,
@@ -239,7 +247,9 @@ export class SnapManager {
 
 	@computed getSnapPointsCache() {
 		const { editor } = this
-		return editor.store.createComputedCache<SnapPoint[], TLShape>('snapPoints', (shape) => {
+		// Typed by the store's record union, which the fork's wider TLShape isn't part of.
+		return (editor.store.createComputedCache<SnapPoint[], TLRecord>('snapPoints', (record) => {
+			const shape = record as TLShape
 			const pageTransfrorm = editor.getShapePageTransform(shape.id)
 			if (!pageTransfrorm) return undefined
 			const snapPoints = this.editor.getShapeGeometry(shape).snapPoints
@@ -247,7 +257,7 @@ export class SnapManager {
 				const { x, y } = Matrix2d.applyToPoint(pageTransfrorm, point)
 				return { x, y, id: `${shape.id}:${i}` }
 			})
-		})
+		}) as unknown as ComputedCache<SnapPoint[], TLShape>)
 	}
 
 	/**
@@ -561,7 +571,7 @@ export class SnapManager {
 
 	@computed getOutlinesInPageSpace() {
 		return this.getSnappableShapes().map(({ id, isClosed }) => {
-			const outline = deepCopy(this.editor.getShapeGeometry(id).vertices)
+			const outline = structuredClone(this.editor.getShapeGeometry(id).vertices)
 			if (isClosed) outline.push(outline[0])
 			const pageTransform = this.editor.getShapePageTransform(id)
 			if (!pageTransform) throw Error('No page transform')
@@ -591,7 +601,7 @@ export class SnapManager {
 		// Find the nearest point that is within the snap threshold
 		let minDistance = snapThreshold
 		let nearestPoint: Vec2d | null = null
-		let C: Vec2dModel, D: Vec2dModel, nearest: Vec2d, distance: number
+		let C: VecModel, D: VecModel, nearest: Vec2d, distance: number
 
 		const allSegments = [...outlinesInPageSpace, ...additionalSegments]
 		for (const outline of allSegments) {

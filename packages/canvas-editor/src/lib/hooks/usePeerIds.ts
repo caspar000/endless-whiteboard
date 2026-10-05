@@ -1,4 +1,5 @@
-import { useComputed, useValue } from '@tldraw/state'
+import type { TLUserId } from '@tldraw/tlschema'
+import { useComputed, useValue } from '@tldraw/state-react'
 import { useMemo } from 'react'
 import { uniq } from '../utils/uniq'
 import { useEditor } from './useEditor'
@@ -12,7 +13,7 @@ export function usePeerIds() {
 	const editor = useEditor()
 	const $presences = useMemo(() => {
 		return editor.store.query.records('instance_presence', () => ({
-			userId: { neq: editor.user.getId() },
+			userId: { neq: editor.user.getId() as TLUserId },
 		}))
 	}, [editor])
 

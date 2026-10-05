@@ -12,7 +12,6 @@ import {
 	TLShapeId,
 	TLShapePartial,
 	Vec2d,
-	deepCopy,
 	snapAngle,
 	sortByIndex,
 } from '@lifeboard/canvas-editor'
@@ -54,7 +53,7 @@ export class DraggingHandle extends StateNode {
 		this.shapeId = shape.id
 		this.markId = isCreating ? `creating:${shape.id}` : 'dragging handle'
 		if (!isCreating) this.editor.mark(this.markId)
-		this.initialHandle = deepCopy(handle)
+		this.initialHandle = structuredClone(handle)
 		this.initialPageTransform = this.editor.getShapePageTransform(shape)!
 		this.initialPageRotation = this.initialPageTransform.rotation()
 		this.initialPagePoint = this.editor.inputs.originPagePoint.clone()

@@ -1,4 +1,8 @@
-import { TLHandle, TLShape, Vec2dModel } from '@tldraw/tlschema'
+import type { TLShape } from './shape-types'
+import {
+	TLHandle,
+	VecModel,
+} from '@tldraw/tlschema'
 import { VecLike } from '../../primitives/Vec2d'
 import { TLSelectionHandle } from './selection-types'
 
@@ -80,16 +84,16 @@ export type TLKeyboardEventInfo = TLBaseEventInfo & {
 export type TLPinchEventInfo = TLBaseEventInfo & {
 	type: 'pinch'
 	name: TLPinchEventName
-	point: Vec2dModel
-	delta: Vec2dModel
+	point: VecModel
+	delta: VecModel
 }
 
 /** @public */
 export type TLWheelEventInfo = TLBaseEventInfo & {
 	type: 'wheel'
 	name: 'wheel'
-	delta: Vec2dModel
-	point: Vec2dModel
+	delta: VecModel
+	point: VecModel
 }
 
 /** @public */

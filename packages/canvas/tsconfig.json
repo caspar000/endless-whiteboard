@@ -4,7 +4,7 @@
 	// that are fine. Tightening them is a later, separate change.
 	"compilerOptions": {
 		"target": "ES2022",
-		"lib": ["dom", "DOM.Iterable", "ES2023"],
+		"lib": ["dom", "DOM.Iterable", "ESNext"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"jsx": "react-jsx",
@@ -21,10 +21,11 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"types": ["node", "jest", "vite/client"],
-		// The published 2023 packages strip @internal APIs from their .d.ts, and upstream used them across
+		// The published data packages strip @internal APIs from their .d.ts, and the editor uses some across
 		// packages. Their src/ ships in the tarball, so types come from there; the runtime JS has everything.
 		"paths": {
 			"@tldraw/state": ["../canvas-editor/node_modules/@tldraw/state/src/index.ts"],
+			"@tldraw/state-react": ["../canvas-editor/node_modules/@tldraw/state-react/src/index.ts"],
 			"@tldraw/store": ["../canvas-editor/node_modules/@tldraw/store/src/index.ts"],
 			"@tldraw/tlschema": ["../canvas-editor/node_modules/@tldraw/tlschema/src/index.ts"],
 			"@tldraw/utils": ["../canvas-editor/node_modules/@tldraw/utils/src/index.ts"],

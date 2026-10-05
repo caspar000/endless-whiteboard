@@ -1,4 +1,4 @@
-import { track } from '@tldraw/state'
+import { track } from '@tldraw/state-react'
 import { TLInstancePresence } from '@tldraw/tlschema'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -84,6 +84,8 @@ const Collaborator = track(function Collaborator({
 	const viewportPageBounds = editor.getViewportPageBounds()
 	const { userId, chatMessage, brush, scribbles, selectedShapeIds, userName, cursor, color } =
 		latestPresence
+	// Nullable now: a collaborator who hasn't moved their pointer over the canvas yet has no cursor.
+	if (!cursor) return null
 
 	// Add a little padding to the top-left of the viewport
 	// so that the cursor doesn't get cut off
@@ -179,7 +181,7 @@ function useCollaboratorState(latestPresence: TLInstancePresence | null) {
 	if (latestPresence) {
 		// We can do this on every render, it's free and cheaper than an effect
 		// remember, there can be lots and lots of cursors moving around all the time
-		rLastActivityTimestamp.current = latestPresence.lastActivityTimestamp
+		rLastActivityTimestamp.current = latestPresence.lastActivityTimestamp ?? 0
 	}
 
 	return state

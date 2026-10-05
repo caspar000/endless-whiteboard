@@ -22,7 +22,7 @@ import {
 	TLTextShape,
 	TLVideoShape,
 	Vec2d,
-	Vec2dModel,
+	VecModel,
 	clamp,
 	createShapeId,
 } from '@lifeboard/canvas-editor'
@@ -1150,7 +1150,7 @@ function getV2Dash(dash: DashStyle | undefined): TLDefaultDashStyle {
 	return dash ? v1DashesToV2Dashes[dash] ?? 'draw' : 'draw'
 }
 
-function getV2Point(point: number[]): Vec2dModel {
+function getV2Point(point: number[]): VecModel {
 	return {
 		x: coerceNumber(point[0]),
 		y: coerceNumber(point[1]),

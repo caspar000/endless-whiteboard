@@ -1,9 +1,9 @@
-import { Box2dModel } from '@tldraw/tlschema'
+import { BoxModel } from '@tldraw/tlschema'
 import { Vec2d, VecLike } from './Vec2d'
 import { PI, PI2, toPrecision } from './utils'
 
 /** @public */
-export type BoxLike = Box2dModel | Box2d
+export type BoxLike = BoxModel | Box2d
 
 /** @public */
 export type SelectionEdge = 'top' | 'right' | 'bottom' | 'left'
@@ -272,7 +272,7 @@ export class Box2d {
 		}
 	}
 
-	toJson(): Box2dModel {
+	toJson(): BoxModel {
 		return { x: this.minX, y: this.minY, w: this.w, h: this.h }
 	}
 
@@ -336,7 +336,7 @@ export class Box2d {
 		this.height = Math.abs(b1y - b0y)
 	}
 
-	union(box: Box2dModel) {
+	union(box: BoxModel) {
 		const minX = Math.min(this.minX, box.x)
 		const minY = Math.min(this.minY, box.y)
 		const maxX = Math.max(this.maxX, box.w + box.x)
@@ -350,7 +350,7 @@ export class Box2d {
 		return this
 	}
 
-	static From(box: Box2dModel) {
+	static From(box: BoxModel) {
 		return new Box2d(box.x, box.y, box.w, box.h)
 	}
 
@@ -559,11 +559,11 @@ export class Box2d {
 		}
 	}
 
-	equals(other: Box2d | Box2dModel) {
+	equals(other: Box2d | BoxModel) {
 		return Box2d.Equals(this, other)
 	}
 
-	static Equals(a: Box2d | Box2dModel, b: Box2d | Box2dModel) {
+	static Equals(a: Box2d | BoxModel, b: Box2d | BoxModel) {
 		return b.x === a.x && b.y === a.y && b.w === a.w && b.h === a.h
 	}
 
@@ -573,7 +573,7 @@ export class Box2d {
 		return this
 	}
 
-	static ZeroFix(other: Box2d | Box2dModel) {
+	static ZeroFix(other: Box2d | BoxModel) {
 		return new Box2d(other.x, other.y, Math.max(1, other.w), Math.max(1, other.h))
 	}
 }

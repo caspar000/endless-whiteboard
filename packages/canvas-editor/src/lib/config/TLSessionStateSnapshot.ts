@@ -2,10 +2,9 @@ import { Signal, computed, transact } from '@tldraw/state'
 import {
 	RecordsDiff,
 	UnknownRecord,
-	defineMigrations,
-	migrate,
 	squashRecordDiffs,
 } from '@tldraw/store'
+import { defineMigrations, migrate } from '../utils/legacyMigrations'
 import {
 	CameraRecordType,
 	InstancePageStateRecordType,

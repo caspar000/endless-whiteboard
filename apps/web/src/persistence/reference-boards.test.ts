@@ -28,7 +28,7 @@ describe('canvas fork reference boards', () => {
 		})
 		loadSnapshot(store, snapshot)
 		// The document only: loading also creates this session's camera and instance records.
-		const loaded = store.getStoreSnapshot('document').store
+		const loaded: Record<string, unknown> = store.getStoreSnapshot('document').store
 		expect(Object.keys(loaded).sort()).toEqual(Object.keys(snapshot.store).sort())
 		for (const [id, record] of Object.entries(snapshot.store)) expect(loaded[id]).toEqual(record)
 	})

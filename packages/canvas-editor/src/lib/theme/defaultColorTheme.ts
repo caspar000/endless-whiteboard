@@ -2,7 +2,8 @@
  * The default colour palette, from tldraw 2.0.0-alpha.19's `@tldraw/tlschema` (Apache-2.0, see
  * NOTICE). The palette left the schema package after 2023; the fork keeps its own.
  *
- * Modified: `white`, which today's schema has and 2023's didn't, gets an entry in both modes.
+ * Modified: `white`, which today's schema has and 2023's didn't, gets an entry in both modes; every
+ * colour has a `noteFill`.
  */
 import type { Expand } from '@tldraw/utils'
 
@@ -27,6 +28,11 @@ export type TLDefaultColorThemeColor = {
 	solid: string
 	semi: string
 	pattern: string
+	/**
+	 * A sticky note's fill. Matched to what tldraw 5 draws (measured from its rendering, not its
+	 * code), so boards keep their stickies' colours across the cutover.
+	 */
+	noteFill: string
 	highlight: {
 		srgb: string
 		p3: string
@@ -56,6 +62,7 @@ export const DefaultColorThemePalette: {
 
 		black: {
 			solid: '#1d1d1d',
+			noteFill: '#fadf9a',
 			semi: '#e8e8e8',
 			pattern: '#494949',
 			highlight: {
@@ -65,6 +72,7 @@ export const DefaultColorThemePalette: {
 		},
 		blue: {
 			solid: '#4263eb',
+			noteFill: '#89a2fe',
 			semi: '#dce1f8',
 			pattern: '#6681ee',
 			highlight: {
@@ -74,6 +82,7 @@ export const DefaultColorThemePalette: {
 		},
 		green: {
 			solid: '#099268',
+			noteFill: '#6ec694',
 			semi: '#d3e9e3',
 			pattern: '#39a785',
 			highlight: {
@@ -83,6 +92,7 @@ export const DefaultColorThemePalette: {
 		},
 		grey: {
 			solid: '#adb5bd',
+			noteFill: '#bec8d1',
 			semi: '#eceef0',
 			pattern: '#bcc3c9',
 			highlight: {
@@ -92,6 +102,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-blue': {
 			solid: '#4dabf7',
+			noteFill: '#9ac3fc',
 			semi: '#ddedfa',
 			pattern: '#6fbbf8',
 			highlight: {
@@ -101,6 +112,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-green': {
 			solid: '#40c057',
+			noteFill: '#96ce88',
 			semi: '#dbf0e0',
 			pattern: '#65cb78',
 			highlight: {
@@ -110,6 +122,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-red': {
 			solid: '#ff8787',
+			noteFill: '#f6a4a0',
 			semi: '#f4dadb',
 			pattern: '#fe9e9e',
 			highlight: {
@@ -119,6 +132,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-violet': {
 			solid: '#e599f7',
+			noteFill: '#deaff8',
 			semi: '#f5eafa',
 			pattern: '#e9acf8',
 			highlight: {
@@ -128,6 +142,7 @@ export const DefaultColorThemePalette: {
 		},
 		orange: {
 			solid: '#f76707',
+			noteFill: '#f9a374',
 			semi: '#f8e2d4',
 			pattern: '#f78438',
 			highlight: {
@@ -137,6 +152,7 @@ export const DefaultColorThemePalette: {
 		},
 		red: {
 			solid: '#e03131',
+			noteFill: '#fa8080',
 			semi: '#f4dadb',
 			pattern: '#e55959',
 			highlight: {
@@ -146,6 +162,7 @@ export const DefaultColorThemePalette: {
 		},
 		white: {
 			solid: '#FFFFFF',
+			noteFill: '#fefefe',
 			semi: '#f5f5f5',
 			pattern: '#f9f9f9',
 			highlight: {
@@ -155,6 +172,7 @@ export const DefaultColorThemePalette: {
 		},
 		violet: {
 			solid: '#ae3ec9',
+			noteFill: '#da90fc',
 			semi: '#ecdcf2',
 			pattern: '#bd63d3',
 			highlight: {
@@ -164,6 +182,7 @@ export const DefaultColorThemePalette: {
 		},
 		yellow: {
 			solid: '#ffc078',
+			noteFill: '#fdd399',
 			semi: '#f9f0e6',
 			pattern: '#fecb92',
 			highlight: {
@@ -180,6 +199,7 @@ export const DefaultColorThemePalette: {
 
 		black: {
 			solid: '#e1e1e1',
+			noteFill: '#2b2b2b',
 			semi: '#2c3036',
 			pattern: '#989898',
 			highlight: {
@@ -189,6 +209,7 @@ export const DefaultColorThemePalette: {
 		},
 		blue: {
 			solid: '#4156be',
+			noteFill: '#293e97',
 			semi: '#262d40',
 			pattern: '#3a4b9e',
 			highlight: {
@@ -198,6 +219,7 @@ export const DefaultColorThemePalette: {
 		},
 		green: {
 			solid: '#3b7b5e',
+			noteFill: '#004328',
 			semi: '#253231',
 			pattern: '#366a53',
 			highlight: {
@@ -207,6 +229,7 @@ export const DefaultColorThemePalette: {
 		},
 		grey: {
 			solid: '#93989f',
+			noteFill: '#55585e',
 			semi: '#33373c',
 			pattern: '#7c8187',
 			highlight: {
@@ -216,6 +239,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-blue': {
 			solid: '#588fc9',
+			noteFill: '#1e5394',
 			semi: '#2a3642',
 			pattern: '#4d7aa9',
 			highlight: {
@@ -225,6 +249,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-green': {
 			solid: '#599f57',
+			noteFill: '#20571c',
 			semi: '#2a3830',
 			pattern: '#4e874e',
 			highlight: {
@@ -234,6 +259,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-red': {
 			solid: '#c67877',
+			noteFill: '#793232',
 			semi: '#3b3235',
 			pattern: '#a56767',
 			highlight: {
@@ -243,6 +269,7 @@ export const DefaultColorThemePalette: {
 		},
 		'light-violet': {
 			solid: '#b583c9',
+			noteFill: '#752e8d',
 			semi: '#383442',
 			pattern: '#9770a9',
 			highlight: {
@@ -252,6 +279,7 @@ export const DefaultColorThemePalette: {
 		},
 		orange: {
 			solid: '#bf612e',
+			noteFill: '#7b3804',
 			semi: '#3a2e2a',
 			pattern: '#9f552d',
 			highlight: {
@@ -261,6 +289,7 @@ export const DefaultColorThemePalette: {
 		},
 		red: {
 			solid: '#aa3c37',
+			noteFill: '#7d1f1e',
 			semi: '#36292b',
 			pattern: '#8f3734',
 			highlight: {
@@ -270,6 +299,7 @@ export const DefaultColorThemePalette: {
 		},
 		white: {
 			solid: '#f3f3f3',
+			noteFill: '#e9e9e9',
 			semi: '#f5f5f5',
 			pattern: '#f9f9f9',
 			highlight: {
@@ -279,6 +309,7 @@ export const DefaultColorThemePalette: {
 		},
 		violet: {
 			solid: '#873fa3',
+			noteFill: '#5e1b6f',
 			semi: '#31293c',
 			pattern: '#763a8b',
 			highlight: {
@@ -288,6 +319,7 @@ export const DefaultColorThemePalette: {
 		},
 		yellow: {
 			solid: '#cba371',
+			noteFill: '#895d1b',
 			semi: '#3c3934',
 			pattern: '#fecb92',
 			highlight: {

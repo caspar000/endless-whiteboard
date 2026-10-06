@@ -3,6 +3,7 @@ import {
 	BaseBoxShapeUtil,
 	HTMLContainer,
 	TLVideoShape,
+	getDefaultColorTheme,
 	toDomPrecision,
 	track,
 	useIsEditing,
@@ -45,8 +46,20 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<TLVideoShape> {
 
 	override toSvg(shape: TLVideoShape) {
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+		const frame = serializeVideo(shape.id)
+		if (!frame) {
+			// No frame to draw (not loaded, or it can't load): the placeholder the canvas shows.
+			const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
+			const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+			rect.setAttribute('width', shape.props.w.toString())
+			rect.setAttribute('height', shape.props.h.toString())
+			rect.setAttribute('rx', '4')
+			rect.setAttribute('fill', theme.grey.semi)
+			g.appendChild(rect)
+			return g
+		}
 		const image = document.createElementNS('http://www.w3.org/2000/svg', 'image')
-		image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', serializeVideo(shape.id))
+		image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', frame)
 		image.setAttribute('width', shape.props.w.toString())
 		image.setAttribute('height', shape.props.h.toString())
 		g.appendChild(image)
@@ -56,16 +69,16 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<TLVideoShape> {
 }
 
 // Function from v1, could be improved bu explicitly using this.model.time (?)
-function serializeVideo(id: string): string {
+/** The video's current frame as a PNG data URL, or `null` when it has none to give. */
+function serializeVideo(id: string): string | null {
 	const splitId = id.split(':')[1]
-	const video = document.querySelector(`.tl-video-shape-${splitId}`) as HTMLVideoElement
-	if (video) {
-		const canvas = document.createElement('canvas')
-		canvas.width = video.videoWidth
-		canvas.height = video.videoHeight
-		canvas.getContext('2d')!.drawImage(video, 0, 0)
-		return canvas.toDataURL('image/png')
-	} else throw new Error('Video with id ' + splitId + ' not found')
+	const video = document.querySelector(`.tl-video-shape-${splitId}`) as HTMLVideoElement | null
+	if (!video || !video.videoWidth) return null
+	const canvas = document.createElement('canvas')
+	canvas.width = video.videoWidth
+	canvas.height = video.videoHeight
+	canvas.getContext('2d')!.drawImage(video, 0, 0)
+	return canvas.toDataURL('image/png')
 }
 
 const TLVideoUtilComponent = track(function TLVideoUtilComponent(props: {
@@ -208,6 +221,9 @@ const TLVideoUtilComponent = track(function TLVideoUtilComponent(props: {
 							<source src={url} />
 						</video>
 					) : null}
+					{/* Until the video has data (or when it can't load), a box where it will be, so the
+					    shape can still be seen and selected. */}
+					{!isLoaded && <div className="tl-video__placeholder" />}
 				</div>
 			</HTMLContainer>
 			{'url' in shape.props && shape.props.url && (

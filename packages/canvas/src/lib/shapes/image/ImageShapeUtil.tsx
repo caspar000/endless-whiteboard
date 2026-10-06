@@ -186,8 +186,9 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 			(await this.editor.resolveAssetUrl(shape.props.assetId, { shouldResolveToOriginal: true })) ||
 			asset?.props.src ||
 			''
-		if (src && src.startsWith('http')) {
-			// If it's a remote image, we need to fetch it and convert it to a data URI
+		if (src && !src.startsWith('data:')) {
+			// An exported SVG can't load anything: remote images, and the `blob:` URLs an app's asset
+			// store resolves to (Lifeboard's does), go in as data URIs.
 			src = (await getDataURIFromURL(src)) || ''
 		}
 
@@ -229,6 +230,12 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 			image.setAttribute('width', shape.props.w.toString())
 			image.setAttribute('height', shape.props.h.toString())
 			g.appendChild(image)
+		}
+
+		// Mirrored as the canvas draws a flipped image.
+		const { flipX, flipY, w, h } = shape.props
+		if (flipX || flipY) {
+			g.setAttribute('transform', `matrix(${flipX ? -1 : 1} 0 0 ${flipY ? -1 : 1} ${flipX ? w : 0} ${flipY ? h : 0})`)
 		}
 
 		return g

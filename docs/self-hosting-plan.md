@@ -2,7 +2,8 @@
 
 Status: **All four phases built, nothing deployed.** Everything below works against a local server.
 Deploying waited on a tldraw licence key; since the canvas fork's cutover (`docs/canvas-fork-plan.md`,
-phase 7) none is needed, and deploying waits only on that phase finishing.
+phase 7, done 2026-10-06) none is needed. `apps/web/scripts/check-server.mjs` checks a built server
+end to end before a deploy.
 
 Lifeboard runs on a personal server at `lifeboard.darkroomlab.net`, and the same boards open from any
 browser. A desktop app comes next, then mobile. This plan covers the server and the hosted web app only.

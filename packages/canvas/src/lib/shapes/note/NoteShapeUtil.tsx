@@ -69,7 +69,6 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
-		const adjustedColor = color === 'black' ? 'yellow' : color
 
 		return (
 			<>
@@ -82,12 +81,8 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 				>
 					<div
 						className="tl-note__container"
-						style={{
-							color: theme[adjustedColor].solid,
-							backgroundColor: theme[adjustedColor].solid,
-						}}
+						style={{ backgroundColor: theme[color].noteFill }}
 					>
-						<div className="tl-note__scrim" />
 						<TextLabel
 							id={id}
 							type={type}
@@ -125,24 +120,12 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 
-		const adjustedColor = shape.props.color === 'black' ? 'yellow' : shape.props.color
-
-		const rect1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-		rect1.setAttribute('rx', '10')
-		rect1.setAttribute('width', NOTE_SIZE.toString())
-		rect1.setAttribute('height', bounds.height.toString())
-		rect1.setAttribute('fill', theme[adjustedColor].solid)
-		rect1.setAttribute('stroke', theme[adjustedColor].solid)
-		rect1.setAttribute('stroke-width', '1')
-		g.appendChild(rect1)
-
-		const rect2 = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-		rect2.setAttribute('rx', '10')
-		rect2.setAttribute('width', NOTE_SIZE.toString())
-		rect2.setAttribute('height', bounds.height.toString())
-		rect2.setAttribute('fill', theme.background)
-		rect2.setAttribute('opacity', '.28')
-		g.appendChild(rect2)
+		const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+		rect.setAttribute('rx', '10')
+		rect.setAttribute('width', NOTE_SIZE.toString())
+		rect.setAttribute('height', bounds.height.toString())
+		rect.setAttribute('fill', theme[shape.props.color].noteFill)
+		g.appendChild(rect)
 
 		const textElm = getTextLabelSvgElement({
 			editor: this.editor,
@@ -151,7 +134,8 @@ export class NoteShapeUtil extends ShapeUtil<TLNoteShape> {
 			bounds,
 		})
 
-		textElm.setAttribute('fill', theme.text)
+		// The label's own colour (today's `labelColor`), as the canvas draws it.
+		textElm.setAttribute('fill', theme[shape.props.labelColor].solid)
 		textElm.setAttribute('stroke', 'none')
 		g.appendChild(textElm)
 

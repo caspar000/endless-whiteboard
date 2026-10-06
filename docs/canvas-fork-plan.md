@@ -1,6 +1,6 @@
 # Moving Lifeboard onto an open-source canvas — the plan
 
-Status: **Phases 0–6 done** (2026-10-05). Phase 7 under way: part A done (the app runs on the fork).
+Status: **Phases 0–7 done** (2026-10-06). Lifeboard runs on the fork, and no package under the tldraw licence is installed. Next: the backlog (phase 8).
 
 Lifeboard leaves tldraw's licensed editor for a fork of tldraw `2.0.0-alpha.19`, the last
 Apache-2.0 release (December 2023), running on the MIT tldraw data packages that our boards are
@@ -525,6 +525,47 @@ alongside them once phase 2 is done.
   `.env.example` no longer ask for a licence key.
 - **`tldrawLocalDb.test.ts`** pinned the database names by reading tldraw's own source in
   `node_modules`; it reads the fork's `indexedDb.ts` now.
+
+**As built, part C — numbers and the checklist:**
+
+- **Performance, against tldraw 5.5.2** (the last commit before the cutover, `e52c98f`, in a
+  worktree). `e2e/bench.spec.ts` (`LB_BENCH=1`) builds the 500-node board `perf.spec.ts` uses, drags a
+  note and pans with the wheel (60 inputs, 16 ms apart, three runs, medians), first at 100% and then
+  with every node on screen, and exports 400 shapes. Gestures go through `editor.dispatch` in the
+  page: Playwright's own input stalled now and then on this board, on both engines. Main-thread time
+  is Chrome's `Performance.getMetrics`. One run each, headless Chromium on the same Mac:
+
+  | | tldraw 5.5.2 | Fork |
+  |---|---|---|
+  | Create the board / until the total shows | 14 / 152 ms | 10 / 142 ms |
+  | Drag at 100%: main thread / of it script | 230 / 133 ms | 249 / 44 ms |
+  | Pan at 100% | 198 / 83 ms | 205 / 32 ms |
+  | Drag, all 502 shapes on screen | 414 / 117 ms | 440 / 40 ms |
+  | Pan, all on screen | 430 / 80 ms | 453 / 43 ms |
+  | Frames while dragging, all on screen: mean / p95 / max | 8.4 / 9.6 / 16.6 ms | 8.4 / 9.8 / 16.8 ms |
+  | Long tasks during any gesture | 0 | 0 |
+  | Export 400 shapes as WebP | 6.1 s | 2.0 s |
+
+  The fork runs about a third of the JavaScript tldraw 5 does per gesture and spends 5–8% more main-
+  thread time in all (style and paint, mostly, from keeping off-screen shapes mounted). Frames are at
+  the cap on both. `perf.spec.ts` itself passes: no recomputes while dragging.
+- **The reference boards** (`scripts/check-reference-boards.mjs`) open in the app on the fork through
+  its backup import, and were compared by eye with what tldraw 5.5 showed and exported. Found and
+  fixed on the way:
+  - Images exported as broken icons: `blob:` URLs (an app's asset store) are now inlined like remote
+    ones, and flipped images export mirrored.
+  - A sticky's label colour was ignored in export.
+  - A video with no frame yet showed nothing (and exported a broken image); it shows a placeholder.
+  - Stickies were 2023's colours, so every existing sticky would have changed colour. Each colour
+    now has a `noteFill` measured from tldraw 5's rendering, light and dark, within 2/255 (L6).
+
+  Still different, as the register says: elbow arrows draw straight (D4), flipped geo shapes don't
+  draw flipped (D5), `lined-fill` draws as the pattern (D11), labels export without their formatting
+  (E11), and an embed doesn't export (tldraw 5 exported an empty card).
+- **Server boards** (`scripts/check-server.mjs`, against the built server and app): a server board
+  opens in two browsers with the same shapes; a shape drawn in one reaches the other in 51 ms, and
+  edits go both ways; the board moves to one browser with the new shape and the other stops listing
+  it; it moves back to the server and the other browser opens it with the shape.
 
 ## Phase 8 onward — The backlog, at your pace
 

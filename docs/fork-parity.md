@@ -135,11 +135,12 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 
 | Id | Feature | Arrived | Status |
 |---|---|---|---|
-| L1 | 40+ languages (the fork has about 30) | 3.8 | todo |
+| L1 | 40+ languages (the fork has about 30; the rest fall back to English since phase 7) | 3.8 | todo |
 | L2 | Right-to-left layouts | 5.0 | todo |
 | L3 | Custom themes and palettes | 5.0 | todo |
 | L4 | Follow the system dark/light setting | 2.3 | todo |
 | L5 | Redesigned style panel and page menu (inline rename, drag to reorder) | 4.0, 5.1 | todo |
+| L6 | Today's colour palette. The fork's is 2023's; sticky notes already match today's (measured from tldraw 5's rendering in phase 7), shapes and text don't quite | 3.x | doing |
 
 ## P — Performance
 

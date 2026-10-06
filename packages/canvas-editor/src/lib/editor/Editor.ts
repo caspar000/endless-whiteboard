@@ -2186,6 +2186,20 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
+	/**
+	 * `point` on the grid when grid snapping is on and ⌘/Ctrl isn't held (fork-parity I2); as it is
+	 * otherwise. For new shapes and dragged handles, which line up the way moves and resizes do.
+	 *
+	 * @public
+	 */
+	snapPointToGrid<T extends VecLike>(point: T): Vec2d {
+		const next = Vec2d.From(point)
+		if (this.getInstanceState().isGridMode && !this.inputs.ctrlKey) {
+			next.snapToGrid(this.getDocumentSettings().gridSize)
+		}
+		return next
+	}
+
 	selectAll(): this {
 		// From the inside out (I3): with shapes selected inside one frame or group, everything in there
 		// first; once that is all selected, the whole page.

@@ -19,7 +19,8 @@ export class Pointing extends StateNode {
 
 	override onPointerMove: TLEventHandlers['onPointerMove'] = (info) => {
 		if (this.editor.inputs.isDragging) {
-			const { originPagePoint } = this.editor.inputs
+			// On the grid when it snaps: the dragged corner snaps as it is resized, so this one must too.
+			const originPagePoint = this.editor.snapPointToGrid(this.editor.inputs.originPagePoint)
 
 			const id = createShapeId()
 
@@ -103,12 +104,13 @@ export class Pointing extends StateNode {
 		if (parentTransform) delta.rot(-parentTransform.rotation())
 
 		this.editor.select(id)
+		const corner = this.editor.snapPointToGrid({ x: shape.x - delta.x, y: shape.y - delta.y })
 		this.editor.updateShapes<TLGeoShape>([
 			{
 				id: shape.id,
 				type: 'geo',
-				x: shape.x - delta.x,
-				y: shape.y - delta.y,
+				x: corner.x,
+				y: corner.y,
 				props: {
 					geo: this.editor.getStyleForNextShape(GeoShapeGeoStyle),
 					w: bounds.width,

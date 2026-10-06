@@ -18,7 +18,8 @@ export class Pointing extends StateNode {
 
 	override onPointerMove: TLEventHandlers['onPointerMove'] = (info) => {
 		if (this.editor.inputs.isDragging) {
-			const { originPagePoint } = this.editor.inputs
+			// On the grid when it snaps: the dragged corner snaps as it is resized, so this one must too.
+			const originPagePoint = this.editor.snapPointToGrid(this.editor.inputs.originPagePoint)
 
 			const shapeType = (this.parent as BaseBoxShapeTool)!.shapeType
 
@@ -102,12 +103,13 @@ export class Pointing extends StateNode {
 		const parentTransform = this.editor.getShapeParentTransform(shape)
 		if (parentTransform) delta.rot(-parentTransform.rotation())
 
+		const corner = this.editor.snapPointToGrid({ x: shape.x - delta.x, y: shape.y - delta.y })
 		this.editor.updateShapes<TLBaseBoxShape>([
 			{
 				id,
 				type: shapeType,
-				x: shape.x - delta.x,
-				y: shape.y - delta.y,
+				x: corner.x,
+				y: corner.y,
 			},
 		])
 

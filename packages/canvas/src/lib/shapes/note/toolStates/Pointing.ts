@@ -109,13 +109,14 @@ export class Pointing extends StateNode {
 		const shape = this.editor.getShape<TLNoteShape>(id)!
 		const bounds = this.editor.getShapeGeometry(shape).bounds
 
-		// Center the text around the created point
+		// Center the text around the created point; on the grid when it snaps.
+		const corner = this.editor.snapPointToGrid({ x: shape.x - bounds.width / 2, y: shape.y - bounds.height / 2 })
 		this.editor.updateShapes([
 			{
 				id,
 				type: this.parent.shapeType!,
-				x: shape.x - bounds.width / 2,
-				y: shape.y - bounds.height / 2,
+				x: corner.x,
+				y: corner.y,
 			},
 		])
 

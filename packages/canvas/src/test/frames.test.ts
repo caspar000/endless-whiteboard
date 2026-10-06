@@ -492,12 +492,17 @@ describe('frame shapes', () => {
 		editor.setCurrentTool('select')
 		editor.pointerDown(150, 150, innerBoxId).pointerMove(150, 50).pointerMove(150, 148)
 		editor.keyDown('Control')
-		expect(editor.snaps.getLines()).toHaveLength(0)
+		// It may line up with its own frame (I2), but never with the box outside (x ≥ 275).
+		const reachesOutside = () =>
+			editor.snaps
+				.getLines()
+				.some((line) => line.type === 'points' && line.points.some((point) => point.x >= 275))
+		expect(reachesOutside()).toBe(false)
 
 		// move shape inside the frame to make sure it snaps in there
 		editor.reparentShapes([outerBoxId], frameId).pointerMove(150, 149, { ctrlKey: true })
 
-		expect(editor.snaps.getLines()).toHaveLength(1)
+		expect(reachesOutside()).toBe(true)
 	})
 
 	it('masks its children', () => {

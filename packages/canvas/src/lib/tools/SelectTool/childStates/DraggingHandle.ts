@@ -236,6 +236,17 @@ export class DraggingHandle extends StateNode {
 			point = Vec2d.RotWith(point, initialAdjacentHandle, angleDifference)
 		}
 
+		// A point (an arrow's end, a line's vertex) lands on the grid when it snaps (I2).
+		if (initialHandle.type === 'vertex' && editor.getInstanceState().isGridMode && !ctrlKey) {
+			const pageTransform = editor.getShapePageTransform(shape.id)
+			if (pageTransform) {
+				point = pageTransform
+					.clone()
+					.invert()
+					.applyToPoint(editor.snapPointToGrid(pageTransform.applyToPoint(point)))
+			}
+		}
+
 		// Clear any existing snaps
 		editor.snaps.clear()
 

@@ -316,7 +316,13 @@ export class SnapManager {
 			}
 		}
 
-		collectSnappableShapesFromParent(this.getCurrentCommonAncestor() ?? editor.getCurrentPageId())
+		const parentId = this.getCurrentCommonAncestor() ?? editor.getCurrentPageId()
+		collectSnappableShapesFromParent(parentId)
+
+		// Inside a frame, its own edges and middle are worth lining up with too (I2).
+		const frame = editor.getShape(parentId as TLShapeId)
+		const frameBounds = frame?.type === 'frame' ? editor.getShapePageBounds(frame.id) : undefined
+		if (frame && frameBounds) snappableShapes.push({ id: frame.id, pageBounds: frameBounds, isClosed: true })
 
 		return snappableShapes
 	}

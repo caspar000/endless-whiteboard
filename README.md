@@ -528,11 +528,12 @@ port to one new file (`TauriPlatformAdapter`).
   resolved `light` or `dark` (`app/useTheme.ts` does the resolving, and `index.html` repeats it inline
   so a light-mode load doesn't flash dark). tldraw follows via its user preference rather than the
   `colorScheme` prop, which would remount every editor. Thumbnails are exported in the active theme,
-  so a preview looks like the board you left. A theme change re-exports every board that still has a
-  mounted editor — including inactive tabs, which needs `data-exporting` to swap their
-  `visibility: hidden` for a clip, because tldraw's exporter drops HTML-backed shapes it considers
-  invisible. Boards with no mounted editor have nothing to export from, so their previews are dropped
-  and redrawn off screen.
+  so a preview looks like the board you left, and are kept per theme (`thumb:<theme>:<id>`, and one
+  file per theme on the server). A theme change re-exports every board that still has a mounted
+  editor — including inactive tabs, which needs `data-exporting` to swap their `visibility: hidden`
+  for a clip, because tldraw's exporter drops HTML-backed shapes it considers invisible. The rest are
+  drawn in the new theme off screen. That hidden editor is told the app's theme on mount: the canvas's
+  colour preference is shared by every editor and only follows the app once a board has been open.
 - **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
   draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
   ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Canvas

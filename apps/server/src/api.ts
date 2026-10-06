@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { isAssetHash, type AssetFiles } from './assets.ts'
 import { exportVault } from './exportZip.ts'
 import type { Rooms } from './rooms.ts'
-import type { Thumbnails } from './thumbnails.ts'
+import { THEMES, type Theme, type Thumbnails } from './thumbnails.ts'
 import type { Vault } from './vault.ts'
 
 /** Board ids become file names, so only what a UUID can contain. */
@@ -16,6 +16,8 @@ const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
 /** Enough for every asset on a large board in one question. */
 const MAX_HASHES_PER_QUERY = 5000
+
+const isTheme = (value: string): value is Theme => (THEMES as readonly string[]).includes(value)
 
 const isName = (value: unknown): value is string =>
 	typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME
@@ -138,15 +140,25 @@ export function registerApi(
 		done(null, body)
 	)
 
-	/** A board's preview, as whichever device last drew one sent it. */
-	app.get<{ Params: { id: string } }>('/api/boards/:id/thumbnail', async (request, reply) => {
-		const bytes = BOARD_ID.test(request.params.id) ? thumbnails.read(request.params.id) : null
-		if (!bytes) return reply.code(404).send({ error: 'No preview yet.' })
-		return reply.header('content-type', 'image/webp').header('cache-control', 'no-cache').send(bytes)
+	/**
+	 * A board's preview in one theme, as whichever device last drew one sent it. `x-drawn-at` says when,
+	 * against the board's `updatedAt`, both by this server's clock.
+	 */
+	app.get<{ Params: { id: string; theme: string } }>('/api/boards/:id/thumbnail/:theme', async (request, reply) => {
+		const { id, theme } = request.params
+		const found = BOARD_ID.test(id) && isTheme(theme) ? thumbnails.read(id, theme) : null
+		if (!found) return reply.code(404).send({ error: 'No preview yet.' })
+		return reply
+			.header('content-type', 'image/webp')
+			.header('cache-control', 'no-cache')
+			.header('x-drawn-at', String(found.drawnAt))
+			.send(found.bytes)
 	})
 
-	app.put<{ Params: { id: string }; Body: Buffer }>('/api/boards/:id/thumbnail', async (request, reply) => {
-		if (!BOARD_ID.test(request.params.id) || !vault.get(request.params.id)) {
+	app.put<{ Params: { id: string; theme: string }; Body: Buffer }>('/api/boards/:id/thumbnail/:theme', async (request, reply) => {
+		const { id, theme } = request.params
+		if (!isTheme(theme)) return reply.code(404).send({ error: 'Previews are light or dark.' })
+		if (!BOARD_ID.test(id) || !vault.get(id)) {
 			return reply.code(404).send({ error: 'No such board.' })
 		}
 		const body = request.body
@@ -154,7 +166,7 @@ export function registerApi(
 		if (!Buffer.isBuffer(body) || body.subarray(0, 4).toString() !== 'RIFF' || body.subarray(8, 12).toString() !== 'WEBP') {
 			return reply.code(400).send({ error: 'A preview is a WebP image.' })
 		}
-		thumbnails.write(request.params.id, body)
+		thumbnails.write(id, theme, body)
 		return reply.code(204).send()
 	})
 

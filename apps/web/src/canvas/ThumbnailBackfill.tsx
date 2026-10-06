@@ -13,7 +13,8 @@ import type { BoardMeta } from '../boards/boardIndex'
 import { moveFor } from '../boards/moveQueue'
 import { createLifeboardAssetStore } from '../persistence/assetStore'
 import { takePendingRestore } from '../persistence/pendingRestore'
-import { loadBoardThumbnail, saveBoardThumbnail } from '../persistence/thumbnails'
+import { loadTheme, useResolvedTheme, type ResolvedTheme } from '../app/useTheme'
+import { forgetUnthemedThumbnails, loadBoardThumbnail, saveBoardThumbnail } from '../persistence/thumbnails'
 import { readBoardSnapshotResult } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
@@ -24,19 +25,25 @@ import { getShapeVisibility } from './relationVisibility'
 /**
  * Draws previews for boards that have none, so every card on the home screen has a picture of its
  * board without the board being opened first: boards moved from another device, imported, made by an
- * agent, or whose preview a theme switch cleared.
+ * agent, or with no preview in the theme on screen.
  *
  * One board at a time, in a hidden editor off screen that never takes focus: the board's own node
  * types, visibility rules and files, so the picture is what opening it would show. The preview is
  * saved like any other (persistence/thumbnails.ts), and a server board's goes on to the server for
- * every other device (app/App.tsx). Each board is tried once per visit; an empty one keeps its
+ * every other device (app/App.tsx). A server board's preview drawn before its last edit, likely on
+ * another device, is drawn again. Each board is tried once per visit and theme; an empty one keeps its
  * placeholder.
  */
 export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) {
 	const platform = usePlatform()
+	const theme = useResolvedTheme()
 	const [current, setCurrent] = useState<{ board: BoardMeta; snapshot: TLStoreSnapshot } | null>(null)
 	const tried = useRef(new Set<string>())
 	const next = useCallback(() => setCurrent(null), [])
+
+	useEffect(() => {
+		void forgetUnthemedThumbnails(platform.kv)
+	}, [platform])
 
 	useEffect(() => {
 		if (current) return
@@ -44,10 +51,11 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 		void (async () => {
 			for (const board of boards) {
 				// A moving board is between two homes; it gets its turn once it arrives.
-				if (tried.current.has(board.id) || moveFor(board.id)) continue
-				tried.current.add(board.id)
+				const attempt = `${theme}:${board.id}`
+				if (tried.current.has(attempt) || moveFor(board.id)) continue
+				tried.current.add(attempt)
 				try {
-					if (await hasPreview(platform, board)) continue
+					if (await hasPreview(platform, board, theme)) continue
 					const snapshot = await readBoard(platform, board)
 					if (!snapshot || Object.keys(snapshot.store).length === 0) continue
 					if (!cancelled) setCurrent({ board, snapshot })
@@ -60,7 +68,7 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 		return () => {
 			cancelled = true
 		}
-	}, [boards, current, platform])
+	}, [boards, current, platform, theme])
 
 	if (!current) return null
 	return (
@@ -73,9 +81,10 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 	)
 }
 
-async function hasPreview(platform: PlatformAdapter, board: BoardMeta): Promise<boolean> {
-	if (await loadBoardThumbnail(platform.kv, board.id)) return true
-	return board.vault === 'server' && (await fetchServerThumbnail(board.id)) !== null
+async function hasPreview(platform: PlatformAdapter, board: BoardMeta, theme: ResolvedTheme): Promise<boolean> {
+	if (board.vault !== 'server') return (await loadBoardThumbnail(platform.kv, board.id, theme)) !== undefined
+	const preview = await fetchServerThumbnail(board.id, theme)
+	return preview !== null && preview.drawnAt >= board.updatedAt
 }
 
 /** The board's records as they are stored: on the server, on disk, or still waiting as an import. */
@@ -139,9 +148,11 @@ function OffscreenBoard({
 				getShapeVisibility={getShapeVisibility}
 				hideUi
 				autoFocus={false}
-				// The app's theme, so the preview matches the cards around it.
-				colorScheme={document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'}
 				onMount={(editor) => {
+					// The app's theme, so the preview matches the cards around it. The canvas keeps its own
+					// colour preference, shared by every editor, which only follows the app once a board has
+					// been open (App tells mounted editors); until then it can be anything.
+					editor.user.updateUserPreferences({ colorScheme: loadTheme() })
 					editor.zoomToFit({ animation: { duration: 0 } })
 					void draw(editor)
 				}}

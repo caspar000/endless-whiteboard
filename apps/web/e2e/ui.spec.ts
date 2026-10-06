@@ -1414,7 +1414,7 @@ test.describe('theme', () => {
 		await expect(html).toHaveAttribute('data-theme', 'light')
 	})
 
-	test('switching theme re-exports open boards and drops the previews it cannot', async ({
+	test('switching theme redraws every preview in the new theme', async ({
 		page,
 	}) => {
 		// Pinned so the switch below is a real change of the *resolved* theme: Playwright emulates a
@@ -1431,22 +1431,66 @@ test.describe('theme', () => {
 		await page.locator(NOTE_EDITOR).fill('Something to preview')
 		await backToList(page)
 
-		await expect.poll(() => thumbnailSize(page, 'Still open')).toBeGreaterThan(2_000)
-		await expect.poll(() => thumbnailSize(page, 'Home office shopping')).toBeGreaterThan(2_000)
-		const before = await thumbnailSize(page, 'Still open')
+		await expect.poll(() => thumbnailSize(page, 'Still open', 'light')).toBeGreaterThan(2_000)
+		await expect.poll(() => thumbnailSize(page, 'Home office shopping', 'light')).toBeGreaterThan(2_000)
 
 		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Dark', exact: true }).click()
 
-		// 'Still open' has a mounted (though hidden) editor, so it keeps a real preview, re-exported in
-		// the new theme. Without `withExportableHost` this would silently be blank paper, which is why
-		// the size floor matters as much as the inequality.
-		await expect.poll(() => thumbnailSize(page, 'Still open')).not.toBe(before)
-		expect(await thumbnailSize(page, 'Still open')).toBeGreaterThan(2_000)
+		// 'Still open' has a mounted (though hidden) editor, so it is re-exported from that. Without
+		// `withExportableHost` this would silently be blank paper, which is why the size floor matters.
+		await expect.poll(() => thumbnailSize(page, 'Still open', 'dark')).toBeGreaterThan(2_000)
+		// The demo board has no editor, so the home screen draws it off screen.
+		await backToList(page)
+		await expect
+			.poll(() => thumbnailSize(page, 'Home office shopping', 'dark'), { timeout: 15_000 })
+			.toBeGreaterThan(2_000)
+		// The light ones are out of date from here on, so they are gone.
+		expect(await thumbnailSize(page, 'Still open', 'light')).toBe(null)
+		expect(await thumbnailSize(page, 'Home office shopping', 'light')).toBe(null)
+	})
 
-		// The demo board has nothing to export from. Keeping its preview would show a light picture in
-		// a dark well, so it goes back to the placeholder until next opened.
-		await expect.poll(() => thumbnailSize(page, 'Home office shopping')).toBe(null)
+	test('a board drawn off screen follows the app theme, not the canvas’s last one', async ({ page }) => {
+		await page.emulateMedia({ colorScheme: 'light' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		// The canvas remembers its own colour scheme; leave it on dark while the app says light, with no
+		// board open to be told otherwise.
+		await page.evaluate(() => {
+			const key = 'TLDRAW_USER_DATA_v3'
+			const data = JSON.parse(localStorage.getItem(key) ?? 'null')
+			if (data) localStorage.setItem(key, JSON.stringify({ ...data, user: { ...data.user, colorScheme: 'dark' } }))
+			localStorage.setItem('lifeboard:theme', 'light')
+		})
+		await page.evaluate(async () => {
+			const db = await new Promise<IDBDatabase>((resolve) => {
+				const req = indexedDB.open('lifeboard-kv')
+				req.onsuccess = () => resolve(req.result)
+			})
+			const store = db.transaction('kv', 'readwrite').objectStore('kv')
+			await new Promise<IDBValidKey[]>((resolve) => {
+				const q = store.getAllKeys()
+				q.onsuccess = () => resolve(q.result)
+			}).then((keys) => keys.filter((k) => String(k).startsWith('thumb:')).forEach((k) => store.delete(k)))
+			db.close()
+		})
+		await page.reload()
+
+		await expect
+			.poll(() => thumbnailSize(page, 'Home office shopping', 'light'), { timeout: 15_000 })
+			.toBeGreaterThan(2_000)
+		// The paper around the board, a corner pixel: light, not the dark canvas.
+		const corner = await page.locator('.lb-card__image').first().evaluate(async (img: HTMLImageElement) => {
+			await img.decode()
+			const canvas = document.createElement('canvas')
+			canvas.width = img.naturalWidth
+			canvas.height = img.naturalHeight
+			const context = canvas.getContext('2d')!
+			context.drawImage(img, 0, 0)
+			const [r = 0, g = 0, b = 0] = context.getImageData(2, 2, 1, 1).data
+			return (r + g + b) / 3
+		})
+		expect(corner).toBeGreaterThan(200)
 	})
 
 	test('re-picking the theme already showing keeps the thumbnails', async ({ page }) => {
@@ -1834,9 +1878,10 @@ async function thumbnailBytes(page: import('@playwright/test').Page): Promise<nu
 /** Byte size of one board's stored thumbnail, by board name, or null if it has none. */
 async function thumbnailSize(
 	page: import('@playwright/test').Page,
-	boardName: string
+	boardName: string,
+	theme: 'light' | 'dark'
 ): Promise<number | null> {
-	return page.evaluate(async (name) => {
+	return page.evaluate(async ([name, theme]) => {
 		const db = await new Promise<IDBDatabase>((resolve) => {
 			const req = indexedDB.open('lifeboard-kv')
 			req.onsuccess = () => resolve(req.result)
@@ -1852,10 +1897,10 @@ async function thumbnailSize(
 			db.close()
 			return null
 		}
-		const blob = await read<Blob>(`thumb:${board.id}`)
+		const blob = await read<Blob>(`thumb:${theme}:${board.id}`)
 		db.close()
 		return blob instanceof Blob ? blob.size : null
-	}, boardName)
+	}, [boardName, theme] as const)
 }
 
 async function countThumbnails(page: import('@playwright/test').Page): Promise<number> {

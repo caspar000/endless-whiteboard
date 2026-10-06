@@ -1,4 +1,5 @@
 import type { BoardMeta } from '../boards/boardIndex'
+import type { ResolvedTheme } from '../app/useTheme'
 
 /**
  * The server vault, as the app sees it: the board index over REST, each board's content over its own
@@ -121,20 +122,27 @@ export async function serverHasBoard(id: string): Promise<boolean> {
 	return ((await (await api('/boards')).json()) as ServerBoard[]).some((board) => board.id === id)
 }
 
-/** A server board's preview, as whichever device last drew one sent it; `null` if none has. */
-export async function fetchServerThumbnail(id: string): Promise<Blob | null> {
+/**
+ * A server board's preview in one theme, as whichever device last drew one sent it, and when, by the
+ * server's clock (compare with the board's `updatedAt`); `null` if none has.
+ */
+export async function fetchServerThumbnail(
+	id: string,
+	theme: ResolvedTheme
+): Promise<{ blob: Blob; drawnAt: number } | null> {
 	try {
-		const response = await fetch(`/api/boards/${id}/thumbnail`, { cache: 'no-store' })
-		return response.ok ? await response.blob() : null
+		const response = await fetch(`/api/boards/${id}/thumbnail/${theme}`, { cache: 'no-store' })
+		if (!response.ok) return null
+		return { blob: await response.blob(), drawnAt: Number(response.headers.get('x-drawn-at')) || 0 }
 	} catch {
 		return null
 	}
 }
 
 /** Sends a server board's preview, so every device shows it. Best effort: a preview is decoration. */
-export async function uploadServerThumbnail(id: string, blob: Blob): Promise<void> {
+export async function uploadServerThumbnail(id: string, theme: ResolvedTheme, blob: Blob): Promise<void> {
 	if (blob.type !== 'image/webp') return
-	await fetch(`/api/boards/${id}/thumbnail`, {
+	await fetch(`/api/boards/${id}/thumbnail/${theme}`, {
 		method: 'PUT',
 		headers: { 'content-type': 'image/webp' },
 		body: blob,

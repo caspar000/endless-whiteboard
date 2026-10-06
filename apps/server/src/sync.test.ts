@@ -139,17 +139,22 @@ describe('board index', () => {
 	it('keeps a board’s preview, refuses anything but WebP, and drops it with the board', async () => {
 		const { app, cookie } = await startServer()
 		const board = await createBoard(app, cookie, 'Pictured')
-		const url = `/api/boards/${board.id}/thumbnail`
+		const url = `/api/boards/${board.id}/thumbnail/light`
 		expect((await app.inject({ url, headers: { cookie } })).statusCode).toBe(404)
 
 		const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.from('pixels')])
-		const put = (body: Buffer) =>
-			app.inject({ method: 'PUT', url, headers: { cookie, 'content-type': 'image/webp' }, payload: body })
+		const put = (body: Buffer, to = url) =>
+			app.inject({ method: 'PUT', url: to, headers: { cookie, 'content-type': 'image/webp' }, payload: body })
 		expect((await put(Buffer.from('not an image at all'))).statusCode).toBe(400)
+		expect((await put(webp, `/api/boards/${board.id}/thumbnail/sepia`)).statusCode).toBe(404)
+		const before = Date.now()
 		expect((await put(webp)).statusCode).toBe(204)
 		const got = await app.inject({ url, headers: { cookie } })
 		expect(got.headers['content-type']).toBe('image/webp')
+		expect(Number(got.headers['x-drawn-at'])).toBeGreaterThanOrEqual(before - 1000)
 		expect(got.rawPayload.equals(webp)).toBe(true)
+		// Each theme has its own.
+		expect((await app.inject({ url: `/api/boards/${board.id}/thumbnail/dark`, headers: { cookie } })).statusCode).toBe(404)
 
 		await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie } })
 		expect((await app.inject({ url, headers: { cookie } })).statusCode).toBe(404)

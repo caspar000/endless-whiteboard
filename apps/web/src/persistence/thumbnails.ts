@@ -1,12 +1,13 @@
 import type { Editor } from '@lifeboard/canvas'
+import type { ResolvedTheme } from '../app/useTheme'
 import type { KvStore } from '../platform/PlatformAdapter'
 
 /**
  * Board thumbnails — the previews on the home screen's cards.
  *
  * Generated from the live editor at the moment you ask to leave a board — *before* anything starts
- * tearing down. No background worker and no re-opening boards to render them: the plan deferred
- * "thumbnail workers" as over-engineering, and this needs none.
+ * tearing down. Boards that have no preview in the theme on screen are drawn by the home screen in a
+ * hidden editor (canvas/ThumbnailBackfill.tsx), through the same function.
  *
  * The timing is load-bearing. This used to run from the editor's unmount cleanup, by which point the
  * board host is `visibility: hidden` for the persistence drain — and tldraw's exporter produced an
@@ -15,8 +16,14 @@ import type { KvStore } from '../platform/PlatformAdapter'
  *
  * Stored as Blobs in the KV store under their own keys rather than inside the board index, so listing
  * boards stays a single small read and never drags a megabyte of images with it.
+ *
+ * One per board and theme, since a preview bakes in the theme it was drawn in. Only the latest drawing
+ * is kept: drawing one theme drops the other's, which is out of date from then on, and the home screen
+ * draws it again when it is next needed (canvas/ThumbnailBackfill.tsx).
  */
 const PREFIX = 'thumb:'
+const THEMES: readonly ResolvedTheme[] = ['light', 'dark']
+const key = (boardId: string, theme: ResolvedTheme) => `${PREFIX}${theme}:${boardId}`
 
 /**
  * Notification that a board's thumbnail has been (re)written.
@@ -33,7 +40,7 @@ const listeners = new Set<ThumbnailListener>()
  * Called with each preview this browser draws (not ones it was sent), so the app can pass a server
  * board's on to the server for every other device.
  */
-type DrawnListener = (boardId: string, blob: Blob) => void
+type DrawnListener = (boardId: string, theme: ResolvedTheme, blob: Blob) => void
 const drawnListeners = new Set<DrawnListener>()
 
 export function onThumbnailDrawn(listener: DrawnListener): () => void {
@@ -129,9 +136,9 @@ export async function saveBoardThumbnail(
 			})
 		)
 
-		await kv.set(`${PREFIX}${boardId}`, result.blob)
-		notify(boardId)
-		for (const listener of drawnListeners) listener(boardId, result.blob)
+		const theme = editor.user.getIsDarkMode() ? 'dark' : 'light'
+		await storeBoardThumbnail(kv, boardId, theme, result.blob)
+		for (const listener of drawnListeners) listener(boardId, theme, result.blob)
 	} catch (err) {
 		// A thumbnail is decoration. Failing to make one must never block leaving a board or, worse,
 		// interrupt the persistence flush happening at the same moment.
@@ -139,39 +146,37 @@ export async function saveBoardThumbnail(
 	}
 }
 
-export async function loadBoardThumbnail(kv: KvStore, boardId: string): Promise<Blob | undefined> {
-	const blob = await kv.get<Blob>(`${PREFIX}${boardId}`)
+export async function loadBoardThumbnail(
+	kv: KvStore,
+	boardId: string,
+	theme: ResolvedTheme
+): Promise<Blob | undefined> {
+	const blob = await kv.get<Blob>(key(boardId, theme))
 	// Guard the type: this key survives app upgrades, and a non-Blob would break `createObjectURL`.
 	return blob instanceof Blob ? blob : undefined
 }
 
-/** Keeps a preview made elsewhere (the server's copy of one), as if this browser had drawn it. */
-export async function storeBoardThumbnail(kv: KvStore, boardId: string, blob: Blob): Promise<void> {
-	await kv.set(`${PREFIX}${boardId}`, blob)
+/** Keeps a board's latest preview, drawn here or by another device, and drops the other theme's. */
+export async function storeBoardThumbnail(
+	kv: KvStore,
+	boardId: string,
+	theme: ResolvedTheme,
+	blob: Blob
+): Promise<void> {
+	await kv.set(key(boardId, theme), blob)
+	for (const other of THEMES) if (other !== theme) await kv.delete(key(boardId, other))
 	notify(boardId)
 }
 
 export async function deleteBoardThumbnail(kv: KvStore, boardId: string): Promise<void> {
-	await kv.delete(`${PREFIX}${boardId}`)
+	for (const theme of THEMES) await kv.delete(key(boardId, theme))
 }
 
-/**
- * Drops cached thumbnails for every board except those listed, for when the theme changes.
- *
- * A thumbnail bakes in the theme it was exported in, so after a switch the survivors would be a mix of
- * light and dark previews — and the well behind a letterboxed image (`--lb-thumb-paper`) would frame a
- * dark picture in light. The keep-list is the boards that were just re-exported; the rest are dropped
- * because they have no mounted editor to export *from*, and a placeholder is at least honest. They come
- * back the next time each board is opened and left.
- */
-export async function clearThumbnailsExcept(kv: KvStore, keepIds: string[]): Promise<void> {
-	const keep = new Set(keepIds.map((id) => `${PREFIX}${id}`))
-	const keys = (await kv.keys()).filter((key) => key.startsWith(PREFIX) && !keep.has(key))
-	for (const key of keys) {
-		await kv.delete(key)
-		// Notify per board so cards already on screen swap to the placeholder now, rather than staying
-		// on a stale preview until the next full reload.
-		notify(key.slice(PREFIX.length))
+/** Drops previews stored before they had a theme (`thumb:<id>`): nothing says which theme they are in. */
+export async function forgetUnthemedThumbnails(kv: KvStore): Promise<void> {
+	const themed = THEMES.map((theme) => `${PREFIX}${theme}:`)
+	for (const stored of await kv.keys()) {
+		if (stored.startsWith(PREFIX) && !themed.some((prefix) => stored.startsWith(prefix))) await kv.delete(stored)
 	}
 }
 

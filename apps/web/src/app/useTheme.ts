@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 /**
  * The app's colour theme.
@@ -19,7 +19,8 @@ export type Theme = 'light' | 'dark' | 'system'
 
 export const THEME_KEY = 'lifeboard:theme'
 
-function loadTheme(): Theme {
+/** The stored preference, `system` unresolved, which is what the canvas is told (see App). */
+export function loadTheme(): Theme {
 	try {
 		const raw = localStorage.getItem(THEME_KEY)
 		return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system'
@@ -30,7 +31,25 @@ function loadTheme(): Theme {
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
-function resolve(theme: Theme): 'light' | 'dark' {
+export type ResolvedTheme = 'light' | 'dark'
+
+/** The theme on screen now: `<html data-theme>`, which is always resolved. Dark is the default. */
+export function getResolvedTheme(): ResolvedTheme {
+	return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+}
+
+function subscribeToResolvedTheme(onChange: () => void): () => void {
+	const observer = new MutationObserver(onChange)
+	observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+	return () => observer.disconnect()
+}
+
+/** The theme on screen, for components that draw or pick something per theme. */
+export function useResolvedTheme(): ResolvedTheme {
+	return useSyncExternalStore(subscribeToResolvedTheme, getResolvedTheme)
+}
+
+function resolve(theme: Theme): ResolvedTheme {
 	if (theme !== 'system') return theme
 	return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
 }

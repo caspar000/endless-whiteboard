@@ -5,6 +5,7 @@ import type { MoveJob } from '../boards/moveQueue'
 import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import { fetchServerThumbnail } from '../server/serverVault'
+import { useResolvedTheme } from './useTheme'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
@@ -217,6 +218,7 @@ function BoardThumbnail({
 	fromServer: boolean
 }) {
 	const platform = usePlatform()
+	const theme = useResolvedTheme()
 	const [url, setUrl] = useState<string | null>(null)
 	// Bumped when this board's thumbnail is rewritten, which forces the load effect to re-run.
 	const [revision, setRevision] = useState(0)
@@ -234,7 +236,8 @@ function BoardThumbnail({
 		let cancelled = false
 
 		const load = async () =>
-			(fromServer ? await fetchServerThumbnail(boardId) : null) ?? (await loadBoardThumbnail(platform.kv, boardId))
+			(fromServer ? (await fetchServerThumbnail(boardId, theme))?.blob : undefined) ??
+			(await loadBoardThumbnail(platform.kv, boardId, theme))
 		void load().then((blob) => {
 			if (cancelled) return
 			if (!blob) {
@@ -252,7 +255,7 @@ function BoardThumbnail({
 			if (objectUrl) URL.revokeObjectURL(objectUrl)
 		}
 		// `updatedAt` covers edits made in another tab; `revision` covers this tab's own captures.
-	}, [platform, boardId, updatedAt, revision, fromServer])
+	}, [platform, boardId, updatedAt, revision, fromServer, theme])
 
 	if (!url) {
 		return (

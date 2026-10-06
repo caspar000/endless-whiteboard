@@ -8,6 +8,7 @@ import {
 	waitForPersistFlush,
 	type RawBoardSnapshot,
 } from '../persistence/tldrawLocalDb'
+import { getResolvedTheme } from '../app/useTheme'
 import { loadBoardThumbnail, storeBoardThumbnail } from '../persistence/thumbnails'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import {
@@ -92,8 +93,10 @@ export async function moveBoardToServer(
 			updatedAt: board.updatedAt,
 		})
 		// The preview goes with it, so the card has a picture on every device straight away.
-		const thumbnail = await loadBoardThumbnail(platform.kv, board.id)
-		if (thumbnail) await uploadServerThumbnail(board.id, thumbnail)
+		for (const theme of ['light', 'dark'] as const) {
+			const thumbnail = await loadBoardThumbnail(platform.kv, board.id, theme)
+			if (thumbnail) await uploadServerThumbnail(board.id, theme, thumbnail)
+		}
 	}
 
 	progress('finishing')
@@ -127,8 +130,9 @@ export async function moveBoardToDevice(
 		progress('board')
 		// Loaded on first open, like an imported backup (persistence/pendingRestore.ts).
 		if (Object.keys(snapshot.store).length) await setPendingRestore(platform.kv, board.id, snapshot)
-		const thumbnail = await fetchServerThumbnail(board.id)
-		if (thumbnail) await storeBoardThumbnail(platform.kv, board.id, thumbnail)
+		const theme = getResolvedTheme()
+		const thumbnail = await fetchServerThumbnail(board.id, theme)
+		if (thumbnail) await storeBoardThumbnail(platform.kv, board.id, theme, thumbnail.blob)
 		await addBoard(platform.kv, {
 			id: board.id,
 			name: board.name,

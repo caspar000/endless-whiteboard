@@ -4,7 +4,7 @@ import type { Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { clearThumbnailsExcept, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import { onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
@@ -149,12 +149,11 @@ export function App() {
 	 * palette. Every board with a mounted editor is re-exported here and keeps a real preview —
 	 * including the inactive tabs, which are hidden but still mounted (see `withExportableHost`).
 	 *
-	 * Boards with no mounted editor have nothing to export *from*; exporting one would mean mounting a
-	 * tldraw editor per board, which is the "thumbnail workers" idea the plan deliberately dropped. Those
-	 * are cleared instead and regenerate the next time each board is opened and left.
+	 * Boards with no mounted editor are drawn in the new theme by the home screen, off screen
+	 * (canvas/ThumbnailBackfill.tsx); previews are kept per theme, so none of them shows the old one.
 	 *
 	 * Serialised through a ref because an OS appearance change can arrive while a switch is still in
-	 * flight, and two passes racing would have them clearing each other's fresh exports.
+	 * flight, and two passes racing would interleave their exports.
 	 */
 	const refreshing = useRef<Promise<void>>(Promise.resolve())
 	const refreshThumbnails = useCallback(() => {
@@ -162,14 +161,9 @@ export function App() {
 			.then(async () => {
 				// Read the editors when the turn actually starts, not when it was queued: a tab may have
 				// opened or closed while an earlier pass was running.
-				const mounted = [...editors.current.entries()]
-				for (const [id, editor] of mounted) {
+				for (const [id, editor] of [...editors.current.entries()]) {
 					await saveBoardThumbnail(platform.kv, id, editor)
 				}
-				await clearThumbnailsExcept(
-					platform.kv,
-					mounted.map(([id]) => id)
-				)
 			})
 			// Keeps the chain alive: a rejected link would make every later switch a no-op.
 			.catch((err) => console.warn('Lifeboard: could not refresh thumbnails for the new theme', err))
@@ -554,8 +548,8 @@ export function App() {
 	serverBoardIds.current = new Set(api.boards.filter((board) => board.vault === 'server').map((board) => board.id))
 	useEffect(
 		() =>
-			onThumbnailDrawn((id, blob) => {
-				if (serverBoardIds.current.has(id)) void uploadServerThumbnail(id, blob)
+			onThumbnailDrawn((id, theme, blob) => {
+				if (serverBoardIds.current.has(id)) void uploadServerThumbnail(id, theme, blob)
 			}),
 		[]
 	)

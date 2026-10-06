@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Editor } from '@lifeboard/canvas'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
 	createBoard,
 	listBoards,
@@ -8,7 +7,7 @@ import {
 	type BoardMeta,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
-import { moveBoardToDevice, moveBoardToServer } from '../boards/moveBoard'
+import { getMoves, queueMoves, subscribeToMoves, type MoveJob } from '../boards/moveQueue'
 import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import {
@@ -29,10 +28,10 @@ export interface BoardsApi {
 	setFavorite(id: string, favorite: boolean): Promise<void>
 	remove(id: string): Promise<void>
 	/**
-	 * To the server if it is on this device, and back if it is on the server. `editor` is the board's
-	 * live editor when it is open, which is fresher than what tldraw has written to disk yet.
+	 * Queues these boards to move: to the server if they are on this device, and back if they are on
+	 * the server. The queue survives a reload and shows its progress (boards/moveQueue.ts).
 	 */
-	move(board: BoardMeta, editor?: Editor): Promise<void>
+	move(boards: readonly BoardMeta[]): Promise<void>
 	refresh(): Promise<void>
 }
 
@@ -75,7 +74,11 @@ export function useBoards(): BoardsApi {
 		return () => window.removeEventListener('focus', onFocus)
 	}, [refreshServer])
 
-	const boards = useMemo(() => [...local, ...(server ?? [])].sort(byRecent), [local, server])
+	// By id: a board half-way through a move is briefly on both sides, and is still one board.
+	const boards = useMemo(
+		() => [...new Map([...local, ...(server ?? [])].map((board) => [board.id, board])).values()].sort(byRecent),
+		[local, server]
+	)
 	const isServerBoard = useCallback(
 		(id: string) => server?.some((b) => b.id === id) ?? false,
 		[server]
@@ -119,14 +122,7 @@ export function useBoards(): BoardsApi {
 		[platform, isServerBoard, refresh]
 	)
 
-	const move = useCallback(
-		async (board: BoardMeta, editor?: Editor) => {
-			if (board.vault === 'server') await moveBoardToDevice(platform, board)
-			else await moveBoardToServer(platform, board, editor)
-			await refresh()
-		},
-		[platform, refresh]
-	)
+	const move = useCallback((boards: readonly BoardMeta[]) => queueMoves(platform.kv, boards), [platform])
 
 	// Memoized deliberately, not as micro-optimisation: a fresh object literal here would change
 	// identity on every render, re-running every consumer effect that depends on the API — which is
@@ -135,4 +131,9 @@ export function useBoards(): BoardsApi {
 		() => ({ boards, loading, hasServer: server !== null, create, rename, setFavorite, remove, move, refresh }),
 		[boards, loading, server, create, rename, setFavorite, remove, move, refresh]
 	)
+}
+
+/** The boards on their way between this browser and the server, live. */
+export function useMoves(): readonly MoveJob[] {
+	return useSyncExternalStore(subscribeToMoves, getMoves)
 }

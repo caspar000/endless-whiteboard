@@ -159,8 +159,10 @@ function openExistingDb(dbName: string): Promise<OpenResult> {
 				resolve({ status: 'ok', db: request.result })
 			}
 		})
-		// Errors and blocks mean "we don't know", never "there is nothing here".
-		request.addEventListener('error', () => resolve({ status: 'unreadable' }))
+		// Errors and blocks mean "we don't know", never "there is nothing here" — except the error our own
+		// abort above causes: the browser reports that as an AbortError, and it means the database
+		// wasn't there.
+		request.addEventListener('error', () => resolve({ status: missing ? 'absent' : 'unreadable' }))
 		request.addEventListener('blocked', () => resolve({ status: 'unreadable' }))
 	})
 }

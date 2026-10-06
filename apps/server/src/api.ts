@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { isAssetHash, type AssetFiles } from './assets.ts'
 import { exportVault } from './exportZip.ts'
 import type { Rooms } from './rooms.ts'
+import type { Thumbnails } from './thumbnails.ts'
 import type { Vault } from './vault.ts'
 
 /** Board ids become file names, so only what a UUID can contain. */
@@ -11,6 +12,8 @@ const MAX_NAME = 200
 const MAX_ASSET_BYTES = 80 * 1024 * 1024
 /** A board's records without its files; the largest real board is well under this. */
 const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
+/** A card's preview: 600 px on its long edge, as WebP. Far under this. */
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
 /** Enough for every asset on a large board in one question. */
 const MAX_HASHES_PER_QUERY = 5000
 
@@ -23,6 +26,10 @@ const isSnapshot = (value: unknown): value is { store: Record<string, unknown>; 
 	!!(value as { store?: unknown }).store &&
 	typeof (value as { store?: unknown }).store === 'object' &&
 	!!(value as { schema?: unknown }).schema
+
+/** A board's own date, kept when it moves here: a time in the past, give or take a clock's drift. */
+const isPastTime = (value: unknown): value is number =>
+	typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < Date.now() + 24 * 60 * 60 * 1000
 
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === 'string')
@@ -43,7 +50,13 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 /** The server vault's board index and settings, and the sync socket for each board's content. */
 export function registerApi(
 	app: FastifyInstance,
-	{ vault, rooms, assets, appVersion }: { vault: Vault; rooms: Rooms; assets: AssetFiles; appVersion: string }
+	{
+		vault,
+		rooms,
+		assets,
+		thumbnails,
+		appVersion,
+	}: { vault: Vault; rooms: Rooms; assets: AssetFiles; thumbnails: Thumbnails; appVersion: string }
 ): void {
 	app.get('/api/boards', async () => vault.list())
 
@@ -51,11 +64,13 @@ export function registerApi(
 	 * A new board, empty or — when it arrives from a local vault — with `snapshot` as its content
 	 * (`{ store, schema }`, already migrated to the current schema by the app).
 	 */
-	app.post<{ Body: { id?: unknown; name?: unknown; favorite?: unknown; snapshot?: unknown } }>(
+	app.post<{
+		Body: { id?: unknown; name?: unknown; favorite?: unknown; snapshot?: unknown; createdAt?: unknown; updatedAt?: unknown }
+	}>(
 		'/api/boards',
 		{ bodyLimit: MAX_SNAPSHOT_BYTES },
 		async (request, reply) => {
-			const { id, name, favorite, snapshot } = request.body ?? {}
+			const { id, name, favorite, snapshot, createdAt, updatedAt } = request.body ?? {}
 			if (!isName(name)) return reply.code(400).send({ error: 'A board needs a name.' })
 			if (id !== undefined && (typeof id !== 'string' || !BOARD_ID.test(id))) {
 				return reply.code(400).send({ error: 'Not a valid board id.' })
@@ -63,8 +78,16 @@ export function registerApi(
 			if (snapshot !== undefined && !isSnapshot(snapshot)) {
 				return reply.code(400).send({ error: '`snapshot` is { store, schema }.' })
 			}
+			for (const date of [createdAt, updatedAt]) {
+				if (date !== undefined && !isPastTime(date)) return reply.code(400).send({ error: 'Dates are milliseconds, in the past.' })
+			}
 			if (typeof id === 'string' && vault.get(id)) return reply.code(409).send({ error: 'That board already exists.' })
-			const board = vault.create({ ...(typeof id === 'string' ? { id } : {}), name })
+			const board = vault.create({
+				...(typeof id === 'string' ? { id } : {}),
+				name,
+				...(typeof createdAt === 'number' ? { createdAt } : {}),
+				...(typeof updatedAt === 'number' ? { updatedAt } : {}),
+			})
 			if (snapshot) {
 				try {
 					rooms.seed(board.id, snapshot)
@@ -107,6 +130,31 @@ export function registerApi(
 	app.delete<{ Params: { id: string } }>('/api/boards/:id', async (request, reply) => {
 		if (!vault.delete(request.params.id)) return reply.code(404).send({ error: 'No such board.' })
 		rooms.delete(request.params.id)
+		thumbnails.delete(request.params.id)
+		return reply.code(204).send()
+	})
+
+	app.addContentTypeParser('image/webp', { parseAs: 'buffer', bodyLimit: MAX_THUMBNAIL_BYTES }, (_request, body, done) =>
+		done(null, body)
+	)
+
+	/** A board's preview, as whichever device last drew one sent it. */
+	app.get<{ Params: { id: string } }>('/api/boards/:id/thumbnail', async (request, reply) => {
+		const bytes = BOARD_ID.test(request.params.id) ? thumbnails.read(request.params.id) : null
+		if (!bytes) return reply.code(404).send({ error: 'No preview yet.' })
+		return reply.header('content-type', 'image/webp').header('cache-control', 'no-cache').send(bytes)
+	})
+
+	app.put<{ Params: { id: string }; Body: Buffer }>('/api/boards/:id/thumbnail', async (request, reply) => {
+		if (!BOARD_ID.test(request.params.id) || !vault.get(request.params.id)) {
+			return reply.code(404).send({ error: 'No such board.' })
+		}
+		const body = request.body
+		// WebP files start "RIFF....WEBP": anything else is not a preview this app drew.
+		if (!Buffer.isBuffer(body) || body.subarray(0, 4).toString() !== 'RIFF' || body.subarray(8, 12).toString() !== 'WEBP') {
+			return reply.code(400).send({ error: 'A preview is a WebP image.' })
+		}
+		thumbnails.write(request.params.id, body)
 		return reply.code(204).send()
 	})
 

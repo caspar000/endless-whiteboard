@@ -26,8 +26,11 @@ pnpm dev          # http://localhost:5173
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
 board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
-captured from the live editor as the board is closed; boards never opened show a dotted-paper
-placeholder. Star a board to pin it to Favourites.
+captured from the live editor as the board is closed. A board with no preview yet (imported, moved
+from another device, made by an agent) gets one drawn in a hidden editor off screen, one board at a
+time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
+boards' previews are stored on the server, so every device has them. Star a board to pin it to
+Favourites.
 
 Both screens share a third surface: **the agent panel**, docked to the right of the tab strip
 (<kbd>⌘⇧A</kbd>). It runs Claude Code against the board you are looking at — ask it to research
@@ -529,7 +532,7 @@ port to one new file (`TauriPlatformAdapter`).
   mounted editor — including inactive tabs, which needs `data-exporting` to swap their
   `visibility: hidden` for a clip, because tldraw's exporter drops HTML-backed shapes it considers
   invisible. Boards with no mounted editor have nothing to export from, so their previews are dropped
-  and rebuilt the next time each is opened.
+  and redrawn off screen.
 - **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
   draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
   ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Canvas
@@ -551,9 +554,11 @@ downscaling/dedupe/GC, backup round-trip, offline operation, the zero-recompute 
 paper, board thumbnails, the palette, an agent building a board end to end over the real bridge, and a
 3D dice roll in a production build.
 
-Self-hosting is built but not yet deployed (`docs/self-hosting-plan.md`): `apps/server` serves the
-app behind a login and syncs server boards live between devices, with their images and files; boards
-move between this browser and the server either way (Help → Your server). `deploy/darkroomlab/README.md`
+Self-hosting is built and deployed (`docs/self-hosting-plan.md`): `apps/server` serves the app
+behind a login and syncs server boards live between devices, with their images, files and previews;
+boards move between this browser and the server either way (Help → Your server), through a queue
+saved in the browser (`boards/moveQueue.ts`) that survives a reload and shows its progress on each
+card and in the sidebar. `deploy/darkroomlab/README.md`
 covers running it.
 
 Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,

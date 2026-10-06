@@ -11,6 +11,7 @@ import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
 import { registerAuth } from './auth.ts'
 import type { ServerConfig } from './config.ts'
 import { Rooms } from './rooms.ts'
+import { Thumbnails } from './thumbnails.ts'
 import { Vault } from './vault.ts'
 
 /** Files that must be re-checked on every load, or a deploy never reaches a browser that has the old one. */
@@ -46,7 +47,8 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		rooms.closeAll()
 		vault.close()
 	})
-	registerApi(app, { vault, rooms, assets, appVersion: config.revision ?? 'dev' })
+	const thumbnails = new Thumbnails(join(config.dataDir, 'thumbnails'))
+	registerApi(app, { vault, rooms, assets, thumbnails, appVersion: config.revision ?? 'dev' })
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {
 		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)

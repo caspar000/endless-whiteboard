@@ -10,9 +10,13 @@ import {
 	Settings,
 	Star,
 	HardDrive,
+	LoaderCircle,
+	TriangleAlert,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
+import { getMoveBatch } from '../boards/moveQueue'
+import { useMoves } from './useBoards'
 
 const ALL_BOARDS_EXPANDED_KEY = 'lifeboard:sidebar:allBoardsExpanded'
 
@@ -184,6 +188,8 @@ export function Sidebar({
 				</section>
 			</div>
 
+			<MoveStatus onShow={onAllBoards} />
+
 			<nav className="lb-sidebar__footer" aria-label="Application">
 				<button
 					type="button"
@@ -260,6 +266,52 @@ function BoardLink({
 				)}
 			</span>
 			<span className="lb-sidebar__label">{board.name}</span>
+		</button>
+	)
+}
+
+/**
+ * Boards moving between this browser and the server, on every screen: how many of how many, and the
+ * one under way. The queue outlives a reload (boards/moveQueue.ts), so this shows again after one.
+ * Clicking goes to All boards, where each moving card shows its own progress.
+ */
+function MoveStatus({ onShow }: { onShow: () => void }) {
+	const jobs = useMoves()
+	if (!jobs.length) return null
+	const { done, total } = getMoveBatch()
+	const failed = jobs.filter((job) => job.error).length
+	const current = jobs.find((job) => !job.error)
+	const where = current?.to === 'device' ? 'to this device' : 'to your server'
+	const title = current
+		? `Moving ${done + 1} of ${total} ${where}`
+		: `${failed} ${failed === 1 ? 'board' : 'boards'} couldn’t move`
+	const detail = current
+		? current.stage === 'files' && current.filesTotal
+			? `${current.board.name} · files ${current.filesDone} of ${current.filesTotal}`
+			: current.board.name
+		: 'Open All boards to retry'
+	return (
+		<button
+			type="button"
+			className={failed && !current ? 'lb-sidebar__moves lb-sidebar__moves--failed' : 'lb-sidebar__moves'}
+			onClick={onShow}
+			title={`${title}: ${detail}`}
+		>
+			<span className="lb-sidebar__moves-icon" aria-hidden="true">
+				{current ? <LoaderCircle size={16} /> : <TriangleAlert size={16} />}
+			</span>
+			<span className="lb-sidebar__moves-text" role="status" aria-live="polite">
+				<span className="lb-sidebar__moves-title">{title}</span>
+				<span className="lb-sidebar__moves-detail">{detail}</span>
+				{current && (
+					<span className="lb-progress" aria-hidden="true">
+						<span
+							className="lb-progress__bar"
+							style={{ width: `${Math.round(((done + 0.5) / Math.max(total, 1)) * 100)}%` }}
+						/>
+					</span>
+				)}
+			</span>
 		</button>
 	)
 }

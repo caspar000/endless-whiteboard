@@ -830,6 +830,70 @@ button {
 .lb-sidebar__board-list .lb-sidebar__item {
 	padding-left: 18px;
 }
+/* Boards moving between this browser and the server, on every screen (Sidebar.tsx). */
+.lb-sidebar__moves {
+	display: grid;
+	grid-template-columns: 20px 1fr;
+	align-items: start;
+	gap: 9px;
+	margin: 8px 0;
+	padding: 9px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.lb-sidebar__moves--failed {
+	border-color: var(--lb-danger-line);
+	background: var(--lb-danger-tint);
+}
+.lb-sidebar__moves-icon {
+	display: grid;
+	place-items: center;
+	color: var(--lb-accent);
+}
+.lb-sidebar__moves:not(.lb-sidebar__moves--failed) .lb-sidebar__moves-icon svg {
+	animation: lb-spin 1s linear infinite;
+}
+.lb-sidebar__moves--failed .lb-sidebar__moves-icon {
+	color: var(--lb-danger);
+}
+.lb-sidebar__moves-text {
+	display: grid;
+	gap: 4px;
+	min-width: 0;
+}
+.lb-sidebar__moves-title {
+	font-weight: 600;
+}
+.lb-sidebar__moves-detail {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+@keyframes lb-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-sidebar__moves-icon svg {
+		animation: none !important;
+	}
+}
+.lb-sidebar--collapsed .lb-sidebar__moves {
+	grid-template-columns: 20px;
+	padding: 9px 6px;
+}
+.lb-sidebar--collapsed .lb-sidebar__moves-text {
+	display: none;
+}
+
 .lb-sidebar__footer {
 	display: flex;
 	flex-direction: column;
@@ -1110,6 +1174,50 @@ button {
 	font-size: 11px;
 	color: var(--lb-text-faint);
 }
+/* A board on its way between this browser and the server: where it has got to, over its preview. */
+.lb-card__moving {
+	position: absolute;
+	inset: auto 8px 8px 8px;
+	display: grid;
+	gap: 6px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--lb-scrim);
+	backdrop-filter: blur(6px);
+	color: var(--lb-text);
+	font-size: 12px;
+}
+.lb-card__moving p {
+	margin: 0;
+}
+.lb-card__moving--failed {
+	background: var(--lb-danger-tint);
+	border: 1px solid var(--lb-danger-line);
+}
+.lb-card__moving-actions {
+	display: flex;
+	gap: 6px;
+}
+.lb-card__preview:disabled {
+	cursor: progress;
+}
+
+/* A thin bar for work under way: a board moving, a batch of them. */
+.lb-progress {
+	display: block;
+	height: 4px;
+	border-radius: 2px;
+	background: var(--lb-border);
+	overflow: hidden;
+}
+.lb-progress__bar {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--lb-accent);
+	transition: width 300ms ease;
+}
+
 .lb-card__actions {
 	position: absolute;
 	top: 6px;
@@ -10917,4 +11025,16 @@ button.lb-props__eye:hover {
  */
 .lb-dice-preview__die {
 	--lb-dice-halo: transparent;
+}
+
+/* Where a board is drawn for its preview without being opened (canvas/ThumbnailBackfill.tsx): laid
+   out like a board, so the picture is right, but off screen and out of reach. */
+.lb-offscreen-board {
+	position: fixed;
+	top: 0;
+	left: -20000px;
+	width: 1200px;
+	height: 800px;
+	pointer-events: none;
+	contain: strict;
 }

@@ -27,8 +27,14 @@ export function Server(_props: SectionProps) {
 					there. After that, each board card has <strong>Move to server</strong> or{' '}
 					<strong>Move to this device</strong>, and so does ⌘K for the board you have open (
 					<em>Move board to server</em>, <em>Move board to this device</em>). A board keeps its name,
-					star and tabs when it moves. Its files go first, so a board never arrives without its
-					pictures.
+					star, dates, tabs and preview when it moves. Its files go first, so a board never arrives
+					without its pictures.
+				</p>
+				<p>
+					Boards move one at a time. Each card shows how far its move has got, and the sidebar shows the
+					whole batch. Reloading or closing the tab doesn’t lose a move: it carries on from where it
+					stopped next time. If a board can’t move, its card says why and offers <strong>Retry</strong>{' '}
+					or <strong>Dismiss</strong>, and the rest carry on.
 				</p>
 			</Section>
 

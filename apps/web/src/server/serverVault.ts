@@ -87,11 +87,14 @@ export async function listServerBoards(): Promise<BoardMeta[] | null> {
 	return ((await (await api('/boards')).json()) as ServerBoard[]).map(toMeta)
 }
 
-/** A new server board — empty, or (moving from this device) with its id, star and content. */
+/**
+ * A new server board — empty, or (moving from this device) with its id, star, content and dates, so it
+ * keeps its place in the list.
+ */
 export async function createServerBoard(
 	name: string,
 	id?: string,
-	moved?: { snapshot: unknown; favorite: boolean }
+	moved?: { snapshot: unknown; favorite: boolean; createdAt: number; updatedAt: number }
 ): Promise<BoardMeta> {
 	const response = await api('/boards', {
 		method: 'POST',
@@ -111,6 +114,31 @@ export async function updateServerBoard(id: string, patch: { name?: string; favo
 
 export async function deleteServerBoard(id: string): Promise<void> {
 	await api(`/boards/${id}`, { method: 'DELETE' })
+}
+
+/** Whether the server has this board: how an interrupted move tells which step it reached. */
+export async function serverHasBoard(id: string): Promise<boolean> {
+	return ((await (await api('/boards')).json()) as ServerBoard[]).some((board) => board.id === id)
+}
+
+/** A server board's preview, as whichever device last drew one sent it; `null` if none has. */
+export async function fetchServerThumbnail(id: string): Promise<Blob | null> {
+	try {
+		const response = await fetch(`/api/boards/${id}/thumbnail`, { cache: 'no-store' })
+		return response.ok ? await response.blob() : null
+	} catch {
+		return null
+	}
+}
+
+/** Sends a server board's preview, so every device shows it. Best effort: a preview is decoration. */
+export async function uploadServerThumbnail(id: string, blob: Blob): Promise<void> {
+	if (blob.type !== 'image/webp') return
+	await fetch(`/api/boards/${id}/thumbnail`, {
+		method: 'PUT',
+		headers: { 'content-type': 'image/webp' },
+		body: blob,
+	}).catch(() => {})
 }
 
 /** Settings that follow the vault rather than the device. See `app/vaultSettings.ts`. */
@@ -168,8 +196,18 @@ export async function missingServerAssets(hashes: string[]): Promise<string[]> {
 	return ((await response.json()) as { missing: string[] }).missing
 }
 
-export async function uploadServerAsset(hash: string, blob: Blob): Promise<void> {
-	await api(`/assets/${hash}`, { method: 'PUT', body: blob, headers: { 'content-type': 'application/octet-stream' } })
+/**
+ * Sends a file. `false` when the server refuses it because its bytes don't hash to the name it is
+ * stored under: a damaged file, which no device could load by that name anyway.
+ */
+export async function uploadServerAsset(hash: string, blob: Blob): Promise<boolean> {
+	try {
+		await api(`/assets/${hash}`, { method: 'PUT', body: blob, headers: { 'content-type': 'application/octet-stream' } })
+		return true
+	} catch (error) {
+		if (error instanceof Error && /do not match/.test(error.message)) return false
+		throw error
+	}
 }
 
 /** Every server board and the files they use, in the app's own backup format (importable as copies). */

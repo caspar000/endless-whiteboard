@@ -68,12 +68,25 @@ export class Vault {
 		return row && toBoard(row)
 	}
 
-	/** `id` is optional so a board moving here from a local vault can keep its own. */
-	create({ id = randomUUID(), name }: { id?: string; name: string }): ServerBoard {
+	/**
+	 * `id` and the dates are optional so a board moving here from a local vault keeps its own: the same
+	 * id, and the same place in the "recently edited" order.
+	 */
+	create({
+		id = randomUUID(),
+		name,
+		createdAt,
+		updatedAt,
+	}: {
+		id?: string
+		name: string
+		createdAt?: number
+		updatedAt?: number
+	}): ServerBoard {
 		const now = Date.now()
 		this.db
 			.prepare('INSERT INTO boards (vault_id, id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-			.run(DEFAULT_VAULT, id, name, now, now)
+			.run(DEFAULT_VAULT, id, name, createdAt ?? now, updatedAt ?? now)
 		return this.get(id)!
 	}
 

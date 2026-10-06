@@ -29,6 +29,18 @@ const PREFIX = 'thumb:'
 type ThumbnailListener = (boardId: string) => void
 const listeners = new Set<ThumbnailListener>()
 
+/**
+ * Called with each preview this browser draws (not ones it was sent), so the app can pass a server
+ * board's on to the server for every other device.
+ */
+type DrawnListener = (boardId: string, blob: Blob) => void
+const drawnListeners = new Set<DrawnListener>()
+
+export function onThumbnailDrawn(listener: DrawnListener): () => void {
+	drawnListeners.add(listener)
+	return () => drawnListeners.delete(listener)
+}
+
 export function onThumbnailSaved(listener: ThumbnailListener): () => void {
 	listeners.add(listener)
 	return () => listeners.delete(listener)
@@ -119,6 +131,7 @@ export async function saveBoardThumbnail(
 
 		await kv.set(`${PREFIX}${boardId}`, result.blob)
 		notify(boardId)
+		for (const listener of drawnListeners) listener(boardId, result.blob)
 	} catch (err) {
 		// A thumbnail is decoration. Failing to make one must never block leaving a board or, worse,
 		// interrupt the persistence flush happening at the same moment.
@@ -130,6 +143,12 @@ export async function loadBoardThumbnail(kv: KvStore, boardId: string): Promise<
 	const blob = await kv.get<Blob>(`${PREFIX}${boardId}`)
 	// Guard the type: this key survives app upgrades, and a non-Blob would break `createObjectURL`.
 	return blob instanceof Blob ? blob : undefined
+}
+
+/** Keeps a preview made elsewhere (the server's copy of one), as if this browser had drawn it. */
+export async function storeBoardThumbnail(kv: KvStore, boardId: string, blob: Blob): Promise<void> {
+	await kv.set(`${PREFIX}${boardId}`, blob)
+	notify(boardId)
 }
 
 export async function deleteBoardThumbnail(kv: KvStore, boardId: string): Promise<void> {

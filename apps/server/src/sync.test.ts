@@ -125,6 +125,36 @@ describe('board index', () => {
 		expect((await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id: '../x', name: 'Bad' } })).statusCode).toBe(400)
 	})
 
+	it('keeps the dates of a board moving in, so it keeps its place in the list', async () => {
+		const { app, cookie } = await startServer()
+		const id = crypto.randomUUID()
+		const createdAt = Date.now() - 10 * 24 * 60 * 60 * 1000
+		const updatedAt = Date.now() - 2 * 24 * 60 * 60 * 1000
+		const created = await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id, name: 'Old', createdAt, updatedAt } })
+		expect(created.json()).toMatchObject({ id, createdAt, updatedAt })
+		const future = await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { name: 'Bad', updatedAt: Date.now() + 1e10 } })
+		expect(future.statusCode).toBe(400)
+	})
+
+	it('keeps a board’s preview, refuses anything but WebP, and drops it with the board', async () => {
+		const { app, cookie } = await startServer()
+		const board = await createBoard(app, cookie, 'Pictured')
+		const url = `/api/boards/${board.id}/thumbnail`
+		expect((await app.inject({ url, headers: { cookie } })).statusCode).toBe(404)
+
+		const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBPVP8 '), Buffer.from('pixels')])
+		const put = (body: Buffer) =>
+			app.inject({ method: 'PUT', url, headers: { cookie, 'content-type': 'image/webp' }, payload: body })
+		expect((await put(Buffer.from('not an image at all'))).statusCode).toBe(400)
+		expect((await put(webp)).statusCode).toBe(204)
+		const got = await app.inject({ url, headers: { cookie } })
+		expect(got.headers['content-type']).toBe('image/webp')
+		expect(got.rawPayload.equals(webp)).toBe(true)
+
+		await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie } })
+		expect((await app.inject({ url, headers: { cookie } })).statusCode).toBe(404)
+	})
+
 	it('keeps vault settings, and refuses ones it does not know or values of the wrong shape', async () => {
 		const { app, cookie } = await startServer()
 		const put = (key: string, value: unknown) =>

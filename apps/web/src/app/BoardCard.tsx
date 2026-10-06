@@ -1,8 +1,10 @@
 import { Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
+import type { MoveJob } from '../boards/moveQueue'
 import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
+import { fetchServerThumbnail } from '../server/serverVault'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
@@ -18,6 +20,9 @@ export function BoardCard({
 	onDelete,
 	onMove,
 	moveLabel,
+	moveJob,
+	onRetryMove,
+	onDismissMove,
 	renaming,
 	onRenameSubmit,
 	onRenameCancel,
@@ -30,6 +35,10 @@ export function BoardCard({
 	/** Offered only when there is somewhere to move it: a server is connected. */
 	onMove?: () => void
 	moveLabel?: string
+	/** The move this board is in, shown over its preview until it arrives. */
+	moveJob?: MoveJob
+	onRetryMove?: () => void
+	onDismissMove?: () => void
 	renaming: boolean
 	onRenameSubmit: (name: string) => void
 	onRenameCancel: () => void
@@ -43,9 +52,19 @@ export function BoardCard({
 					className="lb-card__preview lb-list__open"
 					onClick={onOpen}
 					aria-label={`Open ${board.name}`}
+					// Not while it moves: its content is between two homes until the move finishes.
+					disabled={!!moveJob && !moveJob.error}
 				>
-					<BoardThumbnail boardId={board.id} updatedAt={board.updatedAt} name={board.name} />
+					<BoardThumbnail
+						boardId={board.id}
+						updatedAt={board.updatedAt}
+						name={board.name}
+						fromServer={board.vault === 'server'}
+					/>
 				</button>
+				{moveJob && (
+					<MoveOverlay job={moveJob} onRetry={onRetryMove} onDismiss={onDismissMove} />
+				)}
 
 				{/*
 				 * Overlaid on the thumbnail rather than sitting in the footer. In the footer these
@@ -133,14 +152,69 @@ export function BoardCard({
 	)
 }
 
+/** How far along each stage of a move is, as a share of the bar. Files fill the stretch in between. */
+const STAGE_SHARE = { waiting: 0, starting: 0.05, board: 0.85, finishing: 0.95 } as const
+
+/** Where a moving board has got to, over its preview: a line of words and a bar. */
+function MoveOverlay({
+	job,
+	onRetry,
+	onDismiss,
+}: {
+	job: MoveJob
+	onRetry?: () => void
+	onDismiss?: () => void
+}) {
+	const where = job.to === 'server' ? 'to the server' : 'to this device'
+	if (job.error) {
+		return (
+			<div className="lb-card__moving lb-card__moving--failed" role="alert">
+				<p>Couldn’t move {where}. {job.error}</p>
+				<div className="lb-card__moving-actions">
+					<button className="lb-btn lb-btn--tiny" onClick={onRetry}>
+						Retry
+					</button>
+					<button className="lb-btn lb-btn--ghost lb-btn--tiny" onClick={onDismiss}>
+						Dismiss
+					</button>
+				</div>
+			</div>
+		)
+	}
+	const label =
+		job.stage === 'waiting'
+			? `Waiting to move ${where}`
+			: job.stage === 'files' && job.filesTotal > 0
+				? `Moving ${where} · files ${job.filesDone} of ${job.filesTotal}`
+				: `Moving ${where}…`
+	// Files are most of the work; the board and the tidy-up are the last stretch.
+	const share =
+		job.stage === 'files'
+			? job.filesTotal
+				? 0.05 + (job.filesDone / job.filesTotal) * 0.75
+				: 0.1
+			: STAGE_SHARE[job.stage]
+	return (
+		<div className="lb-card__moving" role="status" aria-live="polite">
+			<p>{label}</p>
+			<div className="lb-progress" aria-hidden="true">
+				<div className="lb-progress__bar" style={{ width: `${Math.round(share * 100)}%` }} />
+			</div>
+		</div>
+	)
+}
+
 function BoardThumbnail({
 	boardId,
 	updatedAt,
 	name,
+	fromServer,
 }: {
 	boardId: string
 	updatedAt: number
 	name: string
+	/** A server board: its preview comes from the server, drawn by whichever device last had it open. */
+	fromServer: boolean
 }) {
 	const platform = usePlatform()
 	const [url, setUrl] = useState<string | null>(null)
@@ -159,7 +233,9 @@ function BoardThumbnail({
 		let objectUrl: string | null = null
 		let cancelled = false
 
-		void loadBoardThumbnail(platform.kv, boardId).then((blob) => {
+		const load = async () =>
+			(fromServer ? await fetchServerThumbnail(boardId) : null) ?? (await loadBoardThumbnail(platform.kv, boardId))
+		void load().then((blob) => {
 			if (cancelled) return
 			if (!blob) {
 				setUrl(null)
@@ -176,7 +252,7 @@ function BoardThumbnail({
 			if (objectUrl) URL.revokeObjectURL(objectUrl)
 		}
 		// `updatedAt` covers edits made in another tab; `revision` covers this tab's own captures.
-	}, [platform, boardId, updatedAt, revision])
+	}, [platform, boardId, updatedAt, revision, fromServer])
 
 	if (!url) {
 		return (

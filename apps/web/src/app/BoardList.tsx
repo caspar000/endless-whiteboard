@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
+import { dismissMove, retryMove } from '../boards/moveQueue'
+import { usePlatform } from '../platform/PlatformContext'
+import { ThumbnailBackfill } from '../canvas/ThumbnailBackfill'
 import { BoardCard } from './BoardCard'
-import type { BoardsApi } from './useBoards'
+import { useMoves, type BoardsApi } from './useBoards'
 
 const MOVE_OFFERED_KEY = 'lifeboard:moveOffered'
 
@@ -33,27 +36,17 @@ export function BoardList({
 	api: BoardsApi
 	onOpen: (board: BoardMeta) => void
 }) {
+	const platform = usePlatform()
 	const [renaming, setRenaming] = useState<string | null>(null)
-	const [moving, setMoving] = useState<string | null>(null)
-	const [moveError, setMoveError] = useState<string | null>(null)
 	const [offerDismissed, setOfferDismissed] = useState(wasMoveOffered)
+	const moves = useMoves()
+	const moving = moves.some((job) => !job.error)
+	const moveOf = (id: string) => moves.find((job) => job.board.id === id)
 
 	const localBoards = api.boards.filter((board) => !board.vault)
 
-	/** One at a time and in order, so a failure says which board and leaves the rest where they were. */
-	const move = async (boards: BoardMeta[]) => {
-		setMoveError(null)
-		try {
-			for (const [i, board] of boards.entries()) {
-				setMoving(boards.length > 1 ? `Moving ${i + 1} of ${boards.length}: ${board.name}…` : `Moving ${board.name}…`)
-				await api.move(board)
-			}
-		} catch (error) {
-			setMoveError(error instanceof Error ? error.message : String(error))
-		} finally {
-			setMoving(null)
-		}
-	}
+	/** Queued, so a reload neither stops the moves nor hides them (boards/moveQueue.ts). */
+	const move = (boards: BoardMeta[]) => void api.move(boards)
 
 	const dismissOffer = () => {
 		rememberMoveOffered()
@@ -95,8 +88,6 @@ export function BoardList({
 					</button>
 				</div>
 			)}
-			{moving && <p className="lb-list__status">{moving}</p>}
-			{moveError && <p className="lb-settings__warn">{moveError}</p>}
 
 			{api.loading ? (
 				<p className="lb-list__empty">Loading…</p>
@@ -127,7 +118,10 @@ export function BoardList({
 							onRenameCancel={() => setRenaming(null)}
 							onToggleFavorite={() => void api.setFavorite(board.id, !board.favorite)}
 							onDelete={() => void api.remove(board.id)}
-							{...(api.hasServer && !moving
+							{...(moveOf(board.id) ? { moveJob: moveOf(board.id)! } : {})}
+							onRetryMove={() => void retryMove(platform.kv, board.id)}
+							onDismissMove={() => void dismissMove(platform.kv, board.id)}
+							{...(api.hasServer && !moveOf(board.id)
 								? {
 										onMove: () => void move([board]),
 										moveLabel: board.vault === 'server' ? 'Move to this device' : 'Move to server',
@@ -137,6 +131,7 @@ export function BoardList({
 					))}
 				</ul>
 			)}
+			{!api.loading && <ThumbnailBackfill boards={api.boards} />}
 		</main>
 	)
 }

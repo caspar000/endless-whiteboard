@@ -4,7 +4,9 @@ import type { Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { clearThumbnailsExcept, saveBoardThumbnail } from '../persistence/thumbnails'
+import { clearThumbnailsExcept, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import { startMoves } from '../boards/moveQueue'
+import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
@@ -456,7 +458,7 @@ export function App() {
 				setPalette((current) => (current && current.seed === seed ? null : { seed })),
 			activeBoard: () => api.boards.find((b) => b.id === activeBoardIdRef.current),
 			hasServer: () => api.hasServer,
-			moveBoard: (board) => api.move(board, editors.current.get(board.id)),
+			moveBoard: (board) => api.move([board]),
 		})
 	})
 
@@ -530,8 +532,33 @@ export function App() {
 	})
 
 
-	// Moving reads an open board from its live editor: fresher than what tldraw has written to disk.
-	const listApi = { ...api, remove: removeBoard, move: (board: BoardMeta) => api.move(board, editors.current.get(board.id)) }
+	const listApi = { ...api, remove: removeBoard }
+
+	/*
+	 * Moves between this browser and the server run from a queue that outlives a reload
+	 * (boards/moveQueue.ts): it starts, or picks up where it was, once a server answers. Moving reads
+	 * an open board from its live editor, which is fresher than what is on disk.
+	 */
+	const { hasServer, refresh: refreshBoards } = api
+	useEffect(() => {
+		if (!hasServer) return
+		void startMoves({
+			platform,
+			editorFor: (id) => editors.current.get(id),
+			onMoved: refreshBoards,
+		})
+	}, [hasServer, platform, refreshBoards])
+
+	// A server board's preview goes to the server as this browser draws it, so every device has it.
+	const serverBoardIds = useRef(new Set<string>())
+	serverBoardIds.current = new Set(api.boards.filter((board) => board.vault === 'server').map((board) => board.id))
+	useEffect(
+		() =>
+			onThumbnailDrawn((id, blob) => {
+				if (serverBoardIds.current.has(id)) void uploadServerThumbnail(id, blob)
+			}),
+		[]
+	)
 
 	const activeBoardId = route.view === 'board' ? route.boardId : null
 	// A board mounting is asynchronous — it waits on its own restore — so registration below has to

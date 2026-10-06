@@ -167,3 +167,24 @@ test.describe('frames (B4)', () => {
 		await expect.poll(shapes).toEqual(['geo:page', 'geo:page'])
 	})
 })
+
+test.describe('typing (B7)', () => {
+	test('a sticky curls quotes and makes arrows as you type', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ id: 'shape:s', type: 'note', x: 200, y: 200 }])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		const sticky = page.locator('[data-shape-id="shape:s"]')
+		const centre = await page.evaluate(() =>
+			(window as unknown as { editor: { pageToScreen(p: unknown): { x: number; y: number } } }).editor.pageToScreen({ x: 300, y: 300 })
+		)
+		await page.mouse.dblclick(centre.x, centre.y)
+		await page.keyboard.type('"Ship it" -> Friday...')
+		await page.keyboard.press('Escape')
+		await expect(sticky).toContainText('“Ship it” → Friday…')
+	})
+})

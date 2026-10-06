@@ -99,7 +99,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | B4 | Wrap selection in a frame (⌘⇧F); the frame tool highlights what it will enclose | 5.2 | done: ⌘⇧F frames the selection (32px clear, in the lowest shape's place) or takes selected frames apart; a frame being drawn hints the shapes it will take in |
 | B5 | Advanced crop (aspect ratios, snapping crop edges); flip images and geo shapes | 3.14, 2.4, 5.3 | todo (flipping is done, D5) |
 | B6 | Heart geo shape; custom geo types; fill styles "fill" and "lined-fill" | 2.2–5.0 | todo (the fill styles are done, D11) |
-| B7 | Smart typography (curly quotes, `->` to `→`) | 5.5 | todo |
+| B7 | Smart typography (curly quotes, `->` to `→`) | 5.5 | done: `SmartTypography` in the default TipTap extensions: curly quotes and apostrophes, → ← …; not inside `{…}` expressions or code; Backspace takes it back |
 | B8 | Paste: raw `<iframe>` embeds, Mermaid to shapes, Excalidraw content; URL onto a selected shape sets its link | 3.8–5.5 | todo |
 | B9 | Drag a shape out of the toolbar | 4.0 | todo |
 | B10 | Dynamic size mode (shapes keep their size on screen) | 2.3 | todo |

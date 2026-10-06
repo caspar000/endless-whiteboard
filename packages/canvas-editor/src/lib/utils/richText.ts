@@ -1,6 +1,7 @@
 import { type Extensions, type JSONContent, generateHTML } from '@tiptap/core'
 import Highlight from '@tiptap/extension-highlight'
 import StarterKit from '@tiptap/starter-kit'
+import { SmartTypography } from './smartTypography'
 import type { TLRichText } from '@tldraw/tlschema'
 
 /**
@@ -47,6 +48,7 @@ export const tipTapDefaultExtensions: Extensions = [
 		trailingNode: false,
 	}),
 	Highlight,
+	SmartTypography,
 ]
 
 const htmlCache = new WeakMap<Extensions, WeakMap<TLRichText, string>>()

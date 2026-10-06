@@ -273,7 +273,8 @@ describe('theme and colour scheme (E7)', () => {
 		expect(editor.getColorMode()).toBe('light')
 		const colors = editor.getCurrentTheme().colors[editor.getColorMode()]
 		expect(getColorValue(colors, 'blue', 'solid')).toBe(colors.blue.solid)
-		expect(getColorValue(colors, 'blue', 'fill')).toBe(colors.blue.semi)
+		// The `fill` variant is the colour at full strength, as tldraw 5 paints it.
+		expect(getColorValue(colors, 'blue', 'fill')).toBe(colors.blue.solid)
 	})
 })
 

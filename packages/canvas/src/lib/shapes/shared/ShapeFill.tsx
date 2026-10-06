@@ -23,14 +23,15 @@ export function useDefaultColorTheme() {
 
 /**
  * Paints a shape util can put in place of the ones its colour gives, for the fills inside it (today's
- * `getCustomDisplayValues`; Lifeboard's geo shapes keep a fill colour of their own).
+ * `getCustomDisplayValues`; Lifeboard's geo shapes keep a fill colour of their own). As in tldraw 5,
+ * `fillColor` is what every fill style paints, under the hatching for `pattern`.
  *
  * @public
  */
 export interface ShapeFillOverride {
-	/** What a solid fill paints. */
+	/** What a fill paints, in any style. */
 	fillColor?: string
-	/** The colour under a pattern fill, and what it paints when zoomed too far out for the pattern. */
+	/** What a pattern fill paints when zoomed too far out for the pattern. */
 	patternFillFallbackColor?: string
 }
 
@@ -47,17 +48,18 @@ export const ShapeFill = React.memo(function ShapeFill({ theme, d, color, fill }
 			return <path fill={override.fillColor ?? theme[color].semi} d={d} />
 		}
 		case 'semi': {
-			return <path fill={theme.solid} d={d} />
+			return <path fill={override.fillColor ?? theme.solid} d={d} />
 		}
-		case 'pattern':
-		// Today's hatched fill. Drawn as the pattern until the fork has its own hatching (lines over
-		// a solid fill): close, and the shape stays filled rather than empty.
-		case 'lined-fill': {
+		case 'pattern': {
 			return <PatternFill theme={theme} color={color} fill={fill} d={d} />
 		}
 		// Today's full-strength fill, in the colour itself rather than its light `semi` tint.
 		case 'fill': {
 			return <path fill={override.fillColor ?? theme[color].solid} d={d} />
+		}
+		// The same, a shade off, so the outline shows as a line around it.
+		case 'lined-fill': {
+			return <path fill={override.fillColor ?? theme[color].linedFill} d={d} />
 		}
 	}
 })
@@ -72,7 +74,7 @@ const PatternFill = function PatternFill({ d, color, theme }: ShapeFillProps) {
 
 	return (
 		<>
-			<path fill={override.patternFillFallbackColor ?? theme[color].pattern} d={d} />
+			<path fill={override.fillColor ?? theme[color].pattern} d={d} />
 			<path
 				fill={
 					teenyTiny
@@ -85,16 +87,22 @@ const PatternFill = function PatternFill({ d, color, theme }: ShapeFillProps) {
 	)
 }
 
-export function getShapeFillSvg({ d, color, fill, theme }: ShapeFillProps) {
+export function getShapeFillSvg({
+	d,
+	color,
+	fill,
+	theme,
+	override = {},
+}: ShapeFillProps & { override?: ShapeFillOverride }) {
 	if (fill === 'none') {
 		return
 	}
 
-	if (fill === 'pattern' || fill === 'lined-fill') {
+	if (fill === 'pattern') {
 		const gEl = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		const path1El = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 		path1El.setAttribute('d', d)
-		path1El.setAttribute('fill', theme[color].pattern)
+		path1El.setAttribute('fill', override.fillColor ?? theme[color].pattern)
 
 		const path2El = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 		path2El.setAttribute('d', d)
@@ -110,15 +118,19 @@ export function getShapeFillSvg({ d, color, fill, theme }: ShapeFillProps) {
 
 	switch (fill) {
 		case 'semi': {
-			path.setAttribute('fill', theme.solid)
+			path.setAttribute('fill', override.fillColor ?? theme.solid)
 			break
 		}
 		case 'solid': {
-			path.setAttribute('fill', theme[color].semi)
+			path.setAttribute('fill', override.fillColor ?? theme[color].semi)
 			break
 		}
 		case 'fill': {
-			path.setAttribute('fill', theme[color].solid)
+			path.setAttribute('fill', override.fillColor ?? theme[color].solid)
+			break
+		}
+		case 'lined-fill': {
+			path.setAttribute('fill', override.fillColor ?? theme[color].linedFill)
 			break
 		}
 	}

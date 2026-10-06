@@ -8,6 +8,7 @@ import {
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -78,6 +79,7 @@ export function DashStyleCloudSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 	strokeWidth,
 	w,
 	h,
@@ -87,6 +89,8 @@ export function DashStyleCloudSvg({
 	id: TLShapeId
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const innerPath = cloudSvgPath(w, h, id, size)
 	const arcs = getCloudArcs(w, h, id, size)
@@ -129,6 +133,7 @@ export function DashStyleCloudSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

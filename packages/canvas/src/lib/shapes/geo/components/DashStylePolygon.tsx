@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape, Vec2d, VecLike } from '@lifeboard/canv
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -84,6 +85,7 @@ export function DashStylePolygonSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 	strokeWidth,
 	outline,
 	lines,
@@ -91,6 +93,8 @@ export function DashStylePolygonSvg({
 	outline: VecLike[]
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 	lines?: VecLike[][]
 }) {
 	const strokeElement = document.createElementNS('http://www.w3.org/2000/svg', 'g')
@@ -146,6 +150,7 @@ export function DashStylePolygonSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

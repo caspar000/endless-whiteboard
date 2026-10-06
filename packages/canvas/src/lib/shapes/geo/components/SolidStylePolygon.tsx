@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape, VecLike } from '@lifeboard/canvas-edit
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -42,10 +43,13 @@ export function SolidStylePolygonSvg({
 	color,
 	strokeWidth,
 	theme,
+	fillOverride,
 }: Pick<TLGeoShape['props'], 'fill' | 'color'> & {
 	outline: VecLike[]
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 	lines?: VecLike[][]
 }) {
 	const pathData = 'M' + outline[0] + 'L' + outline.slice(1) + 'Z'
@@ -71,6 +75,7 @@ export function SolidStylePolygonSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

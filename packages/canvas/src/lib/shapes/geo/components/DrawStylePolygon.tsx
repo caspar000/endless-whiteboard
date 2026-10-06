@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape, VecLike } from '@lifeboard/canvas-edit
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -49,6 +50,7 @@ export function DrawStylePolygonSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 	strokeWidth,
 }: Pick<TLGeoShape['props'], 'fill' | 'color'> & {
 	id: TLGeoShape['id']
@@ -56,6 +58,8 @@ export function DrawStylePolygonSvg({
 	lines?: VecLike[][]
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const polygonPoints = getRoundedPolygonPoints(id, outline, strokeWidth / 3, strokeWidth * 2, 2)
 
@@ -82,6 +86,7 @@ export function DrawStylePolygonSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

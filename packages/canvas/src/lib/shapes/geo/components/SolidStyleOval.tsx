@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -33,9 +34,12 @@ export function SolidStyleOvalSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 }: Pick<TLGeoShape['props'], 'w' | 'h' | 'fill' | 'color'> & {
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const d = getOvalIndicatorPath(w, h)
 	const strokeElement = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -52,6 +56,7 @@ export function SolidStyleOvalSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

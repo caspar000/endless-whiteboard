@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape, TLShapeId, toDomPrecision } from '@lif
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -61,11 +62,14 @@ export function DashStyleOvalSvg({
 	dash,
 	color,
 	theme,
+	fillOverride,
 	fill,
 }: Pick<TLGeoShape['props'], 'w' | 'h' | 'dash' | 'color' | 'fill'> & {
 	strokeWidth: number
 	id: TLShapeId
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const d = getOvalSolidPath(w, h)
 	const perimeter = getOvalPerimeter(w, h)
@@ -96,6 +100,7 @@ export function DashStyleOvalSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

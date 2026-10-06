@@ -34,7 +34,7 @@ and until it does, it must leave them untouched.
 | D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |
 | D9 | Asset `pixelRatio`; asset upload returning `{ src, meta }` | 4.5, 3.8 | Cutover | done: read and kept (phase 2); upload returns `{ src, meta }` (phase 5) |
 | D10 | Document-scoped `user` records, `dash: 'none'`, comment records — not used by Lifeboard, must survive a load/save untouched | 5.0, 5.3 | Cutover (preserve only) | done (phase 2): load/save round trip of the reference boards |
-| D11 | Fill styles `fill` (full colour) and `lined-fill` (hatching over a fill) | 3.x | Cutover | doing (phase 7): `fill` drawn; `lined-fill` drawn as the pattern |
+| D11 | Fill styles `fill` (full colour) and `lined-fill` (a flat fill a shade off the colour, so the outline shows; not hatching) | 3.x | Cutover | done: drawn and exported as tldraw 5 draws them (measured) |
 
 ## E — Editor APIs Lifeboard calls
 
@@ -140,7 +140,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | L3 | Custom themes and palettes | 5.0 | todo |
 | L4 | Follow the system dark/light setting | 2.3 | todo |
 | L5 | Redesigned style panel and page menu (inline rename, drag to reorder) | 4.0, 5.1 | todo |
-| L6 | Today's colour palette. The fork's is 2023's; sticky notes already match today's (measured from tldraw 5's rendering in phase 7), shapes and text don't quite | 3.x | doing |
+| L6 | Today's colour palette. The fork's was 2023's | 3.x | done: every colour, fill style and text colour in both modes measured from tldraw 5.5's rendering and matched exactly; a shape's own fill colour paints at full strength in every fill style, on screen and in export, as it did on tldraw 5 |
 
 ## P — Performance
 

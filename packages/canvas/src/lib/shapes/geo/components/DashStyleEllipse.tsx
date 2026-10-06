@@ -8,6 +8,7 @@ import {
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -70,11 +71,14 @@ export function DashStyleEllipseSvg({
 	dash,
 	color,
 	theme,
+	fillOverride,
 	fill,
 }: Pick<TLGeoShape['props'], 'w' | 'h' | 'dash' | 'color' | 'fill'> & {
 	strokeWidth: number
 	id: TLShapeId
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const cx = w / 2
 	const cy = h / 2
@@ -111,6 +115,7 @@ export function DashStyleEllipseSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

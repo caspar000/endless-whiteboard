@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -37,9 +38,12 @@ export function SolidStyleEllipseSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 }: Pick<TLGeoShape['props'], 'w' | 'h' | 'fill' | 'color'> & {
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const cx = w / 2
 	const cy = h / 2
@@ -62,6 +66,7 @@ export function SolidStyleEllipseSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

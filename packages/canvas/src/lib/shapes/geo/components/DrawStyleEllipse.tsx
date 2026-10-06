@@ -14,6 +14,7 @@ import {
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -54,10 +55,13 @@ export function DrawStyleEllipseSvg({
 	fill,
 	color,
 	theme,
+	fillOverride,
 }: Pick<TLGeoShape['props'], 'w' | 'h' | 'fill' | 'color'> & {
 	strokeWidth: number
 	id: TLShapeId
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 }) {
 	const strokeElement = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 	strokeElement.setAttribute('d', getEllipsePath(id, w, h, sw))
@@ -69,6 +73,7 @@ export function DrawStyleEllipseSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

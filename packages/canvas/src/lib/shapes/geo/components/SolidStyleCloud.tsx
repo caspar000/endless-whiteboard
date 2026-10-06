@@ -2,6 +2,7 @@ import { TLDefaultColorTheme, TLGeoShape, TLShapeId } from '@lifeboard/canvas-ed
 import * as React from 'react'
 import {
 	ShapeFill,
+	ShapeFillOverride,
 	getShapeFillSvg,
 	getSvgWithShapeFill,
 	useDefaultColorTheme,
@@ -36,6 +37,7 @@ export function SolidStyleCloudSvg({
 	color,
 	strokeWidth,
 	theme,
+	fillOverride,
 	w,
 	h,
 	id,
@@ -43,6 +45,8 @@ export function SolidStyleCloudSvg({
 }: Pick<TLGeoShape['props'], 'fill' | 'color' | 'w' | 'h' | 'size'> & {
 	strokeWidth: number
 	theme: TLDefaultColorTheme
+	/** The shape's own fill colour, if it has one (see `ShapeFillOverride`). */
+	fillOverride?: ShapeFillOverride
 	id: TLShapeId
 }) {
 	const pathData = cloudSvgPath(w, h, id, size)
@@ -59,6 +63,7 @@ export function SolidStyleCloudSvg({
 		fill,
 		color,
 		theme,
+		override: fillOverride,
 	})
 
 	return getSvgWithShapeFill(strokeElement, fillElement)

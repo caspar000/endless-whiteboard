@@ -632,6 +632,12 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		const strokeWidth = STROKE_SIZES[props.size]
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		ctx.addExportDef(getFillDefForExport(shape.props.fill, theme))
+		const fillOverride = this.options.getCustomDisplayValues?.(
+			this.editor,
+			shape,
+			this.editor.getCurrentTheme(),
+			this.editor.getColorMode()
+		)
 
 		let svgElm: SVGElement
 
@@ -647,6 +653,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							fill: props.fill,
 							strokeWidth,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -658,6 +665,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -671,6 +679,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 						})
 						break
 				}
@@ -689,6 +698,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -700,6 +710,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -713,6 +724,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 						})
 				}
 				break
@@ -730,6 +742,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							fill: props.fill,
 							size: props.size,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -743,6 +756,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							size: props.size,
 							id,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -756,6 +770,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							color: props.color,
 							fill: props.fill,
 							theme,
+							fillOverride,
 							size: props.size,
 						})
 				}
@@ -777,6 +792,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							outline,
 							lines,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -788,6 +804,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							outline,
 							lines,
 							theme,
+							fillOverride,
 						})
 						break
 
@@ -800,6 +817,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							outline,
 							lines,
 							theme,
+							fillOverride,
 						})
 						break
 				}

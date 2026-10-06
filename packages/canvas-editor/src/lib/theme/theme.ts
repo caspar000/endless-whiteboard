@@ -14,7 +14,7 @@ export interface TLTheme {
 	colors: Record<TLColorMode, TLDefaultColorTheme>
 }
 
-/** The 2023 palette as a theme. @public */
+/** The default palette as a theme. @public */
 export const DEFAULT_THEME: TLTheme = {
 	id: 'default',
 	colors: { light: DefaultColorThemePalette.lightMode, dark: DefaultColorThemePalette.darkMode },
@@ -24,9 +24,9 @@ export const DEFAULT_THEME: TLTheme = {
 export type TLColorVariant = 'solid' | 'semi' | 'pattern' | 'fill' | 'frameStroke'
 
 /**
- * One colour from a palette, in one variant. `fill` is what a solid fill paints, the light tint the
- * 2023 palette calls `semi`; `frameStroke` is a frame's border, the colour itself. A name the palette
- * doesn't have reads as black.
+ * One colour from a palette, in one variant. `fill` is what the `fill` style paints, the colour at
+ * full strength, as tldraw 5 draws it (measured); `frameStroke` is a frame's border, the colour
+ * itself. A name the palette doesn't have reads as black.
  *
  * @public
  */
@@ -36,7 +36,6 @@ export function getColorValue(
 	variant: TLColorVariant
 ): string {
 	const entry = colors[color as TLDefaultColorStyle] ?? colors.black
-	if (variant === 'fill') return entry.semi
-	if (variant === 'frameStroke') return entry.solid
+	if (variant === 'fill' || variant === 'frameStroke') return entry.solid
 	return entry[variant]
 }

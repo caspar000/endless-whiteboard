@@ -227,7 +227,6 @@
 	"people-menu.user": "(तिमी)",
 	"people-menu.invite": "अरूलाई निमन्त्रणा गर्नुहोस्",
 	"help-menu.title": "मद्दत र स्रोतहरू",
-	"help-menu.about": "tldraw को बारे मा",
 	"help-menu.discord": "Discord",
 	"help-menu.github": "GitHub",
 	"help-menu.keyboard-shortcuts": "किबोर्ड सर्टकटहरू",
@@ -275,8 +274,6 @@
 	"focus-mode.toggle-focus-mode": "फोकस मोड टगल गर्नुहोस्",
 	"toast.close": "बन्द",
 	"file-system.file-open-error.title": "फाइल खोल्न सकिएन",
-	"file-system.file-open-error.not-a-tldraw-file": "तपाईंले खोल्न खोजेको फाइल tldraw फाइल जस्तो देखिदैन।",
-	"file-system.file-open-error.file-format-version-too-new": "तपाईंले खोल्न खोजेको फाइल tldraw को नयाँ संस्करणबाट हो। कृपया पृष्ठ पुन: लोड गर्नुहोस् र पुन: प्रयास गर्नुहोस्।",
 	"file-system.file-open-error.generic-corrupted-file": "तपाईंले खोल्ने प्रयास गर्नुभएको फाइल बिग्रिएको छ।",
 	"file-system.confirm-open.title": "हालको परियोजना अधिलेखन गर्ने?",
 	"file-system.confirm-open.description": "फाइल खोल्दा तपाईंको हालको परियोजना प्रतिस्थापन हुनेछ र कुनै पनि बचत नगरिएका परिवर्तनहरू हराउनेछन्। के तपाइँ यहि चाहनुहुन्छ?",
@@ -290,6 +287,5 @@
 	"file-system.shared-document-file-open-error.title": "फाइल खोल्न सकिएन",
 	"file-system.shared-document-file-open-error.description": "साझा परियोजनाहरूबाट फाइलहरू खोल्न समर्थित छैन।",
 	"vscode.file-open.dont-show-again": "फेरि नसोध्नुहोस्",
-	"vscode.file-open.desc": "यो फाइल tldraw को पुरानो संस्करणबाट सिर्जना गरिएको थियो। के तपाइँ नयाँ संस्करण संग काम गर्न यसलाई upgrade गर्न चाहनुहुन्छ?",
 	"context.pages.new-page": "नयाँ पृष्ठ"
 }

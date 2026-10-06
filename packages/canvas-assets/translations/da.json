@@ -140,8 +140,6 @@
 	"focus-mode.toggle-focus-mode": "Skift fokustilstand",
 	"toast.close": "Luk",
 	"file-system.file-open-error.title": "Kunne ikke åbne filen",
-	"file-system.file-open-error.not-a-tldraw-file": "Filen, du forsøgte at åbne, ligner ikke en tldraw-fil.",
-	"file-system.file-open-error.file-format-version-too-new": "Filen du prøver at åbne er fra en nyere version af tldraw. Vær venlig at genindlæs siden og prøv igen.",
 	"file-system.file-open-error.generic-corrupted-file": "Filen du forsøger at åbne er beskadiget.",
 	"file-system.confirm-open.title": "Overskriv nuværende projekt",
 	"file-system.confirm-open.description": "Åbning af fil vil erstatte dit nuværende projekt, og alt ugemte ændringer vil gå tabt. Er du sikker på, at du vil fortsætte?",
@@ -155,6 +153,5 @@
 	"file-system.shared-document-file-open-error.title": "Kunne ikke åbne filen",
 	"file-system.shared-document-file-open-error.description": "Åbning af filer fra delte projekter er ikke understøttet.",
 	"vscode.file-open.dont-show-again": "Spørg ikke igen",
-	"vscode.file-open.desc": "Denne fil blev oprettet med en tidligere version af tldraw. Vil du opdatere filen så den virker med den nye version?",
 	"context.pages.new-page": "Ny side"
 }

@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "โหมดโฟกัส",
 	"toast.close": "ปิด",
 	"file-system.file-open-error.title": "ไม่สามารถเปิดไฟล์ได้",
-	"file-system.file-open-error.not-a-tldraw-file": "ไฟล์ที่คุณพยายามเปิดดูไม่เหมือนไฟล์ tldraw",
-	"file-system.file-open-error.file-format-version-too-new": "ไฟล์ที่คุณพยายามเปิดมาจาก tldraw รุ่นใหม่กว่า โปรดโหลดหน้าเว็บและลองอีกครั้ง",
 	"file-system.file-open-error.generic-corrupted-file": "ไฟล์ที่คุณพยายามเปิดเสียหาย",
 	"file-system.confirm-open.title": "เขียนทับโครงการปัจจุบันใช่หรือไม่",
 	"file-system.confirm-open.description": "การเปิดไฟล์จะแทนที่โครงการปัจจุบันของคุณและการเปลี่ยนแปลงที่ไม่ได้บันทึกจะหายไป คุณแน่ใจหรือไม่ว่าต้องการดําเนินการต่อ",
@@ -290,6 +288,5 @@
 	"file-system.shared-document-file-open-error.title": "ไม่สามารถเปิดไฟล์ได้",
 	"file-system.shared-document-file-open-error.description": "ไม่รองรับการเปิดไฟล์จากโครงการที่ใช้งานร่วมกัน",
 	"vscode.file-open.dont-show-again": "ไม่ต้องถามอีก",
-	"vscode.file-open.desc": "ไฟล์นี้ถูกสร้างขึ้นด้วย tldraw รุ่นก่อนหน้า คุณต้องการอัปเดตเพื่อทํางานกับรุ่นใหม่หรือไม่",
 	"context.pages.new-page": "หน้าใหม่"
 }

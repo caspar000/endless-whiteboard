@@ -221,7 +221,6 @@
 	"page-menu.submenu.move-up": "Mover para cima",
 	"page-menu.submenu.delete": "Excluir",
 	"share-menu.title": "Compartilhar",
-	"share-menu.save-note": "Baixe este projeto para o seu computador como um arquivo .tldr.",
 	"share-menu.fork-note": "Crie um novo projeto compartilhado com base nesta captura de tela.",
 	"share-menu.share-project": "Compartilhar este projeto",
 	"share-menu.default-project-name": "Projeto Compartilhado",
@@ -299,8 +298,6 @@
 	"focus-mode.toggle-focus-mode": "Alternar modo de foco",
 	"toast.close": "Fechar",
 	"file-system.file-open-error.title": "Não foi possível abrir o arquivo",
-	"file-system.file-open-error.not-a-tldraw-file": "O arquivo que você tentou abrir não parece ser um arquivo tldraw.",
-	"file-system.file-open-error.file-format-version-too-new": "O arquivo que você tentou abrir é de uma versão mais recente do tldraw. Por favor, recarregue a página e tente novamente.",
 	"file-system.file-open-error.generic-corrupted-file": "O arquivo que você tentou abrir está corrompido.",
 	"file-system.confirm-open.title": "Sobrescrever projeto atual?",
 	"file-system.confirm-open.description": "Abrir um arquivo substituirá seu projeto atual e quaisquer alterações não salvas serão perdidas. Você tem certeza de que deseja continuar?",
@@ -324,10 +321,8 @@
 	"toast.error.copy-fail.title": "Falha na cópia",
 	"toast.error.copy-fail.desc": "Falha ao copiar a imagem",
 	"context.pages.new-page": "Nova página",
-	"vscode.file-open.desc": "Atualizamos este documento para funcionar com a versão atual do tldraw. Se você deseja manter a versão original (que funcionará em old.tldraw.com), clique abaixo para criar um backup.",
 	"vscode.file-open.open": "Continuar",
 	"vscode.file-open.backup-saved": "Backup salvo",
-	"vscode.file-open.backup-failed": "Falha no backup: este não é um arquivo .tldr.",
 	"vscode.file-open.dont-show-again": "Não perguntar novamente",
 	"cursor-chat.type-to-chat": "Digite para conversar..."
 }

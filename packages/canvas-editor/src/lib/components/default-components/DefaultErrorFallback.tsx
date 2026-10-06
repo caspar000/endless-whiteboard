@@ -3,12 +3,9 @@ import classNames from 'classnames'
 import { ComponentType, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Editor } from '../../editor/Editor'
 import { EditorContext } from '../../hooks/useEditor'
-import { hardResetEditor } from '../../utils/hardResetEditor'
 import { refreshPage } from '../../utils/refreshPage'
 import { Canvas } from '../Canvas'
 import { ErrorBoundary } from '../ErrorBoundary'
-
-const BASE_ERROR_URL = 'https://github.com/tldraw/tldraw/issues/new'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 function noop() {}
@@ -21,7 +18,6 @@ export const DefaultErrorFallback: TLErrorFallbackComponent = ({ error, editor }
 	const containerRef = useRef<HTMLDivElement>(null)
 	const [shouldShowError, setShouldShowError] = useState(process.env.NODE_ENV === 'development')
 	const [didCopy, setDidCopy] = useState(false)
-	const [shouldShowResetConfirmation, setShouldShowResetConfirmation] = useState(false)
 
 	const errorMessage = error instanceof Error ? error.message : String(error)
 	const errorStack = error instanceof Error ? error.stack : null
@@ -96,24 +92,6 @@ export const DefaultErrorFallback: TLErrorFallbackComponent = ({ error, editor }
 		refreshPage()
 	}
 
-	const resetLocalState = async () => {
-		hardResetEditor()
-	}
-
-	const url = new URL(BASE_ERROR_URL)
-	url.searchParams.set('title', errorMessage)
-	url.searchParams.set('labels', `bug`)
-	url.searchParams.set(
-		'body',
-		`Hey, I ran into an error while using tldraw:
-
-\`\`\`js
-${errorStack ?? errorMessage}
-\`\`\`
-
-My browser: ${navigator.userAgent}`
-	)
-
 	return (
 		<div
 			ref={containerRef}
@@ -143,54 +121,32 @@ My browser: ${navigator.userAgent}`
 			)}
 			<div
 				className={classNames('tl-modal', 'tl-error-boundary__content', {
-					'tl-error-boundary__content__expanded': shouldShowError && !shouldShowResetConfirmation,
+					'tl-error-boundary__content__expanded': shouldShowError,
 				})}
 			>
-				{shouldShowResetConfirmation ? (
-					<>
-						<h2>Are you sure?</h2>
-						<p>Resetting your data will delete your drawing and cannot be undone.</p>
-						<div className="tl-error-boundary__content__actions">
-							<button onClick={() => setShouldShowResetConfirmation(false)}>Cancel</button>
-							<button className="tl-error-boundary__reset" onClick={resetLocalState}>
-								Reset data
-							</button>
-						</div>
-					</>
-				) : (
-					<>
-						<h2>Something&apos;s gone wrong.</h2>
-						<p>
-							Sorry, we encountered an error. Please refresh the page to continue. If you keep
-							seeing this error, you can <a href={url.toString()}>create a GitHub issue</a> or{' '}
-							<a href="https://discord.gg/Cq6cPsTfNy">ask for help on Discord</a>.
-						</p>
-						{shouldShowError && (
-							<div className="tl-error-boundary__content__error">
-								<pre>
-									<code>{errorStack ?? errorMessage}</code>
-								</pre>
-								<button onClick={copyError}>{didCopy ? 'Copied!' : 'Copy'}</button>
-							</div>
-						)}
-						<div className="tl-error-boundary__content__actions">
-							<button onClick={() => setShouldShowError(!shouldShowError)}>
-								{shouldShowError ? 'Hide details' : 'Show details'}
-							</button>
-							<div className="tl-error-boundary__content__actions__group">
-								<button
-									className="tl-error-boundary__reset"
-									onClick={() => setShouldShowResetConfirmation(true)}
-								>
-									Reset data
-								</button>
-								<button className="tl-error-boundary__refresh" onClick={refresh}>
-									Refresh Page
-								</button>
-							</div>
-						</div>
-					</>
+				<h2>Something&apos;s gone wrong.</h2>
+				<p>
+					The board hit an error. Refresh the page to carry on: your boards are saved as you
+					work, so nothing is lost. Show details says what went wrong.
+				</p>
+				{shouldShowError && (
+					<div className="tl-error-boundary__content__error">
+						<pre>
+							<code>{errorStack ?? errorMessage}</code>
+						</pre>
+						<button onClick={copyError}>{didCopy ? 'Copied!' : 'Copy'}</button>
+					</div>
 				)}
+				<div className="tl-error-boundary__content__actions">
+					<button onClick={() => setShouldShowError(!shouldShowError)}>
+						{shouldShowError ? 'Hide details' : 'Show details'}
+					</button>
+					<div className="tl-error-boundary__content__actions__group">
+						<button className="tl-error-boundary__refresh" onClick={refresh}>
+							Refresh page
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	)

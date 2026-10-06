@@ -237,7 +237,7 @@ export const DEFAULT_TRANSLATION = {
 	'page-menu.submenu.move-up': 'Move up',
 	'page-menu.submenu.delete': 'Delete',
 	'share-menu.title': 'Share',
-	'share-menu.save-note': 'Download this project to your computer as a .tldr file.',
+	'share-menu.save-note': 'Download this project to your computer as a file.',
 	'share-menu.fork-note': 'Create a new shared project based on this snapshot.',
 	'share-menu.share-project': 'Share this project',
 	'share-menu.default-project-name': 'Shared Project',
@@ -327,9 +327,9 @@ export const DEFAULT_TRANSLATION = {
 	'toast.close': 'Close',
 	'file-system.file-open-error.title': 'Could not open file',
 	'file-system.file-open-error.not-a-tldraw-file':
-		"The file you tried to open doesn't look like a tldraw file.",
+		"The file you tried to open doesn't look like a canvas file.",
 	'file-system.file-open-error.file-format-version-too-new':
-		'The file you tried to open is from a newer version of tldraw. Please reload the page and try again.',
+		'The file you tried to open is from a newer version of the app. Please reload the page and try again.',
 	'file-system.file-open-error.generic-corrupted-file': 'The file you tried to open is corrupted.',
 	'file-system.confirm-open.title': 'Overwrite current project?',
 	'file-system.confirm-open.description':
@@ -358,11 +358,11 @@ export const DEFAULT_TRANSLATION = {
 	'toast.error.copy-fail.desc': 'Failed to copy image',
 	'context.pages.new-page': 'New page',
 	'vscode.file-open.desc':
-		"We've updated this document to work with the current version of tldraw. If you'd like to keep the original version (which will work on old.tldraw.com), click below to create a backup.",
+		"We've updated this document to work with the current version of the app. If you'd like to keep the original version, click below to create a backup.",
 	'vscode.file-open.open': 'Continue',
 	'vscode.file-open.backup': 'Backup',
 	'vscode.file-open.backup-saved': 'Backup saved',
-	'vscode.file-open.backup-failed': 'Backup failed: this is not a .tldr file.',
+	'vscode.file-open.backup-failed': 'Backup failed: this is not a canvas file.',
 	'vscode.file-open.dont-show-again': "Don't ask again",
 	'cursor-chat.type-to-chat': 'Type to chat...',
 }

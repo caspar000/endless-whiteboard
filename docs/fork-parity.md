@@ -97,8 +97,8 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | B2 | Drag arrow labels along the arrow | 2.0 beta | todo |
 | B3 | Sticky clone handles; Tab creates the next sticky | 2.1 | todo |
 | B4 | Wrap selection in a frame (⌘⇧F); the frame tool highlights what it will enclose | 5.2 | todo |
-| B5 | Advanced crop (aspect ratios, snapping crop edges); flip images and geo shapes | 3.14, 2.4, 5.3 | todo |
-| B6 | Heart geo shape; custom geo types; fill styles "fill" and "lined-fill" | 2.2–5.0 | todo |
+| B5 | Advanced crop (aspect ratios, snapping crop edges); flip images and geo shapes | 3.14, 2.4, 5.3 | todo (flipping is done, D5) |
+| B6 | Heart geo shape; custom geo types; fill styles "fill" and "lined-fill" | 2.2–5.0 | todo (the fill styles are done, D11) |
 | B7 | Smart typography (curly quotes, `->` to `→`) | 5.5 | todo |
 | B8 | Paste: raw `<iframe>` embeds, Mermaid to shapes, Excalidraw content; URL onto a selected shape sets its link | 3.8–5.5 | todo |
 | B9 | Drag a shape out of the toolbar | 4.0 | todo |
@@ -178,8 +178,8 @@ not ship.
 
 | Id | Item | Needed for | Status |
 |---|---|---|---|
-| F1 | Default icon, font and translation URLs point at tldraw's CDN (`unpkg.com/@tldraw/assets@…`, `ui/assetUrls.ts`, `utils/static-assets/assetUrls.ts`). Make the bundled `@lifeboard/canvas-assets/imports` the default, so nothing is fetched from a third party and the app works offline | Cutover | todo |
-| F2 | The error screen links to tldraw's GitHub issues and Discord (`DefaultErrorFallback.tsx`) | Cutover | todo |
-| F3 | Three translation strings say "tldraw" (the `.tldr` file open/save messages) | Cutover | todo |
-| F4 | The 2023 data packages need a two-line pnpm patch for today's TypeScript (`patches/@tldraw__utils@2.0.0-alpha.19.patch`); goes away with them in phase 2 | Phase 2 | todo |
+| F1 | Default icon, font and translation URLs point at tldraw's CDN (`unpkg.com/@tldraw/assets@…`, `ui/assetUrls.ts`, `utils/static-assets/assetUrls.ts`). Make the bundled `@lifeboard/canvas-assets/imports` the default, so nothing is fetched from a third party and the app works offline | Cutover | done: the bundled `@lifeboard/canvas-assets` is the default; nothing is fetched from a CDN |
+| F2 | The error screen links to tldraw's GitHub issues and Discord (`DefaultErrorFallback.tsx`) | Cutover | done: the crash screen points nowhere outside, says the boards are saved, and no longer offers "Reset data", which would have wiped every board and setting in the browser |
+| F3 | Three translation strings say "tldraw" (the `.tldr` file open/save messages) | Cutover | done: the English strings say "the app" and "canvas file"; the 93 translated strings that named tldraw are gone, so those languages fall back to the English |
+| F4 | The 2023 data packages need a two-line pnpm patch for today's TypeScript (`patches/@tldraw__utils@2.0.0-alpha.19.patch`); goes away with them in phase 2 | Phase 2 | obsolete: the 2023 data packages and their patch went in phase 2 |
 | F5 | The fork compiles with upstream's looser settings, not the workspace's (`noUncheckedIndexedAccess`, `noImplicitOverride`, `noImplicitReturns` off) | Backlog | doing: consumers compile against the fork's declarations (phase 7), so this no longer blocks them; about 1,800 errors to fix in the fork itself |

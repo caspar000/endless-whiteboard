@@ -274,8 +274,6 @@
 	"focus-mode.toggle-focus-mode": "Odak modunu değiştir",
 	"toast.close": "Kapat",
 	"file-system.file-open-error.title": "Dosya açılamadı",
-	"file-system.file-open-error.not-a-tldraw-file": "Açmaya çalıştığınız dosya tldraw dosyasına benzemiyor.",
-	"file-system.file-open-error.file-format-version-too-new": "Açmaya çalıştığınız dosya daha yeni bir tldraw versiyonuna ait. Lütfen sayfayı yenileyip tekrar deneyin.",
 	"file-system.file-open-error.generic-corrupted-file": "Açmaya çalıştığınız dosya bozuk",
 	"file-system.confirm-open.title": "Mevcut projenin üzerine yazılsın mı?",
 	"file-system.confirm-open.description": "Açtığınız yeni dosya mevcut projenizin yerini alacak ve kaydedilmemiş tüm değişiklikler kaybolacaktır. Devam etmek istediğinize emin misiniz?",
@@ -289,6 +287,5 @@
 	"file-system.shared-document-file-open-error.title": "Dosya açılamadı",
 	"file-system.shared-document-file-open-error.description": "Paylaşılan projelerdeki dosyaların açılmaası desteklenmemektedir.",
 	"vscode.file-open.dont-show-again": "Bir daha sorma",
-	"vscode.file-open.desc": "Bu dosya daha önceki bir tldraw versiyonu ile oluşturulmuştur. Yeni versiyonla çalışmak için güncellemek ister misiniz?",
 	"context.pages.new-page": "Yeni sayfa"
 }

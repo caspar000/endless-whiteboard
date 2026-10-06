@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "फोकस मोड टॉगल करें",
 	"toast.close": "बंद करें",
 	"file-system.file-open-error.title": "फ़ाइल को खोल नहीं सके",
-	"file-system.file-open-error.not-a-tldraw-file": "आपने जिस फ़ाइल को खोलने का प्रयास किया है वह tldraw फ़ाइल की तरह नहीं दिखती है।",
-	"file-system.file-open-error.file-format-version-too-new": "आपने जिस फ़ाइल को खोलने का प्रयास किया है वह tldraw के नए वर्ज़न से है। कृपया पेज लोड करें और दोबारा कोशिश करें।",
 	"file-system.file-open-error.generic-corrupted-file": "आपने जिस फ़ाइल को खोलने का प्रयास किया वह करप्ट है।",
 	"file-system.confirm-open.title": "वर्तमान प्रोजेक्ट को ओवरराइट करना चाहते हैं?",
 	"file-system.confirm-open.description": "फ़ाइल खोलने से आपका वर्तमान प्रोजेक्ट बदल जाएगा और सेव नहीं किए गए परिवर्तन खो जाएंगे। क्या आप वाकई जारी रखना चाहते हैं?",

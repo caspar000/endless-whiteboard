@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "Commutar mode de concentració",
 	"toast.close": "Tancar",
 	"file-system.file-open-error.title": "No s'ha pogut obrir el fitxer",
-	"file-system.file-open-error.not-a-tldraw-file": "El fitxer que heu intentat obrir no és un fitxer tldraw.",
-	"file-system.file-open-error.file-format-version-too-new": "El fitxer que heu intentat obrir és d'una versió més recent de tldraw. Torneu a carregar la pàgina i torneu-ho a provar.",
 	"file-system.file-open-error.generic-corrupted-file": "El fitxer que heu intentat obrir està malmès.",
 	"file-system.confirm-open.title": "Vols sobreescriure el projecte actual?",
 	"file-system.confirm-open.description": "L'obertura d'un fitxer substituirà el vostre projecte actual i es perdran els canvis no desats. Voleu continuar?",
@@ -290,6 +288,5 @@
 	"file-system.shared-document-file-open-error.title": "No s'ha pogut obrir el fitxer",
 	"file-system.shared-document-file-open-error.description": "No es poden obrir fitxers de projectes compartits.",
 	"vscode.file-open.dont-show-again": "No preguntar-ho més",
-	"vscode.file-open.desc": "Aquest fitxer es va crear amb una versió anterior de tldraw. Vols actualitzar-lo perquè funcioni amb la nova versió?",
 	"context.pages.new-page": "Nova pàgina"
 }

@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "Basculer le mode Focus",
 	"toast.close": "Fermer",
 	"file-system.file-open-error.title": "Ouverture du fichier impossible",
-	"file-system.file-open-error.not-a-tldraw-file": "Le fichier que vous avez tenté d'ouvrir ne ressemble pas à un fichier tldraw.",
-	"file-system.file-open-error.file-format-version-too-new": "Le fichier que vous avez tenté d'ouvrir provient d'une version plus récente de tldraw. Veuillez recharger la page et réessayer.",
 	"file-system.file-open-error.generic-corrupted-file": "Le fichier que vous avez tenté d'ouvrir est corrompu.",
 	"file-system.confirm-open.title": "Remplacer le projet actuel?",
 	"file-system.confirm-open.description": "L'ouverture d'un fichier remplacera votre projet actuel et toutes les modifications non enregistrées seront perdues. Voulez-vous vraiment continuer ?",
@@ -290,6 +288,5 @@
 	"file-system.shared-document-file-open-error.title": "Impossible d'ouvrir le fichier",
 	"file-system.shared-document-file-open-error.description": "L'ouverture de fichiers à partir de projets partagés n'est pas prise en charge.",
 	"vscode.file-open.dont-show-again": "Ne plus demander",
-	"vscode.file-open.desc": "Ce fichier a été créé avec une version antérieure de tldraw. Souhaitez-vous le mettre à jour pour qu’il fonctionne avec la nouvelle version ?",
 	"context.pages.new-page": "Nouvelle page"
 }

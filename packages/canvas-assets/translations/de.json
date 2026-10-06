@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "Fokusmodus umschalten",
 	"toast.close": "Schließen",
 	"file-system.file-open-error.title": "Datei konnte nicht geöffnet werden",
-	"file-system.file-open-error.not-a-tldraw-file": "Die Datei, die Sie zu öffnen versucht haben, sieht nicht wie eine tldraw-Datei aus.",
-	"file-system.file-open-error.file-format-version-too-new": "Die Datei, die Sie zu öffnen versucht haben, ist von einer neueren Version von tldraw. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
 	"file-system.file-open-error.generic-corrupted-file": "Die Datei, die Sie zu öffnen versucht haben, ist beschädigt.",
 	"file-system.confirm-open.title": "Aktuelles Projekt überschreiben?",
 	"file-system.confirm-open.description": "Wenn Sie eine Datei öffnen, wird Ihr aktuelles Projekt ersetzt und alle nicht gespeicherten Änderungen gehen verloren. Sind Sie sicher, dass Sie fortfahren möchten?",

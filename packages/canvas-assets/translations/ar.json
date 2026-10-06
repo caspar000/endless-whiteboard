@@ -275,8 +275,6 @@
 	"focus-mode.toggle-focus-mode": "تبديل وضع التركيز",
 	"toast.close": "إغلاق",
 	"file-system.file-open-error.title": "تعذر فتح الملف",
-	"file-system.file-open-error.not-a-tldraw-file": "لا يبدو أن الملف الذي حاولت فتحه هو ملف tldraw.",
-	"file-system.file-open-error.file-format-version-too-new": "الملف الذي حاولت فتحه تابع لإصدار أحدث من tldraw. يُرجى إعادة تحميل الصفحة والمحاولة مرة أخرى.",
 	"file-system.file-open-error.generic-corrupted-file": "الملف الذي حاولت فتحه تالف.",
 	"file-system.confirm-open.title": "هل تريد استبدال المشروع الحالي؟",
 	"file-system.confirm-open.description": "سيؤدي فتح ملف إلى استبدال مشروعك الحالي وستفقد أي تغييرات غير محفوظة. هل أنت متأكد من أنك تريد المتابعة؟",
@@ -290,6 +288,5 @@
 	"file-system.shared-document-file-open-error.title": "تعذر فتح الملف",
 	"file-system.shared-document-file-open-error.description": "فتح الملفات من المشاريع المشتركة غير مدعوم.",
 	"vscode.file-open.dont-show-again": "لا تسأل مرةً أخرى",
-	"vscode.file-open.desc": "تم إنشاء هذا الملف باستخدام إصدار سابق من tldraw. هل ترغب في تحديث الملف للعمل مع الإصدار الجديد؟",
 	"context.pages.new-page": "صفحة جديدة"
 }

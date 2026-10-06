@@ -62,12 +62,12 @@ describe('a pinned note', () => {
 })
 
 describe('a sticky note', () => {
-	it('starts orange, whatever colour the other tools draw in', () => {
+	it('starts yellow, whatever colour the other tools draw in', () => {
 		editor.setStyleForNextShapes(DefaultColorStyle, 'blue')
 		editor.setCurrentTool('note')
 		editor.pointerDown(300, 300).pointerUp(300, 300)
 		const sticky = editor.getCurrentPageShapes().find((shape) => shape.type === 'note')!
-		expect((sticky as TLNoteShape).props.color).toBe('orange')
+		expect((sticky as TLNoteShape).props.color).toBe('yellow')
 	})
 
 	it('keeps the colour picked for stickies apart from the pinned note’s', () => {

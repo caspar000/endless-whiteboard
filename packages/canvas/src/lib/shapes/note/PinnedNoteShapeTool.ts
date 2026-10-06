@@ -6,7 +6,7 @@ export class PinnedNoteShapeTool extends NoteShapeTool {
 	static override id = 'pinned-note'
 	override shapeType = 'pinned-note'
 
-	/** A white card, where a sticky is orange. */
+	/** A white card, where a sticky is yellow. */
 	static override defaultColor: TLDefaultColorStyle = 'white'
 
 	/** Written from the top left, under the pin, like a note on a board. */

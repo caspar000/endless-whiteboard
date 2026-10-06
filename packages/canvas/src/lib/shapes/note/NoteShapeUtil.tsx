@@ -45,7 +45,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 
 	getDefaultProps(): S['props'] {
 		return {
-			color: 'orange',
+			color: 'yellow',
 			labelColor: 'black',
 			size: 'm',
 			richText: toRichText(''),

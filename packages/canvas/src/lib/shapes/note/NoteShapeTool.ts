@@ -9,12 +9,12 @@ export class NoteShapeTool extends StateNode {
 	static override children = () => [Idle, Pointing]
 	override shapeType = 'note'
 
-	/** The colour a new note of this kind starts in: an orange sticky. */
-	static defaultColor: TLDefaultColorStyle = 'orange'
+	/** The colour a new note of this kind starts in: a sticky in `yellow` (filled #fdd399). */
+	static defaultColor: TLDefaultColorStyle = 'yellow'
 
 	/**
 	 * The colour the next note is made in. Each kind of note keeps its own, rather than the shared
-	 * colour every other tool draws with, so a sticky stays orange however the pen was last set.
+	 * colour every other tool draws with, so a sticky stays yellow however the pen was last set.
 	 */
 	readonly color = atom<TLDefaultColorStyle>(
 		'next note colour',

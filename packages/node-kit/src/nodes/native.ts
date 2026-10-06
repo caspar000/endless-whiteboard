@@ -59,8 +59,8 @@ export const NATIVE_SHAPES: readonly NativeShapeSpec[] = [
 		note: 'A square sticky. Right for a short thought in a cluster of them; a markdown note is the one that holds a document.',
 		defaultSize: { w: 200, h: 200 },
 		textProps: richTextProps,
-		// As the dock makes one: orange (NoteShapeTool).
-		createProps: { color: 'orange' },
+		// As the dock makes one: yellow (NoteShapeTool).
+		createProps: { color: 'yellow' },
 	},
 	{
 		type: 'pinned-note',

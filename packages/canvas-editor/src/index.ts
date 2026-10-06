@@ -429,6 +429,7 @@ export {
 export { WeakMapCache } from './lib/utils/WeakMapCache'
 export { dataUrlToFile } from './lib/utils/assets'
 export { getSvgAsDataUrl, getSvgAsImage } from './lib/utils/export'
+export { sanitizeSvg } from './lib/utils/sanitizeSvg'
 export {
 	exportLabelFromDom,
 	getRegisteredFontFaceRules,

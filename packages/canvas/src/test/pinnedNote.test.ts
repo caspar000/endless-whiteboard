@@ -100,7 +100,7 @@ describe('a pinned note’s pin', () => {
 		editor.createShapes([{ id, type: 'pinned-note', x: 0, y: 0 }])
 		const { pinColor: _gone, ...oldProps } = editor.getShape<TLPinnedNoteShape>(id)!.props
 		const old = { ...editor.getShape(id)!, props: oldProps }
-		const result = editor.store.schema.migratePersistedRecord(old, before as never)
+		const result = editor.store.schema.migratePersistedRecord(old as never, before as never)
 		expect(result).toMatchObject({ type: 'success', value: { props: { pinColor: 'crimson' } } })
 	})
 

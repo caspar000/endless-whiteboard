@@ -21,6 +21,7 @@ import {
 	getHashForString,
 	FileHelpers,
 	dataUrlToFile,
+	sanitizeSvg,
 } from '@lifeboard/canvas-editor'
 import { FONT_FAMILIES, FONT_SIZES, TEXT_PROPS } from './shapes/shared/default-shape-constants'
 import { containBoxSize, getResizedImageDataUrl, isGifAnimated } from './utils/assets/assets'
@@ -140,10 +141,14 @@ export function registerDefaultExternalContentHandlers(
 	})
 
 	// svg text
-	editor.registerExternalContentHandler('svg-text', async ({ point, text }) => {
+	editor.registerExternalContentHandler('svg-text', async ({ point, text: pasted }) => {
 		const position =
 			point ??
 			(editor.inputs.shiftKey ? editor.inputs.currentPagePoint : editor.getViewportPageCenter())
+
+		// Cleaned before anything else: measuring puts the SVG in the page, where a handler would run.
+		const text = sanitizeSvg(pasted)
+		if (!text) throw new Error('No <svg/> element present')
 
 		const svg = new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('svg')
 		if (!svg) {

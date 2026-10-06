@@ -1,5 +1,5 @@
 import type { AssetBridge } from '@lifeboard/node-kit'
-import type { TLAsset, TLAssetStore } from '@lifeboard/canvas'
+import { sanitizeSvg, type TLAsset, type TLAssetStore } from '@lifeboard/canvas'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { downscaleImage } from './downscale'
 import { sha256Hex } from './hash'
@@ -151,8 +151,9 @@ export function createLifeboardAssetStore(blobs: BlobStore, fetchMissing?: Fetch
 			uploadsInFlight++
 			try {
 				// Downscale first, then hash: the hash must identify what we actually store, so that
-				// re-pasting the same photo dedupes against the stored (downscaled) blob.
-				const { blob } = await downscaleImage(file)
+				// re-pasting the same photo dedupes against the stored (downscaled) blob. An SVG is
+				// cleaned of anything that could run first (sanitizeSvg); one that isn't an SVG is refused.
+				const { blob } = await downscaleImage(await cleanSvg(file))
 				const hash = await sha256Hex(blob)
 				await blobs.put(hash, blob)
 				return { src: assetSrcForHash(hash) }
@@ -204,4 +205,12 @@ export async function collectGarbageAssets(
 export function clearAssetUrlCache(): void {
 	for (const url of objectUrlCache.values()) URL.revokeObjectURL(url)
 	objectUrlCache.clear()
+}
+
+/** An SVG file without scripts, handlers or outside links; anything else as it came. */
+async function cleanSvg(file: File): Promise<File> {
+	if (file.type !== 'image/svg+xml' && !file.name.toLowerCase().endsWith('.svg')) return file
+	const clean = sanitizeSvg(await file.text())
+	if (clean === null) throw new Error(`“${file.name}” is not an SVG picture.`)
+	return new File([clean], file.name, { type: 'image/svg+xml' })
 }

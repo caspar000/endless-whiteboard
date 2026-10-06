@@ -676,8 +676,13 @@ export function useNativeClipboardEvents() {
 			// input instead; e.g. when pasting text into a text shape's content
 			if (editor.getEditingShapeId() !== null || disallowClipboardEvents(editor)) return
 
-			// First try to use the clipboard data on the event
-			if (event.clipboardData && !editor.inputs.shiftKey) {
+			// ⌘⇧V pastes plain text, at the pointer: no formatting, no shapes (X3). With nothing but
+			// a picture on the clipboard, it pastes that, as ⌘V would.
+			const plain = editor.inputs.shiftKey ? event.clipboardData?.getData('text/plain') : ''
+			if (plain) {
+				editor.putExternalContent({ type: 'text', text: plain, point: editor.inputs.currentPagePoint })
+			} else if (event.clipboardData && !editor.inputs.shiftKey) {
+				// First try to use the clipboard data on the event
 				handlePasteFromEventClipboardData(editor, event.clipboardData)
 			} else {
 				// Or else use the clipboard API

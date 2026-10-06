@@ -188,3 +188,50 @@ test.describe('typing (B7)', () => {
 		await expect(sticky).toContainText('“Ship it” → Friday…')
 	})
 })
+
+test.describe('clipboard (X3)', () => {
+	test.use({ permissions: ['clipboard-read', 'clipboard-write'] })
+
+	test('⌘⇧C copies a PNG; ⌘⇧V pastes plain text', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ id: 'shape:a', type: 'geo', x: 100, y: 100, props: { w: 100, h: 100 } }])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		await page.locator('.lb-board-host:not([data-hidden]) .tl-canvas').click({ position: { x: 700, y: 600 } })
+		await page.keyboard.press('ControlOrMeta+a')
+		await page.keyboard.press('ControlOrMeta+Shift+c')
+		await expect
+			.poll(() => page.evaluate(async () => (await navigator.clipboard.read()).flatMap((item) => item.types)))
+			.toContain('image/png')
+
+		// Rich text on the clipboard; with Shift held, only its plain text arrives.
+		const before = await page.evaluate(
+			() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length
+		)
+		await page.keyboard.down('Shift')
+		await page.evaluate(() => {
+			const data = new DataTransfer()
+			data.setData('text/html', '<b>Bold</b> and a <a href="https://x.y">link</a>')
+			data.setData('text/plain', 'Bold and a link')
+			document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }))
+		})
+		await page.keyboard.up('Shift')
+		const pasted = () =>
+			page.evaluate(() => {
+				const editor = (window as unknown as {
+					editor: { getCurrentPageShapes(): { type: string; props: Record<string, unknown> }[] }
+				}).editor
+				const shapes = editor.getCurrentPageShapes()
+				return { count: shapes.length, text: JSON.stringify(shapes.at(-1)?.props ?? {}) }
+			})
+		await expect.poll(async () => (await pasted()).count).toBe(before + 1)
+		const { text } = await pasted()
+		expect(text).toContain('Bold and a link')
+		expect(text).not.toContain('"bold"')
+		expect(text).not.toContain('https://x.y')
+	})
+})

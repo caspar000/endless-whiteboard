@@ -167,7 +167,7 @@ Unmeasured: how the fork does on Lifeboard's 500-node `perf.spec.ts`. Phase 7 me
 |---|---|---|---|
 | X1 | Sanitise pasted and dropped SVG | 4.5 | done: `sanitizeSvg` (canvas-editor) cleans pasted SVG text before it is measured and every SVG file before it is stored: no scripts, handlers, outside links, `foreignObject`, frames, or animations that set a link or handler |
 | X2 | Clipboard hooks (before copy, before paste, raw paste) | 5.0 | todo |
-| X3 | Copy as PNG by default (⌘⇧C); paste as plain text (⌘⇧V) | 5.0 | todo |
+| X3 | Copy as PNG by default (⌘⇧C); paste as plain text (⌘⇧V) | 5.0 | done: ⌘⇧C copies the selection as PNG (it was SVG); ⌘⇧V pastes the clipboard's plain text at the pointer, falling back to the old paste-at-pointer when there is none |
 | X4 | Export options: `scale`, `pixelRatio`, trim to content (`padding: 'auto'`); custom shapes export without writing `toSvg` | 3.0–5.0 | todo |
 | X5 | Clicks pass through transparent image pixels | 4.5 | todo |
 

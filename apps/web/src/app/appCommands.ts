@@ -305,6 +305,17 @@ registerCommand({
 	},
 })
 
+registerCommand({
+	id: 'edit.copy-as-png',
+	title: 'Copy the selection as a picture (PNG)',
+	group: CANVAS_GROUP,
+	kbd: 'cmd+shift+c',
+	when: hasSelection,
+	run: (ctx) => {
+		if (ctx.editor) runTldrawAction(ctx.editor, 'copy-as-png')
+	},
+})
+
 /** The keyboard and palette half of ⌘⇧F: tldraw's frame action, which now works both ways. */
 registerCommand({
 	id: 'shape.frame',

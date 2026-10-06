@@ -200,7 +200,6 @@ export function ActionsProvider({ overrides, children }: ActionsProviderProps) {
 				label: 'action.copy-as-svg',
 				menuLabel: 'action.copy-as-svg.short',
 				contextMenuLabel: 'action.copy-as-svg.short',
-				kbd: '$!c',
 				readonlyOk: true,
 				onSelect(source) {
 					trackEvent('copy-as', { format: 'svg', source })
@@ -212,6 +211,8 @@ export function ActionsProvider({ overrides, children }: ActionsProviderProps) {
 				label: 'action.copy-as-png',
 				menuLabel: 'action.copy-as-png.short',
 				contextMenuLabel: 'action.copy-as-png.short',
+				// ⌘⇧C copies a picture: PNG, as today's tldraw, which pastes anywhere (X3).
+				kbd: '$!c',
 				readonlyOk: true,
 				onSelect(source) {
 					trackEvent('copy-as', { format: 'png', source })

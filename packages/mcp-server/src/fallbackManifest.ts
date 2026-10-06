@@ -135,6 +135,7 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 					"enum": [
 						"text",
 						"note",
+						"pinned-note",
 						"geo",
 						"frame"
 					]

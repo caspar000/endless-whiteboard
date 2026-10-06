@@ -212,6 +212,7 @@ describe('nodes', () => {
 		expect(types.filter((entry) => entry.builtIn).map((entry) => entry.type)).toEqual([
 			'text',
 			'note',
+			'pinned-note',
 			'geo',
 			'frame',
 		])

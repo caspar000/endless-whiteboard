@@ -53,6 +53,12 @@ extension's arrives in it without widening the dock; right-click offers "Add to 
 one at the pointer instead. Double-clicking empty canvas is tldraw's default action. Double-clicking
 the board's name in the tab strip renames it.
 
+**Notes on paper** — a sticky note looks like one: flat paper with the crease of its glued strip and
+a soft shadow where it lifts off the board. The row above the sticky button switches to a **pinned
+note**, a larger note held up by a push pin, for the thing on a board that should stand out. Both
+take the same colours and text, `{…}` expressions included; the drawing is in
+`packages/canvas/src/lib/shapes/note/paper.ts`.
+
 **Quick look** — tap <kbd>Space</kbd> on any node, image, sticky, text or frame and the camera zooms
 onto it while the rest of the board blurs. It is the real node, so it can still be edited in place.
 <kbd>←</kbd>/<kbd>→</kbd> step through the selection, or, with one node selected, through its

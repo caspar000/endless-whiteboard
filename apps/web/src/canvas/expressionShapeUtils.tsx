@@ -3,6 +3,7 @@ import {
 	ArrowShapeUtil,
 	GeoShapeUtil,
 	NoteShapeUtil,
+	PinnedNoteShapeUtil,
 	TextShapeUtil,
 	getArrowBindings,
 	getColorValue,
@@ -10,6 +11,7 @@ import {
 	type TLGeoShape,
 	type TLHandleDragInfo,
 	type TLNoteShape,
+	type TLPinnedNoteShape,
 	type TLTextShape,
 } from '@lifeboard/canvas'
 import { FILL_COLOR_META, getNextFillColor, readFillColor } from './shapeFill'
@@ -32,6 +34,12 @@ import { FILL_COLOR_META, getNextFillColor, readFillColor } from './shapeFill'
 
 class ExpressionNoteShapeUtil extends NoteShapeUtil {
 	override component(shape: TLNoteShape) {
+		return super.component(useExpressionShape(this.editor, shape))
+	}
+}
+
+class ExpressionPinnedNoteShapeUtil extends PinnedNoteShapeUtil {
+	override component(shape: TLPinnedNoteShape) {
 		return super.component(useExpressionShape(this.editor, shape))
 	}
 }
@@ -181,6 +189,7 @@ class ExpressionArrowShapeUtil extends ArrowShapeUtil {
 
 export const expressionShapeUtils = [
 	ExpressionNoteShapeUtil,
+	ExpressionPinnedNoteShapeUtil,
 	ExpressionTextShapeUtil,
 	ExpressionGeoShapeUtil,
 	ExpressionArrowShapeUtil,

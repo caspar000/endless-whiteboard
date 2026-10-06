@@ -37,7 +37,7 @@ export class Pointing extends StateNode {
 				...info,
 				target: 'shape',
 				shape: this.shape,
-				onInteractionEnd: 'note',
+				onInteractionEnd: this.parent.id,
 				isCreating: true,
 				onCreate: () => {
 					this.editor.setEditingShape(this.shape.id)
@@ -96,7 +96,7 @@ export class Pointing extends StateNode {
 			.createShapes([
 				{
 					id,
-					type: 'note',
+					type: this.parent.shapeType!,
 					x: originPagePoint.x,
 					y: originPagePoint.y,
 				},
@@ -110,7 +110,7 @@ export class Pointing extends StateNode {
 		this.editor.updateShapes([
 			{
 				id,
-				type: 'note',
+				type: this.parent.shapeType!,
 				x: shape.x - bounds.width / 2,
 				y: shape.y - bounds.height / 2,
 			},

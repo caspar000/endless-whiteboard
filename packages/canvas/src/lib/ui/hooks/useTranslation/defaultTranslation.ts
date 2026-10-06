@@ -206,6 +206,7 @@ export const DEFAULT_TRANSLATION = {
 	'tool.asset': 'Asset',
 	'tool.frame': 'Frame',
 	'tool.note': 'Note',
+	'tool.pinned-note': 'Pinned note',
 	'tool.laser': 'Laser',
 	'tool.embed': 'Embed',
 	'tool.text': 'Text',

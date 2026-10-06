@@ -189,6 +189,16 @@ export function ToolsProvider({ overrides, children }: TLUiToolsProviderProps) {
 				},
 			},
 			{
+				id: 'pinned-note',
+				label: 'tool.pinned-note',
+				readonlyOk: false,
+				icon: 'tool-note',
+				onSelect(source) {
+					editor.setCurrentTool('pinned-note')
+					trackEvent('select-tool', { source, id: 'pinned-note' })
+				},
+			},
+			{
 				id: 'laser',
 				label: 'tool.laser',
 				readonlyOk: true,

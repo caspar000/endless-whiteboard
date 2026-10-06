@@ -16,6 +16,7 @@ import {
 	Image,
 	MousePointer2,
 	Pen,
+	Pin,
 	Shapes,
 	Spline,
 	Square,
@@ -210,6 +211,43 @@ function SizeDots() {
 					<span className="lb-expand__dot" style={{ width: dot, height: dot }} />
 				</button>
 			))}
+		</div>
+	)
+}
+
+/**
+ * Sticky ↔ pinned note, plus the colour: the same kind of row as the pen's. A pinned note is its own
+ * shape (larger, held by a push pin, no crease), and it lives here rather than in the dock so the
+ * dock's buttons keep their digits.
+ */
+function NoteSettings({ currentToolId }: { currentToolId: string }) {
+	const editor = useEditor()
+	return (
+		<div className="lb-expand">
+			<div className="lb-expand__group" role="group" aria-label="Note kind">
+				<button
+					className={currentToolId === 'note' ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => editor.setCurrentTool('note')}
+					title="Sticky note"
+					aria-label="Sticky note"
+				>
+					<StickyNote size={ICON_SIZE} aria-hidden="true" />
+				</button>
+				<button
+					className={
+						currentToolId === 'pinned-note' ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
+					}
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => editor.setCurrentTool('pinned-note')}
+					title="Pinned note"
+					aria-label="Pinned note"
+				>
+					<Pin size={ICON_SIZE} aria-hidden="true" />
+				</button>
+			</div>
+			<div className="lb-expand__sep" />
+			<ColorSwatches />
 		</div>
 	)
 }
@@ -474,6 +512,9 @@ export function CanvasToolbar() {
 			{(currentToolId === 'draw' || currentToolId === 'highlight') && (
 				<PenSettings currentToolId={currentToolId} />
 			)}
+			{(currentToolId === 'note' || currentToolId === 'pinned-note') && (
+				<NoteSettings currentToolId={currentToolId} />
+			)}
 			{currentToolId === 'geo' && <ShapeSettings />}
 			{currentToolId === 'text' && <TextSettings />}
 			{currentToolId === 'arrow' && (
@@ -513,7 +554,7 @@ export function CanvasToolbar() {
 				<ToolButton
 					toolId="note"
 					icon={<StickyNote size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'note'}
+					isActive={currentToolId === 'note' || currentToolId === 'pinned-note'}
 				/>
 				<ToolButton
 					toolId="draw"

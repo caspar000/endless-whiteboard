@@ -1347,16 +1347,39 @@ input,
 
 /* -------------------- NoteShape ------------------- */
 
+/* A note's paper, crease, pin and shadow: see note/paper.ts in @lifeboard/canvas. */
 .tl-note__container {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	border-radius: var(--radius-2);
-	box-shadow: var(--shadow-1);
 	overflow: hidden;
-	border-color: currentColor;
-	border-style: solid;
-	border-width: 1px;
+	/* Only enough to keep a pale note's edge on a pale board. */
+	box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+}
+
+.tl-note__crease {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	pointer-events: none;
+}
+
+.tl-note__shadow {
+	position: absolute;
+	left: 15%;
+	top: 28%;
+	width: 70%;
+	height: 66%;
+	border-radius: 50%;
+	box-shadow: 0 35px 45px rgba(0, 0, 0, 0.25);
+	pointer-events: none;
+}
+
+.tl-note__pin {
+	position: absolute;
+	overflow: visible;
+	pointer-events: none;
 }
 
 .tl-note__container .tl-text-label {

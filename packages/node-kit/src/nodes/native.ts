@@ -61,6 +61,13 @@ export const NATIVE_SHAPES: readonly NativeShapeSpec[] = [
 		textProps: richTextProps,
 	},
 	{
+		type: 'pinned-note',
+		label: 'Pinned note',
+		note: 'A larger note held up by a push pin, with no crease. For the one thing on a board that should stand out — a goal, a decision, a reminder — where a sticky is one of many.',
+		defaultSize: { w: 300, h: 300 },
+		textProps: richTextProps,
+	},
+	{
 		type: 'geo',
 		label: 'Rectangle',
 		note: 'A plain box, optionally with a label in it — a container, a swimlane, a background block behind a group.',

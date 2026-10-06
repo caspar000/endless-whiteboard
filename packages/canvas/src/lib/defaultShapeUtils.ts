@@ -9,6 +9,7 @@ import { HighlightShapeUtil } from './shapes/highlight/HighlightShapeUtil'
 import { ImageShapeUtil } from './shapes/image/ImageShapeUtil'
 import { LineShapeUtil } from './shapes/line/LineShapeUtil'
 import { NoteShapeUtil } from './shapes/note/NoteShapeUtil'
+import { PinnedNoteShapeUtil } from './shapes/note/PinnedNoteShapeUtil'
 import { TextShapeUtil } from './shapes/text/TextShapeUtil'
 import { VideoShapeUtil } from './shapes/video/VideoShapeUtil'
 
@@ -19,6 +20,7 @@ export const defaultShapeUtils: TLAnyShapeUtilConstructor[] = [
 	DrawShapeUtil,
 	GeoShapeUtil,
 	NoteShapeUtil,
+	PinnedNoteShapeUtil,
 	LineShapeUtil,
 	FrameShapeUtil,
 	ArrowShapeUtil,

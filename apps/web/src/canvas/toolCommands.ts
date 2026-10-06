@@ -30,6 +30,8 @@ const NATIVE_TOOL_TITLES: Record<string, string> = {
 	frame: 'Frame',
 	arrow: 'Arrow',
 	note: 'Sticky note',
+	// No key: the dock reaches it through the sticky's row (CanvasToolbar), and its digits are spoken for.
+	'pinned-note': 'Pinned note',
 	draw: 'Pen',
 	eraser: 'Eraser',
 	text: 'Text',

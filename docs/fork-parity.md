@@ -27,7 +27,7 @@ and until it does, it must leave them untouched.
 | D1 | `richText` (TipTap JSON) instead of `text` on text, note, geo; on arrow labels too | 3.10, 4.0 | Cutover | done (phase 4) |
 | D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | done (phase 3) |
 | D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | done (phase 2) |
-| D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | doing: read and kept, elbows drawn straight (phase 2) |
+| D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | done: elbows routed and drawn (B1); the seven routes measured from tldraw 5 come out the same |
 | D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | done: images draw flipped (phase 5); geo shapes mirror their outline, tick and cloud with the label upright, on screen, in hit-testing and in export, and flipping or resizing past an edge toggles the flags, as tldraw 5 does (compared side by side) |
 | D6 | `labelColor` on notes | 3.4 | Cutover | done (phase 4) |
 | D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | done for reading (phase 2); the mode is backlog |
@@ -93,7 +93,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 
 | Id | Feature | Arrived | Status |
 |---|---|---|---|
-| B1 | Elbow arrows (drawing and routing; reading them is D4) | 3.13 | todo |
+| B1 | Elbow arrows (drawing and routing; reading them is D4) | 3.13 | done: our own router (`elbow-arrow.ts`, the shortest clean route out of one side and into another), rounded corners, the middle handle, curved/elbow in the arrow tool's row and the selection toolbar. Not yet: snapping an end to a side or its centre (the binding's `snap`), and the wobbly `draw` stroke |
 | B2 | Drag arrow labels along the arrow | 2.0 beta | todo |
 | B3 | Sticky clone handles; Tab creates the next sticky | 2.1 | todo |
 | B4 | Wrap selection in a frame (⌘⇧F); the frame tool highlights what it will enclose | 5.2 | todo |

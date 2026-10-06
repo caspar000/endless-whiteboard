@@ -179,6 +179,12 @@ export function Relations({ go }: SectionProps) {
 					never mistaken for a claim.
 				</p>
 				<ArrowsDemo />
+				<p>
+					An arrow is <strong>curved</strong> or an <strong>elbow</strong>: pick which in the row above
+					the dock while the arrow tool is on, or switch a selected arrow with the button in its toolbar.
+					An elbow only runs across and down, turning in right angles around the shapes it joins, and
+					its middle handle slides the middle run along. Either kind counts as a relation.
+				</p>
 			</Section>
 
 			<Section title="Which arrows count">

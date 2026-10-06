@@ -10,6 +10,7 @@ import {
 	setRelationView,
 	type CommandContext,
 } from '@lifeboard/node-kit'
+import { ArrowShapeKindStyle } from '@lifeboard/canvas'
 import { openProperties } from '../canvas/propertiesTarget'
 import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
 import { runTldrawAction } from '../canvas/tldrawUi'
@@ -302,6 +303,28 @@ registerCommand({
 		setRelationHidden(editor, shape.id, !isHiddenRelation(shape), { markHistory: true })
 	},
 })
+
+/**
+ * The keyboard half of the selection toolbar's arrow-kind button: one command per kind, each offered
+ * while some selected arrow is the other kind.
+ */
+for (const [kind, title] of [
+	['elbow', 'Make the selected arrows elbows — across and down, in right angles'],
+	['arc', 'Make the selected arrows curved'],
+] as const) {
+	registerCommand({
+		id: `arrow.kind.${kind}`,
+		title,
+		group: CANVAS_GROUP,
+		when: (ctx) => {
+			const shared = ctx.editor?.getSharedStyles().get(ArrowShapeKindStyle)
+			return !!shared && !(shared.type === 'shared' && shared.value === kind)
+		},
+		run: (ctx) => {
+			ctx.editor?.setStyleForSelectedShapes(ArrowShapeKindStyle, kind)
+		},
+	})
+}
 
 /**
  * The board's relation view, as four commands: one per state, plus the cycle the dock button runs.

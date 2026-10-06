@@ -36,4 +36,8 @@ export type TLArrowInfo =
 			middle: VecLike
 			isValid: boolean
 			length: number
+			/** An elbow arrow's corners, from start to end (`kind: 'elbow'`). */
+			route?: VecLike[]
+			/** The run of an elbow's route that `elbowMidPoint` moves, if it has one. */
+			elbow?: { axis: 'x' | 'y'; from: number; to: number }
 	  }

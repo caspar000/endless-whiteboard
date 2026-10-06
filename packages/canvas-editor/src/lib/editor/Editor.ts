@@ -135,9 +135,8 @@ import { TickManager } from './managers/TickManager'
 import { UserPreferencesManager } from './managers/UserPreferencesManager'
 import { ShapeUtil, TLResizeMode, TLShapeUtilConstructor } from './shapes/ShapeUtil'
 import { TLArrowInfo } from './shapes/shared/arrow/arrow-types'
-import { getCurvedArrowInfo } from './shapes/shared/arrow/curved-arrow'
+import { computeArrowInfo } from './shapes/shared/arrow/arrow-info'
 import { getArrowTerminalsInArrowSpace, getIsArrowStraight } from './shapes/shared/arrow/shared'
-import { getStraightArrowInfo } from './shapes/shared/arrow/straight-arrow'
 import { RootState } from './tools/RootState'
 import { StateNode, TLStateNodeConstructor } from './tools/StateNode'
 import { SvgExportContext, SvgExportDef } from './types/SvgExportContext'
@@ -1448,9 +1447,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	@computed
 	private getArrowInfoCache() {
 		return this.store.createComputedCache<TLArrowInfo, TLArrowShape>('arrow infoCache', (shape) => {
-			return getIsArrowStraight(shape)
-				? getStraightArrowInfo(this, shape)
-				: getCurvedArrowInfo(this, shape)
+			return computeArrowInfo(this, shape)
 		})
 	}
 
@@ -6199,9 +6196,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 						;(newShape.props as unknown as Record<string, unknown>)[end] = ends[end]
 					}
 
-					const infoAfter = getIsArrowStraight(newShape)
-						? getStraightArrowInfo(this, newShape)
-						: getCurvedArrowInfo(this, newShape)
+					const infoAfter = computeArrowInfo(this, newShape)
 
 					if (info?.isValid && infoAfter?.isValid && !getIsArrowStraight(shape)) {
 						const mpA = Vec2d.Med(info.start.handle, info.end.handle)
@@ -8667,9 +8662,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					shape.props[end] = { x, y }
 				}
 
-				const infoAfter = getIsArrowStraight(shape)
-					? getStraightArrowInfo(this, shape)
-					: getCurvedArrowInfo(this, shape)
+				const infoAfter = computeArrowInfo(this, shape)
 
 				if (info?.isValid && infoAfter?.isValid && !getIsArrowStraight(shape)) {
 					const mpA = Vec2d.Med(info.start.handle, info.end.handle)

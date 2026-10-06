@@ -7,6 +7,7 @@ import {
 } from '@lifeboard/node-kit'
 import {
 	Circle,
+	CornerDownRight,
 	Diamond,
 	Eraser,
 	Frame,
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
+	ArrowShapeKindStyle,
 	DefaultColorStyle,
 	DefaultSizeStyle,
 	GeoShapeGeoStyle,
@@ -328,6 +330,41 @@ function PenSettings({ currentToolId }: { currentToolId: string }) {
 	)
 }
 
+const ARROW_KINDS = [
+	{ value: 'arc', label: 'Curved', icon: Spline },
+	{ value: 'elbow', label: 'Elbow', icon: CornerDownRight },
+] as const
+
+/**
+ * Curved or elbow, plus the colour. Curved is tldraw's arrow, straight until you bend it; an elbow
+ * only runs across and down, turning in right angles around the shapes it joins.
+ */
+function ArrowSettings() {
+	const editor = useEditor()
+	const current = useValue('lb:next-arrow-kind', () => editor.getStyleForNextShape(ArrowShapeKindStyle), [editor])
+	return (
+		<div className="lb-expand">
+			<div className="lb-expand__group" role="group" aria-label="Arrow kind">
+				{ARROW_KINDS.map(({ value, label, icon: Icon }) => (
+					<button
+						key={value}
+						className={current === value ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
+						onPointerDown={(e) => e.preventDefault()}
+						onClick={() => setStyle(editor, ArrowShapeKindStyle, value)}
+						title={`${label} arrow`}
+						aria-label={`${label} arrow`}
+						aria-pressed={current === value}
+					>
+						<Icon size={ICON_SIZE} aria-hidden="true" />
+					</button>
+				))}
+			</div>
+			<div className="lb-expand__sep" />
+			<ColorSwatches />
+		</div>
+	)
+}
+
 /**
  * The fill colour for the next shape, transparent included.
  *
@@ -556,11 +593,7 @@ export function CanvasToolbar() {
 			)}
 			{currentToolId === 'geo' && <ShapeSettings />}
 			{currentToolId === 'text' && <TextSettings />}
-			{currentToolId === 'arrow' && (
-				<div className="lb-expand">
-					<ColorSwatches />
-				</div>
-			)}
+			{currentToolId === 'arrow' && <ArrowSettings />}
 
 			<div className="lb-dock">
 				{/* Getting around, and around things. */}

@@ -14,7 +14,13 @@ function getArrowPoints(
 	strokeWidth: number
 ): TLArrowPointsInfo {
 	const PT = side === 'end' ? info.end.point : info.start.point
-	const PB = side === 'end' ? info.start.point : info.end.point
+	// An elbow's head follows its last run, not the line between its ends.
+	const route = info.isStraight ? info.route : undefined
+	const PB = route
+		? route[side === 'end' ? route.length - 2 : 1]!
+		: side === 'end'
+		? info.start.point
+		: info.end.point
 
 	const compareLength = info.isStraight ? Vec2d.Dist(PB, PT) : Math.abs(info.bodyArc.length) // todo: arc length for curved arrows
 

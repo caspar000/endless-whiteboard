@@ -10,6 +10,9 @@ import {
 	DefaultFontFamilies,
 	Edge2d,
 	Group2d,
+	Polyline2d,
+	TLArrowInfo,
+	getElbowArrowPath,
 	Rectangle2d,
 	SVGContainer,
 	ShapeUtil,
@@ -104,7 +107,9 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	getGeometry(shape: TLArrowShape) {
 		const info = this.editor.getArrowInfo(shape)!
 
-		const bodyGeom = info.isStraight
+		const bodyGeom = info.isStraight && info.route
+			? new Polyline2d({ points: info.route.map((point) => Vec2d.From(point)) })
+			: info.isStraight
 			? new Edge2d({
 					start: Vec2d.From(info.start.point),
 					end: Vec2d.From(info.end.point),
@@ -186,6 +191,10 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 	override getHandles(shape: TLArrowShape): TLHandle[] {
 		const info = this.editor.getArrowInfo(shape)!
+		// An elbow's middle handle sits on the run it moves (`info.middle`); a route without one, an L
+		// or straight across, has nothing for it to move.
+		const middle = info.middle
+		const hasMiddle = !(info.isStraight && info.route) || !!info.elbow
 		return [
 			{
 				id: 'start',
@@ -195,14 +204,18 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				y: info.start.handle.y,
 				canBind: true,
 			},
-			{
-				id: 'middle',
-				type: 'virtual',
-				index: 'a2' as IndexKey,
-				x: info.middle.x,
-				y: info.middle.y,
-				canBind: false,
-			},
+			...(hasMiddle
+				? [
+						{
+							id: 'middle',
+							type: 'virtual' as const,
+							index: 'a2' as IndexKey,
+							x: middle.x,
+							y: middle.y,
+							canBind: false,
+						},
+				  ]
+				: []),
 			{
 				id: 'end',
 				type: 'vertex',
@@ -219,6 +232,16 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		{ handle, isPrecise }
 	) => {
 		const handleId = handle.id as 'start' | 'middle' | 'end'
+
+		if (handleId === 'middle' && shape.props.kind === 'elbow') {
+			// Moving an elbow's middle run across the gap it spans.
+			const info = this.editor.getArrowInfo(shape)
+			const run = info?.isStraight ? info.elbow : undefined
+			if (!run || run.to === run.from) return
+			const at = run.axis === 'x' ? handle.x : handle.y
+			const elbowMidPoint = Math.min(1, Math.max(0, (at - run.from) / (run.to - run.from)))
+			return { id: shape.id, type: shape.type, props: { elbowMidPoint } }
+		}
 
 		if (handleId === 'middle') {
 			// Bending the arrow...
@@ -520,7 +543,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', strokeWidth)
 		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', strokeWidth)
 
-		const path = info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
+		const path = getArrowBodyPath(info, shape)
 
 		let handlePath: null | JSX.Element = null
 
@@ -543,7 +566,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				terminals.start.type === 'binding' || terminals.end.type === 'binding' ? (
 					<path
 						className="tl-arrow-hint"
-						d={info.isStraight ? getStraightArrowHandlePath(info) : getCurvedArrowHandlePath(info)}
+						d={getArrowHintPath(info)}
 						strokeDasharray={strokeDasharray}
 						strokeDashoffset={strokeDashoffset}
 						strokeWidth={sw}
@@ -698,7 +721,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', strokeWidth)
 		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', strokeWidth)
 
-		const path = info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
+		const path = getArrowBodyPath(info, shape)
 
 		const includeMask =
 			(as && info.start.arrowhead !== 'arrow') ||
@@ -886,7 +909,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		// Arrowhead body path
 		const path = getArrowSvgPath(
-			info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info),
+			getArrowBodyPath(info, shape),
 			color,
 			strokeWidth
 		)
@@ -1034,4 +1057,25 @@ function getArrowheadSvgPath(
 		// Otherwise, just return the path
 		return path
 	}
+}
+
+/** The line an arrow draws: an elbow's route with rounded corners, or its straight or curved body. */
+function getArrowBodyPath(info: TLArrowInfo, shape: TLArrowShape) {
+	if (info.isStraight && info.route) {
+		// Corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
+		return getElbowArrowPath(info.route, STROKE_SIZES[shape.props.size] * 2)
+	}
+	return info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
+}
+
+/**
+ * The faint dashed line from each bound end's anchor. An elbow's runs only from the anchor to where
+ * its line meets the shape, as tldraw 5 draws it, rather than straight across its label.
+ */
+function getArrowHintPath(info: TLArrowInfo) {
+	if (info.isStraight && info.route) {
+		const { start, end } = info
+		return `M${start.handle.x},${start.handle.y}L${start.point.x},${start.point.y}M${end.point.x},${end.point.y}L${end.handle.x},${end.handle.y}`
+	}
+	return info.isStraight ? getStraightArrowHandlePath(info) : getCurvedArrowHandlePath(info)
 }

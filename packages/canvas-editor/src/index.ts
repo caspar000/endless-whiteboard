@@ -253,7 +253,20 @@ export {
 	getCurvedArrowHandlePath,
 	getSolidCurvedArrowPath,
 } from './lib/editor/shapes/shared/arrow/curved-arrow'
+export type {
+	TLArcInfo,
+	TLArrowInfo,
+	TLArrowPoint,
+} from './lib/editor/shapes/shared/arrow/arrow-types'
 export { getArrowTerminalsInArrowSpace } from './lib/editor/shapes/shared/arrow/shared'
+export {
+	getElbowArrowPath,
+	getElbowMiddleRun,
+	pointAlongRoute,
+	routeElbow,
+	type ElbowEnd,
+	type ElbowRoute,
+} from './lib/editor/shapes/shared/arrow/elbow-arrow'
 export {
 	getSolidStraightArrowPath,
 	getStraightArrowHandlePath,

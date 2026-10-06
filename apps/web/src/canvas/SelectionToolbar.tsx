@@ -7,17 +7,20 @@ import {
 	Check,
 	Clipboard,
 	Copy,
+	CornerDownRight,
 	Eye,
 	EyeOff,
 	ImageDown,
 	MoreHorizontal,
 	Scissors,
 	SlidersHorizontal,
+	Spline,
 	Trash2,
 	X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+	ArrowShapeKindStyle,
 	AssetRecordType,
 	Box,
 	DefaultColorStyle,
@@ -268,6 +271,46 @@ function ShapeFillPicker({ open, setOpen }: PanelProps) {
 					</div>
 				)}
 			</div>
+			<div className="lb-seltb__sep" />
+		</>
+	)
+}
+
+/**
+ * Curved or elbow, for the selected arrows: one button that switches them to the other kind. A mixed
+ * selection becomes elbows, the kind the button offers when not every arrow is one already.
+ */
+function ArrowKindButton() {
+	const editor = useEditor()
+	const kind = useValue(
+		'lb:arrow-kind',
+		() => {
+			const shared = editor.getSharedStyles().get(ArrowShapeKindStyle)
+			if (!shared) return null
+			return shared.type === 'shared' ? shared.value : 'mixed'
+		},
+		[editor]
+	)
+	if (!kind) return null
+	const next = kind === 'elbow' ? 'arc' : 'elbow'
+	const label = next === 'elbow' ? 'Elbow arrow' : 'Curved arrow'
+	return (
+		<>
+			<TldrawUiToolbarButton
+				type="icon"
+				title={label}
+				tooltip={next === 'elbow' ? 'Elbow arrow: across and down, in right angles' : 'Curved arrow'}
+				data-testid="lb.arrow-kind"
+				// The style-prop API, as for colour, so tldraw owns the history entry.
+				onClick={() => editor.setStyleForSelectedShapes(ArrowShapeKindStyle, next)}
+			>
+				{next === 'elbow' ? (
+					<CornerDownRight size={16} aria-hidden="true" />
+				) : (
+					<Spline size={16} aria-hidden="true" />
+				)}
+				<span className="lb-sr-only">{label}</span>
+			</TldrawUiToolbarButton>
 			<div className="lb-seltb__sep" />
 		</>
 	)
@@ -687,6 +730,7 @@ function SelectionToolbarContent({
 				</>
 			)}
 
+			<ArrowKindButton />
 			{single && onlyId && <RelationVisibilityButton shapeId={onlyId} />}
 
 			{single && (

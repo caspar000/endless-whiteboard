@@ -53,8 +53,10 @@ turn by asking what it is looking at. See [`packages/agent-host`](packages/agent
 (relation view, tracing), and the node types. Digits `1`–`9` run left to right along it. The node
 types sit behind the last button — a **searchable grid**, registry-driven, so a new type or an
 extension's arrives in it without widening the dock; right-click offers "Add to board" for placing
-one at the pointer instead. Double-clicking empty canvas is tldraw's default action. Double-clicking
-the board's name in the tab strip renames it.
+one at the pointer instead. The relation tool's row picks a curved or an elbow arrow; an elbow runs
+only across and down, routed around the shapes it joins (`canvas-editor`'s `elbow-arrow.ts`).
+Double-clicking empty canvas is tldraw's default action. Double-clicking the board's name in the tab
+strip renames it.
 
 **Notes on paper** — a sticky note looks like one: flat paper with the crease of its glued strip and
 a soft shadow where it lifts off the board. The row above the sticky button switches to a **pinned

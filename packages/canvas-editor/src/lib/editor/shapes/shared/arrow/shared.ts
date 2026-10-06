@@ -10,7 +10,8 @@ import { Editor } from '../../../Editor'
 import { getArrowTerminals, type TLArrowShapeTerminal } from './terminals'
 
 export function getIsArrowStraight(shape: TLArrowShape) {
-	return Math.abs(shape.props.bend) < 8 // snap to +-8px
+	// An elbow arrow's runs are straight; its bend is not used.
+	return shape.props.kind === 'elbow' || Math.abs(shape.props.bend) < 8 // snap to +-8px
 }
 
 export type BoundShapeInfo<T extends TLShape = TLShape> = {

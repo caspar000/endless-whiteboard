@@ -4,7 +4,6 @@
 set -eu
 
 : "${LIFEBOARD_REPO:?set LIFEBOARD_REPO in .env}"
-: "${GITHUB_TOKEN:?set GITHUB_TOKEN in .env}"
 BRANCH="${LIFEBOARD_BRANCH:-main}"
 SRC=/app/src         # git checkout of the deploy branch
 BUILDS=/app/builds   # one directory per built revision
@@ -14,14 +13,20 @@ log() { echo "[lifeboard] $*"; }
 
 serve() {
 	cd "$1"
-	unset GITHUB_TOKEN
+	unset GITHUB_TOKEN 2>/dev/null || true
 	LIFEBOARD_REVISION=$(cat REVISION) exec node --enable-source-maps apps/server/dist/main.js
 }
 
-# The token goes on the command line only, never into .git/config on the volume.
+# A public repo needs no token. A private one does; it goes on the command line only, never into
+# .git/config on the volume.
 fetch() {
 	[ -d "$SRC/.git" ] || git init --quiet "$SRC"
-	git -C "$SRC" fetch --quiet --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/${LIFEBOARD_REPO}.git" "$BRANCH" &&
+	if [ -n "${GITHUB_TOKEN:-}" ]; then
+		url="https://x-access-token:${GITHUB_TOKEN}@github.com/${LIFEBOARD_REPO}.git"
+	else
+		url="https://github.com/${LIFEBOARD_REPO}.git"
+	fi
+	git -C "$SRC" fetch --quiet --depth 1 "$url" "$BRANCH" &&
 		git -C "$SRC" reset --quiet --hard FETCH_HEAD
 }
 

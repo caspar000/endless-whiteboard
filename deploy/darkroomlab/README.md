@@ -17,7 +17,8 @@ pnpm --filter @lifeboard/server hash-password   # prints the LIFEBOARD_PASSWORD_
 openssl rand -hex 32                            # the session secret
 ```
 
-Make a fine-grained GitHub token with read-only **Contents** access to `caspar000/endless-whiteboard`.
+The repo is public, so the box needs no GitHub token. If it becomes private, make a fine-grained token
+with read-only **Contents** access and set `GITHUB_TOKEN` in `.env`.
 
 On the box (`ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86`):
 

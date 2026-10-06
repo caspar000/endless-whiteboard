@@ -337,10 +337,12 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 				})
 				break
 			}
+			case 'heart': {
+				body = new Polygon2d({ points: getHeartPoints(w, h), isFilled })
+				break
+			}
 			case 'check-box':
 			case 'x-box':
-			// Geo types added after 2023 (`heart`; docs/fork-parity.md B6) have an outline here only as a
-			// rectangle, until they get their own.
 			case 'rectangle':
 			default: {
 				body = new Rectangle2d({
@@ -511,8 +513,11 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 					const outline =
 						geometry instanceof Group2d ? geometry.children[0].vertices : geometry.vertices
 					const lines = getLines(shape.props, strokeWidth)
+					// A heart's outline is a smooth curve of many points; the hand-drawn style's wobble at
+					// each one would make it lumpy, so it is drawn smooth, as tldraw 5 draws it.
+					const style = smoothDash(props.geo, dash)
 
-					if (dash === 'solid') {
+					if (style === 'solid') {
 						return (
 							<SolidStylePolygon
 								fill={fill}
@@ -522,7 +527,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 								lines={lines}
 							/>
 						)
-					} else if (dash === 'dashed' || dash === 'dotted') {
+					} else if (style === 'dashed' || style === 'dotted') {
 						return (
 							<DashStylePolygon
 								dash={dash}
@@ -533,7 +538,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 								lines={lines}
 							/>
 						)
-					} else if (dash === 'draw') {
+					} else if (style === 'draw') {
 						return (
 							<DrawStylePolygon
 								id={id}
@@ -620,7 +625,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 					geometry instanceof Group2d ? geometry.children[0].vertices : geometry.vertices
 				let path: string
 
-				if (props.dash === 'draw') {
+				if (smoothDash(props.geo, props.dash) === 'draw') {
 					const polygonPoints = getRoundedPolygonPoints(id, outline, 0, strokeWidth * 2, 1)
 					path = getRoundedInkyPolygonPath(polygonPoints)
 				} else {
@@ -821,7 +826,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 					geometry instanceof Group2d ? geometry.children[0].vertices : geometry.vertices
 				const lines = getLines(shape.props, strokeWidth)
 
-				switch (props.dash) {
+				switch (smoothDash(props.geo, props.dash)) {
 					case 'draw':
 						svgElm = DrawStylePolygonSvg({
 							id,
@@ -1268,4 +1273,41 @@ function getCheckBoxLines(w: number, h: number) {
 			new Vec2d(clampX(ox + size * 0.82), clampY(oy + size * 0.22)),
 		],
 	]
+}
+
+/**
+ * The heart's outline (docs/fork-parity.md B6): four cubic curves from the point at the bottom, up
+ * each side to the dip at the top, as tldraw 5 draws it (read from its rendered path, every control
+ * point a fixed share of the width and height), sampled into points for the outline.
+ */
+function getHeartPoints(w: number, h: number): Vec2d[] {
+	const p = (x: number, y: number) => new Vec2d(x * w, y * h)
+	const curves: [Vec2d, Vec2d, Vec2d, Vec2d][] = [
+		[p(0.5, 1), p(0.375, 0.75), p(0, 0.625), p(0, 0.3)],
+		[p(0, 0.3), p(0, -0.08), p(0.4625, -0.08), p(0.5, 0.225)],
+		[p(0.5, 0.225), p(0.5375, -0.08), p(1, -0.08), p(1, 0.3)],
+		[p(1, 0.3), p(1, 0.625), p(0.625, 0.75), p(0.5, 1)],
+	]
+	const points: Vec2d[] = []
+	for (const [a, b, c, d] of curves) {
+		for (let i = 0; i < HEART_STEPS; i++) {
+			const t = i / HEART_STEPS
+			const u = 1 - t
+			points.push(
+				new Vec2d(
+					u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+					u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y
+				)
+			)
+		}
+	}
+	return points
+}
+
+/** Points per curve: smooth at any size a board shows. */
+const HEART_STEPS = 16
+
+/** The dash a geo shape is drawn with: a heart's hand-drawn style is drawn smooth (see the heart). */
+function smoothDash(geo: TLGeoShape['props']['geo'], dash: TLDefaultDashStyle): TLDefaultDashStyle {
+	return geo === 'heart' && dash === 'draw' ? 'solid' : dash
 }

@@ -47,3 +47,19 @@ describe('flipped geo shapes (D5)', () => {
 		expect(editor.getShape<TLGeoShape>(id)).toMatchObject({ x: 0, y: 0, props: { flipX: false, flipY: true } })
 	})
 })
+
+describe('the heart (B6)', () => {
+	it('has a heart’s outline, filling its box, not a rectangle’s', () => {
+		editor.createShapes([{ id, type: 'geo', x: 0, y: 0, props: { geo: 'heart', w: 200, h: 200 } }])
+		const points = outline()
+		expect(points.length).toBeGreaterThan(40)
+		// The point at the bottom middle, the dip at the top middle, the widest at the sides.
+		expect(points[0]).toEqual([100, 200])
+		expect(points.some(([x, y]) => x === 100 && Math.abs(y! - 45) < 0.01)).toBe(true)
+		expect(Math.min(...points.map(([x]) => x!))).toBeCloseTo(0, 5)
+		expect(Math.max(...points.map(([x]) => x!))).toBeCloseTo(200, 5)
+		// A corner of the box is outside it.
+		expect(editor.getShapeAtPoint({ x: 3, y: 197 }, { hitInside: true })).toBeUndefined()
+		expect(editor.getShapeAtPoint({ x: 100, y: 120 }, { hitInside: true })?.id).toBe(id)
+	})
+})

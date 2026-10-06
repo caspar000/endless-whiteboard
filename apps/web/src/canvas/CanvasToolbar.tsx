@@ -12,6 +12,7 @@ import {
 	Eraser,
 	Frame,
 	Hand,
+	Heart,
 	Hexagon,
 	Highlighter,
 	Image,
@@ -112,6 +113,7 @@ const GEO_KINDS: { value: GeoValue; icon: LucideIcon }[] = [
 	{ value: 'diamond', icon: Diamond },
 	{ value: 'triangle', icon: Triangle },
 	{ value: 'hexagon', icon: Hexagon },
+	{ value: 'heart', icon: Heart },
 ]
 
 const ICON_SIZE = 19

@@ -10,7 +10,7 @@ import {
 	setRelationView,
 	type CommandContext,
 } from '@lifeboard/node-kit'
-import { ArrowShapeKindStyle, Vec2d, copyShapeStyle } from '@lifeboard/canvas'
+import { ArrowShapeKindStyle, Vec2d, copyShapeStyle, flattenSelection } from '@lifeboard/canvas'
 import { canHaveFillColor, readFillColor, setNextFillColor } from '../canvas/shapeFill'
 import { openProperties } from '../canvas/propertiesTarget'
 import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
@@ -333,6 +333,16 @@ registerCommand({
 		if (!editor) return
 		const source = copyShapeStyle(editor)
 		if (source && canHaveFillColor(source)) setNextFillColor(editor, readFillColor(source))
+	},
+})
+
+registerCommand({
+	id: 'shape.flatten',
+	title: 'Flatten the selection to an image',
+	group: CANVAS_GROUP,
+	when: hasSelection,
+	run: async (ctx) => {
+		if (ctx.editor) await flattenSelection(ctx.editor)
 	},
 })
 

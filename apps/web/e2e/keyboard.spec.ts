@@ -320,3 +320,36 @@ test.describe('styles and the menu (I7)', () => {
 			.toEqual(['violet', 'dotted'])
 	})
 })
+
+test.describe('flattening (B11)', () => {
+	test('the … menu flattens the selection into one picture where it was; undo brings the shapes back', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{ id: 'shape:a', type: 'geo', x: 100, y: 100, props: { w: 100, h: 100, fill: 'solid', color: 'blue' } },
+				{ id: 'shape:b', type: 'geo', x: 260, y: 140, props: { w: 100, h: 60, fill: 'solid', color: 'red' } },
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		await page.locator('.lb-board-host:not([data-hidden]) .tl-canvas').click({ position: { x: 700, y: 600 } })
+		await page.keyboard.press('ControlOrMeta+a')
+		await page.getByRole('button', { name: 'More' }).click()
+		await page.getByRole('button', { name: 'Flatten to an image' }).click()
+
+		const shapes = () =>
+			page.evaluate(() => {
+				const editor = (window as unknown as {
+					editor: { getCurrentPageShapes(): { type: string; x: number; y: number; props: Record<string, unknown> }[] }
+				}).editor
+				return editor.getCurrentPageShapes().map((s) => ({ type: s.type, x: Math.round(s.x), y: Math.round(s.y), w: Math.round(s.props.w as number), h: Math.round(s.props.h as number) }))
+			})
+		await expect.poll(shapes).toEqual([{ type: 'image', x: 100, y: 100, w: 260, h: 100 }])
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .tl-shape img')).toHaveCount(1)
+
+		await page.keyboard.press('ControlOrMeta+z')
+		await expect.poll(async () => (await shapes()).map((s) => s.type).sort()).toEqual(['geo', 'geo'])
+	})
+})

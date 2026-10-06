@@ -11,6 +11,7 @@ import {
 	Eye,
 	EyeOff,
 	ImageDown,
+	Layers,
 	MoreHorizontal,
 	Scissors,
 	SlidersHorizontal,
@@ -29,6 +30,7 @@ import {
 	getPinPaint,
 	DefaultImageToolbarContent,
 	DefaultVideoToolbarContent,
+	flattenSelection,
 	TldrawUiContextualToolbar,
 	TldrawUiToolbarButton,
 	useActions,
@@ -865,6 +867,15 @@ function SelectionToolbarContent({
 						</button>
 						<button className="lb-seltb__item" onClick={() => run('duplicate')}>
 							<Copy size={15} aria-hidden="true" /> Duplicate
+						</button>
+						<button
+							className="lb-seltb__item"
+							onClick={() => {
+								setPanel(null)
+								void flattenSelection(editor)
+							}}
+						>
+							<Layers size={15} aria-hidden="true" /> Flatten to an image
 						</button>
 						{single && (
 							<>

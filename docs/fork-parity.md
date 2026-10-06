@@ -103,7 +103,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | B8 | Paste: raw `<iframe>` embeds, Mermaid to shapes, Excalidraw content; URL onto a selected shape sets its link | 3.8–5.5 | todo |
 | B9 | Drag a shape out of the toolbar | 4.0 | todo |
 | B10 | Dynamic size mode (shapes keep their size on screen) | 2.3 | todo |
-| B11 | Flatten selection to an image | 2.3 | todo |
+| B11 | Flatten selection to an image | 2.3 | done: `flattenSelection` draws the selection as a PNG at twice its size, stores it as any picture, and puts it where the shapes were, at their size and depth; one undo brings them back. In the selection toolbar's … menu and ⌘K |
 | B12 | Laser that fades as one stroke | 4.4 | todo |
 | B13 | Text tool lock; note resize by scale | 3.3, 3.8 | todo |
 | B14 | Align centre option | 5.4 | todo |

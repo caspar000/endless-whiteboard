@@ -1,4 +1,5 @@
 import { StateNode } from '@lifeboard/canvas-editor'
+import { DraggingArrowLabel } from './childStates/DraggingArrowLabel'
 import { Brushing } from './childStates/Brushing'
 import { Crop } from './childStates/Crop/Crop'
 import { Cropping } from './childStates/Cropping'
@@ -39,6 +40,7 @@ export class SelectTool extends StateNode {
 		PointingRotateHandle,
 		PointingHandle,
 		DraggingHandle,
+		DraggingArrowLabel,
 	]
 
 	override onExit = () => {

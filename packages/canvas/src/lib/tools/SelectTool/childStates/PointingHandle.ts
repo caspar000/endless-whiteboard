@@ -6,6 +6,7 @@ import {
 	TLPointerEventInfo,
 	getArrowTerminal,
 } from '@lifeboard/canvas-editor'
+import { isDragAlongArrow, pressedOnArrowLabel } from './DraggingArrowLabel'
 
 export class PointingHandle extends StateNode {
 	static override id = 'pointing_handle'
@@ -44,6 +45,12 @@ export class PointingHandle extends StateNode {
 
 	override onPointerMove: TLEventHandlers['onPointerMove'] = () => {
 		if (this.editor.inputs.isDragging) {
+			// An arrow's middle handle sits under its label: dragging along the arrow slides the label
+			// (B2), dragging across it bends the arrow as before.
+			if (this.info.handle.id === 'middle' && pressedOnArrowLabel(this.editor) && isDragAlongArrow(this.editor)) {
+				this.parent.transition('dragging_arrow_label', this.info)
+				return
+			}
 			this.parent.transition('dragging_handle', this.info)
 		}
 	}

@@ -12,6 +12,9 @@ import {
 	Group2d,
 	Polyline2d,
 	TLArrowInfo,
+	Geometry2d,
+	VecLike,
+	pointAlongRoute,
 	getElbowArrowPath,
 	Rectangle2d,
 	SVGContainer,
@@ -173,9 +176,11 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				height = squishedHeight
 			}
 
+			// Where along the arrow the label sits (B2): the middle as before, or where it was dragged.
+			const at = getArrowLabelPoint(info, bodyGeom, shape.props.labelPosition)
 			labelGeom = new Rectangle2d({
-				x: info.middle.x - width / 2 - 4.25,
-				y: info.middle.y - height / 2 - 4.25,
+				x: at.x - width / 2 - 4.25,
+				y: at.y - height / 2 - 4.25,
 				width: width + 8.5,
 				height: height + 8.5,
 				isFilled: true,
@@ -693,7 +698,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 					richText={shape.props.richText}
 					font={shape.props.font}
 					size={shape.props.size}
-					position={info.middle}
+					position={labelGeometry ? labelGeometry.center : info.middle}
 					width={labelGeometry?.w ?? 0}
 					labelColor={theme[shape.props.labelColor].solid}
 				/>
@@ -1078,4 +1083,38 @@ function getArrowHintPath(info: TLArrowInfo) {
 		return `M${start.handle.x},${start.handle.y}L${start.point.x},${start.point.y}M${end.point.x},${end.point.y}L${end.handle.x},${end.handle.y}`
 	}
 	return info.isStraight ? getStraightArrowHandlePath(info) : getCurvedArrowHandlePath(info)
+}
+
+/**
+ * The point `position` of the way along an arrow's body (0 at its start, 1 at its end), where its
+ * label goes (B2). Half way is the arrow's own middle, as it always was.
+ */
+export function getArrowLabelPoint(info: TLArrowInfo, body: Geometry2d, position: number): VecLike {
+	if (!Number.isFinite(position) || Math.abs(position - 0.5) < 1e-6) return info.middle
+	const points = body.vertices
+	return pointAlongRoute(points, routeLength(points) * Math.min(1, Math.max(0, position)))
+}
+
+/** How far along an arrow's body (0 to 1) the point nearest `point` is. */
+export function getArrowLabelPosition(body: Geometry2d, point: VecLike): number {
+	const points = body.vertices
+	const total = routeLength(points)
+	if (!total) return 0.5
+	let best = { distance: Infinity, along: 0 }
+	let walked = 0
+	for (let i = 1; i < points.length; i++) {
+		const a = points[i - 1]!
+		const b = points[i]!
+		const nearest = Vec2d.NearestPointOnLineSegment(a, b, point, true)
+		const distance = Vec2d.Dist(nearest, point)
+		if (distance < best.distance) best = { distance, along: walked + Vec2d.Dist(a, nearest) }
+		walked += Vec2d.Dist(a, b)
+	}
+	return best.along / total
+}
+
+function routeLength(points: VecLike[]): number {
+	let length = 0
+	for (let i = 1; i < points.length; i++) length += Vec2d.Dist(points[i - 1]!, points[i]!)
+	return length
 }

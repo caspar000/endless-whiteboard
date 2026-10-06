@@ -94,7 +94,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | Id | Feature | Arrived | Status |
 |---|---|---|---|
 | B1 | Elbow arrows (drawing and routing; reading them is D4) | 3.13 | done: our own router (`elbow-arrow.ts`, the shortest clean route out of one side and into another), rounded corners, the middle handle, curved/elbow in the arrow tool's row and the selection toolbar. Not yet: snapping an end to a side or its centre (the binding's `snap`), and the wobbly `draw` stroke |
-| B2 | Drag arrow labels along the arrow | 2.0 beta | todo |
+| B2 | Drag arrow labels along the arrow | 2.0 beta | done: `labelPosition` places the label along the body (0.5 is the old middle); on a selected arrow, a drag that starts on the label and runs along the arrow slides it, across it bends (from the middle handle) or moves the arrow |
 | B3 | Sticky clone handles; Tab creates the next sticky | 2.1 | todo |
 | B4 | Wrap selection in a frame (⌘⇧F); the frame tool highlights what it will enclose | 5.2 | done: ⌘⇧F frames the selection (32px clear, in the lowest shape's place) or takes selected frames apart; a frame being drawn hints the shapes it will take in |
 | B5 | Advanced crop (aspect ratios, snapping crop edges); flip images and geo shapes | 3.14, 2.4, 5.3 | todo (flipping is done, D5) |

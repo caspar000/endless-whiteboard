@@ -58,6 +58,7 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['⌘', 'drag'], 'Ignore grid snapping for this move'],
 			[['drag to the edge'], 'The board scrolls that way while you hold it there'],
 			[['⇧', '⌘', 'click'], 'Add a shape to the selection, or take it away'],
+			[['drag a label'], 'On a selected arrow: along it slides the label, across it bends the arrow'],
 			[['Esc'], 'Stop editing, then deselect'],
 			[['double-click'], 'Edit the content — or, on empty paper, start a note'],
 			[['right-click'], 'Properties, and everything else about this shape'],

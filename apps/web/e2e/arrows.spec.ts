@@ -110,3 +110,57 @@ test.describe('elbow arrows (B1)', () => {
 		expect((await arrow(page))!.route).toBeNull()
 	})
 })
+
+test.describe('arrow labels (B2)', () => {
+	test('a selected arrow’s label drags along it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await expect.poll(() => editorOf(page)).toBe(true)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{
+					id: 'shape:l',
+					type: 'arrow',
+					x: 100,
+					y: 300,
+					props: {
+						start: { x: 0, y: 0 },
+						end: { x: 600, y: 0 },
+						richText: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'pays for' }] }] },
+					},
+				},
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+			editor.select('shape:l')
+		})
+		const screen = (x: number, y: number) =>
+			page.evaluate((p) => (window as unknown as { editor: EditorHandle }).editor.pageToScreen(p), { x, y })
+		const props = () =>
+			page.evaluate(() => {
+				const editor = (window as unknown as { editor: EditorHandle }).editor
+				return editor.getCurrentPageShapes().find((s) => s.id === 'shape:l')!.props as { bend: number; labelPosition: number }
+			})
+		const drag = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+			await page.mouse.move(from.x, from.y)
+			await page.mouse.down()
+			await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 5 })
+			await page.mouse.move(to.x, to.y, { steps: 5 })
+			await page.mouse.up()
+		}
+		const label = await screen(400, 300)
+
+		// Across the arrow from its label, it bends, as it always did.
+		await drag(label, { x: label.x + 2, y: label.y + 60 })
+		expect(Math.abs((await props()).bend)).toBeGreaterThan(20)
+		await page.keyboard.press('ControlOrMeta+z')
+		await expect.poll(async () => (await props()).bend).toBe(0)
+
+		// Along it, the label slides and the arrow stays as it is.
+		await drag(label, await screen(250, 310))
+		expect((await props()).labelPosition).toBeCloseTo(0.25, 1)
+		expect((await props()).bend).toBe(0)
+		await expect(page.locator('[data-shape-id="shape:l"] .tl-arrow-label')).toBeVisible()
+	})
+})

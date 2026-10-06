@@ -5,6 +5,7 @@ import {
 	TLGroupShape,
 	TLPointerEventInfo,
 } from '@lifeboard/canvas-editor'
+import { isDragAlongArrow, pressedOnArrowLabel } from './DraggingArrowLabel'
 import { selectOnCanvasPointerUp } from '../../selection-logic/selectOnCanvasPointerUp'
 
 export class PointingSelection extends StateNode {
@@ -26,6 +27,11 @@ export class PointingSelection extends StateNode {
 	override onPointerMove: TLEventHandlers['onPointerMove'] = (info) => {
 		if (this.editor.inputs.isDragging) {
 			if (this.editor.getInstanceState().isReadonly) return
+			// A drag along a selected arrow, from its label, slides the label (B2); across, it moves.
+			if (pressedOnArrowLabel(this.editor) && isDragAlongArrow(this.editor)) {
+				this.parent.transition('dragging_arrow_label', info)
+				return
+			}
 			this.parent.transition('translating', info)
 		}
 	}

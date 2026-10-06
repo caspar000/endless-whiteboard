@@ -6,6 +6,7 @@ import {
 	TLPointerEventInfo,
 	createShapeId,
 } from '@lifeboard/canvas-editor'
+import type { NoteShapeTool } from '../NoteShapeTool'
 
 export class Pointing extends StateNode {
 	static override id = 'pointing'
@@ -99,6 +100,8 @@ export class Pointing extends StateNode {
 					type: this.parent.shapeType!,
 					x: originPagePoint.x,
 					y: originPagePoint.y,
+					// Each kind of note's own colour and placement (NoteShapeTool), over the shared styles.
+					props: (this.parent as NoteShapeTool).getInitialProps(),
 				},
 			])
 			.select(id)

@@ -26,4 +26,9 @@ export class PinnedNoteShapeUtil extends BaseNoteShapeUtil<TLPinnedNoteShape> {
 	static override migrations = createShapePropsMigrationSequence({ sequence: [] })
 
 	readonly paper = PINNED_PAPER
+
+	/** White, written from the top left. The tool sets the same (PinnedNoteShapeTool). */
+	override getDefaultProps(): TLPinnedNoteShape['props'] {
+		return { ...super.getDefaultProps(), color: 'white', align: 'start', verticalAlign: 'start' }
+	}
 }

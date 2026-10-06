@@ -1,4 +1,5 @@
-import { TLNoteShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
+import { DefaultColorStyle, TLNoteShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
+import { NoteShapeTool } from '../lib/shapes/note/NoteShapeTool'
 import { TLPinnedNoteShape } from '../lib/shapes/note/PinnedNoteShapeUtil'
 import { TestEditor } from './TestEditor'
 
@@ -49,5 +50,33 @@ describe('a pinned note', () => {
 		const bounds = editor.getShapePageBounds(placed.id)!
 		expect(bounds.center.x).toBeCloseTo(500)
 		expect(bounds.center.y).toBeCloseTo(500)
+	})
+
+	it('starts as a white card written from the top left, whatever colour the other tools draw in', () => {
+		editor.setStyleForNextShapes(DefaultColorStyle, 'blue')
+		editor.setCurrentTool('pinned-note')
+		editor.pointerDown(500, 500).pointerUp(500, 500)
+		const pinned = editor.getCurrentPageShapes().find((shape) => shape.type === 'pinned-note')!
+		expect((pinned as TLPinnedNoteShape).props).toMatchObject({ color: 'white', align: 'start', verticalAlign: 'start' })
+	})
+})
+
+describe('a sticky note', () => {
+	it('starts orange, whatever colour the other tools draw in', () => {
+		editor.setStyleForNextShapes(DefaultColorStyle, 'blue')
+		editor.setCurrentTool('note')
+		editor.pointerDown(300, 300).pointerUp(300, 300)
+		const sticky = editor.getCurrentPageShapes().find((shape) => shape.type === 'note')!
+		expect((sticky as TLNoteShape).props.color).toBe('orange')
+	})
+
+	it('keeps the colour picked for stickies apart from the pinned note’s', () => {
+		;(editor.getStateDescendant('note') as NoteShapeTool).color.set('green')
+		editor.setCurrentTool('note')
+		editor.pointerDown(300, 300).pointerUp(300, 300)
+		editor.setCurrentTool('pinned-note')
+		editor.pointerDown(700, 300).pointerUp(700, 300)
+		const colors = Object.fromEntries(editor.getCurrentPageShapes().map((shape) => [shape.type, (shape as TLNoteShape).props.color]))
+		expect(colors).toEqual({ note: 'green', 'pinned-note': 'white' })
 	})
 })

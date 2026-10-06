@@ -1866,6 +1866,10 @@ button {
 	outline: 2px solid var(--lb-accent);
 	outline-offset: 2px;
 }
+/* A note's paper colours include white, which needs an edge to be seen on the row. */
+.lb-expand__swatch--paper {
+	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
+}
 .lb-expand__size {
 	display: grid;
 	place-items: center;

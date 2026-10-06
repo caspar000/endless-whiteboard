@@ -1,4 +1,5 @@
 import {
+	Box2d,
 	DefaultFontFamilies,
 	Editor,
 	Rectangle2d,
@@ -44,7 +45,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 
 	getDefaultProps(): S['props'] {
 		return {
-			color: 'black',
+			color: 'orange',
 			labelColor: 'black',
 			size: 'm',
 			richText: toRichText(''),
@@ -78,12 +79,13 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
 		const fill = theme[color].noteFill
-		const { width, crease, pin } = this.paper
+		const { width, crease, pin, textTop } = this.paper
 		const pinAt = pinPlacement(width)
+		const height = this.getHeight(shape)
 
 		return (
 			<>
-				<div style={{ position: 'absolute', width, height: this.getHeight(shape) }}>
+				<div style={{ position: 'absolute', width, height }}>
 					{/* The paper's look is set out in ./paper.ts. */}
 					<div className="tl-note__shadow" />
 					<div className="tl-note__container" style={{ backgroundColor: fill }}>
@@ -107,6 +109,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 							richText={richText}
 							labelColor={labelColor}
 							wrap
+							{...(textTop ? { bounds: new Box2d(0, textTop, width, height - textTop) } : {})}
 						/>
 					</div>
 					{pin && (
@@ -145,7 +148,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 		const fill = theme[shape.props.color].noteFill
 		const height = bounds.height
-		const { width, crease, pin } = this.paper
+		const { width, crease, pin, textTop } = this.paper
 		const g = svg('g', {})
 
 		// The paper, as the canvas draws it (./paper.ts): the shadow under its lower part first.
@@ -187,7 +190,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 			// A pinned note's props are a sticky's, which is all the label reads.
 			shape: shape as unknown as TLNoteShape,
 			font: DefaultFontFamilies[shape.props.font],
-			bounds,
+			bounds: textTop ? new Box2d(0, textTop, width, height - textTop) : bounds,
 		})
 
 		// The label's own colour (today's `labelColor`), as the canvas draws it.
@@ -206,7 +209,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 	}
 
 	override onBeforeCreate = (next: S) => {
-		return getGrowY(this.editor, next, this.paper.width, next.props.growY)
+		return getGrowY(this.editor, next, this.paper, next.props.growY)
 	}
 
 	override onBeforeUpdate = (prev: S, next: S) => {
@@ -218,7 +221,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 			return
 		}
 
-		return getGrowY(this.editor, next, this.paper.width, prev.props.growY)
+		return getGrowY(this.editor, next, this.paper, prev.props.growY)
 	}
 
 	override getText(shape: S) {
@@ -242,7 +245,12 @@ export class NoteShapeUtil extends BaseNoteShapeUtil<TLNoteShape> {
 	readonly paper = STICKY_PAPER
 }
 
-function getGrowY<S extends TLNoteLikeShape>(editor: Editor, shape: S, width: number, prevGrowY = 0) {
+function getGrowY<S extends TLNoteLikeShape>(
+	editor: Editor,
+	shape: S,
+	{ width, textTop }: NotePaper,
+	prevGrowY = 0
+) {
 	const PADDING = 17
 
 	const html = renderHtmlFromRichText(shape.props.richText, editor.getTextExtensions())
@@ -253,7 +261,7 @@ function getGrowY<S extends TLNoteLikeShape>(editor: Editor, shape: S, width: nu
 		maxWidth: width - PADDING * 2,
 	})
 
-	const nextHeight = nextTextSize.h + PADDING * 2
+	const nextHeight = textTop + nextTextSize.h + PADDING * 2
 
 	let growY: number | null = null
 

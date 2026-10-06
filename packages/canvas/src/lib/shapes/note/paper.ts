@@ -16,10 +16,13 @@ export interface NotePaper {
 	width: number
 	crease: boolean
 	pin: boolean
+	/** Where the text area starts, from the top: below the pin, on a pinned note. */
+	textTop: number
 }
 
-export const STICKY_PAPER: NotePaper = { width: 200, crease: true, pin: false }
-export const PINNED_PAPER: NotePaper = { width: 300, crease: false, pin: true }
+export const STICKY_PAPER: NotePaper = { width: 200, crease: true, pin: false, textTop: 0 }
+/** The pin reaches 33 down a 300-wide note (`pinPlacement`); its text starts just under it. */
+export const PINNED_PAPER: NotePaper = { width: 300, crease: false, pin: true, textTop: 30 }
 
 /**
  * The crease's outline for a note `width` wide. Traced from the design (Figma export, its 5° tilt

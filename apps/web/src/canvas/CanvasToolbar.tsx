@@ -37,6 +37,7 @@ import {
 	useTools,
 	useValue,
 	type Editor,
+	type NoteShapeTool,
 	type StyleProp,
 } from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
@@ -247,7 +248,45 @@ function NoteSettings({ currentToolId }: { currentToolId: string }) {
 				</button>
 			</div>
 			<div className="lb-expand__sep" />
-			<ColorSwatches />
+			<NoteSwatches toolId={currentToolId} />
+		</div>
+	)
+}
+
+/** The note colours, white included: a pinned note starts as a white card. */
+const NOTE_COLORS: ColorValue[] = [...COLORS, 'white']
+
+/**
+ * The colour of the next note of this kind. Each kind keeps its own (NoteShapeTool), so a sticky stays
+ * orange and a pinned note white however the pen or a shape was last set. The swatches show what a
+ * note is filled with, not the ink colour.
+ */
+function NoteSwatches({ toolId }: { toolId: string }) {
+	const editor = useEditor()
+	const tool = editor.getStateDescendant(toolId) as NoteShapeTool | undefined
+	const current = useValue('lb:next-note-color', () => tool?.color.get(), [tool])
+	const colors = useValue(
+		'lb:theme-colors',
+		() => editor.getCurrentTheme().colors[editor.getColorMode()],
+		[editor]
+	)
+	return (
+		<div className="lb-expand__group" role="group" aria-label="Note colour">
+			{NOTE_COLORS.map((value) => (
+				<button
+					key={value}
+					className={
+						current === value
+							? 'lb-expand__swatch lb-expand__swatch--paper lb-expand__swatch--active'
+							: 'lb-expand__swatch lb-expand__swatch--paper'
+					}
+					style={{ backgroundColor: colors[value].noteFill }}
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => tool?.color.set(value)}
+					title={value}
+					aria-label={`Note colour ${value}`}
+				/>
+			))}
 		</div>
 	)
 }

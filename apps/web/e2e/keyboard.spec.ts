@@ -273,3 +273,50 @@ test.describe('the next sticky (B3)', () => {
 		await expect(page.locator('.tl-shape', { hasText: 'Third' })).toHaveCount(1)
 	})
 })
+
+test.describe('styles and the menu (I7)', () => {
+	test('right-click opens the menu from the pen; Shift+Q copies the style under the pointer', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{ id: 'shape:src', type: 'geo', x: 100, y: 100, props: { w: 120, h: 120, color: 'violet', dash: 'dotted', fill: 'solid' } },
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		const canvas = page.locator('.lb-board-host:not([data-hidden]) .tl-canvas')
+		await canvas.click({ position: { x: 700, y: 600 } })
+
+		// Opened and closed at once, as a quick hand might: the board's keys must still work after.
+		await canvas.click({ position: { x: 600, y: 500 }, button: 'right' })
+		await page.keyboard.press('Escape')
+		await page.keyboard.press('d')
+		await canvas.click({ position: { x: 600, y: 500 }, button: 'right' })
+		await expect(page.getByRole('menu')).toBeVisible()
+		await page.keyboard.press('Escape')
+		// Closed, as far as the board's shortcuts are concerned, once it has finished going away.
+		await expect
+			.poll(() =>
+				page.evaluate(() => (window as unknown as { editor: { getInstanceState(): { openMenus: string[] } } }).editor.getInstanceState().openMenus)
+			)
+			.toEqual([])
+
+		const at = await page.evaluate(() =>
+			(window as unknown as { editor: { pageToScreen(p: unknown): { x: number; y: number } } }).editor.pageToScreen({ x: 160, y: 160 })
+		)
+		await page.mouse.move(at.x, at.y)
+		await page.mouse.move(at.x + 5, at.y + 5)
+		await page.keyboard.press('Shift+Q')
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const editor = (window as unknown as { editor: { getInstanceState(): { stylesForNextShape: Record<string, unknown> } } }).editor
+					const next = editor.getInstanceState().stylesForNextShape
+					return [next['tldraw:color'], next['tldraw:dash']]
+				})
+			)
+			.toEqual(['violet', 'dotted'])
+	})
+})

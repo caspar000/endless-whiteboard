@@ -118,7 +118,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | I4 | Quick zoom overview (`z` + Shift); Shift +/− zooms at the cursor; 5% minimum zoom | 4.4, 3.11 | done: Shift+Z shows the whole board and goes back to where you were; Shift+= and Shift+− zoom around the pointer; zoom goes down to 5% |
 | I5 | Right-click-drag pans the camera | 5.0 | todo |
 | I6 | Touch: double-tap-and-drag zoom; long-press | 5.2, 2.1 | done: one-finger zoom (`useTouchZoom`: the second tap is held back until it moves, so a plain double tap still reaches the editor); long-press already opened the context menu through Radix, now under test |
-| I7 | Context menu from any tool; Shift+Q copies a shape's style; Cmd-click a style applies it to the selection only | 5.0–5.2 | todo |
+| I7 | Context menu from any tool; Shift+Q copies a shape's style; Cmd-click a style applies it to the selection only | 5.0–5.2 | done: right-click opens the menu from any tool (switching to select); Shift+Q copies the style of the shape under the pointer (or selected) to the next shapes and the rest of the selection, fill colour included; ⌘-click on a dock style changes the selection only. On the way: a menu closed soon after opening stayed "open" and turned off every shortcut |
 | I8 | Move the selection into and out of frames and groups by keyboard; Option+arrows between pages | 3.11–3.13 | todo |
 | I9 | Better pressure handling for pen tablets | 2.2 | todo |
 | I10 | Option to select locked shapes; option to turn off shortcuts; inverted wheel zoom | 5.1, 3.15, 4.4 | todo |

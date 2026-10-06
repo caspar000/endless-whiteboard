@@ -12,9 +12,11 @@ export function useMenuIsOpen(id: string, cb?: (isOpen: boolean) => void) {
 
 	const onOpenChange = useCallback(
 		(isOpen: boolean) => {
-			// prevent multiple calls in quick succession
+			// Drop a repeat of the same change in quick succession, never a change of state: dropping a
+			// close that came soon after the open left the menu "open" for good, and with it every
+			// shortcut on the board turned off.
 			const now = Date.now()
-			if (now - rLastChange.current < 50) return
+			if (isOpen === rIsOpen.current && now - rLastChange.current < 50) return
 			rLastChange.current = now
 
 			rIsOpen.current = isOpen

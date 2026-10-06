@@ -64,7 +64,8 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['⌘Enter', '⇧⌘Enter'], 'Writing a note: on to the next note below or above'],
 			[['Esc'], 'Stop editing, then deselect'],
 			[['double-click'], 'Edit the content — or, on empty paper, start a note'],
-			[['right-click'], 'Properties, and everything else about this shape'],
+			[['right-click'], 'Properties, and everything else about this shape — from any tool'],
+			[['⌘', 'click a style'], 'In the dock: change the selection only, not the next shape'],
 		],
 	},
 	{

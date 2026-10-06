@@ -217,3 +217,4 @@ export {
 export { Dialog, DropdownMenu }
 import * as Dialog from './lib/ui/components/primitives/Dialog'
 import * as DropdownMenu from './lib/ui/components/primitives/DropdownMenu'
+export { copyShapeStyle } from './lib/utils/styles/copyStyle'

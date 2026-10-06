@@ -40,6 +40,7 @@ export const DefaultContextMenu = function DefaultContextMenu({
 					editor.setSelectedShapes([])
 				}
 			} else {
+				if (editor.getCurrentToolId() !== 'select') editor.setCurrentTool('select')
 				// Weird route: selecting locked shapes on long press
 				if (editor.getInstanceState().isCoarsePointer) {
 					const selectedShapes = editor.getSelectedShapes()
@@ -81,14 +82,10 @@ export const DefaultContextMenu = function DefaultContextMenu({
 		contextTLUiMenuSchema.length === 0 ||
 		(isReadonly && contextTLUiMenuSchema.every((item) => !item.readonlyOk))
 
-	const selectToolActive = useValue(
-		'isSelectToolActive',
-		() => editor.getCurrentToolId() === 'select',
-		[editor]
-	)
-
-	// With items of its own, the menu has something to show even when the standard ones don't.
-	const disabled = !selectToolActive || (children === undefined && noItemsToShow)
+	// From any tool, as today's tldraw (I7); opening it goes to the select tool (below), since what
+	// it offers acts on the selection. With items of its own, the menu has something to show even
+	// when the standard ones don't.
+	const disabled = children === undefined && noItemsToShow
 
 	return (
 		<_ContextMenu.Root dir="ltr" onOpenChange={handleOpenChange}>

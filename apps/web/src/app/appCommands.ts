@@ -10,7 +10,8 @@ import {
 	setRelationView,
 	type CommandContext,
 } from '@lifeboard/node-kit'
-import { ArrowShapeKindStyle, Vec2d } from '@lifeboard/canvas'
+import { ArrowShapeKindStyle, Vec2d, copyShapeStyle } from '@lifeboard/canvas'
+import { canHaveFillColor, readFillColor, setNextFillColor } from '../canvas/shapeFill'
 import { openProperties } from '../canvas/propertiesTarget'
 import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
 import { runTldrawAction } from '../canvas/tldrawUi'
@@ -313,6 +314,25 @@ registerCommand({
 	when: hasSelection,
 	run: (ctx) => {
 		if (ctx.editor) runTldrawAction(ctx.editor, 'copy-as-png')
+	},
+})
+
+/**
+ * Shift+Q: the style of the shape under the pointer (or the one selected) for the next shapes, and
+ * for the rest of the selection (fork-parity I7). A geo shape's fill colour lives in its meta
+ * (`shapeFill.ts`), so it is carried over here, beside the canvas's own styles.
+ */
+registerCommand({
+	id: 'shape.copy-style',
+	title: 'Copy the style of the shape under the pointer',
+	group: CANVAS_GROUP,
+	kbd: 'shift+q',
+	when: onBoard,
+	run: (ctx) => {
+		const editor = ctx.editor
+		if (!editor) return
+		const source = copyShapeStyle(editor)
+		if (source && canHaveFillColor(source)) setNextFillColor(editor, readFillColor(source))
 	},
 })
 

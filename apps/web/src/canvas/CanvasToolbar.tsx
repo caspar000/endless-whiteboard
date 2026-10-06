@@ -157,10 +157,14 @@ function ToolButton({
 	)
 }
 
-function setStyle<T>(editor: Editor, style: StyleProp<T>, value: T) {
+/**
+ * A style for the selection and the next shapes. With ⌘/Ctrl held, for the selection only, leaving
+ * what the next shape will be as it was (fork-parity I7).
+ */
+function setStyle<T>(editor: Editor, style: StyleProp<T>, value: T, click?: { metaKey: boolean; ctrlKey: boolean }) {
 	editor.run(() => {
 		editor.setStyleForSelectedShapes(style, value)
-		editor.setStyleForNextShapes(style, value)
+		if (!click?.metaKey && !click?.ctrlKey) editor.setStyleForNextShapes(style, value)
 	})
 }
 
@@ -188,7 +192,7 @@ function ColorSwatches() {
 					}
 					style={{ backgroundColor: getColorValue(colors, value, 'solid') }}
 					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => setStyle(editor, DefaultColorStyle, value)}
+					onClick={(e) => setStyle(editor, DefaultColorStyle, value, e)}
 					title={value}
 					aria-label={`Colour ${value}`}
 				/>
@@ -211,7 +215,7 @@ function SizeDots() {
 					key={value}
 					className={current === value ? 'lb-expand__size lb-expand__size--active' : 'lb-expand__size'}
 					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => setStyle(editor, DefaultSizeStyle, value)}
+					onClick={(e) => setStyle(editor, DefaultSizeStyle, value, e)}
 					title={`Size ${value.toUpperCase()}`}
 					aria-label={`Size ${value.toUpperCase()}`}
 				>
@@ -282,7 +286,7 @@ function PinSwatches() {
 					}
 					style={{ backgroundColor: getPinPaint(value, theme).head }}
 					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => setStyle(editor, PinColorStyle, value)}
+					onClick={(e) => setStyle(editor, PinColorStyle, value, e)}
 					title={`Pin ${value}`}
 					aria-label={`Pin colour ${value}`}
 					aria-pressed={current === value}
@@ -387,7 +391,7 @@ function ArrowSettings() {
 						key={value}
 						className={current === value ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
 						onPointerDown={(e) => e.preventDefault()}
-						onClick={() => setStyle(editor, ArrowShapeKindStyle, value)}
+						onClick={(e) => setStyle(editor, ArrowShapeKindStyle, value, e)}
 						title={`${label} arrow`}
 						aria-label={`${label} arrow`}
 						aria-pressed={current === value}
@@ -523,7 +527,7 @@ function TextSettings() {
 							current === value ? 'lb-expand__label lb-expand__label--active' : 'lb-expand__label'
 						}
 						onPointerDown={(e) => e.preventDefault()}
-						onClick={() => setStyle(editor, DefaultSizeStyle, value)}
+						onClick={(e) => setStyle(editor, DefaultSizeStyle, value, e)}
 						title={`Size ${value.toUpperCase()}`}
 					>
 						{value.toUpperCase()}

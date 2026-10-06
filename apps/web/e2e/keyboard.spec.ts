@@ -137,3 +137,33 @@ test.describe('zooming (I4)', () => {
 		await expect.poll(async () => (await camera()).z).toBe(0.05)
 	})
 })
+
+test.describe('frames (B4)', () => {
+	test('⌘⇧F frames the selection, and again takes the frame apart', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{ id: 'shape:a', type: 'geo', x: 100, y: 100, props: { w: 100, h: 100 } },
+				{ id: 'shape:b', type: 'geo', x: 300, y: 100, props: { w: 100, h: 100 } },
+			])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		const canvas = page.locator('.lb-board-host:not([data-hidden]) .tl-canvas')
+		await canvas.click({ position: { x: 700, y: 600 } })
+		await page.keyboard.press('ControlOrMeta+a')
+		await page.keyboard.press('ControlOrMeta+Shift+f')
+		const shapes = () =>
+			page.evaluate(() =>
+				(window as unknown as { editor: { getCurrentPageShapes(): { type: string; parentId: string }[] } }).editor
+					.getCurrentPageShapes()
+					.map((shape) => `${shape.type}:${shape.parentId.startsWith('page:') ? 'page' : 'frame'}`)
+					.sort()
+			)
+		await expect.poll(shapes).toEqual(['frame:page', 'geo:frame', 'geo:frame'])
+		await page.keyboard.press('ControlOrMeta+Shift+f')
+		await expect.poll(shapes).toEqual(['geo:page', 'geo:page'])
+	})
+})

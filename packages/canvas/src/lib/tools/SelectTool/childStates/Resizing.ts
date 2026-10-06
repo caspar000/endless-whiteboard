@@ -18,6 +18,7 @@ import {
 	areAnglesCompatible,
 	compact,
 } from '@lifeboard/canvas-editor'
+import { getShapesFrameWouldEnclose } from '../../../utils/frames/frames'
 
 type ResizingInfo = TLPointerEventInfo & {
 	target: 'selection'
@@ -356,6 +357,14 @@ export class Resizing extends StateNode {
 				}
 			}
 		}
+
+		// A frame being drawn highlights the shapes it will take in when you let go (B4).
+		if (this.info.isCreating) {
+			const frame = this.editor.getOnlySelectedShape()
+			if (frame && this.editor.isShapeOfType<TLFrameShape>(frame, 'frame')) {
+				this.editor.setHintingShapes(getShapesFrameWouldEnclose(this.editor, frame))
+			}
+		}
 	}
 
 	// ---
@@ -398,6 +407,7 @@ export class Resizing extends StateNode {
 	}
 
 	override onExit = () => {
+		if (this.info.isCreating) this.editor.setHintingShapes([])
 		this.parent.setCurrentToolIdMask(undefined)
 		this.editor.updateInstanceState(
 			{ cursor: { type: 'default', rotation: 0 } },

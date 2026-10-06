@@ -305,6 +305,18 @@ registerCommand({
 	},
 })
 
+/** The keyboard and palette half of ⌘⇧F: tldraw's frame action, which now works both ways. */
+registerCommand({
+	id: 'shape.frame',
+	title: 'Frame the selection — or take a selected frame apart',
+	group: CANVAS_GROUP,
+	kbd: 'cmd+shift+f',
+	when: hasSelection,
+	run: (ctx) => {
+		if (ctx.editor) runTldrawAction(ctx.editor, 'remove-frame')
+	},
+})
+
 registerCommand({
 	id: 'shape.properties',
 	title: 'Properties of the selected shape',

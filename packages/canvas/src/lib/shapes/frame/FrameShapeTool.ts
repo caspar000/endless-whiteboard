@@ -1,4 +1,5 @@
-import { BaseBoxShapeTool, TLShape, TLShapeId } from '@lifeboard/canvas-editor'
+import { BaseBoxShapeTool, TLShape } from '@lifeboard/canvas-editor'
+import { getShapesFrameWouldEnclose } from '../../utils/frames/frames'
 
 /** @public */
 export class FrameShapeTool extends BaseBoxShapeTool {
@@ -9,26 +10,7 @@ export class FrameShapeTool extends BaseBoxShapeTool {
 	override onCreate = (shape: TLShape | null): void => {
 		if (!shape) return
 
-		const bounds = this.editor.getShapePageBounds(shape)!
-		const shapesToAddToFrame: TLShapeId[] = []
-		const ancestorIds = this.editor.getShapeAncestors(shape).map((shape) => shape.id)
-
-		this.editor.getCurrentPageShapes().map((pageShape) => {
-			// We don't want to frame the frame itself
-			if (pageShape.id === shape.id) return
-			if (pageShape.isLocked) return
-
-			const pageShapeBounds = this.editor.getShapePageBounds(pageShape)
-			if (!pageShapeBounds) return
-
-			// Frame shape encloses page shape
-			if (bounds.contains(pageShapeBounds)) {
-				if (canEnclose(pageShape, ancestorIds, shape)) {
-					shapesToAddToFrame.push(pageShape.id)
-				}
-			}
-		})
-
+		const shapesToAddToFrame = getShapesFrameWouldEnclose(this.editor, shape)
 		this.editor.reparentShapes(shapesToAddToFrame, shape.id)
 
 		if (this.editor.getInstanceState().isToolLocked) {
@@ -37,17 +19,4 @@ export class FrameShapeTool extends BaseBoxShapeTool {
 			this.editor.setCurrentTool('select.idle')
 		}
 	}
-}
-
-/** @internal */
-function canEnclose(shape: TLShape, ancestorIds: TLShapeId[], frame: TLShape): boolean {
-	// We don't want to pull in shapes that are ancestors of the frame (can create a cycle)
-	if (ancestorIds.includes(shape.id)) {
-		return false
-	}
-	// We only want to pull in shapes that are siblings of the frame
-	if (shape.parentId === frame.parentId) {
-		return true
-	}
-	return false
 }

@@ -20,7 +20,7 @@ import {
 } from '@lifeboard/canvas-editor'
 import * as React from 'react'
 import { getEmbedInfo } from '../../utils/embeds/embeds'
-import { fitFrameToContent, removeFrame } from '../../utils/frames/frames'
+import { fitFrameToContent, frameSelection, removeFrame } from '../../utils/frames/frames'
 import { EditLinkDialog } from '../components/EditLinkDialog'
 import { EmbedDialog } from '../components/EmbedDialog'
 import { TLUiIconType } from '../icon-types'
@@ -464,20 +464,22 @@ export function ActionsProvider({ overrides, children }: ActionsProviderProps) {
 				label: 'action.remove-frame',
 				kbd: '$!f',
 				readonlyOk: false,
+				// ⌘⇧F both ways, as ⌘G is for groups: frames come apart, anything else goes in a new
+				// frame (B4).
 				onSelect(source) {
 					if (!hasSelectedShapes()) return
 
 					trackEvent('remove-frame', { source })
 					const selectedShapes = editor.getSelectedShapes()
-					if (
-						selectedShapes.length > 0 &&
-						selectedShapes.every((shape) => editor.isShapeOfType<TLFrameShape>(shape, 'frame'))
-					) {
+					if (selectedShapes.every((shape) => editor.isShapeOfType<TLFrameShape>(shape, 'frame'))) {
 						editor.mark('remove-frame')
 						removeFrame(
 							editor,
 							selectedShapes.map((shape) => shape.id)
 						)
+					} else {
+						editor.mark('frame-selection')
+						frameSelection(editor)
 					}
 				},
 			},

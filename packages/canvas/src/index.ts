@@ -194,7 +194,12 @@ export {
 export { getEmbedInfo } from './lib/utils/embeds/embeds'
 export { copyAs } from './lib/utils/export/copyAs'
 export { exportAs } from './lib/utils/export/exportAs'
-export { fitFrameToContent, removeFrame } from './lib/utils/frames/frames'
+export {
+	fitFrameToContent,
+	frameSelection,
+	getShapesFrameWouldEnclose,
+	removeFrame,
+} from './lib/utils/frames/frames'
 export { setDefaultEditorAssetUrls } from './lib/utils/static-assets/assetUrls'
 export { truncateStringWithEllipsis } from './lib/utils/text/text'
 export {

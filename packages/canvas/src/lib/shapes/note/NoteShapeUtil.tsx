@@ -2,6 +2,7 @@ import {
 	Box2d,
 	DefaultFontFamilies,
 	Editor,
+	exportLabelFromDom,
 	Rectangle2d,
 	ShapeUtil,
 	SvgExportContext,
@@ -136,7 +137,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		)
 	}
 
-	override toSvg(shape: S, ctx: SvgExportContext) {
+	override async toSvg(shape: S, ctx: SvgExportContext) {
 		ctx.addExportDef(getFontDefForExport(shape.props.font))
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		const bounds = this.editor.getShapeGeometry(shape.id).bounds
@@ -185,18 +186,23 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 			g.appendChild(svg('path', { d: creasePath(width), fill: `url(#${creaseId})` }))
 		}
 
-		const textElm = getTextLabelSvgElement({
-			editor: this.editor,
-			// A pinned note's props are a sticky's, which is all the label reads.
-			shape: shape as unknown as TLNoteShape,
-			font: DefaultFontFamilies[shape.props.font],
-			bounds: textTop ? new Box2d(0, textTop, width, height - textTop) : bounds,
-		})
-
-		// The label's own colour (today's `labelColor`), as the canvas draws it.
-		textElm.setAttribute('fill', theme[shape.props.labelColor].solid)
-		textElm.setAttribute('stroke', 'none')
-		g.appendChild(textElm)
+		// The label as the canvas shows it, formatting and all; as plain text if it isn't showing.
+		const label = await exportLabelFromDom(this.editor, shape, '.tl-text-label', ctx)
+		if (label) {
+			g.appendChild(label)
+		} else {
+			const textElm = getTextLabelSvgElement({
+				editor: this.editor,
+				// A pinned note's props are a sticky's, which is all the label reads.
+				shape: shape as unknown as TLNoteShape,
+				font: DefaultFontFamilies[shape.props.font],
+				bounds: textTop ? new Box2d(0, textTop, width, height - textTop) : bounds,
+			})
+			// The label's own colour (today's `labelColor`), as the canvas draws it.
+			textElm.setAttribute('fill', theme[shape.props.labelColor].solid)
+			textElm.setAttribute('stroke', 'none')
+			g.appendChild(textElm)
+		}
 
 		if (pin) {
 			const at = pinPlacement(width)

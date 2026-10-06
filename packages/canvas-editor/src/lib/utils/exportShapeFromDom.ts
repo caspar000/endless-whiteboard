@@ -1,6 +1,7 @@
 import type { Editor } from '../editor/Editor'
 import type { SvgExportContext } from '../editor/types/SvgExportContext'
 import type { TLShape } from '../editor/types/shape-types'
+import type { TLShapeId } from '@tldraw/tlschema'
 
 const XHTML = 'http://www.w3.org/1999/xhtml'
 const SVG = 'http://www.w3.org/2000/svg'
@@ -19,9 +20,7 @@ export async function exportShapeFromDom(
 	shape: TLShape,
 	ctx: SvgExportContext
 ): Promise<SVGElement | null> {
-	const source = editor
-		.getContainer()
-		.querySelector<HTMLElement>(`.tl-shape[data-shape-id="${CSS.escape(shape.id)}"]:not(.tl-shape-background)`)
+	const source = shapeElement(editor, shape)
 	if (!source) return null
 
 	const bounds = editor.getShapeGeometry(shape).bounds
@@ -30,19 +29,102 @@ export async function exportShapeFromDom(
 
 	const images: Promise<void>[] = []
 	const families = new Set<string>()
-	for (const child of Array.from(source.children)) {
-		const copy = copyWithStyles(child, images, families)
-		if (copy) box.appendChild(copy)
-	}
+	shown(source, () => {
+		for (const child of Array.from(source.children)) {
+			const copy = copyWithStyles(child, images, families)
+			if (copy) box.appendChild(copy)
+		}
+	})
 	await Promise.all(images)
+	addFonts(ctx, families)
+	return foreignObjectAround(box, bounds.minX, bounds.minY, bounds.width, bounds.height)
+}
 
-	ctx.addExportDef({ key: 'dom-export-fonts', getElement: () => embeddedFonts(families) })
+/**
+ * A shape's label drawn in HTML (its rich text), exported as it shows, formatting and all: the
+ * element `selector` finds in the shape's element, at the same place in the shape. tldraw 5 exports
+ * labels this way too. Returns `null` when the shape shows no such element (an empty label), so the
+ * caller can draw it another way.
+ *
+ * `keepTransform: false` drops the label's own CSS transform, for a label whose transform is a
+ * scale the export applies anyway (the text shape's `scale`).
+ */
+export async function exportLabelFromDom(
+	editor: Editor,
+	shape: { id: TLShapeId },
+	selector: string,
+	ctx: SvgExportContext,
+	{ keepTransform = true }: { keepTransform?: boolean } = {}
+): Promise<SVGElement | null> {
+	const source = shapeElement(editor, shape)
+	const label = source?.querySelector<HTMLElement>(selector)
+	if (!source || !label) return null
 
+	const bounds = editor.getShapeGeometry(shape.id).bounds
+	const images: Promise<void>[] = []
+	const families = new Set<string>()
+	const placed = shown(source, () => {
+		// Where the label's box sits in the shape, before its own transform, which the copy keeps.
+		let x = 0
+		let y = 0
+		for (let el: HTMLElement | null = label; el && el !== source; el = el.offsetParent as HTMLElement | null) {
+			if (!source.contains(el)) return null
+			x += el.offsetLeft
+			y += el.offsetTop
+		}
+		const copy = copyWithStyles(label, images, families)
+		if (!(copy instanceof HTMLElement)) return null
+		copy.style.position = 'absolute'
+		copy.style.left = `${x - bounds.minX}px`
+		copy.style.top = `${y - bounds.minY}px`
+		copy.style.margin = '0'
+		if (!keepTransform) copy.style.transform = 'none'
+		return copy
+	})
+	if (!placed) return null
+	await Promise.all(images)
+	addFonts(ctx, families)
+
+	const box = document.createElementNS(XHTML, 'div') as HTMLDivElement
+	box.style.cssText = `position:relative;width:${bounds.width}px;height:${bounds.height}px;overflow:visible`
+	box.appendChild(placed)
+	return foreignObjectAround(box, bounds.minX, bounds.minY, bounds.width, bounds.height)
+}
+
+function shapeElement(editor: Editor, shape: { id: TLShapeId }): HTMLElement | null {
+	return editor
+		.getContainer()
+		.querySelector<HTMLElement>(`.tl-shape[data-shape-id="${CSS.escape(shape.id)}"]:not(.tl-shape-background)`)
+}
+
+/**
+ * Runs `read` with the shape laid out. An off-screen shape is mounted but `display: none`, which
+ * leaves its elements without positions or sizes to copy.
+ */
+function shown<T>(source: HTMLElement, read: () => T): T {
+	const display = source.style.display
+	if (display !== 'none') return read()
+	source.style.display = 'block'
+	try {
+		return read()
+	} finally {
+		source.style.display = display
+	}
+}
+
+/** One def per family, so fonts from every shape in the export are embedded, not only the first's. */
+function addFonts(ctx: SvgExportContext, families: Set<string>): void {
+	for (const family of families) {
+		ctx.addExportDef({ key: `dom-export-font:${family}`, getElement: () => embeddedFonts(new Set([family])) })
+	}
+}
+
+function foreignObjectAround(box: HTMLElement, x: number, y: number, width: number, height: number) {
 	const foreignObject = document.createElementNS(SVG, 'foreignObject')
-	foreignObject.setAttribute('x', String(bounds.minX))
-	foreignObject.setAttribute('y', String(bounds.minY))
-	foreignObject.setAttribute('width', String(bounds.width))
-	foreignObject.setAttribute('height', String(bounds.height))
+	foreignObject.setAttribute('x', String(x))
+	foreignObject.setAttribute('y', String(y))
+	foreignObject.setAttribute('width', String(width))
+	foreignObject.setAttribute('height', String(height))
 	foreignObject.setAttribute('overflow', 'visible')
 	foreignObject.appendChild(box)
 	return foreignObject
@@ -200,9 +282,42 @@ async function inlineCssUrls(value: string): Promise<string> {
 	return result
 }
 
+const fontSources = new WeakMap<FontFace, string>()
+
+/**
+ * Tells exports where a font added through `document.fonts` came from, so a picture that uses it can
+ * embed it: such a font has no `@font-face` rule to read.
+ *
+ * @public
+ */
+export function registerFontSource(font: FontFace, url: string): void {
+	fontSources.set(font, url)
+}
+
+/**
+ * `@font-face` rules, their files embedded, for every registered face of `family` (regular, bold,
+ * italic, as many as were loaded), so bold and italic text keep their own faces in the picture.
+ *
+ * @public
+ */
+export async function getRegisteredFontFaceRules(family: string): Promise<string[]> {
+	const rules: string[] = []
+	for (const font of document.fonts) {
+		const url = fontSources.get(font)
+		if (font.family.replace(/^["']|["']$/g, '') !== family || !url) continue
+		const data = await toDataUrl(new URL(url, location.href).href)
+		if (!data) continue
+		rules.push(
+			`@font-face { font-family: ${family}; font-weight: ${font.weight}; font-style: ${font.style}; src: url("${data}") format("woff2") }`
+		)
+	}
+	return rules
+}
+
 /** A `<style>` with the page's `@font-face` rules for these families, their files embedded. */
 async function embeddedFonts(families: Set<string>): Promise<SVGElement | null> {
 	const rules: string[] = []
+	for (const family of families) rules.push(...(await getRegisteredFontFaceRules(family)))
 	for (const sheet of Array.from(document.styleSheets)) {
 		let cssRules: CSSRuleList
 		try {

@@ -1,4 +1,5 @@
 import { type Extensions, type JSONContent, generateHTML } from '@tiptap/core'
+import Highlight from '@tiptap/extension-highlight'
 import StarterKit from '@tiptap/starter-kit'
 import type { TLRichText } from '@tldraw/tlschema'
 
@@ -31,9 +32,10 @@ export function richTextToPlainText(richText: TLRichText | undefined | null): st
  * The TipTap extensions every label is edited and drawn with, unless the app passes its own through
  * `textOptions.tipTapConfig.extensions` (usually these plus more).
  *
- * StarterKit covers what boards hold: paragraphs, headings, lists, quotes, code, bold, italic,
- * strike, underline, links and line breaks. Its undo history stays on, for undo while typing; the
- * whole edit is one step in the board's own history.
+ * StarterKit covers most of what boards hold: paragraphs, headings, lists, quotes, code, bold,
+ * italic, strike, underline, links and line breaks. Highlight is today's tldraw's too; without it a
+ * label with one highlighted word drew as plain text. StarterKit's undo history stays on, for undo
+ * while typing; the whole edit is one step in the board's own history.
  *
  * @public
  */
@@ -44,6 +46,7 @@ export const tipTapDefaultExtensions: Extensions = [
 		gapcursor: false,
 		trailingNode: false,
 	}),
+	Highlight,
 ]
 
 const htmlCache = new WeakMap<Extensions, WeakMap<TLRichText, string>>()

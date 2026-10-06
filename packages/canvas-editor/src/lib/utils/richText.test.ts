@@ -49,6 +49,13 @@ describe('renderHtmlFromRichText', () => {
 		)
 	})
 
+	it('draws a highlight, and keeps the rest of the formatting with it', () => {
+		// Before highlight was one of the extensions, one highlighted word made the whole label plain text.
+		expect(renderHtmlFromRichText(doc(p(text('a', 'bold'), text('b', 'highlight'))))).toBe(
+			'<p><strong>a</strong><mark>b</mark></p>'
+		)
+	})
+
 	it('escapes text', () => {
 		expect(renderHtmlFromRichText(doc(p(text('<b>&</b>'))))).toBe('<p>&lt;b&gt;&amp;&lt;/b&gt;</p>')
 	})

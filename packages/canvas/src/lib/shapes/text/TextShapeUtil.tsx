@@ -2,6 +2,7 @@
 import {
 	DefaultFontFamilies,
 	Editor,
+	exportLabelFromDom,
 	HTMLContainer,
 	Rectangle2d,
 	ShapeUtil,
@@ -111,7 +112,13 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		return <rect width={toDomPrecision(bounds.width)} height={toDomPrecision(bounds.height)} />
 	}
 
-	override toSvg(shape: TLTextShape, ctx: SvgExportContext) {
+	override async toSvg(shape: TLTextShape, ctx: SvgExportContext) {
+		// The text as the canvas shows it, formatting and all. Its scale is the export's to apply.
+		const fromDom = await exportLabelFromDom(this.editor, shape, '.tl-text-shape__wrapper', ctx, {
+			keepTransform: false,
+		})
+		if (fromDom) return fromDom
+
 		ctx.addExportDef(getFontDefForExport(shape.props.font))
 
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })

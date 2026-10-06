@@ -10,46 +10,30 @@ import {
 	TLDefaultFontStyle,
 	TLShapeUtilCanvasSvgDef,
 	debugFlags,
+	getRegisteredFontFaceRules,
 	useEditor,
 } from '@lifeboard/canvas-editor'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-/** @public */
+/**
+ * The font a label is drawn in, embedded in the export: every face of it that was loaded (regular,
+ * bold, italic), so formatted text keeps its faces. Shares its key with the faces a label exported
+ * from the canvas embeds, so a font goes in once.
+ *
+ * @public
+ */
 export function getFontDefForExport(fontStyle: TLDefaultFontStyle): SvgExportDef {
+	const family = DefaultFontFamilies[fontStyle].split(',')[0]!.trim().replace(/^["']|["']$/g, '')
 	return {
-		key: `${DefaultFontStyle.id}:${fontStyle}`,
+		key: `dom-export-font:${family}`,
 		getElement: async () => {
-			const font = findFont(fontStyle)
-			if (!font) return null
-
-			const url = (font as any).$$_url
-			const fontFaceRule = (font as any).$$_fontface
-			if (!url || !fontFaceRule) return null
-
-			const fontFile = await (await fetch(url)).blob()
-			const base64FontFile = await new Promise<string>((resolve, reject) => {
-				const reader = new FileReader()
-				reader.onload = () => resolve(reader.result as string)
-				reader.onerror = reject
-				reader.readAsDataURL(fontFile)
-			})
-
-			const newFontFaceRule = fontFaceRule.replace(url, base64FontFile)
+			const rules = await getRegisteredFontFaceRules(family)
+			if (!rules.length) return null
 			const style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
-			style.textContent = newFontFaceRule
+			style.textContent = rules.join('\n')
 			return style
 		},
 	}
-}
-
-function findFont(name: TLDefaultFontStyle): FontFace | null {
-	const fontFamily = DefaultFontFamilies[name]
-	for (const font of document.fonts) {
-		if (fontFamily.includes(font.family)) {
-			return font
-		}
-	}
-	return null
 }
 
 /** @public */

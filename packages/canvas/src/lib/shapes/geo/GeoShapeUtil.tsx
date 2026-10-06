@@ -27,6 +27,7 @@ import {
 	TLShapeUtilCanvasSvgDef,
 	Vec2d,
 	VecLike,
+	exportLabelFromDom,
 	geoShapeMigrations,
 	geoShapeProps,
 	getDefaultColorTheme,
@@ -639,7 +640,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		}
 	}
 
-	override toSvg(shape: TLGeoShape, ctx: SvgExportContext) {
+	override async toSvg(shape: TLGeoShape, ctx: SvgExportContext) {
 		const { id, props } = shape
 		const strokeWidth = STROKE_SIZES[props.size]
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
@@ -847,29 +848,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		}
 
 		if (richTextToPlainText(props.richText)) {
-			const bounds = this.editor.getShapeGeometry(shape).bounds
-
-			ctx.addExportDef(getFontDefForExport(shape.props.font))
-
-			const rootTextElm = getTextLabelSvgElement({
-				editor: this.editor,
-				shape,
-				font: DefaultFontFamilies[shape.props.font],
-				bounds,
-			})
-
-			const textElm = rootTextElm.cloneNode(true) as SVGTextElement
-			textElm.setAttribute('fill', theme[shape.props.labelColor].solid)
-			textElm.setAttribute('stroke', 'none')
-
-			const textBgEl = rootTextElm.cloneNode(true) as SVGTextElement
-			textBgEl.setAttribute('stroke-width', '2')
-			textBgEl.setAttribute('fill', theme.background)
-			textBgEl.setAttribute('stroke', theme.background)
-
-			const groupEl = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-			groupEl.append(textBgEl)
-			groupEl.append(textElm)
+			// The label as the canvas shows it, formatting and all; as plain text if it isn't showing.
+			const groupEl =
+				(await exportLabelFromDom(this.editor, shape, '.tl-text-label', ctx)) ?? this.plainLabelSvg(shape, ctx)
 
 			if (svgElm.nodeName === 'g') {
 				svgElm.appendChild(groupEl)
@@ -883,6 +864,34 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		}
 
 		return svgElm
+	}
+
+	private plainLabelSvg(shape: TLGeoShape, ctx: SvgExportContext) {
+		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
+		const bounds = this.editor.getShapeGeometry(shape).bounds
+
+		ctx.addExportDef(getFontDefForExport(shape.props.font))
+
+		const rootTextElm = getTextLabelSvgElement({
+			editor: this.editor,
+			shape,
+			font: DefaultFontFamilies[shape.props.font],
+			bounds,
+		})
+
+		const textElm = rootTextElm.cloneNode(true) as SVGTextElement
+		textElm.setAttribute('fill', theme[shape.props.labelColor].solid)
+		textElm.setAttribute('stroke', 'none')
+
+		const textBgEl = rootTextElm.cloneNode(true) as SVGTextElement
+		textBgEl.setAttribute('stroke-width', '2')
+		textBgEl.setAttribute('fill', theme.background)
+		textBgEl.setAttribute('stroke', theme.background)
+
+		const groupEl = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+		groupEl.append(textBgEl)
+		groupEl.append(textElm)
+		return groupEl
 	}
 
 	override getCanvasSvgDefs(): TLShapeUtilCanvasSvgDef[] {

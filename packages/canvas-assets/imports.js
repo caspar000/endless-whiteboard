@@ -23,9 +23,21 @@ import embedIconsValTown from './embed-icons/val_town.png'
 import embedIconsVimeo from './embed-icons/vimeo.png'
 import embedIconsYoutube from './embed-icons/youtube.png'
 import fontsMonospace from './fonts/IBMPlexMono-Medium.woff2'
+import fontsMonospaceBold from './fonts/IBMPlexMono-Bold.woff2'
+import fontsMonospaceItalic from './fonts/IBMPlexMono-MediumItalic.woff2'
+import fontsMonospaceBoldItalic from './fonts/IBMPlexMono-BoldItalic.woff2'
 import fontsSansSerif from './fonts/IBMPlexSans-Medium.woff2'
+import fontsSansSerifBold from './fonts/IBMPlexSans-Bold.woff2'
+import fontsSansSerifItalic from './fonts/IBMPlexSans-MediumItalic.woff2'
+import fontsSansSerifBoldItalic from './fonts/IBMPlexSans-BoldItalic.woff2'
 import fontsSerif from './fonts/IBMPlexSerif-Medium.woff2'
+import fontsSerifBold from './fonts/IBMPlexSerif-Bold.woff2'
+import fontsSerifItalic from './fonts/IBMPlexSerif-MediumItalic.woff2'
+import fontsSerifBoldItalic from './fonts/IBMPlexSerif-BoldItalic.woff2'
 import fontsDraw from './fonts/Shantell_Sans-Normal-SemiBold.woff2'
+import fontsDrawBold from './fonts/Shantell_Sans-Normal-ExtraBold.woff2'
+import fontsDrawItalic from './fonts/Shantell_Sans-Normal-SemiBold_Italic.woff2'
+import fontsDrawBoldItalic from './fonts/Shantell_Sans-Normal-ExtraBold_Italic.woff2'
 import iconsAlignBottomCenter from './icons/icon/align-bottom-center.svg'
 import iconsAlignBottomLeft from './icons/icon/align-bottom-left.svg'
 import iconsAlignBottomRight from './icons/icon/align-bottom-right.svg'
@@ -234,9 +246,21 @@ export function getAssetUrlsByImport(opts) {
 	return {
 		fonts: {
 			monospace: formatAssetUrl(fontsMonospace, opts),
+			monospaceBold: formatAssetUrl(fontsMonospaceBold, opts),
+			monospaceItalic: formatAssetUrl(fontsMonospaceItalic, opts),
+			monospaceBoldItalic: formatAssetUrl(fontsMonospaceBoldItalic, opts),
 			sansSerif: formatAssetUrl(fontsSansSerif, opts),
+			sansSerifBold: formatAssetUrl(fontsSansSerifBold, opts),
+			sansSerifItalic: formatAssetUrl(fontsSansSerifItalic, opts),
+			sansSerifBoldItalic: formatAssetUrl(fontsSansSerifBoldItalic, opts),
 			serif: formatAssetUrl(fontsSerif, opts),
+			serifBold: formatAssetUrl(fontsSerifBold, opts),
+			serifItalic: formatAssetUrl(fontsSerifItalic, opts),
+			serifBoldItalic: formatAssetUrl(fontsSerifBoldItalic, opts),
 			draw: formatAssetUrl(fontsDraw, opts),
+			drawBold: formatAssetUrl(fontsDrawBold, opts),
+			drawItalic: formatAssetUrl(fontsDrawItalic, opts),
+			drawBoldItalic: formatAssetUrl(fontsDrawBoldItalic, opts),
 		},
 		icons: {
 			'align-bottom-center': formatAssetUrl(iconsAlignBottomCenter, opts),

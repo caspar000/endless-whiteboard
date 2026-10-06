@@ -9,7 +9,7 @@ export type TLEditorAssetUrls = {
 		serif: string
 		sansSerif: string
 		draw: string
-	}
+	} & Partial<Record<`${'monospace' | 'serif' | 'sansSerif' | 'draw'}${'Bold' | 'Italic' | 'BoldItalic'}`, string>>
 }
 
 /**

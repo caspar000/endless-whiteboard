@@ -416,6 +416,11 @@ export {
 export { WeakMapCache } from './lib/utils/WeakMapCache'
 export { dataUrlToFile } from './lib/utils/assets'
 export { getSvgAsDataUrl, getSvgAsImage } from './lib/utils/export'
+export {
+	exportLabelFromDom,
+	getRegisteredFontFaceRules,
+	registerFontSource,
+} from './lib/utils/exportShapeFromDom'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {

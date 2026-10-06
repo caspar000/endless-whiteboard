@@ -912,22 +912,30 @@ input,
 	content: '\200b';
 }
 
+.tl-rich-text h1,
+.tl-rich-text h2,
+.tl-rich-text h3 {
+	margin: 5px 0px 10px;
+	/* Their own size's, not the label's fixed one, or a heading that wraps overlaps itself. */
+	line-height: 1.35;
+}
+
 .tl-rich-text h1 {
-	font-size: 1.4em;
+	font-size: 2em;
 }
 
 .tl-rich-text h2 {
-	font-size: 1.25em;
+	font-size: 1.5em;
 }
 
 .tl-rich-text h3 {
-	font-size: 1.1em;
+	font-size: 1.17em;
 }
 
 .tl-rich-text ul,
 .tl-rich-text ol {
 	margin: 0px;
-	padding-left: 1.3em;
+	padding-left: 1.105em;
 	text-align: left;
 }
 
@@ -936,26 +944,26 @@ input,
 	border-left: 2px solid currentColor;
 }
 
+/* Code, links and highlights as tldraw 5 draws them (measured): code at the label's size in the mono
+   face with no box, links blue in both modes. */
 .tl-rich-text code,
 .tl-rich-text pre {
 	font-family: var(--tl-font-mono);
-	font-size: 0.9em;
-}
-
-.tl-rich-text code {
-	padding: 0px 0.2em;
-	border-radius: 3px;
-	background-color: var(--color-muted-1);
-}
-
-.tl-rich-text pre code {
-	padding: 0px;
-	background: none;
 }
 
 .tl-rich-text a {
-	color: inherit;
+	color: #3182ed;
 	text-decoration: underline;
+}
+
+.tl-rich-text mark {
+	color: inherit;
+	background-color: #fddd00;
+	border-radius: 2px;
+}
+
+.tl-theme__dark .tl-rich-text mark {
+	background-color: #d1b500;
 }
 
 .tl-rich-text-editor {

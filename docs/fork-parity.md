@@ -54,7 +54,7 @@ keep working).
 | E8 | `focus`, `blur`, `getIsFocused`, `markEventAsHandled`, `canEditShape` | Keyboard handling, tab switching, Quick Look | Cutover | done (phase 5) |
 | E9 | `onHandleDrag` on shape utils, `TLHandleDragInfo` | Shift-to-hide while drawing a relation | Cutover | done (phase 5) |
 | E10 | Asset store interface (`TLAssetStore`: upload, resolve) and `useImageOrVideoAsset` | The content-addressed image pipeline, server assets | Cutover | done (phase 5) |
-| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | doing: `toImage` (phase 5); shapes drawn in HTML export their content (phase 7); text, note and geo labels still export as plain text |
+| E11 | `toImage` (PNG/SVG/blob export of chosen shapes) | Thumbnails, agent vision (`ops/view.ts`) | Cutover | done: `toImage` (phase 5); shapes drawn in HTML export their content (phase 7); text, note, geo and arrow labels export as the canvas shows them, formatting and all, with every font face they use embedded. On the way: labels draw like tldraw 5's (bold and italic faces for all four fonts, highlights, code, links, headings and lists measured and matched) |
 | E12 | `getIndicatorPath` on shape utils (the fork uses an `indicator()` component) | `createNodeShapeUtil` | Cutover | done (phase 5): default indicator from geometry; `getIndicatorPath` accepted, outline from geometry |
 | E13 | `getSnapshot`/`loadSnapshot`, `createTLSchemaFromUtils` | Backups, fixtures, the server schema | Cutover | done (phase 3–5) |
 | E14 | `pageToViewport`, `getSelectionScreenBounds` | Overlays, toolbars | Cutover | done (phase 5) |

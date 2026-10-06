@@ -13,9 +13,21 @@ export function getAssetUrls(opts) {
 	return {
 		fonts: {
 			monospace: formatAssetUrl('./fonts/IBMPlexMono-Medium.woff2', opts),
+			monospaceBold: formatAssetUrl('./fonts/IBMPlexMono-Bold.woff2', opts),
+			monospaceItalic: formatAssetUrl('./fonts/IBMPlexMono-MediumItalic.woff2', opts),
+			monospaceBoldItalic: formatAssetUrl('./fonts/IBMPlexMono-BoldItalic.woff2', opts),
 			sansSerif: formatAssetUrl('./fonts/IBMPlexSans-Medium.woff2', opts),
+			sansSerifBold: formatAssetUrl('./fonts/IBMPlexSans-Bold.woff2', opts),
+			sansSerifItalic: formatAssetUrl('./fonts/IBMPlexSans-MediumItalic.woff2', opts),
+			sansSerifBoldItalic: formatAssetUrl('./fonts/IBMPlexSans-BoldItalic.woff2', opts),
 			serif: formatAssetUrl('./fonts/IBMPlexSerif-Medium.woff2', opts),
+			serifBold: formatAssetUrl('./fonts/IBMPlexSerif-Bold.woff2', opts),
+			serifItalic: formatAssetUrl('./fonts/IBMPlexSerif-MediumItalic.woff2', opts),
+			serifBoldItalic: formatAssetUrl('./fonts/IBMPlexSerif-BoldItalic.woff2', opts),
 			draw: formatAssetUrl('./fonts/Shantell_Sans-Normal-SemiBold.woff2', opts),
+			drawBold: formatAssetUrl('./fonts/Shantell_Sans-Normal-ExtraBold.woff2', opts),
+			drawItalic: formatAssetUrl('./fonts/Shantell_Sans-Normal-SemiBold_Italic.woff2', opts),
+			drawBoldItalic: formatAssetUrl('./fonts/Shantell_Sans-Normal-ExtraBold_Italic.woff2', opts),
 		},
 		icons: {
 			'align-bottom-center': formatAssetUrl('./icons/icon/align-bottom-center.svg', opts),

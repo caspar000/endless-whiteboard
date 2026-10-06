@@ -6,6 +6,7 @@ import {
 	trimRichText,
 	Arc2d,
 	Box2d,
+	exportLabelFromDom,
 	DefaultFontFamilies,
 	Edge2d,
 	Group2d,
@@ -801,7 +802,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		}
 	}
 
-	override toSvg(shape: TLArrowShape, ctx: SvgExportContext) {
+	override async toSvg(shape: TLArrowShape, ctx: SvgExportContext) {
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		ctx.addExportDef(getFillDefForExport(shape.props.fill, theme))
 
@@ -928,8 +929,13 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			)
 		}
 
-		// Text Label
-		if (labelGeometry) {
+		// The label as the canvas shows it, formatting and all; as plain text if it isn't showing.
+		const labelFromDom = labelGeometry
+			? await exportLabelFromDom(this.editor, shape, '.tl-arrow-label', ctx)
+			: null
+		if (labelFromDom) {
+			g.appendChild(labelFromDom)
+		} else if (labelGeometry) {
 			ctx.addExportDef(getFontDefForExport(shape.props.font))
 
 			const opts = {

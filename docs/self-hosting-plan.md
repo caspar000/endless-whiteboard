@@ -1,6 +1,6 @@
 # Self-hosting — implementation plan
 
-Status: **All four phases built, nothing deployed.** Everything below works against a local server.
+Status: **Built and deployed** to `https://lifeboard.darkroomlab.net` (2026-10-06, from `main`).
 Deploying waited on a tldraw licence key; since the canvas fork's cutover (`docs/canvas-fork-plan.md`,
 phase 7, done 2026-10-06) none is needed. `apps/web/scripts/check-server.mjs` checks a built server
 end to end before a deploy.

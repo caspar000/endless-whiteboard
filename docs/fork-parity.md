@@ -114,7 +114,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 |---|---|---|---|
 | I1 | Edge scrolling while dragging | 2.0 beta | done: `EdgeScrollManager` pans while moving, brushing, resizing or dragging a handle within 16px of the edge (32 on touch) for 200ms; `options.edgeScrollSpeed` scales it, 0 turns it off |
 | I2 | Snapping to the grid while creating; handle-point snapping; snapping inside frames | 2.0–3.5 | todo |
-| I3 | Cmd/Ctrl-click multi-select; smarter select-all | 3.3, 3.15 | todo |
+| I3 | Cmd/Ctrl-click multi-select; smarter select-all | 3.3, 3.15 | done: ⌘/Ctrl-click adds or takes away like Shift-click (on empty paper it still brushes); select all takes the frame's or group's shapes first, then the page |
 | I4 | Quick zoom overview (`z` + Shift); Shift +/− zooms at the cursor; 5% minimum zoom | 4.4, 3.11 | done: Shift+Z shows the whole board and goes back to where you were; Shift+= and Shift+− zoom around the pointer; zoom goes down to 5% |
 | I5 | Right-click-drag pans the camera | 5.0 | todo |
 | I6 | Touch: double-tap-and-drag zoom; long-press | 5.2, 2.1 | done: one-finger zoom (`useTouchZoom`: the second tap is held back until it moves, so a plain double tap still reaches the editor); long-press already opened the context menu through Radix, now under test |

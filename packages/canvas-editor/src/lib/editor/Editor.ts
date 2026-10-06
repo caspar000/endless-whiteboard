@@ -2187,6 +2187,19 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	selectAll(): this {
+		// From the inside out (I3): with shapes selected inside one frame or group, everything in there
+		// first; once that is all selected, the whole page.
+		const selectedIds = this.getSelectedShapeIds()
+		const parents = new Set(this.getSelectedShapes().map((shape) => shape.parentId))
+		const [parentId] = parents
+		if (parents.size === 1 && parentId && parentId !== this.getCurrentPageId()) {
+			const siblings = this._getUnlockedShapeIds(this.getSortedChildIdsForParent(parentId))
+			if (siblings.some((id) => !selectedIds.includes(id))) {
+				this.setSelectedShapes(siblings)
+				return this
+			}
+		}
+
 		const ids = this.getSortedChildIdsForParent(this.getCurrentPageId())
 		// page might have no shapes
 		if (ids.length <= 0) return this

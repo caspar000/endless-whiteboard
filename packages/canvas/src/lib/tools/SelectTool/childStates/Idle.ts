@@ -49,6 +49,19 @@ export class Idle extends StateNode {
 				}
 			}
 
+			// ⌘/Ctrl on a shape adds it to the selection or takes it away, as Shift does (I3); on
+			// empty paper it brushes.
+			const shape =
+				info.target === 'shape'
+					? info.shape
+					: info.target === 'canvas'
+					? getHitShapeOnCanvasPointerDown(this.editor)
+					: undefined
+			if (shape && !this.editor.isShapeOrAncestorLocked(shape)) {
+				this.parent.transition('pointing_shape', { ...info, target: 'shape', shape })
+				return
+			}
+
 			this.parent.transition('brushing', info)
 			return
 		}

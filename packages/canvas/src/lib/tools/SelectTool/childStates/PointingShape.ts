@@ -1,4 +1,5 @@
 import {
+	Editor,
 	Group2d,
 	HIT_TEST_MARGIN,
 	StateNode,
@@ -22,8 +23,10 @@ export class PointingShape extends StateNode {
 		const selectionBounds = this.editor.getSelectionRotatedPageBounds()
 		const focusedGroupId = this.editor.getFocusedGroupId()
 		const {
-			inputs: { currentPagePoint, shiftKey, altKey },
+			inputs: { currentPagePoint, altKey },
 		} = this.editor
+		// Shift, or ⌘/Ctrl as today's tldraw has it, adds to the selection (I3).
+		const shiftKey = isAdditive(this.editor)
 
 		this.hitShape = info.shape
 		const outermostSelectingShape = this.editor.getOutermostSelectableShape(info.shape)
@@ -64,8 +67,9 @@ export class PointingShape extends StateNode {
 		const focusedGroupId = this.editor.getFocusedGroupId()
 		const zoomLevel = this.editor.getZoomLevel()
 		const {
-			inputs: { currentPagePoint, shiftKey },
+			inputs: { currentPagePoint },
 		} = this.editor
+		const shiftKey = isAdditive(this.editor)
 
 		const hitShape =
 			this.editor.getShapeAtPoint(currentPagePoint, {
@@ -215,4 +219,9 @@ export class PointingShape extends StateNode {
 	private cancel() {
 		this.parent.transition('idle')
 	}
+}
+
+/** Whether a click adds to the selection (or takes away from it): Shift, or ⌘/Ctrl. */
+function isAdditive(editor: Editor): boolean {
+	return editor.inputs.shiftKey || editor.inputs.ctrlKey
 }

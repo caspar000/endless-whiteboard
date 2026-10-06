@@ -301,6 +301,7 @@ export class TestEditor extends Editor {
 					: key === ' '
 					? 'Space'
 					: key === 'Enter' ||
+					  key === 'Tab' ||
 					  key === 'ArrowRight' ||
 					  key === 'ArrowLeft' ||
 					  key === 'ArrowUp' ||

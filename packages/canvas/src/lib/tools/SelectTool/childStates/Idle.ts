@@ -13,6 +13,7 @@ import {
 	createShapeId,
 	pointInPolygon,
 } from '@lifeboard/canvas-editor'
+import { resizeSelectionByKeyboard, selectNextShape, selectShapeInDirection } from '../keyboardNavigation'
 import { getHitShapeOnCanvasPointerDown } from '../../selection-logic/getHitShapeOnCanvasPointerDown'
 import { getShouldEnterCropMode } from '../../selection-logic/getShouldEnterCropModeOnPointerDown'
 import { selectOnCanvasPointerUp } from '../../selection-logic/selectOnCanvasPointerUp'
@@ -399,27 +400,28 @@ export class Idle extends StateNode {
 	}
 
 	override onKeyDown: TLEventHandlers['onKeyDown'] = (info) => {
-		switch (info.code) {
-			case 'ArrowLeft':
-			case 'ArrowRight':
-			case 'ArrowUp':
-			case 'ArrowDown': {
-				this.nudgeSelectedShapes(false)
-				break
-			}
+		if (info.code === 'Tab') {
+			selectNextShape(this.editor, info.shiftKey ? -1 : 1)
+			return
 		}
+		this.onArrow(info, false)
 	}
 
 	override onKeyRepeat: TLEventHandlers['onKeyDown'] = (info) => {
-		switch (info.code) {
-			case 'ArrowLeft':
-			case 'ArrowRight':
-			case 'ArrowUp':
-			case 'ArrowDown': {
-				this.nudgeSelectedShapes(true)
-				break
-			}
+		if (info.code === 'Tab') {
+			selectNextShape(this.editor, info.shiftKey ? -1 : 1)
+			return
 		}
+		this.onArrow(info, true)
+	}
+
+	/** Arrows nudge; with ⌘/Ctrl they go to the next shape that way, with Alt+Shift they resize. */
+	private onArrow(info: TLKeyboardEventInfo, repeat: boolean) {
+		const direction = ARROWS[info.code as keyof typeof ARROWS]
+		if (!direction) return
+		if (info.ctrlKey) selectShapeInDirection(this.editor, direction)
+		else if (info.altKey && info.shiftKey) resizeSelectionByKeyboard(this.editor, direction, !repeat)
+		else this.nudgeSelectedShapes(repeat)
 	}
 
 	override onKeyUp = (info: TLKeyboardEventInfo) => {
@@ -570,3 +572,10 @@ function isPointInRotatedSelectionBounds(editor: Editor, point: VecLike) {
 		selectionBounds.corners.map((c) => Vec2d.RotWith(c, selectionBounds.point, selectionRotation))
 	)
 }
+
+const ARROWS = {
+	ArrowLeft: { x: -1, y: 0 },
+	ArrowRight: { x: 1, y: 0 },
+	ArrowUp: { x: 0, y: -1 },
+	ArrowDown: { x: 0, y: 1 },
+} as const

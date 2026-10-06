@@ -93,6 +93,11 @@ export function useDocumentEvents() {
 					if (isFocusingInput() || editor.getIsMenuOpen()) {
 						return
 					}
+					// On a focused board, Tab steps through the shapes (the select tool's keyboard
+					// navigation) instead of moving focus out of the canvas.
+					if (editor.getIsFocused() && editor.isIn('select.idle') && !editor.getEditingShapeId()) {
+						preventDefault(e)
+					}
 					break
 				}
 				case ',': {

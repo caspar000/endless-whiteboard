@@ -34,6 +34,25 @@ const GROUPS: ShortcutGroup[] = [
 /** Everything after the generated section: gestures, then the two editors' own keymaps. */
 const GROUPS_AFTER: ShortcutGroup[] = [
 	{
+		// Handled by the select tool itself (canvas keyboardNavigation.ts), so not commands: a command
+		// bound to Tab would step twice.
+		title: 'Without a pointer',
+		rows: [
+			[['Tab', '⇧Tab'], 'The next or previous shape, in reading order'],
+			[['⌘←', '⌘↑', '⌘→', '⌘↓'], 'The nearest shape that way'],
+			[['←', '↑', '→', '↓'], 'Nudge the selection; with ⇧, further'],
+			[['⌥⇧→', '⌥⇧↓'], 'Make the selection wider or taller; ← and ↑ make it smaller'],
+		],
+	},
+	{
+		title: 'On a touch screen',
+		rows: [
+			[['pinch'], 'Zoom'],
+			[['tap', 'tap and drag'], 'Zoom with one finger: down zooms in, up zooms out'],
+			[['long press'], 'The menu a right-click opens'],
+		],
+	},
+	{
 		title: 'With the pointer',
 		rows: [
 			[['⌘', 'drag'], 'Ignore grid snapping for this move'],

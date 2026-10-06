@@ -56,6 +56,9 @@ const KEY_ALIASES: Record<string, string> = {
 	arrowright: 'right',
 }
 
+/** Keys read by where they are rather than what they type, so a shifted one still matches. */
+const CODE_KEYS: Record<string, string> = { Equal: '=', Minus: '-' }
+
 /** One chord — `cmd+shift+z` — in canonical form, or `null` if there is no key in it. */
 export function normalizeChord(chord: string): string | null {
 	const parts = chord
@@ -90,6 +93,8 @@ export function parseKbd(kbd: string): string[] {
  * Digits are read off `event.code` rather than `event.key`, and that is not a detail: `shift+1`
  * arrives as `key: '!'`, so a table that writes `shift+1` — as ours does for Zoom to fit — would
  * never match. Letters stay on `event.key`, which is what keeps a Dvorak or AZERTY layout working.
+ * `=` and `-` are read off the code too, for the same reason: `shift+=` arrives as `+`, which a chord
+ * (split on `+`) can't even spell.
  */
 export function chordFromEvent(event: {
 	key: string
@@ -100,7 +105,7 @@ export function chordFromEvent(event: {
 	shiftKey: boolean
 }): string | null {
 	const digit = /^Digit(\d)$/.exec(event.code ?? '')
-	const raw = digit ? digit[1]! : event.key.toLowerCase()
+	const raw = digit ? digit[1]! : (CODE_KEYS[event.code ?? ''] ?? event.key.toLowerCase())
 	const key = KEY_ALIASES[raw] ?? raw
 	if (key === 'meta' || key === 'control' || key === 'alt' || key === 'shift') return null
 	const mods: string[] = []

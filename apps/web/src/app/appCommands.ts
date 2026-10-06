@@ -10,10 +10,11 @@ import {
 	setRelationView,
 	type CommandContext,
 } from '@lifeboard/node-kit'
-import { ArrowShapeKindStyle } from '@lifeboard/canvas'
+import { ArrowShapeKindStyle, Vec2d } from '@lifeboard/canvas'
 import { openProperties } from '../canvas/propertiesTarget'
 import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
 import { runTldrawAction } from '../canvas/tldrawUi'
+import { toggleOverview } from '../canvas/overview'
 import { toggleTracing } from '../canvas/tracing'
 import {
 	APPEARANCE_GROUP,
@@ -242,6 +243,39 @@ registerCommand({
 		if (ctx.editor) runTldrawAction(ctx.editor, 'zoom-to-fit')
 	},
 })
+
+registerCommand({
+	id: 'view.overview',
+	title: 'Overview — the whole board, and back to where you were',
+	group: CANVAS_GROUP,
+	kbd: 'shift+z',
+	when: onBoard,
+	run: (ctx) => {
+		if (ctx.editor) toggleOverview(ctx.editor)
+	},
+})
+
+// Zoom in and out around the pointer; the plain keys zoom around the middle of the view.
+for (const [id, title, kbd, zoom] of [
+	['view.zoom-in-at-pointer', 'Zoom in at the pointer', 'shift+=', 'zoomIn'],
+	['view.zoom-out-at-pointer', 'Zoom out at the pointer', 'shift+-', 'zoomOut'],
+] as const) {
+	registerCommand({
+		id,
+		title,
+		group: CANVAS_GROUP,
+		kbd,
+		when: onBoard,
+		run: (ctx) => {
+			const editor = ctx.editor
+			if (!editor) return
+			// The pointer in the viewport's own coordinates, which is what the zoom keeps in place.
+			const { x, y } = editor.inputs.currentPagePoint
+			const camera = editor.getCamera()
+			editor[zoom](new Vec2d((x + camera.x) * camera.z, (y + camera.y) * camera.z), { duration: 120 })
+		},
+	})
+}
 
 registerCommand({
 	id: 'view.zoom-reset',

@@ -16,7 +16,8 @@ export const ANIMATION_SHORT_MS = 80
 export const ANIMATION_MEDIUM_MS = 320
 
 /** @internal */
-export const ZOOMS = [0.1, 0.25, 0.5, 1, 2, 4, 8]
+/** Zoom steps. Down to 5%, as today's tldraw (2023's stopped at 10%). */
+export const ZOOMS = [0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8]
 /** @internal */
 export const MIN_ZOOM = 0.1
 /** @internal */

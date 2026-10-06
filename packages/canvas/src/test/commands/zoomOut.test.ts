@@ -8,15 +8,14 @@ beforeEach(() => {
 })
 
 it('zooms by increments', () => {
-	// Starts at 1
+	// Starts at 1, and steps down through the zooms below it to the first (5%)
+	const one = ZOOMS.indexOf(1)
 	expect(editor.getZoomLevel()).toBe(1)
-	expect(editor.getZoomLevel()).toBe(ZOOMS[3])
-	editor.zoomOut()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[2])
-	editor.zoomOut()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[1])
-	editor.zoomOut()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[0])
+	for (let i = one - 1; i >= 0; i--) {
+		editor.zoomOut()
+		expect(editor.getZoomLevel()).toBe(ZOOMS[i])
+	}
+	expect(ZOOMS[0]).toBe(0.05)
 	// does not zoom out past min
 	editor.zoomOut()
 	expect(editor.getZoomLevel()).toBe(ZOOMS[0])

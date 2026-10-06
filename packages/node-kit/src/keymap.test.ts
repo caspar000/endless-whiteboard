@@ -36,6 +36,14 @@ beforeEach(() => {
 	setUserBindings({})
 })
 
+describe('chordFromEvent: shifted punctuation', () => {
+	it('reads = and - by where they are, so shift+= is not lost as +', () => {
+		expect(press({ key: '+', code: 'Equal', shiftKey: true })).toBe('shift+=')
+		expect(press({ key: '_', code: 'Minus', shiftKey: true })).toBe('shift+-')
+		expect(press({ key: '=', code: 'Equal' })).toBe('=')
+	})
+})
+
 describe('normalizeChord', () => {
 	it('reduces every spelling of a chord to one string', () => {
 		expect(normalizeChord('cmd+shift+z')).toBe('cmd+shift+z')

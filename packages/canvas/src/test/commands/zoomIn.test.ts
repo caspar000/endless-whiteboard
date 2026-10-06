@@ -8,21 +8,17 @@ beforeEach(() => {
 })
 
 it('zooms by increments', () => {
-	// Starts at 1
+	// Starts at 1, and steps up through the zooms above it to the last
+	const one = ZOOMS.indexOf(1)
 	expect(editor.getZoomLevel()).toBe(1)
-	expect(editor.getZoomLevel()).toBe(ZOOMS[3])
-	// zooms in
-	expect(editor.getZoomLevel()).toBe(ZOOMS[3])
-	editor.zoomIn()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[4])
-	editor.zoomIn()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[5])
-	editor.zoomIn()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[6])
+	for (let i = one + 1; i < ZOOMS.length; i++) {
+		editor.zoomIn()
+		expect(editor.getZoomLevel()).toBe(ZOOMS[i])
+	}
 
 	// does not zoom in past max
 	editor.zoomIn()
-	expect(editor.getZoomLevel()).toBe(ZOOMS[6])
+	expect(editor.getZoomLevel()).toBe(ZOOMS[ZOOMS.length - 1])
 })
 
 it('zooms to from B to D when B >= (C - A)/2, else zooms from B to C', () => {

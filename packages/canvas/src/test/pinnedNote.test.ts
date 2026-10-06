@@ -1,6 +1,7 @@
 import { DefaultColorStyle, TLNoteShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { NoteShapeTool } from '../lib/shapes/note/NoteShapeTool'
 import { TLPinnedNoteShape } from '../lib/shapes/note/PinnedNoteShapeUtil'
+import { PinColorStyle, getPinPaint } from '../lib/shapes/note/pin'
 import { TestEditor } from './TestEditor'
 
 /** A pinned note is its own shape: larger than a sticky, with a sticky's props. */
@@ -78,5 +79,38 @@ describe('a sticky note', () => {
 		editor.pointerDown(700, 300).pointerUp(700, 300)
 		const colors = Object.fromEntries(editor.getCurrentPageShapes().map((shape) => [shape.type, (shape as TLNoteShape).props.color]))
 		expect(colors).toEqual({ note: 'green', 'pinned-note': 'white' })
+	})
+})
+
+describe('a pinned note’s pin', () => {
+	it('is the design’s crimson by default, and takes a palette colour as a style', () => {
+		const id = createShapeId('pinned')
+		editor.createShapes([{ id, type: 'pinned-note', x: 0, y: 0 }])
+		expect(editor.getShape<TLPinnedNoteShape>(id)!.props.pinColor).toBe('crimson')
+
+		editor.select(id)
+		editor.setStyleForSelectedShapes(PinColorStyle, 'blue')
+		expect(editor.getShape<TLPinnedNoteShape>(id)!.props.pinColor).toBe('blue')
+	})
+
+	it('stays crimson on a pinned note saved before pins had a colour', () => {
+		const schema = editor.store.schema.serialize() as { sequences: Record<string, number> }
+		const before = { ...schema, sequences: { ...schema.sequences, 'com.tldraw.shape.pinned-note': 0 } }
+		const id = createShapeId('old')
+		editor.createShapes([{ id, type: 'pinned-note', x: 0, y: 0 }])
+		const { pinColor: _gone, ...oldProps } = editor.getShape<TLPinnedNoteShape>(id)!.props
+		const old = { ...editor.getShape(id)!, props: oldProps }
+		const result = editor.store.schema.migratePersistedRecord(old, before as never)
+		expect(result).toMatchObject({ type: 'success', value: { props: { pinColor: 'crimson' } } })
+	})
+
+	it('exports in its colour, its shine a shade darker', async () => {
+		const id = createShapeId('pinned')
+		editor.createShapes([{ id, type: 'pinned-note', x: 0, y: 0, props: { pinColor: 'green' } }])
+		const svg = (await editor.getSvg([id]))!.outerHTML
+		const { head, shine } = getPinPaint('green', editor.getCurrentTheme().colors[editor.getColorMode()])
+		expect(svg).toContain(`fill="${head}"`)
+		expect(svg).toContain(`fill="${shine}"`)
+		expect(svg).not.toContain('fill="#991B1B"')
 	})
 })

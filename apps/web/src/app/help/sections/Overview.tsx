@@ -74,7 +74,7 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <StickyNote size={19} />,
 			kbd: ['N', '5'],
 			blurb:
-				'A quick sticky, yellow to start. The row above the dock switches to a pinned note — larger, white, held up by a push pin, written from the top left — and sets the colour of each kind separately. Like everything else on the board, either can carry properties — a priced sticky counts as much as a priced note.',
+				'A quick sticky, yellow to start. The row above the dock switches to a pinned note — larger, white, held up by a push pin, written from the top left — and sets the colour of each kind separately, and the pin’s. A selected pinned note’s toolbar changes its pin too. Like everything else on the board, either can carry properties — a priced sticky counts as much as a priced note.',
 		},
 		{
 			id: 'draw',

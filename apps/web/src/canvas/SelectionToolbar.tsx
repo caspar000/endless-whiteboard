@@ -24,7 +24,9 @@ import {
 	AssetRecordType,
 	Box,
 	DefaultColorStyle,
+	PinColorStyle,
 	getColorValue,
+	getPinPaint,
 	DefaultImageToolbarContent,
 	DefaultVideoToolbarContent,
 	TldrawUiContextualToolbar,
@@ -73,7 +75,7 @@ function isOutlineOnly(shape: TLShape): boolean {
  * panel allowed. Opening one therefore *is* closing the others: there is a single piece of state and
  * it can only hold one answer.
  */
-type OpenPanel = 'border' | 'fill' | 'menu' | null
+type OpenPanel = 'border' | 'fill' | 'pin' | 'menu' | null
 
 /** What the parent hands each panel so they share that one slot. */
 interface PanelProps {
@@ -264,6 +266,66 @@ function ShapeFillPicker({ open, setOpen }: PanelProps) {
 								onPointerDown={(e) => e.preventDefault()}
 								onClick={() => {
 									setSelectionFillColor(editor, value)
+									setOpen(false)
+								}}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+			<div className="lb-seltb__sep" />
+		</>
+	)
+}
+
+/**
+ * The pin of the selected pinned notes: a swatch in the pin's colour that opens the pin colours.
+ * Offered whenever a pinned note is selected; the note's own colour stays with the colour swatch.
+ */
+function PinColorPicker({ open, setOpen }: PanelProps) {
+	const editor = useEditor()
+	const state = useValue(
+		'lb:pin-color',
+		() => {
+			const shared = editor.getSharedStyles().get(PinColorStyle)
+			if (!shared) return null
+			return {
+				value: shared.type === 'shared' ? shared.value : null,
+				theme: editor.getCurrentTheme().colors[editor.getColorMode()],
+			}
+		},
+		[editor]
+	)
+	useEffect(() => {
+		if (!state) setOpen(false)
+	}, [state])
+	if (!state) return null
+	return (
+		<>
+			<div className="lb-seltb__color">
+				<button
+					className="lb-swatch lb-swatch--pin"
+					style={state.value ? { background: getPinPaint(state.value, state.theme).head } : undefined}
+					title={state.value ? `Pin: ${state.value}` : 'Mixed pins'}
+					aria-label="Pin colour"
+					aria-expanded={open}
+					data-testid="lb.pin-color"
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => setOpen(!open)}
+				/>
+				{open && (
+					<div className="lb-seltb__palette" role="group" aria-label="Pin colour options">
+						{PinColorStyle.values.map((value) => (
+							<button
+								key={value}
+								className={value === state.value ? 'lb-swatch lb-swatch--pin lb-swatch--active' : 'lb-swatch lb-swatch--pin'}
+								style={{ background: getPinPaint(value, state.theme).head }}
+								title={value}
+								aria-label={`Pin colour ${value}`}
+								aria-pressed={value === state.value}
+								onPointerDown={(e) => e.preventDefault()}
+								onClick={() => {
+									editor.setStyleForSelectedShapes(PinColorStyle, value)
 									setOpen(false)
 								}}
 							/>
@@ -704,6 +766,7 @@ function SelectionToolbarContent({
 		<>
 			<ShapeColorPicker {...panelProps('border')} />
 			<ShapeFillPicker {...panelProps('fill')} />
+			<PinColorPicker {...panelProps('pin')} />
 			{media === 'image' && onlyId && (
 				<>
 					<DefaultImageToolbarContent

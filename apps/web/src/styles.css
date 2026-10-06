@@ -2271,6 +2271,18 @@ button {
 	border: 2.5px solid var(--lb-border-strong);
 	box-shadow: none;
 }
+/* The dock's pin swatches: a pin head, as in the selection toolbar. */
+.lb-expand__swatch--pin {
+	box-shadow:
+		inset 0 0 0 3px var(--lb-surface),
+		inset 0 0 0 4px var(--lb-border-strong);
+}
+/* A pin's colour: a smaller dot in a ring, a pin head, so it doesn't read as the note's colour beside it. */
+.lb-swatch--pin {
+	box-shadow:
+		inset 0 0 0 3px var(--lb-surface),
+		inset 0 0 0 4px var(--lb-border-strong);
+}
 /* No fill — the same slashed ring the dock's fill palette uses, so the two agree. */
 .lb-swatch--none {
 	position: relative;

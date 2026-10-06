@@ -26,7 +26,7 @@ import { FONT_FAMILIES, LABEL_FONT_SIZES, TEXT_PROPS } from '../shared/default-s
 import { getFontDefForExport } from '../shared/defaultStyleDefs'
 import { getTextLabelSvgElement } from '../shared/getTextLabelSvgElement'
 import { SHADOW, STICKY_PAPER, creaseHeight, creasePath, creaseShade, pinPlacement, type NotePaper } from './paper'
-import { NotePin, getNotePinSvg } from './pin'
+import { NotePin, getNotePinSvg, getPinPaint, type PinColor } from './pin'
 
 /** A shape drawn as a note: a sticky note or a pinned note. Their props are the same. */
 export type TLNoteLikeShape = TLBaseShape<string, TLNoteShapeProps>
@@ -117,6 +117,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 						<NotePin
 							className="tl-note__pin"
 							width={pinAt.width}
+							paint={getPinPaint(pinColorOf(shape), theme)}
 							style={{ left: pinAt.x, top: pinAt.y }}
 						/>
 					)}
@@ -206,7 +207,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 
 		if (pin) {
 			const at = pinPlacement(width)
-			const pinSvg = getNotePinSvg()
+			const pinSvg = getNotePinSvg(getPinPaint(pinColorOf(shape), theme))
 			pinSvg.setAttribute('transform', `translate(${at.x} ${at.y}) scale(${at.scale})`)
 			g.appendChild(pinSvg)
 		}
@@ -288,4 +289,9 @@ function getGrowY<S extends TLNoteLikeShape>(
 			},
 		}
 	}
+}
+
+/** A pinned note's pin colour; a sticky has no pin, and reads as the default. */
+function pinColorOf(shape: TLNoteLikeShape): PinColor {
+	return 'pinColor' in shape.props ? (shape.props.pinColor as PinColor) : 'crimson'
 }

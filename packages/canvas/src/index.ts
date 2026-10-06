@@ -40,7 +40,12 @@ export { LineShapeUtil } from './lib/shapes/line/LineShapeUtil'
 export { NoteShapeTool } from './lib/shapes/note/NoteShapeTool'
 export { BaseNoteShapeUtil, NoteShapeUtil, type TLNoteLikeShape } from './lib/shapes/note/NoteShapeUtil'
 export { PinnedNoteShapeTool } from './lib/shapes/note/PinnedNoteShapeTool'
-export { PinnedNoteShapeUtil, type TLPinnedNoteShape } from './lib/shapes/note/PinnedNoteShapeUtil'
+export {
+	PinnedNoteShapeUtil,
+	type TLPinnedNoteShape,
+	type TLPinnedNoteShapeProps,
+} from './lib/shapes/note/PinnedNoteShapeUtil'
+export { PinColorStyle, getPinPaint, type PinColor, type PinPaint } from './lib/shapes/note/pin'
 export { TextShapeTool } from './lib/shapes/text/TextShapeTool'
 export { TextShapeUtil } from './lib/shapes/text/TextShapeUtil'
 export { VideoShapeUtil } from './lib/shapes/video/VideoShapeUtil'

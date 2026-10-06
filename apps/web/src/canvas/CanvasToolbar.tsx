@@ -34,7 +34,9 @@ import {
 	DefaultColorStyle,
 	DefaultSizeStyle,
 	GeoShapeGeoStyle,
+	PinColorStyle,
 	getColorValue,
+	getPinPaint,
 	useEditor,
 	useTools,
 	useValue,
@@ -251,6 +253,39 @@ function NoteSettings({ currentToolId }: { currentToolId: string }) {
 			</div>
 			<div className="lb-expand__sep" />
 			<NoteSwatches toolId={currentToolId} />
+			{currentToolId === 'pinned-note' && (
+				<>
+					<div className="lb-expand__sep" />
+					<PinSwatches />
+				</>
+			)}
+		</div>
+	)
+}
+
+/** The next pinned note's pin: the design's crimson first, then the palette. */
+function PinSwatches() {
+	const editor = useEditor()
+	const current = useValue('lb:next-pin-color', () => editor.getStyleForNextShape(PinColorStyle), [editor])
+	const theme = useValue('lb:theme-colors', () => editor.getCurrentTheme().colors[editor.getColorMode()], [editor])
+	return (
+		<div className="lb-expand__group" role="group" aria-label="Pin colour">
+			{PinColorStyle.values.map((value) => (
+				<button
+					key={value}
+					className={
+						current === value
+							? 'lb-expand__swatch lb-expand__swatch--pin lb-expand__swatch--active'
+							: 'lb-expand__swatch lb-expand__swatch--pin'
+					}
+					style={{ backgroundColor: getPinPaint(value, theme).head }}
+					onPointerDown={(e) => e.preventDefault()}
+					onClick={() => setStyle(editor, PinColorStyle, value)}
+					title={`Pin ${value}`}
+					aria-label={`Pin colour ${value}`}
+					aria-pressed={current === value}
+				/>
+			))}
 		</div>
 	)
 }

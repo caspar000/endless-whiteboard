@@ -280,6 +280,10 @@ export function Overview({ go }: SectionProps) {
 					The board is endless in every direction and nothing has to be tidy — a corner nobody has
 					visited costs nothing.
 				</p>
+				<p>
+					On a touch screen, pinch to zoom, or zoom with one finger: tap, then tap again and drag down to
+					zoom in, up to zoom out. A long press opens the menu a right-click would.
+				</p>
 				<div className="lb-help__facts">
 					<div className="lb-help__fact">
 						<h3>Boards and tabs</h3>

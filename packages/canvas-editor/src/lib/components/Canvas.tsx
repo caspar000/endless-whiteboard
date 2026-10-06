@@ -6,6 +6,7 @@ import { dedupe, modulate, objectMapValues } from '@tldraw/utils'
 import classNames from 'classnames'
 import React from 'react'
 import { useCanvasEvents } from '../hooks/useCanvasEvents'
+import { useTouchZoom } from '../hooks/useTouchZoom'
 import { useCoarsePointer } from '../hooks/useCoarsePointer'
 import { useDocumentEvents } from '../hooks/useDocumentEvents'
 import { useEditor } from '../hooks/useEditor'
@@ -65,6 +66,7 @@ export function Canvas({ className }: { className?: string }) {
 	)
 
 	const events = useCanvasEvents()
+	useTouchZoom(rCanvas)
 
 	const shapeSvgDefs = useValue(
 		'shapeSvgDefs',

@@ -96,6 +96,10 @@ export function Canvas({ className }: { className?: string }) {
 			ref={rCanvas}
 			draggable={false}
 			className={classNames('tl-canvas', className)}
+			// An application to a screen reader: the canvas takes its own keys (Tab, arrows), and says
+			// what they did through the app's live region.
+			role="application"
+			aria-label="Board"
 			data-testid="canvas"
 			{...events}
 		>

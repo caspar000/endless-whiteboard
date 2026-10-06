@@ -47,3 +47,35 @@ test.describe('keyboard navigation (A1)', () => {
 			.toBe(130)
 	})
 })
+
+test.describe('screen readers (A2)', () => {
+	test('hear what is selected and which tool is on', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{
+					id: 'shape:a',
+					type: 'geo',
+					x: 100,
+					y: 100,
+					props: { w: 200, h: 100, richText: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Launch plan' }] }] } },
+				},
+				{ id: 'shape:b', type: 'note', x: 400, y: 100 },
+			])
+			editor.selectNone()
+		})
+		await expect(page.locator('.lb-board-host:not([data-hidden]) [role="application"]')).toHaveAccessibleName('Board')
+		await page.locator('.lb-board-host:not([data-hidden]) .tl-canvas').click({ position: { x: 700, y: 600 } })
+		const heard = page.locator('.lb-board-host:not([data-hidden]) [data-testid="lb.announcer"]')
+
+		await page.keyboard.press('Tab')
+		await expect(heard).toHaveText('Rectangle: Launch plan')
+		await page.keyboard.press('ControlOrMeta+a')
+		await expect(heard).toHaveText('2 shapes selected')
+		await page.keyboard.press('a')
+		await expect(heard).toHaveText('Relation tool')
+	})
+})

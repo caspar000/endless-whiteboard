@@ -284,6 +284,11 @@ export function Overview({ go }: SectionProps) {
 					On a touch screen, pinch to zoom, or zoom with one finger: tap, then tap again and drag down to
 					zoom in, up to zoom out. A long press opens the menu a right-click would.
 				</p>
+				<p>
+					From the keyboard, <kbd className="lb-kbd">Tab</kbd> steps through the shapes and{' '}
+					<kbd className="lb-kbd">⌘</kbd>-arrows jump to the nearest one that way (the full list is in
+					Shortcuts). With a screen reader on, the board says what you selected and which tool is on.
+				</p>
 				<div className="lb-help__facts">
 					<div className="lb-help__fact">
 						<h3>Boards and tabs</h3>

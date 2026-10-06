@@ -1,5 +1,6 @@
 // The extension composition root. Must be evaluated before this module's body: the shape utils and
 // tools below are built at module scope from the registry the root populates.
+import { CanvasAnnouncer } from './CanvasAnnouncer'
 import '../extensions'
 import {
 	clearAgentActivity,
@@ -114,6 +115,7 @@ function CanvasOverlays() {
 	return (
 		<>
 			<SelectionToolbar />
+			<CanvasAnnouncer />
 			<AgentPresence />
 			{!looking && overlays.map(({ id, Component }) => <Component key={id} />)}
 			<QuickLookOverlay />

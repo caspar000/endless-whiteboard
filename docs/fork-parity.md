@@ -128,7 +128,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | Id | Feature | Arrived | Status |
 |---|---|---|---|
 | A1 | Keyboard navigation between shapes (Tab, ⌘ arrows), keyboard resize, focus rings | 3.11–3.12 | done: Tab/⇧Tab in reading order, ⌘/Ctrl+arrow to the nearest shape that way, ⌥⇧+arrow resizes, the view follows; the selection outline is the focus ring on the board. Focus rings across the app's own controls are part of A3 |
-| A2 | Screen-reader announcements | 3.12 | todo |
+| A2 | Screen-reader announcements | 3.12 | done: a polite live region per board (`CanvasAnnouncer`) says the selection (kind and text, or how many) and the tool as they change; the canvas is an application named "Board" |
 | A3 | Enhanced accessibility mode (WCAG 2.2 AA) | 4.0 | todo |
 
 ## L — Language and theming

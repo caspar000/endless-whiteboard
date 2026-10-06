@@ -1,7 +1,12 @@
 import { EASINGS } from './primitives/easings'
 
-/** @internal */
-export const MAX_SHAPES_PER_PAGE = 2000
+/**
+ * How many shapes a page holds; a batch that would go past it is refused. Today's tldraw allows 4000
+ * (measured: 3999 are created, 4001 are refused); 2023's stopped at 2000, which a large board reaches.
+ *
+ * @internal
+ */
+export const MAX_SHAPES_PER_PAGE = 4000
 /** @internal */
 export const MAX_PAGES = 40
 

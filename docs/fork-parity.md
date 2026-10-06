@@ -144,13 +144,19 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 
 ## P — Performance
 
+Measured with `e2e/bench.spec.ts` (`LB_BENCH=1`, `LB_BENCH_NODES=2000` for the large board) against
+tldraw 5 on 2026-10-06. At 2,000 nodes the fork runs less script than tldraw 5 in every gesture;
+what remains slow on both is painting many HTML nodes and moving thousands at once. On the way, the
+page's shape cap went from 2023's 2,000 to today's 4,000 (measured): a large board was refusing new
+shapes.
+
 Unmeasured: how the fork does on Lifeboard's 500-node `perf.spec.ts`. Phase 7 measures it.
 
 | Id | Improvement | Arrived | Status |
 |---|---|---|---|
-| P1 | Selection outlines drawn on a 2D canvas (tldraw cites up to 25× faster) | 4.4 | todo |
-| P2 | R-tree spatial index for hit-testing and culling | 4.4 | todo |
-| P3 | Culling rechecks only shapes affected by a change | 5.3 | todo |
+| P1 | Selection outlines drawn on a 2D canvas (tldraw cites up to 25× faster) | 4.4 | done: one canvas in screen space (`SelectionIndicatorsCanvas`) from `getIndicatorPath` or the geometry (nodes, notes, geo); arrows and pen strokes keep SVG. Brushing 2,000 nodes: 9% less main-thread time |
+| P2 | R-tree spatial index for hit-testing and culling | 4.4 | measured, not needed yet: hovering over 2,000 nodes costs 14 ms of script for 60 moves (tldraw 5: 39 ms) |
+| P3 | Culling rechecks only shapes affected by a change | 5.3 | measured, not needed yet: the selection check is a set now, which removed an O(shapes × selected) step, but brushing or dragging 2,000 nodes is spent painting HTML nodes and updating records, not culling |
 | P4 | Batched text measurement | 5.0 | todo |
 | P5 | Faster freehand ink (2–3×); input buffering | 5.2, 2.1 | todo |
 | P6 | Image resolution matched to zoom | 2.3 | todo |

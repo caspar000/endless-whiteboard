@@ -244,8 +244,9 @@ describe('<TldrawEditor />', () => {
 
 		expect(editor.getSelectedShapeIds().length).toBe(1)
 
-		// Is the shape's component rendering?
-		expect(document.querySelectorAll('.tl-shape-indicator')).toHaveLength(1)
+		// Its outline is drawn on the outline canvas (fork-parity P1), not as an SVG indicator.
+		expect(document.querySelectorAll('.tl-overlays__canvas')).toHaveLength(1)
+		expect(document.querySelectorAll('.tl-shape-indicator')).toHaveLength(0)
 
 		// Select the eraser tool...
 		await act(async () => editor.setCurrentTool('eraser'))

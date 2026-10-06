@@ -5,6 +5,7 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  * Canvas timings on the 500-node board `perf.spec.ts` uses, for comparing canvas engines (the fork
  * against tldraw 5, docs/canvas-fork-plan.md phase 7). Opt-in, because the numbers depend on the
  * machine: `LB_BENCH=1 pnpm exec playwright test e2e/bench.spec.ts`. It prints one `BENCH` line.
+ * Hover, brush and drag-everything were added for fork-parity P1–P3.
  *
  * Each gesture (60 inputs, 16 ms apart) runs three times and the median of each figure is reported.
  * The main figure is main-thread work, from Chrome's own counters (`Performance.getMetrics`): at full
@@ -13,7 +14,8 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  */
 test.skip(!process.env.LB_BENCH, 'Set LB_BENCH=1 to run the canvas benchmark.')
 
-const NODES = 500
+/** `LB_BENCH_NODES` for a bigger board; the page holds up to 4000 shapes. */
+const NODES = Number(process.env.LB_BENCH_NODES ?? 500)
 const RUNS = 3
 
 interface FrameStats {
@@ -106,7 +108,7 @@ type Gesture = (page: Page) => Promise<Omit<FrameStats, 'taskMs' | 'scriptMs' | 
  * mouse, whose input acknowledgements stalled now and then on a busy board (on either engine), and
  * so that only the canvas's work is measured, not the browser's input path.
  */
-function runGesture(page: Page, kind: 'drag' | 'pan') {
+function runGesture(page: Page, kind: 'drag' | 'pan' | 'hover' | 'brush' | 'dragAll') {
 	return page.evaluate(async (gesture) => {
 		const editor = (window as unknown as { editor: Record<string, (...args: unknown[]) => unknown> })
 			.editor
@@ -137,7 +139,56 @@ function runGesture(page: Page, kind: 'drag' | 'pan') {
 		const observer = new PerformanceObserver((list) => (longTasks += list.getEntries().length))
 		observer.observe({ entryTypes: ['longtask'] })
 
-		if (gesture === 'drag') {
+		if (gesture === 'hover' || gesture === 'brush' || gesture === 'dragAll') {
+			// Across the whole board at its current zoom: every step hit-tests what's under the pointer
+			// (hover), grows a brush over more shapes (brush), or moves every shape (dragAll).
+			const viewport = editor.getViewportScreenBounds!() as { x: number; y: number; w: number; h: number }
+			const at = (t: number) => ({
+				x: viewport.x + viewport.w * (0.05 + 0.9 * t),
+				y: viewport.y + viewport.h * (0.05 + 0.9 * t),
+			})
+			if (gesture === 'dragAll') {
+				editor.selectAll!()
+				const first = (editor.getSelectedShapeIds!() as string[])[0]!
+				const bounds = editor.getShapePageBounds!(first) as { x: number; y: number; w: number; h: number }
+				const start = editor.pageToScreen!({ x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 }) as {
+					x: number
+					y: number
+				}
+				pointer('pointer_move', start)
+				await wait()
+				pointer('pointer_down', start)
+				await wait()
+				requestAnimationFrame(loop)
+				for (let i = 1; i <= 60; i++) {
+					const step = i <= 30 ? i : 60 - i
+					pointer('pointer_move', { x: start.x + step * 4, y: start.y + step * 3 })
+					await wait()
+				}
+				running = false
+				pointer('pointer_up', start)
+				editor.selectNone!()
+			} else {
+				editor.selectNone!()
+				// A brush starts on empty paper: just outside the board's top-left corner.
+				const origin = gesture === 'brush' ? { x: viewport.x + 4, y: viewport.y + 4 } : at(0)
+				pointer('pointer_move', origin)
+				await wait()
+				if (gesture === 'brush') pointer('pointer_down', origin)
+				await wait()
+				requestAnimationFrame(loop)
+				for (let i = 1; i <= 60; i++) {
+					pointer('pointer_move', at(i / 60))
+					await wait()
+				}
+				running = false
+				if (gesture === 'brush') {
+					pointer('pointer_up', at(1))
+					moved = (editor.getSelectedShapeIds!() as string[]).length
+					editor.selectNone!()
+				}
+			}
+		} else if (gesture === 'drag') {
 			const shapes = editor.getCurrentPageShapes!() as { id: string; type: string }[]
 			const item = shapes.find((shape) => shape.type === 'node.markdown')!
 			const bounds = editor.getShapePageBounds!(item.id) as { x: number; y: number; w: number }
@@ -197,6 +248,15 @@ const drag: Gesture = (page) => runGesture(page, 'drag')
 
 /** Pans with the wheel, 30 steps one way and 30 back. */
 const pan: Gesture = (page) => runGesture(page, 'pan')
+
+/** Moves the pointer across the board: hover hit-testing (fork-parity P2). */
+const hover: Gesture = (page) => runGesture(page, 'hover')
+
+/** Brushes across the board, selecting more and more (P1, P2). `moved` is how many it selected. */
+const brush: Gesture = (page) => runGesture(page, 'brush')
+
+/** Drags every shape at once (P1, P3). */
+const dragAll: Gesture = (page) => runGesture(page, 'dragAll')
 
 const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!
 
@@ -270,6 +330,9 @@ test('canvas benchmark', async ({ page }) => {
 	await page.waitForTimeout(1000)
 	const dragAllVisible = await measure(drag, page, cdp)
 	const panAllVisible = await measure(pan, page, cdp)
+	const hoverAllVisible = await measure(hover, page, cdp)
+	const brushAllVisible = await measure(brush, page, cdp)
+	const dragEverything = await measure(dragAll, page, cdp)
 
 	const exportMs = await page.evaluate(async () => {
 		const editor = (
@@ -298,6 +361,9 @@ test('canvas benchmark', async ({ page }) => {
 			panAt100: tidy(panAt100),
 			dragAllVisible: tidy(dragAllVisible),
 			panAllVisible: tidy(panAllVisible),
+			hoverAllVisible: tidy(hoverAllVisible),
+			brushAllVisible: tidy(brushAllVisible),
+			dragEverything: tidy(dragEverything),
 			exportMs: round(exportMs),
 		})
 	)

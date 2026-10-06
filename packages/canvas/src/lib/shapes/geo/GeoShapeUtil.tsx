@@ -640,6 +640,23 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		}
 	}
 
+	/**
+	 * The outline for the canvas that draws selected outlines (fork-parity P1): the shape's outline as
+	 * its geometry has it, with a box's inner lines.
+	 */
+	override getIndicatorPath(shape: TLGeoShape) {
+		const geometry = this.editor.getShapeGeometry(shape)
+		const body = geometry instanceof Group2d ? geometry.children[0]! : geometry
+		const path = new Path2D()
+		body.vertices.forEach((v, i) => (i ? path.lineTo(v.x, v.y) : path.moveTo(v.x, v.y)))
+		path.closePath()
+		for (const [a, b] of getLines(shape.props, STROKE_SIZES[shape.props.size]) ?? []) {
+			path.moveTo(a!.x, a!.y)
+			path.lineTo(b!.x, b!.y)
+		}
+		return path
+	}
+
 	override async toSvg(shape: TLGeoShape, ctx: SvgExportContext) {
 		const { id, props } = shape
 		const strokeWidth = STROKE_SIZES[props.size]

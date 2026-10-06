@@ -3899,8 +3899,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		// We only really need these if we're using editor state, but that's ok
 		const editingShapeId = this.getEditingShapeId()
-		const selectedShapeIds = this.getSelectedShapeIds()
-		const erasingShapeIds = this.getErasingShapeIds()
+		// Sets, not arrays: every shape asks about them, and a brush can select hundreds (P3).
+		const selectedShapeIds = new Set(this.getSelectedShapeIds())
+		const erasingShapeIds = new Set(this.getErasingShapeIds())
 		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
 
 		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
@@ -3917,7 +3918,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
 
 			if (useEditorState) {
-				isShapeErasing = !isAncestorErasing && erasingShapeIds.includes(id)
+				isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
 				if (isShapeErasing) {
 					opacity *= 0.32
 				}
@@ -3933,7 +3934,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 						// ...or if the shape is outside of the expanded viewport bounds...
 						(!renderingBoundsExpanded.includes(maskedPageBounds) &&
 							// ...and if it's not selected... then cull it
-							!selectedShapeIds.includes(id)))
+							!selectedShapeIds.has(id)))
 			}
 
 			renderingShapes.push({

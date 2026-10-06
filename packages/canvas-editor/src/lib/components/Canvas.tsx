@@ -21,6 +21,7 @@ import { debugFlags } from '../utils/debug-flags'
 import { GeometryDebuggingView } from './GeometryDebuggingView'
 import { LiveCollaborators } from './LiveCollaborators'
 import { Shape } from './Shape'
+import { SelectionIndicatorsCanvas, canDrawOnCanvas } from './SelectionIndicatorsCanvas'
 import { ShapeIndicator } from './ShapeIndicator'
 
 /** @public */
@@ -122,6 +123,7 @@ export function Canvas({ className }: { className?: string }) {
 				{hideShapes ? null : debugSvg ? <ShapesWithSVGs /> : <ShapesToDisplay />}
 			</div>
 			<div className="tl-fixed-layer tl-overlays">
+				<SelectedIdsCanvas />
 				<div ref={rHtmlLayer2} className="tl-html-layer">
 					{debugGeometry ? <GeometryDebuggingView /> : null}
 					<HandlesWrapper />
@@ -352,18 +354,13 @@ function ShapesToDisplay() {
 	)
 }
 
-function SelectedIdIndicators() {
+/** The selected shapes whose outlines show now: in the select tool, while not changing a style. */
+function useDisplayedSelectedIds(): TLShapeId[] {
 	const editor = useEditor()
-	const selectedShapeIds = useValue(
-		'selectedShapeIds',
-		() => editor.getCurrentPageState().selectedShapeIds,
-		[editor]
-	)
-	const shouldDisplay = useValue(
-		'should display selected ids',
+	return useValue(
+		'displayed selected ids',
 		() => {
-			// todo: move to tldraw selected ids wrapper
-			return (
+			const show =
 				editor.isInAny(
 					'select.idle',
 					'select.brushing',
@@ -373,16 +370,28 @@ function SelectedIdIndicators() {
 					'select.pointing_selection',
 					'select.pointing_handle'
 				) && !editor.getInstanceState().isChangingStyle
-			)
+			return show ? editor.getCurrentPageState().selectedShapeIds : NO_IDS
 		},
 		[editor]
 	)
+}
 
-	if (!shouldDisplay) return null
+const NO_IDS: TLShapeId[] = []
 
+/** Selected outlines on the 2D canvas (SelectionIndicatorsCanvas), in screen space. */
+function SelectedIdsCanvas() {
+	const ids = useDisplayedSelectedIds()
+	return <SelectionIndicatorsCanvas ids={ids} />
+}
+
+/** The selected outlines the canvas can't draw: a shape util's own SVG outline (an arrow's). */
+function SelectedIdIndicators() {
+	const editor = useEditor()
+	const ids = useDisplayedSelectedIds()
+	const svgIds = useValue('svg indicators', () => ids.filter((id) => !canDrawOnCanvas(editor, id)), [editor, ids])
 	return (
 		<>
-			{selectedShapeIds.map((id) => (
+			{svgIds.map((id) => (
 				<ShapeIndicator key={id + '_indicator'} className="tl-user-indicator__selected" id={id} />
 			))}
 		</>

@@ -138,6 +138,13 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		)
 	}
 
+	/** The same rectangle for the canvas that draws selected outlines (fork-parity P1). */
+	override getIndicatorPath(shape: S) {
+		const path = new Path2D()
+		path.rect(0, 0, this.paper.width, this.getHeight(shape))
+		return path
+	}
+
 	override async toSvg(shape: S, ctx: SvgExportContext) {
 		ctx.addExportDef(getFontDefForExport(shape.props.font))
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })

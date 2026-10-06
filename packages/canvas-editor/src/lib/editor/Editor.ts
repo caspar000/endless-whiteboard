@@ -131,6 +131,7 @@ import { ScribbleManager } from './managers/ScribbleManager'
 import { SideEffectManager } from './managers/SideEffectManager'
 import { SnapManager } from './managers/SnapManager'
 import { TextManager } from './managers/TextManager'
+import { EdgeScrollManager } from './managers/EdgeScrollManager'
 import { TickManager } from './managers/TickManager'
 import { UserPreferencesManager } from './managers/UserPreferencesManager'
 import { ShapeUtil, TLResizeMode, TLShapeUtilConstructor } from './shapes/ShapeUtil'
@@ -161,12 +162,15 @@ import { TLResizeHandle } from './types/selection-types'
 export interface TldrawOptions {
 	maxShapesPerPage: number
 	maxPages: number
+	/** How fast a drag at the edge of the view pans the board, as a multiple; 0 turns it off. */
+	edgeScrollSpeed: number
 }
 
 /** @public */
 export const defaultTldrawOptions: TldrawOptions = {
 	maxShapesPerPage: MAX_SHAPES_PER_PAGE,
 	maxPages: MAX_PAGES,
+	edgeScrollSpeed: 1,
 }
 
 /** @public */
@@ -699,6 +703,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	/** @internal */
 	private _tickManager = new TickManager(this)
+
+	/** Pans the board when a drag reaches the edge of the view (I1). @internal */
+	private _edgeScrollManager = new EdgeScrollManager(this)
 
 	/**
 	 * A manager for the app's snapping feature.

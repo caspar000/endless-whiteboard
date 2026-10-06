@@ -1535,6 +1535,13 @@ describe('shift brushes to add to the selection', () => {
 	})
 
 	it('adds to selection when shift + brushing into shape', () => {
+		// The brush ends at the very edge of the view and waits there; this is about the brush, not
+		// the board scrolling under it.
+		editor = new TestEditor({ options: { edgeScrollSpeed: 0 } })
+		editor.createShapes([
+			{ id: ids.box1, type: 'geo', x: 0, y: 0 },
+			{ id: ids.box2, type: 'geo', x: 200, y: 0 },
+		])
 		editor.select(ids.box2)
 		editor.pointerMove(-50, -50)
 		editor.keyDown('Shift')

@@ -235,3 +235,41 @@ test.describe('clipboard (X3)', () => {
 		expect(text).not.toContain('https://x.y')
 	})
 })
+
+test.describe('the next sticky (B3)', () => {
+	test('a clone handle makes the next sticky; Tab while writing goes on to another', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([{ id: 'shape:s', type: 'note', x: 100, y: 200, props: { color: 'green' } }])
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+			;(editor as unknown as { select(id: string): void }).select('shape:s')
+		})
+		const notes = () =>
+			page.evaluate(() =>
+				(window as unknown as {
+					editor: { getCurrentPageShapes(): { type: string; x: number; y: number; props: { color: string } }[] }
+				}).editor
+					.getCurrentPageShapes()
+					.filter((shape) => shape.type === 'note')
+					.map((shape) => ({ x: Math.round(shape.x), y: Math.round(shape.y), color: shape.props.color }))
+					.sort((a, b) => a.x - b.x)
+			)
+
+		await page.getByTestId('note-clone.right').click()
+		await page.keyboard.type('Second')
+		await page.keyboard.press('Tab')
+		await page.keyboard.type('Third')
+		await page.keyboard.press('Escape')
+
+		expect(await notes()).toEqual([
+			{ x: 100, y: 200, color: 'green' },
+			{ x: 320, y: 200, color: 'green' },
+			{ x: 540, y: 200, color: 'green' },
+		])
+		await expect(page.locator('.tl-shape', { hasText: 'Second' })).toHaveCount(1)
+		await expect(page.locator('.tl-shape', { hasText: 'Third' })).toHaveCount(1)
+	})
+})

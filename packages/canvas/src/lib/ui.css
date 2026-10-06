@@ -1682,3 +1682,23 @@
 .tlui-toast__container[data-severity='success'] {
 	border-left: 3px solid var(--color-success, #2b8a3e);
 }
+
+/* A selected note's clone handles (TldrawSelectionForeground, B3). */
+.tl-note-clone-handle {
+	cursor: pointer;
+}
+.tl-note-clone-handle circle {
+	fill: var(--color-panel);
+	stroke: var(--color-selected);
+	stroke-width: calc(1.5px * var(--tl-scale));
+}
+.tl-note-clone-handle path {
+	stroke: var(--color-selected);
+	stroke-linecap: round;
+}
+.tl-note-clone-handle:hover circle {
+	fill: var(--color-selected);
+}
+.tl-note-clone-handle:hover path {
+	stroke: var(--color-selected-contrast);
+}

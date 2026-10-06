@@ -60,6 +60,8 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['⇧', '⌘', 'click'], 'Add a shape to the selection, or take it away'],
 			[['drag a label'], 'On a selected arrow: along it slides the label, across it bends the arrow'],
 			[['⇧⌘V'], 'Paste as plain text, at the pointer'],
+			[['Tab', '⇧Tab'], 'Writing a note: on to the next note right or left, made if need be'],
+			[['⌘Enter', '⇧⌘Enter'], 'Writing a note: on to the next note below or above'],
 			[['Esc'], 'Stop editing, then deselect'],
 			[['double-click'], 'Edit the content — or, on empty paper, start a note'],
 			[['right-click'], 'Properties, and everything else about this shape'],

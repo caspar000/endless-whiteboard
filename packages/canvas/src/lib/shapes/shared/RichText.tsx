@@ -14,6 +14,7 @@ import {
 	useEditor,
 	useValue,
 } from '@lifeboard/canvas-editor'
+import { goToNextNote, isNoteLike, type NoteDirection } from '../note/nextNote'
 import classNames from 'classnames'
 import React, { useLayoutEffect, useRef } from 'react'
 
@@ -118,6 +119,16 @@ function RichTextEditor({ shapeId, shapeType, className, style }: RichTextProps)
 			className={classNames('tl-text tl-rich-text-editor', className)}
 			style={style}
 			dir="auto"
+			onKeyDownCapture={(e) => {
+				// Writing a note: Tab and Shift+Tab go on to the next note right or left, ⌘Enter and
+				// ⌘⇧Enter below or above, making it if it isn't there (B3). Before the text sees them.
+				const direction = noteKeyDirection(e)
+				if (direction && isNoteLike(editor.getShape(shapeId))) {
+					e.preventDefault()
+					stopEventPropagation(e)
+					goToNextNote(editor, shapeId, direction)
+				}
+			}}
 			onKeyDown={(e) => {
 				// Formatting and undo shortcuts belong to the text, not the canvas.
 				if (e.ctrlKey || e.metaKey) stopEventPropagation(e)
@@ -140,4 +151,11 @@ function RichTextEditor({ shapeId, shapeType, className, style }: RichTextProps)
 			onTouchEnd={stopEventPropagation}
 		/>
 	)
+}
+
+function noteKeyDirection(e: React.KeyboardEvent): NoteDirection | null {
+	const accel = e.metaKey || e.ctrlKey
+	if (e.key === 'Tab' && !accel && !e.altKey) return e.shiftKey ? 'left' : 'right'
+	if (e.key === 'Enter' && accel && !e.altKey) return e.shiftKey ? 'above' : 'below'
+	return null
 }

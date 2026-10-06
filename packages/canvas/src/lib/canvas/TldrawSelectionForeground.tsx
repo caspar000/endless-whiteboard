@@ -8,10 +8,12 @@ import {
 	toDomPrecision,
 	track,
 	useEditor,
+	TLShapeId,
 	useSelectionEvents,
 	useTransform,
 	useValue,
 } from '@lifeboard/canvas-editor'
+import { goToNextNote, isNoteLike, type NoteDirection } from '../shapes/note/nextNote'
 import classNames from 'classnames'
 import { useRef } from 'react'
 import { useReadonly } from '../ui/hooks/useReadonly'
@@ -195,6 +197,10 @@ export const TldrawSelectionForeground: TLSelectionForegroundComponent = track(
 				data-testid="selection-foreground"
 			>
 				<g ref={rSvg}>
+					{onlyShape && isNoteLike(onlyShape) && !isLockedShape && !isReadonlyMode && !isChangingStyle &&
+						editor.isIn('select.idle') && (
+							<NoteCloneHandles noteId={onlyShape.id} width={width} height={height} zoom={zoom} />
+						)}
 					{shouldDisplayBox && (
 						<rect
 							className={classNames('tl-selection__fg__outline')}
@@ -521,6 +527,47 @@ export const MobileRotateHandle = function RotateHandle({
 				cy={cy}
 				r={size / SQUARE_ROOT_PI}
 			/>
+		</g>
+	)
+}
+
+/**
+ * A "+" just outside each side of a selected note: clicking one makes the next note there, in the
+ * same colours, and starts writing in it (docs/fork-parity.md B3). Over a note already there, it
+ * moves into that one instead.
+ */
+function NoteCloneHandles({ noteId, width, height, zoom }: { noteId: TLShapeId; width: number; height: number; zoom: number }) {
+	const editor = useEditor()
+	const gap = 22 / zoom
+	const r = 9 / zoom
+	const spots: [NoteDirection, number, number][] = [
+		['above', width / 2, -gap],
+		['right', width + gap, height / 2],
+		['below', width / 2, height + gap],
+		['left', -gap, height / 2],
+	]
+	return (
+		<g className="tl-note-clone-handles">
+			{spots.map(([direction, cx, cy]) => (
+				<g
+					key={direction}
+					className="tl-note-clone-handle"
+					data-testid={`note-clone.${direction}`}
+					aria-label={`New note ${direction}`}
+					pointerEvents="all"
+					onPointerDown={(e) => {
+						e.stopPropagation()
+						e.preventDefault()
+						goToNextNote(editor, noteId, direction)
+					}}
+				>
+					<circle cx={toDomPrecision(cx)} cy={toDomPrecision(cy)} r={toDomPrecision(r)} />
+					<path
+						d={`M${cx - r / 2},${cy}L${cx + r / 2},${cy}M${cx},${cy - r / 2}L${cx},${cy + r / 2}`}
+						strokeWidth={1.5 / zoom}
+					/>
+				</g>
+			))}
 		</g>
 	)
 }

@@ -85,7 +85,10 @@ export class Cropping extends StateNode {
 
 		const props = shape.props
 
-		const currentPagePoint = this.editor.inputs.currentPagePoint.clone().sub(cursorHandleOffset)
+		// The dragged edge lands on the grid when it snaps, as a resized edge does (B5).
+		const currentPagePoint = this.editor.snapPointToGrid(
+			this.editor.inputs.currentPagePoint.clone().sub(cursorHandleOffset)
+		)
 		const originPagePoint = this.editor.inputs.originPagePoint.clone().sub(cursorHandleOffset)
 
 		const change = currentPagePoint.clone().sub(originPagePoint).rot(-shape.rotation)

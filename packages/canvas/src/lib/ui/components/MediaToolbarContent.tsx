@@ -5,6 +5,7 @@ import {
 	useEditor,
 	useValue,
 } from '@lifeboard/canvas-editor'
+import { cropImageToAspect } from '../../utils/crop/cropToAspect'
 import { useCallback } from 'react'
 import { TldrawUiToolbarButton } from './ContextualToolbar'
 import { Icon } from './primitives/Icon'
@@ -58,9 +59,16 @@ function useMediaFile(shapeId: TLShapeId) {
 	return { replace, download }
 }
 
+const CROP_ASPECTS: { label: string; aspect: number | 'original' }[] = [
+	{ label: 'Original', aspect: 'original' },
+	{ label: '1:1', aspect: 1 },
+	{ label: '4:3', aspect: 4 / 3 },
+	{ label: '16:9', aspect: 16 / 9 },
+]
+
 /**
  * The buttons for a selected image: replace it, crop it, download it, and edit its alt text. While
- * cropping (`isManipulating`) there is one button, to finish.
+ * cropping (`isManipulating`): the shapes to crop to, and one button to finish.
  *
  * @public
  */
@@ -86,9 +94,22 @@ export function DefaultImageToolbarContent({
 
 	if (isManipulating) {
 		return (
-			<TldrawUiToolbarButton type="normal" title="Done" onClick={onManipulatingEnd}>
-				Done
-			</TldrawUiToolbarButton>
+			<>
+				{/* The shape to crop to (B5): the picture's own, square, or a common photo or screen. */}
+				{CROP_ASPECTS.map(({ label, aspect }) => (
+					<TldrawUiToolbarButton
+						key={label}
+						type="normal"
+						title={aspect === 'original' ? 'The whole picture' : `Crop to ${label}`}
+						onClick={() => cropImageToAspect(editor, imageShapeId, aspect)}
+					>
+						{label}
+					</TldrawUiToolbarButton>
+				))}
+				<TldrawUiToolbarButton type="normal" title="Done" onClick={onManipulatingEnd}>
+					Done
+				</TldrawUiToolbarButton>
+			</>
 		)
 	}
 

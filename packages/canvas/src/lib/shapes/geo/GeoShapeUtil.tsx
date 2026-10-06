@@ -26,6 +26,7 @@ import {
 	TLOnResizeHandler,
 	TLShapeUtilCanvasSvgDef,
 	Vec2d,
+	VecLike,
 	geoShapeMigrations,
 	geoShapeProps,
 	getDefaultColorTheme,
@@ -351,6 +352,12 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			}
 		}
 
+		// A flipped shape mirrors its outline within its box (tldraw 5.3); the label stays as it reads.
+		// Rectangles, ellipses and ovals look the same either way.
+		if ((shape.props.flipX || shape.props.flipY) && body instanceof Polygon2d && !(body instanceof Rectangle2d)) {
+			body = new Polygon2d({ points: flipPoints(body.vertices, shape.props, w, h), isFilled })
+		}
+
 		const labelSize = getLabelSize(this.editor, shape)
 		const labelWidth = Math.min(w, Math.max(labelSize.w, Math.min(32, Math.max(1, w - 8))))
 		const labelHeight = Math.min(h, Math.max(labelSize.h, Math.min(32, Math.max(1, w - 8))))
@@ -541,6 +548,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			}
 		}
 
+		// A cloud draws from its own path rather than the outline, so a flip mirrors it as a whole.
+		const cloudFlip = props.geo === 'cloud' ? getFlipTransform(props, w, props.h + growY) : undefined
+
 		const fillOverride =
 			this.options.getCustomDisplayValues?.(
 				this.editor,
@@ -552,7 +562,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 		return (
 			<>
 				<ShapeFillOverrideContext.Provider value={fillOverride}>
-					<SVGContainer id={id}>{getShape()}</SVGContainer>
+					<SVGContainer id={id}>
+						{cloudFlip ? <g transform={cloudFlip}>{getShape()}</g> : getShape()}
+					</SVGContainer>
 				</ShapeFillOverrideContext.Provider>
 				<HTMLContainer
 					id={shape.id}
@@ -598,7 +610,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 				return <path d={getOvalIndicatorPath(w, h)} />
 			}
 			case 'cloud': {
-				return <path d={cloudSvgPath(w, h, id, size)} />
+				return <path d={cloudSvgPath(w, h, id, size)} transform={getFlipTransform(props, w, h)} />
 			}
 
 			default: {
@@ -774,6 +786,15 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 							size: props.size,
 						})
 				}
+				// Mirrored inside a group of its own, so the label added below doesn't mirror with it.
+				const flip = getFlipTransform(props, props.w, props.h)
+				if (flip) {
+					const mirrored = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+					mirrored.setAttribute('transform', flip)
+					mirrored.appendChild(svgElm)
+					svgElm = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+					svgElm.appendChild(mirrored)
+				}
 				break
 			}
 			default: {
@@ -940,6 +961,9 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 				w: Math.max(Math.abs(w), 1),
 				h: Math.max(Math.abs(h), 1),
 				growY: 0,
+				// Dragged past the opposite edge, or flipped: the shape mirrors (tldraw 5.3).
+				flipX: scaleX < 0 ? !initialShape.props.flipX : initialShape.props.flipX,
+				flipY: scaleY < 0 ? !initialShape.props.flipY : initialShape.props.flipY,
 			},
 		}
 	}
@@ -1143,6 +1167,23 @@ function getLabelSize(editor: Editor, shape: TLGeoShape) {
 }
 
 function getLines(props: TLGeoShape['props'], sw: number) {
+	const lines = getUnflippedLines(props, sw)
+	if (!lines || !(props.flipX || props.flipY)) return lines
+	return lines.map((line) => flipPoints(line, props, props.w, props.h))
+}
+
+/** Points mirrored within a `w` by `h` box, for a shape flipped either way or both. */
+function flipPoints(points: VecLike[], { flipX, flipY }: TLGeoShape['props'], w: number, h: number) {
+	return points.map((p) => new Vec2d(flipX ? w - p.x : p.x, flipY ? h - p.y : p.y))
+}
+
+/** The SVG transform that mirrors a `w` by `h` box as the shape's flips say, if any. */
+function getFlipTransform({ flipX, flipY }: TLGeoShape['props'], w: number, h: number) {
+	if (!flipX && !flipY) return undefined
+	return `matrix(${flipX ? -1 : 1} 0 0 ${flipY ? -1 : 1} ${flipX ? w : 0} ${flipY ? h : 0})`
+}
+
+function getUnflippedLines(props: TLGeoShape['props'], sw: number) {
 	switch (props.geo) {
 		case 'x-box': {
 			return getXBoxLines(props.w, props.h, sw, props.dash)

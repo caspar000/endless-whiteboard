@@ -28,7 +28,7 @@ and until it does, it must leave them untouched.
 | D2 | Arrow connections as separate `binding` records (type `arrow`); arrow `start`/`end` are plain points | 2.2 | Cutover | done (phase 3) |
 | D3 | Draw and highlight strokes stored as a base64 delta-encoded `path` with `scaleX`/`scaleY`, instead of `points` arrays | 4.3 | Cutover | done (phase 2) |
 | D4 | Arrow `kind` (`arc` or `elbow`) and the elbow midpoint | 3.13 | Cutover (draw elbows as straight until G-items land) | doing: read and kept, elbows drawn straight (phase 2) |
-| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | doing: images draw flipped (phase 5); geo flips not drawn |
+| D5 | `flipX`/`flipY` on images (2.4) and geo shapes (5.3) | 2.4, 5.3 | Cutover | done: images draw flipped (phase 5); geo shapes mirror their outline, tick and cloud with the label upright, on screen, in hit-testing and in export, and flipping or resizing past an edge toggles the flags, as tldraw 5 does (compared side by side) |
 | D6 | `labelColor` on notes | 3.4 | Cutover | done (phase 4) |
 | D7 | `scale` prop for dynamic size mode | 2.3 | Cutover (read; mode itself is backlog) | done for reading (phase 2); the mode is backlog |
 | D8 | Text `textAlign` (was `align`) | 2.2 | Cutover | done (phase 2) |

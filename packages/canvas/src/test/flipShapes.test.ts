@@ -3,6 +3,7 @@ import {
 	PI,
 	TLArrowShape,
 	TLArrowShapeProps,
+	TLGeoShape,
 	TLShapeId,
 	TLShapePartial,
 	createShapeId,
@@ -284,12 +285,16 @@ describe('When multiple shapes are selected', () => {
 })
 
 describe('When one shape is selected', () => {
-	it('Does nothing if the shape is not a group', () => {
-		const before = editor.getShape(ids.boxA)!
+	it('Mirrors a single shape in place (tldraw 5.3)', () => {
+		const before = editor.getShape<TLGeoShape>(ids.boxA)!
 		editor.select(ids.boxA)
 		editor.flipShapes(editor.getSelectedShapeIds(), 'horizontal')
 
-		expect(editor.getShape(ids.boxA)).toMatchObject(before)
+		expect(editor.getShape(ids.boxA)).toMatchObject({
+			x: before.x,
+			y: before.y,
+			props: { ...before.props, flipX: !before.props.flipX },
+		})
 	})
 
 	it('Flips the direct child shape positions if the shape is a group', async () => {

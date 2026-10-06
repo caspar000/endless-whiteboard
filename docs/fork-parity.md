@@ -159,7 +159,7 @@ Unmeasured: how the fork does on Lifeboard's 500-node `perf.spec.ts`. Phase 7 me
 | P3 | Culling rechecks only shapes affected by a change | 5.3 | measured, not needed yet: the selection check is a set now, which removed an O(shapes × selected) step, but brushing or dragging 2,000 nodes is spent painting HTML nodes and updating records, not culling |
 | P4 | Batched text measurement | 5.0 | todo |
 | P5 | Faster freehand ink (2–3×); input buffering | 5.2, 2.1 | todo |
-| P6 | Image resolution matched to zoom | 2.3 | todo |
+| P6 | Image resolution matched to zoom | 2.3 | done: the app's asset store answers the editor's stepped screen scale with a smaller copy of a picture drawn below its own size (made once per picture and step, WebP); SVG, animated GIF and exports keep the original |
 
 ## X — Safety and export
 

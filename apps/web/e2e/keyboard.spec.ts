@@ -353,3 +353,36 @@ test.describe('flattening (B11)', () => {
 		await expect.poll(async () => (await shapes()).map((s) => s.type).sort()).toEqual(['geo', 'geo'])
 	})
 })
+
+test.describe('pictures at the size they are shown (P6)', () => {
+	test('a picture zoomed out loads a smaller copy, and the full one again zoomed in', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(async () => {
+			const canvas = document.createElement('canvas')
+			canvas.width = 1600
+			canvas.height = 800
+			const ctx = canvas.getContext('2d')!
+			ctx.fillStyle = '#4465e9'
+			ctx.fillRect(0, 0, 1600, 800)
+			ctx.fillStyle = '#ffffff'
+			ctx.fillRect(400, 200, 800, 400)
+			const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'))
+			const editor = (window as unknown as { editor: { putExternalContent(c: unknown): Promise<void>; setCamera(c: unknown): void } }).editor
+			await editor.putExternalContent({ type: 'files', files: [new File([blob], 'wide.png', { type: 'image/png' })], point: { x: 800, y: 400 } })
+		})
+		const img = page.locator('.lb-board-host:not([data-hidden]) .tl-shape img')
+		await expect(img).toHaveCount(1)
+		const natural = () => img.evaluate((el: HTMLImageElement) => el.naturalWidth)
+		const zoom = (z: number) =>
+			page.evaluate((z) => (window as unknown as { editor: { setCamera(c: unknown): void } }).editor.setCamera({ x: 0, y: 0, z }), z)
+
+		await zoom(1)
+		await expect.poll(natural).toBe(1600)
+		await zoom(0.25)
+		await expect.poll(natural).toBe(400)
+		await zoom(1)
+		await expect.poll(natural).toBe(1600)
+	})
+})

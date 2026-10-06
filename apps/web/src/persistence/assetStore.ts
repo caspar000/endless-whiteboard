@@ -1,5 +1,5 @@
 import type { AssetBridge } from '@lifeboard/node-kit'
-import { sanitizeSvg, type TLAsset, type TLAssetStore } from '@lifeboard/canvas'
+import { sanitizeSvg, type TLAsset, type TLAssetContext, type TLAssetStore } from '@lifeboard/canvas'
 import type { BlobStore } from '../platform/PlatformAdapter'
 import { downscaleImage } from './downscale'
 import { sha256Hex } from './hash'
@@ -167,12 +167,16 @@ export function createLifeboardAssetStore(blobs: BlobStore, fetchMissing?: Fetch
 			}
 		},
 
-		async resolve(asset: TLAsset) {
+		async resolve(asset: TLAsset, context?: TLAssetContext) {
 			const src = 'src' in asset.props ? asset.props.src : null
 			if (!src) return null
 			// Assets that aren't ours (e.g. a bookmark's remote image) pass through untouched.
 			if (!isManagedAssetSrc(src)) return src
-			return resolveHashToUrl(blobs, hashFromAssetSrc(src), fetchMissing)
+			const hash = hashFromAssetSrc(src)
+			const original = await resolveHashToUrl(blobs, hash, fetchMissing)
+			const width = scaledWidth(asset, context)
+			if (!original || !width) return original
+			return (await scaledUrl(blobs, hash, width, fetchMissing)) ?? original
 		},
 
 		// `remove` is intentionally not implemented. Blobs are shared by content across boards,
@@ -205,6 +209,55 @@ export async function collectGarbageAssets(
 export function clearAssetUrlCache(): void {
 	for (const url of objectUrlCache.values()) URL.revokeObjectURL(url)
 	objectUrlCache.clear()
+	for (const pending of scaledCache.values()) void pending.then((url) => url && URL.revokeObjectURL(url))
+	scaledCache.clear()
+}
+
+/**
+ * The width to draw a picture at for how large it is on screen (docs/fork-parity.md P6), or `null`
+ * for the picture itself: one drawn at or above its own size, one being exported, and pictures that
+ * scale themselves or move (SVG, animated GIF). The editor steps the scale in powers of two, so a
+ * picture has at most a few sizes, not one per zoom level.
+ */
+function scaledWidth(asset: TLAsset, context: TLAssetContext | undefined): number | null {
+	if (!context || context.shouldResolveToOriginal || asset.type !== 'image') return null
+	const { w, mimeType, isAnimated } = asset.props
+	if (!w || isAnimated || mimeType === 'image/svg+xml' || mimeType === 'image/gif') return null
+	const scale = context.steppedScreenScale * context.dpr
+	if (scale >= 1) return null
+	return Math.max(MIN_SCALED_WIDTH, Math.round(w * scale))
+}
+
+/** No smaller than this: below it, decoding the full picture once costs less than another copy. */
+const MIN_SCALED_WIDTH = 64
+
+/** Smaller copies of pictures, by hash and width, made once and kept for the session. */
+const scaledCache = new Map<string, Promise<string | null>>()
+
+function scaledUrl(blobs: BlobStore, hash: string, width: number, fetchMissing?: FetchMissingBlob) {
+	const key = `${hash}@${width}`
+	let pending = scaledCache.get(key)
+	if (!pending) {
+		pending = (async () => {
+			const blob = await getOrFetchBlob(blobs, hash, fetchMissing)
+			if (!blob) return null
+			try {
+				const bitmap = await createImageBitmap(blob, { resizeWidth: width, resizeQuality: 'high' })
+				const canvas = document.createElement('canvas')
+				canvas.width = bitmap.width
+				canvas.height = bitmap.height
+				canvas.getContext('2d')?.drawImage(bitmap, 0, 0)
+				bitmap.close()
+				const scaled = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.9))
+				return scaled ? URL.createObjectURL(scaled) : null
+			} catch {
+				// A picture the browser can't scale is shown as it is.
+				return null
+			}
+		})()
+		scaledCache.set(key, pending)
+	}
+	return pending
 }
 
 /** An SVG file without scripts, handlers or outside links; anything else as it came. */

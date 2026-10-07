@@ -6,14 +6,19 @@ export class Lasering extends StateNode {
 	scribbleId = 'id'
 
 	override onEnter = () => {
-		const scribble = this.editor.scribbles.addScribble({
-			color: 'laser',
-			opacity: 0.7,
-			size: 4,
-			delay: 1200,
-			shrink: 0.05,
-			taper: true,
-		})
+		// Held: the trail stays whole while you go on pointing, and fades as one a moment after (B12).
+		const scribble = this.editor.scribbles.addScribble(
+			{
+				color: 'laser',
+				opacity: 0.7,
+				size: 4,
+				delay: 1200,
+				shrink: 0.05,
+				taper: true,
+			},
+			undefined,
+			{ held: true }
+		)
 		this.scribbleId = scribble.id
 		this.pushPointToScribble()
 	}

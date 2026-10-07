@@ -1,3 +1,4 @@
+import type { Box2d } from '../primitives/Box2d'
 import type { Editor } from '../editor/Editor'
 import type { SvgExportContext } from '../editor/types/SvgExportContext'
 import type { TLShape } from '../editor/types/shape-types'
@@ -54,13 +55,19 @@ export async function exportLabelFromDom(
 	shape: { id: TLShapeId },
 	selector: string,
 	ctx: SvgExportContext,
-	{ keepTransform = true }: { keepTransform?: boolean } = {}
+	{
+		keepTransform = true,
+		bounds = editor.getShapeGeometry(shape.id).bounds,
+	}: {
+		keepTransform?: boolean
+		/** The box to place it in, when the shape draws in other units than its geometry's (a scaled note). */
+		bounds?: Box2d
+	} = {}
 ): Promise<SVGElement | null> {
 	const source = shapeElement(editor, shape)
 	const label = source?.querySelector<HTMLElement>(selector)
 	if (!source || !label) return null
 
-	const bounds = editor.getShapeGeometry(shape.id).bounds
 	const images: Promise<void>[] = []
 	const families = new Set<string>()
 	const placed = shown(source, () => {

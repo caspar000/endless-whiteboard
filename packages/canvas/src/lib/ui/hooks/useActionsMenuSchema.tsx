@@ -64,6 +64,7 @@ export const ActionsMenuSchemaProvider = ({
 			menuItem(actions['align-top'], { disabled: !twoSelected }),
 			menuItem(actions['align-center-vertical'], { disabled: !twoSelected }),
 			menuItem(actions['align-bottom'], { disabled: !twoSelected }),
+			menuItem(actions['align-center'], { disabled: !twoSelected }),
 			menuItem(actions['stretch-vertical'], { disabled: !twoSelected }),
 			menuItem(actions['distribute-horizontal'], { disabled: !threeSelected }),
 			menuItem(actions['distribute-vertical'], { disabled: !threeSelected }),

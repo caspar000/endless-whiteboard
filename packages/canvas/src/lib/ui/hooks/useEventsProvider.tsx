@@ -39,7 +39,7 @@ export interface TLUiEventMap {
 	'insert-embed': null
 	'insert-media': null
 	'align-shapes': {
-		operation: 'left' | 'center-horizontal' | 'right' | 'top' | 'center-vertical' | 'bottom'
+		operation: 'left' | 'center-horizontal' | 'right' | 'top' | 'center-vertical' | 'bottom' | 'center'
 	}
 	'duplicate-shapes': null
 	'pack-shapes': null

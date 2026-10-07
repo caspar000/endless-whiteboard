@@ -46,6 +46,7 @@ import {
 	type StyleProp,
 } from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
+import { useDockDrag, type DockShape } from './dockDrag'
 import { getNextFillColor, setNextFillColor } from './shapeFill'
 import { isTracing, toggleTracing } from './tracing'
 
@@ -131,12 +132,17 @@ function ToolButton({
 	toolId,
 	icon,
 	isActive,
+	drag,
 }: {
 	toolId: string
 	icon: ReactNode
 	isActive: boolean
+	/** The shape pulling this button onto the board makes (dockDrag.ts). */
+	drag?: DockShape
 }) {
+	const editor = useEditor()
 	const tools = useTools()
+	const { wasDrag, ...dragHandlers } = useDockDrag(editor, drag)
 	const tool = tools[toolId]
 	if (!tool) return null
 	const kbd = formatKbd(tool.kbd)
@@ -145,9 +151,11 @@ function ToolButton({
 			className={isActive ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
 			// Same testid scheme as tldraw's own toolbar, which the e2e suite already targets.
 			data-testid={`tools.${toolId}`}
-			// Keep focus on the canvas so keyboard shortcuts keep flowing to the editor.
-			onPointerDown={(e) => e.preventDefault()}
-			onClick={() => tool.onSelect('toolbar')}
+			// Also keeps focus on the canvas, so keyboard shortcuts keep flowing to the editor.
+			{...dragHandlers}
+			onClick={() => {
+				if (!wasDrag()) tool.onSelect('toolbar')
+			}}
 			title={kbd ? `${tool.label} (${kbd})` : String(tool.label)}
 			aria-label={String(tool.label)}
 			aria-pressed={isActive}
@@ -622,6 +630,7 @@ function TracingHint() {
 export function CanvasToolbar() {
 	const editor = useEditor()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
+	const { wasDrag: geoWasDrag, ...geoDragHandlers } = useDockDrag(editor, 'geo')
 
 	return (
 		<div className="lb-dock-wrap">
@@ -652,6 +661,7 @@ export function CanvasToolbar() {
 					toolId="frame"
 					icon={<Frame size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'frame'}
+					drag="frame"
 				/>
 				{/* tldraw's arrow. Snapped at both ends it becomes a relation, which is what it is for
 				    here and why it reads as one of the structural tools rather than a drawing one. */}
@@ -668,6 +678,7 @@ export function CanvasToolbar() {
 					toolId="note"
 					icon={<StickyNote size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'note' || currentToolId === 'pinned-note'}
+					drag="note"
 				/>
 				<ToolButton
 					toolId="draw"
@@ -685,8 +696,11 @@ export function CanvasToolbar() {
 					className={
 						currentToolId === 'geo' ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
 					}
-					onPointerDown={(e) => e.preventDefault()}
-					onClick={() => editor.setCurrentTool('geo')}
+					data-testid="tools.geo"
+					{...geoDragHandlers}
+					onClick={() => {
+						if (!geoWasDrag()) editor.setCurrentTool('geo')
+					}}
 					title="Shapes"
 					aria-label="Shapes"
 					aria-pressed={currentToolId === 'geo'}
@@ -697,6 +711,7 @@ export function CanvasToolbar() {
 					toolId="text"
 					icon={<Type size={ICON_SIZE} aria-hidden="true" />}
 					isActive={currentToolId === 'text'}
+					drag="text"
 				/>
 				<ToolButton
 					toolId="asset"

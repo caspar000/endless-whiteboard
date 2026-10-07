@@ -87,10 +87,35 @@ export const DefaultContextMenu = function DefaultContextMenu({
 	// when the standard ones don't.
 	const disabled = children === undefined && noItemsToShow
 
+	// A right press that drags pans the board (I5), so the menu opens only once the button comes up
+	// without having moved. Where the browser asks for it as the button goes down (macOS), it waits.
+	const onContextMenu = useCallback(
+		(e: React.MouseEvent) => {
+			if (disabled) return preventDefault(e)
+			if (!e.nativeEvent.isTrusted || e.button !== 2) return
+			if (editor.isRightPressPending()) {
+				preventDefault(e)
+				const { target, clientX, clientY } = e
+				const onUp = (up: PointerEvent) => {
+					if (up.button !== 2) return
+					window.removeEventListener('pointerup', onUp)
+					if (editor.didRightPressPan()) return
+					target.dispatchEvent(
+						new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX, clientY, button: 2 })
+					)
+				}
+				window.addEventListener('pointerup', onUp)
+			} else if (editor.didRightPressPan()) {
+				preventDefault(e)
+			}
+		},
+		[editor, disabled]
+	)
+
 	return (
 		<_ContextMenu.Root dir="ltr" onOpenChange={handleOpenChange}>
 			<_ContextMenu.Trigger
-				onContextMenu={disabled ? preventDefault : undefined}
+				onContextMenu={onContextMenu}
 				dir="ltr"
 				disabled={disabled}
 			>

@@ -59,6 +59,31 @@ export class UserPreferencesManager {
 		return this.user.userPreferences.get().areKeyboardShortcutsEnabled ?? true
 	}
 
+	/** What the mouse wheel does, if the person has chosen. @public */
+	@computed getWheelBehavior(): 'pan' | 'zoom' | null {
+		return this.user.userPreferences.get().wheelBehavior ?? null
+	}
+
+	/** Whether wheeling up zooms out rather than in. @public */
+	@computed getIsZoomDirectionInverted() {
+		return this.user.userPreferences.get().isZoomDirectionInverted ?? false
+	}
+
+	/** Whether a click or a brush can select locked shapes. @public */
+	@computed getCanSelectLockedShapes() {
+		return this.user.userPreferences.get().canSelectLockedShapes ?? false
+	}
+
+	/** Pixels per page unit in exported and copied pictures; 2 unless chosen. @public */
+	@computed getExportPixelRatio() {
+		return this.user.userPreferences.get().exportPixelRatio ?? 2
+	}
+
+	/** Whether exports are trimmed to what's drawn. @public */
+	@computed getIsExportTrimmed() {
+		return this.user.userPreferences.get().isExportTrimmed ?? false
+	}
+
 	/**
 	 * @deprecated use `getIsDarkMode` instead
 	 */

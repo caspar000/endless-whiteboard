@@ -12,10 +12,7 @@ export function useExportAs() {
 
 	return useCallback(
 		(ids: TLShapeId[], format: TLExportType = 'png') => {
-			exportAs(editor, ids, format, {
-				scale: 1,
-				background: editor.getInstanceState().exportBackground,
-			}).catch((e) => {
+			exportAs(editor, ids, format).catch((e) => {
 				console.error(e.message)
 				addToast({
 					id: 'export-fail',

@@ -12,7 +12,14 @@ import { updateHoveredId } from '../../selection-logic/updateHoveredId'
 export class EditingShape extends StateNode {
 	static override id = 'editing_shape'
 
-	override onEnter = () => {
+	/**
+	 * The tool that made the shape being edited, when that tool should come back after: with the tool
+	 * locked, the text tool stays the text tool, so a click starts the next text (docs/fork-parity.md B13).
+	 */
+	private returnToTool: string | null = null
+
+	override onEnter = (info?: { returnToTool?: string }) => {
+		this.returnToTool = info?.returnToTool ?? null
 		const editingShape = this.editor.getEditingShape()
 		if (!editingShape) throw Error('Entered editing state without an editing shape')
 		updateHoveredId(this.editor)
@@ -115,16 +122,25 @@ export class EditingShape extends StateNode {
 		}
 
 		// still here? Cancel editing and transition back to select idle
-		this.parent.transition('idle', info)
+		this.leave(info)
 		// then feed the pointer down event back into the state chart as if it happened in that state
 		this.editor.root.handleEvent(info)
 	}
 
 	override onComplete: TLEventHandlers['onComplete'] = (info) => {
-		this.parent.transition('idle', info)
+		this.leave(info)
 	}
 
 	override onCancel: TLEventHandlers['onCancel'] = (info) => {
-		this.parent.transition('idle', info)
+		this.leave(info)
+	}
+
+	/** Ends the edit: back to select's idle, or to the locked tool that made the shape. */
+	private leave(info: object) {
+		if (this.returnToTool && this.editor.getInstanceState().isToolLocked) {
+			this.editor.setCurrentTool(this.returnToTool, info)
+		} else {
+			this.parent.transition('idle', info)
+		}
 	}
 }

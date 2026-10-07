@@ -53,15 +53,20 @@ turn by asking what it is looking at. See [`packages/agent-host`](packages/agent
 (relation view, tracing), and the node types. Digits `1`–`9` run left to right along it. The node
 types sit behind the last button — a **searchable grid**, registry-driven, so a new type or an
 extension's arrives in it without widening the dock; right-click offers "Add to board" for placing
-one at the pointer instead. The relation tool's row picks a curved or an elbow arrow; an elbow runs
-only across and down, routed around the shapes it joins (`canvas-editor`'s `elbow-arrow.ts`).
+one at the pointer instead. Frames, notes, shapes and text can be dragged out of the dock onto the
+board (`canvas/dockDrag.ts`). The relation tool's row picks a curved or an elbow arrow; an elbow runs
+only across and down, routed around the shapes it joins (`canvas-editor`'s `elbow-arrow.ts`). A right
+drag pans from any tool, and a right click opens the menu. Settings → Canvas holds the
+person's own ways of working: the wheel pans or zooms (either way round), locked shapes can be
+selected, and Export / Copy as PNG come out at 1×–3× and trimmed to the drawing if wanted.
 Double-clicking empty canvas is tldraw's default action. Double-clicking the board's name in the tab
 strip renames it.
 
 **Notes on paper** — a sticky note looks like one: flat paper with the crease of its glued strip and
 a soft shadow where it lifts off the board. The row above the sticky button switches to a **pinned
 note**, a larger note held up by a push pin, for the thing on a board that should stand out. Both
-take the same colours and text, `{…}` expressions included; the drawing is in
+take the same colours and text, `{…}` expressions included, and dragging a corner scales either,
+text and all; the drawing is in
 `packages/canvas/src/lib/shapes/note/paper.ts`.
 
 **Quick look** — tap <kbd>Space</kbd> on any node, image, sticky, text or frame and the camera zooms

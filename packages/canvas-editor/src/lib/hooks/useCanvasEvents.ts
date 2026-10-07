@@ -20,6 +20,8 @@ export function useCanvasEvents() {
 				if ((e as any).isKilled || editor.wasEventAlreadyHandled(e)) return
 
 				if (e.button === 2) {
+					// Held so a right drag pans the board even past the window's edge (I5).
+					if (e.pointerType === 'mouse') setPointerCapture(e.currentTarget, e)
 					editor.dispatch({
 						type: 'pointer',
 						target: 'canvas',

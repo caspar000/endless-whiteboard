@@ -43,7 +43,7 @@ export function goToNextNote(editor: Editor, noteId: TLShapeId, direction: NoteD
 	let nextId = existing?.id ?? null
 	if (!nextId) {
 		nextId = createShapeId()
-		const { color, labelColor, size, font, align, verticalAlign } = note.props as Record<string, unknown>
+		const { color, labelColor, size, font, align, verticalAlign, scale } = note.props as Record<string, unknown>
 		const pin = 'pinColor' in note.props ? { pinColor: (note.props as { pinColor: unknown }).pinColor } : {}
 		const parentTransform = editor.getShapeParentTransform(note)
 		const local = parentTransform ? parentTransform.clone().invert().applyToPoint({ x, y }) : { x, y }
@@ -53,7 +53,7 @@ export function goToNextNote(editor: Editor, noteId: TLShapeId, direction: NoteD
 			parentId: note.parentId,
 			x: local.x,
 			y: local.y,
-			props: { color, labelColor, size, font, align, verticalAlign, ...pin },
+			props: { color, labelColor, size, font, align, verticalAlign, scale, ...pin },
 		})
 	}
 

@@ -11,16 +11,31 @@ type ScribbleItem = {
 	delayRemaining: number
 	prev: null | VecModel
 	next: null | VecModel
+	/** Kept whole until it fades with the others held (see `addScribble`). */
+	held: boolean
+	/** The opacity it had, for fading from. */
+	opacity: number
 }
+
+/** How long a held trail fades over. */
+const HELD_FADE_MS = 500
 
 /** @public */
 export class ScribbleManager {
 	scribbleItems = new Map<string, ScribbleItem>()
 	state = 'paused' as 'paused' | 'running'
 
+	/** How long no held scribble has been drawn. */
+	private heldIdleMs = 0
+
 	constructor(private editor: Editor) {}
 
-	addScribble = (scribble: Partial<TLScribble>, id = uniqueId()) => {
+	/**
+	 * Starts a scribble. A `held` one doesn't shrink from its tail: it stays whole, with any other
+	 * held ones, until none has been drawn for its `delay`, and then they fade out together. The laser
+	 * draws that way, so a pointed-out shape reads as one mark (docs/fork-parity.md B12).
+	 */
+	addScribble = (scribble: Partial<TLScribble>, id = uniqueId(), { held = false } = {}) => {
 		const item: ScribbleItem = {
 			id,
 			scribble: {
@@ -39,12 +54,33 @@ export class ScribbleManager {
 			delayRemaining: scribble.delay ?? 0,
 			prev: null,
 			next: null,
+			held,
+			opacity: scribble.opacity ?? 0.8,
 		}
+		if (held) this.heldIdleMs = 0
 		this.scribbleItems.set(id, item)
 		if (this.state === 'paused') {
 			this.resume()
 		}
 		return item
+	}
+
+	/** Once every held scribble is finished and the wait is over, fades them all out together. */
+	private fadeHeld(elapsed: number) {
+		const held = [...this.scribbleItems.values()].filter((item) => item.held)
+		if (!held.length) return
+		if (held.some((item) => item.scribble.state !== 'stopping')) {
+			this.heldIdleMs = 0
+			return
+		}
+		this.heldIdleMs += elapsed
+		const wait = Math.max(...held.map((item) => item.scribble.delay))
+		const t = (this.heldIdleMs - wait) / HELD_FADE_MS
+		if (t <= 0) return
+		for (const item of held) {
+			if (t >= 1) this.scribbleItems.delete(item.id)
+			else item.scribble.opacity = item.opacity * (1 - t)
+		}
 	}
 
 	resume() {
@@ -117,6 +153,15 @@ export class ScribbleManager {
 					return
 				}
 
+				if (item.held) {
+					const { next, prev, scribble } = item
+					if (scribble.state === 'active' && next && next !== prev) {
+						item.prev = next
+						scribble.points.push(next)
+					}
+					return
+				}
+
 				if (item.delayRemaining > 0) {
 					item.delayRemaining = Math.max(0, item.delayRemaining - elapsed)
 				}
@@ -180,6 +225,8 @@ export class ScribbleManager {
 				}
 			})
 
+			this.fadeHeld(elapsed)
+
 			// The object here will get frozen into the record, so we need to
 			// create a copies of the parts that what we'll be mutating later.
 			this.editor.updateInstanceState({
@@ -188,7 +235,7 @@ export class ScribbleManager {
 						...scribble,
 						points: [...scribble.points],
 					}))
-					.slice(-5), // limit to three as a minor sanity check
+					.slice(-20), // a minor sanity check
 			})
 
 			// If we've removed all the scribbles, stop ticking

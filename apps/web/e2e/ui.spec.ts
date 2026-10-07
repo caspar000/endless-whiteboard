@@ -710,9 +710,8 @@ test.describe('canvas chrome', () => {
 			'note',
 			'draw',
 			'eraser',
-			// The shapes button is not a tldraw tool (its map has one entry per geo kind) and neither
-			// the relation-view nor the tracing button is one, so none of them carries a `tools.` id.
-			'?',
+			// The shapes button: not a tldraw tool (its map has one entry per geo kind), but the geo tool.
+			'geo',
 			'text',
 			'asset',
 			'|',

@@ -1,3 +1,4 @@
+import { canSelectShape } from '../../selection-logic/canSelectShape'
 import {
 	Geometry2d,
 	HIT_TEST_MARGIN,
@@ -111,7 +112,7 @@ export class ScribbleBrushing extends StateNode {
 			if (
 				this.editor.isShapeOfType<TLGroupShape>(shape, 'group') ||
 				newlySelectedShapeIds.has(shape.id) ||
-				this.editor.isShapeOrAncestorLocked(shape)
+				!canSelectShape(this.editor, shape)
 			) {
 				continue
 			}

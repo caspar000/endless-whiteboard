@@ -1,5 +1,6 @@
-import { Editor, TLFrameShape, TLShapeId, TLSvgOptions } from '@lifeboard/canvas-editor'
+import { Editor, TLFrameShape, TLShapeId } from '@lifeboard/canvas-editor'
 import { getSvgAsDataUrl, getSvgAsImage } from '@lifeboard/canvas-editor'
+import { TLExportOptions, getExportOptions } from './exportOptions'
 
 /** @public */
 export type TLExportType = 'svg' | 'png' | 'jpeg' | 'webp' | 'json'
@@ -18,10 +19,11 @@ export function exportAs(
 	editor: Editor,
 	ids: TLShapeId[],
 	format: TLExportType = 'png',
-	opts = {} as Partial<TLSvgOptions>
+	opts = {} as TLExportOptions
 ) {
+	const { pixelRatio = 2, ...svgOpts } = { ...getExportOptions(editor), ...opts }
 	return editor
-		.getSvg(ids?.length ? ids : [...editor.getCurrentPageShapeIds()], opts)
+		.getSvg(ids?.length ? ids : [...editor.getCurrentPageShapeIds()], svgOpts)
 		.then((svg) => {
 			if (!svg) {
 				throw new Error('Could not construct SVG.')
@@ -48,7 +50,7 @@ export function exportAs(
 					getSvgAsImage(svg, editor.environment.isSafari, {
 						type: format,
 						quality: 1,
-						scale: 2,
+						scale: pixelRatio,
 					}).then((image) => {
 						if (!image) throw Error()
 						const dataURL = URL.createObjectURL(image)

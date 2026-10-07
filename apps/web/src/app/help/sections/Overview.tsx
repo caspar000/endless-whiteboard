@@ -267,6 +267,10 @@ export function Overview({ go }: SectionProps) {
 				</p>
 				<DockTour />
 				<p>
+					Frames, notes, shapes and text can also be <strong>dragged out of the dock</strong>, straight
+					to where you want them.
+				</p>
+				<p>
 					The last button is the odd one out: it opens a <strong>searchable grid</strong> rather than
 					picking up a tool. Everything the app and its extensions can add lives there, so installing
 					one does not make the dock any wider.
@@ -276,7 +280,9 @@ export function Overview({ go }: SectionProps) {
 
 			<Section title="Getting around">
 				<p>
-					Two-finger scroll pans from any tool; pinch or <kbd className="lb-kbd">⌘</kbd>-scroll zooms.
+					Two-finger scroll pans from any tool, and so does dragging with the right mouse button; pinch or{' '}
+					<kbd className="lb-kbd">⌘</kbd>-scroll zooms. With a mouse, Settings → Canvas can make the
+					wheel zoom instead, and turn its direction round.
 					The board is endless in every direction and nothing has to be tidy — a corner nobody has
 					visited costs nothing.
 				</p>

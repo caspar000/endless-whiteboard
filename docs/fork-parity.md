@@ -101,12 +101,12 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | B6 | Heart geo shape; custom geo types; fill styles "fill" and "lined-fill" | 2.2–5.0 | done except custom geo types: the heart is tldraw 5's curve (read from its rendered path), drawn, hit-tested, flipped and exported like any geo shape, and in the dock; the fill styles are D11 |
 | B7 | Smart typography (curly quotes, `->` to `→`) | 5.5 | done: `SmartTypography` in the default TipTap extensions: curly quotes and apostrophes, → ← …; not inside `{…}` expressions or code; Backspace takes it back |
 | B8 | Paste: raw `<iframe>` embeds, Mermaid to shapes, Excalidraw content; URL onto a selected shape sets its link | 3.8–5.5 | todo |
-| B9 | Drag a shape out of the toolbar | 4.0 | todo |
+| B9 | Drag a shape out of the toolbar | 4.0 | done: pulling the frame, note, shapes or text button onto the board makes that shape under the pointer, in the next shape's styles, and it follows the pointer until let go (into frames, snapping) as any moved shape; a text then takes its words. A click still picks the tool |
 | B10 | Dynamic size mode (shapes keep their size on screen) | 2.3 | todo |
 | B11 | Flatten selection to an image | 2.3 | done: `flattenSelection` draws the selection as a PNG at twice its size, stores it as any picture, and puts it where the shapes were, at their size and depth; one undo brings them back. In the selection toolbar's … menu and ⌘K |
-| B12 | Laser that fades as one stroke | 4.4 | todo |
-| B13 | Text tool lock; note resize by scale | 3.3, 3.8 | todo |
-| B14 | Align centre option | 5.4 | todo |
+| B12 | Laser that fades as one stroke | 4.4 | done: laser strokes stay whole while you go on pointing, and a moment after the last one they all fade out together (`addScribble(…, { held: true })`) |
+| B13 | Text tool lock; note resize by scale | 3.3, 3.8 | done: with the tool locked, finishing a text goes back to the text tool, so a click starts the next; notes and pinned notes have corner handles and scale (`scale`, text and all, down to 0.2), alone or with a selection, on screen and in export |
+| B14 | Align centre option | 5.4 | done: `alignShapes(ids, 'center')` lines up both centres; in the context menu's Arrange and ⌘K, with the other six alignments |
 
 ## I — Interaction
 
@@ -116,12 +116,12 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | I2 | Snapping to the grid while creating; handle-point snapping; snapping inside frames | 2.0–3.5 | done: with grid snapping on, a new shape (drawn or clicked in, notes too) starts on the grid and a dragged point (an arrow's end, a line's vertex) lands on it, ⌘/Ctrl to skip; inside a frame, shapes also snap to the frame's own edges and middle |
 | I3 | Cmd/Ctrl-click multi-select; smarter select-all | 3.3, 3.15 | done: ⌘/Ctrl-click adds or takes away like Shift-click (on empty paper it still brushes); select all takes the frame's or group's shapes first, then the page |
 | I4 | Quick zoom overview (`z` + Shift); Shift +/− zooms at the cursor; 5% minimum zoom | 4.4, 3.11 | done: Shift+Z shows the whole board and goes back to where you were; Shift+= and Shift+− zoom around the pointer; zoom goes down to 5% |
-| I5 | Right-click-drag pans the camera | 5.0 | todo |
+| I5 | Right-click-drag pans the camera | 5.0 | done: a right press that moves pans (and slides on release); one that doesn't opens the menu when it comes up, also where the browser asks for the menu on the way down (macOS) |
 | I6 | Touch: double-tap-and-drag zoom; long-press | 5.2, 2.1 | done: one-finger zoom (`useTouchZoom`: the second tap is held back until it moves, so a plain double tap still reaches the editor); long-press already opened the context menu through Radix, now under test |
 | I7 | Context menu from any tool; Shift+Q copies a shape's style; Cmd-click a style applies it to the selection only | 5.0–5.2 | done: right-click opens the menu from any tool (switching to select); Shift+Q copies the style of the shape under the pointer (or selected) to the next shapes and the rest of the selection, fill colour included; ⌘-click on a dock style changes the selection only. On the way: a menu closed soon after opening stayed "open" and turned off every shortcut |
 | I8 | Move the selection into and out of frames and groups by keyboard; Option+arrows between pages | 3.11–3.13 | todo |
 | I9 | Better pressure handling for pen tablets | 2.2 | todo |
-| I10 | Option to select locked shapes; option to turn off shortcuts; inverted wheel zoom | 5.1, 3.15, 4.4 | todo |
+| I10 | Option to select locked shapes; option to turn off shortcuts; inverted wheel zoom | 5.1, 3.15, 4.4 | done: user preferences `canSelectLockedShapes`, `areKeyboardShortcutsEnabled`, `wheelBehavior` (the wheel pans or zooms) and `isZoomDirectionInverted`, in Settings → Canvas and Keyboard. Locked shapes selected still don't move or change |
 
 ## A — Accessibility
 
@@ -168,8 +168,8 @@ Unmeasured: how the fork does on Lifeboard's 500-node `perf.spec.ts`. Phase 7 me
 | X1 | Sanitise pasted and dropped SVG | 4.5 | done: `sanitizeSvg` (canvas-editor) cleans pasted SVG text before it is measured and every SVG file before it is stored: no scripts, handlers, outside links, `foreignObject`, frames, or animations that set a link or handler |
 | X2 | Clipboard hooks (before copy, before paste, raw paste) | 5.0 | todo |
 | X3 | Copy as PNG by default (⌘⇧C); paste as plain text (⌘⇧V) | 5.0 | done: ⌘⇧C copies the selection as PNG (it was SVG); ⌘⇧V pastes the clipboard's plain text at the pointer, falling back to the old paste-at-pointer when there is none |
-| X4 | Export options: `scale`, `pixelRatio`, trim to content (`padding: 'auto'`); custom shapes export without writing `toSvg` | 3.0–5.0 | todo |
-| X5 | Clicks pass through transparent image pixels | 4.5 | todo |
+| X4 | Export options: `scale`, `pixelRatio`, trim to content (`padding: 'auto'`); custom shapes export without writing `toSvg` | 3.0–5.0 | done: `getSvg`/`toImage` take `scale`, `pixelRatio` and `padding: 'auto'` (measured from what's drawn, arrowheads and labels included); a shape without `toSvg` exports as the canvas shows it (E11). Export and Copy as PNG follow Settings → Canvas → Export (1×–3×, trimmed) |
+| X5 | Clicks pass through transparent image pixels | 4.5 | done: each picture is read once from its smallest copy into a 128-cell alpha grid; a click where it's empty (cropped and flipped as shown) reaches what's behind. JPEGs, unreadable pictures and pictures still loading stay solid |
 
 ## F — Fork housekeeping
 

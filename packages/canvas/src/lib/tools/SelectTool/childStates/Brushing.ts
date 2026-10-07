@@ -1,3 +1,4 @@
+import { canSelectShape } from '../../selection-logic/canSelectShape'
 import {
 	Box2d,
 	HIT_TEST_MARGIN,
@@ -44,7 +45,7 @@ export class Brushing extends StateNode {
 				.filter(
 					(shape) =>
 						this.editor.isShapeOfType<TLGroupShape>(shape, 'group') ||
-						this.editor.isShapeOrAncestorLocked(shape)
+						!canSelectShape(this.editor, shape)
 				)
 				.map((shape) => shape.id)
 		)

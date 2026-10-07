@@ -8,6 +8,7 @@ export type TLUiTranslationKey =
 	| 'action.open-embed-link'
 	| 'action.align-bottom'
 	| 'action.align-center-horizontal'
+	| 'action.align-center'
 	| 'action.align-center-vertical'
 	| 'action.align-center-horizontal.short'
 	| 'action.align-center-vertical.short'

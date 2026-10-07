@@ -3546,8 +3546,8 @@ describe('resizing a selection of mixed rotations', () => {
 // 	})
 // })
 
-describe('nodes that have do not resize', () => {
-	it('are still translated if part of a selection', () => {
+describe('notes in a selection', () => {
+	it('scale with it, as they do on their own (B13)', () => {
 		const noteBId = createShapeId('noteB')
 		editor.createShapes([box(ids.boxA, 0, 0, 200, 200), { id: noteBId, type: 'note', x: 0, y: 0 }])
 
@@ -3560,8 +3560,7 @@ describe('nodes that have do not resize', () => {
 		editor.resizeSelection({ scaleX: 2, scaleY: 2 }, 'bottom_right')
 
 		expect(editor.getShapePageBounds(ids.boxA)).toMatchObject({ x: 0, y: 0, w: 400, h: 400 })
-		// noteB should be in the middle of boxA
-		expect(editor.getShapePageBounds(noteBId)).toMatchObject({ x: 100, y: 100, w: 200, h: 200 })
+		expect(editor.getShapePageBounds(noteBId)).toMatchObject({ x: 0, y: 0, w: 400, h: 400 })
 	})
 	it('can flip', () => {
 		const noteBId = createShapeId('noteB')

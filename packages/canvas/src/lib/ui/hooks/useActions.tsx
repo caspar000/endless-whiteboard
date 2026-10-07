@@ -562,6 +562,21 @@ export function ActionsProvider({ overrides, children }: ActionsProviderProps) {
 				},
 			},
 			{
+				// Both centres at once (docs/fork-parity.md B14).
+				id: 'align-center',
+				label: 'action.align-center',
+				icon: 'align-center-horizontal',
+				readonlyOk: false,
+				onSelect(source) {
+					if (!hasSelectedShapes()) return
+					if (mustGoBackToSelectToolFirst()) return
+
+					trackEvent('align-shapes', { operation: 'center', source })
+					editor.mark('align center')
+					editor.alignShapes(editor.getSelectedShapeIds(), 'center')
+				},
+			},
+			{
 				id: 'align-top',
 				label: 'action.align-top',
 				icon: 'align-top',

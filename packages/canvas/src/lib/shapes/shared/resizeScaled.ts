@@ -1,7 +1,7 @@
 import { Box2d, TLShape, Vec2d, VecModel } from '@lifeboard/canvas-editor'
 
 export function resizeScaled(
-	shape: Extract<TLShape, { props: { scale: number } }>,
+	shape: Pick<TLShape, 'rotation'> & { props: { scale: number } },
 	{
 		initialBounds,
 		scaleX,

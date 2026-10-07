@@ -114,7 +114,8 @@ export const TLUiContextMenuSchemaProvider = track(function TLUiContextMenuSchem
 								menuItem(actions['align-right']),
 								menuItem(actions['align-top']),
 								menuItem(actions['align-center-vertical']),
-								menuItem(actions['align-bottom'])
+								menuItem(actions['align-bottom']),
+								menuItem(actions['align-center'])
 							),
 						threeSelected &&
 							menuGroup(

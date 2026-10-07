@@ -358,6 +358,31 @@ registerCommand({
 	},
 })
 
+/**
+ * Lining the selection up, from the palette as from the context menu's Arrange. "Both centres" is
+ * the one the context menu gained with fork-parity B14: one step instead of two.
+ */
+const ALIGNMENTS = [
+	['center', 'both centres'],
+	['left', 'left edges'],
+	['center-horizontal', 'centres, left to right'],
+	['right', 'right edges'],
+	['top', 'top edges'],
+	['center-vertical', 'centres, top to bottom'],
+	['bottom', 'bottom edges'],
+] as const
+for (const [operation, what] of ALIGNMENTS) {
+	registerCommand({
+		id: `shape.align-${operation}`,
+		title: `Align the selection's ${what}`,
+		group: CANVAS_GROUP,
+		when: (ctx) => ctx.editor !== null && ctx.editor.getSelectedShapeIds().length > 1,
+		run: (ctx) => {
+			if (ctx.editor) runTldrawAction(ctx.editor, `align-${operation}`)
+		},
+	})
+}
+
 registerCommand({
 	id: 'shape.properties',
 	title: 'Properties of the selected shape',

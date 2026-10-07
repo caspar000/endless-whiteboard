@@ -14,6 +14,7 @@ import {
 	pointInPolygon,
 } from '@lifeboard/canvas-editor'
 import { resizeSelectionByKeyboard, selectNextShape, selectShapeInDirection } from '../keyboardNavigation'
+import { canSelectShape } from '../../selection-logic/canSelectShape'
 import { getHitShapeOnCanvasPointerDown } from '../../selection-logic/getHitShapeOnCanvasPointerDown'
 import { getShouldEnterCropMode } from '../../selection-logic/getShouldEnterCropModeOnPointerDown'
 import { selectOnCanvasPointerUp } from '../../selection-logic/selectOnCanvasPointerUp'
@@ -57,7 +58,7 @@ export class Idle extends StateNode {
 					: info.target === 'canvas'
 					? getHitShapeOnCanvasPointerDown(this.editor)
 					: undefined
-			if (shape && !this.editor.isShapeOrAncestorLocked(shape)) {
+			if (shape && canSelectShape(this.editor, shape)) {
 				this.parent.transition('pointing_shape', { ...info, target: 'shape', shape })
 				return
 			}
@@ -104,7 +105,7 @@ export class Idle extends StateNode {
 				break
 			}
 			case 'shape': {
-				if (this.editor.isShapeOrAncestorLocked(info.shape)) {
+				if (!canSelectShape(this.editor, info.shape)) {
 					this.parent.transition('pointing_canvas', info)
 					break
 				}

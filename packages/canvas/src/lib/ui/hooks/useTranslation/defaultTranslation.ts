@@ -8,6 +8,7 @@ export const DEFAULT_TRANSLATION = {
 	'action.open-embed-link': 'Open link',
 	'action.align-bottom': 'Align bottom',
 	'action.align-center-horizontal': 'Align horizontally',
+	'action.align-center': 'Align centres',
 	'action.align-center-vertical': 'Align vertically',
 	'action.align-center-horizontal.short': 'Align H',
 	'action.align-center-vertical.short': 'Align V',

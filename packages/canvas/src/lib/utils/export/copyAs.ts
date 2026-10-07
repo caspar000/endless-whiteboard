@@ -1,5 +1,6 @@
-import { Editor, TLShapeId, TLSvgOptions } from '@lifeboard/canvas-editor'
+import { Editor, TLShapeId } from '@lifeboard/canvas-editor'
 import { getSvgAsImage } from '@lifeboard/canvas-editor'
+import { TLExportOptions, getExportOptions } from './exportOptions'
 
 /** @public */
 export type TLCopyType = 'svg' | 'png' | 'jpeg' | 'json'
@@ -18,18 +19,16 @@ export function copyAs(
 	editor: Editor,
 	ids: TLShapeId[],
 	format: TLCopyType = 'svg',
-	opts = {} as Partial<TLSvgOptions>
+	opts = {} as TLExportOptions
 ) {
+	const { pixelRatio = 2, ...svgOpts } = { ...getExportOptions(editor), ...opts }
+
 	// Note:  it's important that this function itself isn't async - we need to create the relevant
 	// `ClipboardItem`s synchronously to make sure safari knows that the user _wants_ to copy
 	// See https://bugs.webkit.org/show_bug.cgi?id=222262
 
 	return editor
-		.getSvg(ids?.length ? ids : [...editor.getCurrentPageShapeIds()], {
-			scale: 1,
-			background: editor.getInstanceState().exportBackground,
-			...opts,
-		})
+		.getSvg(ids?.length ? ids : [...editor.getCurrentPageShapeIds()], svgOpts)
 		.then((svg) => {
 			if (!svg) {
 				throw new Error('Could not construct SVG.')
@@ -57,7 +56,7 @@ export function copyAs(
 					const blobPromise = getSvgAsImage(svg, editor.environment.isSafari, {
 						type: format,
 						quality: 1,
-						scale: 2,
+						scale: pixelRatio,
 					}).then((blob) => {
 						if (blob) {
 							if (window.navigator.clipboard) {

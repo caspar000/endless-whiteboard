@@ -10,7 +10,8 @@ export type TLSvgOptions = {
 	bounds: Box2d
 	scale: number
 	background: boolean
-	padding: number
+	/** Room around the shapes, in page units; `auto` trims to what's drawn, strokes and all. */
+	padding: number | 'auto'
 	darkMode?: boolean
 	preserveAspectRatio: React.SVGAttributes<SVGSVGElement>['preserveAspectRatio']
 }

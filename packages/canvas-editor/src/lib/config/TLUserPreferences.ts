@@ -23,6 +23,16 @@ export interface TLUserPreferences {
 	colorScheme?: 'light' | 'dark' | 'system' | null
 	/** Whether the canvas's keyboard shortcuts work. */
 	areKeyboardShortcutsEnabled?: boolean | null
+	/** What the mouse wheel does; wins over the camera's `wheelBehavior` when set. */
+	wheelBehavior?: 'pan' | 'zoom' | null
+	/** Whether wheeling up zooms out rather than in. */
+	isZoomDirectionInverted?: boolean | null
+	/** Whether a click or a brush can select locked shapes (which still don't move or change). */
+	canSelectLockedShapes?: boolean | null
+	/** Pixels per page unit in exported and copied pictures. */
+	exportPixelRatio?: number | null
+	/** Whether exports are trimmed to what's drawn rather than padded. */
+	isExportTrimmed?: boolean | null
 }
 
 interface UserDataSnapshot {
@@ -46,6 +56,11 @@ const userTypeValidator: T.Validator<TLUserPreferences> = T.object<TLUserPrefere
 	isSnapMode: T.boolean.nullable().optional(),
 	colorScheme: T.literalEnum('light', 'dark', 'system').nullable().optional(),
 	areKeyboardShortcutsEnabled: T.boolean.nullable().optional(),
+	wheelBehavior: T.literalEnum('pan', 'zoom').nullable().optional(),
+	isZoomDirectionInverted: T.boolean.nullable().optional(),
+	canSelectLockedShapes: T.boolean.nullable().optional(),
+	exportPixelRatio: T.number.nullable().optional(),
+	isExportTrimmed: T.boolean.nullable().optional(),
 })
 
 const Versions = {
@@ -53,10 +68,11 @@ const Versions = {
 	AddIsSnapMode: 2,
 	MakeFieldsNullable: 3,
 	AddColorSchemeAndShortcuts: 4,
+	AddControlsAndExport: 5,
 } as const
 
 const userMigrations = defineMigrations({
-	currentVersion: Versions.AddColorSchemeAndShortcuts,
+	currentVersion: Versions.AddControlsAndExport,
 	migrators: {
 		[Versions.AddAnimationSpeed]: {
 			up: (user) => {
@@ -96,6 +112,17 @@ const userMigrations = defineMigrations({
 		[Versions.AddColorSchemeAndShortcuts]: {
 			up: (user: TLUserPreferences) => user,
 			down: ({ colorScheme: _, areKeyboardShortcutsEnabled: __, ...user }: TLUserPreferences) => user,
+		},
+		[Versions.AddControlsAndExport]: {
+			up: (user: TLUserPreferences) => user,
+			down: ({
+				wheelBehavior: _,
+				isZoomDirectionInverted: __,
+				canSelectLockedShapes: ___,
+				exportPixelRatio: ____,
+				isExportTrimmed: _____,
+				...user
+			}: TLUserPreferences) => user,
 		},
 	},
 })

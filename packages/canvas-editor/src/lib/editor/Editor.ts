@@ -6900,14 +6900,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * ```
 	 *
 	 * @param shapes - The shapes (or shape ids) to align.
-	 * @param operation - The align operation to apply.
+	 * @param operation - The align operation to apply. `center` is both centres at once.
 	 *
 	 * @public
 	 */
 
 	alignShapes(
 		shapes: TLShapeId[] | TLShape[],
-		operation: 'left' | 'center-horizontal' | 'right' | 'top' | 'center-vertical' | 'bottom'
+		operation: 'left' | 'center-horizontal' | 'right' | 'top' | 'center-vertical' | 'bottom' | 'center'
 	): this {
 		const ids =
 			typeof shapes[0] === 'string'
@@ -6937,6 +6937,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 					break
 				}
 				case 'center-vertical': {
+					delta.y = commonBounds.midY - pageBounds.minY - pageBounds.height / 2
+					break
+				}
+				case 'center': {
+					delta.x = commonBounds.midX - pageBounds.minX - pageBounds.width / 2
 					delta.y = commonBounds.midY - pageBounds.minY - pageBounds.height / 2
 					break
 				}
@@ -9190,7 +9195,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			ids.length === 1 && this.isShapeOfType<TLFrameShape>(this.getShape(ids[0])!, 'frame')
 				? ids[0]
 				: null
-		if (!singleFrameShapeId) {
+		if (!singleFrameShapeId && padding !== 'auto') {
 			// Expand by an extra 32 pixels
 			bbox.expandBy(padding)
 		}
@@ -9362,6 +9367,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		for (const { element } of unorderedShapeElements.sort((a, b) => a.zIndex - b.zIndex)) {
 			svg.appendChild(element)
+		}
+
+		if (padding === 'auto' && !singleFrameShapeId && !opts.bounds) {
+			const drawn = measureDrawnBounds(svg)
+			if (drawn) {
+				svg.setAttribute('width', drawn.width * scale + '')
+				svg.setAttribute('height', drawn.height * scale + '')
+				svg.setAttribute('viewBox', `${drawn.minX} ${drawn.minY} ${drawn.width} ${drawn.height}`)
+			}
 		}
 
 		return svg
@@ -9555,6 +9569,70 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @internal
 	 */
 	private _prevCursor: TLCursorType = 'default'
+
+	/** The right button's press, while it's down: right-click and drag pans (docs/fork-parity.md I5). */
+	private _rightPress: { origin: Vec2d; panning: boolean } | null = null
+
+	/** Whether the last right press panned, so it opens no menu. */
+	private _rightPressPanned = false
+
+	/**
+	 * Whether the right button is down, not yet known to be a click or a pan. A context menu waits for
+	 * it to come up, and opens only if it didn't pan ({@link Editor.didRightPressPan}).
+	 *
+	 * @public
+	 */
+	isRightPressPending(): boolean {
+		return this._rightPress !== null
+	}
+
+	/** Whether the last right press panned the board rather than clicked. @public */
+	didRightPressPan(): boolean {
+		return this._rightPressPanned
+	}
+
+	/** Returns true when the event belonged to a right-button pan, and goes no further. */
+	private _handleRightPress(info: TLPointerEventInfo): boolean {
+		const { inputs } = this
+		switch (info.name) {
+			case 'right_click': {
+				if (info.button !== 2 || info.isPen) return false
+				this._rightPress = { origin: inputs.currentScreenPoint.clone(), panning: false }
+				this._rightPressPanned = false
+				return false
+			}
+			case 'pointer_move': {
+				const press = this._rightPress
+				if (!press) return false
+				if (!press.panning) {
+					const distance = this.getInstanceState().isCoarsePointer ? COARSE_DRAG_DISTANCE : DRAG_DISTANCE
+					if (press.origin.dist(inputs.currentScreenPoint) < distance) return false
+					press.panning = true
+					this._prevCursor = this.getInstanceState().cursor.type
+					this.stopCameraAnimation()
+					this.updateInstanceState({ cursor: { type: 'grabbing', rotation: 0 } })
+				}
+				this.pan(Vec2d.Sub(inputs.currentScreenPoint, inputs.previousScreenPoint))
+				return true
+			}
+			case 'pointer_up': {
+				const press = this._rightPress
+				if (info.button !== 2 || !press) return false
+				this._rightPress = null
+				this._rightPressPanned = press.panning
+				if (!press.panning) return false
+				this.slideCamera({
+					speed: Math.min(2, inputs.pointerVelocity.len()),
+					direction: inputs.pointerVelocity,
+					friction: CAMERA_SLIDE_FRICTION,
+				})
+				this.updateInstanceState({ cursor: { type: this._prevCursor, rotation: 0 } })
+				return true
+			}
+			default:
+				return false
+		}
+	}
 
 	/** @internal */
 	private _shiftKeyTimeout = -1 as any
@@ -9766,15 +9844,22 @@ export class Editor extends EventEmitter<TLEventMap> {
 					if (this.getIsMenuOpen()) {
 						// noop
 					} else {
-						if (inputs.ctrlKey) {
-							// todo: Start or update the zoom end interval
+						// ⌘/Ctrl, and a trackpad pinch (which arrives as one), always zoom; a plain wheel zooms
+						// when that's what the person wants the wheel for, and turning it sideways still pans
+						// (docs/fork-parity.md I10).
+						const wheelBehavior = this.user.getWheelBehavior() ?? this._cameraOptions.get().wheelBehavior
+						if (wheelBehavior === 'none' && !inputs.ctrlKey) return
+						const wheelZooms =
+							wheelBehavior === 'zoom' && !inputs.shiftKey && info.delta.y !== 0 && info.delta.x === 0
+						if (inputs.ctrlKey || wheelZooms) {
+							// The plain wheel's step, capped as a ⌘-wheel's is.
+							let dz = inputs.ctrlKey ? info.delta.z ?? 0 : Math.max(-0.1, Math.min(0.1, info.delta.y / 100))
+							if (this.user.getIsZoomDirectionInverted()) dz = -dz
 
-							// If the alt or ctrl keys are pressed,
-							// zoom or pan the camera and then return.
 							const { x, y } = this.inputs.currentScreenPoint
 							const { x: cx, y: cy, z: cz } = this.getCamera()
 
-							const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cz + (info.delta.z ?? 0) * cz))
+							const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cz + dz * cz))
 
 							this.setCamera({
 								x: cx + (x / zoom - x) - (x / cz - x),
@@ -9808,6 +9893,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 					if (inputs.isPinching) return
 
 					this._updateInputsFromEvent(info)
+
+					if (this._handleRightPress(info)) return
 
 					const { isPen } = info
 
@@ -10071,3 +10158,28 @@ function alertMaxShapes(editor: Editor, pageId = editor.getCurrentPageId()) {
 	const name = editor.getPage(pageId)!.name
 	editor.emit('max-shapes', { name, pageId, count: MAX_SHAPES_PER_PAGE })
 }
+
+/**
+ * What an export draws, measured: its shapes' geometry misses arrowheads, labels past the edge and
+ * shadows. The measure leaves out stroke widths, so a little is added for them. `null` where the
+ * document can't lay the drawing out (tests).
+ */
+function measureDrawnBounds(svg: SVGSVGElement): Box2d | null {
+	const host = document.createElement('div')
+	host.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none'
+	host.appendChild(svg)
+	document.body.appendChild(host)
+	try {
+		const box = typeof svg.getBBox === 'function' ? svg.getBBox() : null
+		if (!box || !box.width || !box.height) return null
+		return new Box2d(box.x, box.y, box.width, box.height).expandBy(TRIMMED_STROKE_ROOM)
+	} catch {
+		return null
+	} finally {
+		svg.remove()
+		host.remove()
+	}
+}
+
+/** Room for strokes around a trimmed export, in page units: half the widest stroke and some. */
+const TRIMMED_STROKE_ROOM = 6

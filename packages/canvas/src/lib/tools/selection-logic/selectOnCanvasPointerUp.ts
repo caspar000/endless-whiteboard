@@ -1,4 +1,5 @@
 import { Editor, HIT_TEST_MARGIN, TLShape, isShapeId } from '@lifeboard/canvas-editor'
+import { canSelectShape } from './canSelectShape'
 
 export function selectOnCanvasPointerUp(editor: Editor) {
 	const selectedShapeIds = editor.getSelectedShapeIds()
@@ -9,7 +10,7 @@ export function selectOnCanvasPointerUp(editor: Editor) {
 		margin: HIT_TEST_MARGIN / editor.getZoomLevel(),
 		hitLabels: true,
 		renderingOnly: true,
-		filter: (shape) => !shape.isLocked,
+		filter: (shape) => canSelectShape(editor, shape),
 	})
 
 	// Note at the start: if we select a shape that is inside of a group,

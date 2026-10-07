@@ -15,6 +15,7 @@ import {
 } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
+import { SeeThroughRectangle, isImageSeeThroughAt } from './seeThrough'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 
 const loadImage = async (url: string): Promise<HTMLImageElement> => {
@@ -60,6 +61,13 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 
 	override isAspectRatioLocked = () => true
 	override canCrop = () => true
+
+	/** Solid where the picture is, see-through where it isn't (./seeThrough.ts). */
+	override getGeometry(shape: TLImageShape) {
+		return new SeeThroughRectangle({ width: shape.props.w, height: shape.props.h, isFilled: true }, (point) =>
+			isImageSeeThroughAt(this.editor, shape, point)
+		)
+	}
 
 	override getDefaultProps(): TLImageShape['props'] {
 		return {

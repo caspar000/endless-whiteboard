@@ -51,7 +51,7 @@ export class Pointing extends StateNode {
 				onInteractionEnd: 'text',
 				onCreate: () => {
 					this.editor.setEditingShape(shape.id)
-					this.editor.setCurrentTool('select.editing_shape')
+					this.editor.setCurrentTool('select.editing_shape', { returnToTool: 'text' })
 				},
 			})
 		}
@@ -93,7 +93,7 @@ export class Pointing extends StateNode {
 
 		this.editor.setEditingShape(id)
 		this.editor.setCurrentTool('select')
-		this.editor.root.getCurrent()?.transition('editing_shape')
+		this.editor.root.getCurrent()?.transition('editing_shape', { returnToTool: 'text' })
 	}
 
 	private cancel() {

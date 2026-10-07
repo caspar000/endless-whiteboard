@@ -1,11 +1,23 @@
-import { Grid2x2, Magnet } from 'lucide-react'
+import { ArrowUpDown, Crop, Grid2x2, Hand, LockOpen, Magnet, ZoomIn } from 'lucide-react'
 import type { CanvasPrefs, GridStyle } from '../canvasPrefs'
 import { AuraAdvanced } from './AuraAdvanced'
 import { Segmented, Toggle } from './controls'
+import { useUserPreference } from './useUserPreference'
 
 const GRID_STYLES: { value: GridStyle; label: string }[] = [
 	{ value: 'lifeboard', label: 'Lifeboard' },
 	{ value: 'native', label: 'Classic' },
+]
+
+const PIXEL_RATIOS = [
+	{ value: '1', label: '1×' },
+	{ value: '2', label: '2×' },
+	{ value: '3', label: '3×' },
+] as const
+
+const WHEEL_BEHAVIORS: { value: 'pan' | 'zoom'; label: string; icon: typeof Hand }[] = [
+	{ value: 'pan', label: 'Scrolls', icon: Hand },
+	{ value: 'zoom', label: 'Zooms', icon: ZoomIn },
 ]
 
 /** The paper every board is drawn on: whether it shows, what it looks like, and whether it pulls. */
@@ -39,7 +51,71 @@ export function CanvasPanel({ canvas }: { canvas: CanvasPrefs }) {
 				/>
 			</div>
 
+			<Controls />
+
+			<Export />
+
 			<AuraAdvanced />
 		</section>
+	)
+}
+
+/** How pictures of the board come out: Export as PNG or SVG, Copy as PNG. */
+function Export() {
+	const [pixelRatio, setPixelRatio] = useUserPreference('exportPixelRatio')
+	const [trimmed, setTrimmed] = useUserPreference('isExportTrimmed')
+	return (
+		<>
+			<h2>Export</h2>
+			<div className="lb-appearance__card">
+				<Segmented
+					label="Picture size"
+					value={String(pixelRatio ?? 2) as (typeof PIXEL_RATIOS)[number]['value']}
+					options={[...PIXEL_RATIOS]}
+					onChange={(value) => setPixelRatio(Number(value))}
+				/>
+				<Toggle
+					label="Trim to the drawing"
+					hint="No margin: the picture ends where the shapes do, arrowheads and labels included."
+					icon={Crop}
+					checked={trimmed ?? false}
+					onChange={setTrimmed}
+				/>
+			</div>
+		</>
+	)
+}
+
+/** How the mouse moves around the board, and what a click can pick up. */
+function Controls() {
+	const [wheelBehavior, setWheelBehavior] = useUserPreference('wheelBehavior')
+	const [inverted, setInverted] = useUserPreference('isZoomDirectionInverted')
+	const [selectLocked, setSelectLocked] = useUserPreference('canSelectLockedShapes')
+	return (
+		<>
+			<h2>Controls</h2>
+			<div className="lb-appearance__card">
+				<Segmented
+					label="Mouse wheel"
+					value={wheelBehavior ?? 'pan'}
+					options={WHEEL_BEHAVIORS}
+					onChange={setWheelBehavior}
+				/>
+				<Toggle
+					label="Invert wheel zoom"
+					hint="Wheeling up zooms out. ⌘-wheel and pinching follow it too."
+					icon={ArrowUpDown}
+					checked={inverted ?? false}
+					onChange={setInverted}
+				/>
+				<Toggle
+					label="Select locked shapes"
+					hint="A click or a drag can pick them up, to copy or unlock. They still don't move."
+					icon={LockOpen}
+					checked={selectLocked ?? false}
+					onChange={setSelectLocked}
+				/>
+			</div>
+		</>
 	)
 }

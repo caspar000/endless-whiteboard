@@ -9,11 +9,13 @@ import {
 	subscribeToKeymap,
 	type Command,
 } from '@lifeboard/node-kit'
-import { RotateCcw } from 'lucide-react'
+import { Keyboard, RotateCcw } from 'lucide-react'
 import { useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { bindCommand, resetAllBindings, resetCommandBinding } from '../keymapStore'
 import { OTHER_GROUP, formatKbd, groupInOrder, isMacPlatform } from '../paletteItems'
+import { Toggle } from './controls'
+import { useUserPreference } from './useUserPreference'
 
 /**
  * Settings → Keyboard: every command, and what reaches it.
@@ -30,6 +32,7 @@ export function KeymapPanel() {
 	const commands = useSyncExternalStore(subscribeToCommands, getVisibleCommands)
 	const keymapVersion = useSyncExternalStore(subscribeToKeymap, getKeymapVersion)
 	const [recording, setRecording] = useState<string | null>(null)
+	const [enabled, setEnabled] = useUserPreference('areKeyboardShortcutsEnabled')
 	const mac = isMacPlatform()
 
 	const rows = groupInOrder(
@@ -39,6 +42,15 @@ export function KeymapPanel() {
 	return (
 		<section className="lb-settings" data-keymap-version={keymapVersion}>
 			<h2>Shortcuts</h2>
+			<div className="lb-appearance__card">
+				<Toggle
+					label="Board shortcuts"
+					hint="Off, keys do nothing on the board. ⌘K, the sidebar and the other app shortcuts still work."
+					icon={Keyboard}
+					checked={enabled ?? true}
+					onChange={setEnabled}
+				/>
+			</div>
 			<p className="lb-settings__hint">
 				Press <em>Change</em> and then the keys you want. Anything the app does not claim is left to
 				the canvas, so its own editing shortcuts keep working.

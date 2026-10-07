@@ -6,6 +6,7 @@ import {
 	Rectangle2d,
 	ShapeUtil,
 	SvgExportContext,
+	TLOnResizeHandler,
 	renderHtmlFromRichText,
 	richTextToPlainText,
 	toRichText,
@@ -20,6 +21,7 @@ import {
 	toDomPrecision,
 } from '@lifeboard/canvas-editor'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
+import { resizeScaled } from '../shared/resizeScaled'
 import { useDefaultColorTheme } from '../shared/ShapeFill'
 import { TextLabel } from '../shared/TextLabel'
 import { FONT_FAMILIES, LABEL_FONT_SIZES, TEXT_PROPS } from '../shared/default-shape-constants'
@@ -35,14 +37,18 @@ export type TLNoteLikeShape = TLBaseShape<string, TLNoteShapeProps>
  * What a sticky note and a pinned note share: text that grows the paper, the paper itself, and its
  * export. They differ only in `paper` (./paper.ts).
  *
+ * Resizing one scales it, text and all (docs/fork-parity.md B13): the paper keeps its proportions
+ * and its text keeps its wrapping, only bigger or smaller. `scale` is that factor; everything else
+ * is in the paper's own units.
+ *
  * @public
  */
 export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends ShapeUtil<S> {
 	abstract readonly paper: NotePaper
 
 	override canEdit = () => true
-	override hideResizeHandles = () => true
 	override hideSelectionBoundsFg = () => true
+	override isAspectRatioLocked = () => true
 
 	getDefaultProps(): S['props'] {
 		return {
@@ -61,13 +67,18 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 	}
 
+	/** The paper's height before its scale. */
 	getHeight(shape: S) {
 		return this.paper.width + shape.props.growY
 	}
 
 	getGeometry(shape: S) {
-		const height = this.getHeight(shape)
-		return new Rectangle2d({ width: this.paper.width, height, isFilled: true })
+		const { scale } = shape.props
+		return new Rectangle2d({
+			width: this.paper.width * scale,
+			height: this.getHeight(shape) * scale,
+			isFilled: true,
+		})
 	}
 
 	component(shape: S) {
@@ -83,10 +94,18 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		const { width, crease, pin, textTop } = this.paper
 		const pinAt = pinPlacement(width)
 		const height = this.getHeight(shape)
+		const { scale } = shape.props
 
 		return (
 			<>
-				<div style={{ position: 'absolute', width, height }}>
+				<div
+					style={{
+						position: 'absolute',
+						width,
+						height,
+						...(scale !== 1 && { transform: `scale(${scale})`, transformOrigin: '0 0' }),
+					}}
+				>
 					{/* The paper's look is set out in ./paper.ts. */}
 					<div className="tl-note__shadow" />
 					<div className="tl-note__container" style={{ backgroundColor: fill }}>
@@ -130,25 +149,28 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 	}
 
 	indicator(shape: S) {
+		const { scale } = shape.props
 		return (
 			<rect
-				width={toDomPrecision(this.paper.width)}
-				height={toDomPrecision(this.getHeight(shape))}
+				width={toDomPrecision(this.paper.width * scale)}
+				height={toDomPrecision(this.getHeight(shape) * scale)}
 			/>
 		)
 	}
 
 	/** The same rectangle for the canvas that draws selected outlines (fork-parity P1). */
 	override getIndicatorPath(shape: S) {
+		const { scale } = shape.props
 		const path = new Path2D()
-		path.rect(0, 0, this.paper.width, this.getHeight(shape))
+		path.rect(0, 0, this.paper.width * scale, this.getHeight(shape) * scale)
 		return path
 	}
 
 	override async toSvg(shape: S, ctx: SvgExportContext) {
 		ctx.addExportDef(getFontDefForExport(shape.props.font))
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
-		const bounds = this.editor.getShapeGeometry(shape.id).bounds
+		// Drawn at the paper's own size, and scaled as a whole at the end.
+		const bounds = new Box2d(0, 0, this.paper.width, this.getHeight(shape))
 
 		const svg = (tag: string, attributes: Record<string, string | number>) => {
 			const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
@@ -195,7 +217,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 
 		// The label as the canvas shows it, formatting and all; as plain text if it isn't showing.
-		const label = await exportLabelFromDom(this.editor, shape, '.tl-text-label', ctx)
+		const label = await exportLabelFromDom(this.editor, shape, '.tl-text-label', ctx, { bounds })
 		if (label) {
 			g.appendChild(label)
 		} else {
@@ -219,6 +241,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 			g.appendChild(pinSvg)
 		}
 
+		if (shape.props.scale !== 1) g.setAttribute('transform', `scale(${shape.props.scale})`)
 		return g
 	}
 
@@ -257,6 +280,14 @@ export class NoteShapeUtil extends BaseNoteShapeUtil<TLNoteShape> {
 	static override migrations = noteShapeMigrations
 
 	readonly paper = STICKY_PAPER
+
+	override onResize: TLOnResizeHandler<TLNoteShape> = resizeNote
+}
+
+/** A note resized: scaled, from the corner dragged, but not so small it can't be read or found. */
+export function resizeNote(shape: TLNoteLikeShape, info: Parameters<typeof resizeScaled>[1]) {
+	const { x, y, props } = resizeScaled(shape, info)
+	return { x, y, props: { scale: Math.max(MIN_NOTE_SCALE, props.scale) } }
 }
 
 function getGrowY<S extends TLNoteLikeShape>(
@@ -297,6 +328,9 @@ function getGrowY<S extends TLNoteLikeShape>(
 		}
 	}
 }
+
+/** The smallest a note scales to: a fifth of its size. */
+const MIN_NOTE_SCALE = 0.2
 
 /** A pinned note's pin colour; a sticky has no pin, and reads as the default. */
 function pinColorOf(shape: TLNoteLikeShape): PinColor {

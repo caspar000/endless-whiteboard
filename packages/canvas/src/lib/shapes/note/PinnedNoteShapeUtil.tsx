@@ -5,8 +5,9 @@ import {
 	RecordProps,
 	TLBaseShape,
 	TLNoteShapeProps,
+	TLOnResizeHandler,
 } from '@lifeboard/canvas-editor'
-import { BaseNoteShapeUtil } from './NoteShapeUtil'
+import { BaseNoteShapeUtil, resizeNote } from './NoteShapeUtil'
 import { PINNED_PAPER } from './paper'
 import { PinColorStyle, type PinColor } from './pin'
 
@@ -29,6 +30,8 @@ const versions = createShapePropsMigrationIds('pinned-note', { AddPinColor: 1 })
 export class PinnedNoteShapeUtil extends BaseNoteShapeUtil<TLPinnedNoteShape> {
 	static override type = 'pinned-note' as const
 	static override props: RecordProps<TLPinnedNoteShape> = { ...noteShapeProps, pinColor: PinColorStyle }
+
+	override onResize: TLOnResizeHandler<TLPinnedNoteShape> = resizeNote
 	static override migrations = createShapePropsMigrationSequence({
 		sequence: [
 			{

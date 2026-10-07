@@ -717,6 +717,7 @@ test.describe('canvas chrome', () => {
 			'|',
 			'lb.relation-view',
 			'lb.tracing',
+			'lb.comments',
 			'|',
 			'?',
 		])

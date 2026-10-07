@@ -42,6 +42,11 @@ export type ClientMessage<R extends UnknownRecord = UnknownRecord> =
 			since?: { epoch: string; clock: number }
 	  }
 	| { type: 'push'; pushId: number; diff: NetworkDiff<R> }
+	/**
+	 * Where this client is on the board (its cursor, selection, name: a presence-scoped record), or
+	 * `null` when it has none. Relayed to the others, never stored.
+	 */
+	| { type: 'presence'; presence: R | null }
 	| { type: 'ping' }
 
 export type ServerMessage<R extends UnknownRecord = UnknownRecord> =
@@ -57,6 +62,8 @@ export type ServerMessage<R extends UnknownRecord = UnknownRecord> =
 	  }
 	| { type: 'pushResult'; pushId: number; clock: number; action: 'commit' | 'discard'; reason?: string }
 	| { type: 'patch'; clock: number; diff: NetworkDiff<R> }
+	/** Another client's presence, by its connection; `null` when it has gone. */
+	| { type: 'presence'; sessionId: string; presence: R | null }
 	| { type: 'pong' }
 	| { type: 'error'; reason: SyncErrorReason; message?: string }
 

@@ -9,6 +9,7 @@ import {
 	TLStoreProps,
 	TLUnknownBinding,
 	TLUnknownShape,
+	commentSchemaRecords,
 	createTLSchema,
 	defaultBindingSchemas,
 } from '@tldraw/tlschema'
@@ -122,7 +123,8 @@ export function createTLSchemaFromUtils({
 	for (const util of bindingUtils) {
 		bindings[util.type] = { props: util.props, migrations: util.migrations }
 	}
-	return createTLSchema({ shapes, bindings, migrations })
+	// Comments (threads, comments, reactions) are part of every board (docs/fork-parity.md S7).
+	return createTLSchema({ shapes, bindings, migrations, records: commentSchemaRecords })
 }
 
 /** @public */

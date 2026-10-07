@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { MAX_DISPLAY_NAME, USERNAME, type Accounts, type BoardRole, type ShareRole, type User } from './accounts.ts'
 import { isAssetHash, type AssetFiles } from './assets.ts'
 import { MIN_PASSWORD, startSession } from './auth.ts'
+import { boardWriteRule, presenceIdentity } from './boardWrites.ts'
 import { deadLinkPage } from './loginPage.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 import { exportVault } from './exportZip.ts'
@@ -283,6 +284,18 @@ export function registerApi(
 		createdAt: share.createdAt,
 	})
 
+	/**
+	 * Everyone who can open a board, by account id: its vault, and whoever it's shared with. For the
+	 * names on cursors, comments and "edited by" (phase 5).
+	 */
+	app.get<{ Params: { id: string } }>('/api/boards/:id/people', async (request, reply) => {
+		const found = access(request, reply, request.params.id)
+		if (!found) return reply
+		const members = accounts.members(found.board.vaultId).map(publicUser)
+		const shared = accounts.grantsOf(found.board.id).map(({ userId, username, displayName }) => ({ id: userId, username, displayName }))
+		return [...members, ...shared]
+	})
+
 	/** A board's links, and who came in through them. */
 	app.get<{ Params: { id: string } }>('/api/boards/:id/shares', async (request, reply) => {
 		if (!access(request, reply, request.params.id, 'member')) return reply
@@ -447,6 +460,11 @@ export function registerApi(
 		const role = board ? accounts.roleFor(me(request), board.id, board.vaultId) : null
 		// 4404 rather than an HTTP 404: the upgrade has already happened by the time a handler runs.
 		if (!board || !role) return socket.close(4404, 'No such board.')
-		rooms.connect(id, socket, { readOnly: role === 'view' })
+		const user = me(request)
+		rooms.connect(id, socket, {
+			identity: presenceIdentity(user),
+			readOnly: role === 'view',
+			mayWrite: boardWriteRule(user, role),
+		})
 	})
 }

@@ -590,6 +590,9 @@ importers:
 
   packages/canvas-sync:
     dependencies:
+      '@tldraw/state':
+        specifier: 5.5.2
+        version: 5.5.2
       '@tldraw/store':
         specifier: 5.5.2
         version: 5.5.2(react@19.2.8)

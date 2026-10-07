@@ -1,3 +1,4 @@
+import { atom, getUserPreferences, setUserPreferences } from '@lifeboard/canvas'
 import { clearSyncCache, listSyncCacheRooms } from '@lifeboard/canvas-sync'
 import type { KvStore } from '../platform/PlatformAdapter'
 import { forgetServerBoardList, serverApi } from './serverVault'
@@ -46,6 +47,42 @@ const json = async <T>(response: Response) => (await response.json()) as T
 const body = (value: unknown): RequestInit => ({ body: JSON.stringify(value) })
 
 export const getMe = async () => json<Me>(await serverApi('/me'))
+
+const ME_KEY = 'me'
+
+/**
+ * Who is logged in to the server, for what this device writes and shows as theirs: comments, cursors,
+ * "edited by" (phase 5). Remembered, so a board opened offline still knows; `null` without a server.
+ */
+export const currentAccount = atom<Me | null>('lifeboard:current-account', null)
+
+/** Reads it from the server when it answers, and from this device when it doesn't. */
+export async function loadCurrentAccount(kv: KvStore, online: boolean): Promise<void> {
+	if (online) {
+		try {
+			const me = await getMe()
+			setAccount(me)
+			await kv.set(ME_KEY, me)
+			return
+		} catch {
+			// Fall back to the one remembered.
+		}
+	}
+	setAccount((await kv.get<Me>(ME_KEY).catch(() => undefined)) ?? null)
+}
+
+/**
+ * The editor's own user is the account, so its other tabs and devices on a board aren't drawn as
+ * someone else's cursor (the editor leaves out presences with its own user id).
+ */
+function setAccount(me: Me | null): void {
+	currentAccount.set(me)
+	const id = me ? `user:${me.id}` : null
+	const prefs = getUserPreferences()
+	if (me && id && (prefs.id !== id || prefs.name !== me.displayName)) {
+		setUserPreferences({ ...prefs, id, name: me.displayName })
+	}
+}
 
 export const updateMe = async (patch: { username?: string; displayName?: string }) =>
 	json<Person>(await serverApi('/me', { method: 'PATCH', ...body(patch) }))
@@ -96,6 +133,7 @@ export async function logOut(kv: KvStore): Promise<void> {
 	try {
 		for (const room of await listSyncCacheRooms()) await clearSyncCache(room)
 		await forgetServerBoardList(kv)
+		await kv.delete(ME_KEY)
 	} finally {
 		await fetch('/logout', { method: 'POST' }).catch(() => {})
 		location.assign('/login')

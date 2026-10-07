@@ -26,6 +26,7 @@ import {
 } from './paletteItems'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { openShareDialog } from './ShareDialog'
+import { commentFocus, commentsPanelOpen } from '../canvas/comments/comments'
 import { EXTENSIONS_TAB } from './settings/sections'
 import type { Theme } from './useTheme'
 
@@ -351,6 +352,29 @@ registerCommand({
 		if (!editor) return
 		const source = copyShapeStyle(editor)
 		if (source && canHaveFillColor(source)) setNextFillColor(editor, readFillColor(source))
+	},
+})
+
+/** Comments (fork-parity S7): C, then a click, starts one; the list shows them all. */
+registerCommand({
+	id: 'comments.add',
+	title: 'Add a comment',
+	group: CANVAS_GROUP,
+	kbd: 'c',
+	when: onBoard,
+	run: () => {
+		commentFocus.set({ kind: 'placing' })
+	},
+})
+
+registerCommand({
+	id: 'comments.list',
+	title: 'Show or hide comments',
+	group: CANVAS_GROUP,
+	kbd: 'shift+c',
+	when: onBoard,
+	run: () => {
+		commentsPanelOpen.set(!commentsPanelOpen.get())
 	},
 })
 

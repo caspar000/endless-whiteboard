@@ -18,7 +18,7 @@ import {
 	updateServerBoard,
 } from '../server/serverVault'
 import { syncVaultSettings } from './vaultSettings'
-import { removeBoardAccess } from '../server/accounts'
+import { loadCurrentAccount, removeBoardAccess } from '../server/accounts'
 
 export interface BoardsApi {
 	boards: BoardMeta[]
@@ -60,6 +60,7 @@ export function useBoards(): BoardsApi {
 			const listed = await listServerBoards(platform.kv)
 			setServer(listed?.boards ?? null)
 			setServerOnline(listed?.online ?? false)
+			if (listed) await loadCurrentAccount(platform.kv, listed.online)
 			if (listed?.online) await syncVaultSettings()
 		} catch (error) {
 			// A server that answered and then failed: keep the boards we last saw rather than hide them.

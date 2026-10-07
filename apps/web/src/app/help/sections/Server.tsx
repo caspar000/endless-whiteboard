@@ -61,6 +61,22 @@ export function Server(_props: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Working together">
+				<p>
+					On a server board, everyone who has it open sees the others: a cursor with their name, and what
+					they have selected. A shape’s <strong>…</strong> menu says who added it and who changed it last.
+				</p>
+				<p>
+					<strong>Comments</strong> are for talking about the board on the board. Press <kbd className="lb-kbd">C</kbd>{' '}
+					and click: on a shape, the thread is pinned to it and follows it; anywhere else, it stays where
+					you put it. Reply in the thread, and <strong>Resolve</strong> it when it’s settled (anyone can
+					reopen it). You can edit or delete what you wrote, not what others wrote. The comments button in
+					the dock, or <kbd className="lb-kbd">⇧C</kbd>, lists every thread, open or resolved. Someone a
+					board is shared with to view can comment too. Comments aren’t undo steps, and they come along in
+					backups.
+				</p>
+			</Section>
+
 			<Section title="What else follows you">
 				<p>
 					Saved queries and the extensions you have switched off belong to your vault, so a new device

@@ -1,4 +1,5 @@
 import {
+	MessageSquare,
 	BookOpen,
 	Boxes,
 	Dices,
@@ -131,6 +132,14 @@ const DOCK_GROUPS: DockTool[][] = [
 			kbd: ['⌥⇧T'],
 			blurb:
 				'A lens. While it is on, clicking a shape lights up everything it is connected to — hidden relations included — and dims the rest. Escape leaves.',
+		},
+		{
+			id: 'comments',
+			label: 'Comments',
+			icon: <MessageSquare size={19} />,
+			kbd: ['C', '⇧C'],
+			blurb:
+				'Talk about the board on the board. Press C and click a shape or a spot to start a thread there; it follows the shape when it moves. This button lists every thread, open or resolved, and shows how many are open.',
 		},
 	],
 	[

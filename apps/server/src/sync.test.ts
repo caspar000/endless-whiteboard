@@ -5,7 +5,21 @@ import { join } from 'node:path'
 import { PROTOCOL_VERSION, SyncClient, type ClientSocket } from '@lifeboard/canvas-sync'
 import { createBoardSchema } from '@lifeboard/schema'
 import { unzipSync } from 'fflate'
-import { AssetRecordType, createShapeId, createTLStore, PageRecordType, type TLShape, type TLStore } from '@lifeboard/canvas'
+import {
+	AssetRecordType,
+	createComment,
+	createCommentThread,
+	createShapeId,
+	createTLStore,
+	PageRecordType,
+	richTextToPlainText,
+	toRichText,
+	type TLComment,
+	type TLCommentThread,
+	type TLRecord,
+	type TLShape,
+	type TLStore,
+} from '@lifeboard/canvas'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from './app.ts'
 import { AssetFiles } from './assets.ts'
@@ -438,6 +452,44 @@ describe('accounts', () => {
 		expect((await app.inject({ method: 'DELETE', url: `/api/shares/${link.id}`, headers: { cookie: owner } })).statusCode).toBe(204)
 		expect((await boardsOf(app, bob.cookie)).some((b) => b.id === board.id)).toBe(false)
 		expect((await app.inject({ url: `/share/${link.token}`, headers: { cookie: bob.cookie, accept: 'text/html' } })).statusCode).toBe(404)
+	})
+
+	it('a viewer may comment and resolve, and touch no one else’s comment', async () => {
+		const { app, port, cookie: owner } = await startServer()
+		const board = await createBoard(app, owner, 'Comment on me')
+		const bob = await invited(app, owner, 'new-vault')
+		const link = (await app.inject({ method: 'POST', url: `/api/boards/${board.id}/shares`, headers: { cookie: owner }, payload: { role: 'view' } })).json<{ token: string }>()
+		await app.inject({ url: `/share/${link.token}`, headers: { cookie: bob.cookie, accept: 'text/html' } })
+		const bobId = (await app.inject({ url: '/api/me', headers: { cookie: bob.cookie } })).json<{ id: string }>().id
+		const ownerId = (await app.inject({ url: '/api/me', headers: { cookie: owner } })).json<{ id: string }>().id
+
+		const ownerStore = await connect(port, owner, board.id)
+		const bobStore = await connect(port, bob.cookie, board.id)
+		const pageId = ownerStore.query.records('page').get()[0]!.id
+		// Comments are records every board holds, but not in the store's record type (see apps/web's comments.ts).
+		const putAll = (store: TLStore, list: Array<TLCommentThread | TLComment>) => store.put(list as unknown as TLRecord[])
+		const read = <T,>(store: TLStore, id: string) => store.get(id as TLRecord['id']) as unknown as T | undefined
+		const thread = createCommentThread({ anchor: { type: 'point', x: 10, y: 20 }, createdBy: bobId, pageId })
+		const bobs = createComment({ authorId: bobId, body: toRichText('Looks good'), pageId, threadId: thread.id })
+		putAll(bobStore, [thread, bobs])
+		await until(() => read(ownerStore, bobs.id) !== undefined)
+
+		// Not as someone else.
+		const forged = createComment({ authorId: ownerId, body: toRichText('Not me'), pageId, threadId: thread.id })
+		putAll(bobStore, [forged])
+		const owners = createComment({ authorId: ownerId, body: toRichText('Thanks'), pageId, threadId: thread.id })
+		putAll(ownerStore, [owners])
+		await until(() => read(bobStore, owners.id) !== undefined)
+		expect(read(ownerStore, forged.id)).toBeUndefined()
+
+		// Not someone else's words.
+		putAll(bobStore, [{ ...owners, body: toRichText('Edited by Bob') }])
+		await new Promise((r) => setTimeout(r, 300))
+		expect(richTextToPlainText(read<TLComment>(ownerStore, owners.id)!.body)).toBe('Thanks')
+
+		// Resolving anyone's thread is allowed.
+		putAll(bobStore, [{ ...thread, resolved: { at: 2, by: bobId } }])
+		await until(() => read<TLCommentThread>(ownerStore, thread.id)?.resolved != null)
 	})
 
 	it('an edit link lets someone outside the vault change the board, and leave it', async () => {

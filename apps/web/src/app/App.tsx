@@ -293,11 +293,14 @@ export function App() {
 	// A board reached by any route — a tab click, a pasted link, back/forward — gets a tab, and
 	// reopening a board whose closed tab is still draining stops the countdown: the editor is about
 	// to be the active one again, and its timer firing mid-session would unmount it under the user.
+	// Again when the board turns up in the list: a link to one it hadn't seen yet (made since it loaded,
+	// or just shared) has its tab dropped as unknown until the server has been asked.
+	const routedBoardKnown = route.view === 'board' && api.boards.some((board) => board.id === route.boardId)
 	useEffect(() => {
 		if (route.view !== 'board') return
 		openTab(route.boardId)
 		cancelDrainFor(route.boardId)
-	}, [route, openTab, cancelDrainFor])
+	}, [route, routedBoardKnown, openTab, cancelDrainFor])
 
 	// Activating an already-mounted tab needs two things onMount only does the first time: keyboard
 	// focus back on that editor (or tool shortcuts go dead after a tab switch), and `window.editor`
@@ -637,6 +640,18 @@ export function App() {
 		? api.boards.find((b) => b.id === activeBoardId)
 		: undefined
 
+	/**
+	 * A link to a board this list hasn't seen: made since it loaded, by someone else in the vault, or
+	 * just shared with you. The server is asked once before the board is called gone.
+	 */
+	const [checkedFor, setCheckedFor] = useState<string | null>(null)
+	const { refresh: refreshList } = api
+	useEffect(() => {
+		if (!activeBoardId || routedBoard || api.loading || checkedFor === activeBoardId) return
+		void refreshList().finally(() => setCheckedFor(activeBoardId))
+	}, [activeBoardId, routedBoard, api.loading, checkedFor, refreshList])
+	const lookingFor = !!activeBoardId && !routedBoard && checkedFor !== activeBoardId
+
 	// Everything that must stay mounted: open tabs that have been shown at least once, plus closed
 	// tabs still draining. Keys are board ids, so a board moving between the two groups keeps its
 	// editor instance — remounting would create a fresh sync client and lose the pending write.
@@ -746,7 +761,7 @@ export function App() {
 					))}
 
 					{route.view === 'board' &&
-						(api.loading ? (
+						(api.loading || lookingFor ? (
 							<div className="lb-board__loading">Loading…</div>
 						) : !routedBoard ? (
 							// A stale hash (deleted board, or an old link) should land somewhere useful.

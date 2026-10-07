@@ -1,4 +1,11 @@
-import { createShapeId, type TLFrameShape, type TLRecord } from '@tldraw/tlschema'
+import {
+	createShapeId,
+	InstancePresenceRecordType,
+	PageRecordType,
+	type TLFrameShape,
+	type TLInstancePresence,
+	type TLRecord,
+} from '@tldraw/tlschema'
 import { describe, expect, it } from 'vitest'
 import { applyOp, compareSchemas, opBetween, PROTOCOL_VERSION } from './protocol.ts'
 import { SyncClient, type ClientSocket } from './SyncClient.ts'
@@ -9,6 +16,7 @@ import {
 	MemoryStorage,
 	newRoom,
 	newStore,
+	PAGE,
 	schema,
 	settle,
 	shapeOf,
@@ -348,5 +356,72 @@ describe('a read-only session', () => {
 		expect(shapeOf(viewer, 'mine')).toBeUndefined()
 		expect(shapeOf(editor, 'mine')).toBeUndefined()
 		expect(viewer.client.getStatus()).toMatchObject({ refused: 1, unsent: 0 })
+	})
+})
+
+describe('presence', () => {
+	/** A client joining with these options; the harness's own `connect` joins with none. */
+	function joinAs(room: ReturnType<typeof newRoom>, options: Parameters<typeof room.join>[1]) {
+		const join = room.join.bind(room)
+		room.join = (s) => join(s, options)
+		const store = newStore()
+		const socket = new TestSocket(room)
+		const peer = { store, socket, client: new SyncClient({ store, socket, pushDelayMs: 0, presenceDelayMs: 0 }) }
+		room.join = join
+		return peer
+	}
+	const cursor = (userName: string) =>
+		InstancePresenceRecordType.create({
+			id: InstancePresenceRecordType.createId('local'),
+			currentPageId: PAGE,
+			userId: 'user:claimed' as never,
+			userName,
+			cursor: { x: 10, y: 20, type: 'default', rotation: 0 },
+		})
+	const presences = (peer: { store: ReturnType<typeof newStore> }) =>
+		peer.store.allRecords().filter((record) => record.typeName === 'instance_presence') as TLInstancePresence[]
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
+
+	it('is relayed under the name the server knows, reaches whoever joins later, and goes when they do', async () => {
+		const room = newRoom()
+		const ann = joinAs(room, { identity: { userId: 'user:ann', userName: 'Ann' } })
+		const bob = joinAs(room, { identity: { userId: 'user:bob', userName: 'Bob' } })
+		await settle(ann, bob)
+
+		ann.client.setPresence(cursor('Not really Ann'))
+		await tick()
+		await settle(ann, bob)
+		expect(presences(bob)).toEqual([expect.objectContaining({ userId: 'user:ann', userName: 'Ann', cursor: expect.objectContaining({ x: 10 }) })])
+		// Never stored, and not echoed back.
+		expect(room.getSnapshot().store).not.toHaveProperty(presences(bob)[0]!.id)
+		expect(presences(ann)).toEqual([])
+
+		const cat = joinAs(room, { identity: { userId: 'user:cat', userName: 'Cat' } })
+		await settle(ann, bob, cat)
+		expect(presences(cat).map((p) => p.userName)).toEqual(['Ann'])
+
+		ann.socket.drop()
+		await settle(bob, cat)
+		expect(presences(bob)).toEqual([])
+		expect(presences(cat)).toEqual([])
+	})
+
+	it('lets a read-only connection make only the changes it may', async () => {
+		const room = newRoom()
+		const editor = connect(room)
+		const viewer = joinAs(room, {
+			readOnly: true,
+			mayWrite: (_id, before, after) => (after ?? before)?.typeName === 'page',
+		})
+		await settle(editor, viewer)
+		const page = PageRecordType.create({ name: 'A viewer may add', index: 'a3' as never })
+		viewer.store.put([page])
+		await settle(editor, viewer)
+		expect(editor.store.get(page.id)).toBeDefined()
+
+		viewer.store.put([frame('not this')])
+		await settle(editor, viewer)
+		expect(shapeOf(editor, 'not this')).toBeUndefined()
+		expect(viewer.client.getStatus()).toMatchObject({ refused: 1 })
 	})
 })

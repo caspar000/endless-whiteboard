@@ -92,6 +92,14 @@ test('an invite makes an account with its own vault, and a view link shares one 
 	expect(await editor(bob, (e) => e.getInstanceState().isReadonly)).toBe(true)
 	await expect(bob.getByTestId('lb.sync-status')).toHaveText('View only')
 
+	// View only still lets Bob comment, and the owner reads it.
+	await bob.keyboard.press('c')
+	const spot = await bob.evaluate(() => (window as unknown as { editor: { pageToScreen(p: { x: number; y: number }): { x: number; y: number } } }).editor.pageToScreen({ x: 150, y: 130 }))
+	await bob.mouse.click(spot.x, spot.y)
+	await bob.getByLabel('Add a comment').fill('Could this be bigger?')
+	await bob.getByLabel('Add a comment').press('Enter')
+	await expect(owner.getByTestId('lb.comment-pin')).toHaveCount(1)
+
 	// The owner's next change reaches Bob live.
 	await owner.keyboard.press('Escape')
 	await editor(owner, (e) => {

@@ -70,6 +70,8 @@ export interface SyncClientOptions<R extends UnknownRecord, P = unknown> {
 	cache?: SyncCache<R>
 	/** How long changes gather before they are written to the cache. */
 	saveDelayMs?: number
+	/** The least time between two presence messages: a cursor moves every frame. */
+	presenceDelayMs?: number
 }
 
 interface Push<R extends UnknownRecord> {
@@ -119,6 +121,14 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 	/** While the cache is being read into the store: those writes are already saved. */
 	private restoring = false
 
+	/** This client's presence, as last set, and whether the server has it yet. */
+	private presence: R | null = null
+	private presenceSent = true
+	private presenceTimer: ReturnType<typeof setTimeout> | undefined
+	private readonly presenceDelayMs: number
+	/** Others' presence records in the store, by their connection. */
+	private readonly peers = new Map<string, string>()
+
 	constructor({
 		store,
 		socket,
@@ -127,7 +137,9 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 		timeoutMs = 15000,
 		cache,
 		saveDelayMs = 500,
+		presenceDelayMs = 50,
 	}: SyncClientOptions<R, P>) {
+		this.presenceDelayMs = presenceDelayMs
 		this.store = store
 		this.socket = socket
 		this.pushDelayMs = pushDelayMs
@@ -177,9 +189,62 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 		clearInterval(this.pingTimer)
 		clearTimeout(this.pushTimer)
 		clearTimeout(this.saveTimer)
+		clearTimeout(this.presenceTimer)
 		this.socket.stop()
 		this.connected = false
+		this.forgetPeers()
 		this.listeners.clear()
+	}
+
+	/**
+	 * Where this client is on the board, for the others to see: a presence-scoped record (cursor,
+	 * selection, name), or `null`. Sent at most every `presenceDelayMs`, and again on reconnecting.
+	 */
+	setPresence(presence: R | null): void {
+		if (presence === this.presence) return
+		this.presence = presence
+		this.presenceSent = false
+		if (!this.connected || this.presenceTimer) return
+		this.presenceTimer = setTimeout(() => {
+			this.presenceTimer = undefined
+			this.sendPresence()
+		}, this.presenceDelayMs)
+	}
+
+	private sendPresence(): void {
+		if (!this.connected || this.presenceSent) return
+		this.presenceSent = true
+		this.send({ type: 'presence', presence: this.presence })
+	}
+
+	/** Someone else's presence arrived, or went. */
+	private onPresence(sessionId: string, presence: R | null): void {
+		const known = this.peers.get(sessionId)
+		try {
+			this.store.mergeRemoteChanges(() => {
+				if (presence) {
+					this.store.put([presence])
+					this.peers.set(sessionId, presence.id)
+				} else if (known) {
+					this.store.remove([known as IdOf<R>])
+					this.peers.delete(sessionId)
+				}
+			})
+		} catch {
+			// A presence this store can't hold (a newer app's): there's just no cursor for it.
+		}
+	}
+
+	/** The others' cursors go with the connection: they may have left while it was down. */
+	private forgetPeers(): void {
+		const ids = [...this.peers.values()] as IdOf<R>[]
+		this.peers.clear()
+		if (!ids.length) return
+		try {
+			this.store.mergeRemoteChanges(() => this.store.remove(ids.filter((id) => this.store.has(id))))
+		} catch {
+			// The store is going away with them.
+		}
 	}
 
 	/** Writes what the cache hasn't got yet, now: the page is going away. */
@@ -312,6 +377,7 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 
 	private onClose(): void {
 		this.connected = false
+		this.forgetPeers()
 		if (this.status.status === 'synced') this.setStatus(this.synced(false))
 	}
 
@@ -333,10 +399,14 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 				// applying one twice leaves the same records.
 				for (const push of this.pending) this.send({ type: 'push', ...push })
 				this.pushNow()
+				this.presenceSent = this.presence === null
+				this.sendPresence()
 				this.setStatus(this.synced(true))
 				this.scheduleSave()
 				return
 			}
+			case 'presence':
+				return this.onPresence(message.sessionId, message.presence)
 			case 'pushResult':
 				this.onPushResult(message)
 				this.updateCounts()

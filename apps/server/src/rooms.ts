@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { SyncRoom, type RoomSocket, type SyncRoomOptions } from '@lifeboard/canvas-sync'
+import { SyncRoom, type JoinOptions, type RoomSocket, type SyncRoomOptions } from '@lifeboard/canvas-sync'
 import { SqliteRoomStorage } from '@lifeboard/canvas-sync/sqlite'
 import { DocumentRecordType, PageRecordType, TLDOCUMENT_ID, type TLRecord, type TLSchema } from '@tldraw/tlschema'
 import type { IndexKey } from '@tldraw/utils'
@@ -45,11 +45,11 @@ export class Rooms {
 		mkdirSync(options.dir, { recursive: true })
 	}
 
-	/** `readOnly`: the board's changes come, and the socket's own are refused (shared to view). */
-	connect(boardId: string, socket: ServerSocket, { readOnly = false }: { readOnly?: boolean } = {}): void {
+	/** Who the socket is, and what it may change (`JoinOptions`: a viewer changes only comments). */
+	connect(boardId: string, socket: ServerSocket, options: JoinOptions<TLRecord> = {}): void {
 		let session
 		try {
-			session = this.room(boardId).room.join(socket, { readOnly })
+			session = this.room(boardId).room.join(socket, options)
 		} catch (error) {
 			this.options.log?.error(`Board ${boardId} could not be opened`, error)
 			socket.close(1011, 'This board could not be opened.')

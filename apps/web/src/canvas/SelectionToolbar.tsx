@@ -44,6 +44,8 @@ import {
 	type TLShapeId,
 	type TLVideoShape,
 } from '@lifeboard/canvas'
+import { readAuthorship } from './authorship'
+import { ago, personName } from './boardPeople'
 import { hashFromAssetSrc, assetSrcForHash, isManagedAssetSrc } from '../persistence/assetStore'
 import { sha256Hex } from '../persistence/hash'
 import {
@@ -895,9 +897,35 @@ function SelectionToolbarContent({
 						<button className="lb-seltb__item lb-seltb__item--danger" onClick={() => run('delete')}>
 							<Trash2 size={15} aria-hidden="true" /> Delete
 						</button>
+						{single && <AuthorshipLine shapeId={ids[0]!} />}
 					</div>
 				)}
 			</div>
+		</>
+	)
+}
+
+/** Who made the shape and who changed it last (fork-parity S6), on a board others share. */
+function AuthorshipLine({ shapeId }: { shapeId: TLShapeId }) {
+	const editor = useEditor()
+	const text = useValue(
+		'lifeboard:authorship',
+		() => {
+			const shape = editor.getShape(shapeId)
+			const by = shape && readAuthorship(shape)
+			if (!by) return null
+			const made = `Added by ${personName(by.created)}`
+			return by.edited === by.created ? `${made}, edited ${ago(by.at)}` : `${made} · edited by ${personName(by.edited)}, ${ago(by.at)}`
+		},
+		[editor, shapeId]
+	)
+	if (!text) return null
+	return (
+		<>
+			<div className="lb-seltb__menu-sep" />
+			<p className="lb-seltb__byline" data-testid="lb.authorship">
+				{text}
+			</p>
 		</>
 	)
 }

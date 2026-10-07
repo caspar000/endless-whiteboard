@@ -11191,3 +11191,264 @@ button.lb-props__eye:hover {
 	font: inherit;
 	font-size: 13px;
 }
+
+/* Who made a shape and who changed it last (canvas/SelectionToolbar.tsx, fork-parity S6). */
+.lb-seltb__byline {
+	max-width: 240px;
+	margin: 0;
+	padding: 4px 10px 6px;
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+/* ------------------------------------------------------ comments (canvas/comments/, fork-parity S7) */
+
+.lb-comments {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+.lb-comments__capture {
+	position: absolute;
+	inset: 0;
+	pointer-events: all;
+	cursor: crosshair;
+}
+/* A speech bubble whose bottom-left corner is the spot it's pinned to. */
+.lb-comment-pin {
+	position: absolute;
+	top: -28px;
+	left: 0;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 2px solid var(--lb-bg-raised);
+	border-radius: 14px 14px 14px 2px;
+	background: var(--lb-accent);
+	color: #fff;
+	font: 600 12px/1 system-ui, sans-serif;
+	box-shadow: var(--lb-shadow-1);
+	pointer-events: all;
+	cursor: pointer;
+}
+.lb-comment-pin--open {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-comment-pin--draft {
+	background: var(--lb-bg-raised);
+	color: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-comment-pin__count {
+	position: absolute;
+	top: -6px;
+	right: -8px;
+	min-width: 16px;
+	padding: 1px 4px;
+	border-radius: 8px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	font-size: 10px;
+}
+.lb-comment-popover {
+	position: absolute;
+	width: 300px;
+	max-height: 360px;
+	overflow: auto;
+	padding: 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	box-shadow: var(--lb-shadow-2);
+	pointer-events: all;
+	font-size: 13px;
+}
+.lb-thread__header {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-thread__header .lb-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-thread__spacer {
+	flex: 1;
+}
+.lb-thread__delete {
+	margin: 6px 0;
+}
+.lb-thread__resolved {
+	margin: 6px 0 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-thread__comments {
+	display: grid;
+	gap: 10px;
+	margin: 8px 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-thread__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-thread__meta strong {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-thread__own {
+	margin-left: auto;
+	display: flex;
+	gap: 8px;
+}
+.lb-thread__link {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	cursor: pointer;
+}
+.lb-thread__link:hover {
+	color: var(--lb-text);
+}
+.lb-thread__text {
+	margin: 3px 0 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	line-height: 1.45;
+}
+.lb-composer {
+	display: flex;
+	align-items: flex-end;
+	gap: 6px;
+}
+.lb-composer textarea {
+	flex: 1;
+	min-height: 30px;
+	padding: 6px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-bg);
+	color: var(--lb-text);
+	font: inherit;
+	resize: none;
+}
+.lb-composer .lb-btn {
+	display: inline-flex;
+	align-items: center;
+}
+.lb-comments-panel {
+	position: absolute;
+	top: 48px;
+	right: 12px;
+	bottom: 96px;
+	z-index: 310;
+	display: flex;
+	flex-direction: column;
+	width: 290px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	box-shadow: var(--lb-shadow-2);
+	pointer-events: all;
+	font-size: 13px;
+}
+.lb-comments-panel__header {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 10px 10px 6px 14px;
+}
+.lb-comments-panel__header h2 {
+	flex: 1;
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+.lb-comments-panel__tabs {
+	display: flex;
+	gap: 4px;
+	padding: 0 10px 8px;
+}
+.lb-comments-panel__tabs button {
+	padding: 4px 10px;
+	border: 1px solid transparent;
+	border-radius: 999px;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+.lb-comments-panel__tabs button[aria-selected='true'] {
+	border-color: var(--lb-border);
+	color: var(--lb-text);
+}
+.lb-comments-panel__empty {
+	margin: 8px 14px;
+	color: var(--lb-text-dim);
+	line-height: 1.5;
+}
+.lb-comments-panel__list {
+	flex: 1;
+	overflow: auto;
+	margin: 0;
+	padding: 0 6px 8px;
+	list-style: none;
+}
+.lb-comments-panel__list button {
+	display: grid;
+	gap: 3px;
+	width: 100%;
+	padding: 8px;
+	border: 0;
+	border-radius: 8px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-comments-panel__list button:hover {
+	background: var(--lb-hover, rgb(127 127 127 / 12%));
+}
+.lb-comments-panel__who,
+.lb-comments-panel__replies {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+}
+.lb-comments-panel__text {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+}
+.lb-dock__tool {
+	position: relative;
+}
+.lb-dock__badge {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	min-width: 14px;
+	padding: 0 3px;
+	border-radius: 7px;
+	background: var(--lb-accent);
+	color: #fff;
+	font-size: 9px;
+	line-height: 14px;
+}

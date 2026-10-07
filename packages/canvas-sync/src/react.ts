@@ -1,3 +1,4 @@
+import { react, type Signal } from '@tldraw/state'
 import type { Store, UnknownRecord } from '@tldraw/store'
 import { useEffect, useState } from 'react'
 import type { SyncCache } from './cache.ts'
@@ -28,10 +29,13 @@ export function useSyncedStore<R extends UnknownRecord, P>({
 	uri,
 	createStore,
 	createCache,
+	getPresence,
 }: {
 	uri: string
 	createStore: () => Store<R, P>
 	createCache?: () => SyncCache<R>
+	/** This tab's presence on the board (cursor, selection, name), sent to the others as it changes. */
+	getPresence?: (store: Store<R, P>) => Signal<R | null>
 }): SyncedStore<Store<R, P>> {
 	const [state, setState] = useState<SyncedStore<Store<R, P>>>({ status: 'loading' })
 
@@ -53,6 +57,8 @@ export function useSyncedStore<R extends UnknownRecord, P>({
 			}
 		}
 		const unsubscribe = client.onStatusChange(update)
+		const $presence = getPresence?.(store)
+		const stopPresence = $presence ? react('send presence', () => client.setPresence($presence.get())) : () => {}
 		// The last edits are still waiting to be written when the tab closes or goes to the background.
 		const flush = () => client.flush()
 		const onHidden = () => {
@@ -64,11 +70,12 @@ export function useSyncedStore<R extends UnknownRecord, P>({
 			window.removeEventListener('pagehide', flush)
 			document.removeEventListener('visibilitychange', onHidden)
 			unsubscribe()
+			stopPresence()
 			client.dispose()
 			store.dispose()
 			setState({ status: 'loading' })
 		}
-	}, [uri, createStore, createCache])
+	}, [uri, createStore, createCache, getPresence])
 
 	return state
 }

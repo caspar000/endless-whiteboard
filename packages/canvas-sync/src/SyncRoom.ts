@@ -73,11 +73,25 @@ export interface SyncRoomOptions<R extends UnknownRecord> {
 }
 
 
-interface Session {
+interface Session extends JoinOptions<UnknownRecord> {
+	id: string
 	socket: RoomSocket
 	connected: boolean
-	/** Sees the board and its changes, and may change nothing: someone it's shared with to view. */
 	readOnly: boolean
+	presence: UnknownRecord | null
+}
+
+/** Who a connection is, and what it may do. */
+export interface JoinOptions<R extends UnknownRecord> {
+	/** Sees the board and its changes, and may change nothing but what `mayWrite` allows: shared with it to view. */
+	readOnly?: boolean
+	/**
+	 * Whether this connection may make a change: checked for every record of every push (a push with
+	 * one it may not make is refused whole). A viewer's comments; anyone's comments being their own.
+	 */
+	mayWrite?(id: string, before: R | null, after: R | null): boolean
+	/** Fields set on this connection's presence before it's relayed: its real name, so nobody can pose as another. */
+	identity?: Record<string, unknown>
 }
 
 /**
@@ -124,8 +138,15 @@ export class SyncRoom<R extends UnknownRecord> {
 		return this.closed
 	}
 
-	join(socket: RoomSocket, { readOnly = false }: { readOnly?: boolean } = {}): RoomSession {
-		const session: Session = { socket, connected: false, readOnly }
+	join(socket: RoomSocket, options: JoinOptions<R> = {}): RoomSession {
+		const session: Session = {
+			...(options as JoinOptions<UnknownRecord>),
+			id: crypto.randomUUID(),
+			socket,
+			connected: false,
+			readOnly: options.readOnly ?? false,
+			presence: null,
+		}
 		if (this.closed) {
 			this.end(session, 'room-closed')
 			return { receive() {}, leave() {} }
@@ -135,6 +156,7 @@ export class SyncRoom<R extends UnknownRecord> {
 			receive: (data) => this.receive(session, data),
 			leave: () => {
 				if (!this.sessions.delete(session)) return
+				this.presenceGone(session)
 				if (this.sessions.size === 0) this.options.onEmpty?.()
 			},
 		}
@@ -198,7 +220,42 @@ export class SyncRoom<R extends UnknownRecord> {
 	private end(session: Session, reason: SyncErrorReason, message?: string): void {
 		this.send(session, { type: 'error', reason, ...(message ? { message } : {}) })
 		session.socket.close(CLOSE_CODES[reason], reason)
-		this.sessions.delete(session)
+		if (this.sessions.delete(session)) this.presenceGone(session)
+	}
+
+	/** Tells the others a connection's cursor has gone with it. */
+	private presenceGone(session: Session): void {
+		if (!session.presence) return
+		session.presence = null
+		this.relayPresence(session)
+	}
+
+	private relayPresence(from: Session): void {
+		for (const other of this.sessions) {
+			if (other !== from && other.connected) {
+				this.send(other, { type: 'presence', sessionId: from.id, presence: from.presence as R | null })
+			}
+		}
+	}
+
+	/**
+	 * A connection's presence, as its identity says (not as it claims), under an id of its own, if it
+	 * is a presence-scoped record of a type the schema knows and valid. Anything else is dropped:
+	 * presence is decoration, not worth ending a session over.
+	 */
+	private presence(session: Session, presence: unknown): void {
+		if (presence === null) return this.presenceGone(session)
+		if (!isPlainObject(presence) || typeof presence.typeName !== 'string') return
+		const type = this.types[presence.typeName]
+		if (!type || type.scope !== 'presence') return
+		const record = { ...presence, ...session.identity, id: `${presence.typeName}:${session.id}` } as unknown as R
+		try {
+			type.validate(record)
+		} catch {
+			return
+		}
+		session.presence = record
+		this.relayPresence(session)
 	}
 
 	private receive(session: Session, data: string): void {
@@ -218,6 +275,9 @@ export class SyncRoom<R extends UnknownRecord> {
 			case 'push':
 				if (!session.connected) return this.end(session, 'bad-request', 'Push before connect.')
 				return this.push(session, message)
+			case 'presence':
+				if (!session.connected) return
+				return this.presence(session, message.presence)
 			default:
 				return this.end(session, 'bad-request', 'Unknown message type.')
 		}
@@ -255,14 +315,20 @@ export class SyncRoom<R extends UnknownRecord> {
 			full: !incremental,
 			diff,
 		})
+		// Who else is here already.
+		for (const other of this.sessions) {
+			if (other !== session && other.connected && other.presence) {
+				this.send(session, { type: 'presence', sessionId: other.id, presence: other.presence as R })
+			}
+		}
 	}
 
 	private push(session: Session, message: Extract<ClientMessage<R>, { type: 'push' }>): void {
 		const { pushId, diff } = message
 		if (typeof pushId !== 'number' || !isPlainObject(diff)) return this.end(session, 'bad-request', 'Malformed push.')
-		if (session.readOnly) {
-			return this.send(session, { type: 'pushResult', pushId, clock: this.state.clock, action: 'discard', reason: 'read-only' })
-		}
+		const refuse = (reason: string) =>
+			this.send(session, { type: 'pushResult', pushId, clock: this.state.clock, action: 'discard', reason })
+		if (session.readOnly && !session.mayWrite) return refuse('read-only')
 
 		// Check everything before changing anything, so a push applies whole or not at all.
 		const changes: Array<{ id: string; after: R | null }> = []
@@ -271,8 +337,9 @@ export class SyncRoom<R extends UnknownRecord> {
 			const after = this.resolve(id, before, op)
 			if (typeof after === 'string') {
 				this.options.log?.warn?.(`Refused a push: ${after}`)
-				return this.send(session, { type: 'pushResult', pushId, clock: this.state.clock, action: 'discard', reason: after })
+				return refuse(after)
 			}
+			if (session.mayWrite && !session.mayWrite(id, before, after)) return refuse(session.readOnly ? 'read-only' : 'not allowed')
 			if (after !== before) changes.push({ id, after })
 		}
 

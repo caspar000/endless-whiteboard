@@ -38,8 +38,13 @@ import {
 	useValue,
 	tipTapDefaultExtensions,
 	type TLAnyShapeUtilConstructor,
+	computed,
+	createPresenceStateDerivation,
+	type Signal,
 	type TLRecord,
+	type TLStore,
 	type TLStoreWithStatus,
+	type TLUser,
 	type TldrawEditorStoreProps,
 	type TLTextOptions,
 } from '@lifeboard/canvas'
@@ -61,6 +66,11 @@ import { useSyncedStore } from '@lifeboard/canvas-sync/react'
 import { uploadBoardAssets } from '../server/boardAssets'
 import { fetchServerAsset, syncUri } from '../server/serverVault'
 import { SyncStatusPill, type SyncState } from './SyncStatusPill'
+import { trackAuthorship } from './authorship'
+import { CommentsOverlay } from './comments/CommentsOverlay'
+import { CommentsPanel } from './comments/CommentsPanel'
+import { loadBoardPeople } from './boardPeople'
+import { currentAccount } from '../server/accounts'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -121,6 +131,8 @@ function CanvasOverlays() {
 			<SelectionToolbar />
 			<CanvasAnnouncer />
 			<AgentPresence />
+			<CommentsOverlay />
+			<CommentsPanel />
 			{!looking && overlays.map(({ id, Component }) => <Component key={id} />)}
 			<QuickLookOverlay />
 		</>
@@ -286,7 +298,7 @@ function SyncedBoard(props: BoardProps) {
 	// offline wait here, across reloads, until they can go up (fork-parity S5).
 	const boardId = props.board.id
 	const createCache = useCallback((): SyncCache<TLRecord> => indexedDbSyncCache<TLRecord>(boardId), [boardId])
-	const store = useSyncedStore({ uri: syncUri(boardId), createStore, createCache })
+	const store = useSyncedStore({ uri: syncUri(boardId), createStore, createCache, getPresence })
 
 	if (store.status === 'loading') return <OpeningServerBoard />
 	if (store.status === 'error') {
@@ -306,6 +318,19 @@ function SyncedBoard(props: BoardProps) {
 		/>
 	)
 }
+
+/**
+ * This tab's cursor, selection and camera for the others on the board (fork-parity S4), as the
+ * account it's logged in as. The server puts the account's real name and colour on it; nothing is
+ * sent until the account is known.
+ */
+const $presenceUser = computed('lifeboard:presence-user', (): TLUser | null => {
+	const me = currentAccount.get()
+	return me
+		? { id: `user:${me.id}` as TLUser['id'], typeName: 'user', name: me.displayName, color: '#7B66DC', imageUrl: '', meta: {} }
+		: null
+})
+const getPresence = (store: TLStore) => createPresenceStateDerivation($presenceUser)(store) as Signal<TLRecord | null>
 
 /** Waiting for a board that has no copy on this device yet: only the server has it. */
 function OpeningServerBoard() {
@@ -500,6 +525,9 @@ function BoardCanvas({
 						: trackBoardActivity(editor, () => void touchBoard(platform.kv, board.id))
 					// And its files are kept by the server too, so other devices can show them.
 					const stopUploading = store ? uploadBoardAssets(editor, platform.blobs) : () => {}
+					// Who made and last changed each shape, on a board others share (fork-parity S6).
+					const stopAuthorship = store ? trackAuthorship(editor) : () => {}
+					if (store) void loadBoardPeople(board.id)
 					// Every extension's reactions, plus the core hook above. One installer, because they
 					// all hang off the same two side effects.
 					const stopHooks = installBoardHooks(editor)
@@ -534,6 +562,7 @@ function BoardCanvas({
 						stopWatchingDragOut()
 						stopTracking()
 						stopUploading()
+						stopAuthorship()
 						// Put the camera back, or the board reopens zoomed onto whatever was previewed.
 						closeQuickLook(editor, { animate: false })
 						// Both are module-scope. The properties target is a bare shape id, so a stale one

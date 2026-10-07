@@ -22,6 +22,7 @@ import {
 	Shapes,
 	Spline,
 	Square,
+	MessageSquare,
 	Radar,
 	StickyNote,
 	Triangle,
@@ -47,6 +48,7 @@ import {
 } from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
 import { useDockDrag, type DockShape } from './dockDrag'
+import { commentsPanelOpen, threadsOf } from './comments/comments'
 import { getNextFillColor, setNextFillColor } from './shapeFill'
 import { isTracing, toggleTracing } from './tracing'
 
@@ -610,6 +612,27 @@ function TracingButton() {
 	)
 }
 
+/** The board's comments (fork-parity S7): the list, with how many threads are open. */
+function CommentsButton() {
+	const editor = useEditor()
+	const open = useValue('lb:comments-panel', () => commentsPanelOpen.get(), [])
+	const count = useValue('lb:open-comments', () => threadsOf(editor).filter((thread) => !thread.resolved).length, [editor])
+	return (
+		<button
+			className={open ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
+			data-testid="lb.comments"
+			onPointerDown={(e) => e.preventDefault()}
+			onClick={() => commentsPanelOpen.set(!open)}
+			title="Comments (⇧C). Press C to add one"
+			aria-label={count ? `Comments, ${count} open` : 'Comments'}
+			aria-pressed={open}
+		>
+			<MessageSquare size={ICON_SIZE} aria-hidden="true" />
+			{count > 0 && <span className="lb-dock__badge">{count}</span>}
+		</button>
+	)
+}
+
 /**
  * A mode with nothing on screen to say so is a trap, and this one changes what a click does to the
  * board's appearance. The hint sits where the tool settings row sits, so it reads as part of the same
@@ -724,6 +747,7 @@ export function CanvasToolbar() {
 				{/* Not tools: these change what the board *shows*, not what the next click draws. */}
 				<RelationViewButton />
 				<TracingButton />
+				<CommentsButton />
 
 				<div className="lb-dock__sep" />
 

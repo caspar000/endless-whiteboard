@@ -38,6 +38,7 @@ import {
 	useValue,
 	tipTapDefaultExtensions,
 	type TLAnyShapeUtilConstructor,
+	type TLRecord,
 	type TLStoreWithStatus,
 	type TldrawEditorStoreProps,
 	type TLTextOptions,
@@ -55,9 +56,11 @@ import { AgentPresence } from './AgentPresence'
 import { CanvasBackground } from './CanvasBackground'
 import { CanvasToolbar } from './CanvasToolbar'
 import { FileImportHandler } from './FileImportHandler'
+import { indexedDbSyncCache, type SyncCache } from '@lifeboard/canvas-sync'
 import { useSyncedStore } from '@lifeboard/canvas-sync/react'
 import { uploadBoardAssets } from '../server/boardAssets'
 import { fetchServerAsset, syncUri } from '../server/serverVault'
+import { SyncStatusPill, type SyncState } from './SyncStatusPill'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -279,13 +282,45 @@ function SyncedBoard(props: BoardProps) {
 			}),
 		[storeShapeUtils, assets]
 	)
-	const store = useSyncedStore({ uri: syncUri(props.board.id), createStore })
+	// The board as this device last had it: it opens from here without the server, and edits made
+	// offline wait here, across reloads, until they can go up (fork-parity S5).
+	const boardId = props.board.id
+	const createCache = useCallback((): SyncCache<TLRecord> => indexedDbSyncCache<TLRecord>(boardId), [boardId])
+	const store = useSyncedStore({ uri: syncUri(boardId), createStore, createCache })
 
-	if (store.status === 'loading') return <div className="lb-board__loading">Opening board…</div>
+	if (store.status === 'loading') return <OpeningServerBoard />
 	if (store.status === 'error') {
 		return <div className="lb-board__loading">This board could not be opened from the server: {store.error.message}</div>
 	}
-	return <BoardCanvas {...props} store={store} shapeUtils={shapeUtils} />
+	return (
+		<BoardCanvas
+			{...props}
+			store={store}
+			shapeUtils={shapeUtils}
+			sync={{ online: store.connectionStatus === 'online', unsent: store.unsent, refused: store.refused }}
+		/>
+	)
+}
+
+/** Waiting for a board that has no copy on this device yet: only the server has it. */
+function OpeningServerBoard() {
+	const [waited, setWaited] = useState(false)
+	useEffect(() => {
+		const timer = setTimeout(() => setWaited(true), 4000)
+		return () => clearTimeout(timer)
+	}, [])
+	return (
+		<div className="lb-board__loading">
+			<div>
+				Opening board…
+				{waited && (
+					<p className="lb-board__loading-hint">
+						Waiting for the server. A board opens offline once it has been opened on this device.
+					</p>
+				)}
+			</div>
+		</div>
+	)
 }
 
 function BoardCanvas({
@@ -294,9 +329,12 @@ function BoardCanvas({
 	onEditor,
 	store,
 	shapeUtils: givenShapeUtils,
+	sync,
 }: BoardProps & {
 	/** A synced board's store. Without one the board persists to IndexedDB itself. */
 	store?: TLStoreWithStatus
+	/** A synced board's standing with the server, for the status in its corner. */
+	sync?: SyncState
 	shapeUtils?: TLAnyShapeUtilConstructor[]
 }) {
 	const platform = usePlatform()
@@ -521,6 +559,7 @@ function BoardCanvas({
 				<FileImportHandler />
 				<TldrawUiBridge />
 			</Tldraw>
+			{sync && <SyncStatusPill {...sync} />}
 		</div>
 	)
 }

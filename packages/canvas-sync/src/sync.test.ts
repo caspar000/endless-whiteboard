@@ -52,7 +52,7 @@ describe('two clients', () => {
 		const a = connect(room)
 		const b = connect(room)
 		await settle(a, b)
-		expect(a.client.getStatus()).toEqual({ status: 'synced', online: true })
+		expect(a.client.getStatus()).toMatchObject({ status: 'synced', online: true })
 
 		a.store.put([frame('one')])
 		await settle(a, b)
@@ -159,7 +159,7 @@ describe('a refused push', () => {
 				diff: Object.fromEntries(Object.entries(room.getSnapshot().store).map(([id, record]) => [id, { op: 'put', record }])),
 			})
 		)
-		expect(client.getStatus()).toEqual({ status: 'synced', online: true })
+		expect(client.getStatus()).toMatchObject({ status: 'synced', online: true })
 
 		store.put([frame('refused')])
 		await new Promise((resolve) => setTimeout(resolve, 20))
@@ -217,7 +217,7 @@ describe('reconnecting', () => {
 
 		a.socket.online = false
 		a.socket.drop()
-		expect(a.client.getStatus()).toEqual({ status: 'synced', online: false })
+		expect(a.client.getStatus()).toMatchObject({ status: 'synced', online: false })
 		a.store.update(createShapeId('mine'), (shape) => ({ ...shape, x: 50 }))
 		b.store.remove([createShapeId('theirs')])
 		b.store.put([frame('new')])

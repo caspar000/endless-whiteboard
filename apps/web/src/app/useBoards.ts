@@ -23,6 +23,11 @@ export interface BoardsApi {
 	loading: boolean
 	/** Whether a server vault answered. New boards go there when it did. */
 	hasServer: boolean
+	/**
+	 * Whether this device has a server vault it can't reach now. Its boards are still listed, as last
+	 * seen, and open from their copies here; new boards stay on this device.
+	 */
+	serverOffline: boolean
 	create(name?: string): Promise<BoardMeta>
 	rename(id: string, name: string): Promise<void>
 	setFavorite(id: string, favorite: boolean): Promise<void>
@@ -45,18 +50,20 @@ export function useBoards(): BoardsApi {
 	const platform = usePlatform()
 	const [local, setLocal] = useState<BoardMeta[]>([])
 	const [server, setServer] = useState<BoardMeta[] | null>(null)
+	const [serverOnline, setServerOnline] = useState(false)
 	const [loading, setLoading] = useState(true)
 
 	const refreshServer = useCallback(async () => {
 		try {
-			const boards = await listServerBoards()
-			setServer(boards)
-			if (boards) await syncVaultSettings()
+			const listed = await listServerBoards(platform.kv)
+			setServer(listed?.boards ?? null)
+			setServerOnline(listed?.online ?? false)
+			if (listed?.online) await syncVaultSettings()
 		} catch (error) {
 			// A server that answered and then failed: keep the boards we last saw rather than hide them.
 			console.error('Lifeboard: could not read the server vault.', error)
 		}
-	}, [])
+	}, [platform])
 
 	const refresh = useCallback(async () => {
 		await Promise.all([listBoards(platform.kv).then(setLocal), refreshServer()])
@@ -67,11 +74,15 @@ export function useBoards(): BoardsApi {
 	}, [refresh])
 
 	// Another device may have added, renamed or deleted a board. A board list needs no live push;
-	// coming back to the window is when it matters.
+	// coming back to the window, or back online, is when it matters.
 	useEffect(() => {
 		const onFocus = () => void refreshServer()
 		window.addEventListener('focus', onFocus)
-		return () => window.removeEventListener('focus', onFocus)
+		window.addEventListener('online', onFocus)
+		return () => {
+			window.removeEventListener('focus', onFocus)
+			window.removeEventListener('online', onFocus)
+		}
 	}, [refreshServer])
 
 	// By id: a board half-way through a move is briefly on both sides, and is still one board.
@@ -86,11 +97,12 @@ export function useBoards(): BoardsApi {
 
 	const create = useCallback(
 		async (name = 'Untitled board') => {
-			const board = server ? await createServerBoard(name) : await createBoard(platform.kv, name)
+			// Offline, a new board starts on this device; it can be moved to the server later.
+			const board = server && serverOnline ? await createServerBoard(name) : await createBoard(platform.kv, name)
 			await refresh()
 			return board
 		},
-		[platform, server, refresh]
+		[platform, server, serverOnline, refresh]
 	)
 
 	const rename = useCallback(
@@ -128,8 +140,19 @@ export function useBoards(): BoardsApi {
 	// identity on every render, re-running every consumer effect that depends on the API — which is
 	// exactly how the first-run demo seeding used to cancel itself before it could navigate.
 	return useMemo(
-		() => ({ boards, loading, hasServer: server !== null, create, rename, setFavorite, remove, move, refresh }),
-		[boards, loading, server, create, rename, setFavorite, remove, move, refresh]
+		() => ({
+			boards,
+			loading,
+			hasServer: server !== null && serverOnline,
+			serverOffline: server !== null && !serverOnline,
+			create,
+			rename,
+			setFavorite,
+			remove,
+			move,
+			refresh,
+		}),
+		[boards, loading, server, serverOnline, create, rename, setFavorite, remove, move, refresh]
 	)
 }
 

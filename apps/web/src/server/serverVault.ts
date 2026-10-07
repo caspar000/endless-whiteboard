@@ -1,5 +1,7 @@
+import { clearSyncCache, listSyncCacheRooms } from '@lifeboard/canvas-sync'
 import type { BoardMeta } from '../boards/boardIndex'
 import type { ResolvedTheme } from '../app/useTheme'
+import type { KvStore } from '../platform/PlatformAdapter'
 
 /**
  * The server vault, as the app sees it: the board index over REST, each board's content over its own
@@ -66,26 +68,49 @@ interface ServerBoard {
 
 const toMeta = (board: ServerBoard): BoardMeta => ({ ...board, vault: 'server' })
 
+/** The server's board list as last seen, for opening its boards offline (docs/fork-parity.md S5). */
+const LIST_KEY = 'serverBoards'
+
 /**
- * The server's boards, or `null` when there is no server to ask. A server that is there but failing
- * throws instead: that is an error worth showing, where "no server" is just how local use works.
+ * The server's boards: from the server (`online`), or as this device last saw them when it can't be
+ * reached (each one opens from its copy here, see `canvas/Board.tsx`). `null` when this browser has
+ * never had a server: that is just how local use works. A server that answers and then fails throws
+ * instead, an error worth showing.
  */
-export async function listServerBoards(): Promise<BoardMeta[] | null> {
+export async function listServerBoards(kv: KvStore): Promise<{ boards: BoardMeta[]; online: boolean } | null> {
+	const offline = async () => {
+		available = false
+		if (!hasEverHadServer()) return null
+		const boards = await kv.get<BoardMeta[]>(LIST_KEY).catch(() => undefined)
+		return boards ? { boards, online: false } : null
+	}
 	let status: Response
 	try {
 		status = await fetch('/api/status', { cache: 'no-store' })
 	} catch {
-		available = false
-		return null
+		return offline()
 	}
 	const body = status.ok ? ((await status.json().catch(() => null)) as { ok?: boolean } | null) : null
-	if (!body?.ok) {
-		available = false
-		return null
-	}
+	if (!body?.ok) return offline()
 	available = true
 	markServerSeen()
-	return ((await (await api('/boards')).json()) as ServerBoard[]).map(toMeta)
+	const boards = ((await (await api('/boards')).json()) as ServerBoard[]).map(toMeta)
+	await kv.set(LIST_KEY, boards)
+	void forgetBoardsNotOn(boards)
+	return { boards, online: true }
+}
+
+/**
+ * Drops this device's copies of boards the server no longer has: deleted on another device, or moved
+ * to one. Nothing else would ever clear them.
+ */
+async function forgetBoardsNotOn(boards: BoardMeta[]): Promise<void> {
+	const kept = new Set(boards.map((board) => board.id))
+	try {
+		for (const room of await listSyncCacheRooms()) if (!kept.has(room)) await clearSyncCache(room)
+	} catch (error) {
+		console.error('Lifeboard: could not tidy the boards kept on this device.', error)
+	}
 }
 
 /**
@@ -115,6 +140,7 @@ export async function updateServerBoard(id: string, patch: { name?: string; favo
 
 export async function deleteServerBoard(id: string): Promise<void> {
 	await api(`/boards/${id}`, { method: 'DELETE' })
+	await clearSyncCache(id).catch(() => {})
 }
 
 /** Whether the server has this board: how an interrupted move tells which step it reached. */

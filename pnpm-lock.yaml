@@ -603,6 +603,9 @@ importers:
       '@types/react':
         specifier: ^19.2.0
         version: 19.3.0
+      fake-indexeddb:
+        specifier: ^4.0.2
+        version: 4.0.2
       react:
         specifier: ^19.2.8
         version: 19.2.8

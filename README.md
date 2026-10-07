@@ -572,8 +572,11 @@ Self-hosting is built and deployed (`docs/self-hosting-plan.md`): `apps/server` 
 behind a login and syncs server boards live between devices, with their images, files and previews;
 boards move between this browser and the server either way (Help → Your server), through a queue
 saved in the browser (`boards/moveQueue.ts`) that survives a reload and shows its progress on each
-card and in the sidebar. `deploy/darkroomlab/README.md`
-covers running it.
+card and in the sidebar. Server boards work offline once opened on a device: each is kept in the
+browser (`@lifeboard/canvas-sync`'s `indexedDbSyncCache`), opens from there without the server, and
+sends the edits made meanwhile when it's back, however many reloads later; a pill in the board's
+corner says where it stands. `pnpm exec playwright test -c playwright.server.config.ts` runs the
+tests that need a real server. `deploy/darkroomlab/README.md` covers running it.
 
 Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system

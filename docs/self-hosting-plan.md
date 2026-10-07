@@ -16,7 +16,7 @@ Decisions taken before this was written:
 | Who the server is for | **One owner.** Every server row carries a `vault_id`, so sharing or hosted customers later are additions, not rewrites |
 | Vault kinds | **Local and server.** Local is today's IndexedDB. Server boards sync through the server |
 | Sync engine | **Our own** since 2026-10-05 (`packages/canvas-sync`, canvas fork phase 6): one `SyncRoom` per board, SQLite storage. Live, server-authoritative. `@tldraw/sync` before that |
-| Offline | **Not across a reload yet.** A tab keeps what it edits while disconnected and sends it on reconnect, but nothing is stored in the browser. Revisit in the mobile phase (`docs/fork-parity.md` S5) |
+| Offline | **Yes, since 2026-10-07** (`docs/fork-parity.md` S5). Each server board is kept in the browser (`packages/canvas-sync` `indexedDbSyncCache`) and opens from there without the server; edits wait there, across reloads, until they can go up. The board list remembers the server's boards. A board never opened on a device still needs the server the first time |
 | Vaults per server | **One in the UI**, many in the data model |
 | Login | **App-level, single owner.** Argon2 hash in `.env`, no signup, 30-day session cookie, rate-limited. The whole origin sits behind it |
 | Server shape | **One `apps/server`** (Fastify): serves the built web app, `/api/*` and the sync websockets |

@@ -59,7 +59,7 @@ for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
 		await settle(...peers)
 		const server = room.getSnapshot().store
 		for (const peer of peers) {
-			expect(peer.client.getStatus()).toEqual({ status: 'synced', online: true })
+			expect(peer.client.getStatus()).toEqual({ status: 'synced', online: true, unsent: 0, refused: 0 })
 			expect(documentOf(peer)).toEqual(server)
 		}
 	})

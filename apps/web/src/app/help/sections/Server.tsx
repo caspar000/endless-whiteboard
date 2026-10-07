@@ -47,8 +47,15 @@ export function Server(_props: SectionProps) {
 
 			<Section title="Limits worth knowing">
 				<p>
-					Server boards need the server: offline, they don’t open. Boards on this device work offline
-					as always.
+					Server boards work offline once they have been opened on a device: each is kept in the
+					browser and opens from there, as you last saw it. What you change offline is kept there too,
+					through reloads, and goes up to the server when it’s back; the corner of the board says how
+					many changes are waiting. Someone else’s changes to the same shape meet yours field by
+					field, and the last one to reach the server wins where both changed the same thing.
+				</p>
+				<p>
+					Offline, new boards start on this device (move them to the server later), and boards you
+					have never opened here wait for the server.
 				</p>
 				<p>
 					The server holds the only copy of its boards. Settings → Storage has{' '}

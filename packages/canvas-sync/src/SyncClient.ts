@@ -1,6 +1,8 @@
-import type { IdOf, RecordsDiff, Store, UnknownRecord } from '@tldraw/store'
+import type { IdOf, RecordsDiff, SerializedStore, Store, UnknownRecord } from '@tldraw/store'
+import type { SyncCache, SyncCacheContents } from './cache.ts'
 import {
 	applyOp,
+	compareSchemas,
 	jsonEqual,
 	opBetween,
 	PROTOCOL_VERSION,
@@ -26,7 +28,14 @@ export interface ClientSocket {
 
 export type SyncStatus =
 	| { status: 'loading' }
-	| { status: 'synced'; online: boolean }
+	| {
+			status: 'synced'
+			online: boolean
+			/** Records with edits the server hasn't confirmed yet. */
+			unsent: number
+			/** Edits the server refused this session, and which were taken back. */
+			refused: number
+	  }
 	| { status: 'error'; error: SyncError }
 
 const ERROR_MESSAGES: Record<SyncErrorReason, string> = {
@@ -54,6 +63,13 @@ export interface SyncClientOptions<R extends UnknownRecord, P = unknown> {
 	pingIntervalMs?: number
 	/** Hearing nothing for this long, the client presumes the connection dead and makes a new one. */
 	timeoutMs?: number
+	/**
+	 * Where the board is kept on this device (docs/fork-parity.md S5). With one, the board opens from
+	 * it before the server answers (or if it never does), and edits wait there across reloads.
+	 */
+	cache?: SyncCache<R>
+	/** How long changes gather before they are written to the cache. */
+	saveDelayMs?: number
 }
 
 interface Push<R extends UnknownRecord> {
@@ -92,22 +108,55 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 	private pushTimer: ReturnType<typeof setTimeout> | undefined
 	private readonly pingTimer: ReturnType<typeof setInterval>
 	private readonly stopListening: () => void
+	private refused = 0
+	private disposed = false
 
-	constructor({ store, socket, pushDelayMs = 1000 / 30, pingIntervalMs = 5000, timeoutMs = 15000 }: SyncClientOptions<R, P>) {
+	private readonly cache: SyncCache<R> | undefined
+	private readonly saveDelayMs: number
+	/** Records written or removed since the cache was last written. */
+	private readonly unsaved = new Set<string>()
+	private saveTimer: ReturnType<typeof setTimeout> | undefined
+	/** While the cache is being read into the store: those writes are already saved. */
+	private restoring = false
+
+	constructor({
+		store,
+		socket,
+		pushDelayMs = 1000 / 30,
+		pingIntervalMs = 5000,
+		timeoutMs = 15000,
+		cache,
+		saveDelayMs = 500,
+	}: SyncClientOptions<R, P>) {
 		this.store = store
 		this.socket = socket
 		this.pushDelayMs = pushDelayMs
 		this.timeoutMs = timeoutMs
-		this.stopListening = store.listen(({ changes }) => this.recordLocalChanges(changes), {
+		this.cache = cache
+		this.saveDelayMs = saveDelayMs
+		const stopLocal = store.listen(({ changes }) => this.recordLocalChanges(changes), {
 			source: 'user',
 			scope: 'document',
 		})
+		const stopCaching = cache
+			? store.listen(({ changes }) => this.noteUnsaved(changes), { source: 'all', scope: 'document' })
+			: () => {}
+		this.stopListening = () => {
+			stopLocal()
+			stopCaching()
+		}
 		this.pingTimer = setInterval(() => this.ping(), pingIntervalMs)
-		socket.start({
-			open: () => this.onOpen(),
-			message: (data) => this.onMessage(data),
-			close: () => this.onClose(),
-		})
+		const start = () => {
+			if (this.disposed) return
+			socket.start({
+				open: () => this.onOpen(),
+				message: (data) => this.onMessage(data),
+				close: () => this.onClose(),
+			})
+		}
+		// The board as this device last had it first, then the server: what arrives then is what changed since.
+		if (cache) void this.restore(cache).finally(start)
+		else start()
 	}
 
 	getStatus(): SyncStatus {
@@ -119,20 +168,132 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 		return () => this.listeners.delete(listener)
 	}
 
-	/** Sends what is unsent, then closes. */
+	/** Sends what is unsent, saves what is unsaved, then closes. */
 	dispose(): void {
 		this.pushNow()
+		this.saveNow()
+		this.disposed = true
 		this.stopListening()
 		clearInterval(this.pingTimer)
 		clearTimeout(this.pushTimer)
+		clearTimeout(this.saveTimer)
 		this.socket.stop()
 		this.connected = false
 		this.listeners.clear()
 	}
 
+	/** Writes what the cache hasn't got yet, now: the page is going away. */
+	flush(): void {
+		this.saveNow(true)
+	}
+
 	private setStatus(status: SyncStatus): void {
 		this.status = status
 		for (const listener of this.listeners) listener(status)
+	}
+
+	private synced(online: boolean): SyncStatus {
+		return { status: 'synced', online, unsent: this.base.size, refused: this.refused }
+	}
+
+	/** Tells listeners when the count of unsent edits or refusals moved. */
+	private updateCounts(): void {
+		const status = this.status
+		if (status.status !== 'synced') return
+		if (status.unsent !== this.base.size || status.refused !== this.refused) this.setStatus(this.synced(status.online))
+	}
+
+	/** Reads the cache into the store and picks up where this device left off. */
+	private async restore(cache: SyncCache<R>): Promise<void> {
+		let cached: SyncCacheContents<R> | null
+		try {
+			cached = await cache.load()
+		} catch (error) {
+			console.error('Lifeboard: could not read the board kept on this device.', error)
+			return
+		}
+		if (!cached || this.disposed) return
+		const contents = this.migrated(cached)
+		if (!contents) return
+
+		this.restoring = true
+		try {
+			this.store.mergeRemoteChanges(() => this.store.put(contents.records))
+			this.store._flushHistory()
+		} finally {
+			this.restoring = false
+		}
+		this.since = contents.state.since
+		for (const [id, record] of contents.state.base) {
+			this.base.set(id, record)
+			// Compared again with what the store has when the connection comes: unsent, or already sent.
+			this.dirty.add(id)
+		}
+		this.setStatus(this.synced(false))
+	}
+
+	/** The cache in this app's schema, or `null` when it can't be (saved by a newer app). */
+	private migrated(cached: SyncCacheContents<R>): SyncCacheContents<R> | null {
+		const ours = this.store.schema.serialize()
+		const comparison = compareSchemas(ours, cached.state.schema)
+		if (comparison === 'same') return cached
+		if (comparison === 'ahead') return null
+		const migrate = (records: R[]): R[] | null => {
+			const result = this.store.schema.migrateStoreSnapshot({
+				store: Object.fromEntries(records.map((record) => [record.id, record])) as SerializedStore<R>,
+				schema: cached.state.schema,
+			})
+			return result.type === 'success' ? (Object.values(result.value) as R[]) : null
+		}
+		const records = migrate(cached.records)
+		const baseRecords = migrate(cached.state.base.flatMap(([, record]) => (record ? [record] : [])))
+		if (!records || !baseRecords) return null
+		const migratedBase = new Map<string, R>(baseRecords.map((record) => [record.id, record]))
+		return {
+			records,
+			state: {
+				...cached.state,
+				schema: ours,
+				base: cached.state.base.map(([id, record]) => [id, record ? (migratedBase.get(id) ?? null) : null]),
+			},
+		}
+	}
+
+	private noteUnsaved(changes: RecordsDiff<R>): void {
+		if (this.restoring) return
+		for (const record of Object.values<R>(changes.added)) this.unsaved.add(record.id)
+		for (const [, to] of Object.values<[R, R]>(changes.updated)) this.unsaved.add(to.id)
+		for (const record of Object.values<R>(changes.removed)) this.unsaved.add(record.id)
+		this.scheduleSave()
+	}
+
+	private scheduleSave(): void {
+		if (!this.cache || this.saveTimer || this.disposed) return
+		this.saveTimer = setTimeout(() => {
+			this.saveTimer = undefined
+			this.saveNow()
+		}, this.saveDelayMs)
+	}
+
+	private saveNow(unloading = false): void {
+		if (!this.cache || this.disposed || this.status.status !== 'synced') return
+		clearTimeout(this.saveTimer)
+		this.saveTimer = undefined
+		const put: R[] = []
+		const remove: string[] = []
+		for (const id of this.unsaved) {
+			const record = this.current(id)
+			if (record) put.push(record)
+			else remove.push(id)
+		}
+		this.unsaved.clear()
+		const changes = {
+			put,
+			remove,
+			state: { schema: this.store.schema.serialize(), ...(this.since ? { since: { ...this.since } } : {}), base: [...this.base] },
+		}
+		if (unloading && this.cache.saveBeforeUnload) this.cache.saveBeforeUnload(changes)
+		else void this.cache.save(changes)
 	}
 
 	private send(message: ClientMessage<R>): void {
@@ -151,7 +312,7 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 
 	private onClose(): void {
 		this.connected = false
-		if (this.status.status === 'synced') this.setStatus({ status: 'synced', online: false })
+		if (this.status.status === 'synced') this.setStatus(this.synced(false))
 	}
 
 	private ping(): void {
@@ -172,14 +333,18 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 				// applying one twice leaves the same records.
 				for (const push of this.pending) this.send({ type: 'push', ...push })
 				this.pushNow()
-				this.setStatus({ status: 'synced', online: true })
+				this.setStatus(this.synced(true))
+				this.scheduleSave()
 				return
 			}
 			case 'pushResult':
-				return this.onPushResult(message)
+				this.onPushResult(message)
+				this.updateCounts()
+				return this.scheduleSave()
 			case 'patch':
 				if (this.since) this.since.clock = message.clock
-				return this.applyRemote(message.diff, false)
+				this.applyRemote(message.diff, false)
+				return this.scheduleSave()
 			case 'pong':
 				return
 			case 'error':
@@ -201,6 +366,8 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 			this.pending.shift()
 			for (const [id, op] of Object.entries(push.diff)) this.base.set(id, applyOp(this.base.get(id) ?? null, op))
 		} else {
+			this.refused++
+			console.warn(`Lifeboard: the server refused a change${message.reason ? ` (${message.reason})` : ''}; it was taken back.`)
 			const ids = Object.keys(push.diff)
 			const unsent = this.unsentOps(ids)
 			this.pending.shift()
@@ -237,6 +404,7 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 		for (const record of Object.values<R>(changes.added)) this.touch(record.id, null)
 		for (const [from] of Object.values<[R, R]>(changes.updated)) this.touch(from.id, from)
 		for (const record of Object.values<R>(changes.removed)) this.touch(record.id, record)
+		this.updateCounts()
 		if (this.connected && !this.pushTimer) {
 			this.pushTimer = setTimeout(() => {
 				this.pushTimer = undefined

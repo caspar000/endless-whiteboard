@@ -89,6 +89,15 @@ export function BoardList({
 				</div>
 			)}
 
+			{api.serverOffline && (
+				<div className="lb-list__offer" data-testid="lb.server-offline">
+					<p>
+						Offline. Server boards open from this device as they were last seen, and changes go up
+						when the server is back. New boards stay on this device.
+					</p>
+				</div>
+			)}
+
 			{api.loading ? (
 				<p className="lb-list__empty">Loading…</p>
 			) : api.boards.length === 0 ? (

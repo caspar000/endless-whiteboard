@@ -55,9 +55,12 @@ export function uploadBoardAssets(editor: Editor, blobs: BlobStore): () => void 
 	}
 
 	const unlisten = editor.store.listen(schedule, { scope: 'document' })
+	// Pictures added offline go up when the connection is back, not only at the next change.
+	window.addEventListener('online', schedule)
 	void run()
 	return () => {
 		unlisten()
+		window.removeEventListener('online', schedule)
 		clearTimeout(timer)
 	}
 }

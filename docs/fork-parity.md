@@ -85,7 +85,7 @@ tldraw sync arrived in 2.4 under the tldraw licence; nothing of it can be used. 
 | S2 | Server rooms: one per board, SQLite storage, validation and migration against the shared schema | `apps/server/src/rooms.ts` | Cutover | done (phase 6): `SyncRoom`, `SqliteRoomStorage` |
 | S3 | Moving existing server rooms from sync-core's SQLite layout to ours | Any room created before cutover | Cutover | done (phase 6): on first open, plain SQL |
 | S4 | Presence: other users' cursors and selections | Not used yet (the agent cursor is our own) | Backlog | todo |
-| S5 | Offline edits for server boards: a local copy and an outbox (tldraw sync never had this) | Mobile phase | Backlog | todo |
+| S5 | Offline edits for server boards: a local copy and an outbox (tldraw sync never had this) | Mobile phase | Backlog | done: `SyncClient` takes a `SyncCache`; each server board is kept in IndexedDB (`indexedDbSyncCache`, records plus where the device left off and the server's version of unconfirmed records), opens from it at once with or without the server, and sends what is unconfirmed when it reconnects, across any number of reloads. The last edits before a reload or close are also stashed synchronously in localStorage. The board list remembers the server's boards; a status pill says offline / saving / synced / refused. No protocol change: the room already answered `since` incrementally |
 | S6 | Who created and last edited a shape | Not used | Backlog | todo |
 | S7 | Comments | Not used | Backlog | todo |
 

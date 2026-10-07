@@ -1775,6 +1775,45 @@ button {
 	color: var(--lb-text-dim);
 	font-size: 14px;
 }
+.lb-board__loading > div {
+	text-align: center;
+}
+.lb-board__loading-hint {
+	max-width: 320px;
+	margin: 8px auto 0;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+/* Where a server board stands with the server (canvas/SyncStatusPill.tsx): quiet unless it matters. */
+.lb-sync-pill {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: var(--lb-overlay);
+	box-shadow: var(--lb-shadow-1);
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	pointer-events: none;
+}
+.lb-sync-pill--saving svg {
+	animation: lb-spin 1.2s linear infinite;
+}
+.lb-sync-pill--synced svg {
+	color: var(--lb-money);
+}
+.lb-sync-pill--warn {
+	border-color: var(--lb-danger-line);
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
+}
 .lb-debug-badge {
 	position: absolute;
 	bottom: 8px;

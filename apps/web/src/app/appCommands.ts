@@ -355,6 +355,18 @@ registerCommand({
 	},
 })
 
+/** New shapes keep their size on screen at any zoom (fork-parity B10); also in Settings → Canvas. */
+registerCommand({
+	id: 'view.dynamic-size',
+	title: 'Turn dynamic size on or off',
+	group: CANVAS_GROUP,
+	when: onBoard,
+	run: (ctx) => {
+		const user = ctx.editor?.user
+		user?.updateUserPreferences({ isDynamicSizeMode: !user.getIsDynamicSizeMode() })
+	},
+})
+
 /** Comments (fork-parity S7): C, then a click, starts one; the list shows them all. */
 registerCommand({
 	id: 'comments.add',

@@ -109,3 +109,24 @@ function select(editor: Editor, shape: TLShape, bounds: Box2d) {
 		editor.centerOnPoint(bounds.center, { duration: 200 })
 	}
 }
+
+/**
+ * Out a level (docs/fork-parity.md I8): the frames and groups the selected shapes are in. Shapes on
+ * the page itself stay as they are.
+ */
+export function selectContainers(editor: Editor): void {
+	const pageId = editor.getCurrentPageId()
+	const containers = new Set(
+		editor.getSelectedShapes().map((shape) => (shape.parentId === pageId ? shape.id : shape.parentId))
+	)
+	const ids = [...containers].filter((id) => id !== pageId) as TLShape['id'][]
+	if (ids.length) editor.setSelectedShapes(ids)
+}
+
+/** The page before (`-1`) or after (`1`) this one, if there is one. */
+export function goToPage(editor: Editor, step: number): void {
+	const pages = editor.getPages()
+	const at = pages.findIndex((page) => page.id === editor.getCurrentPageId())
+	const next = pages[at + step]
+	if (next) editor.setCurrentPage(next.id)
+}

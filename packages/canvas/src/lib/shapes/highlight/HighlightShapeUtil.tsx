@@ -237,7 +237,7 @@ function highlighterToSvg(
 }
 
 function getStrokeWidth(shape: TLHighlightShape) {
-	return FONT_SIZES[shape.props.size] * 1.12
+	return FONT_SIZES[shape.props.size] * 1.12 * shape.props.scale
 }
 
 function getIsDot(shape: TLHighlightShape) {

@@ -60,7 +60,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 
 	getGeometry(shape: TLDrawShape) {
 		const points = getPointsFromSegments(decodeSegments(shape.props))
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 
 		// A dot
 		if (shape.props.segments.length === 1) {
@@ -97,7 +97,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	component(shape: TLDrawShape) {
 		const theme = useDefaultColorTheme()
 		const forceSolid = useForceSolid()
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
@@ -166,7 +166,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 
 	indicator(shape: TLDrawShape) {
 		const forceSolid = useForceSolid()
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		let sw = strokeWidth
@@ -196,7 +196,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 
 		const { color } = shape.props
 
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 		const allPointsFromSegments = getPointsFromSegments(decodeSegments(shape.props))
 
 		const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
@@ -272,7 +272,7 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 
 	override expandSelectionOutlinePx(shape: TLDrawShape): number {
 		const multiplier = shape.props.dash === 'draw' ? 1.6 : 1
-		return (STROKE_SIZES[shape.props.size] * multiplier) / 2
+		return (STROKE_SIZES[shape.props.size] * shape.props.scale * multiplier) / 2
 	}
 }
 

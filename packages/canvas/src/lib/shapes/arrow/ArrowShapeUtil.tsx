@@ -129,7 +129,11 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		let labelGeom: Rectangle2d | undefined
 
 		if (arrowLabelText(shape).trim()) {
-			const bodyBounds = bodyGeom.bounds
+			// Measured at the arrow's own size and then scaled (fork-parity B10), so its text wraps the same.
+			const scale = shape.props.scale
+			const bodyBounds = bodyGeom.bounds.clone()
+			bodyBounds.w /= scale
+			bodyBounds.h /= scale
 			const html = renderHtmlFromRichText(shape.props.richText, this.editor.getTextExtensions())
 
 			const { w, h } = this.editor.textMeasure.measureHtml(html, {
@@ -176,13 +180,16 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				height = squishedHeight
 			}
 
+			width *= scale
+			height *= scale
+
 			// Where along the arrow the label sits (B2): the middle as before, or where it was dragged.
 			const at = getArrowLabelPoint(info, bodyGeom, shape.props.labelPosition)
 			labelGeom = new Rectangle2d({
-				x: at.x - width / 2 - 4.25,
-				y: at.y - height / 2 - 4.25,
-				width: width + 8.5,
-				height: height + 8.5,
+				x: at.x - width / 2 - 4.25 * scale,
+				y: at.y - height / 2 - 4.25 * scale,
+				width: width + 8.5 * scale,
+				height: height + 8.5 * scale,
 				isFilled: true,
 				isLabel: true,
 			})
@@ -543,7 +550,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		if (!info?.isValid) return null
 
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 
 		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', strokeWidth)
 		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', strokeWidth)
@@ -701,6 +708,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 					position={labelGeometry ? labelGeometry.center : info.middle}
 					width={labelGeometry?.w ?? 0}
 					labelColor={theme[shape.props.labelColor].solid}
+					scale={shape.props.scale}
 				/>
 			</>
 		)
@@ -721,7 +729,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		if (!info) return null
 		if (Vec2d.Equals(start, end)) return null
 
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 
 		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', strokeWidth)
 		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', strokeWidth)
@@ -838,7 +846,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		const info = this.editor.getArrowInfo(shape)
 
-		const strokeWidth = STROKE_SIZES[shape.props.size]
+		const strokeWidth = STROKE_SIZES[shape.props.size] * shape.props.scale
 
 		// Group for arrow
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
@@ -967,7 +975,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			ctx.addExportDef(getFontDefForExport(shape.props.font))
 
 			const opts = {
-				fontSize: ARROW_LABEL_FONT_SIZES[shape.props.size],
+				fontSize: ARROW_LABEL_FONT_SIZES[shape.props.size] * shape.props.scale,
 				lineHeight: TEXT_PROPS.lineHeight,
 				fontFamily: DefaultFontFamilies[shape.props.font],
 				padding: 0,
@@ -1068,7 +1076,7 @@ function getArrowheadSvgPath(
 function getArrowBodyPath(info: TLArrowInfo, shape: TLArrowShape) {
 	if (info.isStraight && info.route) {
 		// Corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
-		return getElbowArrowPath(info.route, STROKE_SIZES[shape.props.size] * 2)
+		return getElbowArrowPath(info.route, STROKE_SIZES[shape.props.size] * shape.props.scale * 2)
 	}
 	return info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
 }

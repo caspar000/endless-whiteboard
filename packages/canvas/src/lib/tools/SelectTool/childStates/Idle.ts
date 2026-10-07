@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	Editor,
 	HIT_TEST_MARGIN,
@@ -13,7 +14,13 @@ import {
 	createShapeId,
 	pointInPolygon,
 } from '@lifeboard/canvas-editor'
-import { resizeSelectionByKeyboard, selectNextShape, selectShapeInDirection } from '../keyboardNavigation'
+import {
+	goToPage,
+	resizeSelectionByKeyboard,
+	selectContainers,
+	selectNextShape,
+	selectShapeInDirection,
+} from '../keyboardNavigation'
 import { canSelectShape } from '../../selection-logic/canSelectShape'
 import { getHitShapeOnCanvasPointerDown } from '../../selection-logic/getHitShapeOnCanvasPointerDown'
 import { getShouldEnterCropMode } from '../../selection-logic/getShouldEnterCropModeOnPointerDown'
@@ -429,10 +436,17 @@ export class Idle extends StateNode {
 		this.onArrow(info, true)
 	}
 
-	/** Arrows nudge; with ⌘/Ctrl they go to the next shape that way, with Alt+Shift they resize. */
+	/**
+	 * Arrows nudge; with ⌘/Ctrl they go to the next shape that way, with Alt+Shift they resize, and
+	 * Alt+Up/Down go to the previous or next page when there is more than one (I8).
+	 */
 	private onArrow(info: TLKeyboardEventInfo, repeat: boolean) {
 		const direction = ARROWS[info.code as keyof typeof ARROWS]
 		if (!direction) return
+		if (info.altKey && !info.shiftKey && !info.ctrlKey && direction.y !== 0 && this.editor.getPages().length > 1) {
+			if (!repeat) goToPage(this.editor, direction.y)
+			return
+		}
 		if (info.ctrlKey) selectShapeInDirection(this.editor, direction)
 		else if (info.altKey && info.shiftKey) resizeSelectionByKeyboard(this.editor, direction, !repeat)
 		else this.nudgeSelectedShapes(repeat)
@@ -443,9 +457,21 @@ export class Idle extends StateNode {
 			case 'Enter': {
 				const selectedShapes = this.editor.getSelectedShapes()
 
-				// On enter, if every selected shape is a group, then select all of the children of the groups
+				// Shift+Enter: out, to the frame or group the selection is in (docs/fork-parity.md I8).
+				if (info.shiftKey) {
+					selectContainers(this.editor)
+					return
+				}
+
+				// On enter, if every selected shape is a group, or a frame with something in it, select
+				// what's inside: in, the other way (I8). An empty frame is renamed, as before.
 				if (
-					selectedShapes.every((shape) => this.editor.isShapeOfType<TLGroupShape>(shape, 'group'))
+					selectedShapes.length > 0 &&
+					selectedShapes.every(
+						(shape) =>
+							this.editor.isShapeOfType<TLGroupShape>(shape, 'group') ||
+							(shape.type === 'frame' && this.editor.getSortedChildIdsForParent(shape.id).length > 0)
+					)
 				) {
 					this.editor.setSelectedShapes(
 						selectedShapes.flatMap((shape) => this.editor.getSortedChildIdsForParent(shape.id))
@@ -507,6 +533,7 @@ export class Idle extends StateNode {
 				y,
 				props: {
 					autoSize: true,
+					scale: getNewShapeScale(this.editor),
 				},
 			},
 		])

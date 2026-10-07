@@ -36,6 +36,7 @@ import {
 	DefaultColorStyle,
 	DefaultSizeStyle,
 	GeoShapeGeoStyle,
+	getGeoTypes,
 	PinColorStyle,
 	getColorValue,
 	getPinPaint,
@@ -504,6 +505,28 @@ function ShapeSettings() {
 							aria-label={`Shape ${value}`}
 						>
 							<Icon size={ICON_SIZE} aria-hidden="true" />
+						</button>
+					))}
+					{/* Kinds an extension added (`geoTypes`, fork-parity B6), after the built-in ones. */}
+					{getGeoTypes().map(([value, definition]) => (
+						<button
+							key={value}
+							className={
+								currentKind === value ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
+							}
+							onPointerDown={(e) => e.preventDefault()}
+							onClick={() =>
+								editor.run(() => {
+									editor.setStyleForNextShapes(GeoShapeGeoStyle, value as GeoValue)
+									editor.setCurrentTool('geo')
+								})
+							}
+							title={definition.label ?? value}
+							aria-label={`Shape ${definition.label ?? value}`}
+						>
+							<svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true">
+								<path d={definition.icon ?? 'M4 4h16v16H4z'} />
+							</svg>
 						</button>
 					))}
 				</div>

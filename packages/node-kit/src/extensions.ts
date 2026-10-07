@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { Editor, TLClipboardHooks, TLContent } from '@lifeboard/canvas'
+import { registerGeoType, type Editor, type GeoTypeDefinition, type TLClipboardHooks, type TLContent } from '@lifeboard/canvas'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import {
 	registerCommand,
@@ -188,6 +188,11 @@ export interface Extension {
 	 */
 	clipboard?: TLClipboardHooks
 	/**
+	 * New kinds of geo shape (fork-parity B6), by name: an outline, and the geo shape does the rest.
+	 * They join the dock's shape picker. Part of the board schema, like node types.
+	 */
+	geoTypes?: Record<string, GeoTypeDefinition>
+	/**
 	 * Behaviour rather than capability: what this extension does *because* the board changed.
 	 *
 	 * The extension's own id is the hook set's id, so there is nothing to name here. Switched off with
@@ -306,6 +311,9 @@ export function registerExtension(ext: Extension): void {
 	for (const op of ext.operations ?? []) registerOperation(op, ext.id)
 	for (const query of ext.queries ?? []) registerQuery(query, ext.id)
 	if (ext.hooks) registerHooks({ id: ext.id, ...ext.hooks }, ext.id)
+	// Part of the board schema, as node types are: registered wherever boards are read, and kept when
+	// the extension is switched off, so its shapes still validate.
+	for (const [name, definition] of Object.entries(ext.geoTypes ?? {})) registerGeoType(name, definition)
 	// Unconditional: the record above was *replaced*, so a re-registration under HMR has just swapped
 	// in a fresh component identity even when the overlay list looks unchanged.
 	invalidateOverlays()

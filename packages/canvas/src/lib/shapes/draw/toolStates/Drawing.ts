@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import { decodeSegments, encodeSegments, type PointSegment } from '../segments'
 import {
 	DRAG_DISTANCE,
@@ -32,7 +33,12 @@ export class Drawing extends StateNode {
 
 	util = this.editor.getShapeUtil(this.shapeType)
 
+	/** Drawn with the device's own pressure, rather than pressure simulated from speed. */
 	isPen = false
+	/** Started by a pointer that says it is a pen: what the palm check compares against. */
+	isPenDevice = false
+	/** The stroke's scale (fork-parity B10). */
+	scale = 1
 
 	segmentMode = 'free' as 'free' | 'straight' | 'starting_straight' | 'starting_free'
 
@@ -65,7 +71,7 @@ export class Drawing extends StateNode {
 			editor: { inputs },
 		} = this
 
-		if (this.isPen !== inputs.isPen) {
+		if (this.isPenDevice !== inputs.isPen) {
 			// The user made a palm gesture before starting a pen gesture;
 			// ideally we'd start the new shape here but we could also just bail
 			// as the next interaction will work correctly
@@ -84,7 +90,7 @@ export class Drawing extends StateNode {
 
 		if (this.canDraw) {
 			// Don't update the shape if we haven't moved far enough from the last time we recorded a point
-			if (inputs.isPen) {
+			if (this.isPen) {
 				if (
 					Vec2d.Dist(inputs.currentPagePoint, this.lastRecordedPoint) >=
 					1 / this.editor.getZoomLevel()
@@ -153,7 +159,7 @@ export class Drawing extends StateNode {
 	getIsClosed(segments: PointSegment[], size: TLDefaultSizeStyle) {
 		if (!this.canClose()) return false
 
-		const strokeWidth = STROKE_SIZES[size]
+		const strokeWidth = STROKE_SIZES[size] * this.scale
 		const firstPoint = segments[0].points[0]
 		const lastSegment = segments[segments.length - 1]
 		const lastPoint = lastSegment.points[lastSegment.points.length - 1]
@@ -173,7 +179,11 @@ export class Drawing extends StateNode {
 		this.markId = 'draw start ' + uniqueId()
 		this.editor.mark(this.markId)
 
-		this.isPen = isPen
+		this.scale = getNewShapeScale(this.editor)
+		this.isPenDevice = isPen
+		// A tablet that reports itself as a mouse but sends real pressure (some Wacoms) draws like a pen
+		// (docs/fork-parity.md I9). A mouse's pressure is 0.5 while pressed, and 0 or missing otherwise.
+		this.isPen = isPen || hasRealPressure(this.info.point.z)
 
 		const pressure = this.isPen ? this.info.point.z! * 1.25 : 0.5
 
@@ -261,6 +271,7 @@ export class Drawing extends StateNode {
 				y: originPagePoint.y,
 				props: {
 					isPen: this.isPen,
+					scale: this.scale,
 					segments: encodeSegments([
 						{
 							type: this.segmentMode,
@@ -639,6 +650,7 @@ export class Drawing extends StateNode {
 							y: toFixed(currentPagePoint.y),
 							props: {
 								isPen: this.isPen,
+								scale: this.scale,
 								segments: encodeSegments([
 									{
 										type: 'free',
@@ -719,4 +731,9 @@ export class Drawing extends StateNode {
 	cancel() {
 		this.parent.transition('idle', this.info)
 	}
+}
+
+/** Pressure a device actually measured, rather than the fixed value a mouse reports. */
+function hasRealPressure(z: number | null | undefined): boolean {
+	return typeof z === 'number' && z > 0 && z < 1 && z !== 0.5
 }

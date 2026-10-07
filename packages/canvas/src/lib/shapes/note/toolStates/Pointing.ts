@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	StateNode,
 	TLEventHandlers,
@@ -101,7 +102,7 @@ export class Pointing extends StateNode {
 					x: originPagePoint.x,
 					y: originPagePoint.y,
 					// Each kind of note's own colour and placement (NoteShapeTool), over the shared styles.
-					props: (this.parent as NoteShapeTool).getInitialProps(),
+					props: { ...(this.parent as NoteShapeTool).getInitialProps(), scale: getNewShapeScale(this.editor) },
 				},
 			])
 			.select(id)

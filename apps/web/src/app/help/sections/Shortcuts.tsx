@@ -42,6 +42,8 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['⌘←', '⌘↑', '⌘→', '⌘↓'], 'The nearest shape that way'],
 			[['←', '↑', '→', '↓'], 'Nudge the selection; with ⇧, further'],
 			[['⌥⇧→', '⌥⇧↓'], 'Make the selection wider or taller; ← and ↑ make it smaller'],
+			[['Enter'], 'On a frame or a group: select what is inside it'],
+			[['⇧Enter'], 'Select the frame or group the selection is in'],
 		],
 	},
 	{

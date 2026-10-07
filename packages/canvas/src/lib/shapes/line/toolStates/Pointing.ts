@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	IndexKey,
 	Matrix2d,
@@ -107,6 +108,7 @@ export class Pointing extends StateNode {
 					type: 'line',
 					x: currentPagePoint.x,
 					y: currentPagePoint.y,
+					props: { scale: getNewShapeScale(this.editor) },
 				},
 			])
 

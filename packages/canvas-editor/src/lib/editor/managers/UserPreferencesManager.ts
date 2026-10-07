@@ -79,6 +79,11 @@ export class UserPreferencesManager {
 		return this.user.userPreferences.get().exportPixelRatio ?? 2
 	}
 
+	/** Whether new shapes keep their size on screen (fork-parity B10). @public */
+	@computed getIsDynamicSizeMode() {
+		return this.user.userPreferences.get().isDynamicSizeMode ?? false
+	}
+
 	/** Whether exports are trimmed to what's drawn. @public */
 	@computed getIsExportTrimmed() {
 		return this.user.userPreferences.get().isExportTrimmed ?? false

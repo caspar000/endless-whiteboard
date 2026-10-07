@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	StateNode,
 	TLArrowShape,
@@ -103,6 +104,7 @@ export class Pointing extends StateNode {
 				type: 'arrow',
 				x: originPagePoint.x,
 				y: originPagePoint.y,
+				props: { scale: getNewShapeScale(this.editor) },
 			},
 		])
 

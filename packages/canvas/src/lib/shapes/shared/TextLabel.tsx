@@ -31,6 +31,7 @@ export const TextLabel = React.memo(function TextLabel<
 	verticalAlign,
 	wrap,
 	bounds,
+	scale = 1,
 }: {
 	id: T['id']
 	type: T['type']
@@ -43,6 +44,8 @@ export const TextLabel = React.memo(function TextLabel<
 	richText: TLRichText
 	labelColor: TLDefaultColorStyle
 	bounds?: Box2d
+	/** The shape's scale: its text, and the room around it, that much bigger (fork-parity B10). */
+	scale?: number
 }) {
 	const editor = useEditor()
 	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
@@ -80,9 +83,10 @@ export const TextLabel = React.memo(function TextLabel<
 			<div
 				className="tl-text-label__inner"
 				style={{
-					fontSize: LABEL_FONT_SIZES[size],
-					lineHeight: LABEL_FONT_SIZES[size] * TEXT_PROPS.lineHeight + 'px',
-					minHeight: TEXT_PROPS.lineHeight + 32,
+					fontSize: LABEL_FONT_SIZES[size] * scale,
+					lineHeight: LABEL_FONT_SIZES[size] * scale * TEXT_PROPS.lineHeight + 'px',
+					minHeight: (TEXT_PROPS.lineHeight + 32) * scale,
+					['--tl-label-scale' as string]: scale,
 					minWidth: 0,
 					color: theme[labelColor].solid,
 				}}

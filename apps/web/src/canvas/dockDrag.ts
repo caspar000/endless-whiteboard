@@ -1,4 +1,4 @@
-import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
+import { createShapeId, getNewShapeScale, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { useMemo, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
@@ -93,12 +93,15 @@ function createUnderPointer(editor: Editor, kind: DockShape, at: { x: number; y:
 	const id = createShapeId()
 	editor.mark('drag out of the dock')
 	editor.setCurrentTool('select')
+	// Made at the size the dock's tools would make it, dynamic size included (fork-parity B10).
+	const scale = getNewShapeScale(editor)
 	editor.createShape({
 		id,
 		type: kind,
 		x: at.x,
 		y: at.y,
-		...(kind === 'geo' && { props: { w: 100, h: 100 } }),
+		...(kind === 'geo' && { props: { w: 100 * scale, h: 100 * scale, scale } }),
+		...((kind === 'note' || kind === 'text') && { props: { scale } }),
 	})
 	// Centred whatever size it came out.
 	const bounds = editor.getShapePageBounds(id)

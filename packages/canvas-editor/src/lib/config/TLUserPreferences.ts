@@ -33,6 +33,8 @@ export interface TLUserPreferences {
 	exportPixelRatio?: number | null
 	/** Whether exports are trimmed to what's drawn rather than padded. */
 	isExportTrimmed?: boolean | null
+	/** Whether new shapes keep their size on screen: made bigger zoomed out, smaller zoomed in. */
+	isDynamicSizeMode?: boolean | null
 }
 
 interface UserDataSnapshot {
@@ -61,6 +63,7 @@ const userTypeValidator: T.Validator<TLUserPreferences> = T.object<TLUserPrefere
 	canSelectLockedShapes: T.boolean.nullable().optional(),
 	exportPixelRatio: T.number.nullable().optional(),
 	isExportTrimmed: T.boolean.nullable().optional(),
+	isDynamicSizeMode: T.boolean.nullable().optional(),
 })
 
 const Versions = {
@@ -69,10 +72,11 @@ const Versions = {
 	MakeFieldsNullable: 3,
 	AddColorSchemeAndShortcuts: 4,
 	AddControlsAndExport: 5,
+	AddDynamicSizeMode: 6,
 } as const
 
 const userMigrations = defineMigrations({
-	currentVersion: Versions.AddControlsAndExport,
+	currentVersion: Versions.AddDynamicSizeMode,
 	migrators: {
 		[Versions.AddAnimationSpeed]: {
 			up: (user) => {
@@ -123,6 +127,10 @@ const userMigrations = defineMigrations({
 				isExportTrimmed: _____,
 				...user
 			}: TLUserPreferences) => user,
+		},
+		[Versions.AddDynamicSizeMode]: {
+			up: (user: TLUserPreferences) => user,
+			down: ({ isDynamicSizeMode: _, ...user }: TLUserPreferences) => user,
 		},
 	},
 })

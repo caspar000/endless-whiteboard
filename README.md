@@ -58,7 +58,9 @@ board (`canvas/dockDrag.ts`). The relation tool's row picks a curved or an elbow
 only across and down, routed around the shapes it joins (`canvas-editor`'s `elbow-arrow.ts`). A right
 drag pans from any tool, and a right click opens the menu. Settings → Canvas holds the
 person's own ways of working: the wheel pans or zooms (either way round), locked shapes can be
-selected, and Export / Copy as PNG come out at 1×–3× and trimmed to the drawing if wanted. Pasting
+selected, new shapes can keep their size on screen at any zoom (dynamic size), and Export / Copy as
+PNG come out at 1×–3× and trimmed to the drawing if wanted. Extensions can add kinds of geo shape
+(`Extension.geoTypes`), which join the dock's shape picker. Pasting
 knows a few things besides text and pictures: a Mermaid flowchart becomes shapes joined by bound
 arrows (`canvas`'s `utils/mermaid`), `<iframe>` embed code becomes the embed, Excalidraw content
 comes in as shapes, and a link pasted onto selected shapes becomes their link.

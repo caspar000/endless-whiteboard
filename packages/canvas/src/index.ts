@@ -195,6 +195,13 @@ export { getEmbedInfo } from './lib/utils/embeds/embeds'
 export { copyAs } from './lib/utils/export/copyAs'
 export { exportAs } from './lib/utils/export/exportAs'
 export { getExportOptions, type TLExportOptions } from './lib/utils/export/exportOptions'
+export { getNewShapeScale } from './lib/utils/dynamicSize'
+export {
+	getGeoType,
+	getGeoTypes,
+	registerGeoType,
+	type GeoTypeDefinition,
+} from './lib/shapes/geo/customGeoTypes'
 export {
 	fitFrameToContent,
 	frameSelection,

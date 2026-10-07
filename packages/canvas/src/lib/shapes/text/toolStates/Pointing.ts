@@ -1,3 +1,4 @@
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import { StateNode, TLEventHandlers, TLTextShape, createShapeId } from '@lifeboard/canvas-editor'
 
 export class Pointing extends StateNode {
@@ -31,6 +32,7 @@ export class Pointing extends StateNode {
 					props: {
 						autoSize: false,
 						w: 20,
+						scale: getNewShapeScale(this.editor),
 					},
 				},
 			])
@@ -86,6 +88,7 @@ export class Pointing extends StateNode {
 					y,
 					props: {
 						autoSize: true,
+						scale: getNewShapeScale(this.editor),
 					},
 				},
 			])

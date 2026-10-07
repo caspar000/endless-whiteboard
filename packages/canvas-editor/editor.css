@@ -1194,7 +1194,8 @@ input,
 	position: relative;
 	top: 0px;
 	left: 0px;
-	padding: 16px;
+	/* A label's room around its text grows with the shape's scale (dynamic size, fork-parity B10). */
+	padding: calc(16px * var(--tl-label-scale, 1));
 	height: fit-content;
 	width: fit-content;
 	border-radius: var(--radius-1);
@@ -1208,7 +1209,7 @@ input,
 	left: 0px;
 	width: 100%;
 	height: 100%;
-	padding: 16px;
+	padding: calc(16px * var(--tl-label-scale, 1));
 	z-index: 4;
 }
 

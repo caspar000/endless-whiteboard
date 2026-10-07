@@ -1,4 +1,4 @@
-import { ArrowUpDown, Crop, Grid2x2, Hand, LockOpen, Magnet, ZoomIn } from 'lucide-react'
+import { ArrowUpDown, Crop, Grid2x2, Hand, LockOpen, Magnet, Scaling, ZoomIn } from 'lucide-react'
 import type { CanvasPrefs, GridStyle } from '../canvasPrefs'
 import { AuraAdvanced } from './AuraAdvanced'
 import { Segmented, Toggle } from './controls'
@@ -91,6 +91,7 @@ function Controls() {
 	const [wheelBehavior, setWheelBehavior] = useUserPreference('wheelBehavior')
 	const [inverted, setInverted] = useUserPreference('isZoomDirectionInverted')
 	const [selectLocked, setSelectLocked] = useUserPreference('canSelectLockedShapes')
+	const [dynamicSize, setDynamicSize] = useUserPreference('isDynamicSizeMode')
 	return (
 		<>
 			<h2>Controls</h2>
@@ -107,6 +108,13 @@ function Controls() {
 					icon={ArrowUpDown}
 					checked={inverted ?? false}
 					onChange={setInverted}
+				/>
+				<Toggle
+					label="Dynamic size"
+					hint="New shapes keep their size on screen: drawn zoomed out, they come out bigger."
+					icon={Scaling}
+					checked={dynamicSize ?? false}
+					onChange={setDynamicSize}
 				/>
 				<Toggle
 					label="Select locked shapes"

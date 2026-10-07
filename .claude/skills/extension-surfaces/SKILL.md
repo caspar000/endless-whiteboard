@@ -54,6 +54,9 @@ the extension's `commands`; they are hidden with it when it is disabled.
   and a throw is caught. `contentImports` (and `fileImports`) are *claims*: the first enabled match
   wins and everything unclaimed falls through to tldraw. If two extensions could both want the thing,
   it is a claim; if they could all reasonably respond to it, it is a hook.
+- New kinds of geo shape are `geoTypes` (an outline per name; `registerGeoType` in `@lifeboard/canvas`).
+  Like node types they are part of the board schema, so they are registered for the server too, and
+  never unregistered.
 - Copy and paste have their own contribution, `clipboard` (the editor's `TLClipboardHooks`): change
   or stop what a copy writes or a paste puts, or take a paste whole with `onClipboardPasteRaw`. Use
   `contentImports` instead when all you want is a pasted URL or text.

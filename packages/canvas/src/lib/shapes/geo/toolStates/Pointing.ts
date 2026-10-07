@@ -1,3 +1,5 @@
+import { getGeoType } from '../customGeoTypes'
+import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	Box2d,
 	GeoShapeGeoStyle,
@@ -39,6 +41,7 @@ export class Pointing extends StateNode {
 							w: 1,
 							h: 1,
 							geo: this.editor.getStyleForNextShape(GeoShapeGeoStyle),
+							scale: getNewShapeScale(this.editor),
 						},
 					},
 				])
@@ -85,6 +88,7 @@ export class Pointing extends StateNode {
 					geo: this.editor.getStyleForNextShape(GeoShapeGeoStyle),
 					w: 1,
 					h: 1,
+					scale: getNewShapeScale(this.editor),
 				},
 			},
 		])
@@ -92,13 +96,19 @@ export class Pointing extends StateNode {
 		const shape = this.editor.getShape<TLGeoShape>(id)!
 		if (!shape) return
 
+		const custom = getGeoType(shape.props.geo)?.defaultSize
 		const bounds =
 			shape.props.geo === 'star'
 				? getStarBounds(5, 200, 200)
 				: shape.props.geo === 'cloud'
 				? new Box2d(0, 0, 300, 180)
+				: custom
+				? new Box2d(0, 0, custom.w, custom.h)
 				: new Box2d(0, 0, 200, 200)
 
+		// A clicked shape's default size, at its scale (B10).
+		const scale = shape.props.scale
+		bounds.set(bounds.x * scale, bounds.y * scale, bounds.w * scale, bounds.h * scale)
 		const delta = bounds.center
 		const parentTransform = this.editor.getShapeParentTransform(shape)
 		if (parentTransform) delta.rot(-parentTransform.rotation())

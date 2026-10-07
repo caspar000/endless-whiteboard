@@ -19,12 +19,15 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 	position,
 	width,
 	labelColor,
+	scale = 1,
 }: {
 	id: TLShapeId
 	richText: TLRichText
 	position: VecLike
 	width?: number
 	labelColor: string
+	/** The arrow's scale (fork-parity B10). */
+	scale?: number
 } & Pick<TLArrowShape['props'], 'size' | 'font'>) {
 	const editor = useEditor()
 	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
@@ -43,8 +46,8 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 			data-isediting={isEditing}
 			style={{
 				textAlign: 'center',
-				fontSize: ARROW_LABEL_FONT_SIZES[size],
-				lineHeight: ARROW_LABEL_FONT_SIZES[size] * TEXT_PROPS.lineHeight + 'px',
+				fontSize: ARROW_LABEL_FONT_SIZES[size] * scale,
+				lineHeight: ARROW_LABEL_FONT_SIZES[size] * scale * TEXT_PROPS.lineHeight + 'px',
 				transform: `translate(${position.x}px, ${position.y}px)`,
 				color: labelColor,
 			}}

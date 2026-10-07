@@ -3,6 +3,7 @@ import {
 	Editor,
 	TLArrowShape,
 	TLBookmarkShape,
+	TLClipboardRaw,
 	TLEmbedShape,
 	TLExternalContentSource,
 	TLGeoShape,
@@ -15,8 +16,11 @@ import {
 } from '@lifeboard/canvas-editor'
 import { compressToBase64, decompressFromBase64 } from 'lz-string'
 import { useCallback, useEffect } from 'react'
+import { isMermaidFlowchart } from '../../utils/mermaid/flowchart'
+import { pasteMermaid } from '../../utils/mermaid/pasteMermaid'
 import { pasteExcalidrawContent } from './clipboard/pasteExcalidrawContent'
 import { pasteFiles } from './clipboard/pasteFiles'
+import { getPastedIframe, pasteIframe, pasteLinkOntoSelection } from './clipboard/pasteSmart'
 import { pasteTldrawContent } from './clipboard/pasteTldrawContent'
 import { pasteUrl } from './clipboard/pasteUrl'
 import { TLUiEventSource, useUiEvents } from './useEventsProvider'
@@ -124,12 +128,22 @@ const handleText = (
 	point?: VecLike,
 	sources?: TLExternalContentSource[]
 ) => {
+	// Embed code, a flowchart, a link for the selection (B8): before plain links and text.
+	const iframe = getPastedIframe(data)
+	if (iframe) {
+		pasteIframe(editor, iframe, point, sources)
+		return
+	}
+	if (isMermaidFlowchart(data) && pasteMermaid(editor, data, point)) return
+
 	const validUrlList = getValidHttpURLList(data)
 	if (validUrlList) {
+		if (validUrlList.length === 1 && pasteLinkOntoSelection(editor, validUrlList[0]!)) return
 		for (const url of validUrlList) {
 			pasteUrl(editor, url, point)
 		}
 	} else if (isValidHttpURL(data)) {
+		if (pasteLinkOntoSelection(editor, data)) return
 		pasteUrl(editor, data, point)
 	} else if (isSvgText(data)) {
 		editor.mark('paste')
@@ -190,7 +204,7 @@ type ClipboardThing =
  * @param point - The point to paste at
  * @internal
  */
-const handlePasteFromEventClipboardData = async (
+export const handlePasteFromEventClipboardData = async (
 	editor: Editor,
 	clipboardData: DataTransfer,
 	point?: VecLike
@@ -202,6 +216,8 @@ const handlePasteFromEventClipboardData = async (
 		throw Error('No clipboard data')
 	}
 
+	// Read now: the event's data is gone once it's over.
+	const raw = editor.options.onClipboardPasteRaw ? rawFromDataTransfer(clipboardData) : null
 	const things: ClipboardThing[] = []
 
 	for (const item of Object.values(clipboardData.items)) {
@@ -234,6 +250,7 @@ const handlePasteFromEventClipboardData = async (
 		}
 	}
 
+	if (raw && (await isPasteHandledRaw(editor, raw, point))) return
 	handleClipboardThings(editor, things, point)
 }
 
@@ -295,7 +312,48 @@ const handlePasteFromClipboardApi = async (
 		}
 	}
 
+	if (await isPasteHandledRaw(editor, rawFromClipboardItems(clipboardItems), point)) return
 	return await handleClipboardThings(editor, things, point)
+}
+
+/** Whether `onClipboardPasteRaw` took the paste (docs/fork-parity.md X2). */
+async function isPasteHandledRaw(editor: Editor, clipboard: TLClipboardRaw, point?: VecLike) {
+	const hook = editor.options.onClipboardPasteRaw
+	if (!hook) return false
+	try {
+		return (await hook({ editor, clipboard, point })) === false
+	} catch (error) {
+		// A broken hook costs its own say, not the paste.
+		console.error(error)
+		return false
+	}
+}
+
+function rawFromDataTransfer(data: DataTransfer): TLClipboardRaw {
+	const strings = new Map<string, string>()
+	for (const type of data.types) if (type !== 'Files') strings.set(type, data.getData(type))
+	const files = [...data.files]
+	return {
+		types: uniq([...strings.keys(), ...files.map((file) => file.type)]),
+		getText: async (type) => strings.get(type) ?? null,
+		getFiles: async () => files,
+	}
+}
+
+function rawFromClipboardItems(items: ClipboardItem[]): TLClipboardRaw {
+	return {
+		types: uniq(items.flatMap((item) => [...item.types])),
+		getText: async (type) => {
+			const item = items.find((candidate) => candidate.types.includes(type))
+			return item ? blobAsString(await item.getType(type)) : null
+		},
+		getFiles: () =>
+			Promise.all(
+				items.flatMap((item) =>
+					item.types.filter((type) => type.startsWith('image/')).map((type) => item.getType(type))
+				)
+			),
+	}
 }
 
 async function handleClipboardThings(editor: Editor, things: ClipboardThing[], point?: VecLike) {
@@ -476,7 +534,7 @@ async function handleClipboardThings(editor: Editor, things: ClipboardThing[], p
 	// Try to paste a link
 	for (const result of results) {
 		if (result.type === 'text' && result.subtype === 'url') {
-			pasteUrl(editor, result.data, point, results)
+			if (!pasteLinkOntoSelection(editor, result.data.trim())) pasteUrl(editor, result.data, point, results)
 			return
 		}
 	}
@@ -497,14 +555,20 @@ async function handleClipboardThings(editor: Editor, things: ClipboardThing[], p
  * @param editor - The editor instance.
  * @public
  */
-const handleNativeOrMenuCopy = (editor: Editor) => {
-	const content = editor.getContentFromCurrentPage(editor.getSelectedShapeIds())
+export const handleNativeOrMenuCopy = (editor: Editor, operation: 'copy' | 'cut'): boolean => {
+	let content = editor.getContentFromCurrentPage(editor.getSelectedShapeIds())
 	if (!content) {
 		if (navigator && navigator.clipboard) {
 			navigator.clipboard.writeText('')
 		}
-		return
+		return true
 	}
+
+	// The app's say before anything is written (X2): other content, or none at all.
+	const changed = editor.options.onBeforeCopyToClipboard?.({ editor, operation }, content)
+	if (changed === null) return false
+	if (changed) content = changed
+	const copied = content
 
 	const stringifiedClipboard = compressToBase64(
 		JSON.stringify({
@@ -515,10 +579,10 @@ const handleNativeOrMenuCopy = (editor: Editor) => {
 	)
 
 	if (typeof navigator === 'undefined') {
-		return
+		return true
 	} else {
 		// Extract the text from the clipboard
-		const textItems = content.shapes
+		const textItems = copied.shapes
 			.map((shape) => {
 				if (
 					editor.isShapeOfType<TLTextShape>(shape, 'text') ||
@@ -562,6 +626,7 @@ const handleNativeOrMenuCopy = (editor: Editor) => {
 			navigator.clipboard.writeText(`<tldraw>${stringifiedClipboard}</tldraw>`)
 		}
 	}
+	return true
 }
 
 /** @public */
@@ -573,7 +638,7 @@ export function useMenuClipboardEvents() {
 		function onCopy(source: TLUiEventSource) {
 			if (editor.getSelectedShapeIds().length === 0) return
 
-			handleNativeOrMenuCopy(editor)
+			handleNativeOrMenuCopy(editor, 'copy')
 			trackEvent('copy', { source })
 		},
 		[editor, trackEvent]
@@ -583,8 +648,7 @@ export function useMenuClipboardEvents() {
 		function onCut(source: TLUiEventSource) {
 			if (editor.getSelectedShapeIds().length === 0) return
 
-			handleNativeOrMenuCopy(editor)
-			editor.deleteShapes(editor.getSelectedShapeIds())
+			if (handleNativeOrMenuCopy(editor, 'cut')) editor.deleteShapes(editor.getSelectedShapeIds())
 			trackEvent('cut', { source })
 		},
 		[editor, trackEvent]
@@ -639,7 +703,7 @@ export function useNativeClipboardEvents() {
 				disallowClipboardEvents(editor)
 			)
 				return
-			handleNativeOrMenuCopy(editor)
+			handleNativeOrMenuCopy(editor, 'copy')
 			trackEvent('copy', { source: 'kbd' })
 		}
 
@@ -650,8 +714,7 @@ export function useNativeClipboardEvents() {
 				disallowClipboardEvents(editor)
 			)
 				return
-			handleNativeOrMenuCopy(editor)
-			editor.deleteShapes(editor.getSelectedShapeIds())
+			if (handleNativeOrMenuCopy(editor, 'cut')) editor.deleteShapes(editor.getSelectedShapeIds())
 			trackEvent('cut', { source: 'kbd' })
 		}
 

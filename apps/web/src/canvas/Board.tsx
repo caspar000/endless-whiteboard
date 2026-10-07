@@ -20,6 +20,7 @@ import {
 	rollupStats,
 	expressionSuggestExtension,
 	readPropertyRegistry,
+	extensionClipboardHooks,
 } from '@lifeboard/node-kit'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
@@ -122,6 +123,12 @@ function CanvasOverlays() {
 		</>
 	)
 }
+
+/**
+ * The editor's options: for now, extensions' say in copy and paste (fork-parity X2). A module-scope
+ * constant for the same reason as `getShapeVisibility` below: the prop feeds the Editor constructor.
+ */
+const editorOptions = { ...extensionClipboardHooks }
 
 const canvasComponents: TLComponents = {
 	...nodeComponents,
@@ -404,6 +411,7 @@ function BoardCanvas({
 				 * selection and undo history (see DRAIN_MS in app/App.tsx).
 				 */
 				getShapeVisibility={getShapeVisibility}
+				options={editorOptions}
 				/*
 				 * One TipTap config serves every text editor tldraw owns — sticky, text shape, geo
 				 * label, arrow label — so the `{…}` helper reaches all four from here.

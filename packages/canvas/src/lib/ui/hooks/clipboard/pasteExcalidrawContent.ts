@@ -26,6 +26,7 @@ import {
 	toRichText,
 } from '@lifeboard/canvas-editor'
 import { encodeSegments } from '../../../shapes/draw/segments'
+import { beforePaste } from './pasteTldrawContent'
 
 /**
  * When the clipboard has excalidraw content, paste it into the scene.
@@ -304,9 +305,12 @@ export async function pasteExcalidrawContent(editor: Editor, clipboard: any, poi
 
 	const p = point ?? (editor.inputs.shiftKey ? editor.inputs.currentPagePoint : undefined)
 
+	const content = beforePaste(editor, tldrawContent, p)
+	if (!content) return
+
 	editor.mark('paste')
 
-	editor.putContentOntoCurrentPage(tldrawContent, {
+	editor.putContentOntoCurrentPage(content, {
 		point: p,
 		select: false,
 		preserveIds: true,

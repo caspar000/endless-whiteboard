@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { Editor } from '@lifeboard/canvas'
+import type { Editor, TLClipboardHooks, TLContent } from '@lifeboard/canvas'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import {
 	registerCommand,
@@ -182,6 +182,12 @@ export interface Extension {
 	/** Dropped or pasted URLs and text this extension claims. Same gating as `fileImports`. */
 	contentImports?: readonly ContentImport[]
 	/**
+	 * A say in copy and paste: change what a copy writes or a paste puts, or take a paste whole before
+	 * the board reads it. Every enabled extension's run in registration order; see
+	 * {@link extensionClipboardHooks}.
+	 */
+	clipboard?: TLClipboardHooks
+	/**
 	 * Behaviour rather than capability: what this extension does *because* the board changed.
 	 *
 	 * The extension's own id is the hook set's id, so there is nothing to name here. Switched off with
@@ -335,6 +341,52 @@ export function actionsForShape(shape: { type: string }): ShapeAction[] {
 		}
 	}
 	return found
+}
+
+/**
+ * Every enabled extension's clipboard hooks as one set, for the editor's options (fork-parity X2).
+ *
+ * The content hooks pass what they return along to the next: any one may change it, and a `null`
+ * from any stops the copy or paste. A raw paste is a claim, like `contentImports`: the first to
+ * return `false` has it. Enablement is checked on every copy and paste, and a hook that throws is
+ * logged and skipped.
+ */
+export const extensionClipboardHooks: Required<TLClipboardHooks> = {
+	onBeforeCopyToClipboard: (info, content) =>
+		passAlong(content, (ext, current) => ext.clipboard?.onBeforeCopyToClipboard?.(info, current)),
+	onBeforePasteFromClipboard: (info, content) =>
+		passAlong(content, (ext, current) => ext.clipboard?.onBeforePasteFromClipboard?.(info, current)),
+	async onClipboardPasteRaw(info) {
+		for (const ext of enabledWith('onClipboardPasteRaw')) {
+			try {
+				if ((await ext.clipboard!.onClipboardPasteRaw!(info)) === false) return false
+			} catch (error) {
+				console.error(`Clipboard hook in "${ext.id}" failed`, error)
+			}
+		}
+	},
+}
+
+function enabledWith(hook: keyof TLClipboardHooks): Extension[] {
+	return [...extensions.values()].filter((ext) => ext.clipboard?.[hook] && isExtensionEnabled(ext.id))
+}
+
+function passAlong(
+	content: TLContent,
+	run: (ext: Extension, current: TLContent) => TLContent | null | void
+): TLContent | null {
+	let current = content
+	for (const ext of extensions.values()) {
+		if (!ext.clipboard || !isExtensionEnabled(ext.id)) continue
+		try {
+			const next = run(ext, current)
+			if (next === null) return null
+			if (next) current = next
+		} catch (error) {
+			console.error(`Clipboard hook in "${ext.id}" failed`, error)
+		}
+	}
+	return current
 }
 
 /**

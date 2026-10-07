@@ -58,7 +58,10 @@ board (`canvas/dockDrag.ts`). The relation tool's row picks a curved or an elbow
 only across and down, routed around the shapes it joins (`canvas-editor`'s `elbow-arrow.ts`). A right
 drag pans from any tool, and a right click opens the menu. Settings → Canvas holds the
 person's own ways of working: the wheel pans or zooms (either way round), locked shapes can be
-selected, and Export / Copy as PNG come out at 1×–3× and trimmed to the drawing if wanted.
+selected, and Export / Copy as PNG come out at 1×–3× and trimmed to the drawing if wanted. Pasting
+knows a few things besides text and pictures: a Mermaid flowchart becomes shapes joined by bound
+arrows (`canvas`'s `utils/mermaid`), `<iframe>` embed code becomes the embed, Excalidraw content
+comes in as shapes, and a link pasted onto selected shapes becomes their link.
 Double-clicking empty canvas is tldraw's default action. Double-clicking the board's name in the tab
 strip renames it.
 
@@ -364,7 +367,10 @@ resolve a `{…}` that resolved to nothing before it existed.
 event. A **claim** is `fileImports` and its new sibling `contentImports`, where exactly one extension
 gets the dropped content, because two extensions both turning a dropped link into a shape would
 produce two shapes. The issue this came from listed `onDrop` alongside the reactions; it is a
-different promise, so it lives next door.
+different promise, so it lives next door. `Extension.clipboard` is both at once, by kind: its
+before-copy and before-paste hooks pass the content along every enabled extension (any may change
+it, any may stop it), while a raw paste is a claim the first to return `false` wins
+(`extensionClipboardHooks`).
 
 Reactions are **synchronous and fire inside the store change that triggered them**, which is what
 puts a hook's write in the *same* undo entry — ⌘Z after creating an auto-tagged note takes back the

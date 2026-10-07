@@ -253,6 +253,11 @@ export function Notes() {
 					prose too, so it is still one click away.
 				</p>
 				<p>
+					With shapes selected, a pasted link goes onto them instead, as their link. Pasted embed
+					code (an <code>&lt;iframe&gt;</code> from YouTube, Figma and the like) becomes the embed,
+					and a Mermaid flowchart becomes shapes joined by arrows you can move about.
+				</p>
+				<p>
 					A card would have been easier and is the wrong thing here: a card cannot hold a price, be
 					counted by a table, stand on a calendar or answer an expression. A note with a property
 					can, so a page you saved is something you can <em>file</em> rather than only look at.

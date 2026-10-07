@@ -160,6 +160,7 @@ export {
 	clearExtensionRegistry,
 	defineNode,
 	contentImportFor,
+	extensionClipboardHooks,
 	fileImportFor,
 	getExtension,
 	getExtensions,

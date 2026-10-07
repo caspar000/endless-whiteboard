@@ -150,6 +150,7 @@ import {
 	TLWheelEventInfo,
 } from './types/event-types'
 import { TLExternalAssetContent, TLExternalContent } from './types/external-content'
+import type { TLClipboardHooks } from './types/clipboard-types'
 import { TLCommandHistoryOptions } from './types/history-types'
 import { OptionalKeys, RequiredKeys, TLSvgOptions } from './types/misc-types'
 import { TLResizeHandle } from './types/selection-types'
@@ -159,7 +160,7 @@ import { TLResizeHandle } from './types/selection-types'
  *
  * @public
  */
-export interface TldrawOptions {
+export interface TldrawOptions extends TLClipboardHooks {
 	maxShapesPerPage: number
 	maxPages: number
 	/** How fast a drag at the edge of the view pans the board, as a multiple; 0 turns it off. */

@@ -95,6 +95,12 @@ export class TLLocalSyncClient {
 	private diffQueue: Array<RecordsDiff<UnknownRecord> | typeof UPDATE_INSTANCE_STATE> = []
 	private didDispose = false
 	private shouldDoFullDBWrite = true
+	/** The changes a write in progress is writing: until it lands, they are on no disk. */
+	private inFlight: Array<RecordsDiff<UnknownRecord> | typeof UPDATE_INSTANCE_STATE> = []
+	/** Bumped each time the page stashes what it hasn't written (see `stashBeforeUnload`). */
+	private stashToken = 0
+	/** Whether a stash is out there that the database hasn't caught up with. */
+	private hasStash = false
 	private isReloading = false
 	readonly persistenceKey: string
 	readonly sessionId: string
@@ -167,9 +173,9 @@ export class TLLocalSyncClient {
 
 		// A tab being closed or hidden may never come back, so write what the throttle still holds.
 		if (typeof window !== 'undefined') {
-			const onPageHide = () => this.flush()
+			const onPageHide = () => this.stashBeforeUnload()
 			const onVisibilityChange = () => {
-				if (document.visibilityState === 'hidden') this.flush()
+				if (document.visibilityState === 'hidden') this.stashBeforeUnload()
 			}
 			window.addEventListener('pagehide', onPageHide)
 			document.addEventListener('visibilitychange', onVisibilityChange)
@@ -209,6 +215,9 @@ export class TLLocalSyncClient {
 
 		this.debug('loaded data from store', data, 'didDispose', this.didDispose)
 		if (this.didDispose) return
+
+		// What the last page stashed as it went, if the database never got it (`stashBeforeUnload`).
+		data = this.withStash(data)
 
 		try {
 			if (data) {
@@ -323,6 +332,51 @@ export class TLLocalSyncClient {
 	}
 
 	/**
+	 * The page is hidden or going away. A database write started now can be lost with the page, so
+	 * what isn't on disk yet (the throttled changes, and any write still running) is also put in
+	 * localStorage, synchronously, which the page can't outlive. The next load applies it, and the
+	 * first write after that drops it. Then the write is started anyway, for when the page lives on.
+	 */
+	stashBeforeUnload() {
+		// The store tells its listeners about a change a moment after it: hear about it now, or a change
+		// made just before the page went would be in neither the queue nor the stash.
+		this.store._flushHistory()
+		const pending = [...this.inFlight, ...this.diffQueue].filter(
+			(d): d is RecordsDiff<UnknownRecord> => d !== UPDATE_INSTANCE_STATE
+		)
+		if (pending.length) {
+			const diff = squashRecordDiffs(pending)
+			const stash: LocalStash = {
+				schema: this.serializedSchema,
+				put: [...Object.values(diff.added), ...Object.values(diff.updated).map(([, to]) => to)],
+				remove: Object.keys(diff.removed),
+			}
+			if (writeStash(this.persistenceKey, mergeStash(readStash(this.persistenceKey), stash))) {
+				this.stashToken++
+				this.hasStash = true
+			}
+		}
+		this.flush()
+	}
+
+	/** The loaded board with a stash laid over it, if one was saved under the same schema. */
+	private withStash<T extends { records: UnknownRecord[]; schema?: SerializedSchema }>(data: T | undefined) {
+		const stash = readStash(this.persistenceKey)
+		if (!stash) return data
+		if (data?.schema && JSON.stringify(data.schema) !== JSON.stringify(stash.schema)) {
+			clearStash(this.persistenceKey)
+			return data
+		}
+		const records = new Map<string, UnknownRecord>((data?.records ?? []).map((record) => [record.id, record]))
+		for (const record of stash.put) records.set(record.id, record)
+		for (const id of stash.remove) records.delete(id)
+		this.hasStash = true
+		// Written whole at the first write, so the database has it all again.
+		this.shouldDoFullDBWrite = true
+		return { ...(data ?? { sessionStateSnapshot: null }), records: [...records.values()], schema: stash.schema } as T
+	}
+
+	/**
 	 * Schedule a persist. Persists don't happen immediately: they are throttled to avoid writing too
 	 * often, and will retry if failed.
 	 *
@@ -396,6 +450,8 @@ export class TLLocalSyncClient {
 		// diffs that come in during the persist will still get tracked
 		const diffQueue = this.diffQueue
 		this.diffQueue = []
+		this.inFlight = diffQueue
+		const stashToken = this.stashToken
 		// A write started by `close()` runs to the end; any other is dropped once the client is closed.
 		const outlivesClose = this.isClosing
 		const didCancel = () => this.didDispose && !outlivesClose
@@ -425,6 +481,16 @@ export class TLLocalSyncClient {
 				})
 			}
 			this.didLastWriteError = false
+			// Everything stashed before this write began is on disk now, unless more of the board changed
+			// since (the camera and selection don't count: they aren't stashed).
+			if (
+				this.hasStash &&
+				stashToken === this.stashToken &&
+				!this.diffQueue.some((diff) => diff !== UPDATE_INSTANCE_STATE)
+			) {
+				clearStash(this.persistenceKey)
+				this.hasStash = false
+			}
 		} catch (e) {
 			// set this.shouldDoFullDBWrite because we clear the diffQueue no matter what,
 			// so if this is just a temporary error, we will still persist all changes
@@ -439,6 +505,7 @@ export class TLLocalSyncClient {
 			}
 		}
 
+		this.inFlight = []
 		this.isPersisting = false
 		this.debug('doPersist end')
 
@@ -446,4 +513,61 @@ export class TLLocalSyncClient {
 		// now. we request another persist so any new changes can get written
 		this.schedulePersist()
 	}
+}
+
+/** What a page hadn't written when it went (`stashBeforeUnload`): records to put, ids to remove. */
+interface LocalStash {
+	schema: SerializedSchema
+	put: UnknownRecord[]
+	remove: string[]
+}
+
+/** Past this size a stash isn't written: localStorage is small, and the database write may yet land. */
+const MAX_STASH_CHARS = 2_000_000
+
+const stashKey = (persistenceKey: string) => `lifeboard-local-stash:${persistenceKey}`
+
+function readStash(persistenceKey: string): LocalStash | null {
+	try {
+		const raw = globalThis.localStorage?.getItem(stashKey(persistenceKey))
+		return raw ? (JSON.parse(raw) as LocalStash) : null
+	} catch {
+		return null
+	}
+}
+
+function writeStash(persistenceKey: string, stash: LocalStash): boolean {
+	try {
+		const json = JSON.stringify(stash)
+		if (json.length > MAX_STASH_CHARS) return false
+		globalThis.localStorage?.setItem(stashKey(persistenceKey), json)
+		return true
+	} catch {
+		// Full, or private mode: the database write is all there is.
+		return false
+	}
+}
+
+function clearStash(persistenceKey: string): void {
+	try {
+		globalThis.localStorage?.removeItem(stashKey(persistenceKey))
+	} catch {
+		// Nothing to do.
+	}
+}
+
+/** `later` on top of `earlier`: the tab went to the background, then closed. */
+function mergeStash(earlier: LocalStash | null, later: LocalStash): LocalStash {
+	if (!earlier || JSON.stringify(earlier.schema) !== JSON.stringify(later.schema)) return later
+	const put = new Map<string, UnknownRecord>(earlier.put.map((record) => [record.id, record]))
+	const remove = new Set(earlier.remove)
+	for (const record of later.put) {
+		put.set(record.id, record)
+		remove.delete(record.id)
+	}
+	for (const id of later.remove) {
+		put.delete(id)
+		remove.add(id)
+	}
+	return { schema: later.schema, put: [...put.values()], remove: [...remove] }
 }

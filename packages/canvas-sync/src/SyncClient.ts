@@ -249,6 +249,8 @@ export class SyncClient<R extends UnknownRecord, P = unknown> {
 
 	/** Writes what the cache hasn't got yet, now: the page is going away. */
 	flush(): void {
+		// Hear about the last changes first: the store reports them a moment late.
+		this.catchUp()
 		this.saveNow(true)
 	}
 

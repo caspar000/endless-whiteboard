@@ -21,8 +21,6 @@ test('a comment is placed with C and a click, survives a reload, and resolves in
 	await expect(page.getByTestId('lb.comment')).toContainText('You')
 	await expect(page.getByLabel('Comments, 1 open')).toBeVisible()
 
-	// A board on this device saves a moment after a change (`PERSIST_THROTTLE_MS`).
-	await page.waitForTimeout(1000)
 	await page.reload()
 	await expect(page.getByTestId('lb.comment-pin')).toHaveCount(1)
 	await page.getByTestId('lb.comment-pin').click()

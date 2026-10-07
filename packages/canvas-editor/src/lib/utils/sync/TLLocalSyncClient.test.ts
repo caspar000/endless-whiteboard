@@ -185,6 +185,25 @@ describe('pending writes are not lost', () => {
 		expect(didCancel()).toBe(false)
 	})
 
+	test('a page that goes mid-write leaves them in localStorage, and the next load has them', async () => {
+		const client = await clientWithPendingChange()
+		// The write the page starts as it goes never lands.
+		;(idb.storeChangesInIndexedDb as jest.Mock).mockImplementationOnce(() => new Promise(() => {}))
+		window.dispatchEvent(new Event('pagehide'))
+		client.close()
+		expect(localStorage.getItem('lifeboard-local-stash:test')).toContain('test2')
+
+		const next = testClient()
+		await tick()
+		await tick()
+		expect(next.store.query.records('page').get().map((page) => page.name)).toContain('test2')
+		// Its first write has it all, and the stash goes.
+		await tick()
+		await tick()
+		expect(localStorage.getItem('lifeboard-local-stash:test')).toBeNull()
+		next.client.close()
+	})
+
 	test('the page being left writes them at once', async () => {
 		const client = await clientWithPendingChange()
 		window.dispatchEvent(new Event('pagehide'))

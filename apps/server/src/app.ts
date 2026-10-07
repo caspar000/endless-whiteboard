@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static'
 import fastifyWebsocket from '@fastify/websocket'
 import { createBoardSchema } from '@lifeboard/schema'
 import Fastify, { type FastifyServerOptions } from 'fastify'
+import { registerAdminApi } from './adminApi.ts'
 import { registerApi } from './api.ts'
 import { AssetFiles } from './assets.ts'
 import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
@@ -62,6 +63,7 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		appVersion: config.revision ?? 'dev',
 		secureCookies: config.secureCookies,
 	})
+	registerAdminApi(app, { vault, accounts, rooms, thumbnails })
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {
 		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)

@@ -1,4 +1,4 @@
-import { Blocks, Bot, Grid2x2, HardDrive, Keyboard, Palette, SlidersHorizontal, UserRound } from 'lucide-react'
+import { Blocks, Bot, Grid2x2, HardDrive, Keyboard, Palette, Server, SlidersHorizontal, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 /**
@@ -19,6 +19,8 @@ export interface SettingsTab {
 	label: string
 	group: (typeof SETTINGS_GROUPS)[number]
 	icon: ReactNode
+	/** Shown only to the server's admin. */
+	adminOnly?: boolean
 }
 
 export const SETTINGS_GROUPS = ['Options', 'Add-ons'] as const
@@ -62,6 +64,13 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		label: 'Account',
 		group: 'Options',
 		icon: <UserRound size={15} />,
+	},
+	{
+		id: 'server',
+		label: 'Server',
+		group: 'Options',
+		icon: <Server size={15} />,
+		adminOnly: true,
 	},
 	{
 		id: EXTENSIONS_TAB,

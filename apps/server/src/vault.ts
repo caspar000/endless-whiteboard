@@ -127,6 +127,11 @@ export class Vault {
 			.run(vaultId, key, JSON.stringify(value))
 	}
 
+	/** A vault is gone: its settings with it. Its boards are deleted one by one first. */
+	forgetVault(vaultId: string): void {
+		this.db.prepare('DELETE FROM settings WHERE vault_id = ?').run(vaultId)
+	}
+
 	close(): void {
 		this.db.close()
 	}

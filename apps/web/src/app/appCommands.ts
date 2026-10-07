@@ -27,6 +27,7 @@ import {
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { openShareDialog } from './ShareDialog'
 import { commentFocus, commentsPanelOpen } from '../canvas/comments/comments'
+import { currentAccount } from '../server/accounts'
 import { EXTENSIONS_TAB } from './settings/sections'
 import type { Theme } from './useTheme'
 
@@ -179,6 +180,14 @@ registerCommand({
 	title: 'Manage extensions',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goSettings(EXTENSIONS_TAB),
+})
+
+registerCommand({
+	id: 'view.server-admin',
+	title: 'Manage accounts and vaults',
+	group: NAVIGATE_GROUP,
+	when: () => currentAccount.get()?.isAdmin === true,
+	run: () => void api?.goSettings('server'),
 })
 
 registerCommand({

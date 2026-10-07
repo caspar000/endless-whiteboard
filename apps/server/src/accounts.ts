@@ -240,6 +240,15 @@ export class Accounts {
 		return (this.db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n
 	}
 
+	/** Every account on the server, oldest first: the admin's view. */
+	allUsers(): User[] {
+		return (this.db.prepare('SELECT * FROM users ORDER BY created_at').all() as unknown as UserRow[]).map(toUser)
+	}
+
+	countAdmins(): number {
+		return (this.db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').get() as { n: number }).n
+	}
+
 	/** The account a session from before accounts belongs to: the first admin. */
 	firstAdmin(): User | undefined {
 		const row = this.db.prepare('SELECT * FROM users WHERE is_admin = 1 ORDER BY created_at LIMIT 1').get() as UserRow | undefined
@@ -287,9 +296,17 @@ export class Accounts {
 	/** A new password ends every session begun before it, and says whether it is one to replace. */
 	updateUser(
 		id: string,
-		patch: { username?: string; displayName?: string; vaultRole?: VaultRole; passwordHash?: string; mustChangePassword?: boolean }
+		patch: {
+			username?: string
+			displayName?: string
+			vaultRole?: VaultRole
+			isAdmin?: boolean
+			passwordHash?: string
+			mustChangePassword?: boolean
+		}
 	): User | undefined {
 		if (patch.username !== undefined) this.db.prepare('UPDATE users SET username = ? WHERE id = ?').run(patch.username, id)
+		if (patch.isAdmin !== undefined) this.db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(patch.isAdmin ? 1 : 0, id)
 		if (patch.displayName !== undefined) this.db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(patch.displayName, id)
 		if (patch.vaultRole !== undefined) this.db.prepare('UPDATE users SET vault_role = ? WHERE id = ?').run(patch.vaultRole, id)
 		if (patch.passwordHash !== undefined) {
@@ -340,6 +357,21 @@ export class Accounts {
 
 	renameVault(id: string, name: string): void {
 		this.db.prepare('UPDATE vaults SET name = ? WHERE id = ?').run(name, id)
+	}
+
+	/** Every vault on the server, oldest first. */
+	vaults(): VaultInfo[] {
+		return this.db.prepare('SELECT id, name FROM vaults ORDER BY created_at').all() as unknown as VaultInfo[]
+	}
+
+	/**
+	 * A vault is gone, after its accounts and boards: the invites into it and the record of who was in
+	 * it go too.
+	 */
+	deleteVault(id: string): void {
+		this.db.prepare('DELETE FROM invites WHERE vault_id = ?').run(id)
+		this.db.prepare('DELETE FROM former_users WHERE vault_id = ?').run(id)
+		this.db.prepare('DELETE FROM vaults WHERE id = ?').run(id)
 	}
 
 	/* ------------------------------------------------------------------------------------ invites */

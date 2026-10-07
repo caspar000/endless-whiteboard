@@ -127,6 +127,62 @@ export async function withdrawInvite(token: string): Promise<void> {
 	await serverApi(`/invites/${encodeURIComponent(token)}`, { method: 'DELETE' })
 }
 
+/* ------------------------------------------------------------------- Settings → Server (admins) */
+
+export interface AdminAccount extends Person {
+	vaultId: string
+	role: VaultRole
+	isAdmin: boolean
+	createdAt: number
+}
+
+export interface AdminVault {
+	id: string
+	name: string
+	members: number
+	boards: number
+}
+
+export const adminAccounts = async () => json<AdminAccount[]>(await serverApi('/admin/accounts'))
+export const adminVaults = async () => json<AdminVault[]>(await serverApi('/admin/vaults'))
+
+/** In an existing vault (`vaultId`) or a new one (`newVault`, its name). */
+export const adminCreateAccount = async (account: {
+	username: string
+	displayName: string
+	password: string
+	role: VaultRole
+	isAdmin: boolean
+	vaultId?: string
+	newVault?: string
+}) => json<AdminAccount>(await serverApi('/admin/accounts', { method: 'POST', ...body(account) }))
+
+/** A `password` logs them out, and they replace it at their next login. */
+export async function adminUpdateAccount(
+	id: string,
+	patch: { username?: string; displayName?: string; role?: VaultRole; isAdmin?: boolean; password?: string }
+): Promise<void> {
+	await serverApi(`/admin/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', ...body(patch) })
+}
+
+/** `newOwner` when they're the last owner of a vault others are in; `deleteVault` when they're its last person. */
+export async function adminDeleteAccount(id: string, options: { newOwner?: string; deleteVault?: boolean } = {}): Promise<void> {
+	const query = new URLSearchParams({
+		...(options.newOwner ? { newOwner: options.newOwner } : {}),
+		...(options.deleteVault ? { deleteVault: '1' } : {}),
+	}).toString()
+	await serverApi(`/admin/accounts/${encodeURIComponent(id)}${query ? `?${query}` : ''}`, { method: 'DELETE' })
+}
+
+export async function adminRenameVault(id: string, name: string): Promise<void> {
+	await serverApi(`/admin/vaults/${encodeURIComponent(id)}`, { method: 'PATCH', ...body({ name }) })
+}
+
+/** The vault, its boards, and every account in it. */
+export async function adminDeleteVault(id: string): Promise<void> {
+	await serverApi(`/admin/vaults/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
 export const inviteUrl = (token: string) => `${location.origin}/invite/${token}`
 export const shareUrl = (token: string) => `${location.origin}/share/${token}`
 

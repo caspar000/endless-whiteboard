@@ -1,4 +1,6 @@
+import { useValue } from '@lifeboard/canvas'
 import { useEffect, useRef } from 'react'
+import { currentAccount } from '../../server/accounts'
 import type { CanvasPrefs } from '../canvasPrefs'
 import type { BoardsApi } from '../useBoards'
 import type { Theme } from '../useTheme'
@@ -10,6 +12,7 @@ import { ExtensionDetail } from './ExtensionDetail'
 import { ExtensionsPanel } from './ExtensionsPanel'
 import { GeneralPanel } from './GeneralPanel'
 import { KeymapPanel } from './KeymapPanel'
+import { ServerPanel } from './ServerPanel'
 import { StoragePanel } from './StoragePanel'
 import { EXTENSIONS_TAB, SETTINGS_GROUPS, SETTINGS_TABS, tabFor } from './sections'
 
@@ -42,6 +45,8 @@ export function SettingsPage({
 	api: BoardsApi
 	onImported?: () => void
 }) {
+	const isAdmin = useValue('lifeboard:is-admin', () => currentAccount.get()?.isAdmin === true, [])
+	const tabs = SETTINGS_TABS.filter((t) => !t.adminOnly || isAdmin)
 	const active = tabFor(tab)
 	// An extension page only makes sense under its own tab; an id on any other one is a stale link.
 	const openExtensionId = active.id === EXTENSIONS_TAB ? extensionId : undefined
@@ -61,7 +66,7 @@ export function SettingsPage({
 		<div className="lb-pane">
 			<nav className="lb-rail" aria-label="Settings sections">
 				{SETTINGS_GROUPS.map((group) => {
-					const inGroup = SETTINGS_TABS.filter((t) => t.group === group)
+					const inGroup = tabs.filter((t) => t.group === group)
 					if (!inGroup.length) return null
 					return (
 						<div className="lb-rail__group" key={group}>
@@ -113,6 +118,7 @@ export function SettingsPage({
 							{active.id === 'keyboard' && <KeymapPanel />}
 							{active.id === 'storage' && <StoragePanel api={api} onImported={onImported} />}
 							{active.id === 'account' && <AccountPanel hasServer={api.hasServer} />}
+							{active.id === 'server' && <ServerPanel />}
 							{active.id === EXTENSIONS_TAB && <ExtensionsPanel onOpen={onExtension} />}
 							{active.id === 'agents' && <AgentsPanel />}
 						</>

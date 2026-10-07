@@ -154,3 +154,56 @@ test('an owner makes an account, who chooses a password at first login, and is r
 	await carol.reload()
 	await carol.waitForURL((url) => url.pathname === '/login')
 })
+
+test('the server admin creates an account in a new vault, resets its password, and deletes it with its vault', async ({ browser }) => {
+	const admin = await newPage(browser)
+	await logIn(admin, 'owner', OWNER_PASSWORD)
+	await admin.goto('/#/settings/server')
+	await expect(admin.getByTestId('lb.server')).toBeVisible()
+
+	const create = admin.getByTestId('lb.server.create')
+	await create.getByLabel('Name', { exact: true }).fill('Fay')
+	await create.getByLabel('Username', { exact: true }).fill('fay')
+	await create.getByLabel('Temporary password').fill('fay’s first password')
+	await create.getByLabel('New vault’s name').fill('Fay’s boards')
+	await create.getByRole('button', { name: 'Create account' }).click()
+	await expect(admin.getByText('Made @fay.')).toBeVisible()
+	const accounts = admin.getByTestId('lb.server.accounts')
+	const fayRow = accounts.getByRole('row', { name: /Fay/ }).first()
+	await expect(fayRow).toContainText('Fay’s boards')
+	await expect(admin.getByTestId('lb.server.vaults').getByRole('row', { name: /Fay’s boards/ })).toContainText('1')
+
+	// Fay logs in and picks her password.
+	const fay = await newPage(browser)
+	await fay.goto('/login')
+	await fay.locator('input[name="username"]').fill('fay')
+	await fay.locator('input[name="password"]').fill('fay’s first password')
+	await fay.locator('input[name="password"]').press('Enter')
+	await fay.waitForURL((url) => url.pathname === '/password')
+	await fay.getByLabel('New password, 12 characters or more').fill('fay’s own password')
+	await fay.getByLabel('Once more').fill('fay’s own password')
+	await fay.getByRole('button', { name: 'Save and continue' }).click()
+	await fay.waitForURL((url) => url.pathname === '/')
+	// A member of nothing special: no Server tab.
+	await fay.goto('/#/settings/account')
+	await expect(fay.getByRole('button', { name: 'Server' })).toHaveCount(0)
+
+	// The admin sets her a new password: she's logged out, and asked again at her next login.
+	await fayRow.getByRole('button', { name: 'Set password' }).click()
+	await admin.getByLabel('Temporary password for Fay').fill('fay’s second given one')
+	await admin.getByRole('button', { name: 'Set password' }).last().click()
+	await expect(admin.getByText('Fay is logged out everywhere')).toBeVisible()
+	await fay.reload()
+	await fay.waitForURL((url) => url.pathname === '/login')
+
+	// Deleting the last person in a vault offers to take the vault, behind its typed name.
+	await fayRow.getByRole('button', { name: 'Delete' }).click()
+	await admin.getByLabel(/Also delete Fay’s boards/).check()
+	const confirm = admin.getByRole('button', { name: 'Delete Fay' })
+	await expect(confirm).toBeDisabled()
+	await admin.getByLabel('Vault name to confirm').fill('Fay’s boards')
+	await confirm.click()
+	await expect(admin.getByText('Deleted Fay and Fay’s boards.')).toBeVisible()
+	await expect(accounts.getByRole('row', { name: /Fay/ })).toHaveCount(0)
+	await expect(admin.getByTestId('lb.server.vaults').getByRole('row', { name: /Fay’s boards/ })).toHaveCount(0)
+})

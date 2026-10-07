@@ -614,6 +614,103 @@ describe('accounts', () => {
 		expect(again.statusCode).toBe(201)
 	})
 
+	describe('the server admin', () => {
+		type Account = { id: string; username: string; vaultId: string; role: string; isAdmin: boolean }
+		type VaultRow = { id: string; name: string; members: number; boards: number }
+		const adminCall = (app: App, cookie: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object) =>
+			app.inject({ method, url: `/api/admin/${url}`, headers: { cookie }, ...(payload ? { payload } : {}) })
+		const loginAs = async (app: App, username: string, password: string) =>
+			cookieOf(await app.inject({ method: 'POST', url: '/login', ...form({ username, password, next: '/' }) }))
+
+		it('is the only one who sees every account and vault', async () => {
+			const { app, cookie: owner } = await startServer()
+			const ann = await invited(app, owner)
+			expect((await adminCall(app, ann.cookie, 'GET', 'accounts')).statusCode).toBe(403)
+			expect((await adminCall(app, ann.cookie, 'GET', 'vaults')).statusCode).toBe(403)
+			const all = (await adminCall(app, owner, 'GET', 'accounts')).json<Account[]>()
+			expect(all.find((a) => a.username === ann.username)).toMatchObject({ role: 'member', isAdmin: false })
+		})
+
+		it('creates an account in a new vault, resets passwords, and keeps an admin', async () => {
+			const { app, cookie: owner } = await startServer()
+			const made = await adminCall(app, owner, 'POST', 'accounts', {
+				username: 'dora',
+				displayName: 'Dora',
+				password: 'given by the admin',
+				newVault: 'Dora’s boards',
+				role: 'owner',
+				isAdmin: false,
+			})
+			expect(made.statusCode).toBe(201)
+			const dora = made.json<Account>()
+			expect((await adminCall(app, owner, 'GET', 'vaults')).json<VaultRow[]>().find((v) => v.id === dora.vaultId)).toMatchObject({
+				name: 'Dora’s boards',
+				members: 1,
+				boards: 0,
+			})
+			// Her first login asks for her own password.
+			const first = await loginAs(app, 'dora', 'given by the admin')
+			expect((await app.inject({ url: '/api/me', headers: { cookie: first } })).statusCode).toBe(403)
+
+			// A reset logs her out and asks again.
+			expect((await adminCall(app, owner, 'PATCH', `accounts/${dora.id}`, { password: 'another given one' })).statusCode).toBe(200)
+			expect((await app.inject({ url: '/api/me', headers: { cookie: first } })).statusCode).toBe(401)
+			const again = await loginAs(app, 'dora', 'another given one')
+			expect((await app.inject({ url: '/api/me', headers: { cookie: again } })).statusCode).toBe(403)
+
+			// Admins: make her one, and the server can't lose its last.
+			expect((await adminCall(app, owner, 'PATCH', `accounts/${dora.id}`, { isAdmin: true })).json()).toMatchObject({ isAdmin: true })
+			expect((await adminCall(app, owner, 'PATCH', `accounts/${dora.id}`, { isAdmin: false })).statusCode).toBe(200)
+			const ownerId = (await app.inject({ url: '/api/me', headers: { cookie: owner } })).json<{ id: string }>().id
+			expect((await adminCall(app, owner, 'PATCH', `accounts/${ownerId}`, { isAdmin: false })).statusCode).toBe(409)
+			expect((await adminCall(app, owner, 'DELETE', `accounts/${ownerId}`)).statusCode).toBe(400)
+		})
+
+		it('deletes a last owner only with a successor, and a last member’s vault only when asked', async () => {
+			const { app, cookie: owner } = await startServer()
+			const bob = await invited(app, owner, 'new-vault')
+			const bobsBoard = await createBoard(app, bob.cookie, 'Bob’s')
+			const accountsNow = async () => (await adminCall(app, owner, 'GET', 'accounts')).json<Account[]>()
+			const bobAccount = (await accountsNow()).find((a) => a.username === bob.username)!
+			const made = await adminCall(app, owner, 'POST', 'accounts', {
+				username: `cy${bob.username}`,
+				displayName: 'Cy',
+				password: 'a long enough password',
+				vaultId: bobAccount.vaultId,
+				role: 'member',
+			})
+			const cy = made.json<Account>()
+
+			// Bob owns it alone, and Cy is still in it: someone must own it next.
+			expect((await adminCall(app, owner, 'DELETE', `accounts/${bobAccount.id}`)).statusCode).toBe(409)
+			expect((await adminCall(app, owner, 'DELETE', `accounts/${bobAccount.id}?newOwner=${cy.id}`)).statusCode).toBe(204)
+			expect((await accountsNow()).find((a) => a.id === cy.id)).toMatchObject({ role: 'owner' })
+
+			// Cy is the last one in it. Without asking, the vault stays, empty, with its board.
+			expect((await adminCall(app, owner, 'DELETE', `accounts/${cy.id}`)).statusCode).toBe(204)
+			const kept = (await adminCall(app, owner, 'GET', 'vaults')).json<VaultRow[]>().find((v) => v.id === bobAccount.vaultId)
+			expect(kept).toMatchObject({ members: 0, boards: 1 })
+
+			// Deleting the vault takes the board.
+			expect((await adminCall(app, owner, 'DELETE', `vaults/${bobAccount.vaultId}`)).statusCode).toBe(204)
+			expect((await adminCall(app, owner, 'GET', 'vaults')).json<VaultRow[]>().some((v) => v.id === bobAccount.vaultId)).toBe(false)
+			expect((await app.inject({ url: `/api/boards/${bobsBoard.id}/snapshot`, headers: { cookie: owner } })).statusCode).toBe(404)
+
+			// Never the admin's own vault.
+			const mine = (await accountsNow()).find((a) => a.username === 'owner')!.vaultId
+			expect((await adminCall(app, owner, 'DELETE', `vaults/${mine}`)).statusCode).toBe(400)
+		})
+
+		it('deletes the last member and the vault together when asked', async () => {
+			const { app, cookie: owner } = await startServer()
+			const eve = await invited(app, owner, 'new-vault')
+			await createBoard(app, eve.cookie, 'Eve’s')
+			const account = (await adminCall(app, owner, 'GET', 'accounts')).json<Account[]>().find((a) => a.username === eve.username)!
+			expect((await adminCall(app, owner, 'DELETE', `accounts/${account.id}?deleteVault=1`)).statusCode).toBe(204)
+			expect((await adminCall(app, owner, 'GET', 'vaults')).json<VaultRow[]>().some((v) => v.id === account.vaultId)).toBe(false)
+		})
+	})
+
 	it('a new password ends other sessions and keeps this one', async () => {
 		const { app, cookie: owner } = await startServer()
 		const ann = await invited(app, owner)

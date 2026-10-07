@@ -576,7 +576,8 @@ It holds several people: each account is in a vault (its own, or one it was invi
 all its members share, and a single board can be shared outside its vault with a view or edit link
 (`apps/server/src/accounts.ts`; Settings → Account, and *Share* on a board). A vault's owners also
 create accounts in it (the new person picks their own password at first login), choose who else
-owns it, and remove people. People on the same
+owns it, and remove people. The server's admin manages every account and vault from Settings →
+Server (`apps/server/src/adminApi.ts`). People on the same
 board see each other's cursors and selections, a shape's … menu says who added and last changed it,
 and anyone who can open a board can comment on it: threads pinned to a shape or a spot, with
 replies and resolving (C to start one, ⇧C to list them; `canvas/comments/`). Boards

@@ -11181,7 +11181,7 @@ button.lb-props__eye:hover {
 	font-size: 12px;
 	color: var(--lb-text-dim);
 }
-.lb-account__form input {
+.lb-account__form input:not([type='checkbox']) {
 	min-width: 200px;
 	padding: 6px 8px;
 	border: 1px solid var(--lb-border);
@@ -11219,6 +11219,49 @@ button.lb-props__eye:hover {
 }
 .lb-account__actions .lb-btn + .lb-btn {
 	margin-left: 6px;
+}
+/* The row a table opens under an account or vault: edit, password, or the delete question. */
+.lb-account__expand td {
+	padding: 4px 0 10px;
+	border-top: none;
+}
+.lb-account__confirm {
+	display: grid;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-surface-2);
+}
+.lb-account__confirm p {
+	margin: 0;
+}
+.lb-account__inline,
+.lb-account__form .lb-account__inline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--lb-text);
+}
+.lb-account__inline input:not([type='checkbox']) {
+	padding: 6px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-bg);
+	color: var(--lb-text);
+	font: inherit;
+}
+.lb-account__inline .lb-select {
+	flex: 0 1 200px;
+}
+.lb-account__form .lb-select {
+	min-width: 140px;
+}
+.lb-account__form .lb-account__inline {
+	align-self: center;
+	padding-bottom: 2px;
 }
 
 /* Who made a shape and who changed it last (canvas/SelectionToolbar.tsx, fork-parity S6). */

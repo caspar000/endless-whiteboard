@@ -53,6 +53,13 @@ export function Server(_props: SectionProps) {
 					The server’s admin can also invite someone with a vault of their own, which they then own.
 				</p>
 				<p>
+					The admin also has <strong>Settings → Server</strong> (or <em>Manage accounts and vaults</em> in
+					⌘K): every account and vault on the server. There they create an account in any vault or a new
+					one, set someone a temporary password when they’ve forgotten theirs, make others admins, and
+					delete accounts and vaults. Deleting the last owner of a vault others are in asks who owns it
+					next; deleting the last person in a vault asks whether the vault and its boards go too.
+				</p>
+				<p>
 					To share a single board with someone outside your vault, use <strong>Share</strong> on its card
 					or <em>Share this board…</em> in ⌘K. A view-only link lets them follow the board as it changes;
 					an edit link lets them change it too. They open the link while logged in, and the board joins

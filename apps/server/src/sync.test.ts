@@ -509,6 +509,111 @@ describe('accounts', () => {
 		expect((await boardsOf(app, bob.cookie)).some((b) => b.id === board.id)).toBe(false)
 	})
 
+	it('give each vault the account it was made for as its owner, on a server from before roles', async () => {
+		const dataDir = mkdtempSync(join(tmpdir(), 'lb-roles-'))
+		const old = new Vault(join(dataDir, 'vault.sqlite'))
+		old.db.exec(`CREATE TABLE users (
+			id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, display_name TEXT NOT NULL, vault_id TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, password_hash TEXT NOT NULL, sessions_valid_from INTEGER NOT NULL DEFAULT 0
+		)`)
+		const hash = await hashPassword(PASSWORD)
+		const insert = old.db.prepare('INSERT INTO users (id, username, display_name, vault_id, is_admin, created_at, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)')
+		insert.run('o', 'owner', 'Owner', 'default', 1, 1, hash)
+		insert.run('a', 'ann', 'Ann', 'default', 0, 2, hash)
+		insert.run('b', 'bob', 'Bob', 'bobs', 0, 3, hash)
+		old.close()
+
+		const app = await buildApp({ ...config, dataDir })
+		cleanups.push(() => app.close())
+		const roleOf = async (username: string) => {
+			const login = await app.inject({ method: 'POST', url: '/login', ...form({ username, password: PASSWORD, next: '/' }) })
+			return (await app.inject({ url: '/api/me', headers: { cookie: cookieOf(login) } })).json<{ vaultRole: string }>().vaultRole
+		}
+		expect([await roleOf('owner'), await roleOf('ann'), await roleOf('bob')]).toEqual(['owner', 'member', 'owner'])
+	})
+
+	it('an owner makes an account, whose first login asks for a password of their own and nothing else', async () => {
+		const { app, cookie: owner } = await startServer()
+		const made = await app.inject({
+			method: 'POST',
+			url: '/api/vault/members',
+			headers: { cookie: owner },
+			payload: { username: 'carol', displayName: 'Carol', password: 'given by the owner' },
+		})
+		expect(made.statusCode).toBe(201)
+		expect(made.json()).toMatchObject({ username: 'carol', role: 'member' })
+
+		const login = await app.inject({ method: 'POST', url: '/login', ...form({ username: 'carol', password: 'given by the owner', next: '/b/x' }) })
+		const carol = cookieOf(login)
+		expect((await app.inject({ url: '/b/x', headers: { cookie: carol, accept: 'text/html' } })).headers.location).toBe('/password?next=%2Fb%2Fx')
+		expect((await app.inject({ url: '/api/boards', headers: { cookie: carol } })).statusCode).toBe(403)
+
+		const choose = (password: string, again = password) =>
+			app.inject({ method: 'POST', url: '/password', ...form({ password, again, next: '/b/x' }), headers: { ...form({}).headers, cookie: carol } })
+		expect((await choose('given by the owner')).statusCode).toBe(400)
+		expect((await choose('carol’s own password', 'a typo')).statusCode).toBe(400)
+		const chosen = await choose('carol’s own password')
+		expect(chosen.statusCode).toBe(303)
+		expect(chosen.headers.location).toBe('/b/x')
+		expect((await app.inject({ url: '/api/boards', headers: { cookie: cookieOf(chosen) } })).statusCode).toBe(200)
+		// The page is gone once it's done.
+		expect((await app.inject({ url: '/password', headers: { cookie: cookieOf(chosen), accept: 'text/html' } })).headers.location).toBe('/')
+	})
+
+	it('only owners manage the vault, and a vault always keeps one', async () => {
+		const { app, cookie: owner } = await startServer()
+		const ann = await invited(app, owner)
+		const bob = await invited(app, owner, 'new-vault')
+		const people = async (cookie: string) =>
+			(await app.inject({ url: '/api/vault', headers: { cookie } })).json<{ members: Array<{ id: string; username: string; role: string }> }>().members
+		const annId = (await people(owner)).find((p) => p.username === ann.username)!.id
+		const ownerId = (await people(owner)).find((p) => p.username === 'owner')!.id
+		expect((await people(bob.cookie)).map((p) => p.role)).toEqual(['owner'])
+
+		// A member can invite, and nothing more.
+		expect((await app.inject({ method: 'POST', url: '/api/invites', headers: { cookie: ann.cookie }, payload: { kind: 'join' } })).statusCode).toBe(201)
+		expect((await app.inject({ method: 'PATCH', url: '/api/vault', headers: { cookie: ann.cookie }, payload: { name: 'Mine' } })).statusCode).toBe(403)
+		expect((await app.inject({ method: 'POST', url: '/api/vault/members', headers: { cookie: ann.cookie }, payload: {} })).statusCode).toBe(403)
+		expect((await app.inject({ method: 'DELETE', url: `/api/vault/members/${ownerId}`, headers: { cookie: ann.cookie } })).statusCode).toBe(403)
+
+		// Bob owns another vault: ours aren't his to touch.
+		expect((await app.inject({ method: 'DELETE', url: `/api/vault/members/${annId}`, headers: { cookie: bob.cookie } })).statusCode).toBe(404)
+
+		const setRole = (cookie: string, id: string, role: string) =>
+			app.inject({ method: 'PATCH', url: `/api/vault/members/${id}`, headers: { cookie }, payload: { role } })
+		expect((await setRole(owner, ownerId, 'member')).statusCode).toBe(409)
+		expect((await setRole(owner, annId, 'owner')).statusCode).toBe(200)
+		expect((await setRole(ann.cookie, ownerId, 'member')).statusCode).toBe(200)
+		expect((await app.inject({ method: 'PATCH', url: '/api/vault', headers: { cookie: owner }, payload: { name: 'Mine' } })).statusCode).toBe(403)
+		expect((await app.inject({ method: 'DELETE', url: `/api/vault/members/${annId}`, headers: { cookie: ann.cookie } })).statusCode).toBe(400)
+		// The other tests share this server: the owner owns it again.
+		expect((await setRole(ann.cookie, ownerId, 'owner')).statusCode).toBe(200)
+	})
+
+	it('removing someone ends their account at once, and credits what they made to a former member', async () => {
+		const { app, port, cookie: owner } = await startServer()
+		const board = await createBoard(app, owner, 'Ours')
+		const ann = await invited(app, owner)
+		const annId = (await app.inject({ url: '/api/me', headers: { cookie: ann.cookie } })).json<{ id: string }>().id
+		const socket = openSocket(`ws://127.0.0.1:${port}/api/sync/${board.id}`, ann.cookie)
+		await new Promise((resolve) => socket.addEventListener('open', resolve))
+		const closed = new Promise<number>((resolve) => socket.addEventListener('close', (event) => resolve(event.code)))
+
+		expect((await app.inject({ method: 'DELETE', url: `/api/vault/members/${annId}`, headers: { cookie: owner } })).statusCode).toBe(204)
+		expect(await closed).toBe(4401)
+		expect((await app.inject({ url: '/api/me', headers: { cookie: ann.cookie } })).statusCode).toBe(401)
+		const people = (await app.inject({ url: `/api/boards/${board.id}/people`, headers: { cookie: owner } })).json<Array<{ id: string; displayName: string }>>()
+		expect(people.find((p) => p.id === annId)).toMatchObject({ displayName: 'a former member' })
+		// The username is free again.
+		const again = await app.inject({
+			method: 'POST',
+			url: '/api/vault/members',
+			headers: { cookie: owner },
+			payload: { username: ann.username, displayName: 'Ann again', password: 'a long enough password' },
+		})
+		expect(again.statusCode).toBe(201)
+	})
+
 	it('a new password ends other sessions and keeps this one', async () => {
 		const { app, cookie: owner } = await startServer()
 		const ann = await invited(app, owner)

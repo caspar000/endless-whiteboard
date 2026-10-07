@@ -77,6 +77,19 @@ export function invitePage({
 </form>`)
 }
 
+/** Replacing a password someone else chose, on the first login with it. */
+export function passwordPage({ next, error }: { next: string; error?: string | undefined }): string {
+	return page(`<form method="post" action="/password">
+	<h1>Choose your password</h1>
+	<p>You logged in with a password someone else chose. Pick your own; they won’t know it.</p>
+	${alert(error)}
+	<label>New password, 12 characters or more<input type="password" name="password" autocomplete="new-password" minlength="12" required autofocus></label>
+	<label>Once more<input type="password" name="again" autocomplete="new-password" minlength="12" required></label>
+	<input type="hidden" name="next" value="${escape(next)}">
+	<button type="submit">Save and continue</button>
+</form>`)
+}
+
 /** A link that can't be followed: used, expired, withdrawn, or never was. */
 export function deadLinkPage(message: string): string {
 	return page(`<main><h1>Lifeboard</h1><p>${escape(message)}</p><p><a href="/">Open Lifeboard</a></p></main>`)

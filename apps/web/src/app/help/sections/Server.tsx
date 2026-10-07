@@ -45,8 +45,12 @@ export function Server(_props: SectionProps) {
 					drive.
 				</p>
 				<p>
-					New accounts come from <strong>invite links</strong>, made in Settings → Account: one into your
-					vault, or, for the server’s owner, one with a vault of its own. A link works once, for a week.
+					A vault has <strong>owners</strong> and <strong>members</strong>. Anyone in it can make an{' '}
+					<strong>invite link</strong> in Settings → Account; a link works once, for a week. Owners can
+					also create an account there directly. Its first login asks for a new password, so the owner
+					doesn’t keep knowing it. Owners can make others owners, remove people, and rename the vault.
+					Removing someone deletes their account, and what they made is credited to “a former member”.
+					The server’s admin can also invite someone with a vault of their own, which they then own.
 				</p>
 				<p>
 					To share a single board with someone outside your vault, use <strong>Share</strong> on its card

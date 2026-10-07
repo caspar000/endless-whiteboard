@@ -9,9 +9,11 @@ import { DEFAULT_VAULT } from './vault.ts'
  * edits all of its boards. A single board can also be shared outside its vault with a link, to view or
  * to edit; opening the link while logged in adds the board to that person's list.
  *
- * Accounts come from invite links: a vault's members invite people into it, and an admin can also
- * invite someone to a vault of their own. The first account is made from the password the server was
- * set up with (`LIFEBOARD_PASSWORD_HASH`), in the vault the boards were already in.
+ * A vault has owners and members. Members invite people in with a link. Owners also make accounts
+ * directly, with a password the new person must replace when they first log in. Owners can also change
+ * who else is an owner, remove people, and rename the vault. An admin can also invite someone to a vault
+ * of their own, which they then own. The first account is made from the password the server was set up
+ * with (`LIFEBOARD_PASSWORD_HASH`), in the vault the boards were already in.
  */
 
 export interface User {
@@ -20,11 +22,16 @@ export interface User {
 	displayName: string
 	vaultId: string
 	isAdmin: boolean
+	vaultRole: VaultRole
+	/** Logged in with a password someone else chose: they must choose their own before anything else. */
+	mustChangePassword: boolean
 	createdAt: number
 	passwordHash: string
 	/** Sessions begun before this are over: set when the password changes. */
 	sessionsValidFrom: number
 }
+
+export type VaultRole = 'owner' | 'member'
 
 export interface VaultInfo {
 	id: string
@@ -76,6 +83,8 @@ interface UserRow {
 	display_name: string
 	vault_id: string
 	is_admin: number
+	vault_role: VaultRole
+	must_change_password: number
 	created_at: number
 	password_hash: string
 	sessions_valid_from: number
@@ -87,6 +96,8 @@ const toUser = (row: UserRow): User => ({
 	displayName: row.display_name,
 	vaultId: row.vault_id,
 	isAdmin: row.is_admin === 1,
+	vaultRole: row.vault_role,
+	mustChangePassword: row.must_change_password === 1,
 	createdAt: row.created_at,
 	passwordHash: row.password_hash,
 	sessionsValidFrom: row.sessions_valid_from,
@@ -153,7 +164,13 @@ export class Accounts {
 				is_admin INTEGER NOT NULL DEFAULT 0,
 				created_at INTEGER NOT NULL,
 				password_hash TEXT NOT NULL,
-				sessions_valid_from INTEGER NOT NULL DEFAULT 0
+				sessions_valid_from INTEGER NOT NULL DEFAULT 0,
+				vault_role TEXT NOT NULL DEFAULT 'member',
+				must_change_password INTEGER NOT NULL DEFAULT 0
+			);
+			CREATE TABLE IF NOT EXISTS former_users (
+				id TEXT PRIMARY KEY,
+				vault_id TEXT NOT NULL
 			);
 			CREATE TABLE IF NOT EXISTS invites (
 				token TEXT PRIMARY KEY,
@@ -188,6 +205,16 @@ export class Accounts {
 				PRIMARY KEY (user_id, board_id)
 			);
 		`)
+		const columns = new Set((db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>).map((column) => column.name))
+		if (!columns.has('vault_role')) {
+			db.exec("ALTER TABLE users ADD COLUMN vault_role TEXT NOT NULL DEFAULT 'member'")
+			// Each vault's first account is the one it was made for: the server's owner, or someone invited
+			// with a vault of their own. They own it; whoever joined later is a member.
+			db.exec(
+				"UPDATE users SET vault_role = 'owner' WHERE created_at = (SELECT MIN(created_at) FROM users AS first WHERE first.vault_id = users.vault_id)"
+			)
+		}
+		if (!columns.has('must_change_password')) db.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0')
 	}
 
 	/**
@@ -201,7 +228,7 @@ export class Accounts {
 		}
 		const now = Date.now()
 		this.db.prepare('INSERT OR IGNORE INTO vaults (id, name, created_at) VALUES (?, ?, ?)').run(DEFAULT_VAULT, 'My vault', now)
-		const owner = this.createUser({ username: 'owner', displayName: 'Owner', passwordHash, vaultId: DEFAULT_VAULT, isAdmin: true })
+		const owner = this.createUser({ username: 'owner', displayName: 'Owner', passwordHash, vaultId: DEFAULT_VAULT, isAdmin: true, vaultRole: 'owner' })
 		// Stars were the vault's; they become the owner's own.
 		this.db
 			.prepare('INSERT OR IGNORE INTO favorites (user_id, board_id) SELECT ?, id FROM boards WHERE vault_id = ? AND favorite = 1')
@@ -229,29 +256,76 @@ export class Accounts {
 		return row && toUser(row)
 	}
 
-	createUser(user: { username: string; displayName: string; passwordHash: string; vaultId: string; isAdmin?: boolean }): User {
+	createUser(user: {
+		username: string
+		displayName: string
+		passwordHash: string
+		vaultId: string
+		vaultRole: VaultRole
+		isAdmin?: boolean
+		mustChangePassword?: boolean
+	}): User {
 		const id = randomUUID()
 		this.db
 			.prepare(
-				'INSERT INTO users (id, username, display_name, vault_id, is_admin, created_at, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)'
+				'INSERT INTO users (id, username, display_name, vault_id, vault_role, is_admin, must_change_password, created_at, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
 			)
-			.run(id, user.username, user.displayName, user.vaultId, user.isAdmin ? 1 : 0, Date.now(), user.passwordHash)
+			.run(
+				id,
+				user.username,
+				user.displayName,
+				user.vaultId,
+				user.vaultRole,
+				user.isAdmin ? 1 : 0,
+				user.mustChangePassword ? 1 : 0,
+				Date.now(),
+				user.passwordHash
+			)
 		return this.user(id)!
 	}
 
-	updateUser(id: string, patch: { username?: string; displayName?: string; passwordHash?: string }): User | undefined {
+	/** A new password ends every session begun before it, and says whether it is one to replace. */
+	updateUser(
+		id: string,
+		patch: { username?: string; displayName?: string; vaultRole?: VaultRole; passwordHash?: string; mustChangePassword?: boolean }
+	): User | undefined {
 		if (patch.username !== undefined) this.db.prepare('UPDATE users SET username = ? WHERE id = ?').run(patch.username, id)
 		if (patch.displayName !== undefined) this.db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(patch.displayName, id)
+		if (patch.vaultRole !== undefined) this.db.prepare('UPDATE users SET vault_role = ? WHERE id = ?').run(patch.vaultRole, id)
 		if (patch.passwordHash !== undefined) {
 			this.db
-				.prepare('UPDATE users SET password_hash = ?, sessions_valid_from = ? WHERE id = ?')
-				.run(patch.passwordHash, Date.now(), id)
+				.prepare('UPDATE users SET password_hash = ?, sessions_valid_from = ?, must_change_password = ? WHERE id = ?')
+				.run(patch.passwordHash, Date.now(), patch.mustChangePassword ? 1 : 0, id)
 		}
 		return this.user(id)
 	}
 
+	/**
+	 * An account is gone: with it go its stars, the boards shared with it and the invites it left open.
+	 * Its vault remembers it was a member, so what it made and wrote is still credited to "a former
+	 * member" rather than to no one.
+	 */
+	deleteUser(id: string): void {
+		const user = this.user(id)
+		if (!user) return
+		this.db.prepare('INSERT OR IGNORE INTO former_users (id, vault_id) VALUES (?, ?)').run(id, user.vaultId)
+		this.db.prepare('DELETE FROM favorites WHERE user_id = ?').run(id)
+		this.db.prepare('DELETE FROM board_access WHERE user_id = ?').run(id)
+		this.db.prepare('DELETE FROM invites WHERE created_by = ? AND used_by IS NULL').run(id)
+		this.db.prepare('DELETE FROM users WHERE id = ?').run(id)
+	}
+
+	/** The ids of the accounts a vault once had. */
+	formerMembers(vaultId: string): string[] {
+		return (this.db.prepare('SELECT id FROM former_users WHERE vault_id = ?').all(vaultId) as Array<{ id: string }>).map((row) => row.id)
+	}
+
 	members(vaultId: string): User[] {
 		return (this.db.prepare('SELECT * FROM users WHERE vault_id = ? ORDER BY created_at').all(vaultId) as unknown as UserRow[]).map(toUser)
+	}
+
+	countOwners(vaultId: string): number {
+		return (this.db.prepare("SELECT COUNT(*) AS n FROM users WHERE vault_id = ? AND vault_role = 'owner'").get(vaultId) as { n: number }).n
 	}
 
 	vault(id: string): VaultInfo | undefined {

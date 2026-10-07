@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { MAX_DISPLAY_NAME, USERNAME, type Accounts, type User } from './accounts.ts'
-import { deadLinkPage, invitePage, loginPage } from './loginPage.ts'
+import { deadLinkPage, invitePage, loginPage, passwordPage } from './loginPage.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 
 export const SESSION_COOKIE = 'lb_session'
@@ -28,6 +28,9 @@ interface AuthOptions {
  * A session from before accounts carried only the time; it is the first admin's, the owner whose
  * password the server was set up with, so their devices stay logged in through the upgrade. A password
  * change ends every session begun before it (`sessionsValidFrom`).
+ *
+ * Someone logged in with a password another person chose for them gets nothing but the page that
+ * replaces it (`mustChangePassword`).
  */
 export function registerAuth(app: FastifyInstance, { accounts, secureCookies }: AuthOptions): void {
 	const failures = new Map<string, { count: number; since: number }>()
@@ -65,10 +68,14 @@ export function registerAuth(app: FastifyInstance, { accounts, secureCookies }: 
 	app.decorateRequest('user', null)
 	app.addHook('onRequest', async (request, reply) => {
 		request.user = sessionUser(request)
-		if (request.user || PUBLIC_PATH.test(request.url.split('?')[0]!)) return
-		if (request.method === 'GET' && request.headers.accept?.includes('text/html')) {
-			return reply.redirect(`/login?next=${encodeURIComponent(request.url)}`)
+		const path = request.url.split('?')[0]!
+		const isPage = request.method === 'GET' && !!request.headers.accept?.includes('text/html')
+		if (request.user?.mustChangePassword && !PUBLIC_PATH.test(path) && path !== '/password' && path !== '/logout') {
+			if (isPage) return reply.redirect(`/password?next=${encodeURIComponent(request.url)}`)
+			return reply.code(403).send({ error: 'Choose a new password first.', choosePassword: true })
 		}
+		if (request.user || PUBLIC_PATH.test(path)) return
+		if (isPage) return reply.redirect(`/login?next=${encodeURIComponent(request.url)}`)
 		return reply.code(401).send({ error: 'Not logged in.' })
 	})
 
@@ -97,6 +104,29 @@ export function registerAuth(app: FastifyInstance, { accounts, secureCookies }: 
 		}
 		failures.delete(request.ip)
 		startSession(reply, user, secureCookies)
+		return reply.redirect(next, 303)
+	})
+
+	/** Replacing a password someone else chose, before anything else. */
+	app.get<{ Querystring: { next?: string } }>('/password', async (request, reply) => {
+		const next = safeNext(request.query.next)
+		if (!request.user) return reply.redirect(`/login?next=${encodeURIComponent(next)}`)
+		if (!request.user.mustChangePassword) return reply.redirect(next)
+		return sendHtml(reply, 200, passwordPage({ next }))
+	})
+
+	app.post<{ Body: { password?: string; again?: string; next?: string } }>('/password', async (request, reply) => {
+		const next = safeNext(request.body?.next)
+		const user = request.user
+		if (!user) return reply.redirect('/login', 303)
+		if (!user.mustChangePassword) return reply.redirect(next, 303)
+		const password = typeof request.body?.password === 'string' ? request.body.password : ''
+		const again = (error: string) => sendHtml(reply, 400, passwordPage({ next, error }))
+		if (password.length < MIN_PASSWORD) return again(`A password is ${MIN_PASSWORD} characters or more.`)
+		if (password !== request.body?.again) return again('The two passwords are different.')
+		if (await verifyPassword(password, user.passwordHash)) return again('Choose one other than the password you were given.')
+		const changed = accounts.updateUser(user.id, { passwordHash: await hashPassword(password), mustChangePassword: false })!
+		startSession(reply, changed, secureCookies)
 		return reply.redirect(next, 303)
 	})
 
@@ -153,7 +183,13 @@ export function registerAuth(app: FastifyInstance, { accounts, secureCookies }: 
 			}
 
 			const vaultId = view.invite.kind === 'join' ? view.invite.vaultId! : accounts.createVault(vaultName).id
-			const user = accounts.createUser({ username, displayName, passwordHash: await hashPassword(password), vaultId })
+			const user = accounts.createUser({
+				username,
+				displayName,
+				passwordHash: await hashPassword(password),
+				vaultId,
+				vaultRole: view.invite.kind === 'join' ? 'member' : 'owner',
+			})
 			accounts.useInvite(token, user.id)
 			startSession(reply, user, secureCookies)
 			return reply.redirect('/', 303)

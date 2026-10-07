@@ -18,7 +18,7 @@ Decisions taken before this was written:
 | Sync engine | **Our own** since 2026-10-05 (`packages/canvas-sync`, canvas fork phase 6): one `SyncRoom` per board, SQLite storage. Live, server-authoritative. `@tldraw/sync` before that |
 | Offline | **Yes, since 2026-10-07** (`docs/fork-parity.md` S5). Each server board is kept in the browser (`packages/canvas-sync` `indexedDbSyncCache`) and opens from there without the server; edits wait there, across reloads, until they can go up. The board list remembers the server's boards. A board never opened on a device still needs the server the first time |
 | Vaults per server | **Many**: one per account that was invited with a vault of its own. The boards from before accounts are the first account's vault |
-| Login | **App-level, by username.** Accounts come from invite links (Settings → Account); the first, `owner`, is made from the Argon2 hash in `.env` on a server with none. 30-day session cookie carrying the account, rate-limited. The whole origin sits behind it, except the login and invite pages |
+| Login | **App-level, by username.** Accounts come from invite links, or a vault owner creates them with a password the person replaces at first login (Settings → Account); the first, `owner`, is made from the Argon2 hash in `.env` on a server with none. 30-day session cookie carrying the account, rate-limited. The whole origin sits behind it, except the login and invite pages |
 | Server shape | **One `apps/server`** (Fastify): serves the built web app, `/api/*` and the sync websockets |
 | Assets | **Local disk**, content-addressed, same `asset:<hash>` srcs as today |
 | Agent panel | **Not on the server.** Stays a local dev feature for now |

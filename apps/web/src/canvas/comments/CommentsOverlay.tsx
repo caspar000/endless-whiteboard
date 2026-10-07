@@ -2,7 +2,7 @@ import { richTextToPlainText, useEditor, useValue, type TLComment, type TLCommen
 import { Check, MoreHorizontal, RotateCcw, Send, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { ago, personName } from '../boardPeople'
+import { ago, authorName } from '../boardPeople'
 import {
 	anchorAt,
 	commentFocus,
@@ -19,12 +19,6 @@ import {
 	threadById,
 	threadsOf,
 } from './comments'
-
-/** A comment's author: their name, or "You". */
-const authorName = (id: string) => {
-	const name = personName(id)
-	return name === 'you' ? 'You' : name
-}
 
 /**
  * Comments over the canvas (docs/fork-parity.md S7): a pin for each open thread on this page, where

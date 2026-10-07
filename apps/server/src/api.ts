@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { MAX_DISPLAY_NAME, USERNAME, type Accounts, type BoardRole, type ShareRole, type User } from './accounts.ts'
+import { MAX_DISPLAY_NAME, USERNAME, type Accounts, type BoardRole, type ShareRole, type User, type VaultRole } from './accounts.ts'
 import { isAssetHash, type AssetFiles } from './assets.ts'
 import { MIN_PASSWORD, startSession } from './auth.ts'
 import { boardWriteRule, presenceIdentity } from './boardWrites.ts'
@@ -113,7 +113,7 @@ export function registerApi(
 
 	app.get('/api/me', async (request) => {
 		const user = me(request)
-		return { ...publicUser(user), isAdmin: user.isAdmin, vault: accounts.vault(user.vaultId) }
+		return { ...publicUser(user), isAdmin: user.isAdmin, vaultRole: user.vaultRole, vault: accounts.vault(user.vaultId) }
 	})
 
 	app.patch<{ Body: { username?: unknown; displayName?: unknown } }>('/api/me', async (request, reply) => {
@@ -153,10 +153,81 @@ export function registerApi(
 
 	app.get('/api/vault', async (request) => {
 		const user = me(request)
-		return { ...accounts.vault(user.vaultId), members: accounts.members(user.vaultId).map(publicUser) }
+		return {
+			...accounts.vault(user.vaultId),
+			members: accounts.members(user.vaultId).map((member) => ({ ...publicUser(member), role: member.vaultRole })),
+		}
+	})
+
+	/** The vault's owner, or a 403 sent. */
+	const owner = (request: FastifyRequest, reply: FastifyReply): User | null => {
+		const user = me(request)
+		if (user.vaultRole === 'owner') return user
+		void reply.code(403).send({ error: 'Only an owner of the vault can do that.' })
+		return null
+	}
+
+	/** Someone else in the owner's vault, or a 404 sent. */
+	const memberOf = (user: User, reply: FastifyReply, id: string): User | null => {
+		const member = accounts.user(id)
+		if (member && member.vaultId === user.vaultId) return member
+		void reply.code(404).send({ error: 'No such person in this vault.' })
+		return null
+	}
+
+	/** An owner makes an account in the vault, with a password the person replaces when they first log in. */
+	app.post<{ Body: { username?: unknown; displayName?: unknown; password?: unknown } }>('/api/vault/members', async (request, reply) => {
+		const user = owner(request, reply)
+		if (!user) return reply
+		const { username, displayName, password } = request.body ?? {}
+		if (typeof displayName !== 'string' || !displayName.trim() || displayName.length > MAX_DISPLAY_NAME) {
+			return reply.code(400).send({ error: 'A name is 1 to 60 characters.' })
+		}
+		if (typeof username !== 'string' || !USERNAME.test(username)) {
+			return reply.code(400).send({ error: 'A username is 2 to 32 letters, digits, dots, dashes or underscores.' })
+		}
+		if (accounts.userByName(username)) return reply.code(409).send({ error: 'That username is taken.' })
+		if (typeof password !== 'string' || password.length < MIN_PASSWORD) {
+			return reply.code(400).send({ error: `A password is ${MIN_PASSWORD} characters or more.` })
+		}
+		const made = accounts.createUser({
+			username,
+			displayName: displayName.trim(),
+			passwordHash: await hashPassword(password),
+			vaultId: user.vaultId,
+			vaultRole: 'member',
+			mustChangePassword: true,
+		})
+		return reply.code(201).send({ ...publicUser(made), role: made.vaultRole })
+	})
+
+	/** Owner or member. A vault always keeps an owner. */
+	app.patch<{ Params: { id: string }; Body: { role?: unknown } }>('/api/vault/members/:id', async (request, reply) => {
+		const user = owner(request, reply)
+		const member = user && memberOf(user, reply, request.params.id)
+		if (!member) return reply
+		const role = request.body?.role
+		if (role !== 'owner' && role !== 'member') return reply.code(400).send({ error: '`role` is owner or member.' })
+		if (role === 'member' && member.vaultRole === 'owner' && accounts.countOwners(member.vaultId) <= 1) {
+			return reply.code(409).send({ error: 'A vault keeps at least one owner.' })
+		}
+		const changed = accounts.updateUser(member.id, { vaultRole: role satisfies VaultRole })!
+		return { ...publicUser(changed), role: changed.vaultRole }
+	})
+
+	/** Removing someone from the vault ends their account: an account lives in its vault. */
+	app.delete<{ Params: { id: string } }>('/api/vault/members/:id', async (request, reply) => {
+		const user = owner(request, reply)
+		const member = user && memberOf(user, reply, request.params.id)
+		if (!member) return reply
+		if (member.id === user.id) return reply.code(400).send({ error: 'You can’t remove yourself.' })
+		accounts.deleteUser(member.id)
+		rooms.disconnectUser(member.id)
+		return reply.code(204).send()
 	})
 
 	app.patch<{ Body: { name?: unknown } }>('/api/vault', async (request, reply) => {
+		if (!owner(request, reply)) return reply
 		const { name } = request.body ?? {}
 		if (!isName(name)) return reply.code(400).send({ error: 'A vault needs a name.' })
 		accounts.renameVault(me(request).vaultId, name.trim())
@@ -285,15 +356,16 @@ export function registerApi(
 	})
 
 	/**
-	 * Everyone who can open a board, by account id: its vault, and whoever it's shared with. For the
-	 * names on cursors, comments and "edited by" (phase 5).
+	 * Everyone who can open a board, by account id: its vault, whoever it's shared with, and the
+	 * vault's former members. For the names on cursors, comments and "edited by" (phase 5).
 	 */
 	app.get<{ Params: { id: string } }>('/api/boards/:id/people', async (request, reply) => {
 		const found = access(request, reply, request.params.id)
 		if (!found) return reply
 		const members = accounts.members(found.board.vaultId).map(publicUser)
 		const shared = accounts.grantsOf(found.board.id).map(({ userId, username, displayName }) => ({ id: userId, username, displayName }))
-		return [...members, ...shared]
+		const former = accounts.formerMembers(found.board.vaultId).map((id) => ({ id, username: '', displayName: 'a former member' }))
+		return [...members, ...shared, ...former]
 	})
 
 	/** A board's links, and who came in through them. */
@@ -465,6 +537,6 @@ export function registerApi(
 			identity: presenceIdentity(user),
 			readOnly: role === 'view',
 			mayWrite: boardWriteRule(user, role),
-		})
+		}, user.id)
 	})
 }

@@ -40,13 +40,15 @@ interface RoomsOptions {
  */
 export class Rooms {
 	private readonly open = new Map<string, OpenRoom>()
+	/** Each account's live connections, to end them when the account goes. */
+	private readonly sockets = new Map<string, Set<ServerSocket>>()
 
 	constructor(private readonly options: RoomsOptions) {
 		mkdirSync(options.dir, { recursive: true })
 	}
 
 	/** Who the socket is, and what it may change (`JoinOptions`: a viewer changes only comments). */
-	connect(boardId: string, socket: ServerSocket, options: JoinOptions<TLRecord> = {}): void {
+	connect(boardId: string, socket: ServerSocket, options: JoinOptions<TLRecord> = {}, userId?: string): void {
 		let session
 		try {
 			session = this.room(boardId).room.join(socket, options)
@@ -57,6 +59,19 @@ export class Rooms {
 		}
 		socket.on('message', (data) => session.receive(data.toString()))
 		socket.on('close', () => session.leave())
+		if (!userId) return
+		const own = this.sockets.get(userId) ?? new Set()
+		own.add(socket)
+		this.sockets.set(userId, own)
+		socket.on('close', () => {
+			own.delete(socket)
+			if (!own.size) this.sockets.delete(userId)
+		})
+	}
+
+	/** Ends an account's live connections: it was removed. Reconnecting finds it logged out. */
+	disconnectUser(userId: string): void {
+		for (const socket of this.sockets.get(userId) ?? []) socket.close(4401, 'Logged out.')
 	}
 
 	/**

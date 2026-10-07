@@ -5,7 +5,7 @@ import { forgetServerBoardList, serverApi } from './serverVault'
 
 /**
  * The account side of the server vault (apps/server/src/accounts.ts): who is logged in, their vault and
- * its members, the invites they've made, and the links a board is shared through.
+ * its members (owners manage them), the invites they've made, and the links a board is shared through.
  */
 
 export interface Me {
@@ -13,13 +13,21 @@ export interface Me {
 	username: string
 	displayName: string
 	isAdmin: boolean
+	vaultRole: VaultRole
 	vault: { id: string; name: string }
 }
+
+export type VaultRole = 'owner' | 'member'
 
 export interface Person {
 	id: string
 	username: string
 	displayName: string
+}
+
+/** Someone in your vault, and whether they own it. */
+export interface Member extends Person {
+	role: VaultRole
 }
 
 export interface Invite {
@@ -91,7 +99,20 @@ export async function changePassword(current: string, next: string): Promise<voi
 	await serverApi('/me/password', { method: 'POST', ...body({ current, next }) })
 }
 
-export const getVault = async () => json<{ id: string; name: string; members: Person[] }>(await serverApi('/vault'))
+export const getVault = async () => json<{ id: string; name: string; members: Member[] }>(await serverApi('/vault'))
+
+/** An owner makes an account in their vault; its first login asks for a password of its own. */
+export const createMember = async (member: { username: string; displayName: string; password: string }) =>
+	json<Member>(await serverApi('/vault/members', { method: 'POST', ...body(member) }))
+
+export async function setMemberRole(id: string, role: VaultRole): Promise<void> {
+	await serverApi(`/vault/members/${encodeURIComponent(id)}`, { method: 'PATCH', ...body({ role }) })
+}
+
+/** Removing someone from the vault deletes their account. */
+export async function removeMember(id: string): Promise<void> {
+	await serverApi(`/vault/members/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
 
 export async function renameVault(name: string): Promise<void> {
 	await serverApi('/vault', { method: 'PATCH', ...body({ name }) })

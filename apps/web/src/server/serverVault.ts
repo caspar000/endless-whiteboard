@@ -55,7 +55,11 @@ async function api(path: string, init?: RequestInit): Promise<Response> {
 		throw new Error('Not logged in.')
 	}
 	if (!response.ok) {
-		const body = (await response.json().catch(() => null)) as { error?: string } | null
+		const body = (await response.json().catch(() => null)) as { error?: string; choosePassword?: boolean } | null
+		if (body?.choosePassword) {
+			// Someone else set this account's password: the server wants a new one before anything else.
+			window.location.assign(`/password?next=${encodeURIComponent(location.pathname + location.hash)}`)
+		}
 		throw new Error(body?.error ?? `The server answered ${response.status}.`)
 	}
 	return response

@@ -11192,6 +11192,35 @@ button.lb-props__eye:hover {
 	font-size: 13px;
 }
 
+.lb-account__table {
+	width: 100%;
+	margin: 10px 0;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+.lb-account__table th {
+	padding: 0 10px 6px 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 500;
+	text-align: left;
+}
+.lb-account__table td {
+	padding: 6px 10px 6px 0;
+	border-top: 1px solid var(--lb-border);
+	vertical-align: middle;
+}
+.lb-account__table .lb-select {
+	max-width: 130px;
+}
+.lb-account__actions {
+	text-align: right;
+	white-space: nowrap;
+}
+.lb-account__actions .lb-btn + .lb-btn {
+	margin-left: 6px;
+}
+
 /* Who made a shape and who changed it last (canvas/SelectionToolbar.tsx, fork-parity S6). */
 .lb-seltb__byline {
 	max-width: 240px;

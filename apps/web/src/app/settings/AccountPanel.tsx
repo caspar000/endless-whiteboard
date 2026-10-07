@@ -1,31 +1,37 @@
-import { Check, Copy } from 'lucide-react'
+import { Check, ChevronDown, Copy } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { usePlatform } from '../../platform/PlatformContext'
 import {
 	changePassword,
 	createInvite,
+	createMember,
 	getMe,
 	getVault,
 	inviteUrl,
 	listInvites,
 	logOut,
+	removeMember,
 	renameVault,
+	setMemberRole,
 	updateMe,
 	withdrawInvite,
 	type Invite,
 	type Me,
-	type Person,
+	type Member,
+	type VaultRole,
 } from '../../server/accounts'
 
 /**
  * Settings → Account (phase 4): who is logged in to the server, the vault they're in and who else is,
- * and the invites that bring people in. Only there is a server; without one there are no accounts.
+ * and the invites that bring people in. A vault's owners also make accounts in it, change who owns
+ * it, remove people and rename it. Only there is a server; without one there are no accounts.
  */
 export function AccountPanel({ hasServer }: { hasServer: boolean }) {
 	const platform = usePlatform()
 	const [me, setMe] = useState<Me | null>(null)
-	const [members, setMembers] = useState<Person[]>([])
+	const [members, setMembers] = useState<Member[]>([])
+	const [removing, setRemoving] = useState<string | null>(null)
 	const [invites, setInvites] = useState<Invite[]>([])
 	const [message, setMessage] = useState<string | null>(null)
 	const [copied, setCopied] = useState<string | null>(null)
@@ -92,6 +98,17 @@ export function AccountPanel({ hasServer }: { hasServer: boolean }) {
 		event.preventDefault()
 		void run(() => renameVault(String(new FormData(event.currentTarget).get('name'))), 'Saved.')()
 	}
+	const onCreate = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const form = event.currentTarget
+		const data = new FormData(form)
+		const username = String(data.get('username'))
+		void run(async () => {
+			await createMember({ displayName: String(data.get('displayName')), username, password: String(data.get('password')) })
+			form.reset()
+		}, `Made @${username}. Give them the password; they’ll choose their own when they first log in.`)()
+	}
+	const isOwner = me.vaultRole === 'owner'
 
 	return (
 		<section className="lb-settings lb-account" data-testid="lb.account">
@@ -125,26 +142,116 @@ export function AccountPanel({ hasServer }: { hasServer: boolean }) {
 			</div>
 			<p className="lb-settings__hint">Logging out also clears the boards kept on this device for offline use.</p>
 
-			<h2>Your vault</h2>
-			<p className="lb-settings__hint">Everyone in a vault sees and edits all of its boards.</p>
-			<form className="lb-account__form" onSubmit={onVault}>
-				<label>
-					Name <input name="name" defaultValue={me.vault.name} required maxLength={200} />
-				</label>
-				<button className="lb-btn lb-btn--tiny" type="submit">
-					Save
-				</button>
-			</form>
-			<ul className="lb-dialog__list">
-				{members.map((member) => (
-					<li key={member.id}>
-						<span>
-							{member.displayName} <span className="lb-dialog__meta">@{member.username}</span>
-						</span>
-						<span className="lb-dialog__meta">{member.id === me.id ? 'you' : ''}</span>
-					</li>
-				))}
-			</ul>
+			<h2>{isOwner ? 'Your vault' : me.vault.name}</h2>
+			<p className="lb-settings__hint">
+				Everyone in a vault sees and edits all of its boards. Its owners also add and remove people.
+			</p>
+			{isOwner && (
+				<form className="lb-account__form" onSubmit={onVault}>
+					<label>
+						Name <input name="name" defaultValue={me.vault.name} required maxLength={200} />
+					</label>
+					<button className="lb-btn lb-btn--tiny" type="submit">
+						Save
+					</button>
+				</form>
+			)}
+			<table className="lb-account__table" data-testid="lb.account.members">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Username</th>
+						<th>Role</th>
+						{isOwner && <th aria-label="Actions" />}
+					</tr>
+				</thead>
+				<tbody>
+					{members.map((member) => (
+						<tr key={member.id}>
+							<td>
+								{member.displayName}
+								{member.id === me.id && <span className="lb-dialog__meta"> (you)</span>}
+							</td>
+							<td className="lb-dialog__meta">@{member.username}</td>
+							<td>
+								{isOwner ? (
+									<span className="lb-select">
+										<select
+											value={member.role}
+											aria-label={`Role of ${member.displayName}`}
+											onChange={(event) => void run(() => setMemberRole(member.id, event.currentTarget.value as VaultRole))()}
+										>
+											<option value="owner">Owner</option>
+											<option value="member">Member</option>
+										</select>
+										<ChevronDown className="lb-select__caret" size={13} aria-hidden />
+									</span>
+								) : member.role === 'owner' ? (
+									'Owner'
+								) : (
+									'Member'
+								)}
+							</td>
+							{isOwner && (
+								<td className="lb-account__actions">
+									{member.id === me.id ? null : removing === member.id ? (
+										<>
+											<button
+												className="lb-btn lb-btn--danger lb-btn--tiny"
+												onClick={() => {
+													setRemoving(null)
+													void run(() => removeMember(member.id), `Removed ${member.displayName}.`)()
+												}}
+											>
+												Remove {member.displayName}
+											</button>
+											<button className="lb-btn lb-btn--ghost lb-btn--tiny" onClick={() => setRemoving(null)}>
+												Cancel
+											</button>
+										</>
+									) : (
+										<button className="lb-btn lb-btn--tiny" onClick={() => setRemoving(member.id)}>
+											Remove
+										</button>
+									)}
+								</td>
+							)}
+						</tr>
+					))}
+				</tbody>
+			</table>
+			{isOwner && (
+				<>
+					<p className="lb-settings__hint">
+						Removing someone deletes their account. What they made stays, credited to “a former member”.
+					</p>
+					<h2>Add someone</h2>
+					<p className="lb-settings__hint">
+						Make the account here and give them the password. They’ll choose their own when they first log in.
+					</p>
+					<form className="lb-account__form" onSubmit={onCreate}>
+						<label>
+							Name <input name="displayName" required maxLength={60} autoComplete="off" />
+						</label>
+						<label>
+							Username{' '}
+							<input
+								name="username"
+								required
+								autoCapitalize="none"
+								spellCheck={false}
+								autoComplete="off"
+							/>
+						</label>
+						<label>
+							Password <input name="password" required minLength={12} autoComplete="new-password" />
+						</label>
+						<button className="lb-btn lb-btn--tiny" type="submit">
+							Create account
+						</button>
+					</form>
+				</>
+			)}
 
 			<h2>Invites</h2>
 			<p className="lb-settings__hint">

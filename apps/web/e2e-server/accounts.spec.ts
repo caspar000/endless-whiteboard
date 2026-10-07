@@ -111,3 +111,46 @@ test('an invite makes an account with its own vault, and a view link shares one 
 	await bob.goto('/#/')
 	await expect(bob.locator('.lb-list__board', { hasText: 'Untitled board' }).locator('.lb-list__meta')).toHaveText('My vault · view only')
 })
+
+test('an owner makes an account, who chooses a password at first login, and is removed again', async ({ browser }) => {
+	const owner = await newPage(browser)
+	await logIn(owner, 'owner', OWNER_PASSWORD)
+	await owner.goto('/#/settings/account')
+	const members = owner.getByTestId('lb.account.members')
+	await expect(members).toBeVisible()
+
+	await owner.getByLabel('Name', { exact: true }).last().fill('Carol')
+	await owner.getByLabel('Username', { exact: true }).last().fill('carol')
+	await owner.getByLabel('Password', { exact: true }).fill('carol’s first password')
+	await owner.getByRole('button', { name: 'Create account' }).click()
+	await expect(owner.getByText('Made @carol.')).toBeVisible()
+	await expect(members.getByRole('row', { name: /Carol/ })).toContainText('@carol')
+
+	// Carol's first login asks for her own password before anything else.
+	const carol = await newPage(browser)
+	await carol.goto('/login')
+	await carol.locator('input[name="username"]').fill('carol')
+	await carol.locator('input[name="password"]').fill('carol’s first password')
+	await carol.locator('input[name="password"]').press('Enter')
+	await carol.waitForURL((url) => url.pathname === '/password')
+	await carol.getByLabel('New password, 12 characters or more').fill('carol’s own password')
+	await carol.getByLabel('Once more').fill('carol’s own password')
+	await carol.getByRole('button', { name: 'Save and continue' }).click()
+	await carol.waitForURL((url) => url.pathname === '/')
+	// A member sees who's in the vault, and can't change it.
+	await carol.goto('/#/settings/account')
+	await expect(carol.getByTestId('lb.account.members')).toContainText('Owner')
+	await expect(carol.getByRole('button', { name: 'Create account' })).toHaveCount(0)
+	await expect(carol.getByRole('button', { name: 'Remove' })).toHaveCount(0)
+
+	// The owner makes her an owner, then removes her.
+	await owner.getByLabel('Role of Carol').selectOption('owner')
+	await expect.poll(() => owner.getByLabel('Role of Carol').inputValue()).toBe('owner')
+	await members.getByRole('row', { name: /Carol/ }).getByRole('button', { name: 'Remove' }).click()
+	await owner.getByRole('button', { name: 'Remove Carol' }).click()
+	await expect(owner.getByText('Removed Carol.')).toBeVisible()
+	await expect(members.getByRole('row', { name: /Carol/ })).toHaveCount(0)
+
+	await carol.reload()
+	await carol.waitForURL((url) => url.pathname === '/login')
+})

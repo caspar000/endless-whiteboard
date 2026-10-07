@@ -4,7 +4,8 @@ import { serverApi } from '../server/serverVault'
 
 /**
  * The names of everyone on the boards open here, by account id: for "made by" and "edited by"
- * (docs/fork-parity.md S6). Gathered as server boards open; a name never seen reads as "someone".
+ * (docs/fork-parity.md S6). Gathered as server boards open; a deleted account reads as "a former
+ * member", and a name never seen as "someone".
  */
 const people = atom<Record<string, string>>('lifeboard:board-people', {})
 
@@ -22,6 +23,12 @@ export async function loadBoardPeople(boardId: string): Promise<void> {
 export function personName(id: string): string {
 	if (id === 'local' || currentAccount.get()?.id === id) return 'you'
 	return people.get()[id] ?? 'someone'
+}
+
+/** The same, to start a line: "You", "Anna", "A former member". */
+export function authorName(id: string): string {
+	const name = personName(id)
+	return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago", or the date. */

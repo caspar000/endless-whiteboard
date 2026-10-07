@@ -1,7 +1,7 @@
 import { richTextToPlainText, useEditor, useValue } from '@lifeboard/canvas'
 import { MessageSquarePlus, X } from 'lucide-react'
 import { useState } from 'react'
-import { ago, personName } from '../boardPeople'
+import { ago, authorName } from '../boardPeople'
 import { commentFocus, commentsOf, commentsPanelOpen, pinPoint, threadsOf } from './comments'
 
 /**
@@ -70,7 +70,7 @@ export function CommentsPanel() {
 						<li key={entry.thread.id}>
 							<button onClick={() => go(entry)}>
 								<span className="lb-comments-panel__who">
-									{personName(entry.first.authorId) === 'you' ? 'You' : personName(entry.first.authorId)} · {ago(entry.latest)}
+									{authorName(entry.first.authorId)} · {ago(entry.latest)}
 								</span>
 								<span className="lb-comments-panel__text">{richTextToPlainText(entry.first.body)}</span>
 								{entry.replies > 0 && (

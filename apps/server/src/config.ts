@@ -8,7 +8,11 @@ export interface ServerConfig {
 	webDir: string
 	/** Where the vault index and each board's room database live. */
 	dataDir: string
-	passwordHash: string
+	/**
+	 * The first account's password, for a server that has no accounts yet (`accounts.ts`). Optional once
+	 * it has: kept, it also keeps sessions from before accounts working, being part of the signing key.
+	 */
+	passwordHash: string | undefined
 	sessionSecret: string
 	/** Off only for plain-http local runs; browsers drop `Secure` cookies over http. */
 	secureCookies: boolean
@@ -22,8 +26,8 @@ const DEFAULT_WEB_DIR = fileURLToPath(new URL('../../web/dist', import.meta.url)
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 	const problems: string[] = []
 
-	const passwordHash = env.LIFEBOARD_PASSWORD_HASH ?? ''
-	if (!isPasswordHash(passwordHash)) {
+	const passwordHash = env.LIFEBOARD_PASSWORD_HASH || undefined
+	if (passwordHash !== undefined && !isPasswordHash(passwordHash)) {
 		problems.push('LIFEBOARD_PASSWORD_HASH must be an argon2id hash. Generate one with `pnpm --filter @lifeboard/server hash-password`.')
 	}
 	const sessionSecret = env.LIFEBOARD_SESSION_SECRET ?? ''

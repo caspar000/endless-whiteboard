@@ -39,6 +39,9 @@ function markServerSeen(): void {
 	}
 }
 
+/** A request to the server's API, for the other server modules (`accounts.ts`). Throws on failure. */
+export const serverApi = (path: string, init?: RequestInit) => api(path, init)
+
 async function api(path: string, init?: RequestInit): Promise<Response> {
 	const response = await fetch(`/api${path}`, {
 		...init,
@@ -64,12 +67,19 @@ interface ServerBoard {
 	createdAt: number
 	updatedAt: number
 	favorite: boolean
+	/** In this account's vault, or shared with it from another to edit or to view. */
+	role: 'member' | 'edit' | 'view'
+	/** The vault a shared board is from. */
+	sharedBy?: string
 }
 
 const toMeta = (board: ServerBoard): BoardMeta => ({ ...board, vault: 'server' })
 
 /** The server's board list as last seen, for opening its boards offline (docs/fork-parity.md S5). */
 const LIST_KEY = 'serverBoards'
+
+/** Forgets that list: logging out. */
+export const forgetServerBoardList = (kv: KvStore) => kv.delete(LIST_KEY)
 
 /**
  * The server's boards: from the server (`online`), or as this device last saw them when it can't be

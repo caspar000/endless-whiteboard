@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, CloudOff, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Check, CloudOff, Eye, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 /**
@@ -14,6 +14,8 @@ export interface SyncState {
 	online: boolean
 	unsent: number
 	refused: number
+	/** Shared with this account only to view. */
+	viewOnly?: boolean
 }
 
 /** How long changes may wait online before "Saving…" shows: a usual edit is up well before. */
@@ -21,7 +23,7 @@ const SLOW_SAVE_MS = 1500
 /** How long "Synced" stays after coming back. */
 const SYNCED_MS = 2500
 
-export function SyncStatusPill({ online, unsent, refused }: SyncState) {
+export function SyncStatusPill({ online, unsent, refused, viewOnly = false }: SyncState) {
 	const [slow, setSlow] = useState(false)
 	const [justSynced, setJustSynced] = useState(false)
 	const wasBehind = useRef(false)
@@ -65,7 +67,9 @@ export function SyncStatusPill({ online, unsent, refused }: SyncState) {
 				? { kind: 'saving', icon: <RefreshCw size={13} />, text: 'Saving…' }
 				: justSynced
 					? { kind: 'synced', icon: <Check size={13} />, text: 'Synced' }
-					: null
+					: viewOnly
+						? { kind: 'view', icon: <Eye size={13} />, text: 'View only' }
+						: null
 
 	if (!pill) return null
 	return (

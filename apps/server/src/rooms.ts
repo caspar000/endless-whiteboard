@@ -45,10 +45,11 @@ export class Rooms {
 		mkdirSync(options.dir, { recursive: true })
 	}
 
-	connect(boardId: string, socket: ServerSocket): void {
+	/** `readOnly`: the board's changes come, and the socket's own are refused (shared to view). */
+	connect(boardId: string, socket: ServerSocket, { readOnly = false }: { readOnly?: boolean } = {}): void {
 		let session
 		try {
-			session = this.room(boardId).room.join(socket)
+			session = this.room(boardId).room.join(socket, { readOnly })
 		} catch (error) {
 			this.options.log?.error(`Board ${boardId} could not be opened`, error)
 			socket.close(1011, 'This board could not be opened.')

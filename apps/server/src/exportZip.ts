@@ -11,10 +11,17 @@ const BACKUP_FORMAT_VERSION = 1
 const encoder = new TextEncoder()
 
 /**
- * The whole server vault as one zip, streamed: boards are small and compressed, assets are already
- * compressed (images, books) and stored as they are, so memory holds one file at a time.
+ * One vault as one zip, streamed: boards are small and compressed, assets are already compressed
+ * (images, books) and stored as they are, so memory holds one file at a time. Stars are the
+ * downloading person's.
  */
-export function exportVault(vault: Vault, rooms: Rooms, assets: AssetFiles, appVersion: string): Readable {
+export function exportVault(
+	vault: Vault,
+	rooms: Rooms,
+	assets: AssetFiles,
+	appVersion: string,
+	{ vaultId, favorites }: { vaultId: string; favorites: Set<string> }
+): Readable {
 	const out = new PassThrough()
 	const zip = new Zip((error, chunk, final) => {
 		if (error) return out.destroy(error)
@@ -29,7 +36,13 @@ export function exportVault(vault: Vault, rooms: Rooms, assets: AssetFiles, appV
 
 	void (async () => {
 		try {
-			const boards = vault.list()
+			const boards = vault.list(vaultId).map(({ id, name, createdAt, updatedAt }) => ({
+				id,
+				name,
+				createdAt,
+				updatedAt,
+				favorite: favorites.has(id),
+			}))
 			const referenced = new Set<string>()
 			for (const board of boards) {
 				const snapshot = rooms.readSnapshot(board.id)

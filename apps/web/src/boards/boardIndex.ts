@@ -17,7 +17,17 @@ export interface BoardMeta {
 	 * servers existed; `'server'` means the server vault, synced live (see `server/serverVault.ts`).
 	 */
 	vault?: 'server'
+	/**
+	 * A server board's standing with this account: in its vault (`member`, or absent), or shared with
+	 * it from another vault to edit or only to view.
+	 */
+	role?: 'member' | 'edit' | 'view'
+	/** The vault a shared board is from. */
+	sharedBy?: string
 }
+
+/** A server board shared with this account from another vault: it can follow it, not rename or move it. */
+export const isSharedWithMe = (board: Pick<BoardMeta, 'role'>): boolean => board.role === 'edit' || board.role === 'view'
 
 const INDEX_KEY = 'boards'
 const LAST_BACKUP_KEY = 'lastBackupAt'

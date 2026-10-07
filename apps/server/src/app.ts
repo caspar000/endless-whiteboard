@@ -10,6 +10,7 @@ import { AssetFiles } from './assets.ts'
 import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
 import { registerAuth } from './auth.ts'
 import type { ServerConfig } from './config.ts'
+import { Accounts } from './accounts.ts'
 import { Rooms } from './rooms.ts'
 import { Thumbnails } from './thumbnails.ts'
 import { Vault } from './vault.ts'
@@ -21,19 +22,23 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 	// Behind Caddy: `request.ip` must be the client's address, or the login limiter counts Caddy.
 	const app = Fastify({ trustProxy: true, ...options })
 
-	// The password hash is part of the signing key, so a new password invalidates every session.
-	await app.register(fastifyCookie, { secret: `${config.sessionSecret}:${config.passwordHash}` })
+	// The set-up password's hash was part of the signing key before accounts; kept, so sessions from then
+	// still verify. Accounts end their own sessions on a password change (`sessionsValidFrom`).
+	await app.register(fastifyCookie, { secret: `${config.sessionSecret}:${config.passwordHash ?? ''}` })
 	app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
 		done(null, Object.fromEntries(new URLSearchParams(body as string)))
 	})
 
-	registerAuth(app, config)
+	mkdirSync(config.dataDir, { recursive: true })
+	const vault = new Vault(join(config.dataDir, 'vault.sqlite'))
+	const accounts = new Accounts(vault.db)
+	if (accounts.seedOwner(config.passwordHash)) app.log.info('Made the first account, "owner", from LIFEBOARD_PASSWORD_HASH.')
+
+	registerAuth(app, { accounts, secureCookies: config.secureCookies })
 	await app.register(fastifyWebsocket)
 
 	app.get('/api/status', async () => ({ ok: true, revision: config.revision }))
 
-	mkdirSync(config.dataDir, { recursive: true })
-	const vault = new Vault(join(config.dataDir, 'vault.sqlite'))
 	const rooms = new Rooms({
 		dir: join(config.dataDir, 'rooms'),
 		schema: createBoardSchema(),
@@ -48,7 +53,15 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		vault.close()
 	})
 	const thumbnails = new Thumbnails(join(config.dataDir, 'thumbnails'))
-	registerApi(app, { vault, rooms, assets, thumbnails, appVersion: config.revision ?? 'dev' })
+	registerApi(app, {
+		vault,
+		accounts,
+		rooms,
+		assets,
+		thumbnails,
+		appVersion: config.revision ?? 'dev',
+		secureCookies: config.secureCookies,
+	})
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {
 		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)

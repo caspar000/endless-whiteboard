@@ -44,7 +44,7 @@ async function startServer() {
 		method: 'POST',
 		url: '/login',
 		headers: { 'content-type': 'application/x-www-form-urlencoded' },
-		payload: new URLSearchParams({ password: PASSWORD, next: '/' }).toString(),
+		payload: new URLSearchParams({ username: 'owner', password: PASSWORD, next: '/' }).toString(),
 	})
 	const session = login.cookies.find((c) => c.name === SESSION_COOKIE)!.value
 	return { app, port, cookie: `${SESSION_COOKIE}=${encodeURIComponent(session)}` }
@@ -319,7 +319,7 @@ describe('asset GC', () => {
 		const twoDaysAgo = (Date.now() - 2 * 86_400_000) / 1000
 		for (const h of [kept, old]) utimesSync(join(dir, 'assets', h), twoDaysAgo, twoDaysAgo)
 
-		const board = vault.create({ name: 'Has a picture' })
+		const board = vault.create({ vaultId: 'default', name: 'Has a picture' })
 		const fakeRooms = { readSnapshot: (id: string) => (id === board.id ? { store: { a: { typeName: 'asset', props: { src: `asset:${kept}` } } }, schema: {} } : null) }
 		expect(collectGarbage(vault, fakeRooms as unknown as Rooms, assets)).toEqual({ deleted: 1 })
 		expect(assets.has(kept) && assets.has(young) && !assets.has(old)).toBe(true)
@@ -329,5 +329,144 @@ describe('asset GC', () => {
 		expect(collectGarbage(vault, pending as unknown as Rooms, assets)).toHaveProperty('skipped')
 		rooms.closeAll()
 		vault.close()
+	})
+})
+
+describe('accounts', () => {
+	type App = Awaited<ReturnType<typeof startServer>>['app']
+	const form = (fields: Record<string, string>) => ({
+		headers: { 'content-type': 'application/x-www-form-urlencoded' },
+		payload: new URLSearchParams(fields).toString(),
+	})
+	const cookieOf = (res: { cookies: { name: string; value: string }[] }) => {
+		const session = res.cookies.find((c) => c.name === SESSION_COOKIE)
+		return session ? `${SESSION_COOKIE}=${encodeURIComponent(session.value)}` : ''
+	}
+	let names = 0
+	/** Someone new, through an invite made by `inviter`: into the inviter's vault, or one of their own. */
+	async function invited(app: App, inviter: string, kind: 'join' | 'new-vault' = 'join') {
+		const invite = await app.inject({ method: 'POST', url: '/api/invites', headers: { cookie: inviter }, payload: { kind } })
+		expect(invite.statusCode).toBe(201)
+		const { token } = invite.json<{ token: string }>()
+		expect((await app.inject({ url: `/invite/${token}`, headers: { accept: 'text/html' } })).statusCode).toBe(200)
+		const username = `person${++names}`
+		const res = await app.inject({
+			method: 'POST',
+			url: `/invite/${token}`,
+			...form({ username, displayName: `Person ${names}`, password: 'a long enough password', vault: `${username}'s vault` }),
+		})
+		expect(res.statusCode).toBe(303)
+		return { cookie: cookieOf(res), token, username }
+	}
+	const boardsOf = async (app: App, cookie: string) =>
+		(await app.inject({ url: '/api/boards', headers: { cookie } })).json<Array<{ id: string; role: string; sharedBy?: string; favorite: boolean }>>()
+
+	it('begin, on a server from before them, with the owner, their boards and their stars', async () => {
+		const dataDir = mkdtempSync(join(tmpdir(), 'lb-upgrade-'))
+		const old = new Vault(join(dataDir, 'vault.sqlite'))
+		old.db
+			.prepare("INSERT INTO boards (vault_id, id, name, created_at, updated_at, favorite) VALUES ('default', 'starred', 'Starred', 1, 2, 1), ('default', 'plain', 'Plain', 1, 3, 0)")
+			.run()
+		old.close()
+
+		const app = await buildApp({ ...config, dataDir })
+		cleanups.push(() => app.close())
+		const login = await app.inject({ method: 'POST', url: '/login', ...form({ username: 'owner', password: PASSWORD, next: '/' }) })
+		const boards = await boardsOf(app, cookieOf(login))
+		expect(boards.map(({ id, favorite, role }) => ({ id, favorite, role }))).toEqual([
+			{ id: 'plain', favorite: false, role: 'member' },
+			{ id: 'starred', favorite: true, role: 'member' },
+		])
+	})
+
+	it('keep a session from before accounts, as the owner’s', async () => {
+		const { app } = await startServer()
+		const legacy = `${SESSION_COOKIE}=${encodeURIComponent(app.signCookie(String(Date.now())))}`
+		const me = await app.inject({ url: '/api/me', headers: { cookie: legacy } })
+		expect(me.json()).toMatchObject({ username: 'owner', isAdmin: true })
+	})
+
+	it('a joining invite brings someone into the vault, once; a new-vault invite is an admin’s, and keeps them apart', async () => {
+		const { app, cookie: owner } = await startServer()
+		const board = await createBoard(app, owner, 'The vault’s')
+
+		const ann = await invited(app, owner)
+		expect((await boardsOf(app, ann.cookie)).find((b) => b.id === board.id)).toMatchObject({ role: 'member' })
+		// Used: it doesn't work twice.
+		expect((await app.inject({ url: `/invite/${ann.token}`, headers: { accept: 'text/html' } })).statusCode).toBe(404)
+		// A member, not an admin: no vaults of their own to hand out.
+		expect((await app.inject({ method: 'POST', url: '/api/invites', headers: { cookie: ann.cookie }, payload: { kind: 'new-vault' } })).statusCode).toBe(403)
+
+		const bob = await invited(app, owner, 'new-vault')
+		expect((await boardsOf(app, bob.cookie)).some((b) => b.id === board.id)).toBe(false)
+		expect((await app.inject({ url: `/api/boards/${board.id}/snapshot`, headers: { cookie: bob.cookie } })).statusCode).toBe(404)
+		const bobs = await createBoard(app, bob.cookie, 'Bob’s')
+		expect((await boardsOf(app, owner)).some((b) => b.id === bobs.id)).toBe(false)
+		expect((await app.inject({ url: '/api/me', headers: { cookie: bob.cookie } })).json()).toMatchObject({ vault: { name: `${bob.username}'s vault` } })
+	})
+
+	it('a view link lets someone outside the vault follow a board, and change nothing', async () => {
+		const { app, port, cookie: owner } = await startServer()
+		const board = await createBoard(app, owner, 'Shared to view')
+		const bob = await invited(app, owner, 'new-vault')
+
+		const link = (await app.inject({ method: 'POST', url: `/api/boards/${board.id}/shares`, headers: { cookie: owner }, payload: { role: 'view' } })).json<{ id: string; token: string }>()
+		const follow = await app.inject({ url: `/share/${link.token}`, headers: { cookie: bob.cookie, accept: 'text/html' } })
+		expect(follow.headers.location).toBe(`/#/board/${board.id}`)
+		expect((await boardsOf(app, bob.cookie)).find((b) => b.id === board.id)).toMatchObject({ role: 'view', sharedBy: 'My vault' })
+
+		// The board's vault decides its name; a star is anyone's own.
+		expect((await app.inject({ method: 'PATCH', url: `/api/boards/${board.id}`, headers: { cookie: bob.cookie }, payload: { name: 'Mine now' } })).statusCode).toBe(403)
+		expect((await app.inject({ method: 'PATCH', url: `/api/boards/${board.id}`, headers: { cookie: bob.cookie }, payload: { favorite: true } })).json()).toMatchObject({ favorite: true })
+		expect((await boardsOf(app, owner)).find((b) => b.id === board.id)).toMatchObject({ favorite: false })
+		expect((await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie: bob.cookie } })).statusCode).toBe(403)
+
+		// Live: the owner's change arrives; the viewer's own is refused.
+		const ownerStore = await connect(port, owner, board.id)
+		const bobStore = await connect(port, bob.cookie, board.id)
+		const page = PageRecordType.create({ name: 'From the owner', index: 'a5' as never })
+		ownerStore.put([page])
+		await until(() => bobStore.get(page.id) !== undefined)
+		const bobsPage = PageRecordType.create({ name: 'From the viewer', index: 'a6' as never })
+		bobStore.put([bobsPage])
+		await new Promise((r) => setTimeout(r, 300))
+		expect(ownerStore.get(bobsPage.id)).toBeUndefined()
+
+		// The vault sees who has it, and can take the link back.
+		const shares = (await app.inject({ url: `/api/boards/${board.id}/shares`, headers: { cookie: owner } })).json<{ people: Array<{ username: string; role: string }> }>()
+		expect(shares.people).toEqual([expect.objectContaining({ username: bob.username, role: 'view' })])
+		expect((await app.inject({ method: 'DELETE', url: `/api/shares/${link.id}`, headers: { cookie: owner } })).statusCode).toBe(204)
+		expect((await boardsOf(app, bob.cookie)).some((b) => b.id === board.id)).toBe(false)
+		expect((await app.inject({ url: `/share/${link.token}`, headers: { cookie: bob.cookie, accept: 'text/html' } })).statusCode).toBe(404)
+	})
+
+	it('an edit link lets someone outside the vault change the board, and leave it', async () => {
+		const { app, port, cookie: owner } = await startServer()
+		const board = await createBoard(app, owner, 'Shared to edit')
+		const bob = await invited(app, owner, 'new-vault')
+		const link = (await app.inject({ method: 'POST', url: `/api/boards/${board.id}/shares`, headers: { cookie: owner }, payload: { role: 'edit' } })).json<{ token: string }>()
+		await app.inject({ url: `/share/${link.token}`, headers: { cookie: bob.cookie, accept: 'text/html' } })
+
+		const ownerStore = await connect(port, owner, board.id)
+		const bobStore = await connect(port, bob.cookie, board.id)
+		const page = PageRecordType.create({ name: 'From the editor', index: 'a7' as never })
+		bobStore.put([page])
+		await until(() => ownerStore.get(page.id) !== undefined)
+
+		expect((await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}/access/me`, headers: { cookie: bob.cookie } })).statusCode).toBe(204)
+		expect((await boardsOf(app, bob.cookie)).some((b) => b.id === board.id)).toBe(false)
+	})
+
+	it('a new password ends other sessions and keeps this one', async () => {
+		const { app, cookie: owner } = await startServer()
+		const ann = await invited(app, owner)
+		const other = await app.inject({ method: 'POST', url: '/login', ...form({ username: ann.username.toUpperCase(), password: 'a long enough password', next: '/' }) })
+		const otherCookie = cookieOf(other)
+		expect(otherCookie).not.toBe('')
+
+		const changed = await app.inject({ method: 'POST', url: '/api/me/password', headers: { cookie: ann.cookie }, payload: { current: 'a long enough password', next: 'an even longer password' } })
+		expect(changed.statusCode).toBe(204)
+		expect((await app.inject({ url: '/api/me', headers: { cookie: otherCookie } })).statusCode).toBe(401)
+		expect((await app.inject({ url: '/api/me', headers: { cookie: cookieOf(changed) } })).statusCode).toBe(200)
 	})
 })

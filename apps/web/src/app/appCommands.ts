@@ -24,7 +24,8 @@ import {
 	COMMAND_PREFIX,
 	NAVIGATE_GROUP,
 } from './paletteItems'
-import type { BoardMeta } from '../boards/boardIndex'
+import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
+import { openShareDialog } from './ShareDialog'
 import { EXTENSIONS_TAB } from './settings/sections'
 import type { Theme } from './useTheme'
 
@@ -88,6 +89,20 @@ const moveOpenBoard = () => {
 }
 
 registerCommand({
+	id: 'board.share',
+	title: 'Share this board…',
+	group: BOARDS_GROUP,
+	when: () => {
+		const board = api?.activeBoard()
+		return !!api?.hasServer() && board?.vault === 'server' && !isSharedWithMe(board)
+	},
+	run: () => {
+		const board = api?.activeBoard()
+		if (board) openShareDialog(board)
+	},
+})
+
+registerCommand({
 	id: 'board.move-to-server',
 	title: 'Move board to server',
 	group: BOARDS_GROUP,
@@ -99,7 +114,10 @@ registerCommand({
 	id: 'board.move-to-device',
 	title: 'Move board to this device',
 	group: BOARDS_GROUP,
-	when: () => !!api?.hasServer() && api.activeBoard()?.vault === 'server',
+	when: () => {
+		const board = api?.activeBoard()
+		return !!api?.hasServer() && board?.vault === 'server' && !isSharedWithMe(board)
+	},
 	run: moveOpenBoard,
 })
 

@@ -1,6 +1,6 @@
 import { Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { BoardMeta } from '../boards/boardIndex'
+import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import type { MoveJob } from '../boards/moveQueue'
 import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
@@ -19,6 +19,7 @@ export function BoardCard({
 	onRename,
 	onToggleFavorite,
 	onDelete,
+	onShare,
 	onMove,
 	moveLabel,
 	moveJob,
@@ -33,6 +34,8 @@ export function BoardCard({
 	onRename: () => void
 	onToggleFavorite: () => void
 	onDelete: () => void
+	/** Offered for a server board in this account's vault. */
+	onShare?: () => void
 	/** Offered only when there is somewhere to move it: a server is connected. */
 	onMove?: () => void
 	moveLabel?: string
@@ -45,6 +48,8 @@ export function BoardCard({
 	onRenameCancel: () => void
 }) {
 	const [confirmDelete, setConfirmDelete] = useState(false)
+	// Shared with this account from another vault: it can leave the list, not be renamed or deleted.
+	const shared = isSharedWithMe(board)
 
 	return (
 		<li className="lb-card lb-list__board">
@@ -96,7 +101,7 @@ export function BoardCard({
 									setConfirmDelete(false)
 								}}
 							>
-								Delete for good
+								{shared ? 'Remove from my boards' : 'Delete for good'}
 							</button>
 							<button
 								className="lb-btn lb-btn--ghost lb-btn--tiny"
@@ -107,16 +112,23 @@ export function BoardCard({
 						</>
 					) : (
 						<>
-							<button className="lb-btn lb-btn--tiny" onClick={onRename}>
-								Rename
-							</button>
+							{!shared && (
+								<button className="lb-btn lb-btn--tiny" onClick={onRename}>
+									Rename
+								</button>
+							)}
+							{onShare && (
+								<button className="lb-btn lb-btn--tiny" onClick={onShare}>
+									Share
+								</button>
+							)}
 							{onMove && (
 								<button className="lb-btn lb-btn--tiny" onClick={onMove}>
 									{moveLabel}
 								</button>
 							)}
 							<button className="lb-btn lb-btn--tiny" onClick={() => setConfirmDelete(true)}>
-								Delete
+								{shared ? 'Remove' : 'Delete'}
 							</button>
 						</>
 					)}
@@ -145,7 +157,11 @@ export function BoardCard({
 				) : (
 					<button className="lb-card__title" onClick={onOpen}>
 						<span className="lb-list__title">{board.name}</span>
-						<span className="lb-card__date lb-list__meta">{formatEdited(board.updatedAt)}</span>
+						<span className="lb-card__date lb-list__meta">
+							{shared
+								? `${board.sharedBy ?? 'Shared'} · ${board.role === 'view' ? 'view only' : 'can edit'}`
+								: formatEdited(board.updatedAt)}
+						</span>
 					</button>
 				)}
 			</div>

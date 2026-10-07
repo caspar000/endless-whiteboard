@@ -18,6 +18,7 @@ import { AgentPanel } from './AgentPanel'
 import { useAgentPanelWidth } from './agentPanelWidth'
 import { setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
+import { ShareDialogHost } from './ShareDialog'
 import { CommandPalette } from './CommandPalette'
 import { useKeymap } from './useKeymap'
 import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
@@ -654,6 +655,7 @@ export function App() {
 
 	return (
 		<CanvasPrefsProvider value={canvasPrefs}>
+			<ShareDialogHost />
 			<CommandPalette
 				open={paletteOpen}
 				initialQuery={palette?.seed ?? ''}

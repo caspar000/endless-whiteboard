@@ -33,8 +33,14 @@ On the box (`ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86`):
 ## Day to day
 
 - **Deploy:** push to the deploy branch, then **Restart** in Arcane.
-- **Change the password:** generate a new hash, replace it in `.env`, and **Redeploy** in Arcane so the
-  container picks up the new environment. Every logged-in device is logged out.
+- **Log in** as `owner` with the password whose hash is in `.env`. That account is made from it the first
+  time the server starts with no accounts, and owns the boards from before there were accounts.
+- **Change a password:** Settings → Account, in the app. Every other device on that account is logged
+  out. The hash in `.env` only makes the first account; changing it later changes no password, and
+  logs every device out (it is part of the cookie key).
+- **Add people:** Settings → Account → invite links: into your vault, or (as the owner) to a vault of
+  their own. Share a single board with someone outside your vault from its card or ⌘K → *Share this
+  board…*.
 - **Log every device out:** change `LIFEBOARD_SESSION_SECRET` the same way.
 - **What's running:** `https://lifeboard.darkroomlab.net/api/status` reports the deployed commit.
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
 	createBoard,
+	isSharedWithMe,
 	listBoards,
 	renameBoard,
 	setBoardFavorite,
@@ -17,6 +18,7 @@ import {
 	updateServerBoard,
 } from '../server/serverVault'
 import { syncVaultSettings } from './vaultSettings'
+import { removeBoardAccess } from '../server/accounts'
 
 export interface BoardsApi {
 	boards: BoardMeta[]
@@ -125,13 +127,18 @@ export function useBoards(): BoardsApi {
 
 	const remove = useCallback(
 		async (id: string) => {
-			if (isServerBoard(id)) {
+			const shared = server?.find((board) => board.id === id)
+			if (shared && isSharedWithMe(shared)) {
+				// Not ours to delete: it just leaves this account's list.
+				await removeBoardAccess(id, 'me')
+				await deleteBoardThumbnail(platform.kv, id)
+			} else if (isServerBoard(id)) {
 				await deleteServerBoard(id)
 				await deleteBoardThumbnail(platform.kv, id)
 			} else await deleteBoard(platform, id)
 			await refresh()
 		},
-		[platform, isServerBoard, refresh]
+		[platform, server, isServerBoard, refresh]
 	)
 
 	const move = useCallback((boards: readonly BoardMeta[]) => queueMoves(platform.kv, boards), [platform])

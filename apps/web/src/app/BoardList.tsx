@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { BoardMeta } from '../boards/boardIndex'
+import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { dismissMove, retryMove } from '../boards/moveQueue'
 import { usePlatform } from '../platform/PlatformContext'
 import { ThumbnailBackfill } from '../canvas/ThumbnailBackfill'
 import { BoardCard } from './BoardCard'
+import { openShareDialog } from './ShareDialog'
 import { useMoves, type BoardsApi } from './useBoards'
 
 const MOVE_OFFERED_KEY = 'lifeboard:moveOffered'
@@ -127,10 +128,13 @@ export function BoardList({
 							onRenameCancel={() => setRenaming(null)}
 							onToggleFavorite={() => void api.setFavorite(board.id, !board.favorite)}
 							onDelete={() => void api.remove(board.id)}
+							{...(api.hasServer && board.vault === 'server' && !isSharedWithMe(board)
+								? { onShare: () => openShareDialog(board) }
+								: {})}
 							{...(moveOf(board.id) ? { moveJob: moveOf(board.id)! } : {})}
 							onRetryMove={() => void retryMove(platform.kv, board.id)}
 							onDismissMove={() => void dismissMove(platform.kv, board.id)}
-							{...(api.hasServer && !moveOf(board.id)
+							{...(api.hasServer && !moveOf(board.id) && !isSharedWithMe(board)
 								? {
 										onMove: () => void move([board]),
 										moveLabel: board.vault === 'server' ? 'Move to this device' : 'Move to server',

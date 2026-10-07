@@ -326,3 +326,27 @@ describe('connecting', () => {
 		).toThrow()
 	})
 })
+
+describe('a read-only session', () => {
+	it('sees the board and others’ changes, and has its own edits refused and taken back', async () => {
+		const room = newRoom()
+		const editor = connect(room)
+		const store = newStore()
+		const socket = new TestSocket(room)
+		const join = room.join.bind(room)
+		room.join = (s) => join(s, { readOnly: true })
+		const viewer = { store, socket, client: new SyncClient({ store, socket, pushDelayMs: 0 }) }
+		room.join = join
+		await settle(editor, viewer)
+
+		editor.store.put([frame('shared')])
+		await settle(editor, viewer)
+		expect(shapeOf(viewer, 'shared')).toBeDefined()
+
+		viewer.store.put([frame('mine')])
+		await settle(editor, viewer)
+		expect(shapeOf(viewer, 'mine')).toBeUndefined()
+		expect(shapeOf(editor, 'mine')).toBeUndefined()
+		expect(viewer.client.getStatus()).toMatchObject({ refused: 1, unsent: 0 })
+	})
+})

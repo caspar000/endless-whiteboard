@@ -17,7 +17,7 @@ export type GcResult = { deleted: number } | { skipped: string }
  */
 export function collectGarbage(vault: Vault, rooms: Rooms, assets: AssetFiles, now = Date.now()): GcResult {
 	const referenced = new Set<string>()
-	for (const board of vault.list()) {
+	for (const board of vault.all()) {
 		let snapshot
 		try {
 			snapshot = rooms.readSnapshot(board.id)

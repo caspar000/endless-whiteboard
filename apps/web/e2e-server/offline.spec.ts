@@ -9,6 +9,7 @@ interface EditorHandle {
 
 async function logIn(page: Page) {
 	await page.goto('/login')
+	await page.locator('input[name="username"]').fill('owner')
 	await page.locator('input[name="password"]').fill('lifeboard-e2e-password')
 	await page.locator('input[name="password"]').press('Enter')
 	await page.waitForURL((url) => !url.pathname.startsWith('/login'))

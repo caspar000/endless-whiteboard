@@ -76,6 +76,8 @@ export interface SyncRoomOptions<R extends UnknownRecord> {
 interface Session {
 	socket: RoomSocket
 	connected: boolean
+	/** Sees the board and its changes, and may change nothing: someone it's shared with to view. */
+	readOnly: boolean
 }
 
 /**
@@ -122,8 +124,8 @@ export class SyncRoom<R extends UnknownRecord> {
 		return this.closed
 	}
 
-	join(socket: RoomSocket): RoomSession {
-		const session: Session = { socket, connected: false }
+	join(socket: RoomSocket, { readOnly = false }: { readOnly?: boolean } = {}): RoomSession {
+		const session: Session = { socket, connected: false, readOnly }
 		if (this.closed) {
 			this.end(session, 'room-closed')
 			return { receive() {}, leave() {} }
@@ -258,6 +260,9 @@ export class SyncRoom<R extends UnknownRecord> {
 	private push(session: Session, message: Extract<ClientMessage<R>, { type: 'push' }>): void {
 		const { pushId, diff } = message
 		if (typeof pushId !== 'number' || !isPlainObject(diff)) return this.end(session, 'bad-request', 'Malformed push.')
+		if (session.readOnly) {
+			return this.send(session, { type: 'pushResult', pushId, clock: this.state.clock, action: 'discard', reason: 'read-only' })
+		}
 
 		// Check everything before changing anything, so a push applies whole or not at all.
 		const changes: Array<{ id: string; after: R | null }> = []

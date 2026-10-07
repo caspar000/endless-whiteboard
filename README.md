@@ -569,8 +569,11 @@ paper, board thumbnails, the palette, an agent building a board end to end over 
 3D dice roll in a production build.
 
 Self-hosting is built and deployed (`docs/self-hosting-plan.md`): `apps/server` serves the app
-behind a login and syncs server boards live between devices, with their images, files and previews;
-boards move between this browser and the server either way (Help → Your server), through a queue
+behind a login and syncs server boards live between devices, with their images, files and previews.
+It holds several people: each account is in a vault (its own, or one it was invited into) whose boards
+all its members share, and a single board can be shared outside its vault with a view or edit link
+(`apps/server/src/accounts.ts`; Settings → Account, and *Share* on a board). Boards
+move between this browser and the server either way (Help → Your server), through a queue
 saved in the browser (`boards/moveQueue.ts`) that survives a reload and shows its progress on each
 card and in the sidebar. Server boards work offline once opened on a device: each is kept in the
 browser (`@lifeboard/canvas-sync`'s `indexedDbSyncCache`), opens from there without the server, and

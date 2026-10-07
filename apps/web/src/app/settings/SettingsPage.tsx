@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { CanvasPrefs } from '../canvasPrefs'
 import type { BoardsApi } from '../useBoards'
 import type { Theme } from '../useTheme'
+import { AccountPanel } from './AccountPanel'
 import { AgentsPanel } from './AgentsPanel'
 import { AppearancePanel } from './AppearancePanel'
 import { CanvasPanel } from './CanvasPanel'
@@ -111,6 +112,7 @@ export function SettingsPage({
 							{active.id === 'canvas' && <CanvasPanel canvas={canvas} />}
 							{active.id === 'keyboard' && <KeymapPanel />}
 							{active.id === 'storage' && <StoragePanel api={api} onImported={onImported} />}
+							{active.id === 'account' && <AccountPanel hasServer={api.hasServer} />}
 							{active.id === EXTENSIONS_TAB && <ExtensionsPanel onOpen={onExtension} />}
 							{active.id === 'agents' && <AgentsPanel />}
 						</>

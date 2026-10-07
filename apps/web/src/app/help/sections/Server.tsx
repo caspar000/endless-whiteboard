@@ -38,10 +38,33 @@ export function Server(_props: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="People, vaults and sharing">
+				<p>
+					A server can hold more than one person. Each account is in a <strong>vault</strong>: its own,
+					or one it was invited into. Everyone in a vault sees and edits all of its boards, like a shared
+					drive.
+				</p>
+				<p>
+					New accounts come from <strong>invite links</strong>, made in Settings → Account: one into your
+					vault, or, for the server’s owner, one with a vault of its own. A link works once, for a week.
+				</p>
+				<p>
+					To share a single board with someone outside your vault, use <strong>Share</strong> on its card
+					or <em>Share this board…</em> in ⌘K. A view-only link lets them follow the board as it changes;
+					an edit link lets them change it too. They open the link while logged in, and the board joins
+					their list, marked with your vault’s name. Withdraw the link, or remove them in the same dialog,
+					and it leaves them again. A board shared with you can be removed from your list, but not renamed,
+					moved or deleted.
+				</p>
+				<p>
+					Logging out (Settings → Account) also clears the boards kept on that device for offline use.
+				</p>
+			</Section>
+
 			<Section title="What else follows you">
 				<p>
-					Saved queries and the extensions you have switched off belong to the server too, so a new
-					device starts with them. Theme, grid, keyboard shortcuts and the sidebar stay per device.
+					Saved queries and the extensions you have switched off belong to your vault, so a new device
+					starts with them, and so does everyone else in it. Theme, grid, keyboard shortcuts and the sidebar stay per device.
 				</p>
 			</Section>
 

@@ -32,7 +32,7 @@ async function logIn(app: Awaited<ReturnType<typeof buildApp>>, password = PASSW
 		method: 'POST',
 		url: '/login',
 		headers: { 'content-type': 'application/x-www-form-urlencoded' },
-		payload: new URLSearchParams({ password, next }).toString(),
+		payload: new URLSearchParams({ username: 'owner', password, next }).toString(),
 	})
 }
 
@@ -53,7 +53,7 @@ describe('password', () => {
 
 describe('config', () => {
 	it('refuses to start without a password hash or a long enough secret', () => {
-		expect(() => loadConfig({})).toThrow(/LIFEBOARD_PASSWORD_HASH[\s\S]*LIFEBOARD_SESSION_SECRET/)
+		expect(() => loadConfig({})).toThrow(/LIFEBOARD_SESSION_SECRET/)
 	})
 })
 
@@ -101,7 +101,7 @@ describe('server', () => {
 		const app = await buildApp(config)
 		const res = await logIn(app, 'wrong')
 		expect(res.statusCode).toBe(401)
-		expect(res.body).toContain('Wrong password.')
+		expect(res.body).toContain('Wrong username or password.')
 		expect(sessionCookie(res)).toEqual({})
 
 		const forged = { [SESSION_COOKIE]: String(Date.now()) }

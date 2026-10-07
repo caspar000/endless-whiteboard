@@ -297,7 +297,12 @@ function SyncedBoard(props: BoardProps) {
 			{...props}
 			store={store}
 			shapeUtils={shapeUtils}
-			sync={{ online: store.connectionStatus === 'online', unsent: store.unsent, refused: store.refused }}
+			sync={{
+				online: store.connectionStatus === 'online',
+				unsent: store.unsent,
+				refused: store.refused,
+				viewOnly: props.board.role === 'view',
+			}}
 		/>
 	)
 }
@@ -483,6 +488,9 @@ function BoardCanvas({
 					editorRef.current = editor
 					const w = window as unknown as { editor?: Editor }
 					w.editor = editor
+					// Shared with this account to view: it follows the board and changes nothing. The server
+					// refuses its edits anyway; this stops them being made.
+					if (board.role === 'view') editor.updateInstanceState({ isReadonly: true })
 					setEditor(editor)
 					onEditor?.(editor)
 

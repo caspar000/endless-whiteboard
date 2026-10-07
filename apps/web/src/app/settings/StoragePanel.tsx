@@ -3,7 +3,7 @@ import { getLastBackupAt, getLastServerBackupAt, setLastServerBackupAt } from '.
 import { backupFileName, exportBackup, importBackup } from '../../persistence/backup'
 import { usePlatform } from '../../platform/PlatformContext'
 import type { StorageEstimate } from '../../platform/PlatformAdapter'
-import { downloadServerBackup } from '../../server/serverVault'
+import { startServerBackupDownload } from '../../server/serverVault'
 import type { BoardsApi } from '../useBoards'
 
 const APP_VERSION = __APP_VERSION__
@@ -104,10 +104,12 @@ export function StoragePanel({
 		setBusy('server')
 		setMessage(null)
 		try {
-			const blob = await downloadServerBackup()
-			await platform.saveFile(`lifeboard-server-${new Date().toISOString().slice(0, 10)}.zip`, blob)
+			await startServerBackupDownload()
+			// Counted when it starts: the browser runs the download from here, and doesn't say when it ends.
 			await setLastServerBackupAt(platform.kv)
-			setMessage(`Downloaded the server’s boards and files (${formatBytes(blob.size)}).`)
+			setMessage(
+				'The backup is downloading: your browser’s downloads show how far it has got. It holds every board in your vault with its pictures and files, so it can take a few minutes, and you can carry on meanwhile.'
+			)
 			await refreshStatus()
 		} catch (err) {
 			setMessage(`Server backup failed: ${err instanceof Error ? err.message : String(err)}`)

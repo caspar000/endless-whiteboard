@@ -1,3 +1,4 @@
+import { once } from 'node:events'
 import { PassThrough, type Readable } from 'node:stream'
 import { collectAssetRefs } from '@lifeboard/schema'
 import { Zip, ZipDeflate, ZipPassThrough } from 'fflate'
@@ -12,8 +13,9 @@ const encoder = new TextEncoder()
 
 /**
  * One vault as one zip, streamed: boards are small and compressed, assets are already compressed
- * (images, books) and stored as they are, so memory holds one file at a time. Stars are the
- * downloading person's.
+ * (images, books) and stored as they are. Files are read a piece at a time and the zip is written only
+ * as fast as the download takes it, so memory holds a piece, not the vault, however slow the
+ * connection. A download that stops stops the zip. Stars are the downloading person's.
  */
 export function exportVault(
 	vault: Vault,
@@ -23,11 +25,18 @@ export function exportVault(
 	{ vaultId, favorites }: { vaultId: string; favorites: Set<string> }
 ): Readable {
 	const out = new PassThrough()
+	// Whether the download has fallen behind: the next piece waits until it catches up.
+	let behind = false
 	const zip = new Zip((error, chunk, final) => {
 		if (error) return out.destroy(error)
-		out.write(chunk)
+		if (!out.write(chunk)) behind = true
 		if (final) out.end()
 	})
+	const keepPace = async () => {
+		if (!behind || out.destroyed) return
+		behind = false
+		await Promise.race([once(out, 'drain'), once(out, 'close')])
+	}
 	const add = (name: string, bytes: Uint8Array, compress: boolean) => {
 		const file = compress ? new ZipDeflate(name, { level: 6 }) : new ZipPassThrough(name)
 		zip.add(file)
@@ -51,10 +60,16 @@ export function exportVault(
 				for (const hash of collectAssetRefs(snapshot).hashes) referenced.add(hash)
 			}
 			for (const hash of referenced) {
+				if (out.destroyed) return
 				if (!assets.has(hash)) continue
-				const chunks: Buffer[] = []
-				for await (const chunk of assets.read(hash)) chunks.push(chunk as Buffer)
-				add(`assets/${hash}`, Buffer.concat(chunks), false)
+				const file = new ZipPassThrough(`assets/${hash}`)
+				zip.add(file)
+				for await (const chunk of assets.read(hash)) {
+					file.push(chunk as Buffer)
+					await keepPace()
+					if (out.destroyed) return
+				}
+				file.push(new Uint8Array(0), true)
 			}
 			const manifest = { formatVersion: BACKUP_FORMAT_VERSION, appVersion, exportedAt: Date.now(), boards }
 			add('manifest.json', encoder.encode(JSON.stringify(manifest, null, 2)), true)

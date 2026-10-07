@@ -254,9 +254,26 @@ export async function uploadServerAsset(hash: string, blob: Blob): Promise<boole
 	}
 }
 
-/** Every server board and the files they use, in the app's own backup format (importable as copies). */
-export async function downloadServerBackup(): Promise<Blob> {
-	return (await api('/export')).blob()
+/**
+ * Starts the download of every board in this account's vault and the files they use, in the app's own
+ * backup format (importable as copies).
+ *
+ * A download the browser runs itself, not a fetch: a vault with its pictures and books is hundreds of
+ * megabytes, which a fetch would hold in the page, with no progress, until the last byte, and lose to
+ * a reload. The browser's own shows progress, writes to disk as it goes, and outlives the page.
+ *
+ * The session is checked first, so an expired one goes to the login page rather than downloading an
+ * error as the backup.
+ */
+export async function startServerBackupDownload(): Promise<void> {
+	await api('/me')
+	const anchor = document.createElement('a')
+	anchor.href = '/api/export'
+	anchor.download = ''
+	anchor.rel = 'noopener'
+	document.body.append(anchor)
+	anchor.click()
+	anchor.remove()
 }
 
 export function syncUri(boardId: string): string {

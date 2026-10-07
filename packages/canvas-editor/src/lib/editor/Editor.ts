@@ -67,7 +67,6 @@ import { TLUser, createTLUser } from '../config/createTLUser'
 import { checkShapesAndAddCore } from '../config/defaultShapes'
 import {
 	ANIMATION_MEDIUM_MS,
-	CAMERA_MAX_RENDERING_INTERVAL,
 	CAMERA_MOVING_TIMEOUT,
 	CAMERA_SLIDE_FRICTION,
 	COARSE_DRAG_DISTANCE,
@@ -3859,15 +3858,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 		return this.getCameraState()
 	}
 
-	// Camera state does two things: first, it allows us to subscribe to whether
-	// the camera is moving or not; and second, it allows us to update the rendering
-	// shapes on the canvas. Changing the rendering shapes may cause shapes to
-	// unmount / remount in the DOM, which is expensive; and computing visibility is
-	// also expensive in large projects. For this reason, we use a second bounding
-	// box just for rendering, and we only update after the camera stops moving.
+	// Camera state lets us subscribe to whether the camera is moving or not. The rendering bounds
+	// follow the camera on every move: upstream froze them for the first 620ms of a movement, so a
+	// quick flick showed nothing new until it stopped. Culled shapes stay mounted, so updating them
+	// is cheap, and a longer pan already updated every frame.
 
 	private _cameraStateTimeoutRemaining = 0
-	private _lastUpdateRenderingBoundsTimestamp = Date.now()
 
 	private _decayCameraStateTimeout = (elapsed: number) => {
 		this._cameraStateTimeoutRemaining -= elapsed
@@ -3875,31 +3871,17 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (this._cameraStateTimeoutRemaining <= 0) {
 			this.off('tick', this._decayCameraStateTimeout)
 			this._cameraState.set('idle')
-			this.updateRenderingBounds()
 		}
 	}
 
 	private _tickCameraState = () => {
 		// always reset the timeout
 		this._cameraStateTimeoutRemaining = CAMERA_MOVING_TIMEOUT
-
-		const now = Date.now()
-
-		// If the state is idle, then start the tick
 		if (this._cameraState.__unsafe__getWithoutCapture() === 'idle') {
-			// Upstream waited for the camera to stop before showing what came into view. A jump (zoom to
-			// fit, a link to a shape) then showed nothing new for a while, and what the app measures in
-			// those shapes landed late. Culled shapes stay mounted now, so showing them at once is cheap;
-			// a continuous pan still updates at most every CAMERA_MAX_RENDERING_INTERVAL.
-			this._lastUpdateRenderingBoundsTimestamp = now
 			this._cameraState.set('moving')
 			this.on('tick', this._decayCameraStateTimeout)
-			this.updateRenderingBounds()
-		} else {
-			if (now - this._lastUpdateRenderingBoundsTimestamp > CAMERA_MAX_RENDERING_INTERVAL) {
-				this.updateRenderingBounds()
-			}
 		}
+		this.updateRenderingBounds()
 	}
 
 	private getUnorderedRenderingShapes(
@@ -3938,6 +3920,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const selectedShapeIds = new Set(this.getSelectedShapeIds())
 		const erasingShapeIds = new Set(this.getErasingShapeIds())
 		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
+		const renderingBoundsAhead = this._renderingBoundsAhead.get()
 
 		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
 		const isCullingOffScreenShapes = Number.isFinite(this.renderingBoundsMargin)
@@ -3967,7 +3950,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 					// if the shape is fully outside of its parent's clipping bounds...
 					(maskedPageBounds === undefined ||
 						// ...or if the shape is outside of the expanded viewport bounds...
-						(!renderingBoundsExpanded.includes(maskedPageBounds) &&
+						(!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
+							maskedPageBounds
+						) &&
 							// ...and if it's not selected... then cull it
 							!selectedShapeIds.has(id)))
 			}
@@ -4085,6 +4070,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	/** @internal */
 	private readonly _renderingBoundsExpanded = atom('rendering viewport expanded', new Box2d())
 
+	/** The rendering bounds with half a screen more on each side, for shapes that render ahead. @internal */
+	private readonly _renderingBoundsAhead = atom('rendering viewport ahead', new Box2d())
+
 	/**
 	 * Update the rendering bounds. This should be called when the viewport has stopped changing, such
 	 * as at the end of a pan, zoom, or animation.
@@ -4106,8 +4094,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 			this._renderingBoundsExpanded.set(
 				viewportPageBounds.clone().expandBy(this.renderingBoundsMargin / this.getZoomLevel())
 			)
+			const { width, height } = viewportPageBounds
+			const ahead = Math.max(this.renderingBoundsMargin / this.getZoomLevel(), width / 2, height / 2)
+			this._renderingBoundsAhead.set(viewportPageBounds.clone().expandBy(ahead))
 		} else {
 			this._renderingBoundsExpanded.set(viewportPageBounds)
+			this._renderingBoundsAhead.set(viewportPageBounds)
 		}
 		return this
 	}

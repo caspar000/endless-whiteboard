@@ -176,6 +176,17 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	}
 
 	/**
+	 * Whether to keep the shape shown further from the screen than other shapes: half a screen past
+	 * each edge rather than 100 pixels. For shapes that take a moment to appear, such as pictures,
+	 * which the browser has to decode, so a fast pan doesn't bring them in blank.
+	 *
+	 * @public
+	 */
+	rendersAhead(_shape: Shape): boolean {
+		return false
+	}
+
+	/**
 	 * Whether a binding may attach to a shape of this type. Asked of the util of the shape being
 	 * bound to (`toShapeType`). Today's form of the question; the 2023 one passed the shape.
 	 *

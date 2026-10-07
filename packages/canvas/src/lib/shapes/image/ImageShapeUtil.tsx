@@ -60,6 +60,7 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 	static override migrations = imageShapeMigrations
 
 	override isAspectRatioLocked = () => true
+	override rendersAhead = () => true
 	override canCrop = () => true
 
 	/** Solid where the picture is, see-through where it isn't (./seeThrough.ts). */

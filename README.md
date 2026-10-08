@@ -326,6 +326,30 @@ Two things about it are load-bearing:
 Display mode renders through `react-markdown` + GFM (no raw HTML — there is no injection surface to
 sanitise), with `remark-breaks` so Enter always starts a visible new line.
 
+## Bringing boards over from Apple Freeform
+
+`apps/freeform-import` turns Freeform's boards into a Lifeboard backup. Import that in Settings →
+Storage → Import backup; the boards arrive as copies on this device, beside the ones already there.
+From there, move them to the server like any other board.
+
+```sh
+pnpm --filter @lifeboard/freeform-import convert -- --list                # what each board holds
+pnpm --filter @lifeboard/freeform-import convert -- --out ~/Desktop/freeform.zip
+pnpm --filter @lifeboard/freeform-import convert -- --board Moodboard     # only some boards
+```
+
+It reads a copy of Freeform's database and its files where they are, and changes nothing; quit
+Freeform first. macOS keeps Freeform's folder private, so the terminal running it needs Full Disk
+Access.
+
+Freeform has no export of its own, so this reads its storage, a format worked out from the records
+(`src/crdt.ts` describes it). Text keeps its size, bold, italic, underline, strikethrough, links,
+lists and alignment; sticky notes keep their colour and fit their text as Freeform does; pictures
+keep their crop; link cards keep their title, description and preview picture, kept as files so a
+dead link still shows them; PDFs and epubs become books with a cover. A sticky wider than it is tall
+becomes a pinned note, which takes any proportion. Drawings and lines are left out, and the report
+says how many.
+
 ## Things worth knowing before you change something
 
 **Adding a node type** means writing a `NodeDefinition`, wrapping it in an `Extension`, and adding

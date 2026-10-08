@@ -13,8 +13,12 @@ import type { ServerBoard, Vault } from './vault.ts'
 /** Board ids become file names, so only what a UUID can contain. */
 const BOARD_ID = /^[A-Za-z0-9-]{1,64}$/
 const MAX_NAME = 200
-/** The app refuses imports over 64 MB (`MAX_IMPORT_BYTES`); a little over that, for headroom. */
-const MAX_ASSET_BYTES = 80 * 1024 * 1024
+/**
+ * The largest file a board can hold here. Above the app's own limit for files dropped on a board
+ * (`MAX_IMPORT_BYTES`, 64 MB), because boards arriving from elsewhere bring bigger ones: a Freeform
+ * board's books (apps/freeform-import) run past 100 MB.
+ */
+const MAX_ASSET_BYTES = 200 * 1024 * 1024
 /** A board's records without its files; the largest real board is well under this. */
 const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
 /** A card's preview: 600 px on its long edge, as WebP. Far under this. */

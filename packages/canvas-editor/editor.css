@@ -1095,6 +1095,35 @@ input,
 	color: var(--color-selected);
 }
 
+/* A narrow card (cards are resizable, and the ones brought over from Freeform are 150 wide) keeps
+   its picture and a two-line title; the description would leave no room for the picture. */
+.tl-bookmark__container {
+	container-type: size;
+}
+
+@container (max-width: 240px) {
+	.tl-bookmark__description {
+		display: none;
+	}
+	.tl-bookmark__copy_container {
+		padding: 6px 8px;
+	}
+	.tl-bookmark__heading {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		margin: 0;
+		padding-bottom: 2px;
+		font-size: 12px;
+		line-height: 1.3;
+	}
+	.tl-bookmark__link {
+		font-size: 10px;
+		white-space: nowrap;
+	}
+}
+
 /* ---------------- Hyperlink Button ---------------- */
 
 .tl-hyperlink-button {

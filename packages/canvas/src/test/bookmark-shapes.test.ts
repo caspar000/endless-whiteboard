@@ -90,53 +90,20 @@ describe('The URL formatter', () => {
 		expect(getHumanReadableAddress(f)).toBe('www.github.com/TodePond/DreamBerd')
 	})
 
-	it("Doesn't resize bookmarks", () => {
-		const ids = {
-			bookmark: createShapeId(),
-			boxA: createShapeId(),
-			boxB: createShapeId(),
-		}
+	it('resizes bookmarks like any box, so a narrow card can sit beside others', () => {
+		const id = createShapeId()
+		editor.createShapes([{ id, type: 'bookmark', x: 0, y: 0, props: { url: 'https://www.github.com/TodePond' } }])
+		const before = editor.getShape(id) as TLBookmarkShape
+		expect(before.props.w).toBe(300)
+		expect(before.props.h).toBe(320)
 
-		editor.createShapes([
-			{
-				id: ids.bookmark,
-				type: 'bookmark',
-				props: {
-					url: 'https://www.github.com/TodePond',
-				},
-			},
-			{
-				type: 'geo',
-				id: ids.boxA,
-				x: 0,
-				y: 0,
-				props: {
-					w: 10,
-					h: 10,
-				},
-			},
-			{
-				type: 'geo',
-				id: ids.boxB,
-				x: 20,
-				y: 20,
-				props: {
-					w: 10,
-					h: 10,
-				},
-			},
-		])
+		editor.select(id)
+		editor.pointerDown(300, 320, { target: 'selection', handle: 'bottom_right' })
+		editor.pointerMove(150, 200)
+		editor.pointerUp()
 
-		const oldBookmark = editor.getShape(ids.bookmark) as TLBookmarkShape
-		expect(oldBookmark.props.w).toBe(300)
-		expect(oldBookmark.props.h).toBe(320)
-
-		editor.select(ids.bookmark, ids.boxA, ids.boxB)
-		editor.pointerDown(20, 20, { target: 'selection', handle: 'bottom_right' })
-		editor.pointerMove(30, 30)
-
-		const newBookmark = editor.getShape(ids.bookmark) as TLBookmarkShape
-		expect(newBookmark.props.w).toBe(300)
-		expect(newBookmark.props.h).toBe(320)
+		const after = editor.getShape(id) as TLBookmarkShape
+		expect(after.props.w).toBeCloseTo(150)
+		expect(after.props.h).toBeCloseTo(200)
 	})
 })

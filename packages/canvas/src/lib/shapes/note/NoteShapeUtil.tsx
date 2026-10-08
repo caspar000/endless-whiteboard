@@ -12,6 +12,7 @@ import {
 	toRichText,
 	trimRichText,
 	TLBaseShape,
+	TLDefaultSizeStyle,
 	TLNoteShape,
 	TLNoteShapeProps,
 	TLOnEditEndHandler,
@@ -67,9 +68,14 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 	}
 
+	/** The paper's height before its text grows it: as tall as it is wide, unless a kind says otherwise. */
+	getPaperHeight(_shape: S): number {
+		return this.paper.width
+	}
+
 	/** The paper's height before its scale. */
 	getHeight(shape: S) {
-		return this.paper.width + shape.props.growY
+		return this.getPaperHeight(shape) + shape.props.growY
 	}
 
 	getGeometry(shape: S) {
@@ -128,6 +134,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 							verticalAlign={verticalAlign}
 							richText={richText}
 							labelColor={labelColor}
+							scale={labelScale(shape.props)}
 							wrap
 							{...(textTop ? { bounds: new Box2d(0, textTop, width, height - textTop) } : {})}
 						/>
@@ -246,19 +253,24 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 	}
 
 	override onBeforeCreate = (next: S) => {
-		return getGrowY(this.editor, next, this.paper, next.props.growY)
+		return getGrowY(this.editor, next, this.paper, this.getPaperHeight(next), next.props.growY)
 	}
 
 	override onBeforeUpdate = (prev: S, next: S) => {
 		if (
 			prev.props.richText === next.props.richText &&
 			prev.props.font === next.props.font &&
-			prev.props.size === next.props.size
+			prev.props.size === next.props.size &&
+			this.getPaperHeight(prev) === this.getPaperHeight(next)
 		) {
 			return
 		}
+		// Picking a size is asking for that size: a shrunk text (see `labelScale`) takes it.
+		if (prev.props.size !== next.props.size && next.props.fontSizeAdjustment) {
+			next = { ...next, props: { ...next.props, fontSizeAdjustment: 0 } }
+		}
 
-		return getGrowY(this.editor, next, this.paper, prev.props.growY)
+		return getGrowY(this.editor, next, this.paper, this.getPaperHeight(next), prev.props.growY) ?? next
 	}
 
 	override getText(shape: S) {
@@ -290,10 +302,12 @@ export function resizeNote(shape: TLNoteLikeShape, info: Parameters<typeof resiz
 	return { x, y, props: { scale: Math.max(MIN_NOTE_SCALE, props.scale) } }
 }
 
+/** How far the text grows the paper past `paperHeight`, or `undefined` if that hasn't changed. */
 function getGrowY<S extends TLNoteLikeShape>(
 	editor: Editor,
 	shape: S,
 	{ width, textTop }: NotePaper,
+	paperHeight: number,
 	prevGrowY = 0
 ) {
 	const PADDING = 17
@@ -302,7 +316,7 @@ function getGrowY<S extends TLNoteLikeShape>(
 	const nextTextSize = editor.textMeasure.measureHtml(html, {
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[shape.props.font],
-		fontSize: LABEL_FONT_SIZES[shape.props.size],
+		fontSize: shape.props.fontSizeAdjustment || LABEL_FONT_SIZES[shape.props.size],
 		maxWidth: width - PADDING * 2,
 	})
 
@@ -310,8 +324,8 @@ function getGrowY<S extends TLNoteLikeShape>(
 
 	let growY: number | null = null
 
-	if (nextHeight > width) {
-		growY = nextHeight - width
+	if (nextHeight > paperHeight) {
+		growY = nextHeight - paperHeight
 	} else {
 		if (prevGrowY) {
 			growY = 0
@@ -327,6 +341,15 @@ function getGrowY<S extends TLNoteLikeShape>(
 			},
 		}
 	}
+}
+
+/**
+ * How much smaller than its size a note's text is set: `fontSizeAdjustment`, when set, is the text's
+ * size in pixels. Lifeboard grows a note to fit its text, but a note brought over from Freeform keeps
+ * its height, and Freeform shrinks a long text to fit instead (apps/freeform-import).
+ */
+function labelScale(props: { size: TLDefaultSizeStyle; fontSizeAdjustment?: number | null }): number {
+	return props.fontSizeAdjustment ? props.fontSizeAdjustment / LABEL_FONT_SIZES[props.size] : 1
 }
 
 /** The smallest a note scales to: a fifth of its size. */

@@ -1,0 +1,25 @@
+{
+	"name": "@lifeboard/freeform-import",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "vite build",
+		"convert": "vite build && node --enable-source-maps dist/cli.js",
+		"typecheck": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@lifeboard/canvas": "workspace:*",
+		"@lifeboard/schema": "workspace:*",
+		"fflate": "^0.8.3"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.2",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"typescript": "5.9.3",
+		"vite": "^8.1.5",
+		"vitest": "^4.1.10"
+	}
+}

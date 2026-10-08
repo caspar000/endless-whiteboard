@@ -63,6 +63,12 @@ export function collectAssetRefs(snapshot: { store: Record<string, unknown> }): 
 				pending = true
 			}
 			// A non-empty foreign `src` (a bookmark's remote image, say) references no blob of ours.
+			// A link card's preview picture and icon can be kept as blobs of ours, though: boards brought
+			// over from Freeform carry theirs (apps/freeform-import).
+			for (const key of ['image', 'favicon']) {
+				const kept = (props as Record<string, unknown>)[key]
+				if (typeof kept === 'string' && isManagedAssetSrc(kept)) hashes.add(hashFromAssetSrc(kept))
+			}
 		} else if (rec.typeName === 'shape') {
 			// Extension nodes hold `asset:` srcs in their own props (a book's file and cover) rather
 			// than in asset records — those blobs are stored *before* the shape is created (see

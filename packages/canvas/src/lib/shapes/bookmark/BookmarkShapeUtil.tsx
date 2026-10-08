@@ -16,6 +16,7 @@ import {
 	stopEventPropagation,
 	toDomPrecision,
 } from '@lifeboard/canvas-editor'
+import { useEffect, useState } from 'react'
 import { truncateStringWithEllipsis } from '../../utils/text/text'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
 import { getRotatedBoxShadow } from '../shared/rotated-box-shadow'
@@ -26,9 +27,8 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 	static override props = bookmarkShapeProps
 	static override migrations = bookmarkShapeMigrations
 
-	override canResize = () => false
-
-	override hideSelectionBoundsFg = () => true
+	// Any size: a narrow card drops its description and keeps the picture (see the CSS).
+	override canResize = () => true
 
 	override getDefaultProps(): TLBookmarkShape['props'] {
 		return {
@@ -58,12 +58,7 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 				>
 					<div className="tl-bookmark__image_container">
 						{asset?.props.image ? (
-							<img
-								className="tl-bookmark__image"
-								draggable={false}
-								src={asset?.props.image}
-								alt={asset?.props.title || ''}
-							/>
+							<BookmarkImage editor={this.editor} src={asset.props.image} alt={asset.props.title || ''} />
 						) : (
 							<div className="tl-bookmark__placeholder" />
 						)}
@@ -194,3 +189,37 @@ const createBookmarkAssetOnUrlChange = debounce(async (editor: Editor, shape: TL
 		])
 	})
 }, 500)
+
+/**
+ * A card's preview picture. Usually a web address; a card can also keep its picture as a file of the
+ * board's own (`asset:<hash>`, as cards brought over from Freeform do), which resolves through the asset
+ * store the way an image's does. The store hands a web address back unchanged.
+ */
+function BookmarkImage({ editor, src, alt }: { editor: Editor; src: string; alt: string }) {
+	const [url, setUrl] = useState<string | null>(null)
+	useEffect(() => {
+		let cancelled = false
+		const preview = AssetRecordType.create({
+			id: AssetRecordType.createId(getHashForString(src)),
+			type: 'image',
+			props: { src, name: '', w: 0, h: 0, mimeType: null, isAnimated: false },
+			meta: {},
+		})
+		void Promise.resolve(
+			editor.store.props.assets.resolve(preview, {
+				screenScale: 1,
+				steppedScreenScale: 1,
+				dpr: 1,
+				networkEffectiveType: null,
+				shouldResolveToOriginal: true,
+			})
+		).then((resolved) => {
+			if (!cancelled) setUrl(resolved ?? null)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [editor, src])
+	if (!url) return <div className="tl-bookmark__placeholder" />
+	return <img className="tl-bookmark__image" draggable={false} src={url} alt={alt} />
+}

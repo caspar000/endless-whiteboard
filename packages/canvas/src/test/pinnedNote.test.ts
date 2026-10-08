@@ -44,6 +44,52 @@ describe('a pinned note', () => {
 		expect(editor.getShapePageBounds(pinned)!.h).toBeGreaterThan(before)
 	})
 
+	it('takes any proportion: a wide one stays wide until its text needs more room', () => {
+		const id = createShapeId('wide')
+		editor.createShapes([{ id, type: 'pinned-note', props: { richText: toRichText(''), paperHeight: 100 } }])
+		expect(editor.getShapePageBounds(id)!).toMatchObject({ w: 300, h: 100 })
+
+		const lines = Array.from({ length: 16 }, (_, i) => `line ${i}`)
+		editor.updateShapes([{ id, type: 'pinned-note', props: { richText: doc(...lines) } }])
+		expect(editor.getShapePageBounds(id)!.h).toBeGreaterThan(100)
+	})
+
+	it('resizes freely: its width scales it, its height is its paper’s', () => {
+		const id = createShapeId('resized')
+		editor.createShapes([{ id, type: 'pinned-note', x: 0, y: 0, props: { richText: toRichText('') } }])
+		editor.select(id)
+		editor.pointerDown(150, 300, { target: 'selection', handle: 'bottom' })
+		editor.pointerMove(150, 150)
+		editor.pointerUp()
+		const shape = editor.getShape<TLPinnedNoteShape>(id)!
+		expect(shape.props).toMatchObject({ scale: 1, paperHeight: 150 })
+		expect(editor.getShapePageBounds(id)!).toMatchObject({ w: 300, h: 150 })
+	})
+
+	it('comes up square, as it was, from a board written before pinned notes had a paper height', () => {
+		const schema = editor.store.schema.serialize() as { schemaVersion: number; sequences: Record<string, number> }
+		const before = { ...schema, sequences: { ...schema.sequences, 'com.tldraw.shape.pinned-note': 1 } }
+		const old = editor.store.schema.migratePersistedRecord(
+			{
+				id: createShapeId('old'),
+				typeName: 'shape',
+				type: 'pinned-note',
+				x: 0,
+				y: 0,
+				rotation: 0,
+				index: 'a1',
+				parentId: editor.getCurrentPageId(),
+				isLocked: false,
+				opacity: 1,
+				meta: {},
+				props: { ...editor.getShapeUtil('pinned-note').getDefaultProps(), paperHeight: undefined },
+			} as never,
+			before as never
+		)
+		expect(old.type).toBe('success')
+		expect((old as { value: TLPinnedNoteShape }).value.props.paperHeight).toBe(300)
+	})
+
 	it('is placed by its own tool, centred where you click', () => {
 		editor.setCurrentTool('pinned-note')
 		editor.pointerDown(500, 500).pointerUp(500, 500)

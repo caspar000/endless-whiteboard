@@ -42,6 +42,13 @@ describe('collectAssetRefs', () => {
 		expect(refs.pending).toBe(false)
 	})
 
+	it('counts a link card’s preview picture and icon when the board keeps them as files', () => {
+		// Cards brought over from Freeform keep theirs (apps/freeform-import); a remote one isn't ours.
+		const card = { typeName: 'asset', id: 'asset:2', type: 'bookmark', props: { src: 'https://example.com', image: `asset:${CAFE}`, favicon: `asset:${FACADE}` } }
+		const remote = { typeName: 'asset', id: 'asset:3', type: 'bookmark', props: { src: 'https://example.com', image: 'https://example.com/og.png', favicon: '' } }
+		expect([...collectAssetRefs(snapshot(card, remote)).hashes].sort()).toEqual([CAFE, FACADE])
+	})
+
 	it('reports an empty src as pending, because tldraw writes the record before the upload lands', () => {
 		expect(collectAssetRefs(snapshot(asset(''))).pending).toBe(true)
 		expect(collectAssetRefs(snapshot(asset(null))).pending).toBe(true)

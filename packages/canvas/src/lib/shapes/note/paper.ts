@@ -47,11 +47,22 @@ export const SHADOW = { left: 0.15, top: 0.28, width: 0.7, height: 0.66, offsetY
 const PIN_SHARE = 0.22
 const PIN_DEPTH = 26
 
-/** Where the pin's top-left corner goes on a note `width` wide, and its scale from the design's size. */
-export function pinPlacement(width: number) {
-	const pinWidth = width * PIN_SHARE
+/**
+ * Where the pin's top-left corner goes on a note `width` wide (in the paper's units), and its scale
+ * from the design's size. A pin is the size it is on a note at its own size, however large the note
+ * is drawn (`noteScale`): a pin doesn't grow with the paper. A note drawn smaller takes it down too,
+ * or the pin would cover it.
+ */
+export function pinPlacement(width: number, noteScale = 1) {
+	const k = 1 / Math.max(1, noteScale)
+	const pinWidth = width * PIN_SHARE * k
 	const scale = pinWidth / PIN_SIZE.w
-	return { width: pinWidth, x: width / 2 - PIN_TIP.x * scale, y: PIN_DEPTH - PIN_TIP.y * scale, scale }
+	return { width: pinWidth, x: width / 2 - PIN_TIP.x * scale, y: PIN_DEPTH * k - PIN_TIP.y * scale, scale }
+}
+
+/** Where a note's text starts, in the paper's units: just under its pin, which keeps its size. */
+export function textTopOf(paper: NotePaper, noteScale = 1): number {
+	return paper.textTop / Math.max(1, noteScale)
 }
 
 /** The crease's darker colour: `hex` (`#rrggbb`) darkened. */

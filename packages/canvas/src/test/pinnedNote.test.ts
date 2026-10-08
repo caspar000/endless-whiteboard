@@ -1,6 +1,7 @@
 import { DefaultColorStyle, TLNoteShape, createShapeId, toRichText } from '@lifeboard/canvas-editor'
 import { NoteShapeTool } from '../lib/shapes/note/NoteShapeTool'
 import { TLPinnedNoteShape } from '../lib/shapes/note/PinnedNoteShapeUtil'
+import { pinPlacement } from '../lib/shapes/note/paper'
 import { PinColorStyle, getPinPaint } from '../lib/shapes/note/pin'
 import { TestEditor } from './TestEditor'
 
@@ -88,6 +89,14 @@ describe('a pinned note', () => {
 		)
 		expect(old.type).toBe('success')
 		expect((old as { value: TLPinnedNoteShape }).value.props.paperHeight).toBe(300)
+	})
+
+	it('keeps its pin the same size however large it is drawn, and shrinks it only with a smaller note', () => {
+		// On the board, a pin is its paper-unit width times the note's scale.
+		const onBoard = (scale: number) => pinPlacement(300, scale).width * scale
+		expect(onBoard(2.2)).toBeCloseTo(onBoard(1))
+		expect(onBoard(5)).toBeCloseTo(onBoard(1))
+		expect(onBoard(0.5)).toBeCloseTo(onBoard(1) / 2)
 	})
 
 	it('is placed by its own tool, centred where you click', () => {

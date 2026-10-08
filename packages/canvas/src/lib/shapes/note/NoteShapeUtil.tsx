@@ -28,7 +28,7 @@ import { TextLabel } from '../shared/TextLabel'
 import { FONT_FAMILIES, LABEL_FONT_SIZES, TEXT_PROPS } from '../shared/default-shape-constants'
 import { getFontDefForExport } from '../shared/defaultStyleDefs'
 import { getTextLabelSvgElement } from '../shared/getTextLabelSvgElement'
-import { SHADOW, STICKY_PAPER, creaseHeight, creasePath, creaseShade, pinPlacement, type NotePaper } from './paper'
+import { SHADOW, STICKY_PAPER, creaseHeight, creasePath, creaseShade, pinPlacement, textTopOf, type NotePaper } from './paper'
 import { NotePin, getNotePinSvg, getPinPaint, type PinColor } from './pin'
 
 /** A shape drawn as a note: a sticky note or a pinned note. Their props are the same. */
@@ -97,10 +97,11 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
 		const fill = theme[color].noteFill
-		const { width, crease, pin, textTop } = this.paper
-		const pinAt = pinPlacement(width)
-		const height = this.getHeight(shape)
+		const { width, crease, pin } = this.paper
 		const { scale } = shape.props
+		const textTop = textTopOf(this.paper, scale)
+		const pinAt = pinPlacement(width, scale)
+		const height = this.getHeight(shape)
 
 		return (
 			<>
@@ -186,7 +187,8 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 		const fill = theme[shape.props.color].noteFill
 		const height = bounds.height
-		const { width, crease, pin, textTop } = this.paper
+		const { width, crease, pin } = this.paper
+		const textTop = textTopOf(this.paper, shape.props.scale)
 		const g = svg('g', {})
 
 		// The paper, as the canvas draws it (./paper.ts): the shadow under its lower part first.
@@ -242,7 +244,7 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 		}
 
 		if (pin) {
-			const at = pinPlacement(width)
+			const at = pinPlacement(width, shape.props.scale)
 			const pinSvg = getNotePinSvg(getPinPaint(pinColorOf(shape), theme))
 			pinSvg.setAttribute('transform', `translate(${at.x} ${at.y}) scale(${at.scale})`)
 			g.appendChild(pinSvg)
@@ -306,7 +308,7 @@ export function resizeNote(shape: TLNoteLikeShape, info: Parameters<typeof resiz
 function getGrowY<S extends TLNoteLikeShape>(
 	editor: Editor,
 	shape: S,
-	{ width, textTop }: NotePaper,
+	paper: NotePaper,
 	paperHeight: number,
 	prevGrowY = 0
 ) {
@@ -317,10 +319,10 @@ function getGrowY<S extends TLNoteLikeShape>(
 		...TEXT_PROPS,
 		fontFamily: FONT_FAMILIES[shape.props.font],
 		fontSize: shape.props.fontSizeAdjustment || LABEL_FONT_SIZES[shape.props.size],
-		maxWidth: width - PADDING * 2,
+		maxWidth: paper.width - PADDING * 2,
 	})
 
-	const nextHeight = textTop + nextTextSize.h + PADDING * 2
+	const nextHeight = textTopOf(paper, shape.props.scale) + nextTextSize.h + PADDING * 2
 
 	let growY: number | null = null
 

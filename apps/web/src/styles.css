@@ -1206,6 +1206,18 @@ div.lb-sidebar__moves {
 }
 
 /* A thin bar for work under way: a board moving, a batch of them. */
+/* All boards' filter, between the server's boards and this device's (BoardList.tsx). */
+.lb-list__filter {
+	align-self: flex-start;
+	width: fit-content;
+	margin: 0 0 16px;
+}
+.lb-list__filter-count {
+	margin-left: 4px;
+	color: var(--lb-text-dim);
+	font-variant-numeric: tabular-nums;
+}
+
 .lb-progress {
 	display: block;
 	height: 4px;

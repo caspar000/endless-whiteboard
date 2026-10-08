@@ -9,6 +9,13 @@ import { useMoves, type BoardsApi } from './useBoards'
 
 const MOVE_OFFERED_KEY = 'lifeboard:moveOffered'
 
+/**
+ * Which boards the grid shows, with a server: all of them, the server's, or this device's alone.
+ * Remembered for the session, so opening a board and coming back keeps the view.
+ */
+type Where = 'all' | 'server' | 'device'
+let lastWhere: Where = 'all'
+
 /** The "move your boards to the server" offer is made once per browser, whichever way it is answered. */
 function wasMoveOffered(): boolean {
 	try {
@@ -45,6 +52,20 @@ export function BoardList({
 	const moveOf = (id: string) => moves.find((job) => job.board.id === id)
 
 	const localBoards = api.boards.filter((board) => !board.vault)
+	const [where, setWhereState] = useState<Where>(lastWhere)
+	const setWhere = (next: Where) => {
+		lastWhere = next
+		setWhereState(next)
+	}
+	// Only worth showing when there are boards in both places.
+	const filtering = api.hasServer && localBoards.length > 0 && localBoards.length < api.boards.length
+	const shown =
+		!filtering || where === 'all' ? api.boards : where === 'device' ? localBoards : api.boards.filter((board) => board.vault)
+	const filters: { value: Where; label: string; count: number }[] = [
+		{ value: 'all', label: 'All', count: api.boards.length },
+		{ value: 'server', label: 'On the server', count: api.boards.length - localBoards.length },
+		{ value: 'device', label: 'On this device', count: localBoards.length },
+	]
 
 	/** Queued, so a reload neither stops the moves nor hides them (boards/moveQueue.ts). */
 	const move = (boards: BoardMeta[]) => void api.move(boards)
@@ -99,6 +120,21 @@ export function BoardList({
 				</div>
 			)}
 
+			{filtering && (
+				<div className="lb-appearance__seg lb-list__filter" role="group" aria-label="Where the boards are">
+					{filters.map((filter) => (
+						<button
+							key={filter.value}
+							className={where === filter.value ? 'lb-appearance__opt lb-appearance__opt--active' : 'lb-appearance__opt'}
+							aria-pressed={where === filter.value}
+							onClick={() => setWhere(filter.value)}
+						>
+							{filter.label} <span className="lb-list__filter-count">{filter.count}</span>
+						</button>
+					))}
+				</div>
+			)}
+
 			{api.loading ? (
 				<p className="lb-list__empty">Loading…</p>
 			) : api.boards.length === 0 ? (
@@ -113,10 +149,11 @@ export function BoardList({
 				</div>
 			) : (
 				<ul className="lb-grid lb-list__boards">
-					{api.boards.map((board) => (
+					{shown.map((board) => (
 						<BoardCard
 							key={board.id}
 							board={board}
+							deviceOnly={api.hasServer && !board.vault}
 							onOpen={() => onOpen(board)}
 							onRename={() => setRenaming(board.id)}
 							renaming={renaming === board.id}

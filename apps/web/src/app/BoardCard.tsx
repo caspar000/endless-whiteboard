@@ -15,6 +15,7 @@ import { useResolvedTheme } from './useTheme'
  */
 export function BoardCard({
 	board,
+	deviceOnly = false,
 	onOpen,
 	onRename,
 	onToggleFavorite,
@@ -30,6 +31,8 @@ export function BoardCard({
 	onRenameCancel,
 }: {
 	board: BoardMeta
+	/** Kept only in this browser, with a server to put it on: the card says so. */
+	deviceOnly?: boolean
 	onOpen: () => void
 	onRename: () => void
 	onToggleFavorite: () => void
@@ -160,7 +163,9 @@ export function BoardCard({
 						<span className="lb-card__date lb-list__meta">
 							{shared
 								? `${board.sharedBy ?? 'Shared'} · ${board.role === 'view' ? 'view only' : 'can edit'}`
-								: formatEdited(board.updatedAt)}
+								: deviceOnly
+									? `${formatEdited(board.updatedAt)} · this device only`
+									: formatEdited(board.updatedAt)}
 						</span>
 					</button>
 				)}

@@ -72,6 +72,8 @@ import { CommentsPanel } from './comments/CommentsPanel'
 import { loadBoardPeople } from './boardPeople'
 import { currentAccount } from '../server/accounts'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
+import { canReadSnapshot } from './snapshotVersion'
+import { reloadToUpdate } from '../pwa/registerServiceWorker'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
 import { QuickLookOverlay } from './QuickLookOverlay'
@@ -368,7 +370,7 @@ function BoardCanvas({
 	shapeUtils?: TLAnyShapeUtilConstructor[]
 }) {
 	const platform = usePlatform()
-	const [restore, setRestore] = useState<{ ready: boolean; snapshot?: RawBoardSnapshot }>({
+	const [restore, setRestore] = useState<{ ready: boolean; snapshot?: RawBoardSnapshot; tooNew?: boolean }>({
 		ready: store !== undefined,
 	})
 
@@ -388,12 +390,15 @@ function BoardCanvas({
 		if (store) return
 		let cancelled = false
 		void takePendingRestore(platform.kv, board.id).then((snapshot) => {
-			if (!cancelled) setRestore({ ready: true, ...(snapshot ? { snapshot } : {}) })
+			if (cancelled) return
+			// Left waiting, not loaded: a newer version opens it once this tab moves to that version.
+			if (snapshot && !canReadSnapshot(snapshot, buildStoreShapeUtils(shapeUtils))) setRestore({ ready: true, tooNew: true })
+			else setRestore({ ready: true, ...(snapshot ? { snapshot } : {}) })
 		})
 		return () => {
 			cancelled = true
 		}
-	}, [platform, board.id, store])
+	}, [platform, board.id, store, shapeUtils])
 
 	const assets = useMemo(() => createLifeboardAssetStore(platform.blobs, fetchServerAsset), [platform])
 
@@ -433,6 +438,16 @@ function BoardCanvas({
 	)
 
 	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
+	if (restore.tooNew) {
+		return (
+			<div className="lb-board__loading" role="alert">
+				<p>This board was made by a newer version of Lifeboard than this tab is running.</p>
+				<button className="lb-btn" onClick={reloadToUpdate}>
+					Reload to update
+				</button>
+			</div>
+		)
+	}
 
 	const storeProps: TldrawEditorStoreProps = store
 		? { store }

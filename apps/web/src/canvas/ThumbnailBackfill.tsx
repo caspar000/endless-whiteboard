@@ -20,6 +20,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import { fetchServerAsset, fetchServerThumbnail, readServerBoard } from '../server/serverVault'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
+import { canReadSnapshot } from './snapshotVersion'
 import { getShapeVisibility } from './relationVisibility'
 
 /**
@@ -58,6 +59,8 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 					if (await hasPreview(platform, board, theme)) continue
 					const snapshot = await readBoard(platform, board)
 					if (!snapshot || Object.keys(snapshot.store).length === 0) continue
+					// From a newer version than this tab runs: its preview waits for that version.
+					if (!canReadSnapshot(snapshot, buildStoreShapeUtils(buildBoardShapeUtils()))) continue
 					if (!cancelled) setCurrent({ board, snapshot })
 					return
 				} catch (error) {

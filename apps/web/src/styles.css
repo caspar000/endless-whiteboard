@@ -847,6 +847,9 @@ button {
 	cursor: pointer;
 	flex-shrink: 0;
 }
+div.lb-sidebar__moves {
+	cursor: default;
+}
 .lb-sidebar__moves--failed {
 	border-color: var(--lb-danger-line);
 	background: var(--lb-danger-tint);
@@ -856,7 +859,7 @@ button {
 	place-items: center;
 	color: var(--lb-accent);
 }
-.lb-sidebar__moves:not(.lb-sidebar__moves--failed) .lb-sidebar__moves-icon svg {
+.lb-sidebar__moves:not(.lb-sidebar__moves--failed, .lb-sidebar__moves--still) .lb-sidebar__moves-icon svg {
 	animation: lb-spin 1s linear infinite;
 }
 .lb-sidebar__moves--failed .lb-sidebar__moves-icon {
@@ -1368,6 +1371,19 @@ button {
 }
 
 /* --------------------------------------------------------------- extensions */
+
+/* A long job's line and bar under the buttons that started it (an import, in StoragePanel.tsx). */
+.lb-settings__progress {
+	display: grid;
+	gap: 6px;
+	max-width: 520px;
+	margin: 4px 0 12px;
+	font-size: 13px;
+	color: var(--lb-text-dim);
+}
+.lb-settings__progress p {
+	margin: 0;
+}
 
 .lb-settings__hint {
 	font-size: 13px;

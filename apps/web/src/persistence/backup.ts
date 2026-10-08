@@ -4,6 +4,7 @@ import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import { collectAssetRefs } from './assetRefs'
 import { waitForAssetUploads } from './assetStore'
 import { readBoardSnapshotResult, waitForPersistFlush, type RawBoardSnapshot } from './tldrawLocalDb'
+import { setImportProgress } from './importProgress'
 import { setPendingRestore } from './pendingRestore'
 
 /**
@@ -133,7 +134,17 @@ export interface ImportResult {
 	warnings: string[]
 }
 
+/** Imports a backup, reporting its progress as it goes (persistence/importProgress.ts). */
 export async function importBackup(platform: PlatformAdapter, file: Blob): Promise<ImportResult> {
+	try {
+		return await importFrom(platform, file)
+	} finally {
+		setImportProgress(null)
+	}
+}
+
+async function importFrom(platform: PlatformAdapter, file: Blob): Promise<ImportResult> {
+	setImportProgress({ stage: 'reading', bytes: file.size })
 	const files = await unzipAsync(new Uint8Array(await file.arrayBuffer()))
 	const warnings: string[] = []
 
@@ -155,8 +166,14 @@ export async function importBackup(platform: PlatformAdapter, file: Blob): Promi
 	// Assets first: a board must never be restored referencing a blob that isn't stored yet.
 	// `put` is content-addressed, so this dedupes against what is already here.
 	let assetsImported = 0
+	const assetPaths = Object.keys(files).filter((path) => path.startsWith(ASSET_DIR))
+	let filesSeen = 0
+	setImportProgress({ stage: 'files', done: 0, total: assetPaths.length })
 	for (const [path, bytes] of Object.entries(files)) {
-		if (!path.startsWith(ASSET_DIR) || bytes.length === 0) continue
+		if (!path.startsWith(ASSET_DIR)) continue
+		// Every 20th file: often enough to move, rarely enough not to redraw the sidebar 2,000 times.
+		if (++filesSeen % 20 === 0) setImportProgress({ stage: 'files', done: filesSeen, total: assetPaths.length })
+		if (bytes.length === 0) continue
 		const hash = path.slice(ASSET_DIR.length)
 		if (!/^[0-9a-f]{64}$/.test(hash)) {
 			warnings.push(`Skipped asset with unexpected name: ${hash}`)
@@ -167,7 +184,9 @@ export async function importBackup(platform: PlatformAdapter, file: Blob): Promi
 	}
 
 	let boardsImported = 0
-	for (const board of manifest.boards ?? []) {
+	const boards = manifest.boards ?? []
+	for (const board of boards) {
+		setImportProgress({ stage: 'boards', done: boardsImported, total: boards.length })
 		const bytes = files[`${BOARD_DIR}${board.id}.json`]
 		// Restore-as-copy: a fresh id means importing never overwrites an existing board, and the
 		// same backup can be imported twice without collision.

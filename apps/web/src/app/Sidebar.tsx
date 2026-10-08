@@ -11,11 +11,14 @@ import {
 	Star,
 	HardDrive,
 	LoaderCircle,
+	RefreshCw,
 	TriangleAlert,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { getMoveBatch } from '../boards/moveQueue'
+import { getImportProgress, importDetail, importShare, subscribeToImportProgress } from '../persistence/importProgress'
+import { isUpdateReady, reloadToUpdate, subscribeToUpdate } from '../pwa/registerServiceWorker'
 import { useMoves } from './useBoards'
 
 const ALL_BOARDS_EXPANDED_KEY = 'lifeboard:sidebar:allBoardsExpanded'
@@ -188,6 +191,8 @@ export function Sidebar({
 				</section>
 			</div>
 
+			<UpdateStatus />
+			<ImportStatus />
 			<MoveStatus onShow={onAllBoards} />
 
 			<nav className="lb-sidebar__footer" aria-label="Application">
@@ -267,6 +272,43 @@ function BoardLink({
 			</span>
 			<span className="lb-sidebar__label">{board.name}</span>
 		</button>
+	)
+}
+
+/** A new version of the app is waiting; one click moves to it (pwa/registerServiceWorker.ts). */
+function UpdateStatus() {
+	const ready = useSyncExternalStore(subscribeToUpdate, isUpdateReady)
+	if (!ready) return null
+	return (
+		<button type="button" className="lb-sidebar__moves lb-sidebar__moves--still" onClick={reloadToUpdate}>
+			<span className="lb-sidebar__moves-icon" aria-hidden="true">
+				<RefreshCw size={16} />
+			</span>
+			<span className="lb-sidebar__moves-text" role="status" aria-live="polite">
+				<span className="lb-sidebar__moves-title">A new version is ready</span>
+				<span className="lb-sidebar__moves-detail">Reload to use it</span>
+			</span>
+		</button>
+	)
+}
+
+/** A backup being imported, on every screen: the import carries on if you leave Settings. */
+function ImportStatus() {
+	const progress = useSyncExternalStore(subscribeToImportProgress, getImportProgress)
+	if (!progress) return null
+	return (
+		<div className="lb-sidebar__moves" data-testid="lb.import-status">
+			<span className="lb-sidebar__moves-icon" aria-hidden="true">
+				<LoaderCircle size={16} />
+			</span>
+			<span className="lb-sidebar__moves-text" role="status" aria-live="polite">
+				<span className="lb-sidebar__moves-title">Importing a backup</span>
+				<span className="lb-sidebar__moves-detail">{importDetail(progress)}</span>
+				<span className="lb-progress" aria-hidden="true">
+					<span className="lb-progress__bar" style={{ width: `${Math.round(importShare(progress) * 100)}%` }} />
+				</span>
+			</span>
+		</div>
 	)
 }
 

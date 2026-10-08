@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { getLastBackupAt, getLastServerBackupAt, setLastServerBackupAt } from '../../boards/boardIndex'
 import { backupFileName, exportBackup, importBackup } from '../../persistence/backup'
+import { getImportProgress, importDetail, importShare, subscribeToImportProgress } from '../../persistence/importProgress'
 import { usePlatform } from '../../platform/PlatformContext'
 import type { StorageEstimate } from '../../platform/PlatformAdapter'
 import { startServerBackupDownload } from '../../server/serverVault'
@@ -43,6 +44,7 @@ export function StoragePanel({
 	const [lastBackup, setLastBackup] = useState<number | null>(null)
 	const [lastServerBackup, setLastServerBackup] = useState<number | null>(null)
 	const [busy, setBusy] = useState<'export' | 'import' | 'server' | null>(null)
+	const importing = useSyncExternalStore(subscribeToImportProgress, getImportProgress)
 	const [message, setMessage] = useState<string | null>(null)
 
 	const refreshStatus = useCallback(async () => {
@@ -178,6 +180,17 @@ export function StoragePanel({
 					{busy === 'import' ? 'Importing…' : 'Import backup'}
 				</button>
 			</div>
+			{importing && (
+				<div className="lb-settings__progress" role="status" aria-live="polite">
+					<p>
+						Importing · {importDetail(importing)}. It carries on if you leave this page; the sidebar keeps
+						count.
+					</p>
+					<div className="lb-progress" aria-hidden="true">
+						<div className="lb-progress__bar" style={{ width: `${Math.round(importShare(importing) * 100)}%` }} />
+					</div>
+				</div>
+			)}
 
 			{api.hasServer && (
 				<>

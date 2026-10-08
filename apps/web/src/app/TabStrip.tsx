@@ -64,6 +64,16 @@ export function TabStrip({
 						aria-selected={active}
 						className={active ? 'lb-tabs__tab lb-tabs__tab--active' : 'lb-tabs__tab'}
 						onClick={() => onSelect(board)}
+						// Middle click closes, as a browser tab does. Pressing the wheel would otherwise
+						// start the browser's autoscroll.
+						onMouseDown={(e) => {
+							if (e.button === 1) e.preventDefault()
+						}}
+						onAuxClick={(e) => {
+							if (e.button !== 1) return
+							e.preventDefault()
+							onClose(id)
+						}}
 						onDoubleClick={() => active && setRenaming(id)}
 						onKeyDown={(e) => {
 							if (renaming !== id && (e.key === 'Enter' || e.key === ' ')) {

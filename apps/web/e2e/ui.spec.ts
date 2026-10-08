@@ -15,6 +15,24 @@ import {
 } from './helpers'
 
 test.describe('canvas chrome', () => {
+	test('a middle click closes a board’s tab, as in a browser', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'First')
+		await createBoard(page, 'Second')
+		await openBoard(page, 'First')
+		await backToList(page)
+		await openBoard(page, 'Second')
+		const tabs = page.locator('.lb-tabs__tab:has(.lb-tabs__close) .lb-tabs__label')
+		await expect(tabs).toHaveText(['First', 'Second'])
+
+		await page.locator('.lb-tabs__tab', { hasText: 'First' }).click({ button: 'middle' })
+		await expect(tabs).toHaveText(['Second'])
+		// Closing a tab isn't deleting the board.
+		await backToList(page)
+		await expect(page.locator('.lb-list__board', { hasText: 'First' })).toHaveCount(1)
+	})
+
 	test('double-clicking empty canvas is tldraw\'s again, not a note', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)

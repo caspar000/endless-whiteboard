@@ -310,7 +310,8 @@ export function Overview({ go }: SectionProps) {
 						<p>
 							Boards are separate documents, listed under All boards and opened as tabs across the
 							top. An open tab keeps its board alive, which is what makes switching instant — and
-							why a keystroke only ever reaches the board you are looking at.
+							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
+							with a middle click as in a browser; the board stays under All boards.
 						</p>
 					</div>
 					<div className="lb-help__fact">

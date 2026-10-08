@@ -311,7 +311,8 @@ export function Overview({ go }: SectionProps) {
 							Boards are separate documents, listed under All boards and opened as tabs across the
 							top. An open tab keeps its board alive, which is what makes switching instant — and
 							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
-							with a middle click as in a browser; the board stays under All boards.
+							with a middle click as in a browser; the board stays under All boards. To delete several at
+							once, choose Select in All boards, click the boards, then Delete.
 						</p>
 					</div>
 					<div className="lb-help__fact">

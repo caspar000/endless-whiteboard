@@ -1206,6 +1206,42 @@ div.lb-sidebar__moves {
 }
 
 /* A thin bar for work under way: a board moving, a batch of them. */
+/* All boards' selection mode (BoardList.tsx): a tick on each card, a ring on the chosen ones. */
+.lb-home__header-actions {
+	display: flex;
+	gap: 8px;
+}
+.lb-list__selection {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+.lb-card__actions[hidden] {
+	display: none;
+}
+.lb-card__tick {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border: 2px solid var(--lb-border-strong, var(--lb-border));
+	border-radius: 50%;
+	background: var(--lb-surface);
+	color: #fff;
+	pointer-events: none;
+}
+.lb-card--selected {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-card--selected .lb-card__tick {
+	border-color: var(--lb-accent);
+	background: var(--lb-accent);
+}
+
 /* All boards' filter, between the server's boards and this device's (BoardList.tsx). */
 .lb-list__filter {
 	align-self: flex-start;

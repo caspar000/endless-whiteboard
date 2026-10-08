@@ -15,6 +15,31 @@ import {
 } from './helpers'
 
 test.describe('canvas chrome', () => {
+	test('several boards are selected and deleted in one go', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['Keep me', 'Bin one', 'Bin two']) {
+			await createBoard(page, name)
+			await backToList(page)
+		}
+		const card = (name: string) => page.locator('.lb-list__board', { hasText: name })
+
+		await page.getByRole('button', { name: 'Select', exact: true }).click()
+		// Clicking a card picks it rather than opening it.
+		await card('Bin one').getByRole('button', { name: 'Select Bin one' }).click()
+		await card('Bin two').locator('.lb-card__title').click()
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+		await expect(page.getByRole('toolbar', { name: 'Selected boards' })).toContainText('2 boards selected')
+
+		await page.getByRole('button', { name: 'Delete', exact: true }).click()
+		await page.getByRole('button', { name: 'Delete 2 for good' }).click()
+		await expect(card('Bin one')).toHaveCount(0)
+		await expect(card('Bin two')).toHaveCount(0)
+		await expect(card('Keep me')).toHaveCount(1)
+		// Done: the cards open again.
+		await expect(page.getByRole('toolbar', { name: 'Selected boards' })).toHaveCount(0)
+	})
+
 	test('a middle click closes a board’s tab, as in a browser', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)

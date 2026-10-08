@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { dismissMove, retryMove } from '../boards/moveQueue'
 import { usePlatform } from '../platform/PlatformContext'
@@ -75,6 +75,43 @@ export function BoardList({
 		setOfferDismissed(true)
 	}
 
+	// Picking boards for one action on them all. Escape leaves it, as it leaves any mode.
+	const [selecting, setSelecting] = useState(false)
+	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+	const [confirmDelete, setConfirmDelete] = useState(false)
+	const [deleting, setDeleting] = useState(false)
+	const stopSelecting = () => {
+		setSelecting(false)
+		setSelected(new Set())
+		setConfirmDelete(false)
+	}
+	const toggle = (id: string) => {
+		setConfirmDelete(false)
+		setSelected((current) => {
+			const next = new Set(current)
+			if (!next.delete(id)) next.add(id)
+			return next
+		})
+	}
+	useEffect(() => {
+		if (!selecting) return
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === 'Escape') stopSelecting()
+		}
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [selecting])
+	const deleteSelected = async () => {
+		setDeleting(true)
+		try {
+			// One after another: each removal refreshes the list, and a board can be on the server.
+			for (const id of selected) await api.remove(id)
+		} finally {
+			setDeleting(false)
+			stopSelecting()
+		}
+	}
+
 	const createAndOpen = async () => {
 		const board = await api.create()
 		onOpen(board)
@@ -84,10 +121,53 @@ export function BoardList({
 		<main className="lb-home__main">
 			<header className="lb-home__header">
 				<h1>All boards</h1>
-				<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
-					New board
-				</button>
+				<div className="lb-home__header-actions">
+					{api.boards.length > 0 && !selecting && (
+						<button className="lb-btn" onClick={() => setSelecting(true)}>
+							Select
+						</button>
+					)}
+					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
+						New board
+					</button>
+				</div>
 			</header>
+
+			{selecting && (
+				<div className="lb-list__offer lb-list__selection" role="toolbar" aria-label="Selected boards">
+					<p>
+						{selected.size === 0
+							? 'Click boards to select them.'
+							: `${selected.size} ${selected.size === 1 ? 'board' : 'boards'} selected`}
+					</p>
+					<button
+						className="lb-btn lb-btn--ghost lb-btn--tiny"
+						onClick={() => setSelected(new Set(shown.filter((board) => !moveOf(board.id)).map((board) => board.id)))}
+					>
+						Select all{filtering && where !== 'all' ? ' shown' : ''}
+					</button>
+					{confirmDelete ? (
+						<button
+							className="lb-btn lb-btn--danger lb-btn--tiny"
+							disabled={deleting}
+							onClick={() => void deleteSelected()}
+						>
+							{deleting ? 'Deleting…' : `Delete ${selected.size} for good`}
+						</button>
+					) : (
+						<button
+							className="lb-btn lb-btn--tiny"
+							disabled={selected.size === 0}
+							onClick={() => setConfirmDelete(true)}
+						>
+							Delete
+						</button>
+					)}
+					<button className="lb-btn lb-btn--ghost lb-btn--tiny" disabled={deleting} onClick={stopSelecting}>
+						Cancel
+					</button>
+				</div>
+			)}
 
 			{api.hasServer && localBoards.length > 0 && !offerDismissed && !moving && (
 				<div className="lb-list__offer">
@@ -154,6 +234,7 @@ export function BoardList({
 							key={board.id}
 							board={board}
 							deviceOnly={api.hasServer && !board.vault}
+							{...(selecting ? { selection: { selected: selected.has(board.id), onToggle: () => toggle(board.id) } } : {})}
 							onOpen={() => onOpen(board)}
 							onRename={() => setRenaming(board.id)}
 							renaming={renaming === board.id}

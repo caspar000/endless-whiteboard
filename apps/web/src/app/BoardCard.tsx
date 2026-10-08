@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react'
+import { Check, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import type { MoveJob } from '../boards/moveQueue'
@@ -16,6 +16,7 @@ import { useResolvedTheme } from './useTheme'
 export function BoardCard({
 	board,
 	deviceOnly = false,
+	selection,
 	onOpen,
 	onRename,
 	onToggleFavorite,
@@ -33,6 +34,8 @@ export function BoardCard({
 	board: BoardMeta
 	/** Kept only in this browser, with a server to put it on: the card says so. */
 	deviceOnly?: boolean
+	/** Picking boards for one action on them all: a click ticks the card rather than opening it. */
+	selection?: { selected: boolean; onToggle: () => void }
 	onOpen: () => void
 	onRename: () => void
 	onToggleFavorite: () => void
@@ -53,16 +56,19 @@ export function BoardCard({
 	const [confirmDelete, setConfirmDelete] = useState(false)
 	// Shared with this account from another vault: it can leave the list, not be renamed or deleted.
 	const shared = isSharedWithMe(board)
+	const moving = !!moveJob && !moveJob.error
+	const click = selection ? selection.onToggle : onOpen
 
 	return (
-		<li className="lb-card lb-list__board">
+		<li className={selection?.selected ? 'lb-card lb-list__board lb-card--selected' : 'lb-card lb-list__board'}>
 			<div className="lb-card__media">
 				<button
 					className="lb-card__preview lb-list__open"
-					onClick={onOpen}
-					aria-label={`Open ${board.name}`}
+					onClick={click}
+					aria-label={selection ? `Select ${board.name}` : `Open ${board.name}`}
+					{...(selection ? { 'aria-pressed': selection.selected } : {})}
 					// Not while it moves: its content is between two homes until the move finishes.
-					disabled={!!moveJob && !moveJob.error}
+					disabled={moving}
 				>
 					<BoardThumbnail
 						boardId={board.id}
@@ -74,13 +80,18 @@ export function BoardCard({
 				{moveJob && (
 					<MoveOverlay job={moveJob} onRetry={onRetryMove} onDismiss={onDismissMove} />
 				)}
+				{selection && !moving && (
+					<span className="lb-card__tick" aria-hidden="true">
+						{selection.selected && <Check size={14} strokeWidth={3} />}
+					</span>
+				)}
 
 				{/*
 				 * Overlaid on the thumbnail rather than sitting in the footer. In the footer these
 				 * buttons reserved layout width even while hidden, which truncated the board name to
 				 * "Home office s…" on a card with plenty of room.
 				 */}
-				<div className="lb-card__actions lb-list__actions">
+				<div className="lb-card__actions lb-list__actions" hidden={!!selection}>
 					<button
 						className={board.favorite ? 'lb-card__fav lb-card__fav--on' : 'lb-card__fav'}
 						onClick={onToggleFavorite}
@@ -158,7 +169,7 @@ export function BoardCard({
 						/>
 					</form>
 				) : (
-					<button className="lb-card__title" onClick={onOpen}>
+					<button className="lb-card__title" onClick={click} disabled={!!selection && moving}>
 						<span className="lb-list__title">{board.name}</span>
 						<span className="lb-card__date lb-list__meta">
 							{shared

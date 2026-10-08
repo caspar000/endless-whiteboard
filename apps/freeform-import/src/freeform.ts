@@ -184,12 +184,23 @@ function containerOrder(db: DatabaseSync, board: Uint8Array, container: Uint8Arr
 	return order
 }
 
+/**
+ * A point, or `undefined`. Protobuf leaves zeros out, so (0, 0) is stored empty: an empty value where
+ * a point belongs is the origin.
+ */
+function pointOf(v: Value | undefined): { x: number; y: number } | undefined {
+	if (isPoint(v)) return v
+	if (v && typeof v === 'object' && !Array.isArray(v) && v.kind === 'raw' && !v.fields.length) return { x: 0, y: 0 }
+	return undefined
+}
+
 /** `[point, point | {}, float, …]`: position, size (absent for a text that sizes itself), rotation. */
 function geometry(common: Value): { x: number; y: number; w?: number; h?: number } | undefined {
 	for (const node of walk(common)) {
-		if (Array.isArray(node) && node.length >= 3 && isPoint(node[0]) && typeof node[2] === 'number') {
+		const at = Array.isArray(node) && node.length >= 3 && typeof node[2] === 'number' ? pointOf(node[0]) : undefined
+		if (at && Array.isArray(node)) {
 			const size = isPoint(node[1]) ? node[1] : undefined
-			return { x: node[0].x, y: node[0].y, ...(size ? { w: size.x, h: size.y } : {}) }
+			return { x: at.x, y: at.y, ...(size ? { w: size.x, h: size.y } : {}) }
 		}
 	}
 	return undefined
@@ -264,8 +275,9 @@ function readItem(
 function readCrop(root: Value, full: { w: number; h: number }) {
 	if (!isMap(root)) return undefined
 	for (const node of walk(root.entries.c ?? null)) {
-		if (Array.isArray(node) && node.length >= 3 && isPoint(node[0]) && isPoint(node[1]) && typeof node[2] === 'number') {
-			const [offset, size] = [node[0], node[1]]
+		const offset = Array.isArray(node) && node.length >= 3 && isPoint(node[1]) && typeof node[2] === 'number' ? pointOf(node[0]) : undefined
+		if (offset && Array.isArray(node) && isPoint(node[1])) {
+			const size = node[1]
 			const isWhole = Math.abs(size.x - full.w) < 0.5 && Math.abs(size.y - full.h) < 0.5
 			if (isWhole || size.x <= 0 || size.y <= 0) return undefined
 			return { x: offset.x, y: offset.y, w: size.x, h: size.y }

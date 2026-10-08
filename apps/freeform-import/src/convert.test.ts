@@ -33,7 +33,8 @@ const float = (f: number, x: number) => {
 const num = (x: number) => float(15, x)
 const enumOf = (n: number) => field(5, n)
 const ref = (n: number) => field(3, n)
-const point = (x: number, y: number) => field(4, [...float(1, x), ...float(2, y)])
+/** As Freeform stores one: a zero is left out, so (0, 0) is empty. */
+const point = (x: number, y: number) => field(4, [...(x ? float(1, x) : []), ...(y ? float(2, y) : [])])
 const list = (...items: number[][]) => field(14, items.flatMap((item) => field(2, item)))
 const register = (value: number[]) => field(1, [...field(1, [...field(1, 1), ...field(2, 1)]), ...field(2, value)])
 const map = (keys: number[], values: number[][]) => field(4, [...field(1, keys), ...values.flatMap((v) => field(2, register(v)))])
@@ -83,9 +84,12 @@ function freeformFolder(): string {
 
 	// Strings: 0 a, 1 b, 2 fontSize, 3 bold, 4 hyperlink, 5 the link's target.
 	const strings = ['a', 'b', 'fontSize', 'bold', 'hyperlink', 'https://example.com']
-	const sticky = (words: string) => record(map([0, 1], [map([0], [list(enumOf(0), list(list(enumOf(0), num(0.6), num(0.8), num(1))))]), map([0], [text(words)])]), strings)
-	item.run(uuid(1), board, 12, place(0, 0, 200, 200), sticky('Square'))
-	item.run(uuid(2), board, 12, place(0, 300, 600, 100), sticky('Wide'))
+	// The fill sits behind an optional, as Freeform writes it.
+	const sticky = (words: string, [r, g, b]: number[]) =>
+		record(map([0, 1], [map([0], [field(9, field(1, list(enumOf(0), list(list(enumOf(0), num(r!), num(g!), num(b!))))))]), map([0], [text(words)])]), strings)
+	item.run(uuid(1), board, 12, place(0, 0, 200, 200), sticky('Square', [0.6, 0.8, 1]))
+	// Freeform's own yellow.
+	item.run(uuid(2), board, 12, place(0, 300, 600, 100), sticky('Wide', [1, 0.88, 0.42]))
 	item.run(
 		uuid(3),
 		board,
@@ -93,7 +97,9 @@ function freeformFolder(): string {
 		place(400, 0, 300, 60),
 		record(map([1], [map([0], [text('Bold link', run(4, [[3, enumOf(2)], [2, num(36)]]), run(5, [[4, list(ref(5))]]))])]), strings)
 	)
-	item.run(uuid(4), board, 5, place(800, 0, 64, 32), record(field(6, 1), []))
+	// The whole picture is 64 × 32; its window starts at (0, 16) and is 32 × 16, behind an optional.
+	const crop = field(9, field(1, list(point(0, 16), point(32, 16), num(0))))
+	item.run(uuid(4), board, 5, place(800, 0, 64, 32), record(map([2], [crop]), ['a', 'b', 'c']))
 	db.prepare('INSERT INTO assets VALUES (?, ?)').run(uuid(50), 'png')
 	db.prepare('INSERT INTO asset_references VALUES (?, ?, ?)').run(uuid(4), uuid(50), 'image')
 	writeFileSync(join(dir, 'Boards', 'Assets', '00000000-0000-0000-0000-000000000032.png'), PNG)
@@ -123,6 +129,7 @@ describe.runIf(process.platform === 'darwin')('a Freeform board', () => {
 	it('is read with its title, items in order, places, text and styles', () => {
 		expect(board).toMatchObject({ title: 'Test board', createdAt: Date.UTC(2025, 11, 17, 6, 2, 37) })
 		expect(board!.items.map((i) => i.type)).toEqual(['sticky', 'sticky', 'text', 'image'])
+		expect(byId(1)).toMatchObject({ x: 0, y: 0, w: 200, h: 200 })
 		expect(byId(2)).toMatchObject({ x: 0, y: 300, w: 600, h: 100 })
 		const styled = byId(3) as Extract<Item, { type: 'text' }>
 		expect(styled.paragraphs[0]!.spans).toEqual([
@@ -138,10 +145,13 @@ describe.runIf(process.platform === 'darwin')('a Freeform board', () => {
 
 		const [note, pinned, label] = shapes
 		expect(note!.props).toMatchObject({ color: 'light-blue', scale: 1 })
-		expect(pinned!.props).toMatchObject({ scale: 2, paperHeight: 50 })
+		expect(pinned!.props).toMatchObject({ color: 'yellow', scale: 2, paperHeight: 50 })
 		expect(label!.props.scale).toBe(1.5)
 		expect(JSON.stringify(label!.props.richText)).toContain('"type":"bold"')
 		expect(JSON.stringify(label!.props.richText)).toContain('"href":"https://example.com"')
+
+		const picture = shapes[3]!
+		expect(picture).toMatchObject({ x: 800, y: 16, props: { w: 32, h: 16, crop: { topLeft: { x: 0, y: 0.5 }, bottomRight: { x: 0.5, y: 1 } } } })
 
 		const image = Object.values(snapshot.store).find((r) => r.typeName === 'asset') as { props: { src: string; w: number; h: number } }
 		expect(image.props).toMatchObject({ w: 64, h: 32 })

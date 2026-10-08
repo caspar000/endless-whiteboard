@@ -49,6 +49,8 @@ function nearestColor(rgb: Rgb, use: 'noteFill' | 'solid'): TLDefaultColorStyle 
 	let best: TLDefaultColorStyle = use === 'noteFill' ? 'yellow' : 'black'
 	let bestDistance = Infinity
 	for (const color of COLORS) {
+		// A "black" sticky is drawn pale yellow, so it would win Freeform's yellow under the wrong name.
+		if (use === 'noteFill' && (color === 'black' || color === 'white')) continue
 		const c = hexRgb(DefaultColorThemePalette.lightMode[color][use])
 		const distance = (c.r - rgb.r) ** 2 + (c.g - rgb.g) ** 2 + (c.b - rgb.b) ** 2
 		if (distance < bestDistance) [best, bestDistance] = [color, distance]
@@ -305,7 +307,8 @@ export function convertBoard(board: Board): Converted {
 				if (item.h < item.w * 0.9) {
 					const scale = item.w / PINNED_PAPER
 					const paperHeight = item.h / scale
-					const fit = fitLabel(item.paragraphs, asked, PINNED_PAPER, paperHeight - PINNED_TEXT_TOP, true)
+					// The pin keeps its size on a scaled note, so the text starts that much higher (textTopOf).
+					const fit = fitLabel(item.paragraphs, asked, PINNED_PAPER, paperHeight - PINNED_TEXT_TOP / Math.max(1, scale), true)
 					shape(item, 'pinned-note', { ...text, color, size: fit.size, scale, paperHeight, growY: fit.growY, fontSizeAdjustment: fit.shrunk })
 					break
 				}
@@ -352,9 +355,11 @@ export function convertBoard(board: Board): Converted {
 					meta: {},
 				} as TLAsset)
 				assets.push(asset)
+				// Within the picture: Freeform's floats land a hair outside it (-1e-15) at its edges.
+				const share = (part: number, whole: number) => Math.min(1, Math.max(0, part / whole))
 				const crop = item.crop && {
-					topLeft: { x: item.crop.x / item.full.w, y: item.crop.y / item.full.h },
-					bottomRight: { x: (item.crop.x + item.crop.w) / item.full.w, y: (item.crop.y + item.crop.h) / item.full.h },
+					topLeft: { x: share(item.crop.x, item.full.w), y: share(item.crop.y, item.full.h) },
+					bottomRight: { x: share(item.crop.x + item.crop.w, item.full.w), y: share(item.crop.y + item.crop.h, item.full.h) },
 				}
 				shape(item, 'image', { w: item.w, h: item.h, assetId: asset.id, ...(crop ? { crop } : {}) })
 				break

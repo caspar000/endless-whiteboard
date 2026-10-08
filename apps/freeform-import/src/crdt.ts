@@ -20,7 +20,8 @@ export type Value =
 	| { kind: 'text'; text: FreeformText }
 	| { kind: 'opt'; value: Value }
 	| { kind: 'map'; entries: Record<string, Value> }
-	| { kind: 'raw'; fields: Field[] }
+	/** A message that isn't one of the shapes above; `children` are its nested messages, decoded. */
+	| { kind: 'raw'; fields: Field[]; children: Value[] }
 	| Value[]
 	| null
 
@@ -64,7 +65,7 @@ export class FreeformRecord {
 
 	value(bytes: Uint8Array): Value {
 		const fields = parseMessage(bytes)
-		if (!fields || !fields.length) return fields ? { kind: 'raw', fields } : null
+		if (!fields || !fields.length) return fields ? this.raw(fields) : null
 		const only = fields.length === 1 ? fields[0]! : null
 		if (only) {
 			const { field, value } = only
@@ -79,15 +80,28 @@ export class FreeformRecord {
 			if (field === 4 && isBytes(value)) {
 				const inner = parseMessage(value) ?? []
 				if (inner.length && inner.every((f) => f.wire === 5)) {
-					const [x, y] = inner.map((f) => float32(f.value as Uint8Array))
-					return { kind: 'point', x: x ?? 0, y: y ?? 0 }
+					// By field number: protobuf leaves a zero out, so (0, 54) is only its `2`.
+					const coordinate = (n: number) => {
+						const found = inner.find((f) => f.field === n)
+						return found ? float32(found.value as Uint8Array) : 0
+					}
+					return { kind: 'point', x: coordinate(1), y: coordinate(2) }
 				}
 				return this.map(inner)
 			}
 		}
 		const register = this.register(fields)
 		if (register !== undefined) return register
-		return { kind: 'raw', fields }
+		return this.raw(fields)
+	}
+
+	/**
+	 * Kept as it is, with what's nested in it decoded too: an optional value's contents (an image's
+	 * crop, for one) come wrapped this way, and a search has to be able to look inside.
+	 */
+	private raw(fields: Field[]): Value {
+		const children = fields.filter((f) => isBytes(f.value) && f.value.length).map((f) => this.value(f.value as Uint8Array))
+		return { kind: 'raw', fields, children }
 	}
 
 	/** `1: { 1: timestamp, 2: value }`, the shape of every register; `undefined` if this isn't one. */
@@ -103,7 +117,7 @@ export class FreeformRecord {
 	private map(fields: Field[]): Value {
 		const keys = fields.find((f) => f.field === 1)?.value
 		const values = fields.filter((f) => f.field === 2 && isBytes(f.value)).map((f) => f.value as Uint8Array)
-		if (!keys || !isBytes(keys) || keys.length !== values.length) return { kind: 'raw', fields }
+		if (!keys || !isBytes(keys) || keys.length !== values.length) return this.raw(fields)
 		const entries: Record<string, Value> = {}
 		values.forEach((bytes, i) => {
 			const name = this.strings[keys[i]!]
@@ -149,6 +163,7 @@ export function* walk(v: Value): Generator<Value> {
 	else if (v && typeof v === 'object') {
 		if (v.kind === 'map') for (const child of Object.values(v.entries)) yield* walk(child)
 		else if (v.kind === 'opt') yield* walk(v.value)
+		else if (v.kind === 'raw') for (const child of v.children) yield* walk(child)
 	}
 }
 

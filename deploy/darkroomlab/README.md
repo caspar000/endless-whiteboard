@@ -32,7 +32,8 @@ On the box (`ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86`):
 
 ## Day to day
 
-- **Deploy:** push to the deploy branch, then **Restart** in Arcane.
+- **Deploy:** push to the deploy branch, then **Restart** in Arcane. From a terminal, or for an agent:
+  `docs/deploying.md`.
 - **Log in** as `owner` with the password whose hash is in `.env`. That account is made from it the first
   time the server starts with no accounts, and owns the boards from before there were accounts.
 - **Change a password:** Settings → Account, in the app. Every other device on that account is logged

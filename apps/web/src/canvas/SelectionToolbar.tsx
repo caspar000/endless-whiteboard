@@ -155,9 +155,13 @@ function ShapeColorPicker({ open, setOpen }: PanelProps) {
 						{DefaultColorStyle.values.map((value) => (
 							<button
 								key={value}
-								className={
-									value === state.value ? `${swatchClass} lb-swatch--active` : swatchClass
-								}
+								className={[
+									swatchClass,
+									value === 'white' ? 'lb-swatch--paper' : '',
+									value === state.value ? 'lb-swatch--active' : '',
+								]
+									.filter(Boolean)
+									.join(' ')}
 								style={{ [state.outline ? 'borderColor' : 'background']: paint(value) }}
 								title={value}
 								aria-label={`Colour ${value}`}
@@ -262,7 +266,13 @@ function ShapeFillPicker({ open, setOpen }: PanelProps) {
 						{DefaultColorStyle.values.map((value) => (
 							<button
 								key={value}
-								className={value === state.value ? 'lb-swatch lb-swatch--active' : 'lb-swatch'}
+								className={[
+									'lb-swatch',
+									value === 'white' ? 'lb-swatch--paper' : '',
+									value === state.value ? 'lb-swatch--active' : '',
+								]
+									.filter(Boolean)
+									.join(' ')}
 								style={{ background: paint(value) }}
 								title={value}
 								aria-label={`Fill ${value}`}

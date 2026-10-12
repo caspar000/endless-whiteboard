@@ -59,12 +59,13 @@ export function QuickLookOverlay() {
 		if (orphaned) closeQuickLook(editor, { animate: false })
 	}, [orphaned, editor])
 
-	// The camera is locked, so a resized window would leave the node off-centre without this.
+	// The camera is locked, so a resized window, or a panel opening over the board, would leave the
+	// node off-centre without this.
 	const viewportSize = useValue(
 		'lifeboard:quick-look-viewport',
 		() => {
-			const { w, h } = editor.getViewportScreenBounds()
-			return `${w}x${h}`
+			const { x, y, w, h } = editor.getSafeViewportBounds()
+			return `${x},${y},${w}x${h}`
 		},
 		[editor]
 	)

@@ -6,6 +6,14 @@ import { expect } from '@playwright/test'
  * the tests would inherit whichever boards a previous test left behind.
  */
 export async function gotoFresh(page: Page): Promise<void> {
+	// The board runs under the floating sidebar, and most tests put shapes near the page origin with
+	// the camera at 0,0 — where an open sidebar would cover them. Every test starts with it collapsed
+	// (as a fresh install would choose for itself), and the ones about the sidebar open it.
+	await page.addInitScript(() => {
+		if (localStorage.getItem('lifeboard:sidebar:collapsed') === null) {
+			localStorage.setItem('lifeboard:sidebar:collapsed', 'true')
+		}
+	})
 	await page.goto('/')
 
 	// Wait for the app to settle *before* wiping. First run seeds a demo board asynchronously, and
@@ -33,11 +41,11 @@ export async function gotoFresh(page: Page): Promise<void> {
 /** Waits for the demo board that first run seeds, then goes back to the board list. */
 export async function skipFirstRunDemo(page: Page): Promise<void> {
 	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
-	await backToList(page)
-	// Close the demo board's tab as well. An open tab keeps its editor mounted (that is what makes
-	// tab switching instant), and the demo board's mounted-but-hidden nodes would otherwise leak
-	// into every "count the shapes on the board" assertion that follows.
+	// Close the demo board's tab, which lands on the board list. An open tab keeps its editor mounted
+	// (that is what makes tab switching instant), and the demo board's mounted-but-hidden nodes would
+	// otherwise leak into every "count the shapes on the board" assertion that follows.
 	await page.locator('.lb-tabs__close').click()
+	await expect(page.locator('.lb-home__header')).toBeVisible()
 	await expect(page.locator('.lb-board-host')).toHaveCount(0, { timeout: 20_000 })
 }
 
@@ -51,17 +59,51 @@ export type SettingsTab =
 	| 'Extensions'
 	| 'Agents'
 
+/**
+ * Slides the sidebar in if it is collapsed, which is how every test starts (see `gotoFresh`), and
+ * waits for it to finish arriving. Returns whether it had to.
+ */
+export async function showSidebar(page: Page): Promise<boolean> {
+	const sidebar = page.locator('.lb-sidebar')
+	const collapsed = await sidebar.evaluate((el) => el.classList.contains('lb-sidebar--collapsed'))
+	if (collapsed) await page.getByRole('button', { name: 'Expand sidebar' }).click()
+	await expect(sidebar).not.toHaveClass(/lb-sidebar--collapsed/)
+	await expect.poll(async () => (await sidebar.boundingBox())?.x).toBeGreaterThan(0)
+	return collapsed
+}
+
+/**
+ * Clicks one of the sidebar's buttons (Settings, Help), then puts the sidebar back as it was, so a
+ * test that goes on to a board finds it uncovered.
+ */
+export async function clickInSidebar(page: Page, name: string | RegExp): Promise<void> {
+	const opened = await showSidebar(page)
+	// `.first()`: a board can be listed twice, under Recent boards and All boards.
+	await page.locator('.lb-sidebar').getByRole('button', { name, exact: true }).first().click()
+	if (opened) await page.locator('.lb-sidebar__collapse').click()
+}
+
 /** Opens Settings from the sidebar and lands on a tab — General being the one it opens on. */
 export async function openSettings(page: Page, tab: SettingsTab = 'General'): Promise<void> {
-	await page.getByRole('button', { name: 'Settings' }).click()
+	await clickInSidebar(page, 'Settings')
 	if (tab !== 'General') await page.getByRole('button', { name: tab, exact: true }).click()
 	await expect(page.getByRole('heading', { level: 1, name: tab })).toBeVisible()
 }
 
 export async function backToList(page: Page): Promise<void> {
-	// The pinned "All boards" tab in the tab strip is the way back to the home screen.
-	await page.getByRole('tab', { name: 'All boards' }).click()
+	// The sidebar's All boards row is the way back to the home screen.
+	await clickInSidebar(page, /^All boards \d+$/)
 	await expect(page.locator('.lb-home__header')).toBeVisible()
+}
+
+/**
+ * Opens a board from the sidebar — the way back to one from Settings, Help or the board list, which
+ * have no tab strip — and waits for its editor.
+ */
+export async function openBoardFromSidebar(page: Page, name: string | RegExp): Promise<void> {
+	await clickInSidebar(page, name)
+	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+	await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 }
 
 /**

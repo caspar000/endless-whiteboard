@@ -175,10 +175,11 @@ export function Agent({ go }: SectionProps) {
 		<>
 			<Section title="Where it is">
 				<p>
-					The panel opens from the icon at the right of the tab strip, or with <Keys keys={['⌘⇧A']} />
-					— the same icon closes it again. It sits beside the board rather than over it, so you can
-					keep working while it does, and you watch every change land on the canvas as it happens.
-					Drag its inner edge to give it more room; double-click that edge to put the width back.
+					The panel opens from the round button in the top right corner, or with{' '}
+					<Keys keys={['⌘⇧A']} />, and its own × or the same keys close it again. On a wide window it
+					moves the dock and the dice aside rather than covering them, so you can keep working while it
+					does, and you watch every change land on the canvas as it happens. Drag its inner edge to give
+					it more room; double-click that edge to put the width back.
 				</p>
 				<TurnDemo />
 				<p>

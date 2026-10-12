@@ -1,14 +1,14 @@
+import { Dices } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { DieIcon } from './DieIcon'
 import { getHand, loadDie, subscribeToHand, unloadDie } from './hand'
 import { DIE_KINDS, MAX_DICE_IN_HAND } from './kinds'
 
 /**
- * The tray, down the right-hand edge of the canvas.
+ * The tray: a capsule down the right-hand edge of the canvas, one round button per die.
  *
- * Floating *inside* the board's own area, the way the bottom dock does, rather than taking a column in
- * the app shell. That is what lets it coexist with the agent panel — which is a real shell column, so
- * it shrinks the canvas and the tray travels inward with it — for no layout code at all.
+ * Floating *inside* the board's own area, the way the bottom dock does, rather than in the app shell.
+ * The app moves it aside when its agent panel opens (the `--fl-right` property in its stylesheet).
  *
  * Click to load, click again to load another. Right-click (or shift-click) puts one back, which is the
  * gesture nobody guesses and everybody wants the moment they click once too often; the count badge is
@@ -41,6 +41,10 @@ export function DiceTray() {
 			role="group"
 			aria-label="Dice"
 		>
+			<span className="lb-dice-tray__head" aria-hidden="true">
+				<Dices size={18} strokeWidth={1.75} />
+			</span>
+			<span className="lb-dice-tray__sep" aria-hidden="true" />
 			{DIE_KINDS.map((kind) => {
 				const count = hand.counts.get(kind) ?? 0
 				return (

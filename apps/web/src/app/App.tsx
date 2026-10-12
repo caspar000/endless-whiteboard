@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
@@ -25,7 +26,7 @@ import { CanvasPrefsProvider, useCanvasPrefsState } from './canvasPrefs'
 import { HelpPage } from './help/HelpPage'
 import { SettingsPage } from './settings/SettingsPage'
 import { EXTENSIONS_TAB } from './settings/sections'
-import { Sidebar } from './Sidebar'
+import { Sidebar, SidebarReopen } from './Sidebar'
 import { TabStrip } from './TabStrip'
 import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
@@ -73,19 +74,60 @@ function loadAgentPanelOpen(): boolean {
 	}
 }
 
-function loadSidebarCollapsed(): boolean {
-	try {
-		const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
-		if (stored !== null) return stored === 'true'
-	} catch {
-		// Use the viewport default when storage is unavailable.
-	}
-	return window.matchMedia('(max-width: 720px)').matches
+/**
+ * Below this width the sidebar and the agent panel float *over* the board instead of pushing the
+ * dock, the tabs and the dice aside. Matches the 1023px media queries in styles.css.
+ */
+const WIDE_QUERY = '(min-width: 1024px)'
+
+/** The chrome's fixed measures, mirrored from the `--fl-*` tokens in styles.css. */
+const CHROME = {
+	edge: 12,
+	sidebar: 264,
+	/** The folder labels' height, the active one's. */
+	tabs: 42,
+	/** The dock and the gap under it. */
+	dock: 72,
 }
 
 /**
- * The app shell — Affine's layout: a persistent sidebar on the left, a strip of tabs across the
- * top (a pinned "All boards" tab plus one tab per open board), and the content underneath.
+ * A narrow window always starts with the sidebar out of the way: there it covers the board rather
+ * than sitting beside it.
+ */
+function loadSidebarCollapsed(): boolean {
+	if (!window.matchMedia(WIDE_QUERY).matches) return true
+	try {
+		return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+	} catch {
+		return false
+	}
+}
+
+/** Only a wide window's choice is remembered: a narrow window's overlay is a passing thing. */
+function saveSidebarCollapsed(collapsed: boolean): void {
+	if (!window.matchMedia(WIDE_QUERY).matches) return
+	try {
+		localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed))
+	} catch {
+		// The toggle still works for this session when private storage rejects the write.
+	}
+}
+
+function useWide(): boolean {
+	return useSyncExternalStore(
+		(onChange) => {
+			const query = window.matchMedia(WIDE_QUERY)
+			query.addEventListener('change', onChange)
+			return () => query.removeEventListener('change', onChange)
+		},
+		() => window.matchMedia(WIDE_QUERY).matches
+	)
+}
+
+/**
+ * The app shell. The page runs edge to edge and every piece of chrome floats over it as its own
+ * rounded surface: the sidebar on the left, the open boards as folder labels along the top (on a
+ * board), the agent button or panel on the right.
  */
 export function App() {
 	const platform = usePlatform()
@@ -103,6 +145,10 @@ export function App() {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
 	const [agentPanelOpen, setAgentPanelOpen] = useState(loadAgentPanelOpen)
 	const { divider: agentDivider, resizing: agentResizing } = useAgentPanelWidth()
+	const wide = useWide()
+	/** The agent works on a board, so its button and panel only show on one; the open state is kept. */
+	const agentShown = agentPanelOpen && route.view === 'board'
+	const agentButton = useRef<HTMLButtonElement>(null)
 
 	/**
 	 * Toggled through the updater rather than off the rendered value, because the ⌘K command holds
@@ -120,13 +166,23 @@ export function App() {
 		})
 	}, [])
 
+	/** Closing from the panel's own button hands focus back to the button that opened it. */
+	const closeAgentPanel = useCallback(() => {
+		toggleAgentPanel()
+		agentButton.current?.focus()
+	}, [toggleAgentPanel])
+
 	const updateSidebarCollapsed = useCallback((collapsed: boolean) => {
 		setSidebarCollapsed(collapsed)
-		try {
-			localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed))
-		} catch {
-			// The rail still works for this session when private storage rejects the write.
-		}
+		saveSidebarCollapsed(collapsed)
+	}, [])
+
+	// Through the updater for the same reason as the agent panel: the ⌘\ command holds this closure.
+	const toggleSidebar = useCallback(() => {
+		setSidebarCollapsed((collapsed) => {
+			saveSidebarCollapsed(!collapsed)
+			return !collapsed
+		})
 	}, [])
 
 	/** Boards kept mounted purely to let a closed tab's pending write flush. */
@@ -198,6 +254,23 @@ export function App() {
 			editor.user.updateUserPreferences({ colorScheme: theme })
 		}
 	}, [theme])
+
+	/**
+	 * The board runs under the floating chrome, so framing a board (zoom to fit, quick look, panning a
+	 * shape into view) is told what the chrome covers and centres in the rest. Pushed to every editor
+	 * as it changes, and to an editor on registration, the same arrangement as the theme above.
+	 */
+	const safeInsets = {
+		top: CHROME.tabs,
+		right: wide && agentShown ? CHROME.edge + agentDivider.width : 0,
+		bottom: CHROME.dock,
+		left: wide && !sidebarCollapsed ? CHROME.edge + CHROME.sidebar : 0,
+	}
+	const safeInsetsRef = useRef(safeInsets)
+	safeInsetsRef.current = safeInsets
+	useEffect(() => {
+		for (const editor of editors.current.values()) editor.setSafeInsets(safeInsetsRef.current)
+	}, [safeInsets.left, safeInsets.right])
 
 	/**
 	 * Grid and snapping (see canvasPrefs.ts).
@@ -450,6 +523,7 @@ export function App() {
 			goHelp,
 			setTheme,
 			toggleAgentPanel,
+			toggleSidebar,
 			// Same seed twice is a toggle; a different seed re-seeds an open palette rather than
 			// closing it, so ⌘⇧K over an open ⌘K palette types the `>` for you.
 			togglePalette: (seed = '') =>
@@ -682,50 +756,17 @@ export function App() {
 			<div
 				className={[
 					'lb-shell',
+					route.view === 'board' ? 'lb-shell--board' : 'lb-shell--page',
 					sidebarCollapsed ? 'lb-shell--sidebar-collapsed' : '',
-					agentPanelOpen ? 'lb-shell--agent-open' : '',
+					agentShown ? 'lb-shell--agent-open' : '',
 					agentResizing ? 'lb-shell--resizing' : '',
 				]
 					.filter(Boolean)
 					.join(' ')}
-				/* The dragged width reaches the grid as a custom property, because the panel is a grid
-				   *column* — there is nothing on the panel itself to set a width on. */
+				/* The dragged width reaches every surface that moves aside for the panel — the tabs, the
+				   dock, the dice, the sync pill — as one custom property. */
 				style={{ '--lb-agent-width': `${agentDivider.width}px` } as CSSProperties}
 			>
-				<Sidebar
-					view={route.view}
-					activeBoardId={activeBoardId}
-					boards={api.boards}
-					collapsed={sidebarCollapsed}
-					onToggleCollapsed={() => updateSidebarCollapsed(!sidebarCollapsed)}
-					onAllBoards={() => void goHome()}
-					onSettings={() => void goSettings()}
-					onHelp={() => void goHelp()}
-					onOpenBoard={(board) => void openBoard(board)}
-					onNewBoard={() => void createAndOpen()}
-				/>
-				<button
-					type="button"
-					className="lb-sidebar__scrim"
-					onClick={() => updateSidebarCollapsed(true)}
-					aria-label="Collapse sidebar"
-				/>
-
-				<div className="lb-shell__body">
-				<TabStrip
-					boards={api.boards}
-					tabs={tabs}
-					view={route.view}
-					activeBoardId={activeBoardId}
-					onHome={() => void goHome()}
-					onSelect={(board) => void openBoard(board)}
-					onClose={(id) => void closeBoardTab(id)}
-					onNew={() => void createAndOpen()}
-					onRename={(id, name) => void api.rename(id, name)}
-					agentOpen={agentPanelOpen}
-					onToggleAgent={toggleAgentPanel}
-				/>
-
 				<div className="lb-shell__content">
 					{mounted.map((board) => (
 						<div
@@ -751,6 +792,7 @@ export function App() {
 										// first time an already-open tab is shown.
 										editor.user.updateUserPreferences({ colorScheme: themeRef.current })
 										editor.updateInstanceState({ isGridMode: snapRef.current })
+										editor.setSafeInsets(safeInsetsRef.current)
 									} else {
 										editors.current.delete(board.id)
 										syncAgentContext()
@@ -810,12 +852,64 @@ export function App() {
 							onSection={(section) => navigate({ view: 'help', section })}
 						/>
 					)}
-					</div>
 				</div>
 
-				{/* A column of the shell grid rather than a child of the body, so the panel takes width
-				    from the canvas instead of overlaying it — you can keep working while an agent does. */}
-				{agentPanelOpen && <AgentPanel divider={agentDivider} />}
+				{/* The chrome, floating over the content. Painted after it, so it stacks above the board. */}
+				{/* On a board only; elsewhere the sidebar is the way to a board. */}
+				{route.view === 'board' && (
+					<TabStrip
+						boards={api.boards}
+						tabs={tabs}
+						activeBoardId={activeBoardId}
+						onSelect={(board) => void openBoard(board)}
+						onClose={(id) => void closeBoardTab(id)}
+						onNew={() => void createAndOpen()}
+						onRename={(id, name) => void api.rename(id, name)}
+					/>
+				)}
+
+				<button
+					type="button"
+					className="lb-sidebar__scrim"
+					onClick={() => updateSidebarCollapsed(true)}
+					aria-label="Collapse sidebar"
+					tabIndex={-1}
+				/>
+				<Sidebar
+					view={route.view}
+					activeBoardId={activeBoardId}
+					boards={api.boards}
+					collapsed={sidebarCollapsed}
+					onToggleCollapsed={() => updateSidebarCollapsed(!sidebarCollapsed)}
+					onAllBoards={() => void goHome()}
+					onSettings={() => void goSettings()}
+					onHelp={() => void goHelp()}
+					onStorage={() => void goSettings('storage')}
+					onOpenBoard={(board) => void openBoard(board)}
+					onNewBoard={() => void createAndOpen()}
+				/>
+				<SidebarReopen collapsed={sidebarCollapsed} onExpand={() => updateSidebarCollapsed(false)} />
+
+				{/* The button and the panel take turns: one is always hidden, and inert while it is. */}
+				{route.view === 'board' && (
+					<button
+						ref={agentButton}
+						type="button"
+						className="lb-agent-fab lb-float"
+						onClick={toggleAgentPanel}
+						inert={agentPanelOpen}
+						aria-label="Open agent panel"
+						title="Open agent panel  ⌘⇧A"
+					>
+						<Sparkles size={20} strokeWidth={1.75} aria-hidden="true" />
+					</button>
+				)}
+				<AgentPanel
+					open={agentShown}
+					onClose={closeAgentPanel}
+					boardName={route.view === 'board' ? routedBoard?.name : undefined}
+					divider={agentDivider}
+				/>
 			</div>
 		</CanvasPrefsProvider>
 	)

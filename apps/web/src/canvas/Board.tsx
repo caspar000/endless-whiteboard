@@ -517,10 +517,6 @@ function BoardCanvas({
 					// The pending snapshot has now been loaded and is being persisted by tldraw, so
 					// drop it — otherwise reopening the board would replay the import.
 					if (restore.snapshot) void clearPendingRestore(platform.kv, board.id)
-					// Seed only a genuinely empty board: the demo route can be revisited (reload,
-					// back button) and must not duplicate the demo content.
-					if (seedDemo && editor.getCurrentPageShapeIds().size === 0) seedDemoBoard(editor)
-
 					// Debug/test seam: lets the e2e suite assert on real store state instead of
 					// scraping the DOM, and makes the console usable when diagnosing a board.
 					// Cleared on unmount — leaving a disposed editor here is worse than leaving
@@ -533,6 +529,11 @@ function BoardCanvas({
 					if (board.role === 'view') editor.updateInstanceState({ isReadonly: true })
 					setEditor(editor)
 					onEditor?.(editor)
+
+					// Seed only a genuinely empty board: the demo route can be revisited (reload,
+					// back button) and must not duplicate the demo content. After `onEditor`, which tells
+					// the editor what the app's chrome covers, so the demo's zoom to fit frames clear of it.
+					if (seedDemo && editor.getCurrentPageShapeIds().size === 0) seedDemoBoard(editor)
 
 					// A server board's "last edited" is kept by the server, from the edits it receives.
 					const stopTracking = store

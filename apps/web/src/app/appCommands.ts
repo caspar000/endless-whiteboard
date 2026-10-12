@@ -50,6 +50,7 @@ export interface AppCommandApi {
 	goHelp(): Promise<void>
 	setTheme(theme: Theme): void
 	toggleAgentPanel(): void
+	toggleSidebar(): void
 	/**
 	 * Opens the palette with `seed` already in its input, or closes it if it is already open on that
 	 * same seed — which is what makes both palette keys plain toggles while still letting ⌘⇧K
@@ -166,6 +167,14 @@ registerCommand({
 	group: NAVIGATE_GROUP,
 	kbd: 'cmd+shift+a',
 	run: () => api?.toggleAgentPanel(),
+})
+
+registerCommand({
+	id: 'view.sidebar',
+	title: 'Toggle sidebar',
+	group: NAVIGATE_GROUP,
+	kbd: 'cmd+\\',
+	run: () => api?.toggleSidebar(),
 })
 
 registerCommand({

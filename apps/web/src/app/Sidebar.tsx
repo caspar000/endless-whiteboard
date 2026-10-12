@@ -1,42 +1,84 @@
 import {
 	ChevronDown,
 	CircleHelp,
+	Clock,
+	HardDrive,
 	LayoutGrid,
+	LoaderCircle,
 	PanelLeftClose,
 	PanelLeftOpen,
-	PanelsTopLeft,
-	PenLine,
 	Plus,
+	RefreshCw,
 	Settings,
 	Star,
-	HardDrive,
-	LoaderCircle,
-	RefreshCw,
 	TriangleAlert,
 } from 'lucide-react'
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { getMoveBatch } from '../boards/moveQueue'
 import { getImportProgress, importDetail, importShare, subscribeToImportProgress } from '../persistence/importProgress'
+import { usePlatform } from '../platform/PlatformContext'
 import { isUpdateReady, reloadToUpdate, subscribeToUpdate } from '../pwa/registerServiceWorker'
+import { boardTint } from './boardTint'
+import { formatBytes } from './settings/StoragePanel'
 import { useMoves } from './useBoards'
 
-const ALL_BOARDS_EXPANDED_KEY = 'lifeboard:sidebar:allBoardsExpanded'
+/** How many recently edited boards the sidebar lists. */
+const RECENT_COUNT = 5
 
-function loadAllBoardsExpanded(): boolean {
+type SectionId = 'favourites' | 'recents' | 'allBoards'
+
+/** `allBoards` keeps the key it had before the sections could all fold. */
+const SECTION_KEYS: Record<SectionId, string> = {
+	favourites: 'lifeboard:sidebar:favouritesExpanded',
+	recents: 'lifeboard:sidebar:recentsExpanded',
+	allBoards: 'lifeboard:sidebar:allBoardsExpanded',
+}
+
+function loadExpanded(id: SectionId): boolean {
 	try {
-		return localStorage.getItem(ALL_BOARDS_EXPANDED_KEY) !== 'false'
+		return localStorage.getItem(SECTION_KEYS[id]) !== 'false'
 	} catch {
 		return true
 	}
 }
 
+function useSectionExpanded(id: SectionId): [boolean, (expanded: boolean) => void] {
+	const [expanded, setExpanded] = useState(() => loadExpanded(id))
+	const update = (next: boolean) => {
+		setExpanded(next)
+		try {
+			localStorage.setItem(SECTION_KEYS[id], String(next))
+		} catch {
+			// A private-mode storage failure should not make the disclosure unusable.
+		}
+	}
+	return [expanded, update]
+}
+
+/** What this browser holds, for the Storage row. Re-read when the number of boards changes. */
+function useStorageUsage(boardCount: number): number | null {
+	const platform = usePlatform()
+	const [usage, setUsage] = useState<number | null>(null)
+	useEffect(() => {
+		let live = true
+		void platform.estimateStorage().then((estimate) => {
+			if (live) setUsage(estimate.usage)
+		})
+		return () => {
+			live = false
+		}
+	}, [platform, boardCount])
+	return usage
+}
+
 /**
- * The shell's left navigation rail.
+ * The shell's left navigation, floating over the board.
  *
- * Favourites are shortcuts to the boards someone returns to most; All boards is the complete,
- * recently-edited catalogue. Keeping those two ideas separate also leaves the catalogue ready to
- * become a folder tree later without changing the board index today.
+ * The library rows at the top are the ways into the boards: everything, what was edited lately, what
+ * is starred, and how much room they take. Below them the same groups are listed board by board, each
+ * folding on its own. Collapsed, the panel slides away entirely and a round button takes its place
+ * (`SidebarReopen`).
  */
 export function Sidebar({
 	view,
@@ -47,6 +89,7 @@ export function Sidebar({
 	onAllBoards,
 	onSettings,
 	onHelp,
+	onStorage,
 	onOpenBoard,
 	onNewBoard,
 }: {
@@ -58,137 +101,132 @@ export function Sidebar({
 	onAllBoards: () => void
 	onSettings: () => void
 	onHelp: () => void
+	onStorage: () => void
 	onOpenBoard: (board: BoardMeta) => void
 	onNewBoard: () => void
 }) {
 	const favorites = boards.filter((board) => board.favorite)
+	// Starred boards already have their own section, so the recent list leaves them out.
+	const recents = [...boards]
+		.filter((board) => !board.favorite)
+		.sort((a, b) => b.updatedAt - a.updatedAt)
+		.slice(0, RECENT_COUNT)
 	// Only worth saying once there are two kinds side by side.
 	const mixed = boards.some((board) => board.vault === 'server') && boards.some((board) => !board.vault)
-	const [allBoardsExpanded, setAllBoardsExpanded] = useState(loadAllBoardsExpanded)
+	const usage = useStorageUsage(boards.length)
 
-	const toggleAllBoards = () => {
-		setAllBoardsExpanded((expanded) => {
-			const next = !expanded
-			try {
-				localStorage.setItem(ALL_BOARDS_EXPANDED_KEY, String(next))
-			} catch {
-				// A private-mode storage failure should not make the disclosure unusable.
-			}
-			return next
-		})
+	const [favouritesOpen, setFavouritesOpen] = useSectionExpanded('favourites')
+	const [recentsOpen, setRecentsOpen] = useSectionExpanded('recents')
+	const [allBoardsOpen, setAllBoardsOpen] = useSectionExpanded('allBoards')
+	const favouritesRef = useRef<HTMLElement>(null)
+	const recentsRef = useRef<HTMLElement>(null)
+
+	/** The library's Recents and Favourites rows unfold their section and bring it into view. */
+	const reveal = (section: React.RefObject<HTMLElement | null>, open: (expanded: boolean) => void) => {
+		open(true)
+		requestAnimationFrame(() => section.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 	}
 
+	const row = (board: BoardMeta) => (
+		<BoardLink
+			key={board.id}
+			board={board}
+			active={view === 'board' && board.id === activeBoardId}
+			deviceOnly={mixed && !board.vault}
+			onOpen={onOpenBoard}
+		/>
+	)
+
 	return (
-		<aside className={collapsed ? 'lb-sidebar lb-sidebar--collapsed' : 'lb-sidebar'}>
+		<aside
+			className={collapsed ? 'lb-sidebar lb-float lb-sidebar--collapsed' : 'lb-sidebar lb-float'}
+			// Off screen while collapsed, so it must not be reachable with Tab either.
+			inert={collapsed}
+			aria-label="Boards sidebar"
+		>
 			<div className="lb-sidebar__brand">
 				<span className="lb-sidebar__mark" aria-hidden="true">
-					<PenLine size={14} />
+					<LayoutGrid size={16} />
 				</span>
 				<span className="lb-sidebar__name">Lifeboard</span>
 				<button
 					type="button"
-					className="lb-sidebar__collapse"
+					className="lb-icon-btn lb-sidebar__collapse"
 					onClick={onToggleCollapsed}
-					aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-					title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+					aria-label="Collapse sidebar"
+					title="Collapse sidebar  ⌘\"
 				>
-					{collapsed ? (
-						<PanelLeftOpen size={16} aria-hidden="true" />
-					) : (
-						<PanelLeftClose size={16} aria-hidden="true" />
-					)}
+					<PanelLeftClose size={18} strokeWidth={1.75} aria-hidden="true" />
 				</button>
 			</div>
 
-			<button
-				type="button"
-				className="lb-sidebar__new"
-				onClick={onNewBoard}
-				aria-label="New board"
-				title={collapsed ? 'New board' : undefined}
-			>
-				<Plus size={15} aria-hidden="true" />
-				<span className="lb-sidebar__label">New board</span>
+			<button type="button" className="lb-sidebar__new" onClick={onNewBoard}>
+				<Plus size={18} strokeWidth={1.75} aria-hidden="true" />
+				New board
 			</button>
 
 			<div className="lb-sidebar__sections lb-sidebar__nav">
-				<nav className="lb-sidebar__section lb-sidebar__favorites" aria-label="Favourites">
-					<button
-						type="button"
-						className="lb-sidebar__favorites-shortcut"
-						onClick={onToggleCollapsed}
-						aria-label={`Favourites (${favorites.length})`}
-						title={`Favourites (${favorites.length})`}
-					>
-						<Star size={14} fill={favorites.length > 0 ? 'currentColor' : 'none'} aria-hidden="true" />
-					</button>
-					<div className="lb-sidebar__section-title">Favourites</div>
+				<nav className="lb-sidebar__library" aria-label="Library">
+					<LibraryRow
+						icon={<LayoutGrid size={18} strokeWidth={1.75} />}
+						label="All boards"
+						count={boards.length}
+						active={view === 'list'}
+						onClick={onAllBoards}
+					/>
+					<LibraryRow
+						icon={<Clock size={18} strokeWidth={1.75} />}
+						label="Recents"
+						count={recents.length}
+						onClick={() => reveal(recentsRef, setRecentsOpen)}
+					/>
+					<LibraryRow
+						icon={<Star size={18} strokeWidth={1.75} />}
+						label="Favourites"
+						count={favorites.length}
+						onClick={() => reveal(favouritesRef, setFavouritesOpen)}
+					/>
+					<LibraryRow
+						icon={<HardDrive size={18} strokeWidth={1.75} />}
+						label="Storage"
+						count={usage === null ? '' : formatBytes(usage)}
+						onClick={onStorage}
+					/>
+				</nav>
+
+				<Section
+					sectionRef={favouritesRef}
+					title="Favourites"
+					className="lb-sidebar__favorites"
+					expanded={favouritesOpen}
+					onToggle={() => setFavouritesOpen(!favouritesOpen)}
+				>
 					{favorites.length === 0 ? (
 						<p className="lb-sidebar__empty">Star a board to keep it here.</p>
 					) : (
-						favorites.map((board) => (
-							<BoardLink
-								key={board.id}
-								board={board}
-								active={view === 'board' && board.id === activeBoardId}
-								favorite
-								collapsed={collapsed}
-								onOpen={onOpenBoard}
-							/>
-						))
+						favorites.map(row)
 					)}
-				</nav>
+				</Section>
 
-				<section className="lb-sidebar__catalog" aria-label="All boards">
-					<div className="lb-sidebar__catalog-header">
-						<button
-							type="button"
-							className={
-								view === 'list'
-									? 'lb-sidebar__item lb-sidebar__catalog-link lb-sidebar__item--active'
-									: 'lb-sidebar__item lb-sidebar__catalog-link'
-							}
-							onClick={onAllBoards}
-							aria-current={view === 'list' ? 'page' : undefined}
-							aria-label={`All boards ${boards.length}`}
-							title={collapsed ? `All boards (${boards.length})` : undefined}
-						>
-							<span className="lb-sidebar__icon" aria-hidden="true">
-								<LayoutGrid size={15} />
-							</span>
-							<span className="lb-sidebar__label">All boards</span>
-							<span className="lb-sidebar__count">{boards.length}</span>
-						</button>
-						<button
-							type="button"
-							className="lb-sidebar__disclosure"
-							onClick={toggleAllBoards}
-							aria-label={allBoardsExpanded ? 'Collapse All boards' : 'Expand All boards'}
-							aria-expanded={allBoardsExpanded}
-						>
-							<ChevronDown size={14} aria-hidden="true" />
-						</button>
-					</div>
+				{recents.length > 0 && (
+					<Section
+						sectionRef={recentsRef}
+						title="Recent boards"
+						expanded={recentsOpen}
+						onToggle={() => setRecentsOpen(!recentsOpen)}
+					>
+						{recents.map(row)}
+					</Section>
+				)}
 
-					{allBoardsExpanded && (
-						<nav className="lb-sidebar__board-list" aria-label="Boards">
-							{boards.length === 0 ? (
-								<p className="lb-sidebar__empty">No boards yet.</p>
-							) : (
-								boards.map((board) => (
-									<BoardLink
-										key={board.id}
-										board={board}
-										active={view === 'board' && board.id === activeBoardId}
-										deviceOnly={mixed && !board.vault}
-										collapsed={collapsed}
-										onOpen={onOpenBoard}
-									/>
-								))
-							)}
-						</nav>
-					)}
-				</section>
+				<Section
+					title="All boards"
+					listLabel="Boards"
+					expanded={allBoardsOpen}
+					onToggle={() => setAllBoardsOpen(!allBoardsOpen)}
+				>
+					{boards.length === 0 ? <p className="lb-sidebar__empty">No boards yet.</p> : boards.map(row)}
+				</Section>
 			</div>
 
 			<UpdateStatus />
@@ -198,34 +236,20 @@ export function Sidebar({
 			<nav className="lb-sidebar__footer" aria-label="Application">
 				<button
 					type="button"
-					className={
-						view === 'help' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'
-					}
+					className={view === 'help' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'}
 					onClick={onHelp}
 					aria-current={view === 'help' ? 'page' : undefined}
-					aria-label="Help"
-					title={collapsed ? 'Help' : undefined}
 				>
-					<span className="lb-sidebar__icon" aria-hidden="true">
-						<CircleHelp size={15} />
-					</span>
+					<CircleHelp size={18} strokeWidth={1.75} aria-hidden="true" />
 					<span className="lb-sidebar__label">Help</span>
 				</button>
 				<button
 					type="button"
-					className={
-						view === 'settings'
-							? 'lb-sidebar__item lb-sidebar__item--active'
-							: 'lb-sidebar__item'
-					}
+					className={view === 'settings' ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'}
 					onClick={onSettings}
 					aria-current={view === 'settings' ? 'page' : undefined}
-					aria-label="Settings"
-					title={collapsed ? 'Settings' : undefined}
 				>
-					<span className="lb-sidebar__icon" aria-hidden="true">
-						<Settings size={15} />
-					</span>
+					<Settings size={18} strokeWidth={1.75} aria-hidden="true" />
 					<span className="lb-sidebar__label">Settings</span>
 				</button>
 			</nav>
@@ -233,44 +257,120 @@ export function Sidebar({
 	)
 }
 
-function BoardLink({
-	board,
-	active,
-	favorite = false,
-	deviceOnly = false,
-	collapsed,
-	onOpen,
+/** The round button that stands in for the collapsed sidebar, top left. */
+export function SidebarReopen({ collapsed, onExpand }: { collapsed: boolean; onExpand: () => void }) {
+	return (
+		<button
+			type="button"
+			className="lb-sidebar-reopen lb-float"
+			onClick={onExpand}
+			inert={!collapsed}
+			aria-label="Expand sidebar"
+			title="Expand sidebar  ⌘\"
+		>
+			<PanelLeftOpen size={20} strokeWidth={1.75} aria-hidden="true" />
+		</button>
+	)
+}
+
+function LibraryRow({
+	icon,
+	label,
+	count,
+	active = false,
+	onClick,
 }: {
-	board: BoardMeta
-	active: boolean
-	favorite?: boolean
-	/** A local board shown next to server ones: it exists in this browser and nowhere else. */
-	deviceOnly?: boolean
-	collapsed: boolean
-	onOpen: (board: BoardMeta) => void
+	icon: ReactNode
+	label: string
+	count: number | string
+	active?: boolean
+	onClick: () => void
 }) {
 	return (
 		<button
 			type="button"
 			className={active ? 'lb-sidebar__item lb-sidebar__item--active' : 'lb-sidebar__item'}
+			onClick={onClick}
+			aria-current={active ? 'page' : undefined}
+			aria-label={count === '' ? label : `${label} ${count}`}
+		>
+			<span className="lb-sidebar__icon" aria-hidden="true">
+				{icon}
+			</span>
+			<span className="lb-sidebar__label">{label}</span>
+			<span className="lb-sidebar__count">{count}</span>
+		</button>
+	)
+}
+
+/** A folding group of board rows, under an uppercase header with a turning chevron. */
+function Section({
+	title,
+	listLabel = title,
+	className,
+	expanded,
+	onToggle,
+	sectionRef,
+	children,
+}: {
+	title: string
+	/** The list's accessible name, when it should differ from the header. */
+	listLabel?: string
+	className?: string
+	expanded: boolean
+	onToggle: () => void
+	sectionRef?: React.Ref<HTMLElement>
+	children: ReactNode
+}) {
+	return (
+		<section ref={sectionRef} className={className ? `lb-sidebar__section ${className}` : 'lb-sidebar__section'}>
+			<button
+				type="button"
+				className="lb-sidebar__section-title"
+				onClick={onToggle}
+				aria-expanded={expanded}
+				aria-label={`${expanded ? 'Collapse' : 'Expand'} ${title}`}
+			>
+				<ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
+				{title}
+			</button>
+			{expanded && (
+				<nav className="lb-sidebar__board-list" aria-label={listLabel}>
+					{children}
+				</nav>
+			)}
+		</section>
+	)
+}
+
+function BoardLink({
+	board,
+	active,
+	deviceOnly = false,
+	onOpen,
+}: {
+	board: BoardMeta
+	active: boolean
+	/** A local board shown next to server ones: it exists in this browser and nowhere else. */
+	deviceOnly?: boolean
+	onOpen: (board: BoardMeta) => void
+}) {
+	return (
+		<button
+			type="button"
+			className={active ? 'lb-sidebar__item lb-sidebar__item--board lb-sidebar__item--active' : 'lb-sidebar__item lb-sidebar__item--board'}
 			onClick={() => onOpen(board)}
 			aria-current={active ? 'page' : undefined}
 			aria-label={board.name}
-			title={deviceOnly ? `${board.name} — only on this device` : collapsed ? board.name : undefined}
+			title={deviceOnly ? `${board.name} — only on this device` : undefined}
 		>
-			<span
-				className={favorite ? 'lb-sidebar__icon lb-sidebar__icon--star' : 'lb-sidebar__icon'}
-				aria-hidden="true"
-			>
-				{favorite ? (
-					<Star size={13} fill="currentColor" />
-				) : deviceOnly ? (
-					<HardDrive size={14} />
-				) : (
-					<PanelsTopLeft size={14} />
-				)}
-			</span>
+			<span className="lb-sidebar__thumb" style={{ background: boardTint(board.id) }} aria-hidden="true" />
 			<span className="lb-sidebar__label">{board.name}</span>
+			{board.favorite ? (
+				<Star className="lb-sidebar__star" size={14} fill="currentColor" aria-hidden="true" />
+			) : deviceOnly ? (
+				<HardDrive className="lb-sidebar__device" size={14} strokeWidth={1.75} aria-hidden="true" />
+			) : null}
 		</button>
 	)
 }

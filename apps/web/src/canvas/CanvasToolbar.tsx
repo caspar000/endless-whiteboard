@@ -30,7 +30,7 @@ import {
 	Waypoints,
 	type LucideIcon,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import {
 	ArrowShapeKindStyle,
 	DefaultColorStyle,
@@ -120,7 +120,7 @@ const GEO_KINDS: { value: GeoValue; icon: LucideIcon }[] = [
 	{ value: 'heart', icon: Heart },
 ]
 
-const ICON_SIZE = 19
+const ICON_SIZE = 20
 
 /** "v,1" → "V · 1", for tooltips. */
 function formatKbd(kbd?: string): string {
@@ -149,6 +149,8 @@ function ToolButton({
 	const tool = tools[toolId]
 	if (!tool) return null
 	const kbd = formatKbd(tool.kbd)
+	// The digit the dock assigns by position (toolKeys.ts), shown in the button's corner.
+	const digit = tool.kbd?.split(',').find((k) => /^\d$/.test(k))
 	return (
 		<button
 			className={isActive ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'}
@@ -164,8 +166,18 @@ function ToolButton({
 			aria-pressed={isActive}
 		>
 			{icon}
+			{digit && (
+				<span className="lb-dock__digit" aria-hidden="true">
+					{digit}
+				</span>
+			)}
 		</button>
 	)
+}
+
+/** A swatch's colour, as `currentColor`: the CSS paints the dot and the selected ring from it. */
+function swatchStyle(color: string): CSSProperties {
+	return { color }
 }
 
 /**
@@ -201,7 +213,7 @@ function ColorSwatches() {
 					className={
 						current === value ? 'lb-expand__swatch lb-expand__swatch--active' : 'lb-expand__swatch'
 					}
-					style={{ backgroundColor: getColorValue(colors, value, 'solid') }}
+					style={swatchStyle(getColorValue(colors, value, 'solid'))}
 					onPointerDown={(e) => e.preventDefault()}
 					onClick={(e) => setStyle(editor, DefaultColorStyle, value, e)}
 					title={value}
@@ -295,7 +307,7 @@ function PinSwatches() {
 							? 'lb-expand__swatch lb-expand__swatch--pin lb-expand__swatch--active'
 							: 'lb-expand__swatch lb-expand__swatch--pin'
 					}
-					style={{ backgroundColor: getPinPaint(value, theme).head }}
+					style={swatchStyle(getPinPaint(value, theme).head)}
 					onPointerDown={(e) => e.preventDefault()}
 					onClick={(e) => setStyle(editor, PinColorStyle, value, e)}
 					title={`Pin ${value}`}
@@ -329,12 +341,15 @@ function NoteSwatches({ toolId }: { toolId: string }) {
 			{NOTE_COLORS.map((value) => (
 				<button
 					key={value}
-					className={
-						current === value
-							? 'lb-expand__swatch lb-expand__swatch--paper lb-expand__swatch--active'
-							: 'lb-expand__swatch lb-expand__swatch--paper'
-					}
-					style={{ backgroundColor: colors[value].noteFill }}
+					// Only white paper needs an edge to be seen against the row.
+					className={[
+						'lb-expand__swatch',
+						value === 'white' ? 'lb-expand__swatch--paper' : '',
+						current === value ? 'lb-expand__swatch--active' : '',
+					]
+						.filter(Boolean)
+						.join(' ')}
+					style={swatchStyle(colors[value].noteFill)}
 					onPointerDown={(e) => e.preventDefault()}
 					onClick={() => tool?.color.set(value)}
 					title={value}
@@ -458,7 +473,7 @@ function FillSwatches() {
 					}
 					// `fill`, not `solid`: the swatch has to be painted in the colour the shape's inside
 					// will actually be, and the inside uses the theme's full-strength fill variant.
-					style={{ backgroundColor: getColorValue(colors, value, 'fill') }}
+					style={swatchStyle(getColorValue(colors, value, 'fill'))}
 					onPointerDown={(e) => e.preventDefault()}
 					onClick={() => setNextFillColor(editor, value)}
 					title={`Fill ${value}`}
@@ -673,8 +688,33 @@ function TracingHint() {
 	)
 }
 
+/**
+ * Marks the dock `data-cramped` while the board area left between the sidebar and the agent panel is
+ * narrower than the dock. Only then does it scroll inside its pill: a scroller clips, and the active
+ * tool's glow hangs past the dock's padding.
+ */
+function useCramped() {
+	const ref = useRef<HTMLDivElement>(null)
+	useEffect(() => {
+		const dock = ref.current
+		const wrap = dock?.parentElement
+		if (!dock || !wrap) return
+		const check = () => {
+			const cramped = dock.scrollWidth > wrap.clientWidth + 1
+			if (cramped !== dock.hasAttribute('data-cramped')) dock.toggleAttribute('data-cramped', cramped)
+		}
+		const observer = new ResizeObserver(check)
+		observer.observe(wrap)
+		observer.observe(dock)
+		check()
+		return () => observer.disconnect()
+	}, [])
+	return ref
+}
+
 export function CanvasToolbar() {
 	const editor = useEditor()
+	const dockRef = useCramped()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
 	const { wasDrag: geoWasDrag, ...geoDragHandlers } = useDockDrag(editor, 'geo')
 
@@ -691,7 +731,7 @@ export function CanvasToolbar() {
 			{currentToolId === 'text' && <TextSettings />}
 			{currentToolId === 'arrow' && <ArrowSettings />}
 
-			<div className="lb-dock">
+			<div className="lb-dock" ref={dockRef}>
 				{/* Getting around, and around things. */}
 				<ToolButton
 					toolId="select"

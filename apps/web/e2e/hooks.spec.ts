@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { countShapes, createBoard, gotoFresh, noteMarkdown, openSettings, skipFirstRunDemo } from './helpers'
+import { countShapes, createBoard, gotoFresh, noteMarkdown, openBoardFromSidebar, openSettings, skipFirstRunDemo } from './helpers'
 
 /**
  * Extensions that add *behaviour* rather than capability.
@@ -85,9 +85,7 @@ test.describe('extension behaviour', () => {
 			.getByRole('checkbox')
 			.uncheck()
 
-		await page.getByRole('tab', { name: 'Untitled board' }).click()
-		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
-		await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
+		await openBoardFromSidebar(page, 'Untitled board')
 
 		await dropUrl(page, 'https://example.com/')
 		// tldraw's own handling again — whatever it makes of it, it is not one of our notes.

@@ -67,7 +67,50 @@
 	--lb-thumb-paper: var(--lb-canvas);
 	--lb-radius: 10px;
 	--lb-font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+
+	/*
+	 * Floating chrome: the sidebar, tabs, agent button and panel, dock and dice tray all float over
+	 * the page as rounded surfaces held off the window edge (see "app shell" below). The design was
+	 * drawn for light only, so the colour-bearing ones here are borrowed from existing dark tokens
+	 * until dark gets values of its own; light sets the real ones.
+	 */
+	--tab-label: var(--lb-surface-2);
+	--tab-label-hover: var(--lb-surface-hover);
+	--tab-label-line: var(--lb-border-strong);
+	--fl-shadow: var(--lb-shadow-2);
+	--fl-shadow-sm: var(--lb-shadow-1);
+	--fl-cta-hover: color-mix(in srgb, var(--lb-text) 85%, var(--lb-bg));
+	--fl-edge: 12px;
+	--fl-radius-panel: 24px;
+	--fl-radius-btn: 14px;
+	--fl-radius-ctl: 10px;
+	--fl-ring: 0 0 0 1px var(--lb-border);
+	--fl-sidebar-w: 264px;
+	--fl-agent-w: 380px;
+	--fl-tool: 44px;
+	/* Exits run at about 70% of the entry, so things leave faster than they arrive. */
+	--mo-in: 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	--mo-out: 140ms cubic-bezier(0.4, 0, 1, 1);
+	/* A small overshoot, for buttons and popovers. */
+	--mo-pop: 240ms cubic-bezier(0.34, 1.4, 0.64, 1);
 	color-scheme: dark;
+}
+@media (max-width: 1023px) {
+	:root {
+		--fl-agent-w: 340px;
+	}
+}
+@media (max-width: 767px) {
+	:root {
+		--fl-edge: 8px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--mo-in: 1ms linear;
+		--mo-out: 1ms linear;
+		--mo-pop: 1ms linear;
+	}
 }
 
 /*
@@ -112,6 +155,13 @@
 	--lb-glow: #5b4ee0;
 	--lb-agent: #7c3aed;
 	--lb-agent-soft: rgb(124 58 237 / 12%);
+	/* Floating chrome (see `:root`). --lb-text-dim on --tab-label is about 5:1; keep it there. */
+	--tab-label: #e3e3e9;
+	--tab-label-hover: #ececf1;
+	--tab-label-line: #cfcfd8;
+	--fl-shadow: 0 1px 2px rgb(20 22 40 / 6%), 0 4px 12px rgb(20 22 40 / 6%), 0 16px 40px rgb(20 22 40 / 10%);
+	--fl-shadow-sm: 0 1px 2px rgb(20 22 40 / 6%), 0 6px 16px rgb(20 22 40 / 8%);
+	--fl-cta-hover: #33333a;
 	color-scheme: light;
 }
 
@@ -439,307 +489,504 @@ button {
 }
 
 /* ================================================================ app shell */
-/* Affine's layout: a persistent sidebar, a tab strip across the top, content underneath. */
+/*
+ * The page runs edge to edge and every piece of chrome floats over it as its own rounded surface,
+ * held `--fl-edge` from the window: the sidebar on the left, folder-label tabs hanging from the top
+ * edge, the agent button (or panel) on the right, and inside the board the dock and the dice tray.
+ *
+ * Two properties say how much of each side the chrome takes, and everything that has to move aside
+ * reads them: `--fl-left` (the open sidebar) and `--fl-right` (the open agent panel). Both stay 0
+ * under 1024px, where the sidebar and the panel cover the board rather than push things aside.
+ */
+
+/* The one surface recipe every floating element shares. */
+.lb-float,
+.lb-dock,
+.lb-expand,
+.lb-nodemenu__panel,
+.lb-dice-tray,
+.lb-trace-hint {
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow);
+	border-radius: var(--fl-radius-panel);
+}
 
 .lb-shell {
-	--lb-shell-header-height: 38px;
-	display: grid;
-	grid-template-columns: 248px minmax(0, 1fr);
+	--fl-left: 0px;
+	--fl-right: 0px;
+	/* Where the page views (home, settings, help) start: clear of the sidebar, or of the round button
+	   that reopens it. The agent shows on boards only, so pages have the right-hand side to themselves. */
+	--fl-page-left: calc(var(--fl-edge) * 2 + 44px);
+	--fl-page-right: 0px;
+	/* The tab strip starts past the button that reopens the sidebar, or past the sidebar itself. */
+	--fl-tabs-left: calc(var(--fl-edge) * 2 + 44px);
+	position: relative;
 	height: 100%;
+	overflow: hidden;
 	background: var(--lb-bg);
-	transition: grid-template-columns 160ms ease;
 }
-.lb-shell--sidebar-collapsed {
-	grid-template-columns: 56px minmax(0, 1fr);
+.lb-shell--board {
+	background: var(--lb-canvas);
 }
-/* The agent panel is a third column, so it takes width from the canvas rather than covering it —
-   you can keep drawing while an agent works, and watch it happen. */
-/*
- * The width is the user's, set from `useAgentPanelWidth` and remembered across reloads; the fallback
- * here is only what the first paint uses. 12px of it is the gutter the transcript reserves for the
- * minimap rail — the panel grew to make room rather than the messages shrinking, because a rail that
- * costs you reading width is a rail you resent.
- */
-.lb-shell--agent-open {
-	grid-template-columns: 248px minmax(0, 1fr) var(--lb-agent-width, 440px);
-}
-.lb-shell--agent-open.lb-shell--sidebar-collapsed {
-	grid-template-columns: 56px minmax(0, 1fr) var(--lb-agent-width, 440px);
+@media (min-width: 1024px) {
+	.lb-shell:not(.lb-shell--sidebar-collapsed) {
+		--fl-left: calc(var(--fl-edge) + var(--fl-sidebar-w));
+		--fl-page-left: calc(var(--fl-edge) * 2 + var(--fl-sidebar-w));
+		--fl-tabs-left: calc(var(--fl-edge) * 2 + var(--fl-sidebar-w));
+	}
+	.lb-shell--agent-open {
+		--fl-right: calc(var(--fl-edge) + var(--lb-agent-width, var(--fl-agent-w)));
+	}
 }
 /*
- * Mid-drag the column must not ease.
- *
- * The 160ms transition above is what makes opening the panel feel like a panel opening, and it is
- * exactly wrong while the pointer is holding the divider: the edge lags behind the cursor the whole
- * way and lands somewhere you were 160ms ago. Selection off for the same reason — a horizontal drag
- * across a transcript otherwise highlights every message it passes.
+ * Mid-drag nothing may ease: the panel edge would lag the cursor and land somewhere it was 200ms ago.
+ * Selection off too — a horizontal drag across a transcript otherwise highlights every message.
  */
+.lb-shell--resizing,
+.lb-shell--resizing * {
+	transition: none !important;
+}
 .lb-shell--resizing {
-	transition: none;
 	cursor: col-resize;
 	user-select: none;
 }
-.lb-shell__body {
-	display: flex;
-	flex-direction: column;
-	grid-column: 2;
-	min-width: 0;
-	min-height: 0;
-}
+/* Its own stacking context, so the board's layers (tldraw's run into the hundreds) stay under the chrome. */
 .lb-shell__content {
-	position: relative;
-	flex: 1;
-	min-height: 0;
+	position: absolute;
+	inset: 0;
+	z-index: 0;
 	overflow: hidden;
+}
+/* Home, Settings and Help sit beside the floating sidebar and the corner buttons, not beneath them. */
+.lb-shell--page .lb-shell__content {
+	top: 0;
+	left: var(--fl-page-left);
+	right: var(--fl-page-right);
+	transition:
+		left var(--mo-in),
+		right var(--mo-in);
+}
+
+/* Small round icon buttons inside the floating panels. */
+.lb-icon-btn {
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--fl-radius-ctl);
+	background: none;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+	transition:
+		background var(--mo-in),
+		color var(--mo-in);
+}
+.lb-icon-btn:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+
+/* Every control in the chrome gets the same visible ring from the keyboard. */
+.lb-sidebar :focus-visible,
+.lb-sidebar-reopen:focus-visible,
+.lb-tabs :focus-visible,
+.lb-agent-fab:focus-visible,
+.lb-agent-panel button:focus-visible,
+.lb-dock :focus-visible,
+.lb-expand :focus-visible,
+.lb-dice-tray :focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
 }
 
 /* ---------------------------------------------------------------- tab strip */
-
+/*
+ * The open boards, as folder labels hanging from the top edge of the window just past the sidebar
+ * (or past the button that reopens it). Board view only.
+ *
+ * The labels stack like folder tabs: the active one in front, each step away one layer further back
+ * (z-index from TabStrip.tsx). A label's side away from the active one is a slope sweeping over the
+ * start of the label behind, which keeps its own rounded foot just past the slope's, so a notch shows
+ * between them. The first label's left side meets the edge square; "+" sits after the last slope.
+ */
 .lb-tabs {
+	position: fixed;
+	top: 0;
+	left: var(--fl-tabs-left);
+	/* How far past the foot of the label in front the one behind starts. The slope runs nearly flat
+	   for ~14px out of its foot before it rises, so this clears that and leaves a visible notch. */
+	--tab-gap: 24px;
+	/* The width of a label's sloped end. */
+	--slope-w: 44px;
+	z-index: 50;
 	display: flex;
-	align-items: stretch;
-	gap: 4px;
-	height: var(--lb-shell-header-height);
-	padding: 6px 8px;
-	background: var(--lb-bg-raised);
-	border-bottom: 1px solid var(--lb-border);
+	align-items: flex-start;
+	/* Clear of the agent button, or of the agent panel while that is open. */
+	max-width: calc(100vw - var(--fl-tabs-left) - var(--fl-right) - var(--fl-edge) - 60px);
+	/* Room underneath for the labels' shadows, which the horizontal scroll would otherwise clip. */
+	padding: 0 0 14px;
 	overflow-x: auto;
+	overflow-y: hidden;
 	scrollbar-width: none;
-	flex-shrink: 0;
+	/* Only the labels take the pointer; the strip's padding must not block the board. */
+	pointer-events: none;
+	transition:
+		left var(--mo-in),
+		max-width var(--mo-in);
 }
 .lb-tabs::-webkit-scrollbar {
 	display: none;
 }
 .lb-tabs__tab {
+	--tab-bg: var(--tab-label);
+	--tab-line: var(--tab-label-line);
+	/* How much of each end is a slope rather than the flat middle; set per side below. */
+	--slope-l: 0px;
+	--slope-r: 0px;
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	max-width: 200px;
-	background: none;
-	border: 1px solid transparent;
-	border-radius: 7px;
+	gap: 8px;
+	flex: 0 1 220px;
+	min-width: 136px;
+	max-width: 240px;
+	height: 38px;
+	padding: 0 8px 0 12px;
+	/* A filter rather than box-shadow, so the slopes cast it too. */
+	filter: drop-shadow(0 2px 3px rgb(20 22 40 / 8%));
 	color: var(--lb-text-dim);
-	padding: 4px 8px;
-	font-size: 12px;
+	font-size: 13px;
 	white-space: nowrap;
-	transition: background 100ms ease, color 100ms ease;
-	/* The whole tab is the click target — div and button variants alike. */
+	pointer-events: auto;
+	/* The whole label is the click target. */
 	cursor: pointer;
 	user-select: none;
 }
-.lb-tabs__tab:hover {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
+/*
+ * The label's shape is drawn inside its own box: the flat middle here, and a slope (`.lb-tabs__slope`)
+ * at each end that has one. So the curve starts within the label, right after its content, instead of
+ * being stuck on past its edge. A side without a slope is a straight side with a rounded foot.
+ */
+.lb-tabs__tab::before {
+	content: '';
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	bottom: 0;
+	left: var(--slope-l);
+	right: var(--slope-r);
+	border: 1px solid var(--tab-line);
+	border-top: 0;
+	border-radius: 0 0 14px 14px;
+	background: var(--tab-bg);
+	transition: background var(--mo-in);
+}
+.lb-tabs__tab--slope-left {
+	--slope-l: var(--slope-w);
+	/* More than the right side's: the colour square is a solid block, where the × is mostly air. */
+	padding-left: calc(var(--slope-w) * 0.65 + 8px);
+}
+.lb-tabs__tab--slope-left::before {
+	/* 1px under the slope, so no hairline opens where the two meet on a fractional pixel. */
+	left: calc(var(--slope-l) - 1px);
+	border-left: 0;
+	border-bottom-left-radius: 0;
+}
+.lb-tabs__tab--slope-right {
+	--slope-r: var(--slope-w);
+	padding-right: calc(var(--slope-w) * 0.65);
+}
+.lb-tabs__tab--slope-right::before {
+	right: calc(var(--slope-r) - 1px);
+	border-right: 0;
+	border-bottom-right-radius: 0;
+}
+/*
+ * A sloped end casts a soft shadow onto the label behind it, which is what makes the stack read as a
+ * stack. On the whole label rather than on the slope, so it falls only outside the label's shape.
+ */
+.lb-tabs__tab--slope-right:not(.lb-tabs__tab--active) {
+	filter: drop-shadow(0 2px 3px rgb(20 22 40 / 8%)) drop-shadow(4px 0 4px rgb(20 22 40 / 16%));
+}
+.lb-tabs__tab--slope-left:not(.lb-tabs__tab--active) {
+	filter: drop-shadow(0 2px 3px rgb(20 22 40 / 8%)) drop-shadow(-4px 0 4px rgb(20 22 40 / 16%));
+}
+.lb-tabs__tab:not(.lb-tabs__tab--active):hover,
+.lb-tabs__tab:not(.lb-tabs__tab--active):focus-visible {
+	--tab-bg: var(--tab-label-hover);
 }
 .lb-tabs__tab--active {
-	background: var(--lb-surface-2);
-	border-color: var(--lb-border);
+	--tab-bg: var(--lb-surface);
+	--tab-line: var(--lb-border);
+	/* A touch longer than the rest, so the one in front reads as in front. */
+	height: 42px;
+	/* As wide as its name needs: the bolder weight and two slopes would otherwise truncate a name
+	   that fits in full while the label is inactive. */
+	flex: 0 0 auto;
+	max-width: 320px;
+	filter: drop-shadow(0 4px 6px rgb(20 22 40 / 14%));
 	color: var(--lb-text);
+	font-weight: 600;
 }
-.lb-tabs__icon {
-	flex-shrink: 0;
-	opacity: 0.8;
+/*
+ * The slopes (TabStrip.tsx's `Slope`): a smooth S from the label's foot up to the window edge, the
+ * outer `--slope-w` of the label.
+ */
+.lb-tabs__slope {
+	position: absolute;
+	z-index: -1;
+	top: 0;
+	/* Down to the middle of the label's 1px bottom line (the last pixel of the box), where the slope's
+	   outline meets it. */
+	height: calc(100% - 0.5px);
+	width: calc(var(--slope-w) * 1.04);
+	overflow: visible;
+	pointer-events: none;
+}
+.lb-tabs__slope--right {
+	right: 0;
+}
+.lb-tabs__slope--left {
+	left: 0;
+	transform: scaleX(-1);
+}
+.lb-tabs__slope-fill {
+	fill: var(--tab-bg);
+	transition: fill var(--mo-in);
+}
+.lb-tabs__slope-line {
+	fill: none;
+	stroke: var(--tab-line);
+	stroke-width: 1px;
+	vector-effect: non-scaling-stroke;
+}
+/*
+ * A slope sweeps over the start of the label behind it. That label begins `--tab-gap` past the
+ * slope's foot, so its own rounded foot shows with a notch of the board between the two, and its
+ * content is padded clear of the slope above.
+ */
+.lb-tabs__tab + .lb-tabs__tab {
+	margin-left: calc(var(--tab-gap) - var(--slope-w));
+}
+.lb-tabs__tab:not(.lb-tabs__tab--slope-left):not(:first-child) {
+	padding-left: calc(var(--slope-w) * 0.75 - var(--tab-gap));
+}
+.lb-tabs__tab:not(.lb-tabs__tab--slope-right) {
+	padding-right: calc(var(--slope-w) * 0.75 - var(--tab-gap));
+}
+/* The board's colour, as the same rounded square the sidebar shows. */
+.lb-tabs__thumb {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 5px;
+	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
 }
 .lb-tabs__label {
+	flex: 1;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	min-width: 0;
-	max-width: 150px;
 }
 .lb-tabs__close {
 	display: grid;
 	place-items: center;
-	background: none;
+	flex: none;
+	width: 24px;
+	height: 24px;
+	padding: 0;
 	border: 0;
+	border-radius: 50%;
+	background: none;
 	color: var(--lb-text-faint);
-	line-height: 1;
-	padding: 2px;
-	border-radius: 4px;
-	flex-shrink: 0;
+	cursor: pointer;
+	transition:
+		background var(--mo-in),
+		color var(--mo-in);
 }
 .lb-tabs__close:hover {
-	background: var(--lb-border);
+	background: rgb(20 22 40 / 8%);
 	color: var(--lb-text);
 }
-/* Pushes everything after it to the right edge of the strip. */
-.lb-tabs__spacer {
-	flex: 1;
-	min-width: 8px;
-}
-/* The agent toggle, mirroring the sidebar's collapse control at the opposite edge.
-   Sticky because the strip scrolls: with enough boards open the tabs would otherwise carry the
-   toggle off the right-hand side, and it has to stay reachable. The opaque background is what makes
-   that work — tabs scroll *under* it rather than through it. */
-.lb-tabs__panel {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	border: 1px solid transparent;
-	border-radius: 7px;
-	background: var(--lb-bg-raised);
-	color: var(--lb-text-dim);
-	cursor: pointer;
-	flex: none;
-	position: sticky;
-	right: 0;
-	transition: background 100ms ease, color 100ms ease;
-}
-.lb-tabs__panel:hover {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
-}
-.lb-tabs__panel--active {
-	background: var(--lb-accent-tint);
-	border-color: var(--lb-border);
-	color: var(--lb-text);
-}
-
+/* After the last label's tail: the same look as the agent button, a size down. */
 .lb-tabs__new {
 	display: grid;
 	place-items: center;
-	background: none;
+	flex: none;
+	width: 32px;
+	height: 32px;
+	/* Tucked in under the flare at the top of the last label's slope, centred on the labels. */
+	position: relative;
+	z-index: 60;
+	margin: 3px 4px 0 calc(var(--slope-w) * -0.3);
+	padding: 0;
 	border: 0;
+	border-radius: 50%;
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
 	color: var(--lb-text-dim);
-	padding: 0 8px;
-	border-radius: 7px;
-	flex-shrink: 0;
+	cursor: pointer;
+	pointer-events: auto;
+	transition:
+		transform var(--mo-pop),
+		color var(--mo-in);
 }
 .lb-tabs__new:hover {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
+	transform: scale(1.06);
+	color: var(--lb-accent);
+}
+.lb-tabs__new:active {
+	transform: scale(0.94);
+}
+.lb-tabs__rename {
+	flex: 1;
+	min-width: 0;
 }
 .lb-tabs__rename input {
-	background: var(--lb-surface-2);
+	width: 100%;
+	height: 24px;
+	padding: 0 6px;
 	border: 1px solid var(--lb-accent);
-	border-radius: 5px;
+	border-radius: 6px;
+	background: var(--lb-surface);
 	color: var(--lb-text);
 	font: inherit;
-	font-size: 12px;
-	padding: 1px 5px;
-	width: 18ch;
 	outline: none;
 }
 
 /* ------------------------------------------------------------------ sidebar */
 
 .lb-sidebar {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 0 10px 14px;
-	border-right: 1px solid var(--lb-border);
-	background: var(--lb-bg-raised);
-	min-height: 0;
-	min-width: 0;
-	overflow: hidden;
-	transition: width 160ms ease, padding 160ms ease, box-shadow 160ms ease;
+	position: fixed;
+	top: var(--fl-edge);
+	bottom: var(--fl-edge);
+	left: var(--fl-edge);
+	z-index: 60;
+	display: grid;
+	grid-template-rows: auto auto minmax(0, 1fr);
+	grid-auto-rows: auto;
+	gap: 8px;
+	width: var(--fl-sidebar-w);
+	max-width: calc(100vw - var(--fl-edge) * 2);
+	padding: 12px;
+	transition:
+		transform var(--mo-in),
+		opacity var(--mo-in);
+}
+.lb-sidebar--collapsed {
+	transform: translateX(calc(-100% - var(--fl-edge) - 8px));
+	opacity: 0;
+	transition:
+		transform var(--mo-out),
+		opacity var(--mo-out);
 }
 .lb-sidebar__brand {
 	display: grid;
-	grid-template-columns: 26px minmax(0, 1fr) 28px;
+	grid-template-columns: 28px minmax(0, 1fr) 36px;
 	align-items: center;
-	gap: 9px;
-	height: var(--lb-shell-header-height);
-	margin: 0 -10px 10px;
-	padding: 4px 18px 5px;
-	border-bottom: 1px solid var(--lb-border);
+	gap: 10px;
+	padding-left: 4px;
 }
 .lb-sidebar__mark {
 	display: grid;
 	place-items: center;
-	width: 26px;
-	height: 26px;
-	border-radius: 7px;
-	background: var(--lb-accent);
-	color: var(--lb-on-accent);
-	font-size: 15px;
-	flex-shrink: 0;
-}
-.lb-sidebar__name {
-	font-size: 14px;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-	overflow: hidden;
-	white-space: nowrap;
-}
-.lb-sidebar__collapse {
-	display: grid;
-	place-items: center;
 	width: 28px;
 	height: 28px;
-	padding: 0;
-	border: 0;
-	border-radius: 7px;
-	background: none;
-	color: var(--lb-text-dim);
-	transition: background 100ms ease, color 100ms ease;
+	border-radius: 8px;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
 }
-.lb-sidebar__collapse:hover {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
+.lb-sidebar__name {
+	overflow: hidden;
+	font-size: 16px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
 }
 .lb-sidebar__new {
 	display: flex;
 	align-items: center;
-	gap: 7px;
+	justify-content: center;
+	gap: 8px;
 	width: 100%;
-	background: var(--lb-surface-2);
-	border: 1px solid var(--lb-border);
-	border-radius: 8px;
-	color: var(--lb-text);
-	padding: 8px 10px;
-	font-size: 13px;
-	font-weight: 500;
-	margin-bottom: 10px;
-	transition: background 120ms ease;
+	height: 44px;
+	margin-bottom: 4px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--lb-text);
+	color: var(--lb-bg);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background var(--mo-in),
+		transform var(--mo-pop);
 }
 .lb-sidebar__new:hover {
-	background: var(--lb-surface-hover);
+	background: var(--fl-cta-hover);
+}
+.lb-sidebar__new:active {
+	transform: scale(0.98);
 }
 .lb-sidebar__sections {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
-	gap: 18px;
+	gap: 14px;
 	min-height: 0;
-	overflow-y: auto;
+	/* Room for the focus rings, which the scroller would otherwise clip. */
+	margin: 0 -4px;
+	padding: 2px 4px 8px;
 	overflow-x: hidden;
+	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--lb-border-strong) transparent;
 }
+.lb-sidebar__library,
+.lb-sidebar__board-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
 .lb-sidebar__item {
 	display: grid;
-	grid-template-columns: 20px 1fr auto;
+	grid-template-columns: 22px minmax(0, 1fr) auto;
 	align-items: center;
-	gap: 9px;
+	gap: 10px;
 	width: 100%;
-	background: none;
-	border: 0;
-	border-radius: 8px;
-	color: var(--lb-text-dim);
-	padding: 7px 10px;
-	font-size: 13px;
-	text-align: left;
-	transition: background 100ms ease, color 100ms ease;
 	min-width: 0;
+	min-height: 40px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 12px;
+	background: none;
+	color: var(--lb-text);
+	font-size: 14px;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background var(--mo-in),
+		color var(--mo-in);
 }
 .lb-sidebar__item:hover {
 	background: var(--lb-surface-2);
-	color: var(--lb-text);
 }
-.lb-sidebar__item--active {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
-	font-weight: 500;
+.lb-sidebar__item--active,
+.lb-sidebar__item--active:hover {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	font-weight: 600;
 }
 .lb-sidebar__icon {
 	display: grid;
 	place-items: center;
-	font-size: 13px;
-	opacity: 0.85;
-	flex-shrink: 0;
+	color: var(--lb-text-dim);
+}
+.lb-sidebar__item--active .lb-sidebar__icon {
+	color: inherit;
 }
 .lb-sidebar__label {
 	overflow: hidden;
@@ -747,105 +994,99 @@ button {
 	white-space: nowrap;
 }
 .lb-sidebar__count {
-	font-size: 11px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 400;
 	font-variant-numeric: tabular-nums;
-	color: var(--lb-text-faint);
 }
 .lb-sidebar__section {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 	flex-shrink: 0;
+	min-width: 0;
 }
 .lb-sidebar__section-title {
-	font-size: 10px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: var(--fl-radius-ctl);
+	background: none;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-align: left;
 	text-transform: uppercase;
-	letter-spacing: 0.07em;
-	color: var(--lb-text-faint);
-	padding: 0 10px 4px;
+	cursor: pointer;
 }
-.lb-sidebar__icon--star {
+.lb-sidebar__section-title:hover {
+	color: var(--lb-text);
+}
+.lb-sidebar__section-title svg {
+	transition: transform var(--mo-in);
+}
+.lb-sidebar__section-title[aria-expanded='false'] svg {
+	transform: rotate(-90deg);
+}
+.lb-sidebar__thumb {
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
+}
+.lb-sidebar__star {
 	color: var(--lb-star);
-	font-size: 11px;
 }
-.lb-sidebar__favorites-shortcut {
-	display: none;
+.lb-sidebar__item--active .lb-sidebar__star {
+	color: var(--lb-accent);
+}
+.lb-sidebar__device {
+	color: var(--lb-text-faint);
 }
 .lb-sidebar__empty {
 	margin: 0;
-	padding: 4px 10px 1px 39px;
-	color: var(--lb-text-faint);
-	font-size: 11px;
+	padding: 4px 10px 2px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
 	line-height: 1.45;
 }
-.lb-sidebar__catalog {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-	padding-bottom: 8px;
-}
-.lb-sidebar__catalog-header {
+.lb-sidebar__footer {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 28px;
-	align-items: center;
-	min-width: 0;
+	grid-template-columns: 1fr 1fr;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
 }
-.lb-sidebar__catalog-link {
-	grid-template-columns: 20px minmax(0, 1fr) auto;
-	grid-column: 1;
-	grid-row: 1;
-	padding-right: 5px;
+.lb-sidebar__footer .lb-sidebar__item {
+	grid-template-columns: auto auto;
+	justify-content: center;
+	gap: 8px;
 }
-.lb-sidebar__disclosure {
-	display: grid;
-	place-items: center;
-	grid-column: 2;
-	grid-row: 1;
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	border: 0;
-	border-radius: 7px;
-	background: none;
-	color: var(--lb-text-faint);
-	transition: background 100ms ease, color 100ms ease;
+.lb-sidebar__footer .lb-sidebar__item svg {
+	color: var(--lb-text-dim);
 }
-.lb-sidebar__disclosure:hover {
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
+.lb-sidebar__footer .lb-sidebar__item--active svg {
+	color: inherit;
 }
-.lb-sidebar__disclosure svg {
-	transition: transform 120ms ease;
-}
-.lb-sidebar__disclosure[aria-expanded='false'] svg {
-	transform: rotate(-90deg);
-}
-.lb-sidebar__board-list {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-}
-.lb-sidebar__board-list .lb-sidebar__item {
-	padding-left: 18px;
-}
+
 /* Boards moving between this browser and the server, on every screen (Sidebar.tsx). */
 .lb-sidebar__moves {
 	display: grid;
 	grid-template-columns: 20px 1fr;
 	align-items: start;
 	gap: 9px;
-	margin: 8px 0;
 	padding: 9px 10px;
 	border: 1px solid var(--lb-border);
-	border-radius: 8px;
+	border-radius: 12px;
 	background: var(--lb-surface);
 	color: var(--lb-text);
 	font-size: 12px;
 	text-align: left;
 	cursor: pointer;
-	flex-shrink: 0;
 }
 div.lb-sidebar__moves {
 	cursor: default;
@@ -889,136 +1130,93 @@ div.lb-sidebar__moves {
 		animation: none !important;
 	}
 }
-.lb-sidebar--collapsed .lb-sidebar__moves {
-	grid-template-columns: 20px;
-	padding: 9px 6px;
+
+/* The round button that stands in for the collapsed sidebar, popping in just after it leaves. */
+.lb-sidebar-reopen {
+	position: fixed;
+	top: var(--fl-edge);
+	left: var(--fl-edge);
+	z-index: 60;
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+	opacity: 0;
+	transform: scale(0.6);
+	pointer-events: none;
+	transition:
+		opacity var(--mo-out),
+		transform var(--mo-out);
 }
-.lb-sidebar--collapsed .lb-sidebar__moves-text {
-	display: none;
+.lb-shell--sidebar-collapsed .lb-sidebar-reopen {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+	transition:
+		opacity var(--mo-pop) 80ms,
+		transform var(--mo-pop) 80ms,
+		color var(--mo-in);
+}
+.lb-shell--sidebar-collapsed .lb-sidebar-reopen:hover {
+	color: var(--lb-text);
+	transform: scale(1.06);
+	transition:
+		transform var(--mo-pop),
+		color var(--mo-in);
 }
 
-.lb-sidebar__footer {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	flex-shrink: 0;
-	padding-top: 8px;
-	border-top: 1px solid var(--lb-border);
-}
+/* Under 1024px the open sidebar covers the board, with a scrim that closes it. */
 .lb-sidebar__scrim {
 	display: none;
 }
-
-/* The compact rail keeps navigation available without taking meaningful room from the canvas. */
-.lb-sidebar--collapsed {
-	padding-inline: 7px;
-}
-.lb-sidebar--collapsed .lb-sidebar__brand {
-	display: flex;
-	justify-content: center;
-	margin-inline: -7px;
-	padding-inline: 7px;
-}
-.lb-sidebar--collapsed .lb-sidebar__mark,
-.lb-sidebar--collapsed .lb-sidebar__name,
-.lb-sidebar--collapsed .lb-sidebar__label,
-.lb-sidebar--collapsed .lb-sidebar__count,
-.lb-sidebar--collapsed .lb-sidebar__section-title,
-.lb-sidebar--collapsed .lb-sidebar__empty,
-.lb-sidebar--collapsed .lb-sidebar__disclosure,
-.lb-sidebar--collapsed .lb-sidebar__board-list {
-	display: none;
-}
-.lb-sidebar--collapsed .lb-sidebar__collapse {
-	width: 40px;
-	height: 28px;
-}
-.lb-sidebar--collapsed .lb-sidebar__new,
-.lb-sidebar--collapsed .lb-sidebar__item {
-	display: grid;
-	grid-template-columns: 1fr;
-	place-items: center;
-	width: 40px;
-	min-height: 34px;
-	margin-inline: auto;
-	padding: 7px;
-}
-.lb-sidebar--collapsed .lb-sidebar__new {
-	margin-bottom: 10px;
-}
-.lb-sidebar--collapsed .lb-sidebar__sections {
-	gap: 10px;
-}
-.lb-sidebar--collapsed .lb-sidebar__section {
-	gap: 2px;
-}
-.lb-sidebar--collapsed .lb-sidebar__favorites .lb-sidebar__item {
-	display: none;
-}
-.lb-sidebar--collapsed .lb-sidebar__favorites-shortcut {
-	display: grid;
-	place-items: center;
-	width: 40px;
-	height: 34px;
-	margin-inline: auto;
-	padding: 7px;
-	border: 0;
-	border-radius: 8px;
-	background: none;
-	color: var(--lb-star);
-	transition: background 100ms ease, color 100ms ease;
-}
-.lb-sidebar--collapsed .lb-sidebar__favorites-shortcut:hover {
-	background: var(--lb-surface-2);
-}
-.lb-sidebar--collapsed .lb-sidebar__catalog-header {
-	display: block;
-}
-.lb-sidebar--collapsed .lb-sidebar__catalog-link {
-	padding: 7px;
-}
-.lb-sidebar--collapsed .lb-sidebar__footer {
-	align-items: center;
-}
-
-/* On a narrow screen, the expanded panel overlays the canvas while the 56px rail stays reserved. */
-@media (max-width: 720px) {
-	.lb-shell,
-	.lb-shell--sidebar-collapsed {
-		position: relative;
-		grid-template-columns: 56px minmax(0, 1fr);
-	}
-	.lb-sidebar {
-		position: absolute;
-		inset: 0 auto 0 0;
-		z-index: 30;
-		width: 248px;
-		box-shadow: var(--lb-shadow-1);
-	}
-	.lb-shell--sidebar-collapsed .lb-sidebar {
-		width: 56px;
-		box-shadow: none;
-	}
-	.lb-sidebar__scrim {
+@media (max-width: 1023px) {
+	.lb-shell:not(.lb-shell--sidebar-collapsed) .lb-sidebar__scrim {
 		display: block;
-		position: absolute;
+		position: fixed;
 		inset: 0;
-		z-index: 20;
+		z-index: 55;
 		padding: 0;
 		border: 0;
 		background: var(--lb-backdrop);
 	}
-	.lb-shell--sidebar-collapsed .lb-sidebar__scrim {
-		display: none;
-	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.lb-shell,
-	.lb-sidebar,
-	.lb-sidebar__disclosure svg {
-		transition: none;
-	}
+/* ------------------------------------------------------------- agent button */
+
+.lb-agent-fab {
+	position: fixed;
+	top: var(--fl-edge);
+	right: var(--fl-edge);
+	z-index: 60;
+	display: grid;
+	place-items: center;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	color: var(--lb-agent);
+	cursor: pointer;
+	transition:
+		opacity var(--mo-in) 80ms,
+		transform var(--mo-pop) 80ms;
+}
+.lb-agent-fab:hover {
+	transform: scale(1.06);
+	transition: transform var(--mo-pop);
+}
+.lb-shell--agent-open .lb-agent-fab {
+	opacity: 0;
+	transform: scale(0.6);
+	pointer-events: none;
+	transition:
+		opacity var(--mo-out),
+		transform var(--mo-out);
 }
 
 /* --------------------------------------------------------------- main panel */
@@ -1849,23 +2047,34 @@ div.lb-sidebar__moves {
 	line-height: 1.5;
 }
 
-/* Where a server board stands with the server (canvas/SyncStatusPill.tsx): quiet unless it matters. */
+/*
+ * Where a server board stands with the server (canvas/SyncStatusPill.tsx): quiet unless it matters.
+ * Beside the round agent button, level with it, or beside the agent panel while that is open.
+ */
 .lb-sync-pill {
 	position: absolute;
-	top: 10px;
-	right: 12px;
+	top: calc(var(--fl-edge) + 11px);
+	right: calc(var(--fl-edge) + 58px);
 	z-index: 300;
+	transition: right var(--mo-in);
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	padding: 5px 10px;
-	border: 1px solid var(--lb-border);
 	border-radius: 999px;
-	background: var(--lb-overlay);
-	box-shadow: var(--lb-shadow-1);
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
 	color: var(--lb-text-dim);
 	font-size: 12px;
 	pointer-events: none;
+}
+.lb-shell--agent-open .lb-sync-pill {
+	right: calc(var(--fl-right) + var(--fl-edge));
+}
+@media (max-width: 1023px) {
+	.lb-shell--agent-open .lb-sync-pill {
+		right: calc(var(--fl-edge) + 58px);
+	}
 }
 .lb-sync-pill--saving svg {
 	animation: lb-spin 1.2s linear infinite;
@@ -1874,8 +2083,8 @@ div.lb-sidebar__moves {
 	color: var(--lb-money);
 }
 .lb-sync-pill--warn {
-	border-color: var(--lb-danger-line);
-	background: var(--lb-danger-tint);
+	box-shadow: 0 0 0 1px var(--lb-danger-line), var(--fl-shadow-sm);
+	background: color-mix(in srgb, var(--lb-danger) 8%, var(--lb-surface));
 	color: var(--lb-danger);
 }
 .lb-debug-badge {
@@ -1916,12 +2125,16 @@ div.lb-sidebar__moves {
 /* ------------------------------------------------------------- bottom dock */
 /*
  * The custom toolbar (canvas/CanvasToolbar.tsx), replacing tldraw's. Positioned against
- * `.tlui-layout`, which is the positioned, full-height UI layer the Toolbar slot renders into.
+ * `.tlui-layout`, which is the positioned, full-height UI layer the Toolbar slot renders into — and
+ * which runs under the app's floating chrome, so the dock centres on the part of the board the
+ * sidebar and the agent panel leave visible (`--fl-left`, `--fl-right`).
  */
 .lb-dock-wrap {
 	position: absolute;
-	bottom: 14px;
-	left: 50%;
+	bottom: var(--fl-edge);
+	left: calc(50% + (var(--fl-left, 0px) - var(--fl-right, 0px)) / 2);
+	/* Never wider than the board the sidebar and the agent panel leave; past that the dock scrolls. */
+	max-width: calc(100% - var(--fl-left, 0px) - var(--fl-right, 0px) - var(--fl-edge) * 2);
 	transform: translateX(-50%);
 	display: flex;
 	flex-direction: column;
@@ -1930,45 +2143,83 @@ div.lb-sidebar__moves {
 	z-index: 300;
 	pointer-events: none;
 	font-family: var(--lb-font);
+	transition: left var(--mo-in);
 }
 .lb-dock,
 .lb-expand {
 	display: flex;
 	align-items: center;
-	gap: 3px;
-	/* Slightly translucent over a blur, so the canvas reads through the chrome — the Affine look. */
-	background: var(--lb-panel);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
-	border: 1px solid var(--lb-border-strong);
-	border-radius: 14px;
+	gap: 2px;
 	padding: 6px;
-	box-shadow: var(--lb-shadow-2);
 	pointer-events: all;
 }
+.lb-dock {
+	--dock-radius: 26px;
+	--dock-pad: 6px;
+	max-width: 100%;
+	padding: var(--dock-pad);
+	border-radius: var(--dock-radius);
+}
+/* Narrower than its tools (see `useCramped` in CanvasToolbar.tsx): scroll inside the pill. */
+.lb-dock[data-cramped] {
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.lb-dock[data-cramped]::-webkit-scrollbar {
+	display: none;
+}
 .lb-dock__tool {
+	position: relative;
 	display: grid;
 	place-items: center;
-	width: 40px;
-	height: 40px;
+	flex: none;
+	width: var(--fl-tool);
+	height: var(--fl-tool);
+	padding: 0;
 	background: none;
 	border: 0;
-	border-radius: 10px;
+	/* Concentric with the pill around it: its radius less the padding between them. */
+	border-radius: calc(var(--dock-radius, 26px) - var(--dock-pad, 6px));
 	color: var(--lb-text-dim);
-	transition: background 100ms ease, color 100ms ease, transform 100ms ease;
+	transition:
+		background var(--mo-in),
+		color var(--mo-in),
+		transform var(--mo-pop),
+		box-shadow var(--mo-in);
 }
 .lb-dock__tool:hover {
-	background: var(--lb-surface-2);
+	background: var(--lb-surface-hover);
 	color: var(--lb-text);
-	transform: translateY(-1px);
 }
-.lb-dock__tool--active {
-	background: var(--lb-accent-tint);
-	color: var(--lb-accent);
-	transform: none;
+.lb-dock__tool:active {
+	transform: scale(0.9);
+}
+/* The bubbly part: a solid accent tool with a shade along its foot and a glow under it. */
+.lb-dock__tool--active,
+.lb-dock__tool--active:hover {
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	box-shadow:
+		inset 0 -2px 0 rgb(0 0 0 / 18%),
+		0 4px 10px rgb(59 91 219 / 30%);
 }
 .lb-dock__tool svg {
 	display: block;
+}
+/* The digit that selects the tool, tucked into the corner — far enough in to sit inside its curve. */
+.lb-dock__digit {
+	position: absolute;
+	right: 8px;
+	bottom: 6px;
+	font-size: 9px;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--lb-text-faint);
+	pointer-events: none;
+}
+.lb-dock__tool--active .lb-dock__digit {
+	color: inherit;
+	opacity: 0.8;
 }
 /*
  * A struck-through glyph — "this is switched off", for the relation-view button's `none` state.
@@ -1979,38 +2230,65 @@ div.lb-sidebar__moves {
  * needing to be positioned.
  */
 .lb-dock__tool--struck {
-	position: relative;
+	color: var(--lb-text-faint);
 }
 .lb-dock__tool--struck::after {
 	content: '';
 	position: absolute;
-	width: 22px;
+	width: 24px;
 	height: 1.5px;
 	border-radius: 1px;
 	background: currentColor;
 	transform: rotate(-45deg);
 	/* A hairline of the dock behind it, so the slash reads as *over* the glyph rather than part of it. */
-	box-shadow: 0 -1.5px 0 var(--lb-panel);
+	box-shadow: 0 -1.5px 0 var(--lb-surface);
+}
+/* Relation view "all": accent on tint, quieter than a selected tool because it is a view, not a mode. */
+.lb-dock__tool[data-state='all'],
+.lb-dock__tool[data-state='all']:hover {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	box-shadow: none;
 }
 .lb-dock__sep,
 .lb-expand__sep {
+	flex: none;
 	width: 1px;
-	align-self: stretch;
-	margin: 6px 6px;
+	height: 24px;
+	margin: 0 6px;
 	background: var(--lb-border);
-	flex-shrink: 0;
 }
 
-/* The settings row that expands above the dock for the active tool. */
+/* The settings row that rises above the dock for the active tool: a smaller bubble. */
 .lb-expand {
-	padding: 6px 10px;
+	--dock-radius: 20px;
+	--dock-pad: 6px;
 	gap: 4px;
-	border-radius: 12px;
+	max-width: 100%;
+	padding: 6px 8px;
+	border-radius: 20px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	animation: lb-expand-in var(--mo-pop);
+}
+.lb-expand::-webkit-scrollbar {
+	display: none;
+}
+@keyframes lb-expand-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.96);
+	}
 }
 .lb-expand .lb-dock__tool {
-	width: 34px;
-	height: 34px;
-	border-radius: 8px;
+	width: 36px;
+	height: 36px;
+}
+/* A shorter glow than the dock's, so the row's scroller does not clip it. */
+.lb-expand .lb-dock__tool--active {
+	box-shadow:
+		inset 0 -2px 0 rgb(0 0 0 / 18%),
+		0 2px 4px rgb(59 91 219 / 30%);
 }
 /*
  * A settings row too wide for one line — the shape expansion, which carries a border palette and a
@@ -2039,63 +2317,102 @@ div.lb-sidebar__moves {
 .lb-expand__group {
 	display: flex;
 	align-items: center;
-	gap: 5px;
+	gap: 0;
 }
+/*
+ * A 36px target with a 20px dot in it. The button itself is transparent and the dot is its `::before`,
+ * painted in `currentColor` (set inline), so nothing is drawn at the button's own edge: the selected
+ * one gets a 2px gap and a 2px ring in its colour, around the dot and nowhere else.
+ */
 .lb-expand__swatch {
-	width: 21px;
-	height: 21px;
-	border-radius: 50%;
-	border: 0;
+	position: relative;
+	flex: none;
+	width: 36px;
+	height: 36px;
 	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: none;
 	cursor: pointer;
-	transition: transform 100ms ease;
+	transition: transform var(--mo-pop);
+}
+.lb-expand__swatch::before {
+	content: '';
+	position: absolute;
+	inset: 8px;
+	border-radius: 50%;
+	background: currentColor;
+	transition: box-shadow var(--mo-in);
 }
 .lb-expand__swatch:hover {
-	transform: scale(1.15);
+	transform: scale(1.12);
+}
+.lb-expand__swatch--active::before {
+	box-shadow:
+		0 0 0 2px var(--lb-surface),
+		0 0 0 4px currentColor;
+}
+/* White paper needs an edge to be seen on the row, and a visible ring when it is the one chosen. */
+.lb-expand__swatch--paper::before {
+	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
+}
+.lb-expand__swatch--paper.lb-expand__swatch--active::before {
+	box-shadow:
+		inset 0 0 0 1px var(--lb-border-strong),
+		0 0 0 2px var(--lb-surface),
+		0 0 0 4px var(--lb-border-strong);
+}
+/* A pin's colour: a smaller head in a thin ring, so it doesn't read as the note's colour beside it. */
+.lb-expand__swatch--pin::before {
+	inset: 11px;
+	box-shadow:
+		0 0 0 2px var(--lb-surface),
+		0 0 0 3px var(--lb-border-strong);
+}
+.lb-expand__swatch--pin.lb-expand__swatch--active::before {
+	box-shadow:
+		0 0 0 2px var(--lb-surface),
+		0 0 0 3px var(--lb-border-strong),
+		0 0 0 5px var(--lb-surface),
+		0 0 0 7px currentColor;
 }
 /*
  * "No fill" — a ring with a slash through it, which is the convention for transparency everywhere
  * else it appears. A checkerboard would read as a *pattern* fill, which tldraw also has.
  */
 .lb-expand__swatch--none {
-	position: relative;
+	color: var(--lb-text-dim);
+	overflow: hidden;
+}
+.lb-expand__swatch--none::before {
 	background: none;
 	border: 1.5px solid var(--lb-border-strong);
-	overflow: hidden;
 }
 .lb-expand__swatch--none::after {
 	content: '';
 	position: absolute;
 	top: 50%;
-	left: -10%;
-	width: 120%;
+	left: 8px;
+	width: 20px;
 	height: 1.5px;
 	background: var(--lb-text-faint);
 	transform: rotate(-45deg);
 }
-.lb-expand__swatch--active {
-	outline: 2px solid var(--lb-accent);
-	outline-offset: 2px;
-}
-/* A note's paper colours include white, which needs an edge to be seen on the row. */
-.lb-expand__swatch--paper {
-	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
-}
 .lb-expand__size {
 	display: grid;
 	place-items: center;
-	width: 30px;
-	height: 30px;
+	width: 36px;
+	height: 36px;
 	background: none;
 	border: 0;
-	border-radius: 8px;
+	border-radius: calc(var(--dock-radius) - var(--dock-pad));
 	color: var(--lb-text-dim);
 }
 .lb-expand__size:hover {
-	background: var(--lb-surface-2);
+	background: var(--lb-surface-hover);
 }
 .lb-expand__size--active {
-	background: var(--lb-surface-2);
+	background: var(--lb-accent-tint);
 	color: var(--lb-accent);
 }
 .lb-expand__dot {
@@ -2106,69 +2423,67 @@ div.lb-sidebar__moves {
 .lb-expand__label {
 	display: grid;
 	place-items: center;
-	min-width: 30px;
-	height: 30px;
+	min-width: 36px;
+	height: 36px;
 	background: none;
 	border: 0;
-	border-radius: 8px;
+	border-radius: calc(var(--dock-radius) - var(--dock-pad));
 	color: var(--lb-text-dim);
 	font-size: 12px;
 	font-weight: 600;
-	padding: 0 6px;
+	padding: 0 8px;
 }
 .lb-expand__label:hover {
-	background: var(--lb-surface-2);
+	background: var(--lb-surface-hover);
 	color: var(--lb-text);
 }
 .lb-expand__label--active {
-	background: var(--lb-surface-2);
+	background: var(--lb-accent-tint);
 	color: var(--lb-accent);
 }
 
 /* ----------------------------------------------------------- node picker */
 /*
- * The dock's node picker (canvas/NodeMenu.tsx): one button, and a panel of tiles above it.
+ * The dock's node picker (canvas/NodeMenu.tsx): one button, and a floating panel of tiles above it.
  *
- * Anchored to the button rather than centred on the dock, because it belongs to the button — it opens
- * where you clicked, and the dock is wide enough that a centred panel would appear somewhere you were
- * not looking. `right: 0` keeps it inside the viewport, since the button is at the dock's right end.
+ * Right-aligned with the dock rather than centred on it, because it belongs to the button at the
+ * dock's right end — it opens where you clicked, and a centred panel would appear somewhere you were
+ * not looking.
  */
 .lb-nodemenu {
-	position: relative;
 	display: flex;
 }
+/* Anchored to the dock's wrapper, not the button, so a scrolling dock cannot clip it. */
 .lb-nodemenu__panel {
 	position: absolute;
-	bottom: calc(100% + 10px);
+	bottom: calc(var(--fl-tool) + 26px);
 	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	width: min(340px, calc(100vw - 32px));
-	padding: 10px;
-	background: var(--lb-panel);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
-	border: 1px solid var(--lb-border-strong);
-	border-radius: 14px;
-	box-shadow: var(--lb-shadow-2);
+	gap: 10px;
+	width: min(400px, calc(100vw - var(--fl-edge) * 2));
+	padding: 12px;
 	color: var(--lb-text);
 	/* The dock is `align-items: center`, which would otherwise stretch nothing but does make the
 	   absolute child's static position wander as the dock's height changes. */
 	text-align: left;
+	transform-origin: bottom right;
+	animation: lb-expand-in var(--mo-pop);
 }
 .lb-nodemenu__search {
+	height: 40px;
+	padding: 0 16px;
+	border: 0;
+	border-radius: 999px;
 	background: var(--lb-surface-2);
-	border: 1px solid var(--lb-border);
-	border-radius: 9px;
+	box-shadow: inset 0 0 0 1px var(--lb-border);
 	color: var(--lb-text);
 	font-family: inherit;
-	font-size: 13px;
-	padding: 8px 10px;
+	font-size: 14px;
 }
 .lb-nodemenu__search:focus {
 	outline: none;
-	border-color: var(--lb-accent);
+	box-shadow: inset 0 0 0 1.5px var(--lb-accent);
 }
 .lb-nodemenu__search::placeholder {
 	color: var(--lb-text-faint);
@@ -2178,53 +2493,70 @@ div.lb-sidebar__moves {
 	   the same arrangement as the palette's list. */
 	position: relative;
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-	gap: 6px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 4px;
 	max-height: 46vh;
 	overflow-y: auto;
 }
 .lb-nodemenu__tile {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 5px;
-	padding: 11px 6px 9px;
+	gap: 4px;
+	padding: 12px 6px 10px;
 	background: none;
 	border: 1px solid transparent;
-	border-radius: 11px;
-	color: var(--lb-text-dim);
+	border-radius: 16px;
+	color: var(--lb-text);
 	font-family: inherit;
-	transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
+	transition:
+		background var(--mo-in),
+		border-color var(--mo-in);
 }
 .lb-nodemenu__tile:hover {
 	background: var(--lb-surface-2);
-	color: var(--lb-text);
 }
 /* The virtual highlight — the keyboard's position in the grid, which is not DOM focus (that stays in
    the search box), so it needs a mark of its own. */
 .lb-nodemenu__tile--on {
 	background: var(--lb-accent-tint);
 	border-color: var(--lb-accent);
-	color: var(--lb-accent);
 }
 .lb-nodemenu__tileicon {
 	display: grid;
 	place-items: center;
-	height: 24px;
+	width: 44px;
+	height: 44px;
+	margin-bottom: 4px;
+	border-radius: var(--fl-radius-btn);
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
 }
 .lb-nodemenu__tileicon svg {
 	display: block;
 }
 .lb-nodemenu__tilelabel {
-	font-size: 11.5px;
-	font-weight: 500;
+	font-size: 13px;
+	font-weight: 600;
 	line-height: 1.25;
 	text-align: center;
 	/* A long label wraps rather than widening the column: the grid's tracks are what keep the tiles
 	   square-ish, and one "Gantt chart from Jira" would otherwise reshape the whole panel. */
 	overflow-wrap: anywhere;
 }
+.lb-nodemenu__tilesource {
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 .lb-nodemenu__tilekbd {
+	position: absolute;
+	top: 6px;
+	right: 6px;
 	min-width: 15px;
 	padding: 0 4px 1px;
 	background: var(--lb-surface-2);
@@ -2244,7 +2576,7 @@ div.lb-sidebar__moves {
 .lb-nodemenu__empty {
 	margin: 0;
 	padding: 14px 8px 18px;
-	font-size: 12.5px;
+	font-size: 13px;
 	line-height: 1.5;
 	color: var(--lb-text-dim);
 }
@@ -2373,12 +2705,6 @@ div.lb-sidebar__moves {
 	background: none;
 	border: 2.5px solid var(--lb-border-strong);
 	box-shadow: none;
-}
-/* The dock's pin swatches: a pin head, as in the selection toolbar. */
-.lb-expand__swatch--pin {
-	box-shadow:
-		inset 0 0 0 3px var(--lb-surface),
-		inset 0 0 0 4px var(--lb-border-strong);
 }
 /* A pin's colour: a smaller dot in a ring, a pin head, so it doesn't read as the note's colour beside it. */
 .lb-swatch--pin {
@@ -4396,6 +4722,7 @@ button.lb-props__eye:hover {
 /* The dock stays in view but out of reach, like the rest of the board. */
 .lb-dock-wrap {
 	transition:
+		left var(--mo-in),
 		opacity 250ms ease,
 		filter 250ms ease;
 }
@@ -4699,28 +5026,25 @@ button.lb-props__eye:hover {
 	background: var(--lb-surface-hover);
 }
 
-/* "You are in a mode" — sits where a tool's settings row sits, above the dock. */
+/* "You are in a mode" — a floating pill where a tool's settings row sits, above the dock. */
 .lb-trace-hint {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 6px 12px;
+	padding: 8px 10px 8px 14px;
 	border-radius: 999px;
-	background: var(--lb-panel);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
-	border: 1px solid var(--lb-border-strong);
-	box-shadow: var(--lb-shadow-2);
-	color: var(--lb-text);
-	font-size: 12px;
+	color: var(--lb-accent);
+	font-size: 13px;
+	font-weight: 500;
 	pointer-events: none;
+	animation: lb-expand-in var(--mo-pop);
 }
 .lb-trace-hint svg {
-	color: var(--lb-glow);
+	color: var(--lb-accent);
 }
 .lb-trace-hint__kbd {
 	padding: 1px 6px;
-	border-radius: 5px;
+	border-radius: 6px;
 	border: 1px solid var(--lb-border);
 	background: var(--lb-surface-2);
 	color: var(--lb-text-dim);
@@ -8810,36 +9134,52 @@ button.lb-props__eye:hover {
 }
 
 /* ============================================================== agent panel */
-/* A conversation with Claude Code, docked beside the board it is editing. Deliberately plain: the
+/* A conversation with Claude Code, floating beside the board it is editing. Deliberately plain: the
    interesting output is the board, and a panel competing with it for attention would be wrong. */
 
+/*
+ * Full window height at the right, taking turns with the round agent button. Mounted while closed
+ * (slid off and `inert`, see AgentPanel.tsx), so closing it keeps a half-written message.
+ */
 .lb-agent-panel {
-	grid-column: 3;
-	position: relative;
+	position: fixed;
+	top: var(--fl-edge);
+	right: var(--fl-edge);
+	bottom: var(--fl-edge);
+	z-index: 60;
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
+	width: var(--lb-agent-width, var(--fl-agent-w));
+	max-width: calc(100vw - var(--fl-edge) * 2);
 	min-height: 0;
-	background: var(--lb-bg-raised);
-	border-left: 1px solid var(--lb-border);
+	transform: translateX(calc(100% + var(--fl-edge) * 2));
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		transform var(--mo-out),
+		opacity var(--mo-out),
+		visibility 0s linear 140ms;
+}
+.lb-agent-panel--open {
+	transform: none;
+	opacity: 1;
+	visibility: visible;
+	transition:
+		transform var(--mo-in),
+		opacity var(--mo-in);
 }
 
 /*
- * The resize handle, straddling the panel's left border.
+ * The resize handle, along the panel's left edge.
  *
- * Out of flow and hanging 3px over the canvas, so the target is 7px wide while the line the user sees
- * stays the 1px border it always was. The panel is painted after the shell body, so those 3px sit on
- * top of tldraw without needing a stacking context of their own — but the z-index is stated anyway,
- * because "later sibling wins" is not a thing to leave a resize handle depending on.
- *
- * It shows itself on hover rather than always: a permanent vertical accent beside the board would
- * read as a second border.
+ * 7px of target straddling the edge, inset from the rounded corners. It shows itself on hover rather
+ * than always: a permanent vertical accent beside the board would read as a second border.
  */
 .lb-agent-panel__divider {
 	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: -3px;
+	top: var(--fl-radius-panel);
+	bottom: var(--fl-radius-panel);
+	left: -4px;
 	width: 7px;
 	z-index: 3;
 	cursor: col-resize;
@@ -8849,8 +9189,9 @@ button.lb-props__eye:hover {
 .lb-agent-panel__divider::after {
 	content: '';
 	position: absolute;
-	inset: 0 3px;
-	background: var(--lb-accent);
+	inset: 0 2px;
+	border-radius: 2px;
+	background: var(--lb-agent);
 	opacity: 0;
 	transition: opacity 120ms ease;
 }
@@ -8867,19 +9208,36 @@ button.lb-props__eye:hover {
 .lb-agent-panel__header {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	height: var(--lb-shell-header-height);
-	padding: 0 8px 0 12px;
+	gap: 10px;
+	padding: 12px 10px 12px 14px;
 	border-bottom: 1px solid var(--lb-border);
 	flex: none;
 }
+.lb-agent-panel__mark {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--fl-radius-ctl);
+	background: var(--lb-agent-soft);
+	color: var(--lb-agent);
+}
+.lb-agent-panel__heading {
+	display: grid;
+	min-width: 0;
+}
 .lb-agent-panel__title {
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	font-size: 12px;
-	font-weight: 600;
+	font-size: 16px;
+	font-weight: 700;
 	color: var(--lb-text);
+}
+.lb-agent-panel__subline {
+	overflow: hidden;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .lb-agent-panel__spacer {
 	flex: 1;
@@ -8888,13 +9246,17 @@ button.lb-props__eye:hover {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 26px;
-	height: 26px;
+	flex: none;
+	width: 36px;
+	height: 36px;
 	border: 0;
-	border-radius: 6px;
+	border-radius: var(--fl-radius-ctl);
 	background: transparent;
 	color: var(--lb-text-dim);
 	cursor: pointer;
+	transition:
+		background var(--mo-in),
+		color var(--mo-in);
 }
 .lb-agent-panel__icon:hover {
 	background: var(--lb-surface-hover);
@@ -9638,7 +10000,6 @@ button.lb-props__eye:hover {
 	flex-direction: column;
 	gap: 7px;
 	padding: 10px 12px 12px;
-	border-top: 1px solid var(--lb-border);
 }
 /*
  * One box holding the text and the dials.
@@ -9651,12 +10012,21 @@ button.lb-props__eye:hover {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	border: 1px solid var(--lb-border);
-	border-radius: 10px;
+	border-radius: 20px;
 	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+	transition: box-shadow var(--mo-in);
 }
 .lb-agent-composer:focus-within {
-	border-color: var(--lb-accent);
+	box-shadow:
+		inset 0 0 0 1.5px var(--lb-agent),
+		0 0 0 4px var(--lb-agent-soft);
+}
+.lb-agent-composer__label {
+	padding: 12px 16px 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-weight: 600;
 }
 .lb-agent-composer[data-disabled] {
 	opacity: 0.6;
@@ -9671,15 +10041,15 @@ button.lb-props__eye:hover {
  */
 .lb-agent-panel__input {
 	width: 100%;
-	padding: 9px 10px 4px;
+	padding: 4px 16px;
 	border: 0;
 	background: transparent;
 	color: var(--lb-text);
 	font: inherit;
-	font-size: 12.5px;
+	font-size: 14px;
 	line-height: 1.5;
 	field-sizing: content;
-	min-height: 46px;
+	min-height: 32px;
 	/* Roughly twelve lines. Past that the panel is more composer than transcript, and the thing you
 	   are writing about has scrolled out of sight. */
 	max-height: 240px;
@@ -9705,8 +10075,8 @@ button.lb-props__eye:hover {
 .lb-agent-panel__actions {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	padding: 4px 5px 5px;
+	gap: 6px;
+	padding: 6px 8px 8px;
 }
 /* Circular and icon-only, like T3 Code's: the row has two menus on it, and "Send" spelled out costs
    more of a 360px column than the arrow does clarity. */
@@ -9715,16 +10085,20 @@ button.lb-props__eye:hover {
 	align-items: center;
 	justify-content: center;
 	flex: none;
-	width: 26px;
-	height: 26px;
+	width: 36px;
+	height: 36px;
 	border: 0;
 	border-radius: 50%;
-	background: var(--lb-accent);
-	color: var(--lb-on-accent);
+	background: var(--lb-agent);
+	color: #fff;
 	cursor: pointer;
+	transition:
+		transform var(--mo-pop),
+		filter var(--mo-in);
 }
 .lb-agent-panel__send:hover:not(:disabled) {
-	background: var(--lb-accent-hover);
+	filter: brightness(1.1);
+	transform: scale(1.06);
 }
 .lb-agent-panel__send:disabled {
 	opacity: 0.4;
@@ -9815,7 +10189,7 @@ button.lb-props__eye:hover {
 .lb-agent-controls {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	gap: 6px;
 	min-width: 0;
 }
 /* Deliberately *not* a containing block for the menu — see `.lb-agent-menu`. */
@@ -9825,16 +10199,17 @@ button.lb-props__eye:hover {
 .lb-agent-control {
 	display: inline-flex;
 	align-items: center;
-	gap: 3px;
-	max-width: 130px;
-	height: 24px;
-	padding: 0 5px;
+	gap: 4px;
+	max-width: 140px;
+	height: 30px;
+	padding: 0 10px;
 	border: 0;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--lb-text-dim);
+	border-radius: 999px;
+	background: var(--lb-surface);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+	color: var(--lb-text);
 	font: inherit;
-	font-size: 11.5px;
+	font-size: 12px;
 	font-weight: 500;
 	cursor: pointer;
 }
@@ -10200,21 +10575,13 @@ button.lb-props__eye:hover {
 	}
 }
 
-/* Narrow viewports have no room for a third column, so the panel becomes an overlay instead. */
-@media (max-width: 900px) {
-	.lb-shell--agent-open,
-	.lb-shell--agent-open.lb-shell--sidebar-collapsed {
-		grid-template-columns: 56px minmax(0, 1fr);
-	}
+/* A phone: the panel spans the window, less the edges. */
+@media (max-width: 767px) {
 	.lb-agent-panel {
-		position: fixed;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		/* The docked width still applies, capped at what the viewport can actually show. */
-		width: min(var(--lb-agent-width, 440px), 92vw);
-		z-index: 40;
-		box-shadow: var(--lb-shadow-1);
+		width: calc(100vw - var(--fl-edge) * 2);
+	}
+	.lb-agent-panel__divider {
+		display: none;
 	}
 }
 
@@ -10626,46 +10993,60 @@ button.lb-props__eye:hover {
 }
 
 /*
- * The tray: floating at the right-hand edge of the *canvas*, not the window.
+ * The tray: a vertical capsule at the right-hand edge, vertically centred.
  *
- * Absolute inside tldraw's container, which is why the agent panel needs no special case — that panel
- * is a real shell column, so the container narrows and the tray comes inward with it.
+ * Absolute inside tldraw's container, which runs under the app's floating chrome, so it moves left of
+ * the agent panel by the panel's width (`--fl-right`). Under 1024px the panel covers the board instead,
+ * and the tray hides while it is open.
  */
 .lb-dice-tray {
-	--lb-dice-halo: var(--lb-panel);
+	--lb-dice-halo: var(--lb-surface);
 	position: absolute;
 	top: 50%;
-	right: 12px;
+	right: calc(var(--fl-right, 0px) + var(--fl-edge));
 	transform: translateY(-50%);
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-	padding: 4px;
+	align-items: center;
+	gap: 6px;
+	padding: 6px;
+	border-radius: 999px;
 	pointer-events: auto;
-	background: var(--lb-panel);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
-	border: 1px solid var(--lb-border-strong);
-	border-radius: 11px;
-	box-shadow: var(--lb-shadow-2);
+	transition: right var(--mo-in);
+}
+.lb-dice-tray__head {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 40px;
+	color: var(--lb-text-dim);
+}
+.lb-dice-tray__sep {
+	width: 24px;
+	height: 1px;
+	margin-bottom: 2px;
+	background: var(--lb-border);
 }
 
 .lb-dice-tray__die {
 	position: relative;
 	display: grid;
 	place-items: center;
-	/* 38, not 34: the wireframes carry real detail and were muddy at the size a flat silhouette needed. */
-	width: 38px;
-	height: 38px;
+	width: 44px;
+	height: 44px;
 	padding: 0;
 	border: 0;
-	border-radius: 8px;
+	border-radius: 50%;
 	background: transparent;
 	color: var(--lb-text-dim);
 	cursor: pointer;
 	transition:
-		background 120ms ease,
-		color 120ms ease;
+		background var(--mo-in),
+		color var(--mo-in),
+		transform var(--mo-pop);
+}
+.lb-dice-tray__die:active:not(:disabled) {
+	transform: scale(0.9);
 }
 .lb-dice-tray__die:hover:not(:disabled) {
 	background: var(--lb-surface-hover);
@@ -10684,16 +11065,17 @@ button.lb-props__eye:hover {
 /* The count, as a badge on the die rather than a number beside it: what went up is the die. */
 .lb-dice-tray__count {
 	position: absolute;
+	top: 0;
 	right: 0;
-	bottom: -1px;
-	min-width: 13px;
-	padding: 0 2px;
-	border-radius: 7px;
+	min-width: 16px;
+	padding: 0 4px;
+	border-radius: 8px;
 	background: var(--lb-accent);
+	box-shadow: 0 0 0 2px var(--lb-surface);
 	color: var(--lb-on-accent);
-	font-size: 9.5px;
+	font-size: 10px;
 	font-weight: 700;
-	line-height: 13px;
+	line-height: 16px;
 	text-align: center;
 }
 
@@ -10712,24 +11094,21 @@ button.lb-props__eye:hover {
 	cursor: grab !important;
 }
 
-/* What you are holding, trailing the pointer. Offset down and right so it sits clear of the arrow. */
+/* What you are holding, trailing the pointer as a dark pill. Offset down and right, clear of the arrow. */
 .lb-dice-held {
-	--lb-dice-halo: var(--lb-panel);
+	--lb-dice-halo: var(--lb-text);
 	position: absolute;
 	top: 0;
 	left: 0;
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: 6px;
 	margin: 16px 0 0 18px;
-	padding: 3px 6px;
-	border-radius: 9px;
-	background: var(--lb-panel);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	border: 1px solid var(--lb-border-strong);
-	box-shadow: var(--lb-shadow-1);
-	color: var(--lb-text);
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: var(--lb-text);
+	box-shadow: var(--fl-shadow);
+	color: var(--lb-bg);
 	white-space: nowrap;
 	/* Follows the pointer by transform, which cannot be allowed to lag behind it. */
 	will-change: transform;
@@ -10738,12 +11117,12 @@ button.lb-props__eye:hover {
 	display: flex;
 	align-items: center;
 	gap: 1px;
-	color: var(--lb-accent);
+	color: var(--lb-bg);
 }
 .lb-dice-held__count {
 	font-size: 11px;
 	font-weight: 700;
-	color: var(--lb-text);
+	color: var(--lb-bg);
 }
 
 /*
@@ -11573,18 +11952,239 @@ button.lb-props__eye:hover {
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 3;
 }
-.lb-dock__tool {
-	position: relative;
-}
+/* Open comments, as an orange pill on the dock button's corner. */
 .lb-dock__badge {
 	position: absolute;
-	top: 2px;
-	right: 2px;
-	min-width: 14px;
-	padding: 0 3px;
-	border-radius: 7px;
-	background: var(--lb-accent);
+	top: 1px;
+	right: 1px;
+	min-width: 16px;
+	padding: 0 4px;
+	border-radius: 8px;
+	background: #e8590c;
+	box-shadow: 0 0 0 2px var(--lb-surface);
 	color: #fff;
-	font-size: 9px;
-	line-height: 14px;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 16px;
+	text-align: center;
+}
+
+/* ======================================================== floating chrome */
+/* Last in the file, so these win over the dock, dice and tldraw rules they adjust. */
+
+/*
+ * tldraw's own corner widgets — the zoom readout and minimap bottom left, help bottom right — float
+ * like the rest of the chrome and keep clear of the sidebar and the agent panel.
+ */
+.lb-board .tlui-navigation-zone {
+	left: calc(var(--fl-left, 0px) + var(--fl-edge));
+	bottom: var(--fl-edge);
+	overflow: hidden;
+	border-radius: 16px;
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	transition: left var(--mo-in);
+}
+.lb-board .tlui-navigation-zone::before {
+	display: none;
+}
+.lb-board .tlui-help-menu {
+	right: calc(var(--fl-right, 0px) + var(--fl-edge));
+	bottom: var(--fl-edge);
+	border: 0;
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	transition: right var(--mo-in);
+}
+@media (max-width: 767px) {
+	.lb-board .tlui-navigation-zone,
+	.lb-board .tlui-help-menu {
+		display: none;
+	}
+}
+
+/* ------------------------------------------------- floating chrome: narrow */
+
+/* Under 1024px the agent panel covers the board, and the dice tray would sit on top of it. */
+@media (max-width: 1023px) {
+	.lb-shell--agent-open .lb-dice-tray {
+		display: none;
+	}
+}
+
+/*
+ * A phone. The dice turn into a row above the dock with the first three dice, the dock drops its
+ * digits and scrolls inside its own pill rather than running off the page.
+ */
+@media (max-width: 767px) {
+	.lb-dice-tray {
+		top: auto;
+		right: auto;
+		bottom: calc(var(--fl-edge) + var(--fl-tool) + 22px);
+		left: 50%;
+		transform: translateX(-50%);
+		flex-direction: row;
+	}
+	.lb-dice-tray__head {
+		width: 32px;
+		height: 44px;
+	}
+	.lb-dice-tray__sep {
+		width: 1px;
+		height: 24px;
+		margin: 0;
+	}
+	.lb-dice-tray__die:nth-of-type(n + 4) {
+		display: none;
+	}
+	.lb-dock__digit {
+		display: none;
+	}
+	.lb-nodemenu__panel {
+		right: 50%;
+		transform: translateX(50%);
+		width: calc(100vw - var(--fl-edge) * 2);
+	}
+}
+
+/* The dev-only rollup badge, clear of the sidebar and above the zoom readout. */
+.lb-board .lb-debug-badge {
+	left: calc(var(--fl-left, 0px) + var(--fl-edge));
+	bottom: calc(var(--fl-edge) + 52px);
+}
+
+/* The selection: a 2px accent line with a soft halo of the selection tint around it. */
+.lb-board .tl-selection__fg__outline {
+	stroke: var(--lb-accent);
+	stroke-width: calc(2px * var(--tl-scale));
+	filter: drop-shadow(0 0 3px var(--lb-selection)) drop-shadow(0 0 3px var(--lb-selection));
+}
+
+/*
+ * The book reader is modal for the board, so it becomes a floating sheet over the part of it the
+ * chrome leaves: under the tabs, beside the sidebar and the agent panel.
+ */
+.lb-board .lb-reader {
+	top: calc(46px + var(--fl-edge));
+	right: calc(var(--fl-right, 0px) + var(--fl-edge));
+	bottom: var(--fl-edge);
+	left: calc(var(--fl-left, 0px) + var(--fl-edge));
+	overflow: hidden;
+	border-radius: var(--fl-radius-panel);
+	box-shadow: var(--fl-ring), var(--fl-shadow);
+}
+
+/* The board's comments list floats under the agent button, clear of the agent panel when it is open. */
+.lb-board .lb-comments-panel {
+	top: calc(var(--fl-edge) + 60px);
+	right: calc(var(--fl-right, 0px) + var(--fl-edge));
+	bottom: calc(var(--fl-edge) + 80px);
+	border: 0;
+	border-radius: var(--fl-radius-panel);
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow);
+	overflow: hidden;
+}
+
+/* ------------------------------------------------ floating chrome: action windows */
+/*
+ * Everything that opens over the board — the selection toolbar and its menus and palettes, a node's
+ * editor, autocomplete, comment threads, tldraw's own menus — on the same floating surface as the
+ * rest of the chrome, with corners that nest: an inner radius is the outer one less the padding.
+ */
+.tlui-contextual-toolbar.lb-seltb,
+.lb-seltb__menu,
+.lb-seltb__palette,
+.lb-popover,
+.lb-suggest,
+.lb-comment-popover,
+.tlui-menu.tlui-menu,
+.tlui-popover__content.tlui-popover__content {
+	border: 0;
+	background: var(--lb-surface);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+	box-shadow: var(--fl-ring), var(--fl-shadow);
+}
+
+/* The selection toolbar: a pill, its buttons' hover fills circles inside it. */
+.tlui-contextual-toolbar.lb-seltb {
+	padding: 4px;
+	border-radius: 24px;
+}
+.lb-seltb .tlui-button::after {
+	border-radius: 16px;
+}
+.lb-seltb__sep {
+	align-self: center;
+	height: 24px;
+	margin: 0 4px;
+}
+
+/* Menus: 16px outside, 6px in, so each row is 10px round. */
+.lb-seltb__menu,
+.tlui-menu.tlui-menu {
+	padding: 6px;
+	border-radius: 16px;
+}
+.lb-seltb__item {
+	min-height: 36px;
+	padding: 0 10px;
+	border-radius: 10px;
+}
+.tlui-menu .tlui-button::after {
+	border-radius: 10px;
+}
+.tlui-popover__content.tlui-popover__content {
+	border-radius: 16px;
+}
+
+/* The colour palette above the toolbar: the dock's settings row, down to the swatches. */
+.lb-seltb__palette {
+	gap: 16px;
+	padding: 14px 16px;
+	border-radius: 20px;
+}
+.lb-seltb__palette .lb-swatch {
+	width: 20px;
+	height: 20px;
+	box-shadow: none;
+}
+/* Only white needs an edge against the panel. */
+.lb-swatch--paper,
+.lb-seltb__palette .lb-swatch--paper {
+	box-shadow: inset 0 0 0 1px var(--lb-border-strong);
+}
+.lb-seltb__palette .lb-swatch--active {
+	outline: 0;
+	box-shadow:
+		0 0 0 2px var(--lb-surface),
+		0 0 0 4px var(--lb-accent);
+}
+.lb-seltb__palette .lb-swatch--paper.lb-swatch--active {
+	box-shadow:
+		inset 0 0 0 1px var(--lb-border-strong),
+		0 0 0 2px var(--lb-surface),
+		0 0 0 4px var(--lb-accent);
+}
+/* The swatch in the toolbar itself, showing the selection's colour: a plain dot. */
+.lb-seltb__color > .lb-swatch[style] {
+	box-shadow: none;
+}
+
+/* A node's editor, autocomplete and comment threads. */
+.lb-popover {
+	padding: 12px;
+	border-radius: 20px;
+}
+.lb-suggest {
+	padding: 4px;
+	border-radius: 14px;
+}
+.lb-comment-popover {
+	padding: 12px;
+	border-radius: 20px;
+}
+.lb-suggest__row {
+	padding: 6px 10px;
+	border-radius: 10px;
 }

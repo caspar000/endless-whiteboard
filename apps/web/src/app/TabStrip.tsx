@@ -1,60 +1,88 @@
-import { LayoutGrid, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
+import { boardTint } from './boardTint'
 
 /**
- * The tab strip across the top of the shell — Affine's browser-tab model. A pinned "All boards"
- * tab is the home screen; each open board is a closable tab beside it; "+" creates a board and
- * opens it. Double-clicking the active board tab renames the board in place, which replaces the
- * old floating board chrome.
+ * A label's side: one S-shaped slope from the label's foot up to the window edge, in the label's own
+ * fill and outline. The bends sit near the ends — a round shoulder at the foot, a steep middle, a flare
+ * at the top — so it reads as an S rather than a diagonal.
+ *
+ * It sweeps over the start of the label behind, in `--tab-bg` and `--tab-line`, and is stretched to
+ * whatever size the CSS gives it; the outline keeps its 1px width.
+ *
+ * The fill reaches a few units back under the label's body so there is no seam, stopping just above
+ * the body's bottom line so it doesn't cover it.
+ */
+function Slope({ side }: { side: 'left' | 'right' }) {
+	return (
+		<svg
+			className={`lb-tabs__slope lb-tabs__slope--${side}`}
+			viewBox="-4 0 104 100"
+			preserveAspectRatio="none"
+			aria-hidden="true"
+		>
+			<path className="lb-tabs__slope-fill" d="M-4 0H100C25 0 75 100 0 100V96H-4Z" />
+			<path className="lb-tabs__slope-line" d="M100 0C25 0 75 100 0 100" />
+		</svg>
+	)
+}
+
+/**
+ * The open boards, as folder labels hanging from the top edge of the window beside the sidebar.
+ * Shown on a board only: everywhere else the sidebar is the way to a board.
+ *
+ * The labels overlap like a stack of folder tabs, the active one in front and each step away from it
+ * one layer further back. A label's side away from the active one is a slope that sweeps over the
+ * start of the label behind; that label keeps its own rounded foot a few px further on, so a notch of
+ * the board shows between the two. The first label meets the window edge square, and "+" sits after
+ * the last label's slope.
+ * Double-clicking the active label renames the board in place.
  */
 export function TabStrip({
 	boards,
 	tabs,
-	view,
 	activeBoardId,
-	onHome,
 	onSelect,
 	onClose,
 	onNew,
 	onRename,
-	agentOpen,
-	onToggleAgent,
 }: {
 	boards: BoardMeta[]
 	tabs: string[]
-	view: 'list' | 'settings' | 'help' | 'board'
 	activeBoardId: string | null
-	onHome: () => void
 	onSelect: (board: BoardMeta) => void
 	onClose: (id: string) => void
 	onNew: () => void
 	onRename: (id: string, name: string) => void
-	agentOpen: boolean
-	onToggleAgent: () => void
 }) {
 	const [renaming, setRenaming] = useState<string | null>(null)
 
 	const byId = new Map(boards.map((b) => [b.id, b]))
+	const open = tabs.flatMap((id) => {
+		const board = byId.get(id)
+		return board ? [board] : []
+	})
+	const activeIndex = open.findIndex((board) => board.id === activeBoardId)
 
 	return (
 		<div className="lb-tabs" role="tablist" aria-label="Open boards">
-			<button
-				role="tab"
-				aria-selected={view !== 'board'}
-				className={view !== 'board' ? 'lb-tabs__tab lb-tabs__tab--active' : 'lb-tabs__tab'}
-				onClick={onHome}
-			>
-				<LayoutGrid className="lb-tabs__icon" size={13} aria-hidden="true" />
-				<span className="lb-tabs__label">All boards</span>
-			</button>
-
-			{tabs.map((id) => {
-				const board = byId.get(id)
-				if (!board) return null
-				const active = view === 'board' && id === activeBoardId
+			{open.map((board, index) => {
+				const { id } = board
+				const active = index === activeIndex
+				// Left of the active label the right side is covered, right of it the left side.
+				const slopeLeft = index > 0 && index <= activeIndex
+				const slopeRight = index >= activeIndex
+				const classes = [
+					'lb-tabs__tab',
+					active ? 'lb-tabs__tab--active' : '',
+					slopeLeft ? 'lb-tabs__tab--slope-left' : '',
+					slopeRight ? 'lb-tabs__tab--slope-right' : '',
+				]
+					.filter(Boolean)
+					.join(' ')
 				return (
-					// The whole tab is the click target, like a browser tab — not just the label text.
+					// The whole label is the click target, like a browser tab — not just the text.
 					// A <div> with button semantics rather than a <button>, because the close control
 					// is a real button and buttons cannot nest.
 					<div
@@ -62,7 +90,8 @@ export function TabStrip({
 						role="tab"
 						tabIndex={0}
 						aria-selected={active}
-						className={active ? 'lb-tabs__tab lb-tabs__tab--active' : 'lb-tabs__tab'}
+						className={classes}
+						style={{ zIndex: 50 - Math.abs(index - activeIndex) }}
 						onClick={() => onSelect(board)}
 						// Middle click closes, as a browser tab does. Pressing the wheel would otherwise
 						// start the browser's autoscroll.
@@ -83,6 +112,9 @@ export function TabStrip({
 						}}
 						title={active ? 'Double-click to rename' : board.name}
 					>
+						{slopeLeft && <Slope side="left" />}
+						{slopeRight && <Slope side="right" />}
+						<span className="lb-tabs__thumb" style={{ background: boardTint(id) }} aria-hidden="true" />
 						{renaming === id ? (
 							<form
 								className="lb-tabs__rename"
@@ -118,38 +150,14 @@ export function TabStrip({
 							}}
 							aria-label={`Close ${board.name}`}
 						>
-							<X size={12} aria-hidden="true" />
+							<X size={14} strokeWidth={1.75} aria-hidden="true" />
 						</button>
 					</div>
 				)
 			})}
 
 			<button className="lb-tabs__new" onClick={onNew} aria-label="New board" title="New board">
-				<Plus size={15} aria-hidden="true" />
-			</button>
-
-			{/* Pushes the agent toggle to the far right, mirroring the sidebar's collapse control on the
-			    far left — the two panels the shell can show, each toggled from its own edge.
-
-			    This is the *only* control for the panel: it used to have a close button of its own as
-			    well, which meant two buttons for one piece of state, in two places, one of which vanished
-			    with the thing it closed. So the icon carries the state instead, exactly as the sidebar's
-			    does — an open panel shows the arrow that will shut it. */}
-			<span className="lb-tabs__spacer" />
-			<button
-				className={
-					agentOpen ? 'lb-tabs__panel lb-tabs__panel--active' : 'lb-tabs__panel'
-				}
-				onClick={onToggleAgent}
-				aria-label={agentOpen ? 'Close agent panel' : 'Open agent panel'}
-				aria-pressed={agentOpen}
-				title={`${agentOpen ? 'Close' : 'Open'} agent panel  ⌘⇧A`}
-			>
-				{agentOpen ? (
-					<PanelRightClose size={15} aria-hidden="true" />
-				) : (
-					<PanelRightOpen size={15} aria-hidden="true" />
-				)}
+				<Plus size={18} strokeWidth={1.75} aria-hidden="true" />
 			</button>
 		</div>
 	)

@@ -54,9 +54,9 @@ async function importGeneratedImage(
 		await editor.putExternalContent({ type: 'files', files: [file], point: { x: 200, y: 200 } })
 
 		if (leaveBoardImmediately) {
-			// The pinned "All boards" tab is the first tab in the strip.
-			const home = document.querySelector<HTMLElement>('.lb-tabs__tab')
-			if (!home) throw new Error('Could not find the home tab to leave the board')
+			// The sidebar's All boards row, clicked from in here so no round trip gives the upload a head start.
+			const home = document.querySelector<HTMLElement>('.lb-sidebar__library button')
+			if (!home) throw new Error('Could not find All boards to leave the board')
 			home.click()
 		}
 		return blob.size
@@ -262,13 +262,13 @@ test.describe('asset store', () => {
 		await openBoard(page, 'Keep')
 		await importGeneratedImage(page)
 		await waitForPersistedShapes(page, 1)
-		await page.getByRole('tab', { name: 'All boards' }).click()
+		await backToList(page)
 
 		await createBoard(page, 'Discard')
 		await openBoard(page, 'Discard')
 		await importGeneratedImage(page)
 		await waitForPersistedShapes(page, 1)
-		await page.getByRole('tab', { name: 'All boards' }).click()
+		await backToList(page)
 
 		const shared = await readBlobStore(page)
 		expect(shared.hashes).toHaveLength(1)

@@ -32,8 +32,16 @@ time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper p
 boards' previews are stored on the server, so every device has them. Star a board to pin it to
 Favourites.
 
-Both screens share a third surface: **the agent panel**, docked to the right of the tab strip
-(<kbd>⌘⇧A</kbd>). It runs Claude Code against the board you are looking at — ask it to research
+Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
+dock and the dice tray are rounded surfaces held off the window edge. On a board, the open boards hang
+from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved tail;
+elsewhere the sidebar is the way to a board. <kbd>⌘\</kbd> slides the sidebar away and
+leaves a round button in its corner; under 1024px it starts that way and opens over the board. The
+board runs under all of it, so zoom to fit, quick look and panning a shape into view frame inside
+what the chrome leaves (`Editor.setSafeInsets`).
+
+On a board, the round button in the top right corner opens **the agent panel** (<kbd>⌘⇧A</kbd>), which
+takes its place down the right-hand side. Both stay with the boards: the other screens don't show them. It runs Claude Code against the board you are looking at — ask it to research
 something and add what it finds, and you watch the nodes appear. It gets the board operations and web
 search and nothing else: no shell, no filesystem. Every change is a normal undo step. There is
 nothing to configure; `pnpm dev` starts the process behind it. Its composer carries a **model** and a
@@ -64,8 +72,8 @@ PNG come out at 1×–3× and trimmed to the drawing if wanted. Extensions can a
 knows a few things besides text and pictures: a Mermaid flowchart becomes shapes joined by bound
 arrows (`canvas`'s `utils/mermaid`), `<iframe>` embed code becomes the embed, Excalidraw content
 comes in as shapes, and a link pasted onto selected shapes becomes their link.
-Double-clicking empty canvas is tldraw's default action. Double-clicking the board's name in the tab
-strip renames it.
+Double-clicking empty canvas is tldraw's default action. Double-clicking the active board's tab
+renames it.
 
 **Notes on paper** — a sticky note looks like one: flat paper with the crease of its glued strip and
 a soft shadow where it lifts off the board. The row above the sticky button switches to a **pinned

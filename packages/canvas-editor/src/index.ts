@@ -199,6 +199,7 @@ export {
 	type TLCameraOptions,
 	type TLEditorOptions,
 	type TLResizeShapeOptions,
+	type TLSafeInsets,
 	type TLTextOptions,
 	type TldrawOptions,
 	defaultTldrawOptions,

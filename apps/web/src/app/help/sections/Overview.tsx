@@ -312,7 +312,8 @@ export function Overview({ go }: SectionProps) {
 							top. An open tab keeps its board alive, which is what makes switching instant — and
 							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
 							with a middle click as in a browser; the board stays under All boards. To delete several at
-							once, choose Select in All boards, click the boards, then Delete.
+							once, choose Select in All boards, click the boards, then Delete. ⌘\ slides the sidebar
+							out of the way, and the round button left in its corner brings it back.
 						</p>
 					</div>
 					<div className="lb-help__fact">

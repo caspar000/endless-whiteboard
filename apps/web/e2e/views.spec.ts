@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createBoard, dblclickNode, drawNode, gotoFresh, skipFirstRunDemo } from './helpers'
+import { clickInSidebar, createBoard, dblclickNode, drawNode, gotoFresh, skipFirstRunDemo } from './helpers'
 
 /**
  * The kanban view, from the board's end.
@@ -620,7 +620,7 @@ test.describe('help', () => {
 	test('documents every view the registry offers', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
-		await page.getByRole('button', { name: 'Help' }).click()
+		await clickInSidebar(page, 'Help')
 		await page.getByRole('button', { name: 'Tables & views', exact: true }).click()
 		await expect(page.getByRole('heading', { level: 1, name: 'Views of the board' })).toBeVisible()
 		for (const view of ['a table', 'one big number', 'a kanban', 'a calendar']) {

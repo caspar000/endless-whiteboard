@@ -13,6 +13,7 @@ import {
 	showSidebar,
 	openBoardFromSidebar,
 	skipFirstRunDemo,
+	thumbnailSize,
 	waitForStableHeight,
 } from './helpers'
 
@@ -1296,7 +1297,7 @@ test.describe('home screen', () => {
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-md')).toHaveCount(1)
 		await backToList(page)
 
-		// The thumbnail is captured from the live editor as the board unmounts, so it appears shortly
+		// The thumbnail is drawn from the live editor once the board is off screen, so it appears shortly
 		// after leaving rather than instantly.
 		const card = page.locator('.lb-card', { hasText: 'Sketch' })
 		await expect
@@ -1915,33 +1916,6 @@ async function thumbnailBytes(page: import('@playwright/test').Page): Promise<nu
 	})
 }
 
-/** Byte size of one board's stored thumbnail, by board name, or null if it has none. */
-async function thumbnailSize(
-	page: import('@playwright/test').Page,
-	boardName: string,
-	theme: 'light' | 'dark'
-): Promise<number | null> {
-	return page.evaluate(async ([name, theme]) => {
-		const db = await new Promise<IDBDatabase>((resolve) => {
-			const req = indexedDB.open('lifeboard-kv')
-			req.onsuccess = () => resolve(req.result)
-		})
-		const read = <T>(key: string) =>
-			new Promise<T | undefined>((resolve) => {
-				const q = db.transaction('kv', 'readonly').objectStore('kv').get(key)
-				q.onsuccess = () => resolve(q.result)
-			})
-		const boards = (await read<{ id: string; name: string }[]>('boards')) ?? []
-		const board = boards.find((b) => b.name === name)
-		if (!board) {
-			db.close()
-			return null
-		}
-		const blob = await read<Blob>(`thumb:${theme}:${board.id}`)
-		db.close()
-		return blob instanceof Blob ? blob.size : null
-	}, [boardName, theme] as const)
-}
 
 async function countThumbnails(page: import('@playwright/test').Page): Promise<number> {
 	return page.evaluate(async () => {

@@ -5,14 +5,15 @@ import type { KvStore } from '../platform/PlatformAdapter'
 /**
  * Board thumbnails — the previews on the home screen's cards.
  *
- * Generated from the live editor at the moment you ask to leave a board — *before* anything starts
- * tearing down. Boards that have no preview in the theme on screen are drawn by the home screen in a
- * hidden editor (canvas/ThumbnailBackfill.tsx), through the same function.
+ * Drawn from the live editor of a board that is off screen and has changed since its last preview,
+ * while the user is idle (app/App.tsx). Not on the way out of a board: an export of a couple of hundred
+ * notes blocks the page for ~400 ms, and awaiting it made every tab switch lag by that much. Boards
+ * that have no preview in the theme on screen are drawn by the home screen in a hidden editor
+ * (canvas/ThumbnailBackfill.tsx), through the same function.
  *
- * The timing is load-bearing. This used to run from the editor's unmount cleanup, by which point the
- * board host is `visibility: hidden` for the persistence drain — and tldraw's exporter produced an
- * image with every node's background and font missing, so previews visibly degraded to serif text a
- * second after looking right. Capture while the board is still on screen.
+ * Exporting a hidden board is safe only because of `withExportableHost` below. Without it, tldraw's
+ * exporter dropped every node's background and font from a `visibility: hidden` board, and previews
+ * degraded to serif text.
  *
  * Stored as Blobs in the KV store under their own keys rather than inside the board index, so listing
  * boards stays a single small read and never drags a megabyte of images with it.
@@ -96,11 +97,35 @@ function nextPaint(): Promise<void> {
 	})
 }
 
+/** Editors whose preview has been drawn since the user last changed their board. */
+const fresh = new WeakSet<Editor>()
+const watched = new WeakSet<Editor>()
+
+/**
+ * Whether the board has changed since its preview was last drawn. An editor starts out stale, so
+ * each board is drawn once a session: an edit made just before a reload never reached a preview.
+ * Only the user's own edits count; a remote edit is drawn by the device that made it.
+ */
+export function isThumbnailStale(editor: Editor): boolean {
+	return !fresh.has(editor)
+}
+
+function markFresh(editor: Editor) {
+	if (!watched.has(editor)) {
+		watched.add(editor)
+		editor.store.listen(() => fresh.delete(editor), { scope: 'document', source: 'user' })
+	}
+	fresh.add(editor)
+}
+
 export async function saveBoardThumbnail(
 	kv: KvStore,
 	boardId: string,
 	editor: Editor
 ): Promise<void> {
+	// Before the export, so an edit made while it runs marks the board stale again. A failed export
+	// stays marked too: the next edit retries it, rather than a broken board retrying forever.
+	markFresh(editor)
 	try {
 		const shapeIds = [...editor.getCurrentPageShapeIds()]
 		if (shapeIds.length === 0) {

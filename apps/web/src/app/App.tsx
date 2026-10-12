@@ -5,7 +5,7 @@ import type { Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import { isThumbnailStale, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
@@ -53,8 +53,8 @@ const DRAIN_MS = TLDRAW_PERSIST_THROTTLE_MS + 400
  */
 const MAX_DRAIN_MS = 15_000
 
-/** Longest we'll make someone wait for a home-screen preview before switching away anyway. */
-const THUMBNAIL_TIMEOUT_MS = 2_000
+/** How long without input before boards off screen get their changed previews redrawn. */
+const THUMBNAIL_IDLE_MS = 1_500
 
 const SIDEBAR_COLLAPSED_KEY = 'lifeboard:sidebar:collapsed'
 const AGENT_PANEL_KEY = 'lifeboard:agentPanel:open'
@@ -196,7 +196,7 @@ export function App() {
 	 */
 	const warm = useRef(new Set<string>())
 
-	/** Live editors by board id, for capturing a thumbnail before switching away. */
+	/** Live editors by board id, for commands, moves and drawing previews of boards off screen. */
 	const editors = useRef(new Map<string, Editor>())
 
 	/**
@@ -209,10 +209,12 @@ export function App() {
 	 * Boards with no mounted editor are drawn in the new theme by the home screen, off screen
 	 * (canvas/ThumbnailBackfill.tsx); previews are kept per theme, so none of them shows the old one.
 	 *
-	 * Serialised through a ref because an OS appearance change can arrive while a switch is still in
-	 * flight, and two passes racing would interleave their exports.
+	 * Serialised through a ref because an OS appearance change can arrive while the idle redraw below is
+	 * still running, and two exports racing would toggle the same hidden host.
 	 */
 	const refreshing = useRef<Promise<void>>(Promise.resolve())
+	/** The board the idle redraw is exporting right now, so its drain waits for it. */
+	const drawingThumbnail = useRef<string | null>(null)
 	const refreshThumbnails = useCallback(() => {
 		refreshing.current = refreshing.current
 			.then(async () => {
@@ -346,7 +348,12 @@ export function App() {
 			startDrain({
 				drainMs: DRAIN_MS,
 				maxMs: MAX_DRAIN_MS,
-				lastActivityAt: assetUploadActivityAt,
+				// A closed board's last edits still need a preview, which waits for the user to be idle.
+				lastActivityAt: () => {
+					const editor = editors.current.get(board.id)
+					const drawing = drawingThumbnail.current === board.id
+					return drawing || (editor && isThumbnailStale(editor)) ? Date.now() : assetUploadActivityAt()
+				},
 				onDone: () => {
 					drainCancels.current.delete(board.id)
 					setDraining((d) => d.filter((b) => b.id !== board.id))
@@ -411,31 +418,13 @@ export function App() {
 		})()
 	}, [api, platform, navigate])
 
-	/**
-	 * Capture the home-screen thumbnail of the active board before navigating away.
-	 *
-	 * Awaited on purpose: the export has to run while the board is still *visible* — exporting from
-	 * a hidden board made tldraw drop every node background and font, so previews decayed into
-	 * serif text. Bounded, because leaving a board must never be blocked by a thumbnail.
-	 */
-	const captureActiveThumbnail = useCallback(async () => {
-		if (route.view !== 'board') return
-		const editor = editors.current.get(route.boardId)
-		if (!editor) return
-		await Promise.race([
-			saveBoardThumbnail(platform.kv, route.boardId, editor),
-			new Promise((resolve) => setTimeout(resolve, THUMBNAIL_TIMEOUT_MS)),
-		])
-	}, [route, platform])
-
 	const openBoardById = useCallback(
 		async (id: string) => {
 			if (route.view === 'board' && route.boardId === id) return
 			openTab(id)
-			await captureActiveThumbnail()
 			navigate({ view: 'board', boardId: id })
 		},
-		[route, openTab, captureActiveThumbnail, navigate]
+		[route, openTab, navigate]
 	)
 
 	const openBoard = useCallback(
@@ -444,25 +433,22 @@ export function App() {
 	)
 
 	const goHome = useCallback(async () => {
-		await captureActiveThumbnail()
 		navigate({ view: 'list' })
 		void api.refresh()
-	}, [captureActiveThumbnail, navigate, api])
+	}, [navigate, api])
 
 	// The tab is optional so "Open settings" keeps meaning the front of settings, while a command that
 	// is *about* something (extensions) can land on it directly.
 	const goSettings = useCallback(
 		async (tab?: string) => {
-			await captureActiveThumbnail()
 			navigate(tab ? { view: 'settings', tab } : { view: 'settings' })
 		},
-		[captureActiveThumbnail, navigate]
+		[navigate]
 	)
 
 	const goHelp = useCallback(async () => {
-		await captureActiveThumbnail()
 		navigate({ view: 'help' })
-	}, [captureActiveThumbnail, navigate])
+	}, [navigate])
 
 	const createAndOpen = useCallback(async () => {
 		const board = await api.create()
@@ -472,8 +458,6 @@ export function App() {
 	const closeBoardTab = useCallback(
 		async (id: string) => {
 			const active = route.view === 'board' && route.boardId === id
-			if (active) await captureActiveThumbnail()
-
 			// Only a mounted editor can hold a pending write, so only warm tabs need the drain.
 			const meta = api.boards.find((b) => b.id === id)
 			if (meta && warm.current.has(id)) beginDrain(meta)
@@ -492,7 +476,7 @@ export function App() {
 				}
 			}
 		},
-		[route, tabs, api, captureActiveThumbnail, beginDrain, closeTab, navigate]
+		[route, tabs, api, beginDrain, closeTab, navigate]
 	)
 
 	/**
@@ -637,6 +621,43 @@ export function App() {
 	// apply this too, and needs the *current* active board rather than the one at its render.
 	const activeBoardIdRef = useRef(activeBoardId)
 	activeBoardIdRef.current = activeBoardId
+	const homeShownRef = useRef(false)
+	homeShownRef.current = route.view === 'list'
+
+	/*
+	 * Redraws the previews of boards that changed since their last one, one board at a time and never
+	 * on the way out of a board: an export of a couple of hundred notes blocks the page for ~400 ms, and
+	 * awaiting it made every tab switch lag by that much. It waits until the user has stopped for a
+	 * moment, and leaves the board on screen alone until it isn't. On the home screen it doesn't wait,
+	 * because the cards are what you are looking at.
+	 */
+	useEffect(() => {
+		let lastInputAt = performance.now()
+		const onInput = () => {
+			lastInputAt = performance.now()
+		}
+		const inputs = ['pointerdown', 'pointermove', 'keydown', 'wheel'] as const
+		for (const type of inputs) window.addEventListener(type, onInput, { capture: true, passive: true })
+		const timer = setInterval(() => {
+			if (drawingThumbnail.current) return
+			if (!homeShownRef.current && performance.now() - lastInputAt < THUMBNAIL_IDLE_MS) return
+			const stale = [...editors.current].find(
+				([id, editor]) => id !== activeBoardIdRef.current && isThumbnailStale(editor)
+			)
+			if (!stale) return
+			const [id, editor] = stale
+			drawingThumbnail.current = id
+			refreshing.current = refreshing.current
+				.then(() => saveBoardThumbnail(platform.kv, id, editor))
+				.finally(() => {
+					drawingThumbnail.current = null
+				})
+		}, 500)
+		return () => {
+			clearInterval(timer)
+			for (const type of inputs) window.removeEventListener(type, onInput, { capture: true })
+		}
+	}, [platform])
 
 	// The board an operation acts on when it is given no boardId — read at invoke time through the
 	// ref, never captured, for the same reason `getCommandContext` is a callback rather than a value.

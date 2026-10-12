@@ -26,7 +26,7 @@ pnpm dev          # http://localhost:5173
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
 board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
-captured from the live editor as the board is closed. A board with no preview yet (imported, moved
+drawn from the live editor once the board is off screen and the user is idle. A board with no preview yet (imported, moved
 from another device, made by an agent) gets one drawn in a hidden editor off screen, one board at a
 time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
 boards' previews are stored on the server, so every device has them. Star a board to pin it to
@@ -507,12 +507,14 @@ bottom dock replaces its `Toolbar`, the selection toolbar renders `InFrontOfTheC
 why. Double-click on empty canvas is deliberately tldraw's own again: claiming it board-wide meant
 every near-miss left a note behind.
 
-**Board thumbnails are captured when you press "← Boards", not on unmount** — and that timing is
-load-bearing. Exporting from the editor's unmount path runs while the board host is
-`visibility: hidden` for the persistence drain, and tldraw's exporter then produces an image with every
-node background and font missing: previews looked correct for about a second and then decayed into
-serif text on white. `captureActiveThumbnail` in `app/App.tsx` captures while the board is still on
-screen, and awaits it (bounded by a timeout) so navigation can't outrun the export.
+**Board thumbnails are drawn while you are idle, never on the way out of a board.** An export of a
+couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
+every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn
+once it is off screen and nothing has been typed or clicked for a moment (on the home screen, straight
+away); unchanged boards are never redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A
+closed tab's editor stays mounted until its preview is drawn. Exporting a hidden board needs
+`withExportableHost`: from a `visibility: hidden` host, the exporter drops every node background and
+font, and previews decay into serif text on white.
 
 **The shape type id is `node.markdown`, but the product calls it a Note.** Renaming a persisted type
 id needs a store-scoped migration rewriting every record, for a cosmetic gain. `NOTE_NODE_TYPE`

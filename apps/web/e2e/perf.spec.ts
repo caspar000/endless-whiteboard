@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
+import { backToList, createBoard, gotoFresh, openBoard, skipFirstRunDemo, thumbnailSize } from './helpers'
 
 /**
  * Milestone 9 ("synthetic 500-node board … smooth pan/zoom") and the milestone 6 acceptance check
@@ -363,5 +363,64 @@ test.describe('performance', () => {
 			editor.deleteShapes([arrow.id])
 		})
 		await expect(count).toHaveText('39 rows')
+	})
+
+	test('switching between open boards does not wait for their previews', async ({ page }) => {
+		test.setTimeout(120_000)
+		const addNotes = (count: number, y: number) =>
+			page.evaluate(
+				([count, y]) => {
+					const shapes = Array.from({ length: count }, (_, i) => ({
+						type: 'node.markdown',
+						x: (i % 20) * 260,
+						y: y + Math.floor(i / 20) * 300,
+						props: { w: 220, h: 120, md: `# Item ${i}`, autoHeight: false },
+					}))
+					;(window as never as { editor: { createShapes(s: unknown[]): void } }).editor.createShapes(shapes)
+				},
+				[count, y] as const
+			)
+
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['Alpha', 'Beta']) {
+			if (name === 'Beta') await backToList(page)
+			await createBoard(page, name)
+			await openBoard(page, name)
+			await addNotes(200, 0)
+		}
+		await expect.poll(() => thumbnailSize(page, 'Alpha', 'light')).toBeGreaterThan(2_000)
+
+		/** Clicks a tab and times it until that tab is the active one. */
+		const switchTo = (name: string) =>
+			page.evaluate(async (name) => {
+				const label = [...document.querySelectorAll<HTMLElement>('.lb-tabs__label')].find(
+					(el) => el.textContent === name
+				)!
+				const start = performance.now()
+				label.click()
+				await new Promise<void>((resolve) => {
+					const check = () =>
+						document.querySelector('.lb-tabs__tab--active .lb-tabs__label')?.textContent === name
+							? resolve()
+							: requestAnimationFrame(check)
+					check()
+				})
+				return performance.now() - start
+			}, name)
+
+		// Exporting the board being left took ~450 ms on these boards, every switch.
+		const times: number[] = []
+		for (let i = 0; i < 3; i++) times.push(await switchTo('Alpha'), await switchTo('Beta'))
+		times.sort((a, b) => a - b)
+		expect(times[Math.floor(times.length / 2)]).toBeLessThan(150)
+
+		// The preview of a changed board is still drawn — once it is off screen and the user is idle.
+		const before = await thumbnailSize(page, 'Beta', 'light')
+		await addNotes(40, 3_000)
+		await switchTo('Alpha')
+		await expect
+			.poll(() => thumbnailSize(page, 'Beta', 'light'), { timeout: 15_000 })
+			.not.toBe(before)
 	})
 })

@@ -372,3 +372,31 @@ interface EditorLike {
 	pageToScreen(p: { x: number; y: number }): { x: number; y: number }
 	select(...ids: string[]): void
 }
+
+/** Byte size of one board's stored thumbnail, by board name, or null if it has none. */
+export async function thumbnailSize(
+	page: Page,
+	boardName: string,
+	theme: 'light' | 'dark'
+): Promise<number | null> {
+	return page.evaluate(async ([name, theme]) => {
+		const db = await new Promise<IDBDatabase>((resolve) => {
+			const req = indexedDB.open('lifeboard-kv')
+			req.onsuccess = () => resolve(req.result)
+		})
+		const read = <T>(key: string) =>
+			new Promise<T | undefined>((resolve) => {
+				const q = db.transaction('kv', 'readonly').objectStore('kv').get(key)
+				q.onsuccess = () => resolve(q.result)
+			})
+		const boards = (await read<{ id: string; name: string }[]>('boards')) ?? []
+		const board = boards.find((b) => b.name === name)
+		if (!board) {
+			db.close()
+			return null
+		}
+		const blob = await read<Blob>(`thumb:${theme}:${board.id}`)
+		db.close()
+		return blob instanceof Blob ? blob.size : null
+	}, [boardName, theme] as const)
+}

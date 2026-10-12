@@ -91,7 +91,9 @@ test.describe('zooming (I4)', () => {
 			page.evaluate(() => {
 				const editor = (window as unknown as { editor: { getCamera(): { x: number; y: number; z: number } } }).editor
 				const { x, y, z } = editor.getCamera()
-				return { x: Math.round(x), y: Math.round(y), z: Math.round(z * 1000) / 1000 }
+				// `|| 0`: a camera that comes back a fraction of a pixel left rounds to -0, which toEqual
+				// tells apart from the 0 it started at.
+				return { x: Math.round(x) || 0, y: Math.round(y) || 0, z: Math.round(z * 1000) / 1000 }
 			})
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor

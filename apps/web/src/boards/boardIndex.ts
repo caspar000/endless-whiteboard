@@ -12,6 +12,10 @@ export interface BoardMeta {
 	updatedAt: number
 	/** Pinned to the Favourites section of the home sidebar. */
 	favorite?: boolean
+	/** The board's chosen colour, `#rrggbb`. Absent means the gradient picked from its id (`boardTint`). */
+	color?: string
+	/** The board's chosen icon, by its name in `app/boardIcons.ts`. */
+	icon?: string
 	/**
 	 * Where the board lives. Absent means this browser's IndexedDB, which is every board written before
 	 * servers existed; `'server'` means the server vault, synced live (see `server/serverVault.ts`).
@@ -99,6 +103,32 @@ export async function setBoardFavorite(
 		// reshuffle the "recently edited" ordering the home screen relies on.
 		boards.map((b) => (b.id === id ? { ...b, favorite } : b))
 	)
+}
+
+/** A board colour as stored: `#rrggbb`. The server checks the same. */
+export const isBoardColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
+
+/** A change to a board's colour or icon; `null` clears one, a missing key leaves it alone. */
+export interface BoardLookPatch {
+	color?: string | null
+	icon?: string | null
+}
+
+/** The board with `patch` applied: a cleared colour or icon is removed, not stored as `null`. */
+export function withLook<T extends BoardMeta>(board: T, patch: BoardLookPatch): T {
+	const next = { ...board }
+	for (const key of ['color', 'icon'] as const) {
+		const value = patch[key]
+		if (value === null) delete next[key]
+		else if (value !== undefined) next[key] = value
+	}
+	return next
+}
+
+export async function setBoardLook(kv: KvStore, id: string, patch: BoardLookPatch): Promise<void> {
+	const boards = await listBoards(kv)
+	// Leaves `updatedAt` alone, like a star: how a board looks in the list is not an edit to it.
+	await writeBoards(kv, boards.map((b) => (b.id === id ? withLook(b, patch) : b)))
 }
 
 export async function touchBoard(kv: KvStore, id: string): Promise<void> {

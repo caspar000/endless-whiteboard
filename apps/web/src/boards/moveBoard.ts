@@ -91,6 +91,8 @@ export async function moveBoardToServer(
 			favorite: board.favorite === true,
 			createdAt: board.createdAt,
 			updatedAt: board.updatedAt,
+			...(board.color ? { color: board.color } : {}),
+			...(board.icon ? { icon: board.icon } : {}),
 		})
 		// The preview goes with it, so the card has a picture on every device straight away.
 		for (const theme of ['light', 'dark'] as const) {
@@ -139,6 +141,8 @@ export async function moveBoardToDevice(
 			createdAt: board.createdAt,
 			updatedAt: board.updatedAt,
 			...(board.favorite ? { favorite: true } : {}),
+			...(board.color ? { color: board.color } : {}),
+			...(board.icon ? { icon: board.icon } : {}),
 		})
 	}
 

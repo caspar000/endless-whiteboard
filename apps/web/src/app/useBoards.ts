@@ -5,6 +5,8 @@ import {
 	listBoards,
 	renameBoard,
 	setBoardFavorite,
+	setBoardLook,
+	type BoardLookPatch,
 	type BoardMeta,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
@@ -33,6 +35,8 @@ export interface BoardsApi {
 	create(name?: string): Promise<BoardMeta>
 	rename(id: string, name: string): Promise<void>
 	setFavorite(id: string, favorite: boolean): Promise<void>
+	/** Sets or clears the board's colour and icon. */
+	setLook(id: string, patch: BoardLookPatch): Promise<void>
 	remove(id: string): Promise<void>
 	/**
 	 * Queues these boards to move: to the server if they are on this device, and back if they are on
@@ -126,6 +130,15 @@ export function useBoards(): BoardsApi {
 		[platform, isServerBoard, refresh]
 	)
 
+	const setLook = useCallback(
+		async (id: string, patch: BoardLookPatch) => {
+			if (isServerBoard(id)) await updateServerBoard(id, patch)
+			else await setBoardLook(platform.kv, id, patch)
+			await refresh()
+		},
+		[platform, isServerBoard, refresh]
+	)
+
 	const remove = useCallback(
 		async (id: string) => {
 			const shared = server?.find((board) => board.id === id)
@@ -156,11 +169,12 @@ export function useBoards(): BoardsApi {
 			create,
 			rename,
 			setFavorite,
+			setLook,
 			remove,
 			move,
 			refresh,
 		}),
-		[boards, loading, server, serverOnline, create, rename, setFavorite, remove, move, refresh]
+		[boards, loading, server, serverOnline, create, rename, setFavorite, setLook, remove, move, refresh]
 	)
 }
 

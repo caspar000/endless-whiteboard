@@ -10,6 +10,16 @@ export interface ServerBoard {
 	name: string
 	createdAt: number
 	updatedAt: number
+	/** Chosen in the app, `#rrggbb`; absent for the colour picked from the id. */
+	color?: string
+	/** An icon's name in the app's catalogue. */
+	icon?: string
+}
+
+/** A change to a board's colour or icon; `null` clears one, a missing key leaves it alone. */
+export interface BoardLook {
+	color?: string | null
+	icon?: string | null
 }
 
 interface BoardRow {
@@ -18,6 +28,8 @@ interface BoardRow {
 	name: string
 	created_at: number
 	updated_at: number
+	color: string | null
+	icon: string | null
 }
 
 const toBoard = (row: BoardRow): ServerBoard => ({
@@ -26,6 +38,8 @@ const toBoard = (row: BoardRow): ServerBoard => ({
 	name: row.name,
 	createdAt: row.created_at,
 	updatedAt: row.updated_at,
+	...(row.color ? { color: row.color } : {}),
+	...(row.icon ? { icon: row.icon } : {}),
 })
 
 /**
@@ -56,6 +70,13 @@ export class Vault {
 				PRIMARY KEY (vault_id, key)
 			);
 		`)
+		// Added after the table: a vault made before them gains the columns, empty.
+		const columns = new Set(
+			(this.db.prepare('PRAGMA table_info(boards)').all() as unknown as { name: string }[]).map((c) => c.name)
+		)
+		for (const column of ['color', 'icon']) {
+			if (!columns.has(column)) this.db.exec(`ALTER TABLE boards ADD COLUMN ${column} TEXT`)
+		}
 	}
 
 	list(vaultId: string): ServerBoard[] {
@@ -86,18 +107,32 @@ export class Vault {
 		name,
 		createdAt,
 		updatedAt,
+		color,
+		icon,
 	}: {
 		vaultId: string
 		id?: string
 		name: string
 		createdAt?: number
 		updatedAt?: number
+		color?: string
+		icon?: string
 	}): ServerBoard {
 		const now = Date.now()
 		this.db
-			.prepare('INSERT INTO boards (vault_id, id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-			.run(vaultId, id, name, createdAt ?? now, updatedAt ?? now)
+			.prepare(
+				'INSERT INTO boards (vault_id, id, name, created_at, updated_at, color, icon) VALUES (?, ?, ?, ?, ?, ?, ?)'
+			)
+			.run(vaultId, id, name, createdAt ?? now, updatedAt ?? now, color ?? null, icon ?? null)
 		return this.get(id)!
+	}
+
+	/** Leaves `updated_at` alone, like a star: how a board looks in the list is not an edit to it. */
+	setLook(id: string, look: BoardLook): ServerBoard | undefined {
+		for (const key of ['color', 'icon'] as const) {
+			if (look[key] !== undefined) this.db.prepare(`UPDATE boards SET ${key} = ? WHERE id = ?`).run(look[key], id)
+		}
+		return this.get(id)
 	}
 
 	rename(id: string, name: string): ServerBoard | undefined {

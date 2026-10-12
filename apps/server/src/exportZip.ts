@@ -45,11 +45,13 @@ export function exportVault(
 
 	void (async () => {
 		try {
-			const boards = vault.list(vaultId).map(({ id, name, createdAt, updatedAt }) => ({
+			const boards = vault.list(vaultId).map(({ id, name, createdAt, updatedAt, color, icon }) => ({
 				id,
 				name,
 				createdAt,
 				updatedAt,
+				...(color ? { color } : {}),
+				...(icon ? { icon } : {}),
 				favorite: favorites.has(id),
 			}))
 			const referenced = new Set<string>()

@@ -19,7 +19,7 @@ import { getMoveBatch } from '../boards/moveQueue'
 import { getImportProgress, importDetail, importShare, subscribeToImportProgress } from '../persistence/importProgress'
 import { usePlatform } from '../platform/PlatformContext'
 import { isUpdateReady, reloadToUpdate, subscribeToUpdate } from '../pwa/registerServiceWorker'
-import { boardTint } from './boardTint'
+import { BoardBadgeButton } from './boardLook/BoardBadge'
 import { formatBytes } from './settings/StoragePanel'
 import { useMoves } from './useBoards'
 
@@ -355,23 +355,28 @@ function BoardLink({
 	deviceOnly?: boolean
 	onOpen: (board: BoardMeta) => void
 }) {
+	// The badge is its own button, laid over the row's first column rather than inside the row: buttons
+	// cannot nest, and the rest of the row still opens the board.
 	return (
-		<button
-			type="button"
-			className={active ? 'lb-sidebar__item lb-sidebar__item--board lb-sidebar__item--active' : 'lb-sidebar__item lb-sidebar__item--board'}
-			onClick={() => onOpen(board)}
-			aria-current={active ? 'page' : undefined}
-			aria-label={board.name}
-			title={deviceOnly ? `${board.name} — only on this device` : undefined}
-		>
-			<span className="lb-sidebar__thumb" style={{ background: boardTint(board.id) }} aria-hidden="true" />
-			<span className="lb-sidebar__label">{board.name}</span>
-			{board.favorite ? (
-				<Star className="lb-sidebar__star" size={14} fill="currentColor" aria-hidden="true" />
-			) : deviceOnly ? (
-				<HardDrive className="lb-sidebar__device" size={14} strokeWidth={1.75} aria-hidden="true" />
-			) : null}
-		</button>
+		<div className="lb-sidebar__board">
+			<button
+				type="button"
+				className={active ? 'lb-sidebar__item lb-sidebar__item--board lb-sidebar__item--active' : 'lb-sidebar__item lb-sidebar__item--board'}
+				onClick={() => onOpen(board)}
+				aria-current={active ? 'page' : undefined}
+				aria-label={board.name}
+				title={deviceOnly ? `${board.name} — only on this device` : undefined}
+			>
+				<span aria-hidden="true" />
+				<span className="lb-sidebar__label">{board.name}</span>
+				{board.favorite ? (
+					<Star className="lb-sidebar__star" size={14} fill="currentColor" aria-hidden="true" />
+				) : deviceOnly ? (
+					<HardDrive className="lb-sidebar__device" size={14} strokeWidth={1.75} aria-hidden="true" />
+				) : null}
+			</button>
+			<BoardBadgeButton board={board} className="lb-sidebar__thumb" />
+		</div>
 	)
 }
 

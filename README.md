@@ -32,6 +32,14 @@ time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper p
 boards' previews are stored on the server, so every device has them. Star a board to pin it to
 Favourites.
 
+**A board's colour and icon** are the small square beside its name on its tab, its sidebar row and its
+card. Clicking the square (or ⌘K → *Change board colour and icon…*) opens a picker: a search box, a few
+hundred icons in groups, and a row of colours with a default and a custom one. The icons are a curated
+set of Lucide's with search words of their own (`app/boardLook/boardIcons.ts`), so "gym" finds the
+dumbbell; a board stores the icon's name, which makes those names stored data. Both are saved with the
+board's name, in the board index or the server's `boards` table, and changing them does not count as
+editing the board.
+
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
 dock and the dice tray are rounded surfaces held off the window edge. On a board, the open boards hang
 from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved tail;
@@ -123,6 +131,7 @@ apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/agent/              the agent bridge: wire protocol, board capability, prefs, the socket, chat
   src/app/AgentPanel.tsx  the agent panel — the transcript and composer down the right-hand side
   vite/agentHost.ts       dev-server plugin that starts the agent host, so the panel needs no setup
+  src/app/boardLook/      a board's colour and icon: the badge, the picker, the icon catalogue
   src/app/appCommands.ts  the app's own commands — where ⌘K's app and canvas verbs are registered
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo

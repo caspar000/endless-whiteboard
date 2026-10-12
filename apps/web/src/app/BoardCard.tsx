@@ -6,6 +6,7 @@ import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import { fetchServerThumbnail } from '../server/serverVault'
 import { useResolvedTheme } from './useTheme'
+import { BoardBadgeButton } from './boardLook/BoardBadge'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
@@ -169,16 +170,19 @@ export function BoardCard({
 						/>
 					</form>
 				) : (
-					<button className="lb-card__title" onClick={click} disabled={!!selection && moving}>
-						<span className="lb-list__title">{board.name}</span>
-						<span className="lb-card__date lb-list__meta">
-							{shared
-								? `${board.sharedBy ?? 'Shared'} · ${board.role === 'view' ? 'view only' : 'can edit'}`
-								: deviceOnly
-									? `${formatEdited(board.updatedAt)} · this device only`
-									: formatEdited(board.updatedAt)}
-						</span>
-					</button>
+					<>
+						<BoardBadgeButton board={board} className="lb-card__badge" />
+						<button className="lb-card__title" onClick={click} disabled={!!selection && moving}>
+							<span className="lb-list__title">{board.name}</span>
+							<span className="lb-card__date lb-list__meta">
+								{shared
+									? `${board.sharedBy ?? 'Shared'} · ${board.role === 'view' ? 'view only' : 'can edit'}`
+									: deviceOnly
+										? `${formatEdited(board.updatedAt)} · this device only`
+										: formatEdited(board.updatedAt)}
+							</span>
+						</button>
+					</>
 				)}
 			</div>
 		</li>

@@ -313,7 +313,9 @@ export function Overview({ go }: SectionProps) {
 							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
 							with a middle click as in a browser; the board stays under All boards. To delete several at
 							once, choose Select in All boards, click the boards, then Delete. ⌘\ slides the sidebar
-							out of the way, and the round button left in its corner brings it back.
+							out of the way, and the round button left in its corner brings it back. The coloured
+							square beside a board’s name, on its tab, in the sidebar and on its card, gives it a colour
+							and an icon: click it and search by what the board is for (“gym” finds the dumbbell).
 						</p>
 					</div>
 					<div className="lb-help__fact">

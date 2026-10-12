@@ -31,6 +31,11 @@ const isTheme = (value: string): value is Theme => (THEMES as readonly string[])
 const isName = (value: unknown): value is string =>
 	typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME
 
+/** A board's colour: `#rrggbb`. */
+const isColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
+/** A board's icon: a name in the app's catalogue, which the server does not keep a copy of. */
+const isIcon = (value: unknown): value is string => typeof value === 'string' && /^[a-z0-9-]{1,40}$/.test(value)
+
 const isSnapshot = (value: unknown): value is { store: Record<string, unknown>; schema: unknown } =>
 	!!value &&
 	typeof value === 'object' &&
@@ -106,6 +111,8 @@ export function registerApi(
 		name: board.name,
 		createdAt: board.createdAt,
 		updatedAt: board.updatedAt,
+		...(board.color ? { color: board.color } : {}),
+		...(board.icon ? { icon: board.icon } : {}),
 		favorite: favorites.has(board.id),
 		role,
 		...(role === 'member' ? {} : { sharedBy: accounts.vault(board.vaultId)?.name ?? 'another vault' }),
@@ -277,14 +284,25 @@ export function registerApi(
 	 * content (`{ store, schema }`, already migrated to the current schema by the app).
 	 */
 	app.post<{
-		Body: { id?: unknown; name?: unknown; favorite?: unknown; snapshot?: unknown; createdAt?: unknown; updatedAt?: unknown }
+		Body: {
+			id?: unknown
+			name?: unknown
+			favorite?: unknown
+			snapshot?: unknown
+			createdAt?: unknown
+			updatedAt?: unknown
+			color?: unknown
+			icon?: unknown
+		}
 	}>(
 		'/api/boards',
 		{ bodyLimit: MAX_SNAPSHOT_BYTES },
 		async (request, reply) => {
 			const user = me(request)
-			const { id, name, favorite, snapshot, createdAt, updatedAt } = request.body ?? {}
+			const { id, name, favorite, snapshot, createdAt, updatedAt, color, icon } = request.body ?? {}
 			if (!isName(name)) return reply.code(400).send({ error: 'A board needs a name.' })
+			if (color !== undefined && !isColor(color)) return reply.code(400).send({ error: '`color` is #rrggbb.' })
+			if (icon !== undefined && !isIcon(icon)) return reply.code(400).send({ error: 'Not an icon name.' })
 			if (id !== undefined && (typeof id !== 'string' || !BOARD_ID.test(id))) {
 				return reply.code(400).send({ error: 'Not a valid board id.' })
 			}
@@ -302,6 +320,8 @@ export function registerApi(
 				name,
 				...(typeof createdAt === 'number' ? { createdAt } : {}),
 				...(typeof updatedAt === 'number' ? { updatedAt } : {}),
+				...(typeof color === 'string' ? { color } : {}),
+				...(typeof icon === 'string' ? { icon } : {}),
 			})
 			if (snapshot) {
 				try {
@@ -324,18 +344,31 @@ export function registerApi(
 		return rooms.readSnapshot(request.params.id) ?? { store: {}, schema: null }
 	})
 
-	/** Renaming is the vault's; a star is anyone's own. */
-	app.patch<{ Params: { id: string }; Body: { name?: unknown; favorite?: unknown } }>(
+	/** Renaming and the board's colour and icon are the vault's; a star is anyone's own. */
+	app.patch<{ Params: { id: string }; Body: { name?: unknown; favorite?: unknown; color?: unknown; icon?: unknown } }>(
 		'/api/boards/:id',
 		async (request, reply) => {
-			const { name, favorite } = request.body ?? {}
+			const { name, favorite, color, icon } = request.body ?? {}
 			if (name !== undefined && !isName(name)) return reply.code(400).send({ error: 'A board needs a name.' })
 			if (favorite !== undefined && typeof favorite !== 'boolean') {
 				return reply.code(400).send({ error: '`favorite` is true or false.' })
 			}
-			const found = access(request, reply, request.params.id, name !== undefined ? 'member' : 'view')
+			if (color !== undefined && color !== null && !isColor(color)) {
+				return reply.code(400).send({ error: '`color` is #rrggbb, or null.' })
+			}
+			if (icon !== undefined && icon !== null && !isIcon(icon)) {
+				return reply.code(400).send({ error: '`icon` is an icon name, or null.' })
+			}
+			const vaults = name !== undefined || color !== undefined || icon !== undefined
+			const found = access(request, reply, request.params.id, vaults ? 'member' : 'view')
 			if (!found) return reply
-			const board = name !== undefined ? vault.rename(found.board.id, name)! : found.board
+			let board = name !== undefined ? vault.rename(found.board.id, name)! : found.board
+			if (color !== undefined || icon !== undefined) {
+				board = vault.setLook(board.id, {
+					...(color !== undefined ? { color: color as string | null } : {}),
+					...(icon !== undefined ? { icon: icon as string | null } : {}),
+				})!
+			}
 			if (favorite !== undefined) accounts.setFavorite(me(request).id, board.id, favorite)
 			return listed(me(request), board, found.role, accounts.favorites(me(request).id))
 		}

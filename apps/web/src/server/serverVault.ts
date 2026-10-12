@@ -71,6 +71,8 @@ interface ServerBoard {
 	createdAt: number
 	updatedAt: number
 	favorite: boolean
+	color?: string
+	icon?: string
 	/** In this account's vault, or shared with it from another to edit or to view. */
 	role: 'member' | 'edit' | 'view'
 	/** The vault a shared board is from. */
@@ -134,7 +136,7 @@ async function forgetBoardsNotOn(boards: BoardMeta[]): Promise<void> {
 export async function createServerBoard(
 	name: string,
 	id?: string,
-	moved?: { snapshot: unknown; favorite: boolean; createdAt: number; updatedAt: number }
+	moved?: { snapshot: unknown; favorite: boolean; createdAt: number; updatedAt: number; color?: string; icon?: string }
 ): Promise<BoardMeta> {
 	const response = await api('/boards', {
 		method: 'POST',
@@ -148,7 +150,10 @@ export async function readServerBoard(id: string): Promise<{ store: Record<strin
 	return (await api(`/boards/${id}/snapshot`)).json() as Promise<{ store: Record<string, unknown>; schema: unknown }>
 }
 
-export async function updateServerBoard(id: string, patch: { name?: string; favorite?: boolean }): Promise<void> {
+export async function updateServerBoard(
+	id: string,
+	patch: { name?: string; favorite?: boolean; color?: string | null; icon?: string | null }
+): Promise<void> {
 	await api(`/boards/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 }
 

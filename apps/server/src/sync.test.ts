@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { copyFileSync, mkdtempSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { DatabaseSync } from 'node:sqlite'
 import { join } from 'node:path'
 import { PROTOCOL_VERSION, SyncClient, type ClientSocket } from '@lifeboard/canvas-sync'
 import { createBoardSchema } from '@lifeboard/schema'
@@ -137,6 +138,46 @@ describe('board index', () => {
 		expect((await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id, name: 'Moved' } })).json()).toMatchObject({ id })
 		expect((await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id, name: 'Again' } })).statusCode).toBe(409)
 		expect((await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { id: '../x', name: 'Bad' } })).statusCode).toBe(400)
+	})
+
+	it('keeps a board’s colour and icon, without counting them as an edit', async () => {
+		const { app, cookie } = await startServer()
+		const board = await createBoard(app, cookie, 'Gym')
+		const before = (await app.inject({ url: '/api/boards', headers: { cookie } })).json<{ id: string; updatedAt: number }[]>()
+		const patch = (payload: object) => app.inject({ method: 'PATCH', url: `/api/boards/${board.id}`, headers: { cookie }, payload })
+
+		expect((await patch({ color: '#E5484D', icon: 'dumbbell' })).json()).toMatchObject({ color: '#E5484D', icon: 'dumbbell' })
+		const listed = (await app.inject({ url: '/api/boards', headers: { cookie } })).json<{ id: string; updatedAt: number }[]>()
+		expect(listed.find((b) => b.id === board.id)).toMatchObject({ color: '#E5484D', icon: 'dumbbell' })
+		expect(listed.find((b) => b.id === board.id)!.updatedAt).toBe(before.find((b) => b.id === board.id)!.updatedAt)
+
+		// Clearing one leaves the other.
+		const cleared = (await patch({ color: null })).json<Record<string, unknown>>()
+		expect(cleared).not.toHaveProperty('color')
+		expect(cleared).toMatchObject({ icon: 'dumbbell' })
+
+		expect((await patch({ color: 'red' })).statusCode).toBe(400)
+		expect((await patch({ icon: '<svg>' })).statusCode).toBe(400)
+
+		// A board moving in keeps them.
+		const moved = await app.inject({ method: 'POST', url: '/api/boards', headers: { cookie }, payload: { name: 'Moved', color: '#30A46C', icon: 'leaf' } })
+		expect(moved.json()).toMatchObject({ color: '#30A46C', icon: 'leaf' })
+	})
+
+	it('adds the colour and icon columns to a vault made before them', () => {
+		const path = join(mkdtempSync(join(tmpdir(), 'lb-vault-')), 'vault.db')
+		const old = new DatabaseSync(path)
+		old.exec(`CREATE TABLE boards (vault_id TEXT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL, created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL, favorite INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (vault_id, id))`)
+		old.prepare('INSERT INTO boards (vault_id, id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run('v', 'b1', 'Old', 1, 1)
+		old.close()
+
+		const vault = new Vault(path)
+		expect(vault.get('b1')).toEqual({ id: 'b1', vaultId: 'v', name: 'Old', createdAt: 1, updatedAt: 1 })
+		expect(vault.setLook('b1', { color: '#0090FF', icon: 'star' })).toMatchObject({ color: '#0090FF', icon: 'star' })
+		vault.close()
+		// And opening it again does not try to add them twice.
+		new Vault(path).close()
 	})
 
 	it('keeps the dates of a board moving in, so it keeps its place in the list', async () => {

@@ -1,5 +1,5 @@
 import { unzip, zip, type Unzipped, type Zippable } from 'fflate'
-import { addBoard, listBoards, newBoardId, setLastBackupAt, type BoardMeta } from '../boards/boardIndex'
+import { addBoard, isBoardColor, listBoards, newBoardId, setLastBackupAt, type BoardMeta } from '../boards/boardIndex'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import { collectAssetRefs } from './assetRefs'
 import { waitForAssetUploads } from './assetStore'
@@ -197,6 +197,9 @@ async function importFrom(platform: PlatformAdapter, file: Blob): Promise<Import
 			name: board.name || 'Imported board',
 			createdAt: board.createdAt ?? now,
 			updatedAt: now,
+			// A hand-edited manifest is not trusted with a colour the server would refuse.
+			...(isBoardColor(board.color) ? { color: board.color } : {}),
+			...(typeof board.icon === 'string' ? { icon: board.icon } : {}),
 		}
 
 		if (bytes) {

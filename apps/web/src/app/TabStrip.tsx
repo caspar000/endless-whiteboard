@@ -1,7 +1,7 @@
 import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
-import { boardTint } from './boardTint'
+import { BoardBadgeButton } from './boardLook/BoardBadge'
 
 /**
  * A label's side: one S-shaped slope from the label's foot up to the window edge, in the label's own
@@ -114,7 +114,7 @@ export function TabStrip({
 					>
 						{slopeLeft && <Slope side="left" />}
 						{slopeRight && <Slope side="right" />}
-						<span className="lb-tabs__thumb" style={{ background: boardTint(id) }} aria-hidden="true" />
+						<BoardBadgeButton board={board} className="lb-tabs__thumb" />
 						{renaming === id ? (
 							<form
 								className="lb-tabs__rename"

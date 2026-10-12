@@ -1202,14 +1202,14 @@ test.describe('home screen', () => {
 
 		await expect(favourites).toBeVisible()
 		await expect(favourites.getByText('Star a board to keep it here.')).toHaveCount(0)
-		await expect(favourites.getByRole('button', { name: 'Second board' })).toBeVisible()
+		await expect(favourites.getByRole('button', { name: 'Second board', exact: true })).toBeVisible()
 		await expect(favourites.locator('.lb-sidebar__item')).toHaveCount(1)
 
 		// The library row counts it too.
 		await expect(sidebar.getByRole('button', { name: 'Favourites 1' })).toBeVisible()
 
 		// Clicking a favourite opens that board directly.
-		await favourites.getByRole('button', { name: 'Second board' }).click()
+		await favourites.getByRole('button', { name: 'Second board', exact: true }).click()
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(
 			'Second board'
@@ -1240,7 +1240,8 @@ test.describe('home screen', () => {
 		const sidebar = page.locator('.lb-sidebar')
 		const reopen = page.getByRole('button', { name: 'Expand sidebar' })
 		const boardList = sidebar.getByRole('navigation', { name: 'Boards', exact: true })
-		await expect(boardList.getByRole('button')).toHaveCount(2)
+		// A row each; every row also has its own colour-and-icon button.
+		await expect(boardList.locator('.lb-sidebar__item--board')).toHaveCount(2)
 
 		// Collapsed, the panel slides away and a round button takes its place.
 		await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()

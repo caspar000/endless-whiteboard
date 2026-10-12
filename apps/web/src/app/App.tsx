@@ -4,6 +4,7 @@ import type { CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
+import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
 import { isThumbnailStale, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
@@ -764,6 +765,7 @@ export function App() {
 	return (
 		<CanvasPrefsProvider value={canvasPrefs}>
 			<ShareDialogHost />
+			<BoardLookHost boards={api.boards} onChange={api.setLook} />
 			<CommandPalette
 				open={paletteOpen}
 				initialQuery={palette?.seed ?? ''}

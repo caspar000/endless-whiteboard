@@ -26,6 +26,7 @@ import {
 } from './paletteItems'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { openShareDialog } from './ShareDialog'
+import { openBoardLook } from './boardLook/BoardLookPicker'
 import { commentFocus, commentsPanelOpen } from '../canvas/comments/comments'
 import { currentAccount } from '../server/accounts'
 import { EXTENSIONS_TAB } from './settings/sections'
@@ -102,6 +103,22 @@ registerCommand({
 	run: () => {
 		const board = api?.activeBoard()
 		if (board) openShareDialog(board)
+	},
+})
+
+registerCommand({
+	id: 'board.look',
+	title: 'Change board colour and icon…',
+	group: BOARDS_GROUP,
+	when: () => {
+		const board = api?.activeBoard()
+		return !!board && !isSharedWithMe(board)
+	},
+	run: () => {
+		const board = api?.activeBoard()
+		const badge = document.querySelector<HTMLElement>('.lb-tabs__tab--active .lb-badge-button')
+		// A frame later, once the palette has closed and given focus back, so the picker keeps it.
+		if (board && badge) requestAnimationFrame(() => openBoardLook(board.id, badge))
 	},
 })
 

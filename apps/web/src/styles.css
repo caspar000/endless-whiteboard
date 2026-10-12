@@ -1038,6 +1038,192 @@ button {
 	border-radius: 6px;
 	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
 }
+
+/* A board's colour and icon (app/boardLook/BoardBadge.tsx): the square on its tab, sidebar row and card. */
+.lb-badge {
+	display: grid;
+	place-items: center;
+	flex: none;
+	overflow: hidden;
+}
+.lb-badge svg {
+	width: 66%;
+	height: 66%;
+}
+.lb-card__badge {
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
+}
+/* The badge as a button: no chrome of its own, a lift on hover, a ring on focus. */
+.lb-badge-button {
+	display: grid;
+	flex: none;
+	padding: 0;
+	border: 0;
+	border-radius: 7px;
+	background: none;
+	cursor: pointer;
+	transition: transform var(--mo-in);
+}
+.lb-badge-button:hover {
+	transform: scale(1.12);
+}
+.lb-badge-button:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+/* A sidebar row's badge sits over the row's first column, beside the row's own button rather than in it. */
+.lb-sidebar__board {
+	position: relative;
+}
+.lb-sidebar__board > .lb-badge-button,
+.lb-sidebar__board > .lb-badge {
+	position: absolute;
+	top: 50%;
+	left: 10px;
+	translate: 0 -50%;
+}
+
+/* The picker for a board's colour and icon (app/boardLook/BoardLookPicker.tsx), after the wireframe:
+   search, the icons, then the colours. */
+.lb-look {
+	position: fixed;
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: min(340px, calc(100vw - 16px));
+	padding: 12px;
+	color: var(--lb-text);
+	animation: lb-expand-in var(--mo-pop);
+}
+.lb-look__head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.lb-look__preview {
+	width: 36px;
+	height: 36px;
+	border-radius: 10px;
+	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
+}
+.lb-look__search {
+	flex: 1;
+	min-width: 0;
+	height: 36px;
+	padding: 0 14px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 14px;
+}
+.lb-look__search:focus {
+	outline: none;
+	box-shadow: inset 0 0 0 1.5px var(--lb-accent);
+}
+.lb-look__search::placeholder {
+	color: var(--lb-text-faint);
+}
+.lb-look__icons {
+	max-height: min(320px, 46vh);
+	overflow-y: auto;
+	padding: 2px;
+	border-radius: 12px;
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+}
+.lb-look__group-title {
+	margin: 10px 6px 4px;
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.lb-look__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+	gap: 2px;
+	padding: 4px;
+}
+.lb-look__icon {
+	display: grid;
+	place-items: center;
+	aspect-ratio: 1;
+	padding: 0;
+	border: 0;
+	border-radius: 9px;
+	background: none;
+	color: var(--lb-text);
+	cursor: pointer;
+	transition: background var(--mo-in);
+}
+.lb-look__icon:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-look__icon[aria-pressed='true'] {
+	background: var(--lb-accent);
+	color: #fff;
+}
+.lb-look__icon:focus-visible,
+.lb-look__swatch:focus-visible,
+.lb-look__swatch:has(input:focus-visible) {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 1px;
+}
+.lb-look__empty {
+	margin: 0;
+	padding: 18px 8px;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	text-align: center;
+}
+.lb-look__swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 2px;
+}
+.lb-look__swatch {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px rgb(20 22 40 / 12%);
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-look__swatch[aria-pressed='true'],
+.lb-look__swatch[data-selected] {
+	box-shadow:
+		0 0 0 2px var(--lb-surface),
+		0 0 0 4px var(--lb-accent);
+}
+/* The custom colour: a rainbow ring until it holds a colour of its own. */
+.lb-look__swatch--custom {
+	background: conic-gradient(#e5484d, #ffc53d, #30a46c, #0090ff, #8e4ec6, #e5484d);
+	color: #fff;
+}
+.lb-look__swatch--custom input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+.lb-look__error {
+	margin: 0;
+	color: var(--lb-danger);
+	font-size: 12px;
+}
 .lb-sidebar__star {
 	color: var(--lb-star);
 }

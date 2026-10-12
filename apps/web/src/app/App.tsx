@@ -621,15 +621,13 @@ export function App() {
 	// apply this too, and needs the *current* active board rather than the one at its render.
 	const activeBoardIdRef = useRef(activeBoardId)
 	activeBoardIdRef.current = activeBoardId
-	const homeShownRef = useRef(false)
-	homeShownRef.current = route.view === 'list'
 
 	/*
 	 * Redraws the previews of boards that changed since their last one, one board at a time and never
 	 * on the way out of a board: an export of a couple of hundred notes blocks the page for ~400 ms, and
 	 * awaiting it made every tab switch lag by that much. It waits until the user has stopped for a
-	 * moment, and leaves the board on screen alone until it isn't. On the home screen it doesn't wait,
-	 * because the cards are what you are looking at.
+	 * moment, and leaves the board on screen alone until it isn't. The home screen waits too: drawing
+	 * there at once held up the board you opened next until the export was done.
 	 */
 	useEffect(() => {
 		let lastInputAt = performance.now()
@@ -640,7 +638,7 @@ export function App() {
 		for (const type of inputs) window.addEventListener(type, onInput, { capture: true, passive: true })
 		const timer = setInterval(() => {
 			if (drawingThumbnail.current) return
-			if (!homeShownRef.current && performance.now() - lastInputAt < THUMBNAIL_IDLE_MS) return
+			if (performance.now() - lastInputAt < THUMBNAIL_IDLE_MS) return
 			const stale = [...editors.current].find(
 				([id, editor]) => id !== activeBoardIdRef.current && isThumbnailStale(editor)
 			)
@@ -842,7 +840,11 @@ export function App() {
 							// the index loading and the demo board being created.
 							<div className="lb-board__loading">Setting up your first board…</div>
 						) : (
-							<BoardList api={listApi} onOpen={(board) => void openBoard(board)} />
+							<BoardList
+								api={listApi}
+								onOpen={(board) => void openBoard(board)}
+								mountedIds={mounted.map((board) => board.id)}
+							/>
 						))}
 
 					{/* Settings and Help own their layout and scrolling, unlike the other views: their rail

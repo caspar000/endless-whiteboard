@@ -54,16 +54,22 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 				// A moving board is between two homes; it gets its turn once it arrives.
 				const attempt = `${theme}:${board.id}`
 				if (tried.current.has(attempt) || moveFor(board.id)) continue
-				tried.current.add(attempt)
+				// A board counts as tried only once a pass still current has decided about it. The list
+				// changes on every refresh and each change starts a new pass; one overtaken mid-board
+				// leaves that board to the pass that overtook it.
 				try {
-					if (await hasPreview(platform, board, theme)) continue
-					const snapshot = await readBoard(platform, board)
+					const preview = await hasPreview(platform, board, theme)
+					if (cancelled) return
+					const snapshot = preview ? undefined : await readBoard(platform, board)
+					if (cancelled) return
+					tried.current.add(attempt)
 					if (!snapshot || Object.keys(snapshot.store).length === 0) continue
 					// From a newer version than this tab runs: its preview waits for that version.
 					if (!canReadSnapshot(snapshot, buildStoreShapeUtils(buildBoardShapeUtils()))) continue
-					if (!cancelled) setCurrent({ board, snapshot })
+					setCurrent({ board, snapshot })
 					return
 				} catch (error) {
+					tried.current.add(attempt)
 					console.warn(`Lifeboard: could not draw a preview of “${board.name}”`, error)
 				}
 			}

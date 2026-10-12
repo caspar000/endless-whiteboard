@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { dismissMove, retryMove } from '../boards/moveQueue'
 import { usePlatform } from '../platform/PlatformContext'
@@ -40,11 +40,20 @@ function rememberMoveOffered(): void {
 export function BoardList({
 	api,
 	onOpen,
+	mountedIds,
 }: {
 	api: BoardsApi
 	onOpen: (board: BoardMeta) => void
+	/** Boards with a live editor, whose previews the shell draws from that editor (app/App.tsx). */
+	mountedIds: readonly string[]
 }) {
 	const platform = usePlatform()
+	const mountedKey = mountedIds.join(' ')
+	// Drawing these off screen as well would draw them twice, from an older copy.
+	const unmounted = useMemo(() => {
+		const live = new Set(mountedKey.split(' '))
+		return api.boards.filter((board) => !live.has(board.id))
+	}, [api.boards, mountedKey])
 	const [renaming, setRenaming] = useState<string | null>(null)
 	const [offerDismissed, setOfferDismissed] = useState(wasMoveOffered)
 	const moves = useMoves()
@@ -262,7 +271,7 @@ export function BoardList({
 					))}
 				</ul>
 			)}
-			{!api.loading && <ThumbnailBackfill boards={api.boards} />}
+			{!api.loading && <ThumbnailBackfill boards={unmounted} />}
 		</main>
 	)
 }

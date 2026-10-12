@@ -510,9 +510,9 @@ every near-miss left a note behind.
 **Board thumbnails are drawn while you are idle, never on the way out of a board.** An export of a
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn
-once it is off screen and nothing has been typed or clicked for a moment (on the home screen, straight
-away); unchanged boards are never redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A
-closed tab's editor stays mounted until its preview is drawn. Exporting a hidden board needs
+once it is off screen and nothing has been typed or clicked for a moment; unchanged boards are never
+redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A closed tab's editor stays mounted until
+its preview is drawn. Exporting a hidden board needs
 `withExportableHost`: from a `visibility: hidden` host, the exporter drops every node background and
 font, and previews decay into serif text on white.
 

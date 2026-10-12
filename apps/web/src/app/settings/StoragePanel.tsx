@@ -9,7 +9,7 @@ import type { BoardsApi } from '../useBoards'
 
 const APP_VERSION = __APP_VERSION__
 
-function formatBytes(bytes: number | null): string {
+export function formatBytes(bytes: number | null): string {
 	if (bytes === null) return 'unknown'
 	if (bytes < 1024) return `${bytes} B`
 	const units = ['KB', 'MB', 'GB']

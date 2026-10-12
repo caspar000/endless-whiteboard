@@ -12,7 +12,7 @@ test('a comment is placed with C and a click, survives a reload, and resolves in
 	await createBoard(page)
 	await expect.poll(() => page.evaluate(() => Boolean((window as unknown as { editor?: unknown }).editor))).toBe(true)
 
-	await page.locator('.tl-canvas:visible').click({ position: { x: 40, y: 40 } })
+	await page.locator('.tl-canvas:visible').click({ position: { x: 600, y: 400 } })
 	await page.keyboard.press('c')
 	const spot = await toScreen(page, 300, 200)
 	await page.mouse.click(spot.x, spot.y)

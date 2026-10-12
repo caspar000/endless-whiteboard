@@ -3,14 +3,15 @@ import { useCallback, useRef, useState } from 'react'
 const WIDTH_KEY = 'lifeboard:agentPanel:width'
 
 /**
- * The panel's width when nobody has dragged it.
- *
- * Wider than the 372px it started at, and the reason is what a board transcript actually holds: file
- * paths, tool arguments, node names and fenced code. Those are the strings that wrap worst, so at 372
- * a good share of the column went on two-word orphan lines. Still a minority of any normal window,
- * because the board is the thing being worked on and the panel only narrates it.
+ * The panel's width when nobody has dragged it: the floating design's `--fl-agent-w`, narrower on a
+ * window under 1024px, where the panel covers the board instead of pushing the chrome aside.
  */
-const AGENT_WIDTH_DEFAULT = 440
+function defaultWidth(): number {
+	return window.matchMedia('(min-width: 1024px)').matches ? 380 : 340
+}
+
+/** The gap between the floating panel and the window edge (`--fl-edge`). */
+const FLOAT_EDGE = 12
 
 /** Below this the composer's model and effort menus stop fitting beside the send button. */
 const MIN_WIDTH = 320
@@ -25,7 +26,7 @@ const BOARD_RESERVE = 420
  * The nominal range is a pair of constants, but the usable one depends on the window: on a laptop
  * screen `MAX_WIDTH` would leave the canvas a sliver, so the reserve wins there. `MIN_WIDTH` is the
  * floor either way — a window too narrow to honour the reserve gets an overlay panel instead (see
- * the 900px media query), not an unusably thin one.
+ * the 1023px media query), not an unusably thin one.
  */
 function clamp(px: number): number {
 	const max = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, window.innerWidth - BOARD_RESERVE))
@@ -39,7 +40,7 @@ function loadWidth(): number {
 	} catch {
 		// Use the default when storage is unavailable.
 	}
-	return clamp(AGENT_WIDTH_DEFAULT)
+	return clamp(defaultWidth())
 }
 
 /** Everything the divider needs, so the panel can render it at its own edge without owning the state. */
@@ -98,8 +99,8 @@ export function useAgentPanelWidth(): { divider: AgentDivider; resizing: boolean
 			handle.setPointerCapture(event.pointerId)
 			setResizing(true)
 
-			// Measured from the right edge of the window, because that is the edge the panel is docked to.
-			const onMove = (move: PointerEvent) => resize(window.innerWidth - move.clientX)
+			// Measured from the right edge of the window, less the gap the floating panel keeps from it.
+			const onMove = (move: PointerEvent) => resize(window.innerWidth - FLOAT_EDGE - move.clientX)
 			const onUp = () => {
 				handle.removeEventListener('pointermove', onMove)
 				handle.removeEventListener('pointerup', onUp)
@@ -121,7 +122,7 @@ export function useAgentPanelWidth(): { divider: AgentDivider; resizing: boolean
 			const step = event.shiftKey ? 48 : 16
 			if (event.key === 'ArrowLeft') resize(current.current + step)
 			else if (event.key === 'ArrowRight') resize(current.current - step)
-			else if (event.key === 'Home') resize(AGENT_WIDTH_DEFAULT)
+			else if (event.key === 'Home') resize(defaultWidth())
 			else return
 			event.preventDefault()
 			save()
@@ -130,7 +131,7 @@ export function useAgentPanelWidth(): { divider: AgentDivider; resizing: boolean
 	)
 
 	const onDoubleClick = useCallback(() => {
-		resize(AGENT_WIDTH_DEFAULT)
+		resize(defaultWidth())
 		save()
 	}, [resize, save])
 

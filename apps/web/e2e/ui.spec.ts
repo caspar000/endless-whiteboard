@@ -10,6 +10,8 @@ import {
 	openBoard,
 	openNodeMenu,
 	openSettings,
+	showSidebar,
+	openBoardFromSidebar,
 	skipFirstRunDemo,
 	waitForStableHeight,
 } from './helpers'
@@ -1180,15 +1182,13 @@ test.describe('home screen', () => {
 		await skipFirstRunDemo(page)
 		await createBoard(page, 'Second board')
 
+		await showSidebar(page)
 		const sidebar = page.locator('.lb-sidebar')
 		await expect(sidebar.getByRole('button', { name: /All boards 2/ })).toBeVisible()
 		await expect(page.locator('.lb-card')).toHaveCount(2)
-		const [brandBox, tabsBox] = await Promise.all([
-			sidebar.locator('.lb-sidebar__brand').boundingBox(),
-			page.locator('.lb-tabs').boundingBox(),
-		])
-		expect(brandBox?.y).toBe(tabsBox?.y)
-		expect(brandBox?.height).toBe(tabsBox?.height)
+		// It floats, held off the window edge, rather than being docked to it.
+		await expect.poll(async () => (await sidebar.boundingBox())?.x).toBe(12)
+		expect((await sidebar.boundingBox())?.y).toBe(12)
 
 		// The empty section teaches the feature without inventing a placeholder favourite.
 		const favourites = sidebar.locator('.lb-sidebar__favorites')
@@ -1204,11 +1204,8 @@ test.describe('home screen', () => {
 		await expect(favourites.getByRole('button', { name: 'Second board' })).toBeVisible()
 		await expect(favourites.locator('.lb-sidebar__item')).toHaveCount(1)
 
-		// Compact mode represents the category once rather than repeating an identical star per board.
-		await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
-		await expect(favourites.getByRole('button', { name: 'Favourites (1)' })).toBeVisible()
-		await expect(favourites.getByRole('button', { name: 'Second board' })).not.toBeVisible()
-		await favourites.getByRole('button', { name: 'Favourites (1)' }).click()
+		// The library row counts it too.
+		await expect(sidebar.getByRole('button', { name: 'Favourites 1' })).toBeVisible()
 
 		// Clicking a favourite opens that board directly.
 		await favourites.getByRole('button', { name: 'Second board' }).click()
@@ -1225,54 +1222,54 @@ test.describe('home screen', () => {
 		const card = page.locator('.lb-card').first()
 		await card.hover()
 		await card.getByRole('button', { name: /^Favourite / }).click()
-		await expect(page.locator('.lb-sidebar__section').getByRole('button')).toHaveCount(1)
+		await expect(page.locator('.lb-sidebar__favorites .lb-sidebar__item')).toHaveCount(1)
 
 		await page.reload()
-		await expect(page.locator('.lb-sidebar__section').getByRole('button')).toHaveCount(1)
+		await expect(page.locator('.lb-sidebar__favorites .lb-sidebar__item')).toHaveCount(1)
 	})
 
-	test('collapses to a persisted icon rail and remembers the All boards disclosure', async ({
+	test('collapses out of the way, remembers it, and remembers the All boards disclosure', async ({
 		page,
 	}) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page, 'Second board')
 
+		await showSidebar(page)
 		const sidebar = page.locator('.lb-sidebar')
-		const boardList = sidebar.getByRole('navigation', { name: 'Boards' })
+		const reopen = page.getByRole('button', { name: 'Expand sidebar' })
+		const boardList = sidebar.getByRole('navigation', { name: 'Boards', exact: true })
 		await expect(boardList.getByRole('button')).toHaveCount(2)
 
+		// Collapsed, the panel slides away and a round button takes its place.
 		await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
-		await expect(sidebar).toHaveCSS('width', '56px')
-		await expect(sidebar.getByRole('button', { name: 'Settings' })).toBeVisible()
+		await expect(sidebar).toHaveAttribute('inert', '')
+		await expect(reopen).toBeVisible()
 
 		await page.reload()
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
-		await sidebar.getByRole('button', { name: 'Expand sidebar' }).click()
+		await reopen.click()
 		await expect(sidebar).not.toHaveClass(/lb-sidebar--collapsed/)
-		await expect(sidebar).toHaveCSS('width', '248px')
+		await expect(sidebar).toHaveCSS('width', '264px')
 
 		await sidebar.getByRole('button', { name: 'Collapse All boards' }).click()
-		await expect(sidebar.getByRole('navigation', { name: 'Boards' })).toHaveCount(0)
+		await expect(sidebar.getByRole('navigation', { name: 'Boards', exact: true })).toHaveCount(0)
 		await page.reload()
 		await expect(sidebar.getByRole('button', { name: 'Expand All boards' })).toBeVisible()
-		await expect(sidebar.getByRole('navigation', { name: 'Boards' })).toHaveCount(0)
+		await expect(sidebar.getByRole('navigation', { name: 'Boards', exact: true })).toHaveCount(0)
 	})
 
-	test('uses the compact rail by default and overlays an expanded sidebar on narrow screens', async ({
-		page,
-	}) => {
+	test('starts collapsed and overlays an expanded sidebar on narrow screens', async ({ page }) => {
 		await page.setViewportSize({ width: 700, height: 800 })
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 
 		const sidebar = page.locator('.lb-sidebar')
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
-		await expect(sidebar).toHaveCSS('width', '56px')
 
-		await sidebar.getByRole('button', { name: 'Expand sidebar' }).click()
-		await expect(sidebar).toHaveCSS('width', '248px')
+		await page.getByRole('button', { name: 'Expand sidebar' }).click()
+		await expect(sidebar).toHaveCSS('width', '264px')
 		await expect(page.locator('.lb-sidebar__scrim')).toBeVisible()
 
 		await page.locator('.lb-sidebar__scrim').click({ position: { x: 690, y: 400 } })
@@ -1429,6 +1426,7 @@ test.describe('theme', () => {
 		await expect(html).toHaveAttribute('data-theme', 'light')
 
 		// tldraw follows through its own user preference, not the `colorScheme` prop.
+		await backToList(page)
 		await createBoard(page)
 		await expect(page.locator('.tl-container.tl-theme__light')).toBeVisible()
 
@@ -1640,8 +1638,7 @@ test.describe('canvas grid', () => {
 		await openSettings(page, 'Canvas')
 	}
 	async function openDemoBoard(page: import('@playwright/test').Page) {
-		await page.getByRole('tab', { name: /Home office/ }).click()
-		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await openBoardFromSidebar(page, /Home office/)
 	}
 
 	test('defaults to our grid, with snapping off', async ({ page }) => {
@@ -1678,7 +1675,7 @@ test.describe('canvas grid', () => {
 
 		// And each tab in turn must resolve to a pattern inside its *own* svg, with dots actually painted.
 		const tabs = await page.getByRole('tab').all()
-		for (let i = 1; i < tabs.length; i++) {
+		for (let i = 0; i < tabs.length; i++) {
 			await tabs[i]!.click()
 			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 			const result = await page.evaluate(() => {

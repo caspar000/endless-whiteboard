@@ -6,6 +6,7 @@ import {
 	createNote,
 	gotoFresh,
 	noteMarkdown,
+	openBoardFromSidebar,
 	openSettings,
 	skipFirstRunDemo,
 } from './helpers'
@@ -34,11 +35,9 @@ async function currentTool(page: Page): Promise<string> {
 	})
 }
 
-/** Back to the open board from Settings, via its tab — the way a person would. */
+/** Back to the open board from Settings, via the sidebar — the way a person would. */
 async function backToBoard(page: Page): Promise<void> {
-	await page.getByRole('tab', { name: 'Untitled board' }).click()
-	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
-	await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
+	await openBoardFromSidebar(page, 'Untitled board')
 }
 
 /** Rebinds a command through the real UI: find its row, press Change, then press the chord. */

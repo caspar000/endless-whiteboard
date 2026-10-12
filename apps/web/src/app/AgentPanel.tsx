@@ -1,12 +1,12 @@
 import {
 	ArrowUp,
-	Bot,
 	ChevronDown,
 	ChevronRight,
 	CircleStop,
 	History,
 	ImageOff,
 	Plus,
+	Sparkles,
 	X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -42,7 +42,7 @@ import { AgentFoldRow, AgentWorkingRow } from './AgentWorking'
 import { AgentWorkGroup, WorkRow } from './AgentWorkGroup'
 
 /**
- * The agent panel: a conversation with Claude Code, docked to the right of the board.
+ * The agent panel: a conversation with Claude Code, floating at the right of the board.
  *
  * The point of it being *here* rather than in a terminal is that the board is the shared subject.
  * You watch nodes appear as they are created, on the board you are already looking at, and every one
@@ -54,12 +54,22 @@ import { AgentWorkGroup, WorkRow } from './AgentWorkGroup'
  * there is exactly one switch for "something outside the browser may touch my boards", and closing
  * the panel does not cancel a turn — the store outlives it (see `chat.ts`).
  *
- * It has no close button of its own either. There is one control for showing and hiding it — the
- * toggle at the right of the tab strip — and it lives where you go to *open* the panel, so opening
- * and closing are the same gesture in the same place rather than two buttons that do one thing.
- * The header keeps only what acts on the conversation: its history, and a new one.
+ * It takes turns with the round agent button in the top right corner: the button opens it, its own
+ * close button puts it away and hands focus back to the button. It stays mounted while closed — slid
+ * off screen and `inert` — so a half-written message survives closing it.
  */
-export function AgentPanel({ divider }: { divider: AgentDivider }) {
+export function AgentPanel({
+	open,
+	onClose,
+	boardName,
+	divider,
+}: {
+	open: boolean
+	onClose: () => void
+	/** The board in front of the user, if a board is what they are looking at. */
+	boardName?: string
+	divider: AgentDivider
+}) {
 	const status = useSyncExternalStore(subscribeToAgentStatus, getAgentStatus)
 	const chat = useSyncExternalStore(subscribeToChat, getChatState)
 	const [draft, setDraft] = useState('')
@@ -231,12 +241,21 @@ export function AgentPanel({ divider }: { divider: AgentDivider }) {
 	}
 
 	return (
-		<aside className="lb-agent-panel" aria-label="Agent">
+		<aside
+			className={open ? 'lb-agent-panel lb-float lb-agent-panel--open' : 'lb-agent-panel lb-float'}
+			aria-label="Agent"
+			inert={!open}
+		>
 			<AgentResizeDivider {...divider} />
 			<header className="lb-agent-panel__header">
-				<span className="lb-agent-panel__title">
-					<Bot size={15} aria-hidden="true" />
-					Agent
+				<span className="lb-agent-panel__mark" aria-hidden="true">
+					<Sparkles size={18} strokeWidth={1.75} />
+				</span>
+				<span className="lb-agent-panel__heading">
+					<span className="lb-agent-panel__title">Agent</span>
+					<span className="lb-agent-panel__subline">
+						{boardName ? `Working on ${boardName}` : 'Open a board to work on it'}
+					</span>
 				</span>
 				<span className="lb-agent-panel__spacer" />
 				<button
@@ -248,11 +267,11 @@ export function AgentPanel({ divider }: { divider: AgentDivider }) {
 						if (!showChats) listChats()
 						setShowChats(!showChats)
 					}}
-					title="Chat history"
-					aria-label="Chat history"
+					title="Previous chats"
+					aria-label="Previous chats"
 					aria-pressed={showChats}
 				>
-					<History size={14} aria-hidden="true" />
+					<History size={18} strokeWidth={1.75} aria-hidden="true" />
 				</button>
 				<button
 					type="button"
@@ -264,7 +283,16 @@ export function AgentPanel({ divider }: { divider: AgentDivider }) {
 					title="New chat"
 					aria-label="New chat"
 				>
-					<Plus size={15} aria-hidden="true" />
+					<Plus size={18} strokeWidth={1.75} aria-hidden="true" />
+				</button>
+				<button
+					type="button"
+					className="lb-agent-panel__icon"
+					onClick={onClose}
+					title="Close agent panel  ⌘⇧A"
+					aria-label="Close agent panel"
+				>
+					<X size={18} strokeWidth={1.75} aria-hidden="true" />
 				</button>
 			</header>
 
@@ -369,10 +397,14 @@ export function AgentPanel({ divider }: { divider: AgentDivider }) {
 				    legible at all: sitting inside the composer they read as part of the request rather
 				    than as app chrome that happens to be nearby. */}
 				<div className="lb-agent-composer" data-disabled={!ready || undefined}>
+					<label className="lb-agent-composer__label" htmlFor="lb-agent-input">
+						Ask about this board
+					</label>
 					{/* `rows={1}` with the floor in CSS: `field-sizing: content` sizes the box to its text and
 					    treats `rows` as the smallest it will shrink to, so a 2-row floor here would leave a
 					    blank line under a one-line draft. */}
 					<textarea
+						id="lb-agent-input"
 						className="lb-agent-panel__input"
 						value={draft}
 						rows={1}
@@ -420,7 +452,7 @@ export function AgentPanel({ divider }: { divider: AgentDivider }) {
 							title={chat.busy ? 'Send — queued for the running turn' : 'Send'}
 							aria-label="Send"
 						>
-							<ArrowUp size={15} strokeWidth={2.5} aria-hidden="true" />
+							<ArrowUp size={18} strokeWidth={2.25} aria-hidden="true" />
 						</button>
 					</div>
 				</div>

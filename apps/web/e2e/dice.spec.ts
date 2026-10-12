@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { countShapes, createBoard, gotoFresh, skipFirstRunDemo } from './helpers'
+import { clickInSidebar, countShapes, openBoardFromSidebar, createBoard, gotoFresh, skipFirstRunDemo } from './helpers'
 
 /**
  * The dice tray, and the two things about it that broke during development.
@@ -292,7 +292,7 @@ test.describe('dice', () => {
 
 	test('colours the dice from its own panel on the extension page', async ({ page }) => {
 		await boardWithTray(page)
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await clickInSidebar(page, 'Settings')
 		await page.getByRole('button', { name: 'Extensions', exact: true }).click()
 		await page.getByRole('button', { name: 'Dice', exact: true }).click()
 
@@ -352,11 +352,11 @@ test.describe('dice', () => {
 
 	test('keeps a roll as a card, with its total as a property, in one undo step', async ({ page }) => {
 		await boardWithTray(page)
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await clickInSidebar(page, 'Settings')
 		await page.getByRole('button', { name: 'Extensions', exact: true }).click()
 		await page.getByRole('button', { name: 'Dice', exact: true }).click()
 		await page.getByLabel('Keep results').check()
-		await page.getByRole('tab', { name: 'Untitled board' }).click()
+		await openBoardFromSidebar(page, 'Untitled board')
 		await expect(page.locator(TRAY)).toBeVisible()
 
 		const shapes = () => countShapes(page, 'node.roll')
@@ -401,7 +401,7 @@ test.describe('dice', () => {
 	}) => {
 		await boardWithTray(page)
 
-		await page.getByRole('button', { name: 'Settings' }).click()
+		await clickInSidebar(page, 'Settings')
 		await page.getByRole('button', { name: 'Extensions', exact: true }).click()
 		const toggle = page.getByLabel('Enable Dice')
 

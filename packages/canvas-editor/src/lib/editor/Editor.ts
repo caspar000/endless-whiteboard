@@ -216,6 +216,14 @@ export interface TLCameraOptions {
 	zoomSpeed: number
 }
 
+/** Screen pixels covered by host chrome at each edge of the viewport (see `Editor.getSafeInsets`). @public */
+export interface TLSafeInsets {
+	top: number
+	right: number
+	bottom: number
+	left: number
+}
+
 /** @public */
 export type TLResizeShapeOptions = Partial<{
 	initialBounds: Box2d
@@ -1407,6 +1415,52 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (isLocked !== undefined) this._canMoveCamera.set(!isLocked)
 		this._cameraOptions.update((current) => ({ ...current, ...rest }))
 		return this
+	}
+
+	private readonly _safeInsets = atom<TLSafeInsets>('safeInsets', { top: 0, right: 0, bottom: 0, left: 0 })
+
+	/**
+	 * How much of each edge of the viewport is covered by the host's own chrome, in screen pixels.
+	 * Framing (zoom to fit, zoom to selection, pan into view) centres in what is left, so content does
+	 * not land under a panel floating over the canvas.
+	 *
+	 * @public
+	 */
+	getSafeInsets(): TLSafeInsets {
+		return this._safeInsets.get()
+	}
+
+	/** @public */
+	setSafeInsets(insets: TLSafeInsets): this {
+		const current = this._safeInsets.get()
+		if (
+			current.top !== insets.top ||
+			current.right !== insets.right ||
+			current.bottom !== insets.bottom ||
+			current.left !== insets.left
+		) {
+			this._safeInsets.set({ ...insets })
+		}
+		return this
+	}
+
+	/**
+	 * The part of the viewport no chrome covers, relative to the viewport's own top left. Never
+	 * smaller than half the viewport, so a narrow window frames in the middle rather than in a sliver.
+	 *
+	 * @public
+	 */
+	getSafeViewportBounds(): Box2d {
+		const { w, h } = this.getViewportScreenBounds()
+		const { top, right, bottom, left } = this._safeInsets.get()
+		const x = w - left - right < w / 2 ? 0 : left
+		const y = h - top - bottom < h / 2 ? 0 : top
+		return new Box2d(
+			x,
+			y,
+			x ? w - left - right : w,
+			y ? h - top - bottom : h
+		)
 	}
 
 	/** The zoom that counts as 100%. The fork has no camera constraints, so it is always 1. @public */
@@ -3148,9 +3202,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 			return this
 		} else {
-			const insetViewport = this.getViewportPageBounds()
-				.clone()
-				.expandBy(-32 / this.getZoomLevel())
+			// The uncovered part of the viewport (see `getSafeInsets`), in page space.
+			const zoom = this.getZoomLevel()
+			const safe = this.getSafeViewportBounds()
+			const insetViewport = new Box2d(
+				viewportPageBounds.x + safe.x / zoom,
+				viewportPageBounds.y + safe.y / zoom,
+				safe.width / zoom,
+				safe.height / zoom
+			).expandBy(-32 / zoom)
 
 			let offsetX = 0
 			let offsetY = 0
@@ -3210,17 +3270,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const targetZoom = typeof opts === 'number' ? opts : opts?.targetZoom
 		if (typeof opts === 'object') animation = opts.animation ?? animation
 
-		const viewportScreenBounds = this.getViewportScreenBounds()
+		// The part of the viewport no host chrome covers (see `getSafeInsets`).
+		const safe = this.getSafeViewportBounds()
 
 		const inset =
-			(typeof opts === 'object' ? opts.inset : undefined) ??
-			Math.min(256, viewportScreenBounds.width * 0.28)
+			(typeof opts === 'object' ? opts.inset : undefined) ?? Math.min(256, safe.width * 0.28)
 
 		let zoom = clamp(
-			Math.min(
-				(viewportScreenBounds.width - inset) / bounds.width,
-				(viewportScreenBounds.height - inset) / bounds.height
-			),
+			Math.min((safe.width - inset) / bounds.width, (safe.height - inset) / bounds.height),
 			MIN_ZOOM,
 			MAX_ZOOM
 		)
@@ -3231,8 +3288,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		this.setCamera(
 			{
-				x: -bounds.minX + (viewportScreenBounds.width - bounds.width * zoom) / 2 / zoom,
-				y: -bounds.minY + (viewportScreenBounds.height - bounds.height * zoom) / 2 / zoom,
+				x: -bounds.minX + (safe.x + (safe.width - bounds.width * zoom) / 2) / zoom,
+				y: -bounds.minY + (safe.y + (safe.height - bounds.height * zoom) / 2) / zoom,
 				z: zoom,
 			},
 			animation

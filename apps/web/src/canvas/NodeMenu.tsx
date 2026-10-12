@@ -1,5 +1,6 @@
 import {
 	chordsFor,
+	getExtensions,
 	getVisibleNodeDefinitions,
 	subscribeToKeymap,
 	subscribeToNodeDefinitions,
@@ -38,7 +39,7 @@ import { runTldrawTool } from './tldrawUi'
  * and it places one at the viewport centre; the two are deliberately different verbs.
  */
 
-const ICON_SIZE = 19
+const ICON_SIZE = 20
 const TILE_ICON_SIZE = 22
 
 /** The command that opens this menu, registered in `toolCommands.ts` alongside the tools. */
@@ -60,6 +61,13 @@ function toolChord(nodeType: string, mac: boolean): string | null {
 	return chord ? formatKbd(chord, mac) : null
 }
 
+/** Node type → the name of the extension that contributes it, for the tile's second line. */
+function extensionNames(): Map<string, string> {
+	const names = new Map<string, string>()
+	for (const ext of getExtensions()) for (const def of ext.nodes) names.set(def.type, ext.name)
+	return names
+}
+
 /** The last segment of `node.markdown` / `plugin.acme.gantt` — a second thing worth searching by. */
 function typeNeedle(type: string): string {
 	return type.slice(type.lastIndexOf('.') + 1)
@@ -73,12 +81,15 @@ function useKeymapVersion(): void {
 
 function NodeTile({
 	def,
+	source,
 	mac,
 	active,
 	onPick,
 	tileRef,
 }: {
 	def: NodeDefinition<never>
+	/** The contributing extension's name, when one is registered for this type. */
+	source?: string
 	mac: boolean
 	active: boolean
 	onPick: () => void
@@ -104,6 +115,7 @@ function NodeTile({
 				{Icon ? <Icon size={TILE_ICON_SIZE} /> : <span className="lb-tool-icon">{def.icon}</span>}
 			</span>
 			<span className="lb-nodemenu__tilelabel">{def.label}</span>
+			{source && <span className="lb-nodemenu__tilesource">{source}</span>}
 			{/* The slot is always there, hidden when the node has no key, so a row of tiles is one
 			    height whether or not the types in it happen to have shortcuts. */}
 			<kbd
@@ -140,6 +152,7 @@ function NodeMenuPanel({ onClose }: { onClose: () => void }) {
 	// per call, so it has no snapshot React could compare.
 	useKeymapVersion()
 	const mac = useMemo(() => isMacPlatform(), [])
+	const sources = extensionNames()
 
 	const shown = useMemo(
 		() => defs.filter((def) => matches(needle, def.label, typeNeedle(def.type))),
@@ -277,6 +290,7 @@ function NodeMenuPanel({ onClose }: { onClose: () => void }) {
 						<NodeTile
 							key={def.type}
 							def={def}
+							source={sources.get(def.type)}
 							mac={mac}
 							active={index === active}
 							tileRef={index === active ? activeRef : undefined}

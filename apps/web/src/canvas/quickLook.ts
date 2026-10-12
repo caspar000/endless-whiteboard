@@ -105,10 +105,13 @@ export function readingOrder<T extends BoxModel>(boxes: readonly T[]): T[] {
 	return rows.flatMap((row) => row.sort((a, b) => a.x - b.x))
 }
 
-/** The camera that centres `bounds` in the viewport at the preset's size. */
+/**
+ * The camera that centres `bounds` in the viewport at the preset's size. `viewport` may be offset
+ * (`x`, `y`): the part of the screen the app's floating chrome leaves uncovered.
+ */
 export function fitCamera(
 	bounds: BoxModel,
-	viewport: { w: number; h: number },
+	viewport: { x?: number; y?: number; w: number; h: number },
 	preset: Preset,
 	zoomLimit: number
 ): { x: number; y: number; z: number } {
@@ -119,8 +122,8 @@ export function fitCamera(
 		zoomLimit
 	)
 	return {
-		x: -bounds.x + (viewport.w - bounds.w * z) / 2 / z,
-		y: -bounds.y + (viewport.h - bounds.h * z) / 2 / z,
+		x: -bounds.x + ((viewport.x ?? 0) + (viewport.w - bounds.w * z) / 2) / z,
+		y: -bounds.y + ((viewport.y ?? 0) + (viewport.h - bounds.h * z) / 2) / z,
 		z,
 	}
 }
@@ -153,7 +156,7 @@ function frameShape(editor: Editor, id: TLShapeId, immediate = false): void {
 	const bounds = editor.getShapePageBounds(id)
 	const preset = shape && presetFor(shape.type)
 	if (!bounds || !preset) return
-	const viewport = editor.getViewportScreenBounds()
+	const viewport = editor.getSafeViewportBounds()
 	// A zero-sized viewport or shape fits to NaN, and `setCamera` throws on that since tldraw 5.5.
 	if (!viewport.w || !viewport.h || !bounds.w || !bounds.h) return
 	const zoomLimit = editor.getCameraOptions().zoomSteps.at(-1)! * editor.getBaseZoom()

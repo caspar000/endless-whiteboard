@@ -666,6 +666,29 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 							)}
 						</mask>
 					</defs>
+					{/* The halo: the arrow again in the paper's colour and a little wider, under all of it, so
+					    it reads over a picture or a dark shape the way a text label does. */}
+					<g
+						className="tl-arrow-halo"
+						fill="none"
+						style={{ '--tl-arrow-stroke': `${strokeWidth}px` } as React.CSSProperties}
+						strokeLinejoin="round"
+						strokeLinecap="round"
+						pointerEvents="none"
+					>
+						<g mask={`url(#${maskId})`}>
+							<rect
+								x={toDomPrecision(bounds.minX - 100)}
+								y={toDomPrecision(bounds.minY - 100)}
+								width={toDomPrecision(bounds.width + 200)}
+								height={toDomPrecision(bounds.height + 200)}
+								opacity={0}
+							/>
+							<path d={path} strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} />
+						</g>
+						{as && <path d={as} />}
+						{ae && <path d={ae} />}
+					</g>
 					<g
 						fill="none"
 						stroke={theme[shape.props.color].solid}
@@ -906,6 +929,46 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 			g.appendChild(defs)
 		}
 
+		const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(
+			info.isStraight ? info.length : Math.abs(info.bodyArc.length),
+			strokeWidth,
+			{
+				style: shape.props.dash,
+			}
+		)
+		const bodyPath = getArrowBodyPath(info, shape)
+
+		// The halo the canvas draws (`.tl-arrow-halo`), at its width for 100% zoom.
+		const halo = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+		halo.setAttribute('fill', 'none')
+		halo.setAttribute('stroke', theme.background)
+		halo.setAttribute('stroke-width', strokeWidth + ARROW_HALO * 2 + '')
+		halo.setAttribute('stroke-linejoin', 'round')
+		halo.setAttribute('stroke-linecap', 'round')
+		// The body under the same mask as the arrow's, which needs the same big rect to measure from.
+		const haloBody = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+		haloBody.setAttribute('mask', `url(#${maskId})`)
+		const haloRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+		haloRect.setAttribute('x', bounds.minX - 100 + '')
+		haloRect.setAttribute('y', bounds.minY - 100 + '')
+		haloRect.setAttribute('width', bounds.width + 200 + '')
+		haloRect.setAttribute('height', bounds.height + 200 + '')
+		haloRect.setAttribute('fill', 'transparent')
+		haloRect.setAttribute('stroke', 'none')
+		haloBody.appendChild(haloRect)
+		halo.appendChild(haloBody)
+		for (const d of [bodyPath, as, ae]) {
+			if (!d) continue
+			const haloPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+			haloPath.setAttribute('d', d)
+			if (d === bodyPath) {
+				haloPath.setAttribute('stroke-dasharray', strokeDasharray)
+				haloPath.setAttribute('stroke-dashoffset', strokeDashoffset)
+				haloBody.appendChild(haloPath)
+			} else halo.appendChild(haloPath)
+		}
+		g.appendChild(halo)
+
 		const g2 = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		g2.setAttribute('mask', `url(#${maskId})`)
 		g.appendChild(g2)
@@ -921,19 +984,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		g2.appendChild(rect2)
 
 		// Arrowhead body path
-		const path = getArrowSvgPath(
-			getArrowBodyPath(info, shape),
-			color,
-			strokeWidth
-		)
-
-		const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(
-			info.isStraight ? info.length : Math.abs(info.bodyArc.length),
-			strokeWidth,
-			{
-				style: shape.props.dash,
-			}
-		)
+		const path = getArrowSvgPath(bodyPath, color, strokeWidth)
 
 		path.setAttribute('stroke-dasharray', strokeDasharray)
 		path.setAttribute('stroke-dashoffset', strokeDashoffset)
@@ -1029,6 +1080,9 @@ function getArrowheadSvgMask(d: string, arrowhead: TLArrowShapeArrowheadStyle) {
 	path.setAttribute('stroke', 'none')
 	return path
 }
+
+/** Each side of an arrow's halo in an export, in page units: `--tl-arrow-halo` at 100% zoom. */
+const ARROW_HALO = 1.5
 
 function getArrowSvgPath(d: string, color: string, strokeWidth: number) {
 	const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')

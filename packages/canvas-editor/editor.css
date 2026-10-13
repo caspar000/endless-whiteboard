@@ -86,6 +86,9 @@
 	--tl-text-outline: 0 var(--b) 0 var(--color-background), 0 var(--a) 0 var(--color-background),
 		var(--b) var(--b) 0 var(--color-background), var(--a) var(--b) 0 var(--color-background),
 		var(--a) var(--a) 0 var(--color-background), var(--b) var(--a) 0 var(--color-background);
+	/* An arrow's halo (`.tl-arrow-halo`), each side: the text outline's width, half again, since a
+	   line is thinner than a letter. Like the outline it stops growing on screen past 2× zoom. */
+	--tl-arrow-halo: calc(min(0.75, 1.5 / var(--tl-zoom)) * 2px);
 	/* Own properties */
 	position: relative;
 	top: 0px;
@@ -1803,4 +1806,10 @@ it from receiving any pointer events or affecting the cursor. */
 	width: 100%;
 	height: 100%;
 	pointer-events: none;
+}
+
+/* An arrow drawn again under itself in the paper's colour (ArrowShapeUtil.tsx), the way text is outlined. */
+.tl-arrow-halo {
+	stroke: var(--color-background);
+	stroke-width: calc(var(--tl-arrow-stroke) + 2 * var(--tl-arrow-halo));
 }

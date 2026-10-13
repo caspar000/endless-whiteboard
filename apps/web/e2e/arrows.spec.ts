@@ -88,7 +88,10 @@ test.describe('elbow arrows (B1)', () => {
 
 		// The middle handle sits on the middle run, and dragging it moves the run across the gap.
 		await page.keyboard.press('Escape')
-		await page.evaluate((id) => (window as unknown as { editor: EditorHandle }).editor.select(id), drawn!.id)
+		// Braces: `select` returns the editor, which `evaluate` would try, and sometimes fail, to send back.
+		await page.evaluate((id) => {
+			;(window as unknown as { editor: EditorHandle }).editor.select(id)
+		}, drawn!.id)
 		const handle = await page.evaluate((id) => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor
 			const middle = editor.getShapeHandles(id)!.find((h) => h.id === 'middle')!

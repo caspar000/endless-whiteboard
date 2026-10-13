@@ -8,7 +8,8 @@ person or agent. `deploy/darkroomlab/README.md` covers setting the server up in 
 The app runs in one Docker container, `lifeboard`, on the Hetzner box, in the Compose project
 `/opt/stacks/lifeboard` (Arcane lists it there). Every time the container starts, `start.sh` fetches
 `main` from GitHub, builds it if the commit changed, and serves it. So **deploying is pushing to `main`
-and restarting the container.**
+and restarting the container.** Changes reach `main` through a pull request from `develop`, once CI
+is green.
 
 While a new commit builds (a few minutes), the previous build keeps serving. If the build fails, the
 previous build stays up and the container logs say why. The server and the web app deploy together.
@@ -23,11 +24,10 @@ previous build stays up and the container logs say why. The server and the web a
 
 ## Steps
 
-1. **Check.** From the repo root:
+1. **Check what you changed.** Work lands on `develop`. Before pushing, from the repo root:
 
    ```sh
    pnpm typecheck
-   pnpm lint
    ```
 
    Then the unit tests of each package you touched (`pnpm --filter <package> test`) and the end-to-end
@@ -39,11 +39,30 @@ previous build stays up and the container logs say why. The server and the web a
    pnpm exec playwright test -c playwright.server.config.ts               # with a real server
    ```
 
-   The whole app suite (no spec named) takes about 8 minutes. When a run of the whole suite fails one
-   spec, run that spec alone before calling it a regression: under load, timeouts are common.
+   The whole suite doesn't need to run locally: CI runs it (step 2).
 
-2. **Commit to `main` and push.** GitHub sometimes rejects a push with `Internal Server Error`; it's on
-   GitHub's side, so wait half a minute and push again.
+2. **Pull request from `develop` into `main`.** CI (`.github/workflows/ci.yml`) runs on every pull
+   request into `main`: typecheck and every package's unit tests, the whole app suite (Chromium and the
+   iPhone WebKit specs) and the suite against a real server. Merge once it's green, with *Squash and
+   merge* or *Rebase and merge*; merge commits are turned off.
+
+   ```sh
+   gh pr create --base main --head develop --title "<what ships>"
+   gh pr checks --watch
+   gh pr merge --squash   # or --rebase
+   ```
+
+   Either way `main` gets new commits that `develop` doesn't have, so merge `main` back into
+   `develop` straight after, or the next pull request carries this one's changes again. The content
+   is the same on both sides, so it merges cleanly, and nothing pushed to `develop` meanwhile is lost:
+
+   ```sh
+   git switch develop && git pull && git merge origin/main && git push
+   ```
+
+   When one spec fails in CI, read its trace (the run's `e2e-results` artifact) before calling it a
+   regression: under load, timeouts are common. GitHub sometimes rejects a push with
+   `Internal Server Error`; it's on GitHub's side, so wait half a minute and push again.
 
 3. **Restart the container:**
 
@@ -77,7 +96,8 @@ previous build stays up and the container logs say why. The server and the web a
 
 ## Rolling back
 
-`git revert` the bad commit, push, and restart (steps 2 to 4). The server always serves the head of
+`git revert` the bad commit on `develop`, take it through a pull request, and restart (steps 2 to 4).
+If it can't wait for CI, revert on `main` directly and push, then merge `main` into `develop`. The server always serves the head of
 `main`.
 
 ## Never

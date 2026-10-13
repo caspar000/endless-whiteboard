@@ -32,7 +32,11 @@ export default defineConfig({
 		trace: 'retain-on-failure',
 		screenshot: 'only-on-failure',
 	},
-	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+	projects: [
+		{ name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /webkit\.spec\.ts/ },
+		// Safari's engine, for what only Safari gets wrong (webkit.spec.ts): an iPhone is a Safari.
+		{ name: 'webkit', use: { ...devices['iPhone 15 Pro'] }, testMatch: /webkit\.spec\.ts/ },
+	],
 	webServer: {
 		command: `pnpm build && pnpm preview --port ${PORT} --strictPort`,
 		url: ORIGIN,

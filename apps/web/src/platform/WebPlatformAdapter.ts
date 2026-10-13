@@ -16,16 +16,40 @@ const DB_NAME = 'lifeboard'
 const BLOB_STORE = 'blobs'
 const KV_STORE = 'kv'
 
+/**
+ * A Blob as IndexedDB can keep it everywhere: its type and its bytes. Safari (WebKit) refuses to store
+ * a Blob in some sessions — "Error preparing Blob/File data to be stored in object store" — and every
+ * picture on an iPhone went missing with it. Plain bytes it stores like any other browser.
+ */
+interface StoredBytes {
+	type: string
+	bytes: ArrayBuffer
+}
+
+async function toStored(blob: Blob): Promise<StoredBytes> {
+	return { type: blob.type, bytes: await blob.arrayBuffer() }
+}
+
+const isStoredBytes = (value: unknown): value is StoredBytes =>
+	!!value && typeof value === 'object' && (value as StoredBytes).bytes instanceof ArrayBuffer
+
+/** A value as it was stored, as a Blob again. Blobs written before the change still read as they were. */
+function fromStored(value: unknown): Blob | undefined {
+	if (value instanceof Blob) return value
+	if (isStoredBytes(value)) return new Blob([value.bytes], { type: value.type })
+	return undefined
+}
+
 function idbBlobStore(store: UseStore): BlobStore {
 	return {
 		async get(hash) {
-			return get<Blob>(hash, store)
+			return fromStored(await get(hash, store))
 		},
 		async put(hash, blob) {
 			// Content-addressed: identical content always yields the same key, so re-putting is a
 			// no-op rather than a duplicate. Skipping the write keeps re-import cheap.
 			if (await get(hash, store)) return
-			await set(hash, blob, store)
+			await set(hash, await toStored(blob), store)
 		},
 		async has(hash) {
 			return (await get(hash, store)) !== undefined
@@ -39,7 +63,7 @@ function idbBlobStore(store: UseStore): BlobStore {
 		async size() {
 			let total = 0
 			for (const key of (await keys(store)) as string[]) {
-				const blob = await get<Blob>(key, store)
+				const blob = fromStored(await get(key, store))
 				if (blob) total += blob.size
 			}
 			return total
@@ -47,13 +71,15 @@ function idbBlobStore(store: UseStore): BlobStore {
 	}
 }
 
+/** Settings and the index, plus board previews: the only Blobs here, kept as bytes for Safari's sake. */
 function idbKvStore(store: UseStore): KvStore {
 	return {
 		async get<T>(key: string) {
-			return get<T>(key, store)
+			const value = await get(key, store)
+			return (isStoredBytes(value) ? fromStored(value) : value) as T | undefined
 		},
 		async set<T>(key: string, value: T) {
-			await set(key, value, store)
+			await set(key, value instanceof Blob ? await toStored(value) : value, store)
 		},
 		async delete(key: string) {
 			await del(key, store)

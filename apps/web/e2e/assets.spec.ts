@@ -94,14 +94,16 @@ async function readBlobStore(page: import('@playwright/test').Page) {
 					const q = store.getAllKeys()
 					q.onsuccess = () => r(q.result)
 				}),
-				new Promise<Blob[]>((r) => {
+				new Promise<unknown[]>((r) => {
 					const q = db.transaction('blobs', 'readonly').objectStore('blobs').getAll()
-					q.onsuccess = () => r(q.result as Blob[])
+					q.onsuccess = () => r(q.result)
 				}),
 			])
+			// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+			const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
 			return {
 				hashes: keys.map(String),
-				bytes: values.reduce((sum, b) => sum + (b?.size ?? 0), 0),
+				bytes: values.reduce<number>((sum, b) => sum + (asBlob(b)?.size ?? 0), 0),
 			}
 		} finally {
 			db.close()
@@ -183,9 +185,11 @@ test.describe('asset store', () => {
 				const req = indexedDB.open('lifeboard')
 				req.onsuccess = () => resolve(req.result)
 			})
+			// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+			const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
 			const blob = await new Promise<Blob>((resolve) => {
 				const q = db.transaction('blobs', 'readonly').objectStore('blobs').get(hash)
-				q.onsuccess = () => resolve(q.result as Blob)
+				q.onsuccess = () => resolve(asBlob(q.result)!)
 			})
 			db.close()
 			const bitmap = await createImageBitmap(blob)
@@ -365,9 +369,11 @@ test.describe('asset store', () => {
 				const q = indexedDB.open('lifeboard')
 				q.onsuccess = () => r(q.result)
 			})
+			// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+			const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
 			const blob = await new Promise<Blob | undefined>((r) => {
 				const q = db.transaction('blobs', 'readonly').objectStore('blobs').get(hash)
-				q.onsuccess = () => r(q.result)
+				q.onsuccess = () => r(asBlob(q.result))
 			})
 			db.close()
 			if (!blob) return null

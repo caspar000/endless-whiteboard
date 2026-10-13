@@ -26,7 +26,9 @@ async function storedSvgs(page: Page): Promise<string[]> {
 			q.onsuccess = () => resolve(q.result)
 		})
 		db.close()
-		const svgs = all.filter((b): b is Blob => b instanceof Blob && b.type === 'image/svg+xml')
+		// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+		const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
+		const svgs = all.map(asBlob).filter((b): b is Blob => !!b && b.type === 'image/svg+xml')
 		return Promise.all(svgs.map((b) => b.text()))
 	})
 }

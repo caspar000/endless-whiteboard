@@ -93,7 +93,8 @@ async function getOrFetchBlob(blobs: BlobStore, hash: string, fetchMissing?: Fet
 	const local = await blobs.get(hash)
 	if (local || !fetchMissing) return local ?? null
 	const fetched = await fetchMissing(hash)
-	if (fetched) await blobs.put(hash, fetched)
+	// Keeping a copy is for next time: one this browser cannot store is still shown now.
+	if (fetched) await blobs.put(hash, fetched).catch((error: unknown) => console.warn('Lifeboard: could not keep a copy of an image on this device', error))
 	return fetched
 }
 

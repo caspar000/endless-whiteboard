@@ -1907,9 +1907,11 @@ async function thumbnailBytes(page: import('@playwright/test').Page): Promise<nu
 		})
 		const sizes: number[] = []
 		for (const key of keys.filter((k) => String(k).startsWith('thumb:'))) {
+			// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+			const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
 			const blob = await new Promise<Blob | undefined>((resolve) => {
 				const q = store().get(key)
-				q.onsuccess = () => resolve(q.result)
+				q.onsuccess = () => resolve(asBlob(q.result))
 			})
 			sizes.push(blob?.size ?? 0)
 		}

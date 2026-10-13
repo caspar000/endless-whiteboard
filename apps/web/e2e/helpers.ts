@@ -401,8 +401,10 @@ export async function thumbnailSize(
 			db.close()
 			return null
 		}
-		const blob = await read<Blob>(`thumb:${theme}:${board.id}`)
+		// Stored as { type, bytes } (platform/WebPlatformAdapter.ts), or as a Blob by an older version.
+		const asBlob = (v: unknown): Blob | undefined => v instanceof Blob ? v : v && typeof v === 'object' && 'bytes' in v ? new Blob([(v as unknown as { bytes: ArrayBuffer }).bytes], { type: (v as unknown as { type: string }).type }) : undefined
+		const blob = asBlob(await read<unknown>(`thumb:${theme}:${board.id}`))
 		db.close()
-		return blob instanceof Blob ? blob.size : null
+		return blob ? blob.size : null
 	}, [boardName, theme] as const)
 }

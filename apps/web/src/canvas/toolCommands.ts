@@ -8,6 +8,7 @@ import {
 import { toggleNodeMenu } from './nodeMenuState'
 import { toolIdForNodeType } from './nodeTools'
 import { runTldrawTool } from './tldrawUi'
+import { pressTool } from './toolCycles'
 import { NODE_MENU_KBD, nativeToolKbds, nodeToolKbds } from './toolKeys'
 
 /**
@@ -35,6 +36,9 @@ const NATIVE_TOOL_TITLES: Record<string, string> = {
 	draw: 'Pen',
 	eraser: 'Eraser',
 	text: 'Text',
+	// Not one of tldraw's tools (it has one per kind), but the geo tool with the kind last chosen; R, as
+	// in tldraw's rectangle, and again for the next kind (toolCycles.ts).
+	geo: 'Shapes',
 	// tldraw's own tool, and the one whose `onSelect` opens a file dialog rather than arming a click.
 	// In the table so the dock's image button has a key like every other tool in its group.
 	asset: 'Image — place a file',
@@ -54,9 +58,10 @@ export function registerToolCommands(): void {
 			when: onBoard,
 			// Through tldraw's own tool rather than `setCurrentTool`, which matters for at least the
 			// select tool: its `onSelect` leaves edit mode first, because editing is a sub-state of
-			// select and a locked text tool would otherwise strand the caret there.
+			// select and a locked text tool would otherwise strand the caret there. A press of a tool
+			// that is already on switches its kind (toolCycles.ts).
 			run: (ctx) => {
-				if (ctx.editor) runTldrawTool(ctx.editor, id)
+				if (ctx.editor) pressTool(ctx.editor, id)
 			},
 		})
 	}

@@ -29,8 +29,9 @@ export function Phone(_props: SectionProps) {
 
 			<Section title="The dock">
 				<p>
-					Hand or Select, Sticky, Pen, Shapes, Text and More. Tap the pen again to pick up the eraser,
-					and once more for the pen. <strong>More</strong> holds the rest: frames, relations, images, the
+					Hand or Select, Sticky, Pen, Shapes, Text and More. A button with a small triangle in its corner
+					switches its kind when tapped again: the sticky to a pinned note, the pen to the eraser, the
+					shapes from one to the next. <strong>More</strong> holds the rest: frames, relations, images, the
 					node picker, the two ways of looking at relations, comments and the dice. Once you pick a tool
 					from it, the More button shows that tool.
 				</p>

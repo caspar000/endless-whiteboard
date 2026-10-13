@@ -748,14 +748,14 @@ test.describe('canvas chrome', () => {
 		// dock's own shape no longer changes when an extension is installed — which is what lets the
 		// digits below be assigned by position.
 		expect(order).toEqual([
+			// Select and Hand share a button, as do the pen and the eraser: a second press switches them
+			// (canvas/toolCycles.ts). Hand's 2 and the eraser's 7 still work as keys.
 			'select',
-			'hand',
 			'frame',
 			'arrow',
 			'|',
 			'note',
 			'draw',
-			'eraser',
 			// The shapes button: not a tldraw tool (its map has one entry per geo kind), but the geo tool.
 			'geo',
 			'text',
@@ -768,7 +768,7 @@ test.describe('canvas chrome', () => {
 			'?',
 		])
 
-		// Digits follow the dock, contiguously: the sticky is the fifth button, so it is `5`.
+		// The sticky is `5`, as it was before Hand and the eraser joined their pairs' buttons.
 		await page.locator('.lb-board-host:not([data-hidden])').getByTestId('tools.select').click()
 		await page.keyboard.press('5')
 		await expect

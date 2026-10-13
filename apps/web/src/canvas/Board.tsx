@@ -75,6 +75,7 @@ import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { canReadSnapshot } from './snapshotVersion'
 import { playBoardEntrance } from './boardEntrance'
 import { installPhoneMode } from './phoneMode'
+import { trackToolKinds } from './toolCycles'
 import { reloadToUpdate } from '../pwa/registerServiceWorker'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -568,6 +569,8 @@ function BoardCanvas({
 					const stopEntrance = playBoardEntrance(editor)
 					// On a phone the board opens in Hand, and goes back to it (phoneMode.ts).
 					const stopPhoneMode = installPhoneMode(editor)
+					// The kind each tool was last left on, for a second press and the dock's icons.
+					const stopTrackingKinds = trackToolKinds(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -584,6 +587,7 @@ function BoardCanvas({
 						stopWatchingDragOut()
 						stopEntrance()
 						stopPhoneMode()
+						stopTrackingKinds()
 						stopTracking()
 						stopUploading()
 						stopAuthorship()

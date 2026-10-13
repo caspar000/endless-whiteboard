@@ -349,3 +349,25 @@ test.describe('phone gaps', () => {
 		expect(opened.url()).toBe('https://lifeboard.app/docs')
 	})
 })
+
+test.describe('phone kinds', () => {
+	test('a second tap on the sticky or the shapes switches its kind, and the buttons say they cycle', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await expect(page.locator('.lb-dock [data-cycles]')).toHaveCount(4)
+		const note = page.getByTestId('tools.note')
+		await note.click()
+		await note.click()
+		await expect.poll(() => tool(page)).toBe('pinned-note')
+
+		const shapes = page.getByTestId('tools.geo')
+		await shapes.click()
+		const geo = () =>
+			page.evaluate(
+				() => (window as unknown as { editor: { getInstanceState(): { stylesForNextShape: Record<string, string> } } }).editor.getInstanceState().stylesForNextShape['tldraw:geo'] ?? 'rectangle'
+			)
+		const before = await geo()
+		await shapes.click()
+		await expect.poll(geo).not.toBe(before)
+	})
+})

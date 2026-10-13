@@ -41,6 +41,14 @@ accident; making something returns to Hand, and a long press is the deliberate w
 sessions, so pictures and previews are stored as bytes (`platform/WebPlatformAdapter.ts`), and a WebKit
 project in the e2e suite (`e2e/webkit.spec.ts`) keeps it that way.
 
+**A second press switches a tool's kind** (`canvas/toolCycles.ts`). Pressing a tool's key while that
+tool is on, or clicking its dock button again, goes to the next kind: Select ⇄ Hand, sticky ⇄ pinned
+note, pen ⇄ eraser, the arrow's kinds, the shapes one after another (R, a key of their own now). One dock
+button stands for each pair or set, with a small triangle in its corner, on the desktop dock and the
+phone's alike (`canvas/cycleButtons.tsx`); its icon shows the kind the next click makes, and a tool comes
+back as it was last left. "Again" has no timing: it means "while that tool is on". Hand's 2 and the
+eraser's 7 still work as keys of their own.
+
 **A board's colour and icon** are the small square beside its name on its tab, its sidebar row and its
 card. Clicking the square (or ⌘K → *Change board colour and icon…*) opens a picker: a search box, the
 icons by category, and a row of colours with a default and a custom one. The icons are Tabler's outline

@@ -55,6 +55,8 @@ const NATIVE_TOOL_LETTERS: Record<string, string> = {
 	draw: 'd',
 	eraser: 'e',
 	text: 't',
+	// Not a tldraw tool, but the dock's shapes button (toolCycles.ts); R as in tldraw's rectangle.
+	geo: 'r',
 }
 
 /**

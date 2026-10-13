@@ -3,9 +3,7 @@ import {
 	BookOpen,
 	Boxes,
 	Dices,
-	Eraser,
 	Frame,
-	Hand,
 	Image as ImageIcon,
 	MousePointer2,
 	NotepadText,
@@ -32,24 +30,17 @@ type DockTool = {
 	blurb: string
 }
 
-// Mirrors canvas/CanvasToolbar.tsx — same order, same icons, same shortcuts.
+// Mirrors canvas/CanvasToolbar.tsx — same order, same icons, same shortcuts. A button that stands for a
+// pair (Select ⇄ Hand, Pen ⇄ Eraser) is one entry, with both pairs of keys.
 const DOCK_GROUPS: DockTool[][] = [
 	[
 		{
 			id: 'select',
-			label: 'Select',
+			label: 'Select ⇄ Hand',
 			icon: <MousePointer2 size={19} />,
-			kbd: ['V', '1'],
+			kbd: ['V', '1', 'H', '2'],
 			blurb:
-				'Click to select, drag to move or resize. Double-click a note to write in it — double-click always means "edit the content". Tap Space to Quick look it: the board blurs and the node fills the screen.',
-		},
-		{
-			id: 'hand',
-			label: 'Hand',
-			icon: <Hand size={19} />,
-			kbd: ['H', '2'],
-			blurb:
-				'Drag to pan. You rarely need it: two-finger scroll pans from any tool, and pinch or ⌘-scroll zooms.',
+				'Click to select, drag to move or resize. Double-click a note to write in it — double-click always means "edit the content". Tap Space to Quick look it: the board blurs and the node fills the screen. Press the key again, or click the button again, for Hand: drag to pan. You rarely need it — two-finger scroll pans from any tool, and pinch or ⌘-scroll zooms.',
 		},
 		{
 			id: 'frame',
@@ -65,7 +56,7 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <Spline size={19} />,
 			kbd: ['A', '4'],
 			blurb:
-				'Connects shapes. Snapped to a shape at both ends, an arrow becomes a relation the board can count and sum. Hold Shift while drawing one to make it hidden.',
+				'Connects shapes. Snapped to a shape at both ends, an arrow becomes a relation the board can count and sum. Hold Shift while drawing one to make it hidden. Press A again to switch between a curved arrow and an elbow.',
 		},
 	],
 	[
@@ -75,30 +66,23 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <StickyNote size={19} />,
 			kbd: ['N', '5'],
 			blurb:
-				'A quick sticky, yellow to start. The row above the dock switches to a pinned note — larger, white, held up by a push pin, written from the top left — and sets the colour of each kind separately, and the pin’s. A selected pinned note’s toolbar changes its pin too. Resizing a sticky scales it as it is; a pinned note takes any proportion, its width scaling it and its height setting how tall the paper is. Like everything else on the board, either can carry properties — a priced sticky counts as much as a priced note.',
+				'A quick sticky, yellow to start. Press N again, or click the button again, for a pinned note; the row above the dock switches too, to a pinned note — larger, white, held up by a push pin, written from the top left — and sets the colour of each kind separately, and the pin’s. A selected pinned note’s toolbar changes its pin too. Resizing a sticky scales it as it is; a pinned note takes any proportion, its width scaling it and its height setting how tall the paper is. Like everything else on the board, either can carry properties — a priced sticky counts as much as a priced note.',
 		},
 		{
 			id: 'draw',
-			label: 'Pen',
+			label: 'Pen ⇄ Eraser',
 			icon: <Pen size={19} />,
-			kbd: ['D', '6'],
+			kbd: ['D', '6', 'E', '7'],
 			blurb:
-				'Freehand ink. While a drawing tool is active, a row above the dock offers the highlighter, stroke sizes and colours.',
-		},
-		{
-			id: 'eraser',
-			label: 'Eraser',
-			icon: <Eraser size={19} />,
-			kbd: ['E', '7'],
-			blurb: 'Removes whatever you drag across — ink first, shapes if you insist.',
+				'Freehand ink. While a drawing tool is active, a row above the dock offers the highlighter, stroke sizes and colours. Press D again, or click the button again, for the eraser, which removes whatever you drag across; once more for the pen.',
 		},
 		{
 			id: 'geo',
 			label: 'Shapes',
 			icon: <Shapes size={19} />,
-			kbd: [],
+			kbd: ['R'],
 			blurb:
-				'Rectangles, ellipses and friends. The row above the dock sets the kind, the border colour and the fill colour — fill is off until you pick one. Their labels are live text, so an expression like {sum price} works inside a shape too.',
+				'Rectangles, ellipses and friends. Press R again, or click the button again, for the next kind; the row above the dock sets the kind, the border colour and the fill colour — fill is off until you pick one. Their labels are live text, so an expression like {sum price} works inside a shape too.',
 		},
 		{
 			id: 'text',

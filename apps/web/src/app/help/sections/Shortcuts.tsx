@@ -207,7 +207,9 @@ export function Shortcuts() {
 				<p>
 					Undo and redo have no button anywhere — they are <kbd className="lb-kbd">⌘Z</kbd> and{' '}
 					<kbd className="lb-kbd">⇧⌘Z</kbd>, deliberately. Tool keys come in pairs, a letter and a
-					digit, so your hand never has to leave either side of the keyboard. Anything with a
+					digit, so your hand never has to leave either side of the keyboard. Pressed again while its
+					tool is on, a tool key switches the kind: Select and Hand, a sticky and a pinned note, the
+					pen and the eraser, the two kinds of arrow, the shapes one after another. Anything with a
 					binding is also in the palette, on <kbd className="lb-kbd">⌘K</kbd> — and every one of
 					them can be moved, in <em>Settings → Keyboard</em>. This page shows what they are now,
 					not what they shipped as.

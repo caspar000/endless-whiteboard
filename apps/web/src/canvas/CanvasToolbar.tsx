@@ -9,17 +9,13 @@ import {
 	Circle,
 	CornerDownRight,
 	Diamond,
-	Eraser,
 	Frame,
-	Hand,
 	Heart,
 	Hexagon,
 	Highlighter,
 	Image,
-	MousePointer2,
 	Pen,
 	Pin,
-	Shapes,
 	Spline,
 	Square,
 	MessageSquare,
@@ -49,6 +45,7 @@ import {
 } from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
 import { PhoneDock } from './PhoneDock'
+import { ArrowCycleButton, NavCycleButton, NoteCycleButton, PenCycleButton, ShapesCycleButton } from './cycleButtons'
 import { usePhone } from '../app/usePhone'
 import { useDockDrag, type DockShape } from './dockDrag'
 import { commentsPanelOpen, threadsOf } from './comments/comments'
@@ -733,7 +730,6 @@ function DesktopDock() {
 	const editor = useEditor()
 	const dockRef = useCramped()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
-	const { wasDrag: geoWasDrag, ...geoDragHandlers } = useDockDrag(editor, 'geo')
 
 	return (
 		<div className="lb-dock-wrap">
@@ -741,17 +737,9 @@ function DesktopDock() {
 			<ToolSettings currentToolId={currentToolId} />
 
 			<div className="lb-dock" ref={dockRef}>
-				{/* Getting around, and around things. */}
-				<ToolButton
-					toolId="select"
-					icon={<MousePointer2 size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'select'}
-				/>
-				<ToolButton
-					toolId="hand"
-					icon={<Hand size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'hand'}
-				/>
+				{/* Getting around, and around things. A button that stands for a pair or a set switches it
+				    on a second press, and says so with a mark in its corner (cycleButtons.tsx). */}
+				<NavCycleButton toolId={currentToolId} />
 				<ToolButton
 					toolId="frame"
 					icon={<Frame size={ICON_SIZE} aria-hidden="true" />}
@@ -760,48 +748,14 @@ function DesktopDock() {
 				/>
 				{/* tldraw's arrow. Snapped at both ends it becomes a relation, which is what it is for
 				    here and why it reads as one of the structural tools rather than a drawing one. */}
-				<ToolButton
-					toolId="arrow"
-					icon={<Spline size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'arrow'}
-				/>
+				<ArrowCycleButton toolId={currentToolId} />
 
 				<div className="lb-dock__sep" />
 
 				{/* Making marks. */}
-				<ToolButton
-					toolId="note"
-					icon={<StickyNote size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'note' || currentToolId === 'pinned-note'}
-					drag="note"
-				/>
-				<ToolButton
-					toolId="draw"
-					icon={<Pen size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'draw' || currentToolId === 'highlight'}
-				/>
-				<ToolButton
-					toolId="eraser"
-					icon={<Eraser size={ICON_SIZE} aria-hidden="true" />}
-					isActive={currentToolId === 'eraser'}
-				/>
-				{/* Not a ToolButton: tldraw's tools map has one entry per geo *kind*, not a single
-				    "geo" tool, so the shapes button activates the geo tool with the current kind. */}
-				<button
-					className={
-						currentToolId === 'geo' ? 'lb-dock__tool lb-dock__tool--active' : 'lb-dock__tool'
-					}
-					data-testid="tools.geo"
-					{...geoDragHandlers}
-					onClick={() => {
-						if (!geoWasDrag()) editor.setCurrentTool('geo')
-					}}
-					title="Shapes"
-					aria-label="Shapes"
-					aria-pressed={currentToolId === 'geo'}
-				>
-					<Shapes size={ICON_SIZE} aria-hidden="true" />
-				</button>
+				<NoteCycleButton toolId={currentToolId} />
+				<PenCycleButton toolId={currentToolId} />
+				<ShapesCycleButton toolId={currentToolId} />
 				<ToolButton
 					toolId="text"
 					icon={<Type size={ICON_SIZE} aria-hidden="true" />}

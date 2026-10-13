@@ -30,6 +30,9 @@ reference screenshots to take inspiration from, translated into our own design s
 - **After creating** a sticky, shape or text (after typing, for sticky and text) the tool returns to the
   mode you came from: Hand, unless you were in Select.
 - **Pen⇄Eraser**: tapping Pen while it is on switches to Eraser, and back.
+- **Sticky and Shapes** switch kinds on a second tap too (sticky ⇄ pinned, the shapes in turn), and so does
+  Arrow in the More row; every button that does has a small triangle in its corner. Added after the phases,
+  together with the same thing on desktop (README, *A second press switches a tool's kind*).
 - **Long press** on a shape in Hand switches to Select, selects it and opens its menu: a deliberate way in.
 - **Double tap** in Hand on a book opens the reader; on any other shape Quick look can show, Quick look
   (the phone's Space); on empty board it zooms, as before. Added after the phases.

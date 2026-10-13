@@ -2485,6 +2485,22 @@ div.lb-sidebar__moves {
 		transform var(--mo-pop),
 		box-shadow var(--mo-in);
 }
+/* A button that switches its kind on a second press (canvas/cycleButtons.tsx): a small triangle in the
+   corner, the way a tool with a group behind it is marked elsewhere. The digit has the other corner. */
+.lb-dock__cycle {
+	position: absolute;
+	left: 7px;
+	bottom: 7px;
+	width: 0;
+	height: 0;
+	border-left: 5px solid currentColor;
+	border-top: 5px solid transparent;
+	opacity: 0.4;
+	pointer-events: none;
+}
+.lb-dock__tool--active .lb-dock__cycle {
+	opacity: 0.85;
+}
 .lb-dock__tool:hover {
 	background: var(--lb-surface-hover);
 	color: var(--lb-text);

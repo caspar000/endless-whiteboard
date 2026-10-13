@@ -320,10 +320,11 @@ export function Overview({ go }: SectionProps) {
 						</p>
 					</div>
 					<div className="lb-help__fact">
-						<h3>Everything is local</h3>
+						<h3>Where boards live</h3>
 						<p>
-							Boards live in this browser, not on a server. Settings has the export that makes a
-							backup file, and the import that puts one back.
+							In this browser, or on your own server if you have one (see Server), where every device
+							you log in from sees the same board. Settings has the export that makes a backup file,
+							and the import that puts one back.
 						</p>
 					</div>
 					<div className="lb-help__fact">

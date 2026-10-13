@@ -31,7 +31,9 @@ export function GeneralPanel() {
 						<div className="lb-appearance__value">Lifeboard {APP_VERSION}</div>
 					</div>
 					<p className="lb-appearance__hint">
-						Everything you make stays on this device. The one exception is exchange rates, above.
+						A board stays on this device unless it is on your server (Help → Server). Otherwise only
+						three things go out: exchange rates (above), the page behind a link you drop in, for its
+						preview, and what you ask the agent, to Claude.
 					</p>
 				</div>
 			</section>

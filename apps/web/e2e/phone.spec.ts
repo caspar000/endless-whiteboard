@@ -246,6 +246,27 @@ test.describe('phone pages', () => {
 			.toBe(true)
 	})
 
+	test('a card keeps its actions behind a ⋯, with no hover to show them', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await pill(page).click()
+		await page.getByRole('menuitem', { name: 'All boards' }).click()
+		const card = page.locator('.lb-list__board').first()
+		const rename = card.getByRole('button', { name: 'Rename' })
+		await expect(rename).toBeHidden()
+
+		await card.getByRole('button', { name: /^Actions for / }).click()
+		await expect(rename).toBeVisible()
+		await rename.click()
+		await expect(card.getByRole('textbox', { name: 'Board name' })).toBeVisible()
+		await page.keyboard.press('Escape')
+
+		await card.getByRole('button', { name: /^Actions for / }).click()
+		await card.getByRole('button', { name: 'Delete', exact: true }).click()
+		await card.getByRole('button', { name: 'Delete for good' }).click()
+		await expect(page.locator('.lb-list__board')).toHaveCount(0)
+	})
+
 	test('the selection toolbar sits above the dock, and gives way to More', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(pill(page)).toBeVisible()
@@ -317,6 +338,7 @@ test.describe('phone gaps', () => {
 	test('a link on a note opens from Hand, in a new tab', async ({ page, context }) => {
 		await gotoFresh(page)
 		await expect(pill(page)).toBeVisible()
+		await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: DockEditor & { select(id: string): void; setCamera(c: unknown): void } }).editor
 			editor.createShapes([{ id: 'shape:linked', type: 'note', x: 0, y: 0 }])

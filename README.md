@@ -30,7 +30,9 @@ drawn from the live editor once the board is off screen and the user is idle. A 
 from another device, made by an agent) gets one drawn in a hidden editor off screen, one board at a
 time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
 boards' previews are stored on the server, so every device has them. Star a board to pin it to
-Favourites.
+Favourites. A card's actions (star, rename, share, move, delete) are icon buttons over its preview, named
+in a CSS tooltip (`.lb-tip`), that show on hover; a touch screen gets a ⋯ there instead. Delete asks
+first, in a small card over the preview.
 
 **On a phone** (below 768px, docs/mobile-plan.md) the chrome is laid out for a thumb: a menu button,
 the open board's name (tap it to switch boards) and the agent button across the top; the sidebar and the

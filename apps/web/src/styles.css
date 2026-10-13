@@ -1589,16 +1589,19 @@ div.lb-sidebar__moves {
 }
 
 .lb-card {
+	/* The floating chrome's surface (`.lb-float`), with the preview set inside it like a sidebar row. */
 	display: flex;
 	flex-direction: column;
-	border-radius: 12px;
-	overflow: hidden;
+	padding: 6px;
+	border-radius: 20px;
 	background: var(--lb-surface);
-	border: 1px solid var(--lb-border);
-	transition: border-color 120ms ease, transform 120ms ease;
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	transition:
+		box-shadow var(--mo-in),
+		transform var(--mo-in);
 }
 .lb-card:hover {
-	border-color: var(--lb-border-strong);
+	box-shadow: var(--fl-ring), var(--fl-shadow);
 	transform: translateY(-2px);
 }
 .lb-card__media {
@@ -1611,7 +1614,9 @@ div.lb-sidebar__moves {
 	aspect-ratio: 4 / 3;
 	padding: 0;
 	border: 0;
+	border-radius: 14px;
 	background: var(--lb-thumb-paper);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
 	overflow: hidden;
 }
 .lb-card__image {
@@ -1641,11 +1646,9 @@ div.lb-sidebar__moves {
 .lb-card__footer {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 9px 11px;
-	border-top: 1px solid var(--lb-border);
-	background: var(--lb-surface);
-	min-height: 46px;
+	gap: 10px;
+	padding: 10px 6px 4px 8px;
+	min-height: 48px;
 }
 .lb-card__title {
 	flex: 1;
@@ -1661,8 +1664,8 @@ div.lb-sidebar__moves {
 	padding: 0;
 }
 .lb-list__title {
-	font-size: 13px;
-	font-weight: 500;
+	font-size: 14px;
+	font-weight: 600;
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1670,7 +1673,7 @@ div.lb-sidebar__moves {
 }
 .lb-card__date,
 .lb-list__meta {
-	font-size: 11px;
+	font-size: 12px;
 	color: var(--lb-text-faint);
 }
 /* A board on its way between this browser and the server: where it has got to, over its preview. */
@@ -1767,53 +1770,185 @@ div.lb-sidebar__moves {
 
 .lb-card__actions {
 	position: absolute;
-	top: 6px;
-	right: 6px;
+	top: 8px;
+	right: 8px;
 	display: flex;
 	align-items: center;
-	gap: 3px;
+	gap: 2px;
 	padding: 3px;
-	border-radius: 8px;
-	background: var(--lb-scrim);
-	backdrop-filter: blur(6px);
-	/* Out of the way until the card is hovered or something inside it has focus. */
+	border-radius: 12px;
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	/* Out of the way until the card is hovered, something inside it has focus, or the ⋯ holds it open. */
 	opacity: 0;
-	transition: opacity 120ms ease;
+	transform: translateY(-3px);
+	transition:
+		opacity var(--mo-in),
+		transform var(--mo-in);
 }
 .lb-card:hover .lb-card__actions,
-.lb-card:focus-within .lb-card__actions {
+.lb-card:focus-within .lb-card__actions,
+.lb-card--actions-open .lb-card__actions {
 	opacity: 1;
+	transform: none;
+}
+.lb-card__action {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: 0;
+	border-radius: 9px;
+	background: none;
+	color: var(--lb-text-dim);
+	transition:
+		background var(--mo-in),
+		color var(--mo-in);
+}
+.lb-card__action:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-card__action:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 0;
+}
+.lb-card__fav--on,
+.lb-card__fav--on:hover {
+	color: var(--lb-star);
+}
+.lb-card__delete:hover,
+.lb-card__delete[aria-pressed='true'] {
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
 }
 /*
- * A favourited board keeps its star visible even when the card isn't hovered — that is the whole
- * point of the marker. Only the star, though: the surrounding pill and the rename/delete buttons stay
- * hidden, so an idle grid shows bare stars rather than a row of floating toolbars.
+ * A favourited board keeps its star in view when the card is idle — that is the whole point of the
+ * marker. Only the star, on a pill of its own; the other actions stay hidden, so an idle grid shows
+ * bare stars rather than a row of toolbars.
  */
-.lb-card:not(:hover):not(:focus-within) .lb-card__actions:has(.lb-card__fav--on) {
+.lb-card:not(:hover):not(:focus-within):not(.lb-card--actions-open) .lb-card__actions:has(.lb-card__fav--on) {
 	opacity: 1;
-	background: none;
-	backdrop-filter: none;
+	transform: none;
 }
-.lb-card:not(:hover):not(:focus-within) .lb-card__actions:has(.lb-card__fav--on) .lb-btn {
+.lb-card:not(:hover):not(:focus-within):not(.lb-card--actions-open)
+	.lb-card__actions:has(.lb-card__fav--on)
+	.lb-card__action:not(.lb-card__fav, .lb-card__more) {
 	display: none;
 }
-.lb-card__fav {
-	background: none;
-	border: 0;
-	color: var(--lb-text-dim);
-	font-size: 14px;
-	line-height: 1;
-	padding: 3px 4px;
-	border-radius: 6px;
+/* Delete asks first, in a small card under the actions. */
+.lb-card__confirm {
+	position: absolute;
+	top: 50px;
+	right: 8px;
+	left: 8px;
+	z-index: 1;
+	display: grid;
+	gap: 10px;
+	padding: 12px;
+	border-radius: 14px;
+	background: var(--lb-surface);
+	box-shadow: var(--fl-ring), var(--fl-shadow);
+	font-size: 13px;
+	animation: lb-card-confirm-in var(--mo-in);
 }
-.lb-card__fav:hover {
-	color: var(--lb-text);
-	background: var(--lb-surface-2);
+.lb-card__confirm p {
+	margin: 0;
+	line-height: 1.45;
 }
-.lb-card__fav--on {
-	color: var(--lb-star);
-	text-shadow: 0 1px 3px rgb(0 0 0 / 65%);
+.lb-card__confirm-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
 }
+@keyframes lb-card-confirm-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+/*
+ * A touch screen has no hover: the pill stays in view with a ⋯ (and the star, on a favourite), and
+ * the ⋯ opens it into the full set.
+ */
+.lb-card__more {
+	display: none;
+}
+@media (hover: none) {
+	.lb-card .lb-card__actions {
+		opacity: 1;
+		transform: none;
+	}
+	.lb-card__more {
+		display: grid;
+	}
+	.lb-card:not(.lb-card--actions-open) .lb-card__action:not(.lb-card__fav--on, .lb-card__more),
+	.lb-card--actions-open .lb-card__more {
+		display: none;
+	}
+}
+
+/*
+ * A tooltip for an icon button: `class="lb-tip" data-tip="…"`, shown below it after a short hover or
+ * at once from the keyboard. Plain CSS, so it works on pages outside the board, away from the canvas's
+ * own tooltips.
+ */
+.lb-tip {
+	position: relative;
+}
+.lb-tip::after {
+	content: attr(data-tip);
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	z-index: 2;
+	padding: 5px 8px;
+	border-radius: 8px;
+	background: var(--lb-text);
+	color: var(--lb-surface);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.2;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transform: translate(-50%, -2px);
+	transition:
+		opacity 120ms ease,
+		transform 120ms ease;
+}
+.lb-tip:hover::after {
+	opacity: 1;
+	transform: translate(-50%, 0);
+	transition-delay: 350ms;
+}
+.lb-tip:focus-visible::after {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+/* Hover on a touch screen is a tap: no tooltip to stick around after it. */
+@media (hover: none) {
+	.lb-tip::after {
+		display: none;
+	}
+}
+/* The last action's tooltip would run off the card's right edge. */
+.lb-card__delete::after {
+	left: auto;
+	right: -3px;
+	transform: translateY(-2px);
+}
+.lb-card__delete:hover::after,
+.lb-card__delete:focus-visible::after {
+	transform: none;
+}
+/* The confirmation says it already. */
+.lb-card__delete[aria-pressed='true']::after {
+	display: none;
+}
+
 .lb-list__rename {
 	flex: 1;
 	min-width: 0;
@@ -12791,6 +12926,36 @@ button.lb-props__eye:hover {
 	}
 	.lb-card__date {
 		display: none;
+	}
+	/* Five actions have to fit across a card half the screen wide. */
+	.lb-card__actions {
+		top: 6px;
+		right: 6px;
+		gap: 0;
+	}
+	.lb-card__action {
+		width: 27px;
+		height: 27px;
+	}
+	.lb-card__footer {
+		gap: 8px;
+		padding-left: 6px;
+	}
+	.lb-card__badge {
+		width: 24px;
+		height: 24px;
+	}
+	/* The question takes the whole preview: under the actions there is no room for it. */
+	.lb-card__confirm {
+		inset: 0;
+		align-content: center;
+		gap: 8px;
+		padding: 10px;
+		font-size: 12px;
+		text-align: center;
+	}
+	.lb-card__confirm-actions {
+		flex-direction: column-reverse;
 	}
 	/* Settings and Help: their row of sections clears the menu button; the page under it is full width. */
 	.lb-rail {

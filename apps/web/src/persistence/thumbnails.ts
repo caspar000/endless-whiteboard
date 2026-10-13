@@ -56,7 +56,11 @@ export function onThumbnailSaved(listener: ThumbnailListener): () => void {
 
 /** Long edge in device pixels. Cards are ~260px wide, so this stays crisp on a 2× display. */
 const THUMB_LONG_EDGE = 600
-const MAX_SHAPES = 400
+/**
+ * At most this many shapes go into a preview. Exporting costs by the shape (400 notes took ~950 ms of
+ * blocked page, 120 took ~290 ms), and at a card's size the rest are specks.
+ */
+const MAX_SHAPES = 120
 
 /**
  * Lets a board that is currently hidden be exported anyway.
@@ -135,9 +139,20 @@ export async function saveBoardThumbnail(
 			return
 		}
 
-		// Exporting a very large board is slow and the result is illegible anyway; a subset still
-		// reads as "this is that board". Ordering by index keeps the choice stable between exports.
-		const shapes = shapeIds.slice(0, MAX_SHAPES)
+		// A big board is drawn from its largest shapes: they are what makes it recognisable at a card's
+		// size. The sort is stable, so shapes the same size keep their order and the choice is the same
+		// from one export to the next.
+		const shapes =
+			shapeIds.length <= MAX_SHAPES
+				? shapeIds
+				: shapeIds
+						.map((id) => {
+							const box = editor.getShapePageBounds(id)
+							return { id, area: box ? box.width * box.height : 0 }
+						})
+						.sort((a, b) => b.area - a.area)
+						.slice(0, MAX_SHAPES)
+						.map(({ id }) => id)
 
 		const bounds = editor.getCurrentPageBounds()
 		if (!bounds) return

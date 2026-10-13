@@ -542,7 +542,8 @@ couple of hundred notes blocks the page for ~400 ms, and awaiting one before eac
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn
 once it is off screen and nothing has been typed or clicked for a moment; unchanged boards are never
 redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A closed tab's editor stays mounted until
-its preview is drawn. Exporting a hidden board needs
+its preview is drawn. A preview draws at most the board's 120 largest shapes: the cost is by the shape, and at
+a card's size the rest are specks. Exporting a hidden board needs
 `withExportableHost`: from a `visibility: hidden` host, the exporter drops every node background and
 font, and previews decay into serif text on white.
 

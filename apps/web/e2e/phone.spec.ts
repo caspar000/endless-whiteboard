@@ -6,6 +6,15 @@ test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true
 
 const pill = (page: import('@playwright/test').Page) => page.locator('.lb-pill__current')
 
+/**
+ * A fresh app on its board, with the editor ready for `page.evaluate`: it arrives a moment after the
+ * canvas, and a slow machine (CI) reads `window.editor` before it otherwise.
+ */
+async function gotoBoard(page: import('@playwright/test').Page) {
+	await gotoFresh(page)
+	await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
+}
+
 test.describe('phone chrome', () => {
 	test('the board pill names the board, and its list switches, closes and makes boards', async ({ page }) => {
 		await gotoFresh(page)
@@ -106,7 +115,7 @@ async function box(page: import('@playwright/test').Page) {
 
 test.describe('phone dock', () => {
 	test('a board opens in Hand, where a drag moves the view and never the shape', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		const toggle = page.getByTestId('lb.nav-toggle')
 		await expect(toggle).toHaveAttribute('data-mode', 'hand')
@@ -129,7 +138,7 @@ test.describe('phone dock', () => {
 	})
 
 	test('making a sticky goes back to Hand once you are done with it', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		await page.getByTestId('tools.note').click()
 		expect(await tool(page)).toBe('note')
@@ -141,7 +150,7 @@ test.describe('phone dock', () => {
 	})
 
 	test('the pen picks up the eraser when tapped again', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		const pen = page.getByTestId('lb.pen-eraser')
 		await pen.click()
 		expect(await tool(page)).toBe('draw')
@@ -183,7 +192,7 @@ test.describe('phone dock', () => {
 	})
 
 	test('a long press on a shape in Hand chooses Select, with the shape selected and its menu open', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		const at = await box(page)
 		const touch = await touches(page)
@@ -198,9 +207,8 @@ test.describe('phone dock', () => {
 test.describe('phone reading', () => {
 	test('a double tap on a book in Hand opens it, and closing it is back to Hand', async ({ page }) => {
 		const { makeRarArchive, PIXEL_GIF } = await import('@lifeboard/book-reader/rar-fixture')
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
-		await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 		const bytes = [...makeRarArchive([{ name: 'page1.jpg', data: PIXEL_GIF }, { name: 'page2.jpg', data: PIXEL_GIF }])]
 		await page.evaluate(async (bytes) => {
 			const editor = (window as unknown as { editor: { putExternalContent(input: unknown): Promise<void> } }).editor
@@ -268,7 +276,7 @@ test.describe('phone pages', () => {
 	})
 
 	test('the selection toolbar sits above the dock, and gives way to More', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		await page.getByTestId('lb.nav-toggle').click()
 		await page.evaluate(() => {
@@ -317,7 +325,7 @@ test.describe('phone gaps', () => {
 	})
 
 	test('a double tap on a shape in Hand opens it in Quick look, and selects nothing', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		const centre = await page.evaluate(() => {
 			const editor = (window as unknown as { editor: DockEditor & { getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } } }).editor
@@ -336,9 +344,8 @@ test.describe('phone gaps', () => {
 	})
 
 	test('a link on a note opens from Hand, in a new tab', async ({ page, context }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
-		await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 		await page.evaluate(() => {
 			const editor = (window as unknown as { editor: DockEditor & { select(id: string): void; setCamera(c: unknown): void } }).editor
 			editor.createShapes([{ id: 'shape:linked', type: 'note', x: 0, y: 0 }])
@@ -374,7 +381,7 @@ test.describe('phone gaps', () => {
 
 test.describe('phone kinds', () => {
 	test('a second tap on the sticky or the shapes switches its kind, and the buttons say they cycle', async ({ page }) => {
-		await gotoFresh(page)
+		await gotoBoard(page)
 		await expect(pill(page)).toBeVisible()
 		await expect(page.locator('.lb-dock [data-cycles]')).toHaveCount(4)
 		const note = page.getByTestId('tools.note')

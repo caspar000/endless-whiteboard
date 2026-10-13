@@ -1,0 +1,80 @@
+# The whole test suite, on every pull request into main (in practice: develop → main).
+# Three jobs in parallel: typecheck and unit tests, the app's end-to-end suite, and the end-to-end
+# suite against a real server. Node and pnpm match the server's (deploy/darkroomlab/compose.yaml).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same pull request makes the run before it pointless.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # agent-host's types and tests import mcp-server's build.
+      - run: pnpm agent:build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  e2e:
+    name: End-to-end (app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lifeboard/web exec playwright install --with-deps chromium webkit
+      - run: pnpm exec playwright test
+        working-directory: apps/web
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: apps/web/test-results
+          retention-days: 7
+
+  e2e-server:
+    name: End-to-end (with a server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lifeboard/web exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test -c playwright.server.config.ts
+        working-directory: apps/web
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-server-results
+          path: apps/web/test-results
+          retention-days: 7

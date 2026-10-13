@@ -7,27 +7,31 @@ person or agent. `deploy/darkroomlab/README.md` covers setting the server up in 
 
 The app runs in one Docker container, `lifeboard`, on the Hetzner box, in the Compose project
 `/opt/stacks/lifeboard` (Arcane lists it there). Every time the container starts, `start.sh` fetches
-`main` from GitHub, builds it if the commit changed, and serves it. So **deploying is pushing to `main`
-and restarting the container.**
+`main` from GitHub, builds it if the commit changed, and serves it.
+
+**Every push to `main` deploys itself.** `.github/workflows/deploy.yml` restarts the container over
+SSH, with a key that can do nothing else, and waits until `/api/status` reports the new commit. The
+run goes red in the Actions tab if it doesn't. Changes reach `main` through a pull request from
+`develop`, once CI is green, so merging that pull request is the deploy.
 
 While a new commit builds (a few minutes), the previous build keeps serving. If the build fails, the
 previous build stays up and the container logs say why. The server and the web app deploy together.
 
 ## Before you start
 
-- **Deploy only when the user asks.** It's live for everyone using the server.
-- **Ask for a backup first** when the change touches stored data: the server's tables
+- **Merge into `main`, or push to it, only when the user asks.** That is a deploy, live for everyone
+  using the server.
+- **Ask for a backup before merging** when the change touches stored data: the server's tables
   (`apps/server/src/accounts.ts`, `vault.ts`), or a board record's props or migrations (anything in
   `packages/` with a migration sequence). The user downloads one from Settings → Storage → *Download
   server backup (.zip)*. Board data lives in the `lifeboard_data` volume, and nothing else backs it up.
 
 ## Steps
 
-1. **Check.** From the repo root:
+1. **Check what you changed.** Work lands on `develop`. Before pushing, from the repo root:
 
    ```sh
    pnpm typecheck
-   pnpm lint
    ```
 
    Then the unit tests of each package you touched (`pnpm --filter <package> test`) and the end-to-end
@@ -39,29 +43,39 @@ previous build stays up and the container logs say why. The server and the web a
    pnpm exec playwright test -c playwright.server.config.ts               # with a real server
    ```
 
-   The whole app suite (no spec named) takes about 8 minutes. When a run of the whole suite fails one
-   spec, run that spec alone before calling it a regression: under load, timeouts are common.
+   The whole suite doesn't need to run locally: CI runs it (step 2).
 
-2. **Commit to `main` and push.** GitHub sometimes rejects a push with `Internal Server Error`; it's on
-   GitHub's side, so wait half a minute and push again.
-
-3. **Restart the container:**
-
-   ```sh
-   ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86 'cd /opt/stacks/lifeboard && docker compose restart'
-   ```
-
-   Use exactly this user and key. If it fails, **stop and ask the user**: don't try other users or
-   keys, because repeated failed logins get the user's IP banned by fail2ban.
-
-4. **Wait until the new commit is served.** `/api/status` needs no login and reports the revision:
+2. **Pull request from `develop` into `main`.** CI (`.github/workflows/ci.yml`) runs on every pull
+   request into `main`: typecheck and every package's unit tests, the whole app suite (Chromium and the
+   iPhone WebKit specs) and the suite against a real server. Merge once it's green, with *Squash and
+   merge* or *Rebase and merge*; merge commits are turned off.
 
    ```sh
-   rev=$(git rev-parse HEAD)
-   until curl -s https://lifeboard.darkroomlab.net/api/status | grep -q "$rev"; do sleep 15; done
+   gh pr create --base main --head develop --title "<what ships>"
+   gh pr checks --watch
+   gh pr merge --squash   # or --rebase
    ```
 
-   This usually takes 2 to 5 minutes. If it hasn't changed after 10, read the logs:
+   Either way `main` gets new commits that `develop` doesn't have, so merge `main` back into
+   `develop` straight after, or the next pull request carries this one's changes again. The content
+   is the same on both sides, so it merges cleanly, and nothing pushed to `develop` meanwhile is lost:
+
+   ```sh
+   git switch develop && git pull && git merge origin/main && git push
+   ```
+
+   When one spec fails in CI, read its trace (the run's `e2e-results` artifact) before calling it a
+   regression: under load, timeouts are common. GitHub sometimes rejects a push with
+   `Internal Server Error`; it's on GitHub's side, so wait half a minute and push again.
+
+3. **Watch the deploy.** The merge starts the *Deploy* workflow:
+
+   ```sh
+   gh run watch "$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+   ```
+
+   It usually takes 2 to 5 minutes. When it fails, the previous build is still serving. Read the
+   container logs to see why:
 
    ```sh
    ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86 \
@@ -69,7 +83,18 @@ previous build stays up and the container logs say why. The server and the web a
    ```
 
    `[lifeboard] building <commit>` then `[lifeboard] serving <commit>` is a good deploy. A build error
-   there means the previous commit is still serving: fix, commit, push and restart again.
+   there means the previous commit is still serving: fix it on `develop` and take it through a pull
+   request again. Use exactly this user and key. If the login fails, **stop and ask the user**: don't
+   try other users or keys, because repeated failed logins get the user's IP banned by fail2ban.
+
+4. **Restart by hand** only if the workflow can't (GitHub down, the deploy key revoked), or to run the
+   same commit again:
+
+   ```sh
+   ssh -i ~/.ssh/hetzner -o IdentitiesOnly=yes deploy@188.245.42.86 'cd /opt/stacks/lifeboard && docker compose restart'
+   ```
+
+   *Run workflow* on the Deploy workflow in the Actions tab does the same from GitHub.
 
 5. **Tell the user how to get it.** The app is cached for offline use. Their browser picks up the new
    version when they click *A new version is ready* in the sidebar, or close every Lifeboard tab and
@@ -77,8 +102,9 @@ previous build stays up and the container logs say why. The server and the web a
 
 ## Rolling back
 
-`git revert` the bad commit, push, and restart (steps 2 to 4). The server always serves the head of
-`main`.
+`git revert` the bad commit on `develop` and take it through a pull request (step 2); the merge
+deploys it. If it can't wait for CI, revert on `main` directly and push, which deploys at once, then
+merge `main` into `develop`. The server always serves the head of `main`.
 
 ## Never
 
@@ -90,3 +116,6 @@ previous build stays up and the container logs say why. The server and the web a
 - Edit the server's SQLite files by hand to fix data. Go through the server's API, which validates
   what it stores.
 - Touch the Caddy stack (`/opt/stacks/caddy`): other sites on the box share it.
+- Use the deploy key (`DEPLOY_SSH_KEY`) for anything else. Its line in `deploy@`'s
+  `~/.ssh/authorized_keys` is pinned to `docker compose restart`; to revoke it, delete that line
+  (the one ending `github-actions-deploy@lifeboard`).

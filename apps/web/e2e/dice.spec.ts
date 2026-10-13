@@ -119,7 +119,7 @@ test.describe('dice', () => {
 		// Control first, so a wheel that does nothing in *either* case fails loudly here rather than
 		// quietly passing the interesting half of the test.
 		const emptyStart = await camera(page)
-		await page.mouse.wheel(0, 240)
+		await wheel(page, 0, 240)
 		await expect.poll(async () => (await camera(page)).y).not.toBe(emptyStart.y)
 
 		await die(page, 'd12').click()
@@ -132,13 +132,11 @@ test.describe('dice', () => {
 
 		// This is the regression. A hit-target over the board swallows these, and pan and zoom die.
 		const heldStart = await camera(page)
-		await page.mouse.wheel(0, 240)
+		await wheel(page, 0, 240)
 		await expect.poll(async () => (await camera(page)).y).not.toBe(heldStart.y)
 
 		const beforeZoom = await camera(page)
-		await page.keyboard.down('Control')
-		await page.mouse.wheel(0, -300)
-		await page.keyboard.up('Control')
+		await wheel(page, 0, -300, 'Control')
 		await expect.poll(async () => (await camera(page)).z).not.toBe(beforeZoom.z)
 
 		// And none of that dropped the dice — panning to aim is not throwing.
@@ -421,3 +419,17 @@ test.describe('dice', () => {
 		await expect(page.locator(TRAY)).toHaveCount(1)
 	})
 })
+
+/**
+ * One wheel event, well clear of the last one. The canvas drops a wheel that comes 120–160ms after the
+ * previous one, taking it for the late echo use-gesture sends about 140ms after a scroll ends
+ * (`isWheelEndEvent` in useGestureEvents.ts). The echo counts as a wheel too, so the window a real
+ * event can fall into is 260–300ms after the one before it. A real scroll is a stream of events and
+ * never notices; a test's single events landed there on CI.
+ */
+async function wheel(page: Page, dx: number, dy: number, modifier?: 'Control') {
+	await page.waitForTimeout(500)
+	if (modifier) await page.keyboard.down(modifier)
+	await page.mouse.wheel(dx, dy)
+	if (modifier) await page.keyboard.up(modifier)
+}

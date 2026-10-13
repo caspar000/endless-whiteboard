@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { FreeformRecord, findText } from './crdt'
 import { readBoards, type Item } from './freeform'
 import { convertBoard } from './lifeboard'
@@ -122,8 +122,13 @@ describe('Freeform records', () => {
 	})
 })
 
+// Reading a board's title needs macOS's `plutil`. In `beforeAll`, not the describe body: a skipped
+// describe's body still runs, to collect its tests.
 describe.runIf(process.platform === 'darwin')('a Freeform board', () => {
-	const [board] = readBoards(freeformFolder())
+	let board: ReturnType<typeof readBoards>[number] | undefined
+	beforeAll(() => {
+		;[board] = readBoards(freeformFolder())
+	})
 	const byId = (n: number) => board!.items.find((i) => i.id.endsWith(n.toString(16).toUpperCase().padStart(2, '0')))!
 
 	it('is read with its title, items in order, places, text and styles', () => {

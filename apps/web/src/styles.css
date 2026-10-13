@@ -12623,6 +12623,25 @@ button.lb-props__eye:hover {
 		width: 40px;
 		height: 40px;
 	}
+	.lb-pill__rename {
+		flex: 1;
+		min-width: 0;
+	}
+	.lb-pill__rename input {
+		width: 100%;
+		height: 38px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 10px;
+		background: var(--lb-surface);
+		box-shadow: inset 0 0 0 1.5px var(--lb-accent);
+		color: var(--lb-text);
+		font-family: inherit;
+		font-size: 15px;
+	}
+	.lb-pill__rename input:focus {
+		outline: none;
+	}
 	.lb-pill__actions {
 		display: flex;
 		flex-direction: column;

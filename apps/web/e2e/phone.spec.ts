@@ -275,3 +275,77 @@ test.describe('phone pages', () => {
 		await expect(page.getByRole('heading', { level: 1, name: 'On a phone' })).toBeVisible()
 	})
 })
+
+test.describe('phone gaps', () => {
+	test('a board is renamed from the board list at the top', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toContainText('Home office shopping')
+		await pill(page).click()
+		const list = page.getByRole('menu', { name: 'Open boards' })
+		await list.getByRole('button', { name: 'Rename Home office shopping' }).click()
+		await page.getByLabel('Board name').fill('Desk setup')
+		await page.getByLabel('Board name').press('Enter')
+		await expect(list.getByRole('menuitem', { name: 'Desk setup' })).toBeVisible()
+		await expect(pill(page)).toContainText('Desk setup')
+
+		// Escape gives a half-typed name up.
+		await list.getByRole('button', { name: 'Rename Desk setup' }).click()
+		await page.getByLabel('Board name').fill('Nope')
+		await page.getByLabel('Board name').press('Escape')
+		await expect(list.getByRole('menuitem', { name: 'Desk setup' })).toBeVisible()
+	})
+
+	test('a double tap on a shape in Hand opens it in Quick look, and selects nothing', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		const centre = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: DockEditor & { getShapePageBounds(id: string): { x: number; y: number; w: number; h: number } } }).editor
+			const note = editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!
+			const b = editor.getShapePageBounds(note.id)
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+		})
+		const touch = await touches(page)
+		for (let i = 0; i < 2; i++) {
+			await touch('touchStart', [[centre.x, centre.y]])
+			await touch('touchEnd')
+		}
+		await expect(page.getByTestId('lb.quick-look')).toBeVisible()
+		expect(await page.evaluate(() => (window as unknown as { editor: DockEditor }).editor.getSelectedShapeIds())).toEqual([])
+		expect(await tool(page)).toBe('hand')
+	})
+
+	test('a link on a note opens from Hand, in a new tab', async ({ page, context }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: DockEditor & { select(id: string): void; setCamera(c: unknown): void } }).editor
+			editor.createShapes([{ id: 'shape:linked', type: 'note', x: 0, y: 0 }])
+			editor.setCamera({ x: 95, y: 250, z: 1 })
+			editor.select('shape:linked')
+		})
+		await page.keyboard.press('Alt+p')
+		const panel = page.locator('.lb-props')
+		await panel.getByRole('button', { name: 'New property…' }).click()
+		await panel.getByLabel('New property name').fill('Docs')
+		await panel.getByLabel('New property type').selectOption('link')
+		await panel.getByRole('button', { name: 'Add' }).click()
+		await panel.getByLabel('Title of Docs').fill('Lifeboard docs')
+		await panel.getByLabel('URL of Docs').fill('lifeboard.app/docs')
+		await page.keyboard.press('Escape')
+		await page.evaluate(() => (window as unknown as { editor: { selectNone(): void } }).editor.selectNone())
+		expect(await tool(page)).toBe('hand')
+
+		const link = page.locator('.lb-board-host:not([data-hidden]) a.lb-strip__link').first()
+		await expect(link).toBeVisible()
+		const box = (await link.boundingBox())!
+		const touch = await touches(page)
+		const [opened] = await Promise.all([
+			context.waitForEvent('page'),
+			(async () => {
+				await touch('touchStart', [[box.x + box.width / 2, box.y + box.height / 2]])
+				await touch('touchEnd')
+			})(),
+		])
+		expect(opened.url()).toBe('https://lifeboard.app/docs')
+	})
+})

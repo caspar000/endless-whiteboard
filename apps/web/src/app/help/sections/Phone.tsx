@@ -11,8 +11,9 @@ export function Phone(_props: SectionProps) {
 			<Section title="Looking around without changing anything">
 				<p>
 					On a phone, a board opens in <strong>Hand</strong>. Dragging moves you around the board and
-					pinching zooms; nothing on it moves, however a thumb lands. Links still open, and a double tap
-					on a book opens it to read.
+					pinching zooms; nothing on it moves, however a thumb lands. Links still open. A double tap on a
+					book opens it to read, and on a card or a picture opens it in Quick look, filling the screen;
+					tap beside it to close. A double tap on empty board zooms in.
 				</p>
 				<p>
 					To change the board, tap the hand at the left of the dock. It becomes the arrow,{' '}
@@ -41,10 +42,10 @@ export function Phone(_props: SectionProps) {
 
 			<Section title="Getting around the app">
 				<p>
-					The board’s name at the top lists the boards you have open: tap one to switch, × to close it,
-					or start a new one. The button at the top left opens the menu, with every board, Settings and
-					Help, and a search button that does what ⌘K does on a computer. The button at the top right
-					opens the agent.
+					The board’s name at the top lists the boards you have open: tap one to switch, the pencil to
+					rename it, × to close it, or start a new one. The button at the top left opens the menu, with
+					every board, Settings and Help, and a search button that does what ⌘K does on a computer. The
+					button at the top right opens the agent.
 				</p>
 			</Section>
 		</>

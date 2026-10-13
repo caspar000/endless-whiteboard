@@ -1,14 +1,14 @@
-import { ChevronDown, LayoutGrid, Plus, X } from 'lucide-react'
+import { ChevronDown, LayoutGrid, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { BoardMeta } from '../boards/boardIndex'
+import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { BoardBadge, BoardBadgeButton } from './boardLook/BoardBadge'
 import { useStaggerIn } from './useStaggerIn'
 
 /**
  * The open boards on a phone, where a row of tabs does not fit (docs/mobile-plan.md): one pill between
  * the menu and the AI button, showing the board you are on. Tapping it lists the open boards, each to
- * switch to or close, then a new board and the way to all of them — the jobs of the tab strip and its
- * "+", in a list where every name has the width to be read.
+ * switch to, rename or close, then a new board and the way to all of them — the jobs of the tab strip
+ * and its "+" (and the tab's double-click rename), in a list where every name has the width to be read.
  */
 export function BoardPill({
 	boards,
@@ -18,6 +18,7 @@ export function BoardPill({
 	onClose,
 	onNew,
 	onAllBoards,
+	onRename,
 }: {
 	boards: readonly BoardMeta[]
 	tabs: readonly string[]
@@ -26,8 +27,10 @@ export function BoardPill({
 	onClose: (id: string) => void
 	onNew: () => void
 	onAllBoards: () => void
+	onRename: (id: string, name: string) => void
 }) {
 	const [open, setOpen] = useState(false)
+	const [renaming, setRenaming] = useState<string | null>(null)
 	const root = useRef<HTMLDivElement>(null)
 	const stagger = useStaggerIn(open)
 	const byId = new Map(boards.map((board) => [board.id, board]))
@@ -42,7 +45,8 @@ export function BoardPill({
 			if (!root.current?.contains(e.target as Node)) setOpen(false)
 		}
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') setOpen(false)
+			// Escape in the name box gives the name up, not the whole list.
+			if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement)) setOpen(false)
 		}
 		document.addEventListener('pointerdown', onPointerDown, true)
 		document.addEventListener('keydown', onKeyDown)
@@ -81,15 +85,54 @@ export function BoardPill({
 								className={board.id === activeBoardId ? 'lb-pill__row lb-pill__row--active' : 'lb-pill__row'}
 							>
 								<BoardBadgeButton board={board} className="lb-pill__badge" />
-								<button
-									type="button"
-									role="menuitem"
-									className="lb-pill__open"
-									aria-current={board.id === activeBoardId ? 'page' : undefined}
-									onClick={pick(() => onSelect(board))}
-								>
-									{board.name}
-								</button>
+								{renaming === board.id ? (
+									<form
+										className="lb-pill__rename"
+										onSubmit={(e) => {
+											e.preventDefault()
+											const value = new FormData(e.currentTarget).get('name')
+											if (typeof value === 'string' && value.trim() && value.trim() !== board.name) {
+												onRename(board.id, value.trim())
+											}
+											setRenaming(null)
+										}}
+									>
+										{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+										<input
+											autoFocus
+											name="name"
+											defaultValue={board.name}
+											aria-label="Board name"
+											enterKeyHint="done"
+											onBlur={(e) => e.currentTarget.form?.requestSubmit()}
+											onKeyDown={(e) => {
+												if (e.key === 'Escape') setRenaming(null)
+												// Otherwise the canvas would read these as tool shortcuts.
+												e.stopPropagation()
+											}}
+										/>
+									</form>
+								) : (
+									<button
+										type="button"
+										role="menuitem"
+										className="lb-pill__open"
+										aria-current={board.id === activeBoardId ? 'page' : undefined}
+										onClick={pick(() => onSelect(board))}
+									>
+										{board.name}
+									</button>
+								)}
+								{!isSharedWithMe(board) && renaming !== board.id && (
+									<button
+										type="button"
+										className="lb-icon-btn lb-pill__close"
+										aria-label={`Rename ${board.name}`}
+										onClick={() => setRenaming(board.id)}
+									>
+										<Pencil size={15} strokeWidth={1.75} aria-hidden="true" />
+									</button>
+								)}
 								<button
 									type="button"
 									className="lb-icon-btn lb-pill__close"

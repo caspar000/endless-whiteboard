@@ -31,6 +31,9 @@ reference screenshots to take inspiration from, translated into our own design s
   mode you came from: Hand, unless you were in Select.
 - **Pen⇄Eraser**: tapping Pen while it is on switches to Eraser, and back.
 - **Long press** on a shape in Hand switches to Select, selects it and opens its menu: a deliberate way in.
+- **Double tap** in Hand on a book opens the reader; on any other shape Quick look can show, Quick look
+  (the phone's Space); on empty board it zooms, as before. Added after the phases.
+- **Renaming** a board is the pencil on its row in the board pill's list. Added after the phases.
 - **More** opens a row above the dock: Frame, Relation, Image, Nodes, Relation view, Tracing lens, Dice.
   Once a tool from it is picked, the More button wears that tool's icon, highlighted.
 - **Above the dock, one row at a time**: the More row while open, else the selection bar (pinned there on

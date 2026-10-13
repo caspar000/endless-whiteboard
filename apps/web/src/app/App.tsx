@@ -906,6 +906,7 @@ export function App() {
 							onClose={(id) => void closeBoardTab(id)}
 							onNew={() => void createAndOpen()}
 							onAllBoards={() => void goHome()}
+							onRename={(id, name) => void api.rename(id, name)}
 						/>
 					) : (
 						<TabStrip

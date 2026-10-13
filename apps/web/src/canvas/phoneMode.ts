@@ -1,5 +1,6 @@
 import { atom, react, type Atom, type Editor, type TLEventInfo } from '@lifeboard/canvas'
 import { PHONE_QUERY } from '../app/usePhone'
+import { openQuickLook, presetFor } from './quickLook'
 
 /**
  * Hand first, on a phone (docs/mobile-plan.md). Moving around a board with a thumb kept changing it by
@@ -45,8 +46,10 @@ const READ_BY_OPENING = new Set(['node.book'])
  *   Holding a finger still is never an accident, so it chooses Select mode, with the shape under the
  *   finger selected, rather than being undone by the rule above.
  * - **A double tap on a book opens it.** Reading is not changing. It goes through the select tool, as
- *   opening one always has, and closing the book brings you back to Hand by the first rule. Caught as
- *   the tap comes up, before the hand tool's own double tap (zoom in) settles.
+ *   opening one always has, and closing the book brings you back to Hand by the first rule. A double
+ *   tap on any other shape Quick look can show opens it there instead: the phone's Space. Both are
+ *   caught as the tap comes up, before the hand tool's own double tap (zoom in) settles; one on empty
+ *   board still zooms.
  *
  * The first two run a microtask later: the menu opens in a batch that also changes the tool, and the
  * decision needs the whole of it.
@@ -59,10 +62,19 @@ export function installPhoneMode(editor: Editor): () => void {
 		if (info.type !== 'click' || info.name !== 'double_click' || info.phase !== 'up') return
 		if (!isPhone() || editor.getCurrentToolId() !== 'hand') return
 		const shape = editor.getShapeAtPoint(editor.inputs.currentPagePoint, { hitInside: true })
-		if (!shape || !READ_BY_OPENING.has(shape.type)) return
-		editor.setCurrentTool('select')
+		if (!shape) return
+		if (READ_BY_OPENING.has(shape.type)) {
+			editor.setCurrentTool('select')
+			editor.select(shape.id)
+			editor.setEditingShape(shape.id)
+			return
+		}
+		if (!presetFor(shape.type)) return
+		// Quick look starts from the selection; once open it keeps its own list, and a selection left
+		// behind would bring up the selection toolbar, Delete and all, in Hand.
 		editor.select(shape.id)
-		editor.setEditingShape(shape.id)
+		openQuickLook(editor)
+		editor.selectNone()
 	}
 	editor.on('event', onEvent)
 

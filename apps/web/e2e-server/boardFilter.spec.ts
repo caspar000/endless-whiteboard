@@ -12,7 +12,8 @@ test('the board list filters between the server and this device, and cards say w
 	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
 	// Two new boards, both on the server; then one of them moves to this device.
-	const allBoards = () => page.getByRole('tab', { name: 'All boards' }).click()
+	// The way to the board list is the sidebar's All boards row (it says how many there are).
+	const allBoards = () => page.locator('.lb-sidebar').getByRole('button', { name: /^All boards/ }).first().click()
 	const rename = async (name: string) => {
 		await allBoards()
 		await page.getByRole('button', { name: 'New board' }).first().click()

@@ -12,6 +12,11 @@ interface EditorHandle {
 
 async function newPage(browser: Browser): Promise<Page> {
 	const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
+	// The sidebar starts collapsed, as in the app's own suite (e2e/helpers.ts gotoFresh): open, it floats
+	// over the left of the board, where these tests place their shapes and comments.
+	await context.addInitScript(() => {
+		if (localStorage.getItem('lifeboard:sidebar:collapsed') === null) localStorage.setItem('lifeboard:sidebar:collapsed', 'true')
+	})
 	return context.newPage()
 }
 

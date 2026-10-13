@@ -66,43 +66,44 @@ export async function listBoards(kv: KvStore): Promise<BoardMeta[]> {
 	return sortBoards(raw.filter(isBoardMeta))
 }
 
-async function writeBoards(kv: KvStore, boards: BoardMeta[]): Promise<void> {
-	await kv.set(INDEX_KEY, sortBoards(boards))
+/** Each store's last pending change to the index, so the next one starts from what it wrote. */
+const pending = new WeakMap<KvStore, Promise<unknown>>()
+
+/**
+ * Every change to the index goes through here: read it, change it, write it back, one change at a
+ * time. The index is one value, so two changes that both read before either writes lose the first
+ * one's write. That is how a deleted board came back: deleting an open board unmounts its editor,
+ * whose last "edited at" read the index before the delete and wrote it, deleted board and all, after.
+ */
+function updateBoards(kv: KvStore, change: (boards: BoardMeta[]) => BoardMeta[]): Promise<void> {
+	const run = (pending.get(kv) ?? Promise.resolve()).then(async () => {
+		await kv.set(INDEX_KEY, sortBoards(change(await listBoards(kv))))
+	})
+	// A failed change fails its own caller and does not stop the ones after it.
+	pending.set(kv, run.catch(() => {}))
+	return run
 }
 
 export async function createBoard(kv: KvStore, name = 'Untitled board'): Promise<BoardMeta> {
 	const now = Date.now()
 	const board: BoardMeta = { id: newBoardId(), name, createdAt: now, updatedAt: now }
-	await writeBoards(kv, [...(await listBoards(kv)), board])
+	await updateBoards(kv, (boards) => [...boards, board])
 	return board
 }
 
 /** Adds a board that already has an id — used by backup import's restore-as-copy. */
-export async function addBoard(kv: KvStore, board: BoardMeta): Promise<void> {
-	const boards = (await listBoards(kv)).filter((b) => b.id !== board.id)
-	await writeBoards(kv, [...boards, board])
+export function addBoard(kv: KvStore, board: BoardMeta): Promise<void> {
+	return updateBoards(kv, (boards) => [...boards.filter((b) => b.id !== board.id), board])
 }
 
-export async function renameBoard(kv: KvStore, id: string, name: string): Promise<void> {
-	const boards = await listBoards(kv)
-	await writeBoards(
-		kv,
-		boards.map((b) => (b.id === id ? { ...b, name, updatedAt: Date.now() } : b))
-	)
+export function renameBoard(kv: KvStore, id: string, name: string): Promise<void> {
+	return updateBoards(kv, (boards) => boards.map((b) => (b.id === id ? { ...b, name, updatedAt: Date.now() } : b)))
 }
 
-export async function setBoardFavorite(
-	kv: KvStore,
-	id: string,
-	favorite: boolean
-): Promise<void> {
-	const boards = await listBoards(kv)
-	await writeBoards(
-		kv,
-		// Deliberately does not touch `updatedAt`: favouriting is not editing, and bumping it would
-		// reshuffle the "recently edited" ordering the home screen relies on.
-		boards.map((b) => (b.id === id ? { ...b, favorite } : b))
-	)
+export function setBoardFavorite(kv: KvStore, id: string, favorite: boolean): Promise<void> {
+	// Deliberately does not touch `updatedAt`: favouriting is not editing, and bumping it would
+	// reshuffle the "recently edited" ordering the home screen relies on.
+	return updateBoards(kv, (boards) => boards.map((b) => (b.id === id ? { ...b, favorite } : b)))
 }
 
 /** A board colour as stored: `#rrggbb`. The server checks the same. */
@@ -125,27 +126,19 @@ export function withLook<T extends BoardMeta>(board: T, patch: BoardLookPatch): 
 	return next
 }
 
-export async function setBoardLook(kv: KvStore, id: string, patch: BoardLookPatch): Promise<void> {
-	const boards = await listBoards(kv)
+export function setBoardLook(kv: KvStore, id: string, patch: BoardLookPatch): Promise<void> {
 	// Leaves `updatedAt` alone, like a star: how a board looks in the list is not an edit to it.
-	await writeBoards(kv, boards.map((b) => (b.id === id ? withLook(b, patch) : b)))
+	return updateBoards(kv, (boards) => boards.map((b) => (b.id === id ? withLook(b, patch) : b)))
 }
 
-export async function touchBoard(kv: KvStore, id: string): Promise<void> {
-	const boards = await listBoards(kv)
-	const board = boards.find((b) => b.id === id)
-	if (!board) return
-	await writeBoards(kv, boards.map((b) => (b.id === id ? { ...b, updatedAt: Date.now() } : b)))
+export function touchBoard(kv: KvStore, id: string): Promise<void> {
+	return updateBoards(kv, (boards) => boards.map((b) => (b.id === id ? { ...b, updatedAt: Date.now() } : b)))
 }
 
 /** Removes the index entry only. Canvas data and asset GC are the caller's job — see `deleteBoard`
  * in `boards/deleteBoard.ts`, which sequences all three. */
-export async function removeBoardFromIndex(kv: KvStore, id: string): Promise<void> {
-	const boards = await listBoards(kv)
-	await writeBoards(
-		kv,
-		boards.filter((b) => b.id !== id)
-	)
+export function removeBoardFromIndex(kv: KvStore, id: string): Promise<void> {
+	return updateBoards(kv, (boards) => boards.filter((b) => b.id !== id))
 }
 
 export async function getBoard(kv: KvStore, id: string): Promise<BoardMeta | undefined> {

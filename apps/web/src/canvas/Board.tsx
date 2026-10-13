@@ -74,6 +74,7 @@ import { currentAccount } from '../server/accounts'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { canReadSnapshot } from './snapshotVersion'
 import { playBoardEntrance } from './boardEntrance'
+import { installPhoneMode } from './phoneMode'
 import { reloadToUpdate } from '../pwa/registerServiceWorker'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -565,6 +566,8 @@ function BoardCanvas({
 					const stopWatchingDragOut = watchViewDragOut(editor)
 					// The shapes on screen rise into place, the first time this board opens.
 					const stopEntrance = playBoardEntrance(editor)
+					// On a phone the board opens in Hand, and goes back to it (phoneMode.ts).
+					const stopPhoneMode = installPhoneMode(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -580,6 +583,7 @@ function BoardCanvas({
 						stopPlacingMembers()
 						stopWatchingDragOut()
 						stopEntrance()
+						stopPhoneMode()
 						stopTracking()
 						stopUploading()
 						stopAuthorship()

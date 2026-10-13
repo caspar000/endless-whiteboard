@@ -58,7 +58,9 @@ test.describe('touch', () => {
 		await touch('touchEnd')
 		await expect.poll(() => view(page, at)).toEqual(before)
 
-		// A double tap that doesn't move is still a double tap: on a sticky, it starts editing it.
+		// A double tap that doesn't move is still a double tap: on a sticky, it starts editing it. In
+		// Select: on a phone a board opens in Hand, where nothing on it changes (canvas/phoneMode.ts).
+		await page.getByTestId('lb.nav-toggle').click()
 		await page.waitForTimeout(400)
 		const centre = await page.evaluate(() => {
 			const editor = (window as unknown as { editor: EditorHandle }).editor

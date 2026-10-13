@@ -16,7 +16,7 @@ import {
 	useSyncExternalStore,
 } from 'react'
 import { useStaggerIn } from '../app/useStaggerIn'
-import { useEditor, useValue } from '@lifeboard/canvas'
+import { useEditor, useValue, type Editor } from '@lifeboard/canvas'
 import { formatKbd, isMacPlatform } from '../app/paletteItems'
 import { isNodeMenuOpen, setNodeMenuOpen, toggleNodeMenu } from './nodeMenuState'
 import { toolIdForNodeType } from './nodeTools'
@@ -305,17 +305,11 @@ function NodeMenuPanel({ onClose }: { onClose: () => void }) {
 	)
 }
 
-/** The dock button, and the panel it anchors. */
-export function NodeMenuButton() {
-	const editor = useEditor()
-	const open = useValue('lb:node-menu', () => isNodeMenuOpen(editor), [editor])
-	const mac = useMemo(() => isMacPlatform(), [])
-	useKeymapVersion()
-	const chord = chordsFor(NODE_MENU_COMMAND)[0]
-	const kbd = chord ? formatKbd(chord, mac) : null
-
-	// A click anywhere else closes it — a popover that only closes by its own button is one you end up
-	// dismissing by guessing. Scoped to `pointerdown` on the container so the canvas keeps the event.
+/**
+ * A click anywhere else closes it — a popover that only closes by its own button is one you end up
+ * dismissing by guessing. Scoped to `pointerdown` on the container so the canvas keeps the event.
+ */
+function useCloseOnOutsidePress(editor: Editor, open: boolean): void {
 	useEffect(() => {
 		if (!open) return
 		const onPointerDown = (event: PointerEvent) => {
@@ -326,6 +320,33 @@ export function NodeMenuButton() {
 		window.addEventListener('pointerdown', onPointerDown, { capture: true })
 		return () => window.removeEventListener('pointerdown', onPointerDown, { capture: true })
 	}, [open, editor])
+}
+
+/**
+ * The panel alone, for the phone's dock, where the button that opens it sits in the More row and goes
+ * away with it (docs/mobile-plan.md). Anchored the same way: to the dock's wrapper.
+ */
+export function NodeMenuPopover() {
+	const editor = useEditor()
+	const open = useValue('lb:node-menu', () => isNodeMenuOpen(editor), [editor])
+	useCloseOnOutsidePress(editor, open)
+	if (!open) return null
+	return (
+		<div className="lb-nodemenu">
+			<NodeMenuPanel onClose={() => setNodeMenuOpen(editor, false)} />
+		</div>
+	)
+}
+
+/** The dock button, and the panel it anchors. */
+export function NodeMenuButton() {
+	const editor = useEditor()
+	const open = useValue('lb:node-menu', () => isNodeMenuOpen(editor), [editor])
+	const mac = useMemo(() => isMacPlatform(), [])
+	useKeymapVersion()
+	const chord = chordsFor(NODE_MENU_COMMAND)[0]
+	const kbd = chord ? formatKbd(chord, mac) : null
+	useCloseOnOutsidePress(editor, open)
 
 	return (
 		<div className="lb-nodemenu">

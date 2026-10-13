@@ -48,6 +48,8 @@ import {
 	type StyleProp,
 } from '@lifeboard/canvas'
 import { NodeMenuButton } from './NodeMenu'
+import { PhoneDock } from './PhoneDock'
+import { usePhone } from '../app/usePhone'
 import { useDockDrag, type DockShape } from './dockDrag'
 import { commentsPanelOpen, threadsOf } from './comments/comments'
 import { getNextFillColor, setNextFillColor } from './shapeFill'
@@ -120,7 +122,7 @@ const GEO_KINDS: { value: GeoValue; icon: LucideIcon }[] = [
 	{ value: 'heart', icon: Heart },
 ]
 
-const ICON_SIZE = 20
+export const ICON_SIZE = 20
 
 /** "v,1" → "V · 1", for tooltips. */
 function formatKbd(kbd?: string): string {
@@ -131,7 +133,7 @@ function formatKbd(kbd?: string): string {
 		.join(' · ')
 }
 
-function ToolButton({
+export function ToolButton({
 	toolId,
 	icon,
 	isActive,
@@ -600,7 +602,7 @@ function TextSettings() {
  * A view control rather than a tool, so it sits in its own group after the drawing tools and never
  * changes what the next click on the canvas does.
  */
-function RelationViewButton() {
+export function RelationViewButton() {
 	const editor = useEditor()
 	const view = useValue('lb:relation-view', () => readRelationView(editor), [editor])
 
@@ -632,7 +634,7 @@ function RelationViewButton() {
  * Next to the relation-view button because they are two halves of the same idea — how much wiring you
  * want to see, and which wiring you want to see *now*.
  */
-function TracingButton() {
+export function TracingButton() {
 	const tracing = useValue('lb:tracing-on', () => isTracing(), [])
 	return (
 		<button
@@ -651,7 +653,7 @@ function TracingButton() {
 }
 
 /** The board's comments (fork-parity S7): the list, with how many threads are open. */
-function CommentsButton() {
+export function CommentsButton() {
 	const editor = useEditor()
 	const open = useValue('lb:comments-panel', () => commentsPanelOpen.get(), [])
 	const count = useValue('lb:open-comments', () => threadsOf(editor).filter((thread) => !thread.resolved).length, [editor])
@@ -676,7 +678,7 @@ function CommentsButton() {
  * board's appearance. The hint sits where the tool settings row sits, so it reads as part of the same
  * chrome rather than as a notification.
  */
-function TracingHint() {
+export function TracingHint() {
 	const tracing = useValue('lb:tracing-hint', () => isTracing(), [])
 	if (!tracing) return null
 	return (
@@ -712,7 +714,22 @@ function useCramped() {
 	return ref
 }
 
+/** The active tool's settings row, if it has one: shared by the desktop dock and the phone's. */
+function ToolSettings({ currentToolId }: { currentToolId: string }) {
+	if (currentToolId === 'draw' || currentToolId === 'highlight') return <PenSettings currentToolId={currentToolId} />
+	if (currentToolId === 'note' || currentToolId === 'pinned-note') return <NoteSettings currentToolId={currentToolId} />
+	if (currentToolId === 'geo') return <ShapeSettings />
+	if (currentToolId === 'text') return <TextSettings />
+	if (currentToolId === 'arrow') return <ArrowSettings />
+	return null
+}
+
 export function CanvasToolbar() {
+	const phone = usePhone()
+	return phone ? <PhoneDock settings={(toolId) => <ToolSettings currentToolId={toolId} />} /> : <DesktopDock />
+}
+
+function DesktopDock() {
 	const editor = useEditor()
 	const dockRef = useCramped()
 	const currentToolId = useValue('lb:current-tool', () => editor.getCurrentToolId(), [editor])
@@ -721,15 +738,7 @@ export function CanvasToolbar() {
 	return (
 		<div className="lb-dock-wrap">
 			<TracingHint />
-			{(currentToolId === 'draw' || currentToolId === 'highlight') && (
-				<PenSettings currentToolId={currentToolId} />
-			)}
-			{(currentToolId === 'note' || currentToolId === 'pinned-note') && (
-				<NoteSettings currentToolId={currentToolId} />
-			)}
-			{currentToolId === 'geo' && <ShapeSettings />}
-			{currentToolId === 'text' && <TextSettings />}
-			{currentToolId === 'arrow' && <ArrowSettings />}
+			<ToolSettings currentToolId={currentToolId} />
 
 			<div className="lb-dock" ref={dockRef}>
 				{/* Getting around, and around things. */}

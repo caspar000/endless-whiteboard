@@ -12706,4 +12706,31 @@ button.lb-props__eye:hover {
 	.lb-dock-wrap {
 		bottom: calc(var(--fl-safe-bottom) + var(--fl-edge));
 	}
+
+	/* The row above the phone's dock (canvas/PhoneDock.tsx): More, or the tool's settings. One that is
+	   too long for the screen scrolls sideways rather than wrapping or running off the edge. */
+	.lb-dock-wrap--phone .lb-expand {
+		max-width: calc(100vw - var(--fl-edge) * 2 - var(--fl-safe-left) - var(--fl-safe-right));
+		overflow-x: auto;
+		scrollbar-width: none;
+		pointer-events: auto;
+	}
+	.lb-more__tools {
+		display: contents;
+	}
+	/* The dice come out from More, in the row's place, and are put away from the More button. */
+	.lb-dice-tray {
+		display: none;
+		bottom: calc(var(--fl-safe-bottom) + var(--fl-edge) + var(--fl-tool) + 22px);
+	}
+	:root.lb-phone-dice .lb-dice-tray {
+		display: flex;
+	}
+	/* The node picker: full width already (above), in two columns. */
+	.lb-nodemenu__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.lb-nodemenu__tilekbd {
+		display: none;
+	}
 }

@@ -315,7 +315,8 @@ export function Overview({ go }: SectionProps) {
 							once, choose Select in All boards, click the boards, then Delete. ⌘\ slides the sidebar
 							out of the way, and the round button left in its corner brings it back. The coloured
 							square beside a board’s name, on its tab, in the sidebar and on its card, gives it a colour
-							and an icon: click it and search by what the board is for (“gym” finds the dumbbell).
+							and an icon: click it and search some 4,700 icons by what the board is for (“gym” finds the
+							dumbbell, “car engine” the engine), or browse them by category.
 						</p>
 					</div>
 					<div className="lb-help__fact">

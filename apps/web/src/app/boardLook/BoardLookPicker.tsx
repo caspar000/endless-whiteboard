@@ -2,26 +2,30 @@ import { atom, useValue } from '@lifeboard/canvas'
 import { Ban, Pipette } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { BoardLookPatch, BoardMeta } from '../../boards/boardIndex'
-import { boardTint } from '../boardTint'
+import { boardGradient, boardTint, hslToHex } from '../boardTint'
 import { useStaggerIn } from '../useStaggerIn'
-import { BoardBadge, inkOn } from './BoardBadge'
-import { BOARD_ICON_GROUPS, searchBoardIcons, type BoardIcon } from './boardIcons'
+import { BoardBadge, BoardIconSvg, inkOn } from './BoardBadge'
+import { SEARCH_LIMIT, SUGGESTED, iconName, searchBoardIcons, useBoardIcons, type BoardIcon } from './boardIcons'
 
-/** The common colours, one per hue family plus a neutral. Radix's step 9s, which hold up in both themes. */
+/**
+ * The common colours, one per hue family plus two neutrals, at the default gradient's own softness
+ * (75% saturation, 84% lightness), so each draws as the default would in that hue (`boardGradient`).
+ */
 export const BOARD_SWATCHES: readonly { name: string; color: string }[] = [
-	{ name: 'Red', color: '#e5484d' },
-	{ name: 'Orange', color: '#f76b15' },
-	{ name: 'Amber', color: '#ffc53d' },
-	{ name: 'Green', color: '#30a46c' },
-	{ name: 'Teal', color: '#12a594' },
-	{ name: 'Cyan', color: '#00a2c7' },
-	{ name: 'Blue', color: '#0090ff' },
-	{ name: 'Indigo', color: '#3e63dd' },
-	{ name: 'Violet', color: '#8e4ec6' },
-	{ name: 'Pink', color: '#d6409f' },
-	{ name: 'Brown', color: '#a18072' },
-	{ name: 'Grey', color: '#8b8d98' },
-]
+	['Red', 0, 75],
+	['Orange', 24, 75],
+	['Amber', 42, 75],
+	['Lime', 80, 65],
+	['Green', 140, 60],
+	['Teal', 170, 60],
+	['Cyan', 192, 70],
+	['Blue', 212, 75],
+	['Indigo', 234, 70],
+	['Violet', 268, 70],
+	['Pink', 322, 75],
+	['Brown', 24, 30],
+	['Grey', 230, 10],
+].map(([name, hue, saturation]) => ({ name: name as string, color: hslToHex(hue as number, saturation as number, 84) }))
 
 /** How long a dragged custom colour has to rest before it is saved, so a drag is one write, not fifty. */
 const CUSTOM_COLOR_SETTLE_MS = 300
@@ -63,6 +67,9 @@ export function BoardLookHost({
 	)
 }
 
+/** The first page of the picker, before any search: our picks, in groups. */
+const SUGGESTED_TAB = 'Suggested'
+
 /** A board's colour and icon: search, a grid of icons, then the colours. Every pick is saved at once. */
 function BoardLookPicker({
 	board,
@@ -77,12 +84,15 @@ function BoardLookPicker({
 }) {
 	const panel = useRef<HTMLDivElement>(null)
 	const stagger = useStaggerIn()
+	const catalogue = useBoardIcons()
 	const [query, setQuery] = useState('')
+	const [tab, setTab] = useState(SUGGESTED_TAB)
 	const [customColor, setCustomColor] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const icons = useMemo(() => searchBoardIcons(query), [query])
+	const found = useMemo(() => (catalogue && query.trim() ? searchBoardIcons(catalogue, query) : null), [catalogue, query])
 	const shownColor = customColor ?? board.color
 	const custom = !!shownColor && !BOARD_SWATCHES.some((s) => s.color === shownColor)
+	const current = iconName(board.icon)
 
 	const save = (patch: BoardLookPatch) => {
 		setError(null)
@@ -133,12 +143,25 @@ function BoardLookPicker({
 			className="lb-look__icon"
 			aria-label={icon.name.replace(/-/g, ' ')}
 			title={icon.name.replace(/-/g, ' ')}
-			aria-pressed={board.icon === icon.name}
+			aria-pressed={current === icon.name}
 			onClick={() => save({ icon: icon.name })}
 		>
-			<icon.Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+			<BoardIconSvg icon={icon} size={20} strokeWidth={1.75} />
 		</button>
 	)
+
+	const grid = (icons: readonly BoardIcon[]) => <div className={`lb-look__grid ${stagger}`}>{icons.map(iconButton)}</div>
+
+	const browse = () => {
+		if (!catalogue) return null
+		if (tab !== SUGGESTED_TAB) return grid(catalogue.icons.filter((icon) => icon.category === tab))
+		return SUGGESTED.map(([group, entries]) => (
+			<section key={group} className="lb-look__group">
+				<h3 className="lb-look__group-title">{group}</h3>
+				{grid(entries.flatMap(([name]) => catalogue.byName.get(name) ?? []))}
+			</section>
+		))
+	}
 
 	return (
 		<div
@@ -159,41 +182,59 @@ function BoardLookPicker({
 					autoFocus
 					className="lb-look__search"
 					type="search"
-					placeholder="Search icons"
+					placeholder={catalogue ? `Search ${catalogue.icons.length.toLocaleString()} icons` : 'Search icons'}
 					aria-label="Search icons"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 				/>
+				{board.icon && (
+					<button
+						type="button"
+						className="lb-look__icon lb-look__none"
+						aria-label="No icon"
+						title="No icon"
+						onClick={() => save({ icon: null })}
+					>
+						<Ban size={18} strokeWidth={1.75} aria-hidden="true" />
+					</button>
+				)}
 			</div>
 
+			{!query.trim() && catalogue && (
+				<div className="lb-look__tabs" role="tablist" aria-label="Icon categories">
+					{[SUGGESTED_TAB, ...catalogue.categories].map((name) => (
+						<button
+							key={name}
+							type="button"
+							role="tab"
+							className="lb-look__tab"
+							aria-selected={tab === name}
+							onClick={() => setTab(name)}
+						>
+							{name}
+						</button>
+					))}
+				</div>
+			)}
+
 			<div className="lb-look__icons" role="group" aria-label="Icons">
-				{query ? (
-					icons.length ? (
-						<div className={`lb-look__grid ${stagger}`}>{icons.map(iconButton)}</div>
+				{!catalogue ? (
+					<p className="lb-look__empty">Loading icons…</p>
+				) : found ? (
+					found.icons.length ? (
+						<>
+							{grid(found.icons)}
+							{found.total > SEARCH_LIMIT && (
+								<p className="lb-look__more">
+									The first {SEARCH_LIMIT} of {found.total.toLocaleString()}. More words narrow it down.
+								</p>
+							)}
+						</>
 					) : (
 						<p className="lb-look__empty">No icons match “{query}”.</p>
 					)
 				) : (
-					<>
-						<div className={`lb-look__grid ${stagger}`}>
-							<button
-								type="button"
-								className="lb-look__icon"
-								aria-label="No icon"
-								title="No icon"
-								aria-pressed={!board.icon}
-								onClick={() => save({ icon: null })}
-							>
-								<Ban size={20} strokeWidth={1.75} aria-hidden="true" />
-							</button>
-						</div>
-						{BOARD_ICON_GROUPS.map((group) => (
-							<section key={group} className="lb-look__group">
-								<h3 className="lb-look__group-title">{group}</h3>
-								<div className={`lb-look__grid ${stagger}`}>{icons.filter((icon) => icon.group === group).map(iconButton)}</div>
-							</section>
-						))}
-					</>
+					browse()
 				)}
 			</div>
 
@@ -215,7 +256,7 @@ function BoardLookPicker({
 						key={color}
 						type="button"
 						className="lb-look__swatch"
-						style={{ background: color }}
+						style={{ background: boardGradient(color) }}
 						aria-label={name}
 						title={name}
 						aria-pressed={shownColor === color}
@@ -229,7 +270,7 @@ function BoardLookPicker({
 					className="lb-look__swatch lb-look__swatch--custom"
 					title="Custom colour"
 					data-selected={custom || undefined}
-					style={custom && shownColor ? { background: shownColor, color: inkOn(shownColor) } : undefined}
+					style={custom && shownColor ? { background: boardGradient(shownColor), color: inkOn(shownColor) } : undefined}
 				>
 					<Pipette size={14} strokeWidth={2} aria-hidden="true" />
 					<input

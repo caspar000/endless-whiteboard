@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { backToList, createBoard, gotoFresh, openBoard, showSidebar, skipFirstRunDemo } from './helpers'
 
-const GREEN = 'rgb(48, 164, 108)'
+/** A badge's (or swatch's) gradient: colours are drawn as gradients, the way the default is. */
 const background = (locator: import('@playwright/test').Locator) =>
-	locator.evaluate((el) => getComputedStyle(el.querySelector('.lb-badge') ?? el).backgroundColor)
+	locator.evaluate((el) => getComputedStyle(el.querySelector('.lb-badge') ?? el).backgroundImage)
 
 test('a board takes a colour and an icon from its tab, and shows them everywhere it is listed', async ({ page }) => {
 	await gotoFresh(page)
@@ -25,6 +25,8 @@ test('a board takes a colour and an icon from its tab, and shows them everywhere
 	await picker.getByRole('button', { name: 'dumbbell' }).click()
 	await expect(picker.getByRole('button', { name: 'dumbbell' })).toHaveAttribute('aria-pressed', 'true')
 
+	const GREEN = await background(picker.getByRole('button', { name: 'Green' }))
+	expect(GREEN).toMatch(/^linear-gradient/)
 	await picker.getByRole('button', { name: 'Green' }).click()
 	await expect.poll(() => background(tabBadge)).toBe(GREEN)
 	await expect(tabBadge.locator('svg')).toHaveCount(1)
@@ -71,8 +73,8 @@ test('⌘K changes the open board’s colour and icon', async ({ page }) => {
 	const picker = page.getByRole('dialog', { name: 'Colour and icon of Garden' })
 	await expect(picker).toBeVisible()
 	await expect(picker.getByLabel('Search icons')).toBeFocused()
-	await page.keyboard.type('plant')
-	await picker.getByRole('button', { name: 'sprout' }).click()
+	await page.keyboard.type('car engine')
+	await picker.getByRole('button', { name: 'engine', exact: true }).click()
 	await expect(page.locator('.lb-tabs__tab--active .lb-badge svg')).toHaveCount(1)
 	await page.keyboard.press('Escape')
 	await expect(picker).toHaveCount(0)

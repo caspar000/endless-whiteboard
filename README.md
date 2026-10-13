@@ -33,12 +33,16 @@ boards' previews are stored on the server, so every device has them. Star a boar
 Favourites.
 
 **A board's colour and icon** are the small square beside its name on its tab, its sidebar row and its
-card. Clicking the square (or ⌘K → *Change board colour and icon…*) opens a picker: a search box, a few
-hundred icons in groups, and a row of colours with a default and a custom one. The icons are a curated
-set of Lucide's with search words of their own (`app/boardLook/boardIcons.ts`), so "gym" finds the
-dumbbell; a board stores the icon's name, which makes those names stored data. Both are saved with the
-board's name, in the board index or the server's `boards` table, and changing them does not count as
-editing the board.
+card. Clicking the square (or ⌘K → *Change board colour and icon…*) opens a picker: a search box, the
+icons by category, and a row of colours with a default and a custom one. The icons are Tabler's outline
+set (about 4,700, MIT), searched by name, category and Tabler's tags plus words of our own for a few
+hundred suggested ones, so "gym" finds the dumbbell and "car engine" the engine. They live in
+`app/boardLook/tablerIcons.json`, written by `scripts/build-board-icons.mjs` and loaded only when an
+icon is first needed. A board stores the icon's name, so the names are stored data; boards that stored
+one of Lucide's names before the move show Tabler's nearest (`RENAMED` in `boardIcons.ts`). Every
+colour is drawn as the default is, a gradient into a hue 40° on (`boardGradient`), and the swatches
+sit at the default's softness. Both are saved with the board's name, in the board index or the
+server's `boards` table, and changing them does not count as editing the board.
 
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
 dock and the dice tray are rounded surfaces held off the window edge. On a board, the open boards hang

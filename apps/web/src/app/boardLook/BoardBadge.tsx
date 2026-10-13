@@ -1,10 +1,10 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../../boards/boardIndex'
-import { boardTint } from '../boardTint'
-import { boardIcon } from './boardIcons'
+import { boardGradient, boardTint } from '../boardTint'
+import { iconName, useBoardIcons, type BoardIcon } from './boardIcons'
 import { openBoardLook } from './BoardLookPicker'
 
-/** The ink for an icon on the gradient picked from the id, which is always pale. */
+/** The ink for an icon on a pale colour, which every default and every swatch is. */
 const PALE_INK = 'rgb(20 22 40 / 72%)'
 
 /** Dark ink on a light colour, white on a dark one, by perceived brightness. */
@@ -14,9 +14,31 @@ export function inkOn(hex: string): string {
 	return brightness > 0.62 ? PALE_INK : '#fff'
 }
 
+/** One catalogue icon, drawn the way Tabler draws it: 24 units, a 2-unit round stroke. */
+export function BoardIconSvg({ icon, size, strokeWidth = 2 }: { icon: BoardIcon; size?: number; strokeWidth?: number }) {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			width={size}
+			height={size}
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={strokeWidth}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+		>
+			{icon.paths.map((path, i) =>
+				typeof path === 'string' ? <path key={i} d={path} /> : <path key={i} d={path[0]} {...path[1]} />
+			)}
+		</svg>
+	)
+}
+
 /**
  * A board's colour and icon: the small square on its tab, its sidebar row and its card. A board with
- * no colour of its own wears the gradient picked from its id, as before there was a choice.
+ * no colour of its own wears the gradient picked from its id, as before there was a choice. The icons
+ * load on first use, so for a moment the square can show only its colour.
  */
 export function BoardBadge({
 	board,
@@ -25,17 +47,18 @@ export function BoardBadge({
 	board: Pick<BoardMeta, 'id' | 'color' | 'icon'>
 	className: string
 }) {
-	const icon = boardIcon(board.icon)
+	const icons = useBoardIcons(!!board.icon)
+	const icon = icons?.byName.get(iconName(board.icon) ?? '')
 	return (
 		<span
 			className={`lb-badge ${className}`}
 			style={{
-				background: board.color ?? boardTint(board.id),
+				background: board.color ? boardGradient(board.color) : boardTint(board.id),
 				color: board.color ? inkOn(board.color) : PALE_INK,
 			}}
 			aria-hidden="true"
 		>
-			{icon && <icon.Icon strokeWidth={2.25} />}
+			{icon && <BoardIconSvg icon={icon} strokeWidth={2.25} />}
 		</span>
 	)
 }

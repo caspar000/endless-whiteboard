@@ -1168,7 +1168,7 @@ button {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	width: min(340px, calc(100vw - 16px));
+	width: min(360px, calc(100vw - 16px));
 	padding: 12px;
 	color: var(--lb-text);
 	animation: lb-expand-in var(--mo-pop);
@@ -1249,6 +1249,44 @@ button {
 .lb-look__swatch:has(input:focus-visible) {
 	outline: 2px solid var(--lb-accent);
 	outline-offset: 1px;
+}
+/* Categories, one row that scrolls sideways: Suggested first, then Tabler's, likeliest first. */
+.lb-look__tabs {
+	display: flex;
+	gap: 4px;
+	margin: 0 -12px;
+	padding: 0 12px 2px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.lb-look__tab {
+	flex: none;
+	height: 26px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	font-size: 12px;
+	cursor: pointer;
+	transition: background var(--mo-in), color var(--mo-in);
+}
+.lb-look__tab:hover {
+	color: var(--lb-text);
+}
+.lb-look__tab[aria-selected='true'] {
+	background: var(--lb-accent);
+	color: #fff;
+}
+.lb-look__none {
+	flex: none;
+	width: 36px;
+}
+.lb-look__more {
+	margin: 4px 8px 8px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
 }
 .lb-look__empty {
 	margin: 0;

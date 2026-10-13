@@ -32,6 +32,15 @@ time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper p
 boards' previews are stored on the server, so every device has them. Star a board to pin it to
 Favourites.
 
+**On a phone** (below 768px, docs/mobile-plan.md) the chrome is laid out for a thumb: a menu button,
+the open board's name (tap it to switch boards) and the agent button across the top; the sidebar and the
+agent as cards over the board; a dock of Hand/Select, Sticky, Pen/Eraser, Shapes, Text and More. Boards
+open in **Hand**, where nothing on the board can change, so panning with a thumb never moves a shape by
+accident; making something returns to Hand, and a long press is the deliberate way into Select
+(`canvas/phoneMode.ts`, `canvas/PhoneDock.tsx`). Safari will not keep a Blob in IndexedDB in some
+sessions, so pictures and previews are stored as bytes (`platform/WebPlatformAdapter.ts`), and a WebKit
+project in the e2e suite (`e2e/webkit.spec.ts`) keeps it that way.
+
 **A board's colour and icon** are the small square beside its name on its tab, its sidebar row and its
 card. Clicking the square (or ⌘K → *Change board colour and icon…*) opens a picker: a search box, the
 icons by category, and a row of colours with a default and a custom one. The icons are Tabler's outline

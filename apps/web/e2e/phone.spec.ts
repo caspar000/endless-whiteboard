@@ -200,6 +200,7 @@ test.describe('phone reading', () => {
 		const { makeRarArchive, PIXEL_GIF } = await import('@lifeboard/book-reader/rar-fixture')
 		await gotoFresh(page)
 		await expect(pill(page)).toBeVisible()
+		await page.waitForFunction(() => Boolean((window as unknown as { editor?: unknown }).editor))
 		const bytes = [...makeRarArchive([{ name: 'page1.jpg', data: PIXEL_GIF }, { name: 'page2.jpg', data: PIXEL_GIF }])]
 		await page.evaluate(async (bytes) => {
 			const editor = (window as unknown as { editor: { putExternalContent(input: unknown): Promise<void> } }).editor
@@ -222,5 +223,55 @@ test.describe('phone reading', () => {
 		await reader.getByRole('button', { name: 'Close reader' }).click()
 		await expect(reader).toHaveCount(0)
 		await expect.poll(() => tool(page)).toBe('hand')
+	})
+})
+
+test.describe('phone pages', () => {
+	test('the home screen shows boards two to a row', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await pill(page).click()
+		await page.getByRole('menuitem', { name: 'New board' }).click()
+		await expect(pill(page)).toContainText('Untitled board')
+		await pill(page).click()
+		await page.getByRole('menuitem', { name: 'All boards' }).click()
+		const cards = page.locator('.lb-list__boards > li')
+		await expect(cards).toHaveCount(2)
+		// Measured once both have risen into place.
+		await expect
+			.poll(async () => {
+				const [a, b] = await Promise.all([cards.nth(0).boundingBox(), cards.nth(1).boundingBox()])
+				return Math.round(a!.y) === Math.round(b!.y) && b!.x >= a!.x + a!.width
+			})
+			.toBe(true)
+	})
+
+	test('the selection toolbar sits above the dock, and gives way to More', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await page.getByTestId('lb.nav-toggle').click()
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: DockEditor & { select(id: string): void } }).editor
+			editor.select(editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!.id)
+		})
+		const bar = page.locator('.lb-seltb')
+		await expect(bar).toBeVisible()
+		const [toolbar, dock] = await Promise.all([bar.boundingBox(), page.locator('.lb-dock').boundingBox()])
+		expect(toolbar!.y + toolbar!.height).toBeLessThanOrEqual(dock!.y)
+		expect(dock!.y - (toolbar!.y + toolbar!.height)).toBeLessThan(24)
+
+		await page.getByTestId('lb.more').click()
+		await expect(bar).toBeHidden()
+		await page.getByTestId('lb.more').click()
+		await expect(bar).toBeVisible()
+	})
+
+	test('Help has a page on using it on a phone', async ({ page }) => {
+		await gotoFresh(page)
+		await expect(pill(page)).toBeVisible()
+		await page.getByRole('button', { name: 'Expand sidebar' }).click()
+		await page.locator('.lb-sidebar').getByRole('button', { name: 'Help', exact: true }).click()
+		await page.getByRole('button', { name: 'On a phone' }).click()
+		await expect(page.getByRole('heading', { level: 1, name: 'On a phone' })).toBeVisible()
 	})
 })

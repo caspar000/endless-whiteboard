@@ -46,6 +46,11 @@ export function PhoneDock({ settings }: { settings: (toolId: string) => ReactNod
 	const [moreOpen, setMoreOpen] = useState(false)
 	const wrap = useRef<HTMLDivElement>(null)
 	useDiceClass(dice)
+	// The selection toolbar shares the row above the dock and gives way while More is open (styles.css).
+	useEffect(() => {
+		document.documentElement.classList.toggle('lb-phone-more', moreOpen)
+		return () => document.documentElement.classList.remove('lb-phone-more')
+	}, [moreOpen])
 
 	// A press anywhere off the dock puts the More row away, like any menu.
 	useEffect(() => {

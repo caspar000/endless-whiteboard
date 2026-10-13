@@ -10,6 +10,7 @@ import {
 	Table,
 	Tags,
 	Server,
+	Smartphone,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
@@ -19,6 +20,7 @@ import { Books } from './sections/Books'
 import { Dice } from './sections/Dice'
 import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
+import { Phone } from './sections/Phone'
 import { Properties } from './sections/Properties'
 import { Relations } from './sections/Relations'
 import { Server as ServerSection } from './sections/Server'
@@ -60,6 +62,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Start here',
 		icon: <Compass size={15} />,
 		Component: Overview,
+	},
+	{
+		id: 'phone',
+		label: 'On a phone',
+		title: 'On a phone',
+		lede: 'A small screen and a thumb: boards open in Hand, so reading one never changes it, and the dock and the menus are laid out to be reached with one hand.',
+		group: 'Start here',
+		icon: <Smartphone size={15} />,
+		Component: Phone,
 	},
 	{
 		id: 'properties',

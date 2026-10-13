@@ -12733,4 +12733,74 @@ button.lb-props__eye:hover {
 	.lb-nodemenu__tilekbd {
 		display: none;
 	}
+
+	/* Pages (home, Settings, Help) take the whole width and start below the menu button, not beside it. */
+	.lb-shell {
+		--fl-page-left: 0px;
+	}
+	.lb-home__main {
+		padding: var(--fl-card-top) calc(var(--fl-safe-right) + var(--fl-edge) * 2)
+			calc(var(--fl-safe-bottom) + 48px) calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+	}
+	.lb-home__header {
+		gap: 10px;
+		margin-bottom: 16px;
+	}
+	.lb-home__header h1 {
+		font-size: 24px;
+	}
+	/* Two columns of cards; the name is what tells them apart at this size, so the date goes. */
+	.lb-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.lb-card__date {
+		display: none;
+	}
+	/* Settings and Help: their row of sections clears the menu button; the page under it is full width. */
+	.lb-rail {
+		padding-left: calc(var(--fl-safe-left) + var(--fl-edge) * 2 + var(--fl-bar));
+		padding-top: calc(var(--fl-safe-top) + var(--fl-edge));
+		padding-bottom: var(--fl-edge);
+	}
+	.lb-pane__main {
+		padding: 20px calc(var(--fl-safe-right) + var(--fl-edge) * 2) calc(var(--fl-safe-bottom) + 48px)
+			calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+	}
+
+	/* The selection toolbar, pinned above the dock rather than floating over what it acts on: in reach of
+	   a thumb, and never covering the selection. One row at a time: it gives way to the More row. */
+	.tlui-contextual-toolbar.lb-seltb {
+		position: fixed;
+		top: auto !important;
+		left: 50% !important;
+		bottom: var(--fl-card-bottom);
+		max-width: calc(100vw - var(--fl-edge) * 2 - var(--fl-safe-left) - var(--fl-safe-right));
+		transform: translateX(-50%);
+	}
+	:root.lb-phone-more .tlui-contextual-toolbar.lb-seltb {
+		display: none;
+	}
+	/* What it opens goes up, over the board, anchored to the bar rather than to a button that may sit
+	   near the edge of the screen: the palettes from its left end, the menu from its right. */
+	.lb-seltb .lb-seltb__color,
+	.lb-seltb .lb-seltb__more {
+		position: static;
+	}
+	.lb-seltb .lb-seltb__palette {
+		left: 0;
+		transform: none;
+		max-width: 100%;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.lb-seltb .lb-seltb__palette > * {
+		flex: none;
+	}
+	.lb-seltb .lb-seltb__menu {
+		top: auto;
+		bottom: calc(100% + 8px);
+		max-height: calc(100dvh - var(--fl-card-top) - var(--fl-card-bottom) - 72px);
+		overflow-y: auto;
+	}
 }

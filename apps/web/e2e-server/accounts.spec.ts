@@ -156,8 +156,7 @@ test('an owner makes an account, who chooses a password at first login, and is r
 	await expect(owner.getByText('Removed Carol.')).toBeVisible()
 	await expect(members.getByRole('row', { name: /Carol/ })).toHaveCount(0)
 
-	await carol.reload()
-	await carol.waitForURL((url) => url.pathname === '/login')
+	await backToLogin(carol)
 })
 
 test('the server admin creates an account in a new vault, resets its password, and deletes it with its vault', async ({ browser }) => {
@@ -198,8 +197,7 @@ test('the server admin creates an account in a new vault, resets its password, a
 	await admin.getByLabel('Temporary password for Fay').fill('fay’s second given one')
 	await admin.getByRole('button', { name: 'Set password' }).last().click()
 	await expect(admin.getByText('Fay is logged out everywhere')).toBeVisible()
-	await fay.reload()
-	await fay.waitForURL((url) => url.pathname === '/login')
+	await backToLogin(fay)
 
 	// Deleting the last person in a vault offers to take the vault, behind its typed name.
 	await fayRow.getByRole('button', { name: 'Delete' }).click()
@@ -212,3 +210,12 @@ test('the server admin creates an account in a new vault, resets its password, a
 	await expect(accounts.getByRole('row', { name: /Fay/ })).toHaveCount(0)
 	await expect(admin.getByTestId('lb.server.vaults').getByRole('row', { name: /Fay’s boards/ })).toHaveCount(0)
 })
+
+/**
+ * A page whose session was just ended reaches the login page: on its own, once it notices, or at the
+ * latest when reloaded. The reload is aborted if the page is already on its way there, which is fine.
+ */
+async function backToLogin(page: Page) {
+	await page.reload().catch(() => undefined)
+	await page.waitForURL((url) => url.pathname === '/login')
+}

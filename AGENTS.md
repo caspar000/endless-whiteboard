@@ -1,7 +1,8 @@
 # Notes for agents working in this repo
 
-- **Deploying** to https://lifeboard.darkroomlab.net: follow `docs/deploying.md`. Deploy only when the
-  user asks, and ask them for a server backup first when a change touches stored data.
+- **Deploying** to https://lifeboard.darkroomlab.net: follow `docs/deploying.md`. Every push to `main`
+  deploys itself, so merge or push to `main` only when the user asks, and ask them for a server backup
+  first when a change touches stored data. Day-to-day work goes on `develop`.
 - **What the app is, and what to know before changing it:** `README.md`, especially *Things worth
   knowing before you change something*.
 - **Adding something the user can do** (a node type, a command, an import): `.claude/skills/extension-surfaces/SKILL.md`

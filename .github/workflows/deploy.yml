@@ -1,0 +1,51 @@
+# Every push to main goes live on https://lifeboard.darkroomlab.net (docs/deploying.md).
+#
+# The job restarts the container on the Hetzner box, whose start.sh fetches main, builds it and serves
+# it, then waits until /api/status reports this commit. The key in DEPLOY_SSH_KEY can do nothing else:
+# its line in deploy@'s authorized_keys is `restrict,command="cd /opt/stacks/lifeboard && docker compose
+# restart"`. DEPLOY_KNOWN_HOSTS pins the box's host key.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push restarts the container again and builds the newer commit, so an older run still waiting
+# for its own commit would wait for nothing.
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to lifeboard.darkroomlab.net
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://lifeboard.darkroomlab.net
+    steps:
+      - name: Restart the container
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy
+          # Exactly one attempt: the box bans an address after repeated failed logins.
+          ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+            deploy@188.245.42.86 restart
+
+      - name: Wait until this commit is served
+        run: |
+          # The build takes a few minutes; the previous build serves until it's done.
+          for i in $(seq 1 80); do
+            rev=$(curl -s --max-time 10 https://lifeboard.darkroomlab.net/api/status | grep -o "$GITHUB_SHA" || true)
+            if [ -n "$rev" ]; then echo "Serving $GITHUB_SHA"; exit 0; fi
+            sleep 15
+          done
+          echo "::error::Still not serving $GITHUB_SHA after 20 minutes. The build probably failed and the previous one is still up; read the container logs (docs/deploying.md, step 4)."
+          exit 1

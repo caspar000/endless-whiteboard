@@ -9,6 +9,7 @@ import {
 	PanelLeftOpen,
 	Plus,
 	RefreshCw,
+	Search,
 	Settings,
 	Star,
 	TriangleAlert,
@@ -92,6 +93,7 @@ export function Sidebar({
 	onStorage,
 	onOpenBoard,
 	onNewBoard,
+	onSearch,
 }: {
 	view: 'list' | 'settings' | 'help' | 'board'
 	activeBoardId: string | null
@@ -104,6 +106,8 @@ export function Sidebar({
 	onStorage: () => void
 	onOpenBoard: (board: BoardMeta) => void
 	onNewBoard: () => void
+	/** Opens the palette: on a phone, the only way to it without a keyboard. */
+	onSearch: () => void
 }) {
 	const favorites = boards.filter((board) => board.favorite)
 	// Starred boards already have their own section, so the recent list leaves them out.
@@ -149,6 +153,15 @@ export function Sidebar({
 					<LayoutGrid size={16} />
 				</span>
 				<span className="lb-sidebar__name">Lifeboard</span>
+				<button
+					type="button"
+					className="lb-icon-btn lb-sidebar__search"
+					onClick={onSearch}
+					aria-label="Search boards and commands"
+					title="Search  ⌘K"
+				>
+					<Search size={18} strokeWidth={1.75} aria-hidden="true" />
+				</button>
 				<button
 					type="button"
 					className="lb-icon-btn lb-sidebar__collapse"

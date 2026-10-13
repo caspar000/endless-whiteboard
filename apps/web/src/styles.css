@@ -12486,3 +12486,224 @@ button.lb-props__eye:hover {
 	padding: 6px 10px;
 	border-radius: 10px;
 }
+
+/*
+ * The phone (docs/mobile-plan.md), below 768px.
+ *
+ * Across the top: the menu button, the board pill (app/BoardPill.tsx) in place of the tab strip, the AI
+ * button. The menu and the agent open as cards between that bar and the dock, from the left and from
+ * the right, with the board dimmed behind them. All of it keeps inside the safe areas (the notch, the
+ * home indicator); the board itself runs edge to edge underneath.
+ */
+.lb-pill,
+.lb-sidebar__search,
+.lb-agent-scrim {
+	display: none;
+}
+@media (max-width: 767px) {
+	:root {
+		--fl-safe-top: env(safe-area-inset-top, 0px);
+		--fl-safe-bottom: env(safe-area-inset-bottom, 0px);
+		--fl-safe-left: env(safe-area-inset-left, 0px);
+		--fl-safe-right: env(safe-area-inset-right, 0px);
+		/* The top bar's buttons, and where the cards under it start. */
+		--fl-bar: 44px;
+		--fl-card-top: calc(var(--fl-safe-top) + var(--fl-edge) * 2 + var(--fl-bar));
+		/* Clear of the dock (44px buttons in a 6px pad) and the gap above it. */
+		--fl-card-bottom: calc(var(--fl-safe-bottom) + var(--fl-edge) * 2 + 56px);
+	}
+
+	.lb-sidebar-reopen,
+	.lb-agent-fab {
+		top: calc(var(--fl-safe-top) + var(--fl-edge));
+		width: var(--fl-bar);
+		height: var(--fl-bar);
+	}
+	.lb-sidebar-reopen {
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+	}
+	.lb-agent-fab {
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+	}
+
+	.lb-pill {
+		position: fixed;
+		top: calc(var(--fl-safe-top) + var(--fl-edge));
+		left: calc(var(--fl-safe-left) + var(--fl-edge) * 2 + var(--fl-bar));
+		right: calc(var(--fl-safe-right) + var(--fl-edge) * 2 + var(--fl-bar));
+		z-index: 58;
+		display: flex;
+		justify-content: center;
+		pointer-events: none;
+	}
+	.lb-pill__current {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		max-width: 100%;
+		height: var(--fl-bar);
+		padding: 0 12px 0 8px;
+		border: 0;
+		border-radius: 999px;
+		color: var(--lb-text);
+		font-family: inherit;
+		font-size: 15px;
+		font-weight: 600;
+		pointer-events: auto;
+		cursor: pointer;
+	}
+	.lb-pill__current > svg {
+		flex: none;
+		color: var(--lb-text-dim);
+	}
+	.lb-pill__name {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.lb-pill__badge {
+		width: 28px;
+		height: 28px;
+		border-radius: 8px;
+		box-shadow: inset 0 0 0 1px rgb(20 22 40 / 8%);
+	}
+	.lb-pill__menu {
+		position: fixed;
+		top: var(--fl-card-top);
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		max-height: calc(100dvh - var(--fl-card-top) - var(--fl-card-bottom));
+		padding: 8px;
+		overflow-y: auto;
+		pointer-events: auto;
+		animation: lb-expand-in var(--mo-pop);
+		transform-origin: top center;
+	}
+	.lb-pill__list {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.lb-pill__row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 48px;
+		padding: 0 4px 0 10px;
+		border-radius: 12px;
+	}
+	.lb-pill__row--active {
+		background: var(--lb-surface-2);
+	}
+	.lb-pill__open {
+		flex: 1;
+		min-width: 0;
+		height: 48px;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--lb-text);
+		font-family: inherit;
+		font-size: 15px;
+		text-align: left;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.lb-pill__row--active .lb-pill__open {
+		font-weight: 600;
+	}
+	.lb-pill__close {
+		flex: none;
+		width: 40px;
+		height: 40px;
+	}
+	.lb-pill__actions {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding-top: 4px;
+		border-top: 1px solid var(--lb-border);
+	}
+	.lb-pill__action {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		height: 48px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 12px;
+		background: none;
+		color: var(--lb-text);
+		font-family: inherit;
+		font-size: 15px;
+		cursor: pointer;
+	}
+	.lb-pill__action > svg {
+		color: var(--lb-text-dim);
+	}
+	.lb-pill__open:focus-visible,
+	.lb-pill__action:focus-visible,
+	.lb-pill__current:focus-visible {
+		outline: 2px solid var(--lb-accent);
+		outline-offset: 2px;
+	}
+
+	/* The menu: the sidebar as a card between the top bar and the dock. */
+	.lb-sidebar {
+		top: var(--fl-card-top);
+		bottom: var(--fl-card-bottom);
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+		width: auto;
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+		max-width: none;
+	}
+	.lb-sidebar__search {
+		display: grid;
+	}
+	/* Room in the brand row for the search button beside the close one. */
+	.lb-sidebar__brand {
+		grid-template-columns: 28px minmax(0, 1fr) 36px 36px;
+	}
+	/* A key binding means nothing without a keyboard. */
+	.lb-palette__hint {
+		display: none;
+	}
+
+	/* The agent: the same card, from the right, lifted above the keyboard while one is up. */
+	.lb-agent-panel {
+		top: var(--fl-card-top);
+		bottom: max(var(--fl-card-bottom), calc(var(--lb-keyboard, 0px) + var(--fl-edge)));
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+		width: auto;
+	}
+	.lb-agent-scrim {
+		display: block;
+		position: fixed;
+		inset: 0;
+		z-index: 55;
+		padding: 0;
+		border: 0;
+		background: var(--lb-backdrop);
+	}
+
+	/* The palette at the top, full width: on a phone it is opened from the menu's search button. */
+	.lb-palette {
+		padding-top: calc(var(--fl-safe-top) + var(--fl-edge));
+	}
+	.lb-palette__panel {
+		width: calc(100vw - var(--fl-edge) * 2 - var(--fl-safe-left) - var(--fl-safe-right));
+		max-height: calc(100dvh - var(--fl-safe-top) - var(--fl-edge) * 2 - var(--lb-keyboard, 0px));
+	}
+
+	/* The dock keeps above the home indicator. */
+	.lb-dock-wrap {
+		bottom: calc(var(--fl-safe-bottom) + var(--fl-edge));
+	}
+}

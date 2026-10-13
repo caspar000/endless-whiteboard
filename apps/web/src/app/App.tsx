@@ -35,6 +35,8 @@ import { useHashRoute } from './useHashRoute'
 import { useTabs } from './useTabs'
 import { useRates } from './useRates'
 import { useTheme } from './useTheme'
+import { BoardPill } from './BoardPill'
+import { useKeyboardInset, usePhone } from './usePhone'
 
 /**
  * How long a closed tab's editor stays mounted after the tab goes away.
@@ -147,6 +149,10 @@ export function App() {
 	const [agentPanelOpen, setAgentPanelOpen] = useState(loadAgentPanelOpen)
 	const { divider: agentDivider, resizing: agentResizing } = useAgentPanelWidth()
 	const wide = useWide()
+	// Below 768px the chrome is the phone's (docs/mobile-plan.md): a board pill for the tabs, and the
+	// menu and the agent as floating cards.
+	const phone = usePhone()
+	useKeyboardInset()
 	/** The agent works on a board, so its button and panel only show on one; the open state is kept. */
 	const agentShown = agentPanelOpen && route.view === 'board'
 	const agentButton = useRef<HTMLButtonElement>(null)
@@ -177,6 +183,15 @@ export function App() {
 		setSidebarCollapsed(collapsed)
 		saveSidebarCollapsed(collapsed)
 	}, [])
+
+	/**
+	 * Wraps a sidebar action so that, where the sidebar covers the board (a narrow window), it gets out of
+	 * the way after taking you somewhere. Beside the board it stays as it was.
+	 */
+	const leaveSidebar = (run: () => void) => () => {
+		if (!window.matchMedia(WIDE_QUERY).matches) updateSidebarCollapsed(true)
+		run()
+	}
 
 	// Through the updater for the same reason as the agent panel: the ⌘\ command holds this closure.
 	const toggleSidebar = useCallback(() => {
@@ -881,17 +896,28 @@ export function App() {
 
 				{/* The chrome, floating over the content. Painted after it, so it stacks above the board. */}
 				{/* On a board only; elsewhere the sidebar is the way to a board. */}
-				{route.view === 'board' && (
-					<TabStrip
-						boards={api.boards}
-						tabs={tabs}
-						activeBoardId={activeBoardId}
-						onSelect={(board) => void openBoard(board)}
-						onClose={(id) => void closeBoardTab(id)}
-						onNew={() => void createAndOpen()}
-						onRename={(id, name) => void api.rename(id, name)}
-					/>
-				)}
+				{route.view === 'board' &&
+					(phone ? (
+						<BoardPill
+							boards={api.boards}
+							tabs={tabs}
+							activeBoardId={activeBoardId}
+							onSelect={(board) => void openBoard(board)}
+							onClose={(id) => void closeBoardTab(id)}
+							onNew={() => void createAndOpen()}
+							onAllBoards={() => void goHome()}
+						/>
+					) : (
+						<TabStrip
+							boards={api.boards}
+							tabs={tabs}
+							activeBoardId={activeBoardId}
+							onSelect={(board) => void openBoard(board)}
+							onClose={(id) => void closeBoardTab(id)}
+							onNew={() => void createAndOpen()}
+							onRename={(id, name) => void api.rename(id, name)}
+						/>
+					))}
 
 				<button
 					type="button"
@@ -906,12 +932,13 @@ export function App() {
 					boards={api.boards}
 					collapsed={sidebarCollapsed}
 					onToggleCollapsed={() => updateSidebarCollapsed(!sidebarCollapsed)}
-					onAllBoards={() => void goHome()}
-					onSettings={() => void goSettings()}
-					onHelp={() => void goHelp()}
-					onStorage={() => void goSettings('storage')}
-					onOpenBoard={(board) => void openBoard(board)}
-					onNewBoard={() => void createAndOpen()}
+					onAllBoards={leaveSidebar(() => void goHome())}
+					onSettings={leaveSidebar(() => void goSettings())}
+					onHelp={leaveSidebar(() => void goHelp())}
+					onStorage={leaveSidebar(() => void goSettings('storage'))}
+					onOpenBoard={(board) => leaveSidebar(() => void openBoard(board))()}
+					onNewBoard={leaveSidebar(() => void createAndOpen())}
+					onSearch={leaveSidebar(() => setPalette({ seed: '' }))}
 				/>
 				<SidebarReopen collapsed={sidebarCollapsed} onExpand={() => updateSidebarCollapsed(false)} />
 
@@ -928,6 +955,16 @@ export function App() {
 					>
 						<Sparkles size={20} strokeWidth={1.75} aria-hidden="true" />
 					</button>
+				)}
+				{/* On a phone the agent is a card over the board, which dims behind it like the menu's. */}
+				{phone && agentShown && (
+					<button
+						type="button"
+						className="lb-agent-scrim"
+						onClick={closeAgentPanel}
+						aria-label="Close agent panel"
+						tabIndex={-1}
+					/>
 				)}
 				<AgentPanel
 					open={agentShown}

@@ -44,7 +44,13 @@ export async function skipFirstRunDemo(page: Page): Promise<void> {
 	// Close the demo board's tab, which lands on the board list. An open tab keeps its editor mounted
 	// (that is what makes tab switching instant), and the demo board's mounted-but-hidden nodes would
 	// otherwise leak into every "count the shapes on the board" assertion that follows.
-	await page.locator('.lb-tabs__close').click()
+	// On a phone the open boards are behind the board pill rather than in a tab strip.
+	if (await page.locator('.lb-pill__current').isVisible()) {
+		await page.locator('.lb-pill__current').click()
+		await page.getByRole('menu', { name: 'Open boards' }).getByRole('button', { name: /^Close / }).click()
+	} else {
+		await page.locator('.lb-tabs__close').click()
+	}
 	await expect(page.locator('.lb-home__header')).toBeVisible()
 	await expect(page.locator('.lb-board-host')).toHaveCount(0, { timeout: 20_000 })
 }

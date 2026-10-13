@@ -1263,7 +1263,8 @@ test.describe('home screen', () => {
 	})
 
 	test('starts collapsed and overlays an expanded sidebar on narrow screens', async ({ page }) => {
-		await page.setViewportSize({ width: 700, height: 800 })
+		// Narrow but not a phone: below 768px the sidebar is the phone's menu card (phone.spec.ts).
+		await page.setViewportSize({ width: 900, height: 800 })
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 

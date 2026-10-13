@@ -516,6 +516,14 @@ bottom dock replaces its `Toolbar`, the selection toolbar renders `InFrontOfTheC
 why. Double-click on empty canvas is deliberately tldraw's own again: claiming it board-wide meant
 every near-miss left a note behind.
 
+**Things that appear rise into place one after another.** A list or grid gets `lb-stagger` and its
+children arrive `--mo-stagger` apart, up to the sixteenth (`styles.css`); the card grid, sidebar rows
+and tabs always do, and lists that change as you type (⌘K, the node picker, the colour-and-icon picker)
+only on opening, through `useStaggerIn`. A board opening for the first time does the same with the
+shapes on screen, in reading order and in at most sixteen waves (`canvas/boardEntrance.ts`). Only
+opacity and `translate` animate: a shape is placed by its inline `transform`, and a card lifts on hover
+with one. Reduced motion sets the stagger to zero along with every duration.
+
 **Board thumbnails are drawn while you are idle, never on the way out of a board.** An export of a
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn

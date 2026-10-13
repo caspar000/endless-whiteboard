@@ -15,6 +15,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react'
+import { useStaggerIn } from '../app/useStaggerIn'
 import { useEditor, useValue } from '@lifeboard/canvas'
 import { formatKbd, isMacPlatform } from '../app/paletteItems'
 import { isNodeMenuOpen, setNodeMenuOpen, toggleNodeMenu } from './nodeMenuState'
@@ -137,6 +138,7 @@ function NodeTile({
  * and every keystroke after that would have to be routed back by hand.
  */
 function NodeMenuPanel({ onClose }: { onClose: () => void }) {
+	const stagger = useStaggerIn()
 	const editor = useEditor()
 	const [needle, setNeedle] = useState('')
 	const [selected, setSelected] = useState(0)
@@ -282,7 +284,7 @@ function NodeMenuPanel({ onClose }: { onClose: () => void }) {
 				<div
 					ref={gridRef}
 					id="lb-nodemenu-grid"
-					className="lb-nodemenu__grid"
+					className={`lb-nodemenu__grid ${stagger}`}
 					role="listbox"
 					aria-label="Node types"
 				>

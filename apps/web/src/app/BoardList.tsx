@@ -237,7 +237,7 @@ export function BoardList({
 					</button>
 				</div>
 			) : (
-				<ul className="lb-grid lb-list__boards">
+				<ul className="lb-grid lb-list__boards lb-stagger">
 					{shown.map((board) => (
 						<BoardCard
 							key={board.id}

@@ -73,6 +73,7 @@ import { loadBoardPeople } from './boardPeople'
 import { currentAccount } from '../server/accounts'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { canReadSnapshot } from './snapshotVersion'
+import { playBoardEntrance } from './boardEntrance'
 import { reloadToUpdate } from '../pwa/registerServiceWorker'
 import { ForeignPropertyStrips } from './ForeignPropertyStrips'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -562,6 +563,8 @@ function BoardCanvas({
 					// And the way back off a board: drag a card out of the lanes and its property goes
 					// with it (node-kit's views/interaction.ts).
 					const stopWatchingDragOut = watchViewDragOut(editor)
+					// The shapes on screen rise into place, the first time this board opens.
+					const stopEntrance = playBoardEntrance(editor)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -576,6 +579,7 @@ function BoardCanvas({
 						stopCascadingDeletes()
 						stopPlacingMembers()
 						stopWatchingDragOut()
+						stopEntrance()
 						stopTracking()
 						stopUploading()
 						stopAuthorship()

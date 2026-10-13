@@ -28,6 +28,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from 'react'
+import { useStaggerIn } from './useStaggerIn'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { BoardMeta } from '../boards/boardIndex'
@@ -421,6 +422,7 @@ export function CommandPalette({
 		}
 	}
 
+	const stagger = useStaggerIn(open)
 	if (!open) return null
 
 	return createPortal(
@@ -475,7 +477,7 @@ export function CommandPalette({
 					</div>
 				)}
 
-				<div ref={listRef} id="lb-palette-list" className="lb-palette__list" role="listbox">
+				<div ref={listRef} id="lb-palette-list" className={`lb-palette__list ${stagger}`} role="listbox">
 					{running ? (
 						<div className="lb-palette__empty">Working…</div>
 					) : items.length === 0 ? (

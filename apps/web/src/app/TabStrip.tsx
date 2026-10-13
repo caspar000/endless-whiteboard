@@ -66,7 +66,7 @@ export function TabStrip({
 	const activeIndex = open.findIndex((board) => board.id === activeBoardId)
 
 	return (
-		<div className="lb-tabs" role="tablist" aria-label="Open boards">
+		<div className="lb-tabs lb-stagger" role="tablist" aria-label="Open boards">
 			{open.map((board, index) => {
 				const { id } = board
 				const active = index === activeIndex

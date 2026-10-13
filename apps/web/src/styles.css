@@ -93,6 +93,8 @@
 	--mo-out: 140ms cubic-bezier(0.4, 0, 1, 1);
 	/* A small overshoot, for buttons and popovers. */
 	--mo-pop: 240ms cubic-bezier(0.34, 1.4, 0.64, 1);
+	/* The gap between one item of a list arriving and the next (`.lb-stagger`). */
+	--mo-stagger: 24ms;
 	color-scheme: dark;
 }
 @media (max-width: 1023px) {
@@ -110,7 +112,79 @@
 		--mo-in: 1ms linear;
 		--mo-out: 1ms linear;
 		--mo-pop: 1ms linear;
+		--mo-stagger: 0ms;
 	}
+}
+
+/*
+ * Arrivals. The children of a `.lb-stagger` rise into place one after another when they mount: a
+ * card grid, a list of rows, a set of tabs. Each waits `--mo-stagger` longer than the one before, up to
+ * the sixteenth, so a long list is in place in about half a second however long it is. Only opacity and
+ * `translate` move, never `transform`, so a child's own hover lift or positioning is left alone.
+ *
+ * A child that mounts later (a new board, a new tab) rises on its own, after the delay of its place.
+ * Lists that change as you type use the class only on the way in (`useStaggerIn`).
+ */
+@keyframes lb-rise {
+	from {
+		opacity: 0;
+		translate: 0 6px;
+	}
+}
+.lb-stagger > * {
+	animation: lb-rise var(--mo-in) backwards;
+	animation-delay: calc(var(--stagger-i, 0) * var(--mo-stagger));
+}
+.lb-stagger > :nth-child(2) {
+	--stagger-i: 1;
+}
+.lb-stagger > :nth-child(3) {
+	--stagger-i: 2;
+}
+.lb-stagger > :nth-child(4) {
+	--stagger-i: 3;
+}
+.lb-stagger > :nth-child(5) {
+	--stagger-i: 4;
+}
+.lb-stagger > :nth-child(6) {
+	--stagger-i: 5;
+}
+.lb-stagger > :nth-child(7) {
+	--stagger-i: 6;
+}
+.lb-stagger > :nth-child(8) {
+	--stagger-i: 7;
+}
+.lb-stagger > :nth-child(9) {
+	--stagger-i: 8;
+}
+.lb-stagger > :nth-child(10) {
+	--stagger-i: 9;
+}
+.lb-stagger > :nth-child(11) {
+	--stagger-i: 10;
+}
+.lb-stagger > :nth-child(12) {
+	--stagger-i: 11;
+}
+.lb-stagger > :nth-child(13) {
+	--stagger-i: 12;
+}
+.lb-stagger > :nth-child(14) {
+	--stagger-i: 13;
+}
+.lb-stagger > :nth-child(15) {
+	--stagger-i: 14;
+}
+.lb-stagger > :nth-child(n + 16) {
+	--stagger-i: 15;
+}
+
+/* A board opening: the shapes on screen rise into place in waves (canvas/boardEntrance.ts). */
+.tl-shape[data-entering] {
+	animation: lb-rise var(--mo-in) backwards;
+	animation-delay: calc(var(--enter-i, 0) * var(--mo-stagger));
 }
 
 /*

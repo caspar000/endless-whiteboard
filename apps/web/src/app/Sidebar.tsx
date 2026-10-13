@@ -335,7 +335,7 @@ function Section({
 				{title}
 			</button>
 			{expanded && (
-				<nav className="lb-sidebar__board-list" aria-label={listLabel}>
+				<nav className="lb-sidebar__board-list lb-stagger" aria-label={listLabel}>
 					{children}
 				</nav>
 			)}

@@ -3,6 +3,7 @@ import { Ban, Pipette } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { BoardLookPatch, BoardMeta } from '../../boards/boardIndex'
 import { boardTint } from '../boardTint'
+import { useStaggerIn } from '../useStaggerIn'
 import { BoardBadge, inkOn } from './BoardBadge'
 import { BOARD_ICON_GROUPS, searchBoardIcons, type BoardIcon } from './boardIcons'
 
@@ -75,6 +76,7 @@ function BoardLookPicker({
 	onClose: () => void
 }) {
 	const panel = useRef<HTMLDivElement>(null)
+	const stagger = useStaggerIn()
 	const [query, setQuery] = useState('')
 	const [customColor, setCustomColor] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -167,13 +169,13 @@ function BoardLookPicker({
 			<div className="lb-look__icons" role="group" aria-label="Icons">
 				{query ? (
 					icons.length ? (
-						<div className="lb-look__grid">{icons.map(iconButton)}</div>
+						<div className={`lb-look__grid ${stagger}`}>{icons.map(iconButton)}</div>
 					) : (
 						<p className="lb-look__empty">No icons match “{query}”.</p>
 					)
 				) : (
 					<>
-						<div className="lb-look__grid">
+						<div className={`lb-look__grid ${stagger}`}>
 							<button
 								type="button"
 								className="lb-look__icon"
@@ -188,14 +190,14 @@ function BoardLookPicker({
 						{BOARD_ICON_GROUPS.map((group) => (
 							<section key={group} className="lb-look__group">
 								<h3 className="lb-look__group-title">{group}</h3>
-								<div className="lb-look__grid">{icons.filter((icon) => icon.group === group).map(iconButton)}</div>
+								<div className={`lb-look__grid ${stagger}`}>{icons.filter((icon) => icon.group === group).map(iconButton)}</div>
 							</section>
 						))}
 					</>
 				)}
 			</div>
 
-			<div className="lb-look__swatches" role="group" aria-label="Colour">
+			<div className={`lb-look__swatches ${stagger}`} role="group" aria-label="Colour">
 				<button
 					type="button"
 					className="lb-look__swatch"

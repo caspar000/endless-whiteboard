@@ -7,17 +7,19 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { shapeLabel } from './labels'
-import { layoutFromAuto, readPropertyLayout, setPropertyLayout, type PropertyLayout } from './layout'
+import { layoutFromAuto, readPropertyLayout, type PropertyLayout } from './layout'
+import { setPropertyLayouts } from './layoutEdit'
 import { layoutFromYaml, layoutToYaml, type LayoutYamlError } from './layoutYaml'
 import { findProperty, readPropertyRegistry } from './schema'
 import { orderedPropertyIds, readHiddenPropertyIds, type ShapeWithMeta } from './values'
-import { readPropertyView, setPropertyView } from './view'
+import { setPropertyView } from './view'
 
 /** How long typing pauses before the card is updated. Short enough to feel live. */
 const PARSE_DELAY_MS = 150
 
 /**
- * The YAML editor for one node's card layout (docs/property-display-plan.md).
+ * The YAML editor for a card layout (docs/property-display-plan.md). Given several shapes (a selection
+ * whose layouts match), every edit goes to all of them; the first is the one shown.
  *
  * Opens beside the board while the node's real card updates as you type: every edit that parses is
  * written to the shape. An edit that doesn't parse writes nothing, so the card keeps the last good
@@ -27,13 +29,15 @@ const PARSE_DELAY_MS = 150
  */
 export function LayoutYamlEditor({
 	editor,
-	shapeId,
+	shapeIds,
 	onClose,
 }: {
 	editor: Editor
-	shapeId: TLShapeId
+	shapeIds: readonly TLShapeId[]
 	onClose: () => void
 }) {
+	const shapeId = shapeIds[0]!
+	const key = shapeIds.join(',')
 	const host = useRef<HTMLDivElement>(null)
 	const [errors, setErrors] = useState<LayoutYamlError[]>([])
 	const shape = useValue('lifeboard:layout-editor-shape', () => editor.getShape(shapeId) ?? null, [
@@ -56,8 +60,9 @@ export function LayoutYamlEditor({
 		const start = editor.getShape(shapeId)
 		if (!start || !host.current) return
 		mark.current = editor.markHistoryStoppingPoint('lifeboard:layout-yaml')
+		const targets = () => shapeIds.flatMap((id) => editor.getShape(id) ?? [])
 		// A layout only shows in display mode, so editing one in source would look like nothing happens.
-		if (readPropertyView(start) === 'source') setPropertyView(editor, [shapeId], 'display')
+		setPropertyView(editor, shapeIds, 'display')
 
 		const defs = readPropertyRegistry(editor)
 		const initial = layoutToYaml(readPropertyLayout(start) ?? automaticLayout(editor, start), defs)
@@ -75,7 +80,7 @@ export function LayoutYamlEditor({
 			setErrors([])
 			view.dispatch({ effects: setErrorLines.of([]) })
 			if (!sameLayout(readPropertyLayout(current), result.layout)) {
-				setPropertyLayout(editor, current, result.layout)
+				setPropertyLayouts(editor, targets(), result.layout)
 			}
 		}
 
@@ -112,7 +117,9 @@ export function LayoutYamlEditor({
 			clearTimeout(timer)
 			view.destroy()
 		}
-	}, [editor, shapeId])
+		// `key` stands in for `shapeIds`, whose identity changes on every render of the caller.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [editor, key])
 
 	if (!shape) return null
 
@@ -121,8 +128,11 @@ export function LayoutYamlEditor({
 		onClose()
 	}
 	const resetToAutomatic = () => {
-		const current = editor.getShape(shapeId)
-		if (current) setPropertyLayout(editor, current, null)
+		setPropertyLayouts(
+			editor,
+			shapeIds.flatMap((id) => editor.getShape(id) ?? []),
+			null
+		)
 		onClose()
 	}
 
@@ -138,7 +148,7 @@ export function LayoutYamlEditor({
 		>
 			<div className="lb-layout-editor__header">
 				<span className="lb-layout-editor__title" title={label}>
-					Card layout{label ? ` · ${label}` : ''}
+					Card layout{shapeIds.length > 1 ? ` · ${shapeIds.length} cards` : label ? ` · ${label}` : ''}
 				</span>
 				<button className="lb-props__close" aria-label="Close the layout editor" onClick={onClose}>
 					×

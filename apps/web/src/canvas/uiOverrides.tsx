@@ -18,14 +18,15 @@ import {
 	TldrawUiMenuItem,
 	useEditor,
 	useValue,
+	type Editor,
 	type TLComponents,
+	type TLShapeId,
 	type TLUiOverrides,
 } from '@lifeboard/canvas'
 import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
 import { nativeToolKbds, nodeToolKbds } from './toolKeys'
 import { openProperties } from './propertiesTarget'
-import { openLayoutEditor } from './layoutEditorTarget'
 import { usePhone } from '../app/usePhone'
 import { toggleTracing } from './tracing'
 
@@ -175,11 +176,11 @@ function PropertiesMenuItem() {
 					onSelect={() => openProperties(selectedIds[0]!)}
 				/>
 			)}
-			{selectedIds.length === 1 && !phone && (
+			{!phone && (
 				<TldrawUiMenuItem
 					id="lifeboard-card-layout"
 					label="Edit card layout…"
-					onSelect={() => openLayoutEditor(selectedIds[0]!)}
+					onSelect={() => openProperties(rightClickedShape(editor, selectedIds), 'display')}
 				/>
 			)}
 			<TldrawUiMenuItem
@@ -190,6 +191,15 @@ function PropertiesMenuItem() {
 			/>
 		</TldrawUiMenuGroup>
 	)
+}
+
+/**
+ * The selected shape the menu was opened on, so "Use this card's layout on all" means the card you
+ * right-clicked. Falls back to the first selected one when the pointer isn't over any of them.
+ */
+function rightClickedShape(editor: Editor, selectedIds: readonly TLShapeId[]): TLShapeId {
+	const under = editor.getShapeAtPoint(editor.inputs.currentPagePoint, { hitInside: true })
+	return under && selectedIds.includes(under.id) ? under.id : selectedIds[0]!
 }
 
 /**

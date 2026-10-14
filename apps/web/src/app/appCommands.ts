@@ -5,6 +5,7 @@ import {
 	cycleRelationView,
 	isHiddenRelation,
 	isRelation,
+	layoutsMatch,
 	registerCommand,
 	setRelationHidden,
 	setRelationView,
@@ -503,17 +504,32 @@ registerCommand({
 })
 
 /**
- * The YAML editor for the selected shape's card layout. Desktop only for now: the editor needs the
- * width a phone doesn't have (docs/property-display-plan.md).
+ * The card layout of the selection: the Display tab, or the YAML editor. Desktop only for now: both
+ * need the width a phone doesn't have (docs/property-display-plan.md). Several cards edit together
+ * when their layouts match.
  */
+const onDesktop = () => !window.matchMedia(PHONE_QUERY).matches
+
 registerCommand({
 	id: 'shape.card-layout',
+	title: 'Edit the card layout',
+	group: CANVAS_GROUP,
+	when: (ctx) => hasSelection(ctx) && onDesktop(),
+	run: (ctx) => {
+		const id = ctx.editor?.getSelectedShapeIds()[0]
+		if (id) openProperties(id, 'display')
+	},
+})
+
+registerCommand({
+	id: 'shape.card-layout-yaml',
 	title: 'Edit the card layout as YAML',
 	group: CANVAS_GROUP,
-	when: (ctx) => onlySelected(ctx) !== null && !window.matchMedia(PHONE_QUERY).matches,
+	when: (ctx) =>
+		hasSelection(ctx) && onDesktop() && layoutsMatch(ctx.editor?.getSelectedShapes() ?? []),
 	run: (ctx) => {
-		const shape = onlySelected(ctx)
-		if (shape) openLayoutEditor(shape.id)
+		const ids = ctx.editor?.getSelectedShapeIds() ?? []
+		if (ids.length) openLayoutEditor(ids)
 	},
 })
 

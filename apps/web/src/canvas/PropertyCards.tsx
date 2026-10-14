@@ -1,4 +1,4 @@
-import { NodeStrips, hasCollection, setPropertyCardHeight } from '@lifeboard/node-kit'
+import { NodeStrips, hasCollection, readPropertyLayout, setPropertyCardHeight } from '@lifeboard/node-kit'
 import {
 	getPointerInfo,
 	useEditor,
@@ -34,10 +34,12 @@ interface CardTarget {
 	/** Where the card hangs from: the middle of its top edge, in page coordinates. */
 	x: number
 	y: number
+	/** The shape's width, for a layout that asks for `full`. */
+	w: number
 	arrow: boolean
 }
 
-/** The default card width in page units. An arrow's card hugs its content instead. */
+/** The default card width in page units. An arrow's card hugs its content unless its layout says otherwise. */
 const CARD_WIDTH = 240
 
 /**
@@ -52,13 +54,13 @@ function arrowTarget(editor: Editor, shape: TLArrowShape): CardTarget | null {
 	const anchor = arrowStripAnchor(geometry, shape.props.labelPosition)
 	const page = editor.getShapePageTransform(shape.id)?.applyToPoint(anchor)
 	if (!page) return null
-	return { id: shape.id, x: page.x, y: page.y, arrow: true }
+	return { id: shape.id, x: page.x, y: page.y, w: 0, arrow: true }
 }
 
 function boundsTarget(editor: Editor, shape: TLShape): CardTarget | null {
 	const bounds = editor.getShapePageBounds(shape.id)
 	if (!bounds) return null
-	return { id: shape.id, x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h, arrow: false }
+	return { id: shape.id, x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h, w: bounds.w, arrow: false }
 }
 
 export function PropertyCards() {
@@ -125,6 +127,10 @@ function PropertyCard({ editor, target }: { editor: Editor; target: CardTarget }
 
 	if (!shape) return null
 
+	// The layout's width holds in both modes, so switching to source doesn't make the card jump.
+	const width = readPropertyLayout(shape)?.width ?? (target.arrow ? 'fit' : CARD_WIDTH)
+	const fit = width === 'fit' || (width === 'full' && target.arrow)
+
 	/*
 	 * The card acts as part of its shape: pressing on it is pressing on the shape, so a click selects
 	 * it, a drag moves it, a double-click edits it and a right-click opens its menu. Only the press is
@@ -148,14 +154,14 @@ function PropertyCard({ editor, target }: { editor: Editor; target: CardTarget }
 	return (
 		<div
 			ref={ref}
-			className={target.arrow ? 'lb-prop-card lb-prop-card--arrow' : 'lb-prop-card'}
+			className={`lb-prop-card${target.arrow ? ' lb-prop-card--arrow' : ''}${fit ? ' lb-prop-card--fit' : ''}`}
 			data-shape-id={target.id}
 			onPointerDown={onPointerDown}
 			style={{
 				// Page coordinates: `OnTheCanvas` already sits inside the camera transform. The card is
 				// pulled back by half its own width so it hangs centred under its anchor.
 				transform: `translate(${target.x}px, ${target.y}px) translateX(-50%)`,
-				...(target.arrow ? {} : { width: CARD_WIDTH }),
+				...(fit ? {} : { width: width === 'full' ? target.w : width }),
 				/*
 				 * In front of the shapes. `OnTheCanvas` is painted *before* tldraw's shapes, so by
 				 * default a card would sit under any shape below its node, and under its own arrow.

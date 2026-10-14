@@ -457,6 +457,27 @@ export {
 } from './relationView'
 export { PropertiesPopover } from './properties/PropertiesPopover'
 export { PropertyDisplay, PropertyStrip } from './properties/PropertyStrip'
+export { PropertyLayoutView } from './properties/PropertyLayoutView'
+export { LayoutYamlEditor } from './properties/LayoutYamlEditor'
+export {
+	CARD_WIDTH_RANGE,
+	PROPERTY_DISPLAYS,
+	defaultDisplay,
+	displaysFor,
+	formatLayoutValue,
+	layoutFromAuto,
+	parseStoredLayout,
+	readPropertyLayout,
+	setPropertyLayout,
+	visibleLayoutRows,
+	type CardWidth,
+	type LayoutElement,
+	type LayoutRow,
+	type PropertyDisplay as PropertyDisplayKind,
+	type PropertyElement,
+	type PropertyLayout,
+} from './properties/layout'
+export { layoutFromYaml, layoutToYaml, type LayoutYamlError, type LayoutYamlResult } from './properties/layoutYaml'
 export {
 	PROPERTY_CARD_GAP,
 	autoLayoutGroups,

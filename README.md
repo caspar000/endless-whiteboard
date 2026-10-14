@@ -145,8 +145,10 @@ A shape's properties show on a **property card** that hangs below it, never insi
 follows the shape but isn't part of its geometry: arrows, snapping and the selection box ignore it,
 and only kanban and calendar lanes leave room for it. Each shape's card is in one of two modes,
 toggled with `⌥⇧P`, ⌘K or the context menu: *display* (badges, a value-only line, chips, bars)
-or *source* (every property with its name). Per-node card layouts come next; see
-`docs/property-display-plan.md`.
+or *source* (every property with its name). A node can have its own layout instead of the
+automatic one: rows of left, centre and right slots holding properties (as text, badges, chips, an
+icon, a bar, stars or a checkbox), tables, separators and labels. Write it as YAML with "Edit card
+layout…" on the shape's menu, and the card follows as you type. See `docs/property-display-plan.md`.
 
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
 them into notes-with-properties and tables the first time an old board loads.

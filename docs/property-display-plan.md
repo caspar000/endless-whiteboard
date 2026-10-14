@@ -36,6 +36,9 @@ layout; an explicit layout ignores it.
   - **separator**: a horizontal line.
   - **text**: a fixed label.
 - Properties are referenced by name in YAML and stored by id, so renames don't break layouts.
+- In YAML, formatting keys sit on the element (`{ property: Price, decimals: 0, symbol: false }`),
+  show name is `showName: true`, and a row can be shorthand: `separator`, `table: [A, B]`, or a bare
+  element meaning its left slot. Stored as JSON in shape meta under `lifeboard:propLayout`.
 
 ```yaml
 width: 260            # or: fit, full
@@ -61,7 +64,7 @@ edits them all; differing layouts show "Mixed layouts" with "Use this node's lay
 
 ## Phases
 
-Stop and report after each.
+Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026-10-14.
 
 1. **The card.** Every node's properties move into a card below it (the note and quote lose their
    inline strips, the `strips` option on node definitions goes away). Card styling, placement, width

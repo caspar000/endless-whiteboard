@@ -64,13 +64,13 @@ importers:
         version: 8.18.1
       '@vitejs/plugin-react':
         specifier: ^5.2.0
-        version: 5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
       typescript:
         specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       ws:
         specifier: ^8.21.3
         version: 8.21.3
@@ -101,10 +101,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   apps/server:
     dependencies:
@@ -153,10 +153,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   apps/web:
     dependencies:
@@ -229,7 +229,7 @@ importers:
         version: 8.18.1
       '@vitejs/plugin-react':
         specifier: ^5.1.0
-        version: 5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
       rollup-plugin-visualizer:
         specifier: ^6.0.4
         version: 6.0.11(rolldown@1.1.5)(rollup@4.62.3)
@@ -238,13 +238,13 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       vite-plugin-pwa:
         specifier: ^1.3.0
-        version: 1.3.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@7.2.0))(workbox-window@7.4.1)
+        version: 1.3.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@7.2.0))(workbox-window@7.4.1)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
       workbox-window:
         specifier: ^7.4.1
         version: 7.4.1
@@ -275,7 +275,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/book-reader:
     dependencies:
@@ -336,7 +336,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/canvas:
     dependencies:
@@ -418,7 +418,7 @@ importers:
         version: 1.7.1
       '@testing-library/jest-dom':
         specifier: ^7.0.1
-        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)))
+        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)))
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -466,10 +466,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/canvas-assets:
     dependencies:
@@ -554,7 +554,7 @@ importers:
         version: 1.7.1
       '@testing-library/jest-dom':
         specifier: ^7.0.1
-        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)))
+        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)))
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -617,10 +617,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/canvas-sync:
     dependencies:
@@ -651,7 +651,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/dice:
     dependencies:
@@ -694,7 +694,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/mcp-server:
     dependencies:
@@ -716,10 +716,19 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/node-kit:
     dependencies:
+      '@codemirror/commands':
+        specifier: ^6.10.4
+        version: 6.10.4
+      '@codemirror/lang-yaml':
+        specifier: ^6.1.3
+        version: 6.1.3
+      '@codemirror/language':
+        specifier: ^6.12.4
+        version: 6.12.4
       '@codemirror/state':
         specifier: ^6.7.1
         version: 6.7.1
@@ -738,6 +747,9 @@ importers:
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.8)
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@tldraw/store':
         specifier: 5.5.2
@@ -762,7 +774,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/note-markdown:
     dependencies:
@@ -820,7 +832,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   packages/schema:
     dependencies:
@@ -857,7 +869,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+        version: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
 
 packages:
 
@@ -1474,6 +1486,9 @@ packages:
   '@codemirror/lang-markdown@6.5.1':
     resolution: {integrity: sha512-6re5avCNfyRMIoi3XNjbEfQM1vTeVD3JS3g/Fyegyso/eoANFM71Cyvbb66LDyYtQLMEcRFlzioywCqDo9SlLA==}
 
+  '@codemirror/lang-yaml@6.1.3':
+    resolution: {integrity: sha512-AZ8DJBuXGVHybpBQhmZtgew5//4hv3tdkXnr3vDmOUMJRuB6vn/uuwtmTOTlqEaQFg3hQSVeA90NmvIQyUV6FQ==}
+
   '@codemirror/language@6.12.4':
     resolution: {integrity: sha512-1q4PaT+o6PbgpkJt4Q8Fv5XJxTy4FUZ4MWETtyiDw3J0Pyr9E2vqcKL+k9wcvjNTIsauxvE7OfmWj3FRPHQ76A==}
 
@@ -1680,6 +1695,9 @@ packages:
 
   '@lezer/markdown@1.7.2':
     resolution: {integrity: sha512-iTkYvoVcKt3WkeL7qUDyXHONZEwLio4wj8KTNi2dnjQEXBZKMV63BpQrPqfsM+OkvuRbiSTAcycYAsQzLhRNoQ==}
+
+  '@lezer/yaml@1.0.4':
+    resolution: {integrity: sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw==}
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -5506,6 +5524,11 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
@@ -6330,6 +6353,16 @@ snapshots:
       '@lezer/common': 1.5.2
       '@lezer/markdown': 1.7.2
 
+  '@codemirror/lang-yaml@6.1.3':
+    dependencies:
+      '@codemirror/autocomplete': 6.20.3
+      '@codemirror/language': 6.12.4
+      '@codemirror/state': 6.7.1
+      '@lezer/common': 1.5.2
+      '@lezer/highlight': 1.2.3
+      '@lezer/lr': 1.4.10
+      '@lezer/yaml': 1.0.4
+
   '@codemirror/language@6.12.4':
     dependencies:
       '@codemirror/state': 6.7.1
@@ -6573,6 +6606,12 @@ snapshots:
     dependencies:
       '@lezer/common': 1.5.2
       '@lezer/highlight': 1.2.3
+
+  '@lezer/yaml@1.0.4':
+    dependencies:
+      '@lezer/common': 1.5.2
+      '@lezer/highlight': 1.2.3
+      '@lezer/lr': 1.4.10
 
   '@lukeed/ms@2.0.2': {}
 
@@ -7506,7 +7545,7 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)))':
+  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)))':
     dependencies:
       '@adobe/css-tools': 4.5.0
       '@testing-library/dom': 10.4.2
@@ -7516,7 +7555,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
     optionalDependencies:
-      vitest: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+      vitest: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
   '@testing-library/react@16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -7868,7 +7907,7 @@ snapshots:
       '@use-gesture/core': 10.3.1
       react: 19.2.8
 
-  '@vitejs/plugin-react@5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))':
+  '@vitejs/plugin-react@5.2.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@7.2.0)
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7(supports-color@7.2.0))
@@ -7876,7 +7915,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.3
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -7889,13 +7928,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.10(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))':
+  '@vitest/mocker@4.1.10(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
 
   '@vitest/pretty-format@4.1.10':
     dependencies:
@@ -10511,18 +10550,18 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-pwa@1.3.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@7.2.0))(workbox-window@7.4.1):
+  vite-plugin-pwa@1.3.0(supports-color@7.2.0)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))(workbox-build@7.4.1(@types/babel__core@7.20.5)(supports-color@7.2.0))(workbox-window@7.4.1):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.17
-      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       workbox-build: 7.4.1(@types/babel__core@7.20.5)(supports-color@7.2.0)
       workbox-window: 7.4.1
     transitivePeerDependencies:
       - supports-color
 
-  vite@8.1.5(@types/node@26.1.2)(terser@5.49.0):
+  vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -10533,11 +10572,12 @@ snapshots:
       '@types/node': 26.1.2
       fsevents: 2.3.3
       terser: 5.49.0
+      yaml: 2.9.1
 
-  vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)):
+  vitest@4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0))
+      '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -10554,7 +10594,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)
+      vite: 8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.1.2
@@ -10786,6 +10826,8 @@ snapshots:
   y18n@5.0.8: {}
 
   yallist@3.1.1: {}
+
+  yaml@2.9.1: {}
 
   yargs-parser@21.1.1: {}
 

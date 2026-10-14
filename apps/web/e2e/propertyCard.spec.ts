@@ -29,6 +29,7 @@ async function pricedNote(page: Page) {
 				'lifeboard:properties': [
 					{ id: 'type', name: 'Type', type: 'select', options: ['EVENT'] },
 					{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+					{ id: 'description', name: 'Description', type: 'text' },
 				],
 			},
 		})
@@ -38,7 +39,7 @@ async function pricedNote(page: Page) {
 				x: 200,
 				y: 150,
 				props: { md: 'Locked bedroom door', w: 300 },
-				meta: { 'lifeboard:props': { type: 'EVENT', price: 420 } },
+				meta: { 'lifeboard:props': { type: 'EVENT', price: 420, description: null } },
 			},
 		])
 	})
@@ -71,7 +72,7 @@ test.describe('the property card', () => {
 			editor.select(editor.getCurrentPageShapes()[0]!.id)
 		})
 		await page.keyboard.press('Alt+Shift+P')
-		await expect(card.locator('.lb-strip__name')).toHaveText(['Type', 'Price'])
+		await expect(card.locator('.lb-strip__name')).toHaveText(['Type', 'Price', 'Description'])
 		await page.screenshot({ path: test.info().outputPath('source.png') })
 
 		// And back.
@@ -125,5 +126,79 @@ test.describe('the property card', () => {
 		await expect(card).toHaveCount(2)
 		await expect(card.filter({ hasText: '₾' })).toBeVisible()
 		await expect(card.filter({ hasNotText: '₾' })).toBeHidden()
+	})
+})
+
+test.describe('the card layout editor', () => {
+	const LAYOUT = [
+		'width: 300',
+		'rows:',
+		'  - center: { property: Price, size: xl, weight: bold }',
+		'    right: { property: Type, as: badge }',
+		'  - separator',
+		'  - left: { property: Description, size: s }',
+		'  - left: { text: Featured, size: s }',
+		'',
+	].join('\n')
+
+	async function openEditor(page: Page) {
+		// By coordinates: a shape's DOM doesn't take pointer events, the canvas does.
+		const box = (await page.locator('.lb-board-host:not([data-hidden]) .lb-note').first().boundingBox())!
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' })
+		await page.getByRole('menuitem', { name: 'Edit card layout…' }).click()
+		const panel = page.getByRole('dialog', { name: 'Card layout' })
+		await expect(panel).toBeVisible()
+		return panel
+	}
+
+	async function replaceText(page: Page, text: string) {
+		await page.locator('.lb-layout-editor .cm-content').click()
+		await page.keyboard.press('ControlOrMeta+A')
+		await page.keyboard.insertText(text)
+	}
+
+	test('starts from the automatic layout, and the card follows what you type', async ({ page }) => {
+		const card = await pricedNote(page)
+		const panel = await openEditor(page)
+		await expect(panel.locator('.cm-content')).toContainText('property: Type')
+
+		await replaceText(page, LAYOUT)
+		await expect(card.locator('.lb-layout .lb-el--xl')).toHaveText('₾ 420.00')
+		await expect(card.locator('.lb-layout__slot--right .lb-chip')).toHaveText('EVENT')
+		// The description is empty, so its row goes; the label row stays, and so does the separator
+		// between two drawn rows.
+		await expect(card).not.toContainText('Description')
+		await expect(card).toContainText('Featured')
+		await expect(card.locator('.lb-layout__rule')).toHaveCount(1)
+		expect(Math.round((await card.boundingBox())!.width)).toBe(300)
+		await page.screenshot({ path: test.info().outputPath('layout.png') })
+
+		// A mistake shows its line and leaves the card as it was.
+		await replaceText(page, 'rows:\n  - left: { property: Prise }\n')
+		await expect(panel.locator('.lb-layout-editor__error')).toContainText('Line 2')
+		await expect(panel.locator('.lb-layout-editor__error')).toContainText('No property called “Prise”')
+		await expect(card.locator('.lb-el--xl')).toHaveText('₾ 420.00')
+		await page.screenshot({ path: test.info().outputPath('error.png') })
+
+		await replaceText(page, LAYOUT)
+		await panel.getByRole('button', { name: 'Done' }).click()
+		await expect(panel).toBeHidden()
+		await expect(card.locator('.lb-layout')).toBeVisible()
+
+		// The whole editing session is one undo step.
+		await page.keyboard.press('ControlOrMeta+Z')
+		await expect(card.locator('.lb-layout')).toHaveCount(0)
+		await expect(card.locator('.lb-strip--display')).toBeVisible()
+	})
+
+	test('Cancel puts the card back as it was', async ({ page }) => {
+		const card = await pricedNote(page)
+		const panel = await openEditor(page)
+		await replaceText(page, LAYOUT)
+		await expect(card.locator('.lb-layout')).toBeVisible()
+		await panel.getByRole('button', { name: 'Cancel' }).click()
+		await expect(panel).toBeHidden()
+		await expect(card.locator('.lb-layout')).toHaveCount(0)
+		await expect(card.locator('.lb-strip--display')).toBeVisible()
 	})
 })

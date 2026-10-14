@@ -14,6 +14,8 @@ import {
 import { ArrowShapeKindStyle, Vec2d, copyShapeStyle, flattenSelection } from '@lifeboard/canvas'
 import { canHaveFillColor, readFillColor, setNextFillColor } from '../canvas/shapeFill'
 import { openProperties } from '../canvas/propertiesTarget'
+import { openLayoutEditor } from '../canvas/layoutEditorTarget'
+import { PHONE_QUERY } from './usePhone'
 import { canQuickLook, getQuickLook, toggleQuickLook } from '../canvas/quickLook'
 import { runTldrawAction } from '../canvas/tldrawUi'
 import { toggleOverview } from '../canvas/overview'
@@ -497,6 +499,21 @@ registerCommand({
 	when: hasSelection,
 	run: (ctx) => {
 		if (ctx.editor) togglePropertyView(ctx.editor)
+	},
+})
+
+/**
+ * The YAML editor for the selected shape's card layout. Desktop only for now: the editor needs the
+ * width a phone doesn't have (docs/property-display-plan.md).
+ */
+registerCommand({
+	id: 'shape.card-layout',
+	title: 'Edit the card layout as YAML',
+	group: CANVAS_GROUP,
+	when: (ctx) => onlySelected(ctx) !== null && !window.matchMedia(PHONE_QUERY).matches,
+	run: (ctx) => {
+		const shape = onlySelected(ctx)
+		if (shape) openLayoutEditor(shape.id)
 	},
 })
 

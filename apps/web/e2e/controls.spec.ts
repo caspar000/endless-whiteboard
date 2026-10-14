@@ -13,6 +13,7 @@ interface EditorHandle {
 	getSvg(ids: string[], opts?: { padding?: number | 'auto' }): Promise<SVGSVGElement | undefined>
 	select(...ids: string[]): void
 	getSelectedShapeIds(): string[]
+	getInstanceState(): { isPenMode: boolean }
 }
 
 const run = <T, A>(page: Page, fn: (editor: EditorHandle, arg: A) => T, arg?: A) =>
@@ -87,6 +88,26 @@ test('a note has corner handles, and scales from them (B13)', async ({ page }) =
 	await page.mouse.up()
 	const scale = await run(page, (editor) => editor.getCurrentPageShapes()[0]!.props.scale as number)
 	expect(scale).toBeCloseTo(1.5, 1)
+})
+
+test('a mouse press after a pen tap leaves pen mode and still selects', async ({ page }) => {
+	await freshBoard(page)
+	await run(page, (editor) => editor.createShapes([{ id: 'shape:g', type: 'geo', x: 100, y: 100 }]))
+	const shape = await run(page, (editor) => editor.pageToScreen(editor.getShapePageBounds('shape:g').center))
+	const empty = await run(page, (editor) => editor.pageToScreen({ x: 600, y: 400 }))
+
+	// A pen tap on empty canvas turns pen mode on, which ignores non-pen pointers to reject palms.
+	const cdp = await page.context().newCDPSession(page)
+	for (const type of ['mousePressed', 'mouseReleased'] as const) {
+		await cdp.send('Input.dispatchMouseEvent', { type, ...empty, button: 'left', clickCount: 1, pointerType: 'pen' })
+	}
+	const isPenMode = () => run(page, (editor) => editor.getInstanceState().isPenMode)
+	await expect.poll(isPenMode).toBe(true)
+
+	// Palms arrive as touch, never as a mouse, so a mouse or trackpad click is the user putting the pen down.
+	await page.mouse.click(shape.x, shape.y)
+	await expect.poll(() => run(page, (editor) => editor.getSelectedShapeIds())).toEqual(['shape:g'])
+	expect(await isPenMode()).toBe(false)
 })
 
 test('a trimmed export ends where the drawing does (X4)', async ({ page }) => {

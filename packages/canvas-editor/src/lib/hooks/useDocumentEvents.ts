@@ -282,6 +282,19 @@ export function useDocumentEvents() {
 			container.removeEventListener('keyup', handleKeyUp)
 		}
 	}, [editor, container, isAppFocused])
+
+	// Pen mode drops every non-pen pointer so a resting palm can't draw. Palms arrive as touch,
+	// never as a mouse, so a mouse or trackpad press leaves pen mode. Without this, one pen tap
+	// locked the mouse out of the board until a reload. Capture runs before every React handler.
+	useEffect(() => {
+		const handlePointerDown = (e: PointerEvent) => {
+			if (e.pointerType === 'mouse' && editor.getInstanceState().isPenMode) {
+				editor.updateInstanceState({ isPenMode: false })
+			}
+		}
+		container.addEventListener('pointerdown', handlePointerDown, true)
+		return () => container.removeEventListener('pointerdown', handlePointerDown, true)
+	}, [editor, container])
 }
 
 const INPUTS = ['input', 'select', 'button', 'textarea']

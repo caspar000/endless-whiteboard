@@ -66,7 +66,7 @@ edits them all; differing layouts show "Mixed layouts" with "Use this node's lay
 
 ## Phases
 
-Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026-10-14 (ab59ecd). Phase 3 done 2026-10-14.
+Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026-10-14 (ab59ecd). Phase 3 done 2026-10-14 (d2f55cb). Phase 4 done 2026-10-14.
 
 1. **The card.** Every node's properties move into a card below it (the note and quote lose their
    inline strips, the `strips` option on node definitions goes away). Card styling, placement, width
@@ -78,6 +78,16 @@ Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026
 3. **The Display tab.** The layout panel, editing several nodes at once, "Mixed layouts".
 4. **Reuse and reach.** The vault-wide library, apply to selection, copy and paste layout, a `layout`
    field on the agent's tools, and the Help, README and ⌘K entries.
+
+## How phase 4 landed
+
+- The library is the vault setting `cardLayouts` (`[{ name, layout }]`), cached in localStorage like
+  saved queries; the Display tab lists it with Apply and delete, and saves the current card's layout.
+- Copy and paste layout are ⌘K commands and right-click items. The clipboard lives for the session.
+- Agents get `property.layout` (YAML, `null` for automatic, plus the automatic layout written out)
+  and `property.set-layout` (YAML onto one or more shapes; errors with lines, nothing written).
+- Help's sample cards draw node-kit's own `AutoDisplay` under each shape, and the Properties page
+  shows a YAML layout beside the `LayoutCard` it draws.
 
 ## Not in v1
 

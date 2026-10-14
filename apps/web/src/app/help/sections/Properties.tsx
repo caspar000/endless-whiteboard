@@ -1,3 +1,4 @@
+import { LayoutCard, layoutFromYaml, type PropertyDef } from '@lifeboard/node-kit'
 import { DomainExample } from '../DomainExample'
 import { PropertyGallery } from '../PropertyGallery'
 import { Cursor, Jump, Keys, Section, useDemo, type SectionProps } from '../kit'
@@ -21,7 +22,6 @@ function PropertiesDemo() {
 				<div className="lb-demo__stickywrap">
 					<div className="lb-demo__sticky">Standing desk</div>
 					<div className={step >= 4 ? 'lb-demo__strip lb-demo__pop--in' : 'lb-demo__strip'}>
-						<span className="lb-demo__stripname">Price</span>
 						<span className="lb-demo__stripvalue">₾450</span>
 					</div>
 				</div>
@@ -42,8 +42,53 @@ function PropertiesDemo() {
 			</div>
 			<div className="lb-demo__hint">
 				{step >= 4
-					? 'the value now lives on the sticky itself'
+					? 'the value shows on a card under the sticky'
 					: 'right-click any shape → Properties, or press ⌥P'}
+			</div>
+		</div>
+	)
+}
+
+/* ----------------------------------------------------------- a layout, both ways */
+
+const EXAMPLE_PROPERTIES: PropertyDef[] = [
+	{ id: 'price', name: 'Price', type: 'financial', unit: 'GEL' },
+	{ id: 'type', name: 'Type', type: 'select' },
+	{ id: 'description', name: 'Description', type: 'text' },
+	{ id: 'weight', name: 'Weight', type: 'number', unit: 'kg' },
+	{ id: 'colour', name: 'Colour', type: 'text' },
+]
+
+const EXAMPLE_YAML = `rows:
+  - center: { property: Price, size: xl, weight: bold, decimals: 0 }
+    right: { property: Type, as: badge }
+  - left: { property: Description, size: s }
+  - separator
+  - table: [Weight, Colour]
+`
+
+const EXAMPLE_VALUES = {
+	price: 2399,
+	type: 'FURNITURE',
+	description: 'Oak top on a steel frame, 160 × 80',
+	weight: 38,
+	colour: 'Natural',
+}
+
+/** The YAML and the card it draws, side by side. The card is parsed from that very text. */
+function LayoutExample() {
+	const parsed = layoutFromYaml(EXAMPLE_YAML, EXAMPLE_PROPERTIES)
+	if (!parsed.ok) return null
+	return (
+		<div className="lb-help__layout-example">
+			<pre className="lb-help__code">{EXAMPLE_YAML}</pre>
+			<div className="lb-ex__propcard lb-help__layout-card">
+				<LayoutCard
+					layout={parsed.layout}
+					values={EXAMPLE_VALUES}
+					units={{}}
+					registry={new Map(EXAMPLE_PROPERTIES.map((def) => [def.id, def]))}
+				/>
 			</div>
 		</div>
 	)
@@ -99,10 +144,17 @@ export function Properties({ go }: SectionProps) {
 
 			<Section title="What shows up on the card">
 				<p>
-					Values render on the shape itself, so a priced sticky <em>looks</em> priced from across a
-					zoomed-out board. Because that space is finite, the panel lets each shape choose for itself:
-					drag a row to reorder it, or click the eye to hide it. Hidden values stay attached and keep
-					counting towards every total — they simply stop taking up room.
+					A shape's values show on a <strong>property card</strong> that hangs just below it, so a
+					priced sticky <em>looks</em> priced from across a zoomed-out board. The card goes wherever the
+					shape goes, and pressing it is pressing the shape, but it isn't part of the shape: arrows,
+					snapping and the selection box ignore it, and only kanban and calendar lanes leave room for it.
+				</p>
+				<p>
+					Each card is in one of two modes. <em>Display</em> is the designed one: badges, one line of
+					values (hover for their names), chips and bars. <em>Source</em> lists every property with its
+					name. Switch the selected cards with <kbd className="lb-kbd">⌥⇧P</kbd>, ⌘K or the right-click
+					menu. In the panel, drag a row to reorder it or click the eye to hide it; hidden values stay
+					attached and keep counting towards every total.
 				</p>
 				<div className="lb-help__facts">
 					<div className="lb-help__fact">
@@ -134,6 +186,30 @@ export function Properties({ go }: SectionProps) {
 						</p>
 					</div>
 				</div>
+			</Section>
+
+			<Section title="Laying out a card">
+				<p>
+					A card can have a layout of its own instead of the automatic one. A layout is a stack of rows;
+					each row has a left, a centre and a right slot, and grows to fit what is in it. A slot holds
+					properties (as text, a badge, chips, an icon, a bar, stars or a checkbox, in four sizes), a
+					table of chosen properties, a separator or a fixed label. An empty value hides, then its row,
+					then the card.
+				</p>
+				<LayoutExample />
+				<p>
+					Right-click a shape and choose <em>Edit card layout…</em> to open the panel's Display tab.
+					Customise starts from the automatic layout; drag elements between slots and click one to
+					style it. <em>Edit as YAML</em> opens the same layout as text, for when typing is faster, and
+					the card follows as you type. Select several cards with the same layout and they change
+					together.
+				</p>
+				<p className="lb-help__aside">
+					Every card owns its layout. To reuse one, save it under a name in the Display tab (saved
+					layouts follow your vault to every board) and apply it to a selection, or copy a card's
+					layout from the right-click menu and paste it onto others. Either way each card gets a copy,
+					so changing one later leaves the rest alone.
+				</p>
 			</Section>
 
 			<Section title="Then what?">

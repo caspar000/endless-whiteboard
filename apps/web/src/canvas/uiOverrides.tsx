@@ -4,7 +4,11 @@ import {
 	getNodeDefinitions,
 	getVisibleNodeDefinitions,
 	isNodeTypeEnabled,
+	copyLayout,
+	getCopiedLayout,
 	nextPropertyView,
+	readPropertyLayout,
+	setPropertyLayouts,
 	subscribeToNodeDefinitions,
 	togglePropertyView,
 } from '@lifeboard/node-kit'
@@ -164,6 +168,7 @@ function PropertiesMenuItem() {
 		editor,
 	])
 	const phone = usePhone()
+	const canPaste = useValue('lifeboard:can-paste-layout', () => getCopiedLayout() !== undefined, [])
 	if (!selectedIds.length) return null
 	return (
 		<TldrawUiMenuGroup id="lifeboard-properties-group">
@@ -181,6 +186,26 @@ function PropertiesMenuItem() {
 					id="lifeboard-card-layout"
 					label="Edit card layout…"
 					onSelect={() => openProperties(rightClickedShape(editor, selectedIds), 'display')}
+				/>
+			)}
+			{selectedIds.length === 1 && (
+				<TldrawUiMenuItem
+					id="lifeboard-card-layout-copy"
+					label="Copy card layout"
+					onSelect={() => {
+						const shape = editor.getShape(selectedIds[0]!)
+						if (shape) copyLayout(readPropertyLayout(shape))
+					}}
+				/>
+			)}
+			{canPaste && (
+				<TldrawUiMenuItem
+					id="lifeboard-card-layout-paste"
+					label="Paste card layout"
+					onSelect={() => {
+						const copied = getCopiedLayout()
+						if (copied !== undefined) setPropertyLayouts(editor, editor.getSelectedShapes(), copied)
+					}}
 				/>
 			)}
 			<TldrawUiMenuItem

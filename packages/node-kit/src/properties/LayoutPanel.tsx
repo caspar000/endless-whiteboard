@@ -34,6 +34,7 @@ import {
 	setWidth,
 	type ElementPath,
 } from './layoutEdit'
+import { getLayoutLibrary, removeLayoutFromLibrary, saveLayoutToLibrary } from './layoutLibrary'
 import { findProperty, readPropertyRegistry } from './schema'
 import type { PropertyDef } from './types'
 import { orderedPropertyIds, readHiddenPropertyIds } from './values'
@@ -77,6 +78,7 @@ export function LayoutPanel({
 				<button className="lb-display__button" onClick={() => commit(layout)}>
 					Use this card’s layout on all
 				</button>
+				<Library layout={null} onApply={commit} />
 			</div>
 		)
 	}
@@ -105,6 +107,7 @@ export function LayoutPanel({
 						</button>
 					)}
 				</div>
+				<Library layout={null} onApply={commit} />
 			</div>
 		)
 	}
@@ -239,6 +242,81 @@ export function LayoutPanel({
 					Use automatic
 				</button>
 			</div>
+			<Library layout={layout} onApply={(next) => (commit(next), setSelected(null))} />
+		</div>
+	)
+}
+
+/**
+ * Saved layouts, vault-wide. Applying copies one onto every target; saving snapshots this card's.
+ * Nothing links a card to an entry, so editing either later leaves the other alone.
+ */
+function Library({
+	layout,
+	onApply,
+}: {
+	/** This card's layout, to save. `null` when there is nothing of its own to save. */
+	layout: PropertyLayout | null
+	onApply: (layout: PropertyLayout) => void
+}) {
+	const saved = useValue('lifeboard:layout-library', () => getLayoutLibrary(), [])
+	const [naming, setNaming] = useState(false)
+	const [name, setName] = useState('')
+	const save = () => {
+		if (!layout || !name.trim()) return
+		saveLayoutToLibrary(name, layout)
+		setNaming(false)
+		setName('')
+	}
+	return (
+		<div className="lb-display__library">
+			<span className="lb-display__slot-name">Saved layouts</span>
+			{saved.length === 0 && !layout && <p className="lb-props__empty">None yet. Save one from a card that has its own.</p>}
+			{saved.map((entry) => (
+				<div key={entry.name} className="lb-display__saved">
+					<span className="lb-display__saved-name" title={entry.name}>
+						{entry.name}
+					</span>
+					<button className="lb-display__button" onClick={() => onApply(entry.layout)}>
+						Apply
+					</button>
+					<button
+						className="lb-display__icon"
+						aria-label={`Delete the saved layout ${entry.name}`}
+						onClick={() => removeLayoutFromLibrary(entry.name)}
+					>
+						<X size={12} />
+					</button>
+				</div>
+			))}
+			{layout &&
+				(naming ? (
+					<div className="lb-display__saved">
+						<input
+							className="lb-display__text"
+							aria-label="Name for the saved layout"
+							placeholder="Event card"
+							value={name}
+							// eslint-disable-next-line jsx-a11y/no-autofocus
+							autoFocus
+							onChange={(e) => setName(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') save()
+								if (e.key === 'Escape') {
+									e.stopPropagation()
+									setNaming(false)
+								}
+							}}
+						/>
+						<button className="lb-display__button lb-display__button--primary" onClick={save}>
+							Save
+						</button>
+					</div>
+				) : (
+					<button className="lb-display__button" onClick={() => setNaming(true)}>
+						Save this layout…
+					</button>
+				))}
 		</div>
 	)
 }

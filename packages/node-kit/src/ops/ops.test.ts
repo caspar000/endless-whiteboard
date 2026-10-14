@@ -466,6 +466,45 @@ describe('properties', () => {
 	})
 })
 
+describe('card layouts', () => {
+	it('reads the automatic layout, writes one from YAML, and reads it back', async () => {
+		const node = await boardWithNote()
+		await run('property.create', { name: 'Price', type: 'financial', unit: 'GEL' })
+		await run('property.set', { shapeId: node.id, property: 'Price', value: '420' })
+
+		const before = (await run('property.layout', { shapeId: node.id })) as {
+			layout: string | null
+			automatic: string
+			view: string
+		}
+		expect(before.layout).toBeNull()
+		expect(before.view).toBe('display')
+		expect(before.automatic).toContain('property: Price')
+
+		const yaml = 'rows:\n  - center: { property: Price, size: xl, weight: bold }\n'
+		await run('property.set-layout', { shapeIds: [node.id], layout: yaml })
+		const after = (await run('property.layout', { shapeId: node.id })) as { layout: string }
+		expect(after.layout).toContain('center: { property: Price, size: xl, weight: bold }')
+
+		// Empty goes back to automatic.
+		await run('property.set-layout', { shapeIds: [node.id], layout: '' })
+		expect(((await run('property.layout', { shapeId: node.id })) as { layout: null }).layout).toBeNull()
+	})
+
+	it('writes nothing and reports lines when the YAML is wrong', async () => {
+		const node = await boardWithNote()
+		await run('property.create', { name: 'Price', type: 'number' })
+		const result = await attempt('property.set-layout', {
+			shapeIds: [node.id],
+			layout: 'rows:\n  - left: { property: Prise }\n',
+		})
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.error).toContain('line 2')
+		expect(((await run('property.layout', { shapeId: node.id })) as { layout: null }).layout).toBeNull()
+	})
+})
+
 describe('relations', () => {
 	it('connects two nodes and reads the relation back', async () => {
 		const from = await boardWithNote('Desk')

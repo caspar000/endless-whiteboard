@@ -5071,6 +5071,27 @@ div.lb-sidebar__moves {
 	background: var(--lb-accent);
 	color: white;
 }
+.lb-display__library {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-display__saved {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+}
+.lb-display__saved-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 .lb-display__button {
 	border: 1px solid var(--lb-border);
 	border-radius: 999px;
@@ -5424,7 +5445,6 @@ button.lb-props__eye:hover {
 	flex-wrap: wrap;
 	align-items: inherit;
 	gap: 4px 6px;
-	min-width: 0;
 }
 .lb-layout__slot--center {
 	justify-content: center;
@@ -7771,6 +7791,59 @@ button.lb-props__eye:hover {
 	gap: 10px;
 	min-width: 0;
 }
+/* Help's layout example: the YAML beside the card it draws. */
+.lb-help__layout-example {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px;
+	padding: 14px;
+	border-radius: 8px;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+}
+.lb-help__code {
+	flex: 1 1 260px;
+	margin: 0;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	font-family: var(--lb-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	font-size: 12px;
+	line-height: 1.55;
+	white-space: pre-wrap;
+	color: var(--lb-text);
+}
+.lb-help__layout-card {
+	width: 260px;
+	margin: 0;
+}
+/* A mock shape and the property card hanging under it, as on the board. */
+.lb-ex__item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+	max-width: 260px;
+}
+.lb-ex__propcard {
+	box-sizing: border-box;
+	width: 220px;
+	max-width: 100%;
+	margin-top: 6px;
+	padding: 8px 10px;
+	border-radius: 10px;
+	background: var(--lb-panel);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-1);
+	color: var(--lb-text);
+	text-align: left;
+}
+.lb-ex__propcard .lb-strip {
+	margin: 0;
+}
 .lb-ex__card {
 	display: block;
 	/* Capped rather than filling the column: a card the width of the page reads as a table row, and
@@ -7799,11 +7872,7 @@ button.lb-props__eye:hover {
 	font-weight: 600;
 	color: var(--lb-text);
 }
-/*
- * A sticky's colour is on its title rather than the whole card: the real strip is drawn *below* the
- * shape, and on a yellow fill its dim label text would be unreadable — which would make the mock
- * wrong in the one way that matters, since the strip is what the example is about.
- */
+/* A sticky's colour is on its title rather than the whole mock shape, which keeps it compact. */
 .lb-ex__card--sticky .lb-ex__cardname {
 	background: #f2d15f;
 	color: #2a2415;

@@ -224,9 +224,12 @@ describe('board index', () => {
 		expect((await put('theme', 'dark')).statusCode).toBe(404)
 		expect((await put('constructor', {})).statusCode).toBe(404)
 		expect((await put('savedQueries', [{ name: 1 }])).statusCode).toBe(400)
+		expect((await put('cardLayouts', [{ name: 'Event', layout: { rows: [] } }])).statusCode).toBe(204)
+		expect((await put('cardLayouts', [{ name: 'Event', layout: 'rows' }])).statusCode).toBe(400)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
+			cardLayouts: [{ name: 'Event', layout: { rows: [] } }],
 		})
 	})
 

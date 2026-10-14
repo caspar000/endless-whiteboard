@@ -276,6 +276,7 @@ agent's saved prompt references them.
 | `node.find(query?, type?, hasProperty?)` → id, label, type, bounds, properties | `getPageFacts`, `shapeLabel` |
 | `node.get(id)`, `node.update(id, …)`, `node.delete(id)` | editor primitives |
 | `property.list`, `property.create`, `property.set(shapeId, values)` | `readPropertyRegistry`, `createProperty`, `updateShapeProperties` |
+| `property.layout(shapeId)`, `property.set-layout(shapeIds, layout)` (2026-10-14) | `readPropertyLayout`, `layoutToYaml`, `layoutFromYaml`, `setPropertyLayouts` |
 | `relation.connect(from, to)`, `relation.list(id?, direction?)`, `relation.delete(arrowId)` | §2.1, `getPageEdges`, `edgesTouching` |
 | `board.query(source, columns, groupBy?, sorts?)` → rows | `queryTable` / `runCollection` — already pure |
 | `view.select(ids)`, `view.zoomToFit` | editor — so the human watching *sees* what the agent did |

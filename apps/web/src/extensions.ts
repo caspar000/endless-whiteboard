@@ -10,6 +10,7 @@ import './agent/boardBridge'
 import { registerOperationCommands } from './app/operationCommands'
 import { loadUserBindings } from './app/keymapStore'
 import { loadSavedQueries } from './app/savedQueries'
+import { loadCardLayouts } from './app/cardLayouts'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
 import { pushVaultSetting } from './server/serverVault'
@@ -54,6 +55,7 @@ registerOperationCommands()
  * what makes a name someone chose for themselves win over one a plugin shipped with.
  */
 loadSavedQueries()
+loadCardLayouts()
 
 /*
  * The user's keymap, over the defaults the table declares.

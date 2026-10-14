@@ -456,10 +456,20 @@ export {
 	type RelationView,
 } from './relationView'
 export { PropertiesPopover, type PropertiesTab } from './properties/PropertiesPopover'
-export { PropertyDisplay, PropertyStrip } from './properties/PropertyStrip'
-export { PropertyLayoutView } from './properties/PropertyLayoutView'
+export { AutoDisplay, PropertyDisplay, PropertyStrip, stripRow, type StripRow } from './properties/PropertyStrip'
+export { LayoutCard, PropertyLayoutView } from './properties/PropertyLayoutView'
 export { LayoutYamlEditor } from './properties/LayoutYamlEditor'
 export { LayoutPanel } from './properties/LayoutPanel'
+export {
+	copyLayout,
+	getCopiedLayout,
+	getLayoutLibrary,
+	removeLayoutFromLibrary,
+	replaceLayoutLibrary,
+	saveLayoutToLibrary,
+	setLayoutLibraryPersistence,
+	type SavedLayout,
+} from './properties/layoutLibrary'
 export {
 	addElement,
 	addRow,

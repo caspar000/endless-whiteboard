@@ -25,6 +25,8 @@ import { insertNode } from './insertNode'
 import { toolIdForNodeType } from './nodeTools'
 import { nativeToolKbds, nodeToolKbds } from './toolKeys'
 import { openProperties } from './propertiesTarget'
+import { openLayoutEditor } from './layoutEditorTarget'
+import { usePhone } from '../app/usePhone'
 import { toggleTracing } from './tracing'
 
 /**
@@ -160,6 +162,7 @@ function PropertiesMenuItem() {
 	const next = useValue('lifeboard:next-property-view', () => nextPropertyView(editor.getSelectedShapes()), [
 		editor,
 	])
+	const phone = usePhone()
 	if (!selectedIds.length) return null
 	return (
 		<TldrawUiMenuGroup id="lifeboard-properties-group">
@@ -170,6 +173,13 @@ function PropertiesMenuItem() {
 					icon={glyphIcon('◫')}
 					kbd="alt+p"
 					onSelect={() => openProperties(selectedIds[0]!)}
+				/>
+			)}
+			{selectedIds.length === 1 && !phone && (
+				<TldrawUiMenuItem
+					id="lifeboard-card-layout"
+					label="Edit card layout…"
+					onSelect={() => openLayoutEditor(selectedIds[0]!)}
 				/>
 			)}
 			<TldrawUiMenuItem

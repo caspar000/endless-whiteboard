@@ -7,6 +7,7 @@ import {
 	fireBoardOpen,
 	installBoardHooks,
 	registerHooks,
+	LayoutYamlEditor,
 	PropertiesPopover,
 	getNodeTypesVersion,
 	getVisibleCanvasOverlays,
@@ -82,6 +83,7 @@ import { SelectionToolbar } from './SelectionToolbar'
 import { QuickLookOverlay } from './QuickLookOverlay'
 import { closeQuickLook, getQuickLook } from './quickLook'
 import { closeProperties, getPropertiesTarget } from './propertiesTarget'
+import { closeLayoutEditor, getLayoutEditorTarget } from './layoutEditorTarget'
 import { deselectHiddenShapes, getShapeVisibility } from './relationVisibility'
 import { TraceLayer, TraceShapeWrapper } from './TraceLayer'
 import { followSelectionWhileTracing, isTracing, stopTracing } from './tracing'
@@ -261,6 +263,14 @@ function PropertiesPanel() {
 	)
 	if (!shape) return null
 	return <PropertiesPopover shape={shape} editor={editor} onClose={closeProperties} />
+}
+
+/** Bridges the layout editor's target to the YAML editor, as `PropertiesPanel` does for properties. */
+function LayoutEditorPanel() {
+	const editor = useEditor()
+	const id = useValue('lifeboard:layout-editor-target', () => getLayoutEditorTarget(), [])
+	if (!id) return null
+	return <LayoutYamlEditor key={id} editor={editor} shapeId={id} onClose={closeLayoutEditor} />
 }
 
 interface BoardProps {
@@ -596,6 +606,7 @@ function BoardCanvas({
 						// Both are module-scope. The properties target is a bare shape id, so a stale one
 						// would make the next board open a panel for a shape that isn't on it.
 						closeProperties()
+						closeLayoutEditor()
 						// The lens survives *switching* boards — it is a way of working, like a chosen
 						// tool, and an open tab keeps its editor mounted so this does not run. It does
 						// not survive closing the board you were tracing, which is the one case where
@@ -619,6 +630,7 @@ function BoardCanvas({
 				{/* Rendered inside <Tldraw> so it can portal into the editor's own container and track
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />
+				<LayoutEditorPanel />
 				{/* Must be a child of <Tldraw>: it needs the toast context, and mounting after tldraw's
 				    own handler registration is what lets it take over the `files` content type. */}
 				<FileImportHandler />

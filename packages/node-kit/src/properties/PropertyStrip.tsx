@@ -210,7 +210,7 @@ export function PropertyDisplay({ shape, editor }: { shape: ShapeWithMeta; edito
  * card passes pointer events to its node, so this stops them to keep the canvas from starting a drag;
  * it does not prevent the default, so the link still opens.
  */
-function PropertyLink({ href, text }: { href: string; text: string }) {
+export function PropertyLink({ href, text }: { href: string; text: string }) {
 	return (
 		<a
 			className="lb-strip__link"

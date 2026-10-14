@@ -147,8 +147,10 @@ and only kanban and calendar lanes leave room for it. Each shape's card is in on
 toggled with `⌥⇧P`, ⌘K or the context menu: *display* (badges, a value-only line, chips, bars)
 or *source* (every property with its name). A node can have its own layout instead of the
 automatic one: rows of left, centre and right slots holding properties (as text, badges, chips, an
-icon, a bar, stars or a checkbox), tables, separators and labels. Write it as YAML with "Edit card
-layout…" on the shape's menu, and the card follows as you type. See `docs/property-display-plan.md`.
+icon, a bar, stars or a checkbox), tables, separators and labels. "Edit card layout…" on the shape's
+menu opens the properties panel's Display tab, where you build one by hand, or "Edit as YAML" for
+longer ones; the card follows as you edit. Select several cards with the same layout and they change
+together. See `docs/property-display-plan.md`.
 
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
 them into notes-with-properties and tables the first time an old board loads.

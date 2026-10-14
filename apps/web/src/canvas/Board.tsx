@@ -82,8 +82,8 @@ import { PropertyCards } from './PropertyCards'
 import { SelectionToolbar } from './SelectionToolbar'
 import { QuickLookOverlay } from './QuickLookOverlay'
 import { closeQuickLook, getQuickLook } from './quickLook'
-import { closeProperties, getPropertiesTarget } from './propertiesTarget'
-import { closeLayoutEditor, getLayoutEditorTarget } from './layoutEditorTarget'
+import { closeProperties, getPropertiesTab, getPropertiesTarget } from './propertiesTarget'
+import { closeLayoutEditor, getLayoutEditorTarget, openLayoutEditor } from './layoutEditorTarget'
 import { deselectHiddenShapes, getShapeVisibility } from './relationVisibility'
 import { TraceLayer, TraceShapeWrapper } from './TraceLayer'
 import { followSelectionWhileTracing, isTracing, stopTracing } from './tracing'
@@ -261,16 +261,28 @@ function PropertiesPanel() {
 		},
 		[editor]
 	)
+	const tab = useValue('lifeboard:properties-tab', () => getPropertiesTab(), [])
 	if (!shape) return null
-	return <PropertiesPopover shape={shape} editor={editor} onClose={closeProperties} />
+	return (
+		<PropertiesPopover
+			shape={shape}
+			editor={editor}
+			onClose={closeProperties}
+			tab={tab}
+			onEditYaml={(shapes) => {
+				closeProperties()
+				openLayoutEditor(shapes.map((s) => s.id))
+			}}
+		/>
+	)
 }
 
 /** Bridges the layout editor's target to the YAML editor, as `PropertiesPanel` does for properties. */
 function LayoutEditorPanel() {
 	const editor = useEditor()
-	const id = useValue('lifeboard:layout-editor-target', () => getLayoutEditorTarget(), [])
-	if (!id) return null
-	return <LayoutYamlEditor key={id} editor={editor} shapeId={id} onClose={closeLayoutEditor} />
+	const ids = useValue('lifeboard:layout-editor-target', () => getLayoutEditorTarget(), [])
+	if (!ids) return null
+	return <LayoutYamlEditor key={ids.join(',')} editor={editor} shapeIds={ids} onClose={closeLayoutEditor} />
 }
 
 interface BoardProps {

@@ -455,10 +455,25 @@ export {
 	setRelationView,
 	type RelationView,
 } from './relationView'
-export { PropertiesPopover } from './properties/PropertiesPopover'
+export { PropertiesPopover, type PropertiesTab } from './properties/PropertiesPopover'
 export { PropertyDisplay, PropertyStrip } from './properties/PropertyStrip'
 export { PropertyLayoutView } from './properties/PropertyLayoutView'
 export { LayoutYamlEditor } from './properties/LayoutYamlEditor'
+export { LayoutPanel } from './properties/LayoutPanel'
+export {
+	addElement,
+	addRow,
+	layoutsMatch,
+	moveElement,
+	moveRow,
+	removeElement,
+	removeRow,
+	replaceElement,
+	setPropertyLayouts,
+	setRowAlign,
+	setWidth,
+	type ElementPath,
+} from './properties/layoutEdit'
 export {
 	CARD_WIDTH_RANGE,
 	PROPERTY_DISPLAYS,

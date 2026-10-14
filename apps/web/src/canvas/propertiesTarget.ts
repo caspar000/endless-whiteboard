@@ -1,4 +1,5 @@
 import { atom, type TLShapeId } from '@lifeboard/canvas'
+import type { PropertiesTab } from '@lifeboard/node-kit'
 
 /**
  * Which shape's properties panel is open, if any.
@@ -12,12 +13,19 @@ import { atom, type TLShapeId } from '@lifeboard/canvas'
  * open a panel for a shape id that belongs to the board you just left.
  */
 const target = atom<TLShapeId | null>('lifeboard:propertiesTarget', null)
+/** Which tab the panel opens on: Data from "Properties", Display from "Edit card layout…". */
+const tab = atom<PropertiesTab>('lifeboard:propertiesTab', 'data')
 
 export function getPropertiesTarget(): TLShapeId | null {
 	return target.get()
 }
 
-export function openProperties(id: TLShapeId): void {
+export function getPropertiesTab(): PropertiesTab {
+	return tab.get()
+}
+
+export function openProperties(id: TLShapeId, on: PropertiesTab = 'data'): void {
+	tab.set(on)
 	target.set(id)
 }
 

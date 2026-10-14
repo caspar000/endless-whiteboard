@@ -4,6 +4,8 @@ import { useValue, type Editor, type TLShape } from '@lifeboard/canvas'
 import { CollectionEditor } from '../collections/CollectionEditor'
 import { readCollection } from '../collections/spec'
 import { NodeEditorPopover } from '../NodeEditorPopover'
+import { LayoutPanel } from './LayoutPanel'
+import { readPropertyLayout } from './layout'
 import { shapeLabel } from './labels'
 import { coercePropertyValue, currencySymbol, formatPropertyValue } from './format'
 import { encodeLinkValue, linkHref, parseLinkValue, type LinkParts } from './link'
@@ -56,15 +58,26 @@ const PANEL_WIDTH = 320
  * (⌘-click, which the plan called for, is not available: tldraw's select tool already uses `accelKey`
  * on a shape click to select inside a group.)
  */
+export type PropertiesTab = 'data' | 'display'
+
 export function PropertiesPopover({
 	shape,
 	editor,
 	onClose,
+	tab: initialTab = 'data',
+	onEditYaml,
 }: {
 	shape: TLShape
 	editor: Editor
 	onClose: () => void
+	/** Which tab it opens on. A multi-selection always shows Display: values are per shape. */
+	tab?: PropertiesTab
+	/** Opens the YAML editor for these shapes' layout. */
+	onEditYaml?: (shapes: readonly TLShape[]) => void
 }) {
+	const [tab, setTab] = useState<PropertiesTab>(initialTab)
+	useEffect(() => setTab(initialTab), [initialTab])
+
 	// Escape closes it, the way every other panel in the app does. Captured at the window rather than
 	// on the panel, because focus is usually on the canvas or in a value input — neither of which would
 	// bubble a keydown to this element.
@@ -84,11 +97,12 @@ export function PropertiesPopover({
 		() => {
 			const current = editor.getShape(shape.id)
 			if (!current) return null
-			// The panel is per-shape, so it belongs to a *single* selection: it hides when the shape
-			// is deselected (and reopens with the next individual re-select, since the target
-			// persists), and it must never surface inside a multi-selection — properties edited
-			// "through" one shape of many reads as editing the whole selection, which this isn't.
-			if (editor.getOnlySelectedShape()?.id !== shape.id) return null
+			// The panel belongs to the selection: it hides when the shape is deselected (and reopens
+			// with the next re-select, since the target persists). Inside a multi-selection only the
+			// Display tab shows, because a layout edit can go to every selected card, while values
+			// edited "through" one shape of many would read as editing the whole selection.
+			const selected = editor.getSelectedShapes()
+			if (!selected.some((s) => s.id === shape.id)) return null
 			/*
 			 * Which property ids anything on this page actually carries.
 			 *
@@ -107,12 +121,14 @@ export function PropertiesPopover({
 
 			return {
 				shape: current,
+				targets: selected,
 				collection: readCollection(current),
 				values: readShapeProperties(current),
 				order: orderedPropertyIds(current),
 				hidden: readHiddenPropertyIds(current),
 				registry: readPropertyRegistry(editor),
 				label: shapeLabel(editor, current),
+				hasLayout: readPropertyLayout(current) !== null,
 				inUse,
 			}
 		},
@@ -130,7 +146,9 @@ export function PropertiesPopover({
 	// The shape was deleted while the panel was open.
 	if (!live) return null
 
-	const { values, registry, label, hidden, inUse } = live
+	const { values, registry, label, hidden, inUse, targets } = live
+	const single = targets.length === 1
+	const showing: PropertiesTab = single ? tab : 'display'
 	const attached = draftOrder ?? live.order
 	// Offered: on the board somewhere, but not yet on *this* shape. Creating a property attaches it
 	// straight away, so one you just made is in use by definition and keeps appearing on other shapes —
@@ -166,7 +184,12 @@ export function PropertiesPopover({
 	}
 
 	return (
-		<NodeEditorPopover shape={shape} editor={editor} width={PANEL_WIDTH}>
+		<NodeEditorPopover
+			shape={shape}
+			editor={editor}
+			width={PANEL_WIDTH}
+			side={showing === 'display' ? 'right' : 'below'}
+		>
 			<div className="lb-props">
 				<div className="lb-props__header">
 					<span className="lb-props__title" title={label}>
@@ -177,41 +200,74 @@ export function PropertiesPopover({
 					</button>
 				</div>
 
-				{attached.length === 0 && (
-					<p className="lb-props__empty">
-						Nothing on this shape yet. Add a property, or switch on Collects below to gather from
-						the shapes wired to it.
-					</p>
-				)}
-
-				<div className="lb-props__rows">
-					{attached.map((id) => (
-						<PropertyRow
-							key={id}
-							editor={editor}
-							shape={live.shape}
-							def={findProperty(registry, id)}
-							id={id}
-							value={values[id]!}
-							hidden={hidden.has(id)}
-							dragging={draftOrder !== null && draggingId.current === id}
-							onDragStart={() => startDrag(id)}
-							onDragOver={() => dragOver(id)}
-							onDragEnd={endDrag}
-						/>
-					))}
+				<div className="lb-props__tabs" role="tablist">
+					<button
+						role="tab"
+						className="lb-props__tab"
+						aria-selected={showing === 'data'}
+						disabled={!single}
+						title={single ? undefined : 'Values are per card: select one to edit them'}
+						onClick={() => setTab('data')}
+					>
+						Data
+					</button>
+					<button
+						role="tab"
+						className="lb-props__tab"
+						aria-selected={showing === 'display'}
+						onClick={() => setTab('display')}
+					>
+						Display
+					</button>
 				</div>
 
-				<AddProperty editor={editor} shape={live.shape} available={available} unused={unused} />
+				{showing === 'display' ? (
+					<LayoutPanel
+						editor={editor}
+						shape={live.shape}
+						targets={targets}
+						{...(onEditYaml && { onEditYaml: () => onEditYaml(targets) })}
+					/>
+				) : (
+					<>
+						{attached.length === 0 && (
+							<p className="lb-props__empty">
+								Nothing on this shape yet. Add a property, or switch on Collects below to gather from
+								the shapes wired to it.
+							</p>
+						)}
 
-				{/* What the shape *gathers*, below a rule from what it *is*. Two different kinds of
-				    statement, deliberately not one list. */}
-				<CollectionEditor
-					editor={editor}
-					shape={live.shape}
-					collection={live.collection}
-					registry={registry}
-				/>
+						<div className="lb-props__rows">
+							{attached.map((id) => (
+								<PropertyRow
+									key={id}
+									editor={editor}
+									shape={live.shape}
+									def={findProperty(registry, id)}
+									id={id}
+									value={values[id]!}
+									hidden={hidden.has(id)}
+									layoutSet={live.hasLayout}
+									dragging={draftOrder !== null && draggingId.current === id}
+									onDragStart={() => startDrag(id)}
+									onDragOver={() => dragOver(id)}
+									onDragEnd={endDrag}
+								/>
+							))}
+						</div>
+
+						<AddProperty editor={editor} shape={live.shape} available={available} unused={unused} />
+
+						{/* What the shape *gathers*, below a rule from what it *is*. Two different kinds of
+						    statement, deliberately not one list. */}
+						<CollectionEditor
+							editor={editor}
+							shape={live.shape}
+							collection={live.collection}
+							registry={registry}
+						/>
+					</>
+				)}
 			</div>
 		</NodeEditorPopover>
 	)
@@ -232,6 +288,7 @@ function PropertyRow({
 	id,
 	value,
 	hidden,
+	layoutSet,
 	dragging,
 	onDragStart,
 	onDragOver,
@@ -243,6 +300,8 @@ function PropertyRow({
 	id: string
 	value: PropertyValue
 	hidden: boolean
+	/** The card has its own layout, which decides what shows there; the eye then only affects source mode. */
+	layoutSet: boolean
 	dragging: boolean
 	onDragStart: () => void
 	onDragOver: () => void
@@ -306,7 +365,13 @@ function PropertyRow({
 					className="lb-props__eye"
 					aria-label={hidden ? `Show ${def.name} on the card` : `Hide ${def.name} from the card`}
 					aria-pressed={hidden}
-					title={hidden ? 'Hidden on the card — click to show' : 'Shown on the card — click to hide'}
+					title={
+						layoutSet
+							? 'The card’s own layout decides what it shows. This only affects source mode'
+							: hidden
+								? 'Hidden on the card — click to show'
+								: 'Shown on the card — click to hide'
+					}
 					onClick={() => setShapePropertyHidden(editor, shape, id, !hidden)}
 				>
 					{hidden ? <EyeOff size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}

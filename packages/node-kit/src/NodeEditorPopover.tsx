@@ -33,6 +33,7 @@ export function NodeEditorPopover({
 	shape,
 	editor,
 	width,
+	side = 'below',
 	children,
 }: {
 	/**
@@ -43,6 +44,11 @@ export function NodeEditorPopover({
 	editor: Editor
 	/** Panel width in screen pixels; used to keep it inside the viewport. */
 	width: number
+	/**
+	 * `below` (or above, when cramped) for a form about the shape. `right` (or left) keeps the space
+	 * under the shape clear, which the Display tab needs: the property card it edits hangs there.
+	 */
+	side?: 'below' | 'right'
 	children: ReactNode
 }) {
 	// `useValue` subscribes to the camera and the shape's bounds, so the panel follows the shape.
@@ -63,6 +69,25 @@ export function NodeEditorPopover({
 			const bottomScreen = editor.pageToScreen({ x: bounds.x, y: bounds.y + bounds.h })
 			const shapeTop = { x: topScreen.x - viewport.x, y: topScreen.y - viewport.y }
 			const shapeBottom = { x: bottomScreen.x - viewport.x, y: bottomScreen.y - viewport.y }
+
+			if (side === 'right') {
+				const rightScreen = editor.pageToScreen({ x: bounds.x + bounds.w, y: bounds.y })
+				const right = rightScreen.x - viewport.x + PANEL_GAP
+				const left = shapeTop.x - PANEL_GAP - width
+				const fitsRight = right + width <= viewport.w - VIEWPORT_MARGIN
+				const x = fitsRight
+					? right
+					: left >= VIEWPORT_MARGIN
+						? left
+						: Math.max(VIEWPORT_MARGIN, viewport.w - width - VIEWPORT_MARGIN)
+				const top = Math.max(VIEWPORT_MARGIN, shapeTop.y)
+				return {
+					x,
+					anchor: 'below' as const,
+					edge: top,
+					maxHeight: Math.max(120, viewport.h - top - VIEWPORT_MARGIN),
+				}
+			}
 
 			// Horizontally, nudged inward to stay on screen.
 			const x = Math.max(
@@ -91,7 +116,7 @@ export function NodeEditorPopover({
 				maxHeight: Math.max(120, spaceBelow),
 			}
 		},
-		[editor, shape.id, width]
+		[editor, shape.id, width, side]
 	)
 
 	if (!position) return null

@@ -56,7 +56,9 @@ rows:
 **Editing.** A Display tab in the properties popover (the current list becomes the Data tab) builds
 layouts by hand. A YAML editor opens from the same tab and edits the same data; the node's real card
 updates live. Invalid YAML keeps the last valid layout and shows the error with its line number.
-Phones render cards but don't edit layouts in v1.
+Phones render cards but don't edit layouts in v1. While the Display tab shows, the panel opens beside
+the node rather than below it, so the card being edited stays in view. In the panel, elements are
+chips you drag between slots and rows, a `+` in each slot adds one, and clicking a chip styles it.
 
 **Reuse.** A vault-wide layout library. Saving snapshots a layout; applying copies it onto every
 selected node. Copy and paste layout between nodes. Selecting several nodes with identical layouts
@@ -64,7 +66,7 @@ edits them all; differing layouts show "Mixed layouts" with "Use this node's lay
 
 ## Phases
 
-Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026-10-14.
+Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026-10-14 (ab59ecd). Phase 3 done 2026-10-14.
 
 1. **The card.** Every node's properties move into a card below it (the note and quote lose their
    inline strips, the `strips` option on node definitions goes away). Card styling, placement, width

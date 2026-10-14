@@ -17,12 +17,12 @@ interface EditorHandle {
 	getSelectedShapeIds(): string[]
 }
 
-/** A note carrying a select and a price, on a fresh board. */
-async function pricedNote(page: Page) {
+/** Notes carrying a select and a price, on a fresh board: one by default, side by side. */
+async function pricedNote(page: Page, count = 1) {
 	await gotoFresh(page)
 	await skipFirstRunDemo(page)
 	await createBoard(page)
-	await page.evaluate(() => {
+	await page.evaluate((count) => {
 		const editor = (window as unknown as { editor: EditorHandle }).editor
 		editor.updateDocumentSettings({
 			meta: {
@@ -33,16 +33,16 @@ async function pricedNote(page: Page) {
 				],
 			},
 		})
-		editor.createShapes([
-			{
+		editor.createShapes(
+			Array.from({ length: count }, (_, i) => ({
 				type: 'node.markdown',
-				x: 200,
+				x: 200 + i * 400,
 				y: 150,
-				props: { md: 'Locked bedroom door', w: 300 },
+				props: { md: i ? `Note ${i + 1}` : 'Locked bedroom door', w: 300 },
 				meta: { 'lifeboard:props': { type: 'EVENT', price: 420, description: null } },
-			},
-		])
-	})
+			}))
+		)
+	}, count)
 	return page.locator('.lb-board-host:not([data-hidden]) .lb-prop-card')
 }
 
@@ -129,6 +129,17 @@ test.describe('the property card', () => {
 	})
 })
 
+/** Right-click → Edit card layout…, which opens the properties panel on its Display tab. */
+async function openDisplayTab(page: Page, note = 0) {
+	// By coordinates: a shape's DOM doesn't take pointer events, the canvas does.
+	const box = (await page.locator('.lb-board-host:not([data-hidden]) .lb-note').nth(note).boundingBox())!
+	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' })
+	await page.getByRole('menuitem', { name: 'Edit card layout…' }).click()
+	const panel = page.locator('.lb-props')
+	await expect(panel.getByRole('tab', { name: 'Display' })).toHaveAttribute('aria-selected', 'true')
+	return panel
+}
+
 test.describe('the card layout editor', () => {
 	const LAYOUT = [
 		'width: 300',
@@ -142,10 +153,8 @@ test.describe('the card layout editor', () => {
 	].join('\n')
 
 	async function openEditor(page: Page) {
-		// By coordinates: a shape's DOM doesn't take pointer events, the canvas does.
-		const box = (await page.locator('.lb-board-host:not([data-hidden]) .lb-note').first().boundingBox())!
-		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' })
-		await page.getByRole('menuitem', { name: 'Edit card layout…' }).click()
+		const display = await openDisplayTab(page)
+		await display.getByRole('button', { name: 'Edit as YAML' }).click()
 		const panel = page.getByRole('dialog', { name: 'Card layout' })
 		await expect(panel).toBeVisible()
 		return panel
@@ -200,5 +209,73 @@ test.describe('the card layout editor', () => {
 		await expect(panel).toBeHidden()
 		await expect(card.locator('.lb-layout')).toHaveCount(0)
 		await expect(card.locator('.lb-strip--display')).toBeVisible()
+	})
+})
+
+test.describe('the Display tab', () => {
+	test('builds a layout by hand: customise, style an element, add one, drag one to another slot', async ({
+		page,
+	}) => {
+		const card = await pricedNote(page)
+		const panel = await openDisplayTab(page)
+		await expect(panel).toContainText('automatic layout')
+		await panel.getByRole('button', { name: 'Customise' }).click()
+		await expect(card.locator('.lb-layout')).toBeVisible()
+
+		// Rows from the automatic layout: the price's meta row first, then the badge row.
+		await panel.getByRole('button', { name: /^Price/ }).click()
+		await panel.getByRole('button', { name: 'XL' }).click()
+		await panel.getByRole('button', { name: 'Bold' }).click()
+		await panel.getByLabel('Decimals of Price').fill('0')
+		await expect(card.locator('.lb-el--xl.lb-el--bold')).toHaveText('₾ 420')
+
+		await panel.getByLabel('Add to row 1, right').selectOption({ label: 'Text' })
+		await expect(card.locator('.lb-layout__row').first().locator('.lb-layout__slot--right')).toContainText('Label')
+
+		// Drag the badge up into row 1's centre.
+		await panel.getByRole('button', { name: /^Type/ }).dragTo(panel.locator('.lb-display__row').first().locator('.lb-display__slot').nth(1))
+		await expect(card.locator('.lb-layout__row').first().locator('.lb-layout__slot--center .lb-chip')).toHaveText('EVENT')
+		await page.screenshot({ path: test.info().outputPath('display-tab.png') })
+
+		await panel.getByRole('button', { name: 'Use automatic' }).click()
+		await expect(card.locator('.lb-strip--display')).toBeVisible()
+	})
+
+	test('edits several cards at once, and offers to match them when they differ', async ({ page }) => {
+		const cards = await pricedNote(page, 2)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.select(...editor.getCurrentPageShapes().map((s) => s.id))
+		})
+		const panel = await openDisplayTab(page)
+		await expect(panel.getByRole('tab', { name: 'Data' })).toBeDisabled()
+		await expect(panel).toContainText('These 2 cards use the automatic layout')
+		await panel.getByRole('button', { name: 'Customise' }).click()
+		await expect(cards.locator('.lb-layout')).toHaveCount(2)
+
+		await panel.getByRole('button', { name: /^Price/ }).click()
+		await panel.getByRole('button', { name: 'XL' }).click()
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(2)
+
+		// Change only the first, then select both again: they now differ.
+		await page.keyboard.press('Escape')
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.select(editor.getCurrentPageShapes()[0]!.id)
+		})
+		const single = await openDisplayTab(page)
+		await single.getByRole('button', { name: /^Price/ }).click()
+		await single.getByRole('button', { name: 'S', exact: true }).click()
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(1)
+		await page.keyboard.press('Escape')
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.select(...editor.getCurrentPageShapes().map((s) => s.id))
+		})
+		const both = await openDisplayTab(page)
+		await expect(both).toContainText('These 2 cards have different layouts')
+		await both.getByRole('button', { name: 'Use this card’s layout on all' }).click()
+		await expect(cards.locator('.lb-el--s')).toHaveCount(2)
 	})
 })

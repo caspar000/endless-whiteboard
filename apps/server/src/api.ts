@@ -61,6 +61,19 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 		value.every(
 			(q) => q && typeof q === 'object' && typeof q.name === 'string' && typeof q.body === 'string'
 		),
+	// Saved card layouts. Only the outline is checked here; the client parses each layout on the way in
+	// and drops what it can't read.
+	cardLayouts: (value) =>
+		Array.isArray(value) &&
+		value.every(
+			(entry) =>
+				entry &&
+				typeof entry === 'object' &&
+				typeof entry.name === 'string' &&
+				entry.layout &&
+				typeof entry.layout === 'object' &&
+				Array.isArray(entry.layout.rows)
+		),
 }
 
 /**

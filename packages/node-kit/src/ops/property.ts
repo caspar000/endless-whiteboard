@@ -1,8 +1,13 @@
 import { defineOperation, fail, ok, type JsonValue, type RegisteredOperation } from '../operations'
+import type { TLShape } from '@lifeboard/canvas'
 import { coercePropertyValue } from '../properties/format'
 import { createProperty } from '../properties/schema'
 import { PROPERTY_TYPES, type PropertyDef, type PropertyType } from '../properties/types'
-import { updateShapeProperties } from '../properties/values'
+import { layoutFromAuto, readPropertyLayout } from '../properties/layout'
+import { setPropertyLayouts } from '../properties/layoutEdit'
+import { layoutFromYaml, layoutToYaml } from '../properties/layoutYaml'
+import { orderedPropertyIds, readHiddenPropertyIds, updateShapeProperties } from '../properties/values'
+import { readPropertyView, setPropertyView, type PropertyView } from '../properties/view'
 import {
 	BOARD_ID_PARAM,
 	propertyDefs,
@@ -135,6 +140,104 @@ export const propertyOperations: RegisteredOperation[] = [
 				// its value was understood rather than assume it.
 				value: (value ?? null) as JsonValue,
 			})
+		},
+	}),
+
+	defineOperation({
+		id: 'property.layout',
+		title: 'Read card layout',
+		description:
+			'How a shape’s property card is laid out, as YAML: rows of left/center/right slots holding properties, tables, separators and text. `layout` is null when the card uses the automatic layout; `automatic` is that layout written out, a good starting point for property.set-layout. `view` is "display" (the layout) or "source" (every property with its name).',
+		readOnly: true,
+		params: {
+			shapeId: { type: 'string', description: 'The shape whose card to read.', required: true },
+			boardId: BOARD_ID_PARAM,
+		},
+		run: async (ctx, args) => {
+			const resolved = await resolveEditor(ctx, args.boardId)
+			if (!resolved.ok) return fail(resolved.error)
+			const editor = resolved.editor
+			const found = resolveShape(editor, args.shapeId)
+			if (!found.ok) return fail(found.error)
+
+			const defs = propertyDefs(editor)
+			const layout = readPropertyLayout(found.shape)
+			const hidden = readHiddenPropertyIds(found.shape)
+			const visible = orderedPropertyIds(found.shape)
+				.filter((id) => !hidden.has(id))
+				.flatMap((id) => defs.find((def) => def.id === id) ?? [])
+			return ok({
+				shapeId: args.shapeId,
+				view: readPropertyView(found.shape),
+				layout: layout ? layoutToYaml(layout, defs) : null,
+				automatic: layoutToYaml(layoutFromAuto(visible), defs),
+			})
+		},
+	}),
+
+	defineOperation({
+		id: 'property.set-layout',
+		title: 'Set card layout',
+		description:
+			'Lays out the property cards of one or more shapes, from YAML. Each shape gets its own copy. Example:\n\nwidth: 260            # or fit, full\nrows:\n  - center: { property: Price, size: xl, weight: bold }\n    right: { property: Link, as: icon }\n  - separator\n  - left: [{ property: Type, as: badge }, { property: Status, as: badge }]\n  - table: [Weight, Colour]\n\nProperty keys: as (text, badge, chip, icon, bar, stars, checkbox, by type), size (s, m, l, xl), weight (regular, bold), showName, decimals, symbol, date (short, medium, long). Rows take align (top, middle, bottom, baseline). An empty layout goes back to the automatic one. Errors come back with their line numbers and nothing is written.',
+		params: {
+			shapeIds: { type: 'string[]', description: 'The shapes to lay out.', required: true },
+			layout: {
+				type: 'string',
+				description: 'The layout as YAML, properties by name. Empty for the automatic layout.',
+				required: true,
+			},
+			view: {
+				type: 'string',
+				description: 'Also switch the cards to "display" or "source". Defaults to display, where a layout shows.',
+				choices: ['display', 'source'],
+			},
+			boardId: BOARD_ID_PARAM,
+		},
+		run: async (ctx, args) => {
+			const resolved = await resolveEditor(ctx, args.boardId)
+			if (!resolved.ok) return fail(resolved.error)
+			const editor = resolved.editor
+
+			const shapes: TLShape[] = []
+			for (const id of args.shapeIds) {
+				const found = resolveShape(editor, id)
+				if (!found.ok) return fail(found.error)
+				shapes.push(found.shape)
+			}
+			if (!shapes.length) return fail('Name at least one shape.')
+
+			let layout = null
+			if (args.layout.trim()) {
+				const result = layoutFromYaml(args.layout, propertyDefs(editor))
+				if (!result.ok) {
+					return fail(
+						`The layout has ${result.errors.length === 1 ? 'an error' : 'errors'}, so nothing was written:\n${result.errors
+							.map((e) => `line ${e.line}: ${e.message}`)
+							.join('\n')}`
+					)
+				}
+				layout = result.layout
+			}
+
+			const view = (args.view ?? 'display') as PropertyView
+			editor.run(() => {
+				editor.markHistoryStoppingPoint('agent: property.set-layout')
+				setPropertyLayouts(editor, shapes, layout)
+				setPropertyView(
+					editor,
+					shapes.map((s) => s.id),
+					view
+				)
+			})
+			reportAgentWork(
+				editor,
+				'update',
+				'property.set-layout',
+				'Laying out cards',
+				shapes.map((s) => s.id)
+			)
+			return ok({ shapeIds: args.shapeIds, view, automatic: layout === null })
 		},
 	}),
 ]

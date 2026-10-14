@@ -3,7 +3,7 @@ import { formatPropertyValue, numericPropertyValue } from './format'
 import { linkHref } from './link'
 import { choiceStyle } from './options'
 import { findProperty, readPropertyRegistry } from './schema'
-import { isChoiceType, isListType, type PropertyDef } from './types'
+import { isChoiceType, isListType, type PropertyDef, type PropertyValue } from './types'
 import {
 	orderedPropertyIds,
 	readHiddenPropertyIds,
@@ -15,7 +15,7 @@ import {
 import { autoLayoutGroups, isEmptyPropertyValue } from './view'
 
 /** One property as the card renders it, read once and shared by both views. */
-interface StripRow {
+export interface StripRow {
 	id: string
 	def: PropertyDef
 	name: string
@@ -50,33 +50,33 @@ function usePropertyRows(shape: ShapeWithMeta, editor: Editor): StripRow[] {
 			const registry = readPropertyRegistry(editor)
 			return ids.flatMap((id): StripRow[] => {
 				const def = findProperty(registry, id)
-				if (!def) return []
-				const value = values[id]!
-				const numeric = numericPropertyValue(def, value)
-				return [
-					{
-						id,
-						def,
-						name: def.name,
-						list: isListType(def.type),
-						// A chosen value is a tag, not free text, so it reads as a coloured pill wherever
-						// it appears.
-						choice: isChoiceType(def.type),
-						text: formatPropertyValue(def, value, unitForShapeProperty(def, units)),
-						tags: Array.isArray(value) ? value : [],
-						// `null` for everything that isn't a link, and for a link with no usable address.
-						href: def.type === 'link' ? linkHref(value) : null,
-						// A bar reads at a zoom where digits have stopped being legible, which is the one
-						// thing a canvas needs from a progress value that a table doesn't.
-						percent: def.type === 'progress' && typeof numeric === 'number' ? numeric : null,
-						negative: numeric !== null && numeric < 0,
-						empty: isEmptyPropertyValue(value),
-					},
-				]
+				return def ? [stripRow(def, values[id]!, unitForShapeProperty(def, units))] : []
 			})
 		},
 		[editor, shape]
 	)
+}
+
+/** One property as the card draws it. Pure, so Help can draw real cards from example data. */
+export function stripRow(def: PropertyDef, value: PropertyValue, unit: string | undefined): StripRow {
+	const numeric = numericPropertyValue(def, value)
+	return {
+		id: def.id,
+		def,
+		name: def.name,
+		list: isListType(def.type),
+		// A chosen value is a tag, not free text, so it reads as a coloured pill wherever it appears.
+		choice: isChoiceType(def.type),
+		text: formatPropertyValue(def, value, unit),
+		tags: Array.isArray(value) ? value : [],
+		// `null` for everything that isn't a link, and for a link with no usable address.
+		href: def.type === 'link' ? linkHref(value) : null,
+		// A bar reads at a zoom where digits have stopped being legible, which is the one thing a canvas
+		// needs from a progress value that a table doesn't.
+		percent: def.type === 'progress' && typeof numeric === 'number' ? numeric : null,
+		negative: numeric !== null && numeric < 0,
+		empty: isEmptyPropertyValue(value),
+	}
 }
 
 /**
@@ -138,7 +138,12 @@ export function PropertyStrip({ shape, editor }: { shape: ShapeWithMeta; editor:
  * nothing and the host hides it.
  */
 export function PropertyDisplay({ shape, editor }: { shape: ShapeWithMeta; editor: Editor }) {
-	const rows = usePropertyRows(shape, editor).filter((row) => !row.empty)
+	return <AutoDisplay rows={usePropertyRows(shape, editor)} />
+}
+
+/** The automatic layout drawn from rows, with no board behind it: what `PropertyDisplay` renders. */
+export function AutoDisplay({ rows: all }: { rows: readonly StripRow[] }) {
+	const rows = all.filter((row) => !row.empty)
 	if (!rows.length) return null
 
 	return (

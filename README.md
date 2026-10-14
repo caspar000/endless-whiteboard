@@ -150,7 +150,10 @@ automatic one: rows of left, centre and right slots holding properties (as text,
 icon, a bar, stars or a checkbox), tables, separators and labels. "Edit card layout…" on the shape's
 menu opens the properties panel's Display tab, where you build one by hand, or "Edit as YAML" for
 longer ones; the card follows as you edit. Select several cards with the same layout and they change
-together. See `docs/property-display-plan.md`.
+together. Every card owns its layout: save one under a name (saved layouts follow the vault) and apply
+it to a selection, or copy and paste a card's layout from the right-click menu, and each card gets a
+copy. An agent reads and writes layouts as the same YAML (`property.layout`, `property.set-layout`).
+See `docs/property-display-plan.md`.
 
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
 them into notes-with-properties and tables the first time an old board loads.

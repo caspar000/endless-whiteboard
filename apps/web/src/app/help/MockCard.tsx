@@ -1,9 +1,10 @@
 import {
+	AutoDisplay,
 	choiceStyle,
 	formatPropertyValue,
 	isChoiceType,
-	isListType,
 	numericPropertyValue,
+	stripRow,
 	type PropertyDef,
 	type PropertyValue,
 } from '@lifeboard/node-kit'
@@ -11,12 +12,12 @@ import { Image as ImageIcon } from 'lucide-react'
 import type { ExampleCard } from './exampleDomains'
 
 /**
- * A shape as it looks on the canvas, for the interactive examples.
+ * A shape as it looks on the canvas, for the interactive examples, with its property card below.
  *
- * The strip below the name is a deliberate copy of `PropertyStrip` — same classes, same branches, same
- * formatter — because the whole claim of the Properties section is "this is what it looks like on the
- * board", and a hand-drawn approximation would be the one part of the page that could quietly stop
- * being true. What is *not* copied is the reactive plumbing: these cards read a plain object.
+ * The card is node-kit's own `AutoDisplay`, fed the example's values, because the whole claim of the
+ * Properties section is "this is what it looks like on the board", and a hand-drawn approximation
+ * would be the one part of the page that could quietly stop being true. `StripValue` is the value as
+ * the panel's rows show it.
  */
 
 export function StripValue({
@@ -54,46 +55,23 @@ export function StripValue({
 	return <>{text}</>
 }
 
-export function MockStrip({
+/**
+ * The property card under a mock shape, drawn by the real `AutoDisplay` from the example's values,
+ * so it can't drift from what the board shows.
+ */
+export function MockPropertyCard({
 	card,
 	properties,
 }: {
 	card: ExampleCard
 	properties: readonly PropertyDef[]
 }) {
-	// Empty values are skipped rather than shown as "—": on a real card the strip only draws what has
-	// been filled in, which is what keeps a board of half-described things readable.
-	const rows = properties.filter((def) => {
-		const value = card.values[def.id]
-		return value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && !value.length)
-	})
-	if (!rows.length) return null
-
+	const rows = properties.map((def) => stripRow(def, card.values[def.id] ?? null, card.units?.[def.id] ?? def.unit))
+	if (rows.every((row) => row.empty)) return null
 	return (
-		<dl className="lb-strip">
-			{rows.map((def) =>
-				isListType(def.type) ? (
-					<div className="lb-strip__tags" key={def.id}>
-						{(card.values[def.id] as readonly string[]).map((tag) => (
-							<span className="lb-chip" key={tag} style={choiceStyle(def, tag)}>
-								{tag}
-							</span>
-						))}
-					</div>
-				) : (
-					<div className="lb-strip__row" key={def.id}>
-						<dt className="lb-strip__name">{def.name}</dt>
-						<dd className="lb-strip__value">
-							<StripValue
-								def={def}
-								value={card.values[def.id] ?? null}
-								unit={card.units?.[def.id]}
-							/>
-						</dd>
-					</div>
-				)
-			)}
-		</dl>
+		<div className="lb-ex__propcard">
+			<AutoDisplay rows={rows} />
+		</div>
 	)
 }
 
@@ -116,14 +94,16 @@ export function MockCard({
 	if (selected) classes.push('lb-ex__card--on')
 
 	return (
-		<button className={classes.join(' ')} onClick={onSelect} aria-pressed={selected}>
-			{card.kind === 'image' && (
-				<span className="lb-ex__photo" aria-hidden="true">
-					<ImageIcon size={18} />
-				</span>
-			)}
-			<span className="lb-ex__cardname">{card.name}</span>
-			<MockStrip card={card} properties={properties} />
-		</button>
+		<div className="lb-ex__item">
+			<button className={classes.join(' ')} onClick={onSelect} aria-pressed={selected}>
+				{card.kind === 'image' && (
+					<span className="lb-ex__photo" aria-hidden="true">
+						<ImageIcon size={18} />
+					</span>
+				)}
+				<span className="lb-ex__cardname">{card.name}</span>
+			</button>
+			<MockPropertyCard card={card} properties={properties} />
+		</div>
 	)
 }

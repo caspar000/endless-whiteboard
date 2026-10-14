@@ -8,8 +8,8 @@ import { BookReaderOverlay } from './reader/BookReaderOverlay'
 
 /**
  * The book card: the cover, or a typographic jacket when there isn't one (yet). That is the whole
- * card — its data, reading progress included, is drawn *under* the shape by the app
- * (`strips: 'below'` on the definition), exactly as it is for a sticky note.
+ * card — its data, reading progress included, is drawn on the property card under the shape by the
+ * app, as it is for every shape.
  *
  * Double-click (tldraw's editing state) opens the full-screen reader — or, on a placeholder that
  * has no file, the file picker. Both render as portals, so the card itself stays a plain shape.

@@ -9,10 +9,7 @@ import type { RollNodeProps } from './definition'
  * Laid out exactly like the readout it replaces (`RollFaces` is shared), because that is the whole
  * claim of the card: it is the roll you watched, still there. Nothing here is editable — see the
  * definition for why a record you can retype is not a record.
- *
- * No `<NodeStrips>`: the definition declares `strips: 'below'`, so the app draws its properties under
- * the card. Rendering them here as well would show them twice.
- */
+ * */
 export function RollCard({ shape }: NodeComponentProps<RollNodeProps>) {
 	const { notation, faces, modifier, total } = shape.props
 	const dice = decodeDice(faces)

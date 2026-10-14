@@ -58,7 +58,5 @@ export const rollNodeDefinition: NodeDefinition<RollNodeProps> = {
 	defaultSize: { w: 168, h: ROLL_MIN_HEIGHT },
 	autoHeight: { minHeight: ROLL_MIN_HEIGHT },
 	component: RollCard,
-	// A readout, not a text surface — so its properties belong *under* the card, the way a book's do.
-	strips: 'below',
 	getLabel: (shape) => shape.props.notation || 'Roll',
 }

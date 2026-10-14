@@ -4282,16 +4282,9 @@ div.lb-sidebar__moves {
 
 /* ------------------------------------------------------- properties */
 /*
- * The property strip: a shape's values, on the shape.
- *
- * Deliberately styled like the old item card's field list, because that is what it replaces — the
- * difference is that any shape can wear it now, not just one node type.
- */
-/*
- * The wrapper every property/collection strip is rendered through — node-kit's `NodeStrips`, never
- * the strips composed directly. Placement is the host's (a card pads it; a below-shape strip is
- * positioned by ForeignPropertyStrips), but *presentation* is this class and the strip rules under
- * it: restyle here and every node — extensions included — and every shape follows.
+ * The contents of the property card: a shape's values in source mode (`.lb-strip`, labelled rows) or
+ * display mode (`.lb-strip--display`), then its collection. Placement and the card itself are
+ * `.lb-prop-card`, further down; presentation is these rules, and every shape follows them.
  */
 /* Both strips render null on a shape carrying nothing, so the wrapper hides itself. */
 .lb-node-strips:empty {
@@ -5089,59 +5082,88 @@ button.lb-props__eye:hover {
 }
 
 /*
- * A property strip drawn under a shape tldraw owns (see ForeignPropertyStrips).
+ * The property card under every shape (see PropertyCards.tsx and docs/property-display-plan.md).
  *
  * `position: absolute` inside `OnTheCanvas`, which is already camera-transformed, so these coordinates
- * are page coordinates. Pointer events stay off: the strip is a read-out, and swallowing clicks here
- * would break dragging the shape it belongs to.
+ * are page coordinates. The anchor is the middle of the shape's bottom edge; centring is the inline
+ * `translateX(-50%)`. `margin-top` is the gap below the shape, and must match `PROPERTY_CARD_GAP`,
+ * which kanban and calendar lanes use to leave room for the card.
+ *
+ * Pointer events are on: pressing the card is pressing its shape (the component forwards the press).
  */
-.lb-foreign-strip {
+.lb-prop-card {
 	position: absolute;
 	top: 0;
 	left: 0;
-	pointer-events: none;
-	padding: 2px 4px 0;
-	font-family: var(--lb-font);
-	color: var(--lb-text);
-}
-.lb-foreign-strip .lb-strip {
-	margin-top: 3px;
-}
-
-/*
- * The same strip, hanging under the middle of an arrow (see arrowAnchor.ts).
- *
- * A card rather than bare text, because this one is drawn *on* something: under a shape a strip has
- * the paper behind it, but on a relation it sits over the line it belongs to, and over whatever the
- * arrow happens to cross on a busy board. The surface is what makes it legible there, and it reads as
- * one object attached to the line rather than as text that happens to be nearby.
- *
- * `margin-top` on an absolutely positioned element offsets it from its anchor, which is the small gap
- * between the line and the card. Horizontal centring is the inline `translateX(-50%)`, so this never
- * has to know the width — and must not set one.
- */
-.lb-foreign-strip--arrow {
-	margin-top: 3px;
-	padding: 3px 8px;
-	/*
-	 * `max-content`, and it is load-bearing rather than tidiness.
-	 *
-	 * A strip under a *shape* is given the shape's width inline. This one is given none — it hangs off
-	 * a point on a line and has no width to inherit — so it would be sized shrink-to-fit against a
-	 * containing block of no width, land on *min*-content, and render every property name as "Am…".
-	 * The cap then stops one long value stretching a card across the board.
-	 */
-	width: max-content;
-	max-width: 220px;
-	border-radius: 8px;
+	margin-top: 6px;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border-radius: 10px;
 	background: var(--lb-panel);
 	border: 1px solid var(--lb-border);
 	box-shadow: var(--lb-shadow-1);
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+	pointer-events: auto;
 }
-.lb-foreign-strip--arrow .lb-strip {
+/* Nothing to show (every value empty, or all of it hidden): no card at all, not an empty box. */
+.lb-prop-card:has(> .lb-node-strips:empty) {
+	display: none;
+}
+.lb-prop-card .lb-strip {
 	margin-top: 0;
+}
+.lb-prop-card .lb-node-strips > * + * {
+	margin-top: 6px;
+}
+
+/*
+ * An arrow's card hangs off a point on a line and has no width to inherit.
+ *
+ * `max-content` is load-bearing: given no width, the card would be sized shrink-to-fit against a
+ * containing block of no width, land on *min*-content, and render every property name as "Am…".
+ * The cap stops one long value stretching a card across the board.
+ */
+.lb-prop-card--arrow {
+	margin-top: 3px;
+	padding: 4px 8px;
+	border-radius: 8px;
+	width: max-content;
+	max-width: 240px;
+}
+
+/*
+ * Display mode's automatic layout (`PropertyDisplay`): a badge row, one value-only meta line, chips,
+ * bars. Names live in the tooltip; source mode is where they are spelled out.
+ */
+.lb-strip--display {
+	gap: 5px;
+}
+.lb-strip__badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-strip__badges .lb-chip {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 7px;
+}
+.lb-strip__meta {
+	font-size: 13px;
+	line-height: 1.4;
+	font-variant-numeric: tabular-nums;
+	overflow-wrap: anywhere;
+}
+.lb-strip__item + .lb-strip__item::before {
+	content: ' · ';
+	color: var(--lb-text-faint);
+}
+.lb-strip--display .lb-strip__tags {
+	margin-top: 0;
+}
+.lb-strip__bar {
+	font-size: 12px;
 }
 
 /* ------------------------------------------------------------ quick look */
@@ -5205,8 +5227,8 @@ button.lb-props__eye:hover {
 .lb-board--tracing .tl-shape[data-lb-trace] {
 	filter: none;
 }
-/* The strips belong to their shapes and have to fade with them; the aura is the effect itself. */
-.lb-board--tracing .lb-foreign-strip {
+/* The cards belong to their shapes and have to fade with them; the aura is the effect itself. */
+.lb-board--tracing .lb-prop-card {
 	opacity: 0.26;
 	transition: opacity 180ms ease;
 }
@@ -6456,7 +6478,7 @@ button.lb-props__eye:hover {
 	font-weight: 600;
 	box-shadow: var(--lb-shadow-1);
 }
-/* The property strip beneath a shape, as ForeignPropertyStrips draws it. */
+/* The property card beneath a shape, as PropertyCards draws it. */
 .lb-demo__strip {
 	display: flex;
 	justify-content: space-between;

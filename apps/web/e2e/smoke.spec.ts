@@ -24,7 +24,7 @@ test.describe('first run', () => {
 		// notes carrying properties, so what proves the data is there is the property strip on the shape.
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toBeVisible()
-		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toContainText('Price')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .lb-strip').first()).toContainText('₾')
 
 		// Milestone 6 acceptance: a table shows a real total, computed from property values — and with
 		// `shapeTypes: null`, from *anything* carrying a price rather than from one node type.

@@ -26,7 +26,7 @@ export function CollectionStrip({ shape, editor }: { shape: ShapeWithMeta; edito
 			/*
 			 * Read straight from the pipeline rather than through a per-shape computed cache.
 			 *
-			 * A collection is a *view* concern, like `ForeignPropertyStrips`: it may re-render freely
+			 * A collection is a *view* concern, like the app's property cards: it may re-render freely
 			 * while shapes move. The facts map and the edge index are the memoised parts, and both
 			 * report no change during a drag — so this recomputes only when something it actually
 			 * depends on moves, and the rollup recompute budget the perf spec guards is untouched.

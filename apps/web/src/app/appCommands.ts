@@ -4,8 +4,12 @@ import {
 	RELATION_VIEW_NOTES,
 	cycleRelationView,
 	isHiddenRelation,
+	copyLayout,
+	getCopiedLayout,
 	isRelation,
 	layoutsMatch,
+	readPropertyLayout,
+	setPropertyLayouts,
 	registerCommand,
 	setRelationHidden,
 	setRelationView,
@@ -530,6 +534,32 @@ registerCommand({
 	run: (ctx) => {
 		const ids = ctx.editor?.getSelectedShapeIds() ?? []
 		if (ids.length) openLayoutEditor(ids)
+	},
+})
+
+/**
+ * Copy one card's layout and paste it onto others, like copy and paste style in a design tool. The
+ * pasted cards get copies; nothing stays linked.
+ */
+registerCommand({
+	id: 'shape.card-layout.copy',
+	title: 'Copy the card layout',
+	group: CANVAS_GROUP,
+	when: (ctx) => onlySelected(ctx) !== null,
+	run: (ctx) => {
+		const shape = onlySelected(ctx)
+		if (shape) copyLayout(readPropertyLayout(shape))
+	},
+})
+
+registerCommand({
+	id: 'shape.card-layout.paste',
+	title: 'Paste the card layout',
+	group: CANVAS_GROUP,
+	when: (ctx) => hasSelection(ctx) && getCopiedLayout() !== undefined,
+	run: (ctx) => {
+		const copied = getCopiedLayout()
+		if (ctx.editor && copied !== undefined) setPropertyLayouts(ctx.editor, ctx.editor.getSelectedShapes(), copied)
 	},
 })
 

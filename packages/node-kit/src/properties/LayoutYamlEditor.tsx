@@ -52,9 +52,15 @@ export function LayoutYamlEditor({
 		if (gone) onClose()
 	}, [gone, onClose])
 
-	const close = useRef(onClose)
-	close.current = onClose
 	const mark = useRef<string | null>(null)
+	/** Applies an edit still waiting out the typing pause, so closing never drops the last keystrokes. */
+	const flush = useRef<() => void>(() => {})
+	const done = () => {
+		flush.current()
+		onClose()
+	}
+	const close = useRef(done)
+	close.current = done
 
 	useEffect(() => {
 		const start = editor.getShape(shapeId)
@@ -68,7 +74,9 @@ export function LayoutYamlEditor({
 		const initial = layoutToYaml(readPropertyLayout(start) ?? automaticLayout(editor, start), defs)
 
 		let timer: ReturnType<typeof setTimeout> | undefined
+		let pending: string | null = null
 		const apply = (text: string) => {
+			pending = null
 			const current = editor.getShape(shapeId)
 			if (!current) return
 			const result = layoutFromYaml(text, readPropertyRegistry(editor))
@@ -107,13 +115,19 @@ export function LayoutYamlEditor({
 						if (!update.docChanged) return
 						clearTimeout(timer)
 						const text = update.state.doc.toString()
+						pending = text
 						timer = setTimeout(() => apply(text), PARSE_DELAY_MS)
 					}),
 				],
 			}),
 		})
 		view.focus()
+		flush.current = () => {
+			clearTimeout(timer)
+			if (pending !== null) apply(pending)
+		}
 		return () => {
+			flush.current = () => {}
 			clearTimeout(timer)
 			view.destroy()
 		}
@@ -150,7 +164,7 @@ export function LayoutYamlEditor({
 				<span className="lb-layout-editor__title" title={label}>
 					Card layout{shapeIds.length > 1 ? ` · ${shapeIds.length} cards` : label ? ` · ${label}` : ''}
 				</span>
-				<button className="lb-props__close" aria-label="Close the layout editor" onClick={onClose}>
+				<button className="lb-props__close" aria-label="Close the layout editor" onClick={done}>
 					×
 				</button>
 			</div>
@@ -194,7 +208,7 @@ export function LayoutYamlEditor({
 				<button className="lb-layout-editor__secondary" onClick={cancel}>
 					Cancel
 				</button>
-				<button className="lb-layout-editor__primary" onClick={onClose}>
+				<button className="lb-layout-editor__primary" onClick={done}>
 					Done
 				</button>
 			</div>

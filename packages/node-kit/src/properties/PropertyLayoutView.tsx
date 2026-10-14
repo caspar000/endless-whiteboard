@@ -29,7 +29,7 @@ import {
 import { isEmptyPropertyValue } from './view'
 
 /** What every element needs to draw itself, read once per render of the card. */
-interface Data {
+export interface Data {
 	values: ShapeProperties
 	units: ShapePropertyUnits
 	registry: ReadonlyMap<string, PropertyDef>
@@ -59,6 +59,11 @@ export function PropertyLayoutView({
 		}),
 		[editor, shape]
 	)
+	return <LayoutCard layout={layout} {...data} />
+}
+
+/** A layout drawn from plain data, with no board behind it: what `PropertyLayoutView` renders. */
+export function LayoutCard({ layout, ...data }: { layout: PropertyLayout } & Data) {
 	const rows = visibleLayoutRows(
 		layout,
 		(id) => data.registry.has(id) && !isEmptyPropertyValue(data.values[id])
@@ -75,13 +80,14 @@ export function PropertyLayoutView({
 }
 
 /**
- * Three columns when there is a centre, so it stays centred whatever the sides hold; otherwise the
- * left slot takes the room and the right one hugs its content.
+ * Three columns when there is a centre, so it stays centred while the sides fit; a side that needs more
+ * room than its half takes it and the centre moves over, rather than the side spilling out of the
+ * card. Without a centre, the left slot takes the room and the right one hugs its content.
  */
 function LayoutRowView({ row, data }: { row: LayoutRow; data: Data }) {
 	const centred = Boolean(row.center?.length)
 	const style: CSSProperties = {
-		gridTemplateColumns: centred ? 'minmax(0, 1fr) auto minmax(0, 1fr)' : 'minmax(0, 1fr) auto',
+		gridTemplateColumns: centred ? '1fr auto 1fr' : 'minmax(0, 1fr) auto',
 	}
 	return (
 		<div className={`lb-layout__row lb-layout__row--${row.align ?? 'middle'}`} style={style}>

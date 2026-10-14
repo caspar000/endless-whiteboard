@@ -2,10 +2,11 @@ import { getDisabledExtensionIds, setDisabledExtensionIds } from '@lifeboard/nod
 import { persistDisabledExtensions } from '../extensions'
 import { getVaultSettings, pushVaultSetting } from '../server/serverVault'
 import { replaceSavedQueries, savedQueries } from './savedQueries'
+import { applyRemoteCardLayouts } from './cardLayouts'
 
 /**
- * Saved queries and switched-off extensions follow the vault, not the device: they are part of how you
- * work with your boards, so a new phone should not start from scratch.
+ * Saved queries, saved card layouts and switched-off extensions follow the vault, not the device:
+ * they are part of how you work with your boards, so a new phone should not start from scratch.
  *
  * localStorage stays the cache, which is what lets the first render be right without waiting for the
  * network. Once the server answers, its copy wins. A setting it has never seen is seeded from this
@@ -27,4 +28,6 @@ export async function syncVaultSettings(): Promise<void> {
 
 	if (remote.savedQueries === undefined) pushVaultSetting('savedQueries', savedQueries())
 	else replaceSavedQueries(remote.savedQueries)
+
+	applyRemoteCardLayouts(remote.cardLayouts)
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createBoard, gotoFresh, skipFirstRunDemo } from './helpers'
+import { clickInSidebar, createBoard, gotoFresh, skipFirstRunDemo } from './helpers'
 
 /**
  * The property card (docs/property-display-plan.md, phase 1): a shape's properties hang below it on a
@@ -278,4 +278,76 @@ test.describe('the Display tab', () => {
 		await both.getByRole('button', { name: 'Use this card’s layout on all' }).click()
 		await expect(cards.locator('.lb-el--s')).toHaveCount(2)
 	})
+})
+
+test.describe('reusing layouts', () => {
+	const YAML = 'rows:\n  - center: { property: Price, size: xl, weight: bold }\n'
+
+	async function giveFirstCardALayout(page: Page) {
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.select(editor.getCurrentPageShapes()[0]!.id)
+		})
+		const display = await openDisplayTab(page)
+		await display.getByRole('button', { name: 'Edit as YAML' }).click()
+		await page.locator('.lb-layout-editor .cm-content').click()
+		await page.keyboard.press('ControlOrMeta+A')
+		await page.keyboard.insertText(YAML)
+		await page.getByRole('dialog', { name: 'Card layout' }).getByRole('button', { name: 'Done' }).click()
+	}
+
+	test('saves a layout to the library and applies it to another card', async ({ page }) => {
+		const cards = await pricedNote(page, 2)
+		await giveFirstCardALayout(page)
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(1)
+
+		const first = await openDisplayTab(page, 0)
+		await first.getByRole('button', { name: 'Save this layout…' }).click()
+		await first.getByLabel('Name for the saved layout').fill('Event card')
+		await first.getByRole('button', { name: 'Save', exact: true }).click()
+		await expect(first.locator('.lb-display__saved-name')).toHaveText('Event card')
+		await page.keyboard.press('Escape')
+
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.select(editor.getCurrentPageShapes()[1]!.id)
+		})
+		const second = await openDisplayTab(page, 1)
+		await second.locator('.lb-display__saved').filter({ hasText: 'Event card' }).getByRole('button', { name: 'Apply' }).click()
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(2)
+
+		// It follows the vault (here: this device's cache), not the board.
+		const stored = await page.evaluate(() => localStorage.getItem('lifeboard:cardLayouts'))
+		expect(stored).toContain('Event card')
+	})
+
+	test('copies a card’s layout and pastes it onto another', async ({ page }) => {
+		const cards = await pricedNote(page, 2)
+		await giveFirstCardALayout(page)
+		await page.keyboard.press('Escape')
+
+		const notes = page.locator('.lb-board-host:not([data-hidden]) .lb-note')
+		const box = async (i: number) => (await notes.nth(i).boundingBox())!
+		const a = await box(0)
+		await page.mouse.click(a.x + a.width / 2, a.y + a.height / 2, { button: 'right' })
+		await page.getByRole('menuitem', { name: 'Copy card layout' }).click()
+
+		const b = await box(1)
+		await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
+		await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2, { button: 'right' })
+		await page.getByRole('menuitem', { name: 'Paste card layout' }).click()
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(2)
+	})
+})
+
+test('Help shows the card under each shape, and a layout beside the YAML that draws it', async ({ page }) => {
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await clickInSidebar(page, 'Help')
+	await page.getByRole('button', { name: 'Properties', exact: true }).click()
+	await expect(page.getByRole('heading', { name: 'Laying out a card' })).toBeVisible()
+	await expect(page.locator('.lb-help__layout-card .lb-el--xl')).toHaveText('₾ 2,399')
+	await expect(page.locator('.lb-ex__propcard').first()).toBeVisible()
+	await page.locator('.lb-help__layout-example').screenshot({ path: test.info().outputPath('help-layout.png') })
+	await page.locator('.lb-ex__board').screenshot({ path: test.info().outputPath('help-board.png') })
 })

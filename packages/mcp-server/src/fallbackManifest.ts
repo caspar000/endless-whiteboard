@@ -477,6 +477,68 @@ export const FALLBACK_MANIFEST: OperationManifestEntry[] = [
 		}
 	},
 	{
+		"id": "property.layout",
+		"title": "Read card layout",
+		"description": "How a shape’s property card is laid out, as YAML: rows of left/center/right slots holding properties, tables, separators and text. `layout` is null when the card uses the automatic layout; `automatic` is that layout written out, a good starting point for property.set-layout. `view` is \"display\" (the layout) or \"source\" (every property with its name).",
+		"readOnly": true,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"shapeId": {
+					"type": "string",
+					"description": "The shape whose card to read."
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"shapeId"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"id": "property.set-layout",
+		"title": "Set card layout",
+		"description": "Lays out the property cards of one or more shapes, from YAML. Each shape gets its own copy. Example:\n\nwidth: 260            # or fit, full\nrows:\n  - center: { property: Price, size: xl, weight: bold }\n    right: { property: Link, as: icon }\n  - separator\n  - left: [{ property: Type, as: badge }, { property: Status, as: badge }]\n  - table: [Weight, Colour]\n\nProperty keys: as (text, badge, chip, icon, bar, stars, checkbox, by type), size (s, m, l, xl), weight (regular, bold), showName, decimals, symbol, date (short, medium, long). Rows take align (top, middle, bottom, baseline). An empty layout goes back to the automatic one. Errors come back with their line numbers and nothing is written.",
+		"readOnly": false,
+		"inputSchema": {
+			"type": "object",
+			"properties": {
+				"shapeIds": {
+					"type": "array",
+					"description": "The shapes to lay out.",
+					"items": {
+						"type": "string"
+					}
+				},
+				"layout": {
+					"type": "string",
+					"description": "The layout as YAML, properties by name. Empty for the automatic layout."
+				},
+				"view": {
+					"type": "string",
+					"description": "Also switch the cards to \"display\" or \"source\". Defaults to display, where a layout shows.",
+					"enum": [
+						"display",
+						"source"
+					]
+				},
+				"boardId": {
+					"type": "string",
+					"description": "Which board to act on. Omit to use the board currently open on screen. Passing one opens it if it is not already."
+				}
+			},
+			"required": [
+				"shapeIds",
+				"layout"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
 		"id": "relation.connect",
 		"title": "Connect two nodes",
 		"description": "Draws an arrow from one shape to another, which is how this app records a relation — tables and collections can then follow it. Returns the arrow’s id, which relation.delete takes.",

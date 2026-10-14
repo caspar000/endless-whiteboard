@@ -21,7 +21,6 @@ export {
 	getNodeOwner,
 	getNodeTypesVersion,
 	getVisibleNodeDefinitions,
-	hasStripsBelow,
 	isExtensionEnabled,
 	isNodeType,
 	isNodeTypeEnabled,
@@ -457,7 +456,21 @@ export {
 	type RelationView,
 } from './relationView'
 export { PropertiesPopover } from './properties/PropertiesPopover'
-export { PropertyStrip } from './properties/PropertyStrip'
+export { PropertyDisplay, PropertyStrip } from './properties/PropertyStrip'
+export {
+	PROPERTY_CARD_GAP,
+	autoLayoutGroups,
+	autoRoleFor,
+	isEmptyPropertyValue,
+	nextPropertyView,
+	propertyCardSpace,
+	readPropertyView,
+	setPropertyCardHeight,
+	setPropertyView,
+	togglePropertyView,
+	type AutoRole,
+	type PropertyView,
+} from './properties/view'
 
 /**
  * Collections: what a shape *gathers*, as opposed to what it *is*.

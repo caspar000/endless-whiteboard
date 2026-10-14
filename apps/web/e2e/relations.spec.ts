@@ -259,7 +259,7 @@ test.describe('hidden relations', () => {
 			})
 		})
 
-		const strips = page.locator('.lb-board-host:not([data-hidden]) .lb-foreign-strip')
+		const strips = page.locator('.lb-board-host:not([data-hidden]) .lb-prop-card')
 		await expect(strips).toHaveCount(1)
 
 		await relationViewButton(page).click() // normal → all
@@ -556,7 +556,7 @@ test.describe('an arrow’s properties', () => {
 
 	/** Where the arrow's midpoint is on screen, and where its strip actually landed. */
 	async function stripVsMidpoint(page: Page) {
-		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-foreign-strip')
+		const strip = page.locator('.lb-board-host:not([data-hidden]) .lb-prop-card')
 		await expect(strip).toHaveCount(1)
 		const box = (await strip.boundingBox())!
 		const midpoint = await page.evaluate(() => {
@@ -651,7 +651,7 @@ test.describe('an arrow’s properties', () => {
 		await expect(label).toBeVisible()
 		const labelBox = (await label.boundingBox())!
 		const stripBox = (await page
-			.locator('.lb-board-host:not([data-hidden]) .lb-foreign-strip')
+			.locator('.lb-board-host:not([data-hidden]) .lb-prop-card')
 			.boundingBox())!
 		expect(stripBox.y).toBeGreaterThanOrEqual(labelBox.y + labelBox.height - 2)
 	})

@@ -95,9 +95,6 @@ export const bookNodeDefinition: NodeDefinition<BookNodeProps> = {
 	 * that hangs under the card.
 	 */
 	aspectRatioLocked: true,
-	// The card is a cover image, so its properties belong under the shape — the same place, and the
-	// same rendering, as a sticky note's. Rows drawn over the artwork read as part of the jacket.
-	strips: 'below',
 	component: BookNodeComponent,
 	// Double-click opens the reader (or the file picker while the node is still a placeholder).
 	canEdit: true,

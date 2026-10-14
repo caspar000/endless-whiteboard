@@ -170,15 +170,15 @@ test.describe('comic books', () => {
 		expect(end.w).toBeGreaterThan(start.w + 100)
 		for (const ratio of ratios) expect(Math.abs(ratio - startRatio)).toBeLessThan(0.05)
 
-		// And the properties are still sitting on the card's bottom edge rather than somewhere the
+		// And the property card still hangs just under the cover (a 6px gap) rather than somewhere the
 		// height used to be.
 		const gap = await page.evaluate(() => {
 			const host = document.querySelector('.lb-board-host:not([data-hidden])')!
 			const card = host.querySelector('.lb-book')!.getBoundingClientRect()
-			const strip = host.querySelector('.lb-foreign-strip')!.getBoundingClientRect()
+			const strip = host.querySelector('.lb-prop-card')!.getBoundingClientRect()
 			return strip.top - card.bottom
 		})
-		expect(Math.abs(gap)).toBeLessThan(6)
+		expect(Math.abs(gap - 6)).toBeLessThan(4)
 	})
 
 	test('the reader pages through a CBR', async ({ page }) => {

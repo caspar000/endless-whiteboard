@@ -1,5 +1,4 @@
 import {
-	NodeStrips,
 	getCurrentRates,
 	getPageEdges,
 	getPageFacts,
@@ -88,7 +87,6 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 			) : (
 				<p className="lb-md__placeholder">Double-click to write</p>
 			)}
-			<NodeStrips shape={shape} editor={editor} />
 		</div>
 	)
 }
@@ -101,9 +99,8 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
  * keystroke, mid-typing. The container's size comes from the ShapeUtil's `HTMLContainer`, which
  * re-renders independently of this component.
  *
- * `meta` **must** be included, and wasn't until properties moved there: a property edit changes only
- * `meta`, so without this the strip below would never update and editing a price would appear to do
- * nothing until the shape was moved.
+ * `meta` **must** be included: a property edit changes only `meta`, so without it an expression
+ * reading the note's own properties would not update until the shape was moved.
  */
 export const NoteNodeComponent = memo(
 	NoteNodeComponentImpl,

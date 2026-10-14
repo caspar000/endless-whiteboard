@@ -1,24 +1,26 @@
 import type { Editor } from '@lifeboard/canvas'
 import { CollectionStrip } from './collections/CollectionStrip'
-import { PropertyStrip } from './properties/PropertyStrip'
+import { PropertyDisplay, PropertyStrip } from './properties/PropertyStrip'
 import type { ShapeWithMeta } from './properties/values'
+import { readPropertyView } from './properties/view'
 
 /**
- * The one way a shape presents its properties and collection — on a node card (the note, the book)
- * and below tldraw's own shapes (see the app's ForeignPropertyStrips).
+ * What a shape's property card shows: its properties in the shape's chosen view, then its collection.
  *
- * This wrapper exists so presentation is a single seam: every host renders `<NodeStrips>` and the
- * `.lb-node-strips` class owns the inset, which is what lets a future restyle of how properties
- * look reach every node — extensions included — without touching any of them. A node component
- * must not compose `PropertyStrip`/`CollectionStrip` directly, or it forks that seam.
+ * The app's PropertyCards is the only host. It draws the card under every shape, ours and tldraw's
+ * alike, so no node component renders this itself (docs/property-display-plan.md).
  *
- * Renders an empty div when the shape carries nothing; `.lb-node-strips:empty` hides it, so hosts
- * don't need their own "has properties" check.
+ * Renders an empty div when the shape carries nothing; `.lb-node-strips:empty` hides it, and the
+ * card hides with it.
  */
 export function NodeStrips({ shape, editor }: { shape: ShapeWithMeta; editor: Editor }) {
 	return (
 		<div className="lb-node-strips">
-			<PropertyStrip shape={shape} editor={editor} />
+			{readPropertyView(shape) === 'source' ? (
+				<PropertyStrip shape={shape} editor={editor} />
+			) : (
+				<PropertyDisplay shape={shape} editor={editor} />
+			)}
 			<CollectionStrip shape={shape} editor={editor} />
 		</div>
 	)

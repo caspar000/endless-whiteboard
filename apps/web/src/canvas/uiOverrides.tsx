@@ -4,7 +4,9 @@ import {
 	getNodeDefinitions,
 	getVisibleNodeDefinitions,
 	isNodeTypeEnabled,
+	nextPropertyView,
 	subscribeToNodeDefinitions,
+	togglePropertyView,
 } from '@lifeboard/node-kit'
 import { useSyncExternalStore } from 'react'
 import {
@@ -58,6 +60,16 @@ export const nodeUiOverrides: TLUiOverrides = {
 				// One shape only: properties are per-shape, and a panel that silently edited several at
 				// once would be a different feature with different undo semantics.
 				if (selected.length === 1) openProperties(selected[0]!)
+			},
+		}
+		// Source or display for the selected cards. The keymap dispatches from the command table; this
+		// entry is what tldraw's menus and ⌘/ dialog read, like the others here.
+		actions['lifeboard-property-view'] = {
+			id: 'lifeboard-property-view',
+			label: 'Show property source or display',
+			kbd: 'alt+shift+p',
+			onSelect() {
+				togglePropertyView(editor)
 			},
 		}
 		/*
@@ -144,15 +156,27 @@ export const nodeUiOverrides: TLUiOverrides = {
 function PropertiesMenuItem() {
 	const editor = useEditor()
 	const selectedIds = useValue('lifeboard:selected', () => editor.getSelectedShapeIds(), [editor])
-	if (selectedIds.length !== 1) return null
+	// Labelled with what will happen: the toggle shows source unless every selected card already does.
+	const next = useValue('lifeboard:next-property-view', () => nextPropertyView(editor.getSelectedShapes()), [
+		editor,
+	])
+	if (!selectedIds.length) return null
 	return (
 		<TldrawUiMenuGroup id="lifeboard-properties-group">
+			{selectedIds.length === 1 && (
+				<TldrawUiMenuItem
+					id="lifeboard-properties"
+					label="Properties"
+					icon={glyphIcon('◫')}
+					kbd="alt+p"
+					onSelect={() => openProperties(selectedIds[0]!)}
+				/>
+			)}
 			<TldrawUiMenuItem
-				id="lifeboard-properties"
-				label="Properties"
-				icon={glyphIcon('◫')}
-				kbd="alt+p"
-				onSelect={() => openProperties(selectedIds[0]!)}
+				id="lifeboard-property-view"
+				label={next === 'source' ? 'Show property source' : 'Show property display'}
+				kbd="alt+shift+p"
+				onSelect={() => togglePropertyView(editor)}
 			/>
 		</TldrawUiMenuGroup>
 	)

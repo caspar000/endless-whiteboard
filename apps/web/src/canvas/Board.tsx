@@ -77,7 +77,7 @@ import { playBoardEntrance } from './boardEntrance'
 import { installPhoneMode } from './phoneMode'
 import { trackToolKinds } from './toolCycles'
 import { reloadToUpdate } from '../pwa/registerServiceWorker'
-import { ForeignPropertyStrips } from './ForeignPropertyStrips'
+import { PropertyCards } from './PropertyCards'
 import { SelectionToolbar } from './SelectionToolbar'
 import { QuickLookOverlay } from './QuickLookOverlay'
 import { closeQuickLook, getQuickLook } from './quickLook'
@@ -102,13 +102,13 @@ import { RollupDebugBadge } from './RollupDebugBadge'
  *
  * `OnTheCanvas` is a single slot, so the two things that want it are composed here rather than one of
  * them growing a second responsibility. The aura goes first: it is a halo *around* shapes and belongs
- * behind them, where a property strip on an arrow deliberately does not (see ForeignPropertyStrips).
+ * behind them, where the property cards deliberately do not (see PropertyCards).
  */
 function CanvasLayers() {
 	return (
 		<>
 			<TraceLayer />
-			<ForeignPropertyStrips />
+			<PropertyCards />
 		</>
 	)
 }

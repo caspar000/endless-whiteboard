@@ -141,6 +141,13 @@ your real cards in its lanes — under one rule that keeps that safe: position i
 and never an input to one, so membership is always the query's answer and never what a shape overlaps.
 See `docs/views-plan.md`.
 
+A shape's properties show on a **property card** that hangs below it, never inside it. The card
+follows the shape but isn't part of its geometry: arrows, snapping and the selection box ignore it,
+and only kanban and calendar lanes leave room for it. Each shape's card is in one of two modes,
+toggled with `⌥⇧P`, ⌘K or the context menu: *display* (badges, a value-only line, chips, bars)
+or *source* (every property with its name). Per-node card layouts come next; see
+`docs/property-display-plan.md`.
+
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite
 them into notes-with-properties and tables the first time an old board loads.
 

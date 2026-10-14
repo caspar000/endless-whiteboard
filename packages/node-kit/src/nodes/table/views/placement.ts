@@ -1,5 +1,6 @@
 import { react, type Editor, type TLShape, type TLShapeId, type TLShapePartial } from '@lifeboard/canvas'
 import { propertyMap, readPropertyRegistry } from '../../../properties/schema'
+import { propertyCardSpace } from '../../../properties/view'
 import type { PropertyDef } from '../../../properties/types'
 import { TABLE_NODE_TYPE } from '../definition'
 import { getTableResult } from '../engine'
@@ -41,7 +42,7 @@ export interface PlacementEnv {
 	/** The query result for a view — its cache entry, so the card and this pass agree on the lanes. */
 	resultFor(viewId: string): TableResult
 	properties: ReadonlyMap<string, PropertyDef>
-	/** How tall a shape stands on the page, whatever kind of shape it is. */
+	/** How tall a shape stands on the page, whatever kind of shape it is, its property card included. */
 	heightOf(shape: TLShape): number
 	/** A shape-space point on `view`, expressed in `member`'s own parent space. */
 	place(view: TLShape, member: TLShape, local: { x: number; y: number }): { x: number; y: number }
@@ -214,7 +215,9 @@ export function placeViewMembers(editor: Editor): () => void {
 			held,
 			properties: propertyMap(readPropertyRegistry(editor)),
 			resultFor: (viewId) => getTableResult(editor, viewId as TLShapeId),
-			heightOf: (shape) => editor.getShapePageBounds(shape)?.height ?? 0,
+			// The property card hangs below the shape, so a lane leaves room for it or the next card down
+			// would sit on top of it. Reading the card heights here is what re-places a lane when one grows.
+			heightOf: (shape) => (editor.getShapePageBounds(shape)?.height ?? 0) + propertyCardSpace(shape.id),
 			// Through the view's own transform, so a rotated kanban still lines its cards up; then into the
 			// member's parent space, because `x`/`y` are parent-relative and a card may sit inside a frame.
 			place: (view, member, local) =>

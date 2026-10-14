@@ -1,4 +1,4 @@
-import { NodeStrips, useAssetUrl, type NodeComponentProps } from '@lifeboard/node-kit'
+import { useAssetUrl, type NodeComponentProps } from '@lifeboard/node-kit'
 import { memo } from 'react'
 import { useValue, type TLShapeId } from '@lifeboard/canvas'
 import type { BookNodeProps } from '../definition'
@@ -52,7 +52,6 @@ function QuoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps
 					<span className="lb-quote__book lb-quote__book--missing">Source book not on this board</span>
 				)}
 			</footer>
-			<NodeStrips shape={shape} editor={editor} />
 			{isEditing && source && (
 				<BookReaderOverlay
 					bookId={source.id}

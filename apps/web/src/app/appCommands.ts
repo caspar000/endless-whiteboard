@@ -8,6 +8,7 @@ import {
 	registerCommand,
 	setRelationHidden,
 	setRelationView,
+	togglePropertyView,
 	type CommandContext,
 } from '@lifeboard/node-kit'
 import { ArrowShapeKindStyle, Vec2d, copyShapeStyle, flattenSelection } from '@lifeboard/canvas'
@@ -481,6 +482,21 @@ registerCommand({
 	run: (ctx) => {
 		const id = ctx.editor?.getSelectedShapeIds()[0]
 		if (id) openProperties(id)
+	},
+})
+
+/**
+ * Source or display, for the selected shapes' property cards (docs/property-display-plan.md). One
+ * toggle rather than two commands: it shows source unless everything selected already does.
+ */
+registerCommand({
+	id: 'shape.property-view',
+	title: 'Show property source or display',
+	group: CANVAS_GROUP,
+	kbd: 'alt+shift+p',
+	when: hasSelection,
+	run: (ctx) => {
+		if (ctx.editor) togglePropertyView(ctx.editor)
 	},
 })
 

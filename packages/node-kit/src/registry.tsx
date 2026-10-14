@@ -189,18 +189,6 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	autoHeight?: { minHeight: number }
 	/**
-	 * Where this node's property and collection strips are drawn.
-	 *
-	 * `'inline'` (the default) — the node component renders `<NodeStrips>` itself, inside its card.
-	 * Right for a node whose card *is* a text surface: a note's properties read as part of the note.
-	 *
-	 * `'below'` — the app draws the strips under the shape instead, exactly as it does for tldraw's
-	 * own shapes (see the app's ForeignPropertyStrips). Right for a node whose card is a picture: a
-	 * book's cover is the artwork, and rows sitting on top of it would read as part of the jacket.
-	 * A `'below'` node must **not** render `<NodeStrips>`, or its properties appear twice.
-	 */
-	strips?: 'inline' | 'below'
-	/**
 	 * How Quick look (Space) frames this node. Defaults suit a document: 85% of the screen, at most
 	 * 2.5× zoom, past which text gets comically large. A picture wants `maxZoom: null`, which lets it
 	 * zoom as far as the canvas allows.
@@ -659,16 +647,6 @@ export function getVisibleNodeDefinitions(): NodeDefinition<never>[] {
 
 export function isNodeType(type: string): boolean {
 	return registry.has(type)
-}
-
-/**
- * Whether this shape's strips are drawn *under* it rather than inside its card — true for every
- * shape that isn't one of our nodes (tldraw's own stickies, images, geo), and for nodes that
- * declare `strips: 'below'`. The app's ForeignPropertyStrips is the single consumer.
- */
-export function hasStripsBelow(type: string): boolean {
-	const def = registry.get(type)
-	return def === undefined || def.strips === 'below'
 }
 
 /** Used by tests to get a clean registry. */

@@ -1,8 +1,24 @@
 # Skill trees and syllabi: implementation plan
 
-Agreed 2026-10-17. Status: **Steps 1 to 5 and the layout half of step 6 are built** and checked on
-a running board; the rest of step 6 (visuals, tree views across boards) and Phase B remain. The "as
-built" notes below say where the build diverged from the plan and why.
+Agreed 2026-10-17. Status: **Steps 1 to 5, and step 6 except the visuals**, are built and checked
+on a running board: layout, trees in the vault, views across boards, pillars and the Mastery demo.
+Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
+where the build diverged from the plan and why.
+
+### Pillars and the Mastery demo, as built
+
+- **YAML:** `trees:` holds several trees in one document (each after the first needs an `id`), and
+  any tree can say `mount: <node>` (qualified with the goal unless it has a `/`). A tree mounted on a
+  node of the same document gets no header; its name, goal and mount travel on its draft nodes
+  (meta `lifeboard:skillTreeMeta`) and reach the vault on Confirm. The document is laid out whole
+  around each headed tree's root, mounted branches included.
+- **New branches on a laid-out board** (a tree hung on a pillar from another board) are laid out as
+  their own little tree, then slid outward from the middle of the board's nodes until they cover
+  nothing. Fitting them in among pinned neighbours did not converge.
+- **Insert the Mastery demo (five pillars):** Mastery, Physical, Mental, Spiritual, Practical and
+  Social, with a starter tree on each (Body, Mind, Spirit, Craft, People), confirmed at once. If the
+  vault has the Adler tree and it hangs from nothing, it is hung under Mental. Checked with a
+  Playwright run in a fresh profile: 39 nodes, six mount arrows, no overlaps.
 
 ### Step 6c, part one: tree definitions in the vault, as built
 

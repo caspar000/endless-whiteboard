@@ -52,6 +52,8 @@ export interface DocTree {
 	layout: string
 	sectors: string[]
 	rings: string[]
+	/** A node of another tree this one hangs from ('' for none). */
+	mount: string
 	nodes: DocNode[]
 }
 
@@ -69,7 +71,8 @@ export interface SyllabusDoc {
 	goal: string
 	name: string
 	tracks: DocTrack[]
-	tree: DocTree | null
+	/** `tree:` (one) or `trees:` (several, each with its own id; a tree can `mount:` on another's node). */
+	trees: DocTree[]
 	habits: DocHabit[]
 }
 
@@ -105,8 +108,9 @@ export function parseSyllabus(source: string): SyllabusResult {
 	const errors: string[] = []
 	const goal = slug(text(raw.goal))
 	if (!goal) errors.push('goal is required: a short id such as "adler" or "director"')
-	const treeRaw = isMap(raw.tree) ? raw.tree : null
-	const treeId = slug(text(treeRaw?.id)) || goal
+	const treeRaws = [...(isMap(raw.tree) ? [raw.tree] : []), ...(Array.isArray(raw.trees) ? raw.trees.filter(isMap) : [])]
+	// Tags and habit filters name nodes of the first tree unless they say otherwise.
+	const treeId = slug(text(treeRaws[0]?.id)) || goal
 	const tag = (t: string) => qualify(treeId, slug(t))
 
 	const parseItem = (value: unknown, prefix: string, path: string): DocItem | null => {
@@ -174,11 +178,16 @@ export function parseSyllabus(source: string): SyllabusResult {
 		})
 	}
 
-	let tree: DocTree | null = null
-	if (treeRaw) {
+	const trees: DocTree[] = []
+	for (const [t, treeRaw] of treeRaws.entries()) {
+		const treeId = slug(text(treeRaw.id)) || (t === 0 ? goal : '')
+		if (!treeId) {
+			errors.push(`Tree ${t + 1}: a tree after the first needs an id`)
+			continue
+		}
 		const nodes: DocNode[] = []
 		for (const [i, value] of (Array.isArray(treeRaw.nodes) ? treeRaw.nodes : []).entries()) {
-			const path = `Tree node ${i + 1}`
+			const path = treeRaws.length > 1 ? `Tree ${t + 1} › node ${i + 1}` : `Tree node ${i + 1}`
 			if (!isMap(value) || !text(value.id)) {
 				errors.push(`${path}: a node needs an id`)
 				continue
@@ -195,15 +204,17 @@ export function parseSyllabus(source: string): SyllabusResult {
 			})
 		}
 		const layout = text(treeRaw.layout)
-		tree = {
+		const mount = text(treeRaw.mount)
+		trees.push({
 			treeId,
-			name: text(treeRaw.name) || text(raw.name) || treeId,
+			name: text(treeRaw.name) || (t === 0 ? text(raw.name) : '') || treeId,
 			goal: text(raw.name) || goal,
 			layout: ['sectors', 'lineage', 'free'].includes(layout) ? layout : 'sectors',
 			sectors: list(treeRaw.sectors),
 			rings: list(treeRaw.rings),
+			mount: mount ? qualify(goal, slug(mount)) : '',
 			nodes,
-		}
+		})
 	}
 
 	const habits: DocHabit[] = []
@@ -232,7 +243,7 @@ export function parseSyllabus(source: string): SyllabusResult {
 	}
 
 	if (errors.length) return { ok: false, errors }
-	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, tree, habits } }
+	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, trees, habits } }
 }
 
 /** Requirements written as YAML, with node, item and habit ids qualified, back to stored YAML. */
@@ -257,10 +268,11 @@ function qualifyRequirements(value: unknown, treeId: string, goal: string, path:
 export function describeDoc(doc: SyllabusDoc): string {
 	const count = (items: DocItem[]): number => items.reduce((n, item) => n + 1 + count(item.children), 0)
 	const items = doc.tracks.reduce((n, t) => n + count(t.items), 0)
+	const nodes = doc.trees.reduce((n, t) => n + t.nodes.length, 0)
 	const parts = [
 		`${doc.tracks.length} track${doc.tracks.length === 1 ? '' : 's'}`,
 		`${items} item${items === 1 ? '' : 's'}`,
-		doc.tree ? `${doc.tree.nodes.length} skill node${doc.tree.nodes.length === 1 ? '' : 's'}` : '',
+		nodes ? `${nodes} skill node${nodes === 1 ? '' : 's'}${doc.trees.length > 1 ? ` in ${doc.trees.length} trees` : ''}` : '',
 		doc.habits.length ? `${doc.habits.length} habit${doc.habits.length === 1 ? '' : 's'}` : '',
 	]
 	return parts.filter(Boolean).join(', ')

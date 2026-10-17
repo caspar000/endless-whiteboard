@@ -73,7 +73,7 @@ describe('parseSyllabus', () => {
 	})
 
 	it('qualifies every reference inside requirements', () => {
-		const node = parsed(SOURCE).tree!.nodes[1]!
+		const node = parsed(SOURCE).trees[0]!.nodes[1]!
 		expect(node.icon).toBe('sword')
 		const requires = parseRequirements(node.requires)
 		expect(requires.ok && requires.conditions).toEqual([
@@ -98,6 +98,37 @@ habits:
 		expect(result.errors[0]).toMatch(/goal is required/)
 		expect(result.errors[1]).toMatch(/Track 1 › item 1: kind is one of/)
 		expect(result.errors[2]).toMatch(/Habit 1: period/)
+	})
+
+	it('reads several trees, each qualifying its own nodes, and their mounts', () => {
+		const doc = parsed(`
+goal: mastery
+name: Mastery
+trees:
+  - id: mastery
+    nodes:
+      - { id: root, name: Mastery, kind: mastery }
+      - { id: mental, name: Mental, kind: pillar, requires: [ { node: [root] } ] }
+  - id: mind
+    name: Mind
+    mount: mental
+    nodes:
+      - { id: focus, name: Deep Focus, kind: root }
+      - { id: memory, name: Memory, requires: [ { node: [focus] } ] }
+`)
+		expect(doc.trees.map((t) => [t.treeId, t.mount])).toEqual([
+			['mastery', ''],
+			['mind', 'mastery/mental'],
+		])
+		expect(doc.trees[1]!.nodes.map((n) => n.nodeId)).toEqual(['mind/focus', 'mind/memory'])
+		expect(parseRequirements(doc.trees[1]!.nodes[1]!.requires)).toMatchObject({ ok: true, conditions: [{ node: ['mind/focus'] }] })
+		expect(doc.trees[0]!.nodes[0]!.kind).toBe('mastery')
+	})
+
+	it('wants an id on every tree after the first', () => {
+		const result = parseSyllabus('goal: g\ntrees:\n  - nodes: []\n  - nodes: []\n')
+		expect(result.ok).toBe(false)
+		if (!result.ok) expect(result.errors).toEqual(['Tree 2: a tree after the first needs an id'])
 	})
 
 	it('reports YAML syntax errors with their line', () => {
@@ -143,5 +174,15 @@ describe('radialTree', () => {
 		expect(out.get('a')!.depth).toBe(1)
 		expect(out.get('b')!.depth).toBe(1)
 		expect(out.size).toBe(4)
+	})
+})
+
+describe('the Mastery demo', () => {
+	it('parses, with five pillars and a tree mounted on each', async () => {
+		const { MASTERY_DEMO } = await import('./tree/masteryDemo')
+		const doc = parsed(MASTERY_DEMO)
+		const pillars = doc.trees[0]!.nodes.filter((n) => n.kind === 'pillar').map((n) => n.name)
+		expect(pillars).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])
+		expect(doc.trees.slice(1).map((t) => t.mount)).toEqual(['mastery/physical', 'mastery/mental', 'mastery/spiritual', 'mastery/practical', 'mastery/social'])
 	})
 })

@@ -20,10 +20,10 @@ import {
 import { formatOrder, formatTags, parseOrder, parseTags, todayIso } from './model'
 import { addChildItem, createItem, createTrack, ITEM_HEIGHT, setCollapsed } from './ops'
 import { ensureProperties, hideOnCard, PROP_ID, readText } from './properties'
-import { drawPrerequisites, insertTree, treePositions } from './tree/ops'
+import { drawMounts, drawPrerequisites, insertTree, layoutReach, treePositions } from './tree/ops'
 import type { DocItem, SyllabusDoc } from './syllabusYaml'
 import { getTreeDef, updateTreeMeta } from './treeDefs'
-import { draftTreeMeta } from './views'
+import { boardTrees, DRAFT_TREE_META, draftTreeMeta, treeGraph } from './views'
 
 /**
  * Putting a syllabus document on a board, and taking one off it (docs/skill-tree-plan.md, "The YAML
@@ -85,8 +85,11 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 			x += COLUMN
 		}
 
-		if (doc.tree) {
-			const tree = doc.tree
+		// A tree mounted on a node of another tree in this document shows inside that tree's view, so
+		// it gets no header of its own.
+		const inDoc = new Set(doc.trees.flatMap((t) => t.nodes.map((n) => n.nodeId)))
+		const viewed: string[] = []
+		for (const tree of doc.trees) {
 			const nodes = tree.nodes.map((n) => ({ ...n }))
 			const existing = new Map(
 				editor
@@ -104,17 +107,22 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 				editor.updateShape({ id: shape.id, type: SKILL_TYPE, props } as never)
 				updated++
 			}
+			// A tree the vault already has takes its new mount now, like any other merged field.
+			if (tree.mount && getTreeDef(tree.treeId)) updateTreeMeta(tree.treeId, { mount: tree.mount })
+			const mountedHere = !!tree.mount && inDoc.has(tree.mount)
 			const ring = Math.max(1, tree.rings.length || 3)
 			const center = { x: x + 230 * ring + 200, y: at.y + 230 * ring + 200 }
-			if (!header) {
+			if (!header && !mountedHere) {
 				insertTree(editor, { ...tree, nodes: fresh }, center, false)
 			} else {
-				editor.updateShape({
-					id: header.id,
-					type: TREE_TYPE,
-					props: { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') },
-				} as never)
-				updated++
+				if (header) {
+					editor.updateShape({
+						id: header.id,
+						type: TREE_TYPE,
+						props: { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') },
+					} as never)
+					updated++
+				}
 				const positions = treePositions({ ...tree, nodes: fresh }, center)
 				for (const node of fresh) {
 					const p = positions.get(node.nodeId) ?? center
@@ -122,9 +130,10 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 				}
 				drawPrerequisites(editor, tree.treeId)
 			}
+			if (mountedHere) continue
+			viewed.push(tree.treeId)
 			x = center.x + 230 * ring + 300
 		}
-
 		doc.habits.forEach((habit, i) => {
 			const existing = editor.getCurrentPageShapes().find((s) => isHabit(s) && s.props.habitId === habit.habitId)
 			if (existing) {
@@ -150,7 +159,26 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 			.getCurrentPageShapes()
 			.filter((s) => !before.has(s.id))
 			.filter((s) => s.type !== 'arrow' || !editor.getBindingsFromShape(s, 'arrow').every((b) => before.has(b.toId)))
-		for (const shape of made) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)
+		const treeMeta = new Map(doc.trees.map((t) => [t.treeId, { name: t.name, goal: t.goal, mount: t.mount }]))
+		for (const shape of made) {
+			const carried = isSkill(shape) ? treeMeta.get(shape.props.treeId) : undefined
+			editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true, ...(carried ? { [DRAFT_TREE_META]: carried } : {}) } } as never)
+		}
+
+		// Trees with others mounted in this document are laid out whole, branches and all. After the
+		// marking above, because the draft nodes carry the mounts the layout reads; the mount arrows
+		// drawn here are part of the draft too.
+		if (doc.trees.some((t) => t.mount && inDoc.has(t.mount))) {
+			const graph = treeGraph(boardTrees(editor))
+			for (const treeId of viewed) {
+				const root = graph.rootOf.get(treeId)
+				if (root) layoutReach(editor, root, null)
+			}
+			drawMounts(editor)
+			for (const shape of editor.getCurrentPageShapes()) {
+				if (!before.has(shape.id) && !isDraft(shape)) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)
+			}
+		}
 	})
 	const draftIds = editor.getCurrentPageShapes().filter(isDraft).filter((s) => !before.has(s.id)).map((s) => s.id)
 	return { created: draftIds.length, updated, draftIds }

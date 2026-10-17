@@ -202,7 +202,9 @@ export function Syllabus({ go }: SectionProps) {
 				<p className="lb-help__aside">
 					<code>Hang a skill tree from a node</code> mounts one tree on another tree's node: a pillar, or
 					Mastery. A view of that node then shows the mounted tree as its branch, and the node's ring shows
-					how much of everything below it is unlocked.
+					how much of everything below it is unlocked. <code>Insert the Mastery demo (five pillars)</code>{' '}
+					builds one: Mastery, Physical, Mental, Spiritual, Practical and Social, with a starter tree on
+					each, and your Adler tree under Mental if you have it.
 				</p>
 			</Section>
 

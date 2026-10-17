@@ -271,8 +271,10 @@ export function layoutFrom(editor: Editor, node: SkillShape): number {
 }
 
 /**
- * Places nodes a view has just put on the board: each beside its nearest ancestor that was already
- * there, laid out with that ancestor as the root and everything else as obstacles. Runs inside the
+ * Places nodes a view has just put on the board: each group beside its nearest ancestor that was
+ * already there. The group is laid out as its own little tree around that ancestor, then slid outward
+ * (away from the middle of the board's nodes) until it covers nothing. Fitting a whole new branch in
+ * among pinned neighbours does not converge; sliding it into free space always does. Runs inside the
  * caller's `editor.run`.
  */
 export function placeNewNodes(editor: Editor, created: ReadonlySet<string>): void {
@@ -298,14 +300,32 @@ export function placeNewNodes(editor: Editor, created: ReadonlySet<string>): voi
 		const a = anchorOf(id)
 		if (a) groups.set(a, [...(groups.get(a) ?? []), id])
 	}
+	const settled = [...shapes.values()].filter((s) => !created.has(s.props.nodeId)).map((s) => centreOf(editor, s.id))
+	const middle = settled.length
+		? { x: settled.reduce((n, p) => n + p.x, 0) / settled.length, y: settled.reduce((n, p) => n + p.y, 0) / settled.length }
+		: { x: 0, y: 0 }
+	const pad = 24
 	for (const [ancestor, group] of groups) {
 		const ids = new Set([ancestor, ...group])
 		const edges = [...graph.prerequisites, ...graph.mounts, ...graph.loose].filter((e) => ids.has(e.from) && ids.has(e.to))
 		const nodes = [...ids].map((id) => ({ id, w: SKILL_SIZE, h: SKILL_SIZE }))
 		const placed = group.map((id) => ({ graphId: id, shape: shapes.get(id)! }))
 		const anchor = centreOf(editor, shapes.get(ancestor)!.id)
-		const at = layoutGraph(nodes, edges, { root: ancestor, obstacles: obstaclesFor(editor, placed, anchor) })
-		place(editor, placed, at, anchor, null)
+		const at = layoutGraph(nodes, edges, { root: ancestor })
+		const obstacles = obstaclesFor(editor, placed, anchor)
+		const away = { x: anchor.x - middle.x, y: anchor.y - middle.y }
+		const len = Math.hypot(away.x, away.y)
+		const dir = len > 1 ? { x: away.x / len, y: away.y / len } : { x: 1, y: 0 }
+		const clear = (dx: number, dy: number) =>
+			group.every((id) => {
+				const p = at.get(id)!
+				return obstacles.every((o) => Math.abs(p.x + dx - o.x) >= (SKILL_SIZE + o.w) / 2 + pad || Math.abs(p.y + dy - o.y) >= (SKILL_SIZE + o.h) / 2 + pad)
+			})
+		let step = 0
+		while (step < 60 && !clear(dir.x * step * SKILL_SIZE * 0.5, dir.y * step * SKILL_SIZE * 0.5)) step++
+		const shift = { x: dir.x * step * SKILL_SIZE * 0.5, y: dir.y * step * SKILL_SIZE * 0.5 }
+		const moved = new Map([...at].map(([id, p]) => [id, { x: p.x + shift.x, y: p.y + shift.y }]))
+		place(editor, placed, moved, anchor, null)
 	}
 }
 

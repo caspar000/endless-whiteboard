@@ -4,6 +4,7 @@ import { childrenOf, isItem, isSkill, isTrack, MASTERY, type ItemShape, type Ski
 import { addSelectionToTrack, arrangeChildren, setCollapsed, toggleItemDone, trackFromSelection } from './ops'
 import { insertAdlerSample } from './sample'
 import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId } from './tree/ops'
+import { insertMasteryDemo } from './tree/masteryDemo'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -129,6 +130,22 @@ export const skillTreeCommands: readonly Command[] = [
 		when: (ctx) => !!ctx.editor && ctx.editor.getCurrentPageShapes().some((s) => isSkill(s) && s.props.kind !== MASTERY),
 		run: ({ editor }) => {
 			if (editor) gatherAroundMastery(editor)
+		},
+	},
+	{
+		id: 'skill-tree.insert-mastery-demo',
+		title: 'Insert the Mastery demo (five pillars)',
+		group: GROUP,
+		when: (ctx) => ctx.editor !== null,
+		run: ({ editor }) => {
+			if (!editor) return
+			const bounds = editor.getCurrentPageBounds()
+			insertMasteryDemo(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center)
+			const all = editor.getCurrentPageShapes().filter((s) => isSkill(s)).map((s) => s.id)
+			editor.setSelectedShapes(all)
+			const b = editor.getSelectionPageBounds()
+			editor.selectNone()
+			if (b) editor.zoomToBounds(b, { animation: { duration: 250 } })
 		},
 	},
 	{

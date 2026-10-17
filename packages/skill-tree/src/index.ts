@@ -36,6 +36,7 @@ export {
 	type SkillIndex,
 } from './skillIndex'
 export { evaluateTree, parseRequirements, type Condition, type NodeStatus } from './requirements'
+export { getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
 export { itemNodeDefinition } from './item/definition'
 export { trackNodeDefinition } from './track/definition'
 export { skillNodeDefinition } from './skill/definition'

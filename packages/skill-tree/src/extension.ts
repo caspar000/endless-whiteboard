@@ -1,3 +1,4 @@
+import { watchTrees } from './treeSync'
 import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
 import { isHiddenByCollapse, isItem, ITEM_TYPE } from './board'
@@ -47,7 +48,10 @@ export const skillTreeExtension: Extension = {
 	fileImports: [syllabusFileImport],
 	hooks: {
 		// Every open board feeds the vault-wide index, and catches it up on what changed elsewhere.
-		onBoardOpen: ({ editor, boardId }) => watchBoard(editor, boardId),
+		onBoardOpen: ({ editor, boardId }) => {
+			watchBoard(editor, boardId)
+			watchTrees(editor)
+		},
 	},
 	shapeVisibility: {
 		types: [ITEM_TYPE],

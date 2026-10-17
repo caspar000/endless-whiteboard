@@ -99,6 +99,18 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 		Object.values(value).every(
 			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { trackId?: unknown }).trackId === 'string'
 		),
+	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
+	skillTrees: (value) =>
+		!!value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every(
+			(entry) =>
+				!!entry &&
+				typeof entry === 'object' &&
+				typeof (entry as { treeId?: unknown }).treeId === 'string' &&
+				Array.isArray((entry as { nodes?: unknown }).nodes)
+		),
 }
 
 /**

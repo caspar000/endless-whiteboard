@@ -4,6 +4,25 @@ Agreed 2026-10-17. Status: **Steps 1 to 5 and the layout half of step 6 are buil
 a running board; the rest of step 6 (visuals, tree views across boards) and Phase B remain. The "as
 built" notes below say where the build diverged from the plan and why.
 
+### Step 6c, part one: tree definitions in the vault, as built
+
+Decided 2026-10-17: trees are vault data, and a board's node shapes are views of them.
+
+- **`treeDefs.ts`** holds every tree (name, goal, sectors, rings, `mount`, nodes with their fields
+  and requirements) in the vault setting `skillTrees`, persisted like the indexes. Unlike the
+  indexes it is the only copy of a tree, so it is what a server backup must keep.
+- **Both directions** (`treeSync.ts`): editing, adding or deleting a node shape writes its tree;
+  a changed tree is drawn on every open board that has the node, with `history: 'ignore'`, so ⌘Z
+  never undoes another board's edit. Deleting a node shape deletes the node from its tree, and undo
+  writes it back.
+- **Tombstones.** A deleted node is remembered in `removed`. A board that opens with a node its tree
+  has never heard of adds it to the tree (an old board, a shape made offline); only a tombstoned
+  node is removed. A stale copy of the vault therefore never deletes anything.
+- **Old boards** are adopted on open: a tree the vault lacks is written from the board's shapes.
+- **Requirements** are evaluated against the definition, not the board's shapes, so a board that
+  shows one branch still evaluates against the whole tree. Draft nodes are added to it until
+  confirmed.
+
 ### Step 6a (layout), as built
 
 - **One layout, not three.** Sectors-and-rings placement is gone; every tree is laid out as a graph

@@ -233,6 +233,8 @@ describe('board index', () => {
 		expect((await put('skillHabits', { h: { name: 'no id' } })).statusCode).toBe(400)
 		expect((await put('skillTracks', { t: { trackId: 't', boardId: 'b' } })).statusCode).toBe(204)
 		expect((await put('skillTracks', { t: { order: [] } })).statusCode).toBe(400)
+		expect((await put('skillTrees', { t: { treeId: 't', nodes: [] } })).statusCode).toBe(204)
+		expect((await put('skillTrees', { t: { treeId: 't' } })).statusCode).toBe(400)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
@@ -240,6 +242,7 @@ describe('board index', () => {
 			skillIndex: { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } },
 			skillHabits: { h: { habitId: 'h', boardId: 'b' } },
 			skillTracks: { t: { trackId: 't', boardId: 'b' } },
+			skillTrees: { t: { treeId: 't', nodes: [] } },
 		})
 	})
 

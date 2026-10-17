@@ -226,10 +226,17 @@ describe('board index', () => {
 		expect((await put('savedQueries', [{ name: 1 }])).statusCode).toBe(400)
 		expect((await put('cardLayouts', [{ name: 'Event', layout: { rows: [] } }])).statusCode).toBe(204)
 		expect((await put('cardLayouts', [{ name: 'Event', layout: 'rows' }])).statusCode).toBe(400)
+		expect((await put('skillIndex', { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('skillIndex', [{ itemId: 'adler/homer' }])).statusCode).toBe(400)
+		expect((await put('skillIndex', { 'adler/homer': { title: 'no id' } })).statusCode).toBe(400)
+		expect((await put('skillHabits', { h: { habitId: 'h', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('skillHabits', { h: { name: 'no id' } })).statusCode).toBe(400)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
 			cardLayouts: [{ name: 'Event', layout: { rows: [] } }],
+			skillIndex: { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } },
+			skillHabits: { h: { habitId: 'h', boardId: 'b' } },
 		})
 	})
 

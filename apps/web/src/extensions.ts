@@ -11,6 +11,8 @@ import { registerOperationCommands } from './app/operationCommands'
 import { loadUserBindings } from './app/keymapStore'
 import { loadSavedQueries } from './app/savedQueries'
 import { loadCardLayouts } from './app/cardLayouts'
+import { loadSkillIndex } from './app/skillIndex'
+import { installIconBridge } from './app/boardLook/iconBridge'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
 import { pushVaultSetting } from './server/serverVault'
@@ -26,6 +28,9 @@ import { pushVaultSetting } from './server/serverVault'
  * so a second evaluation (HMR, a test importing this alongside Board) is harmless.
  */
 registerShippedExtensions()
+
+// The board icons, lent to extensions (a skill node wears one). Installed before anything renders.
+installIconBridge()
 
 // Projects the now-complete node registry onto the command table ("Add note", "Add table", …).
 // After the registrations above, deliberately: it reads what they just put there.
@@ -56,6 +61,7 @@ registerOperationCommands()
  */
 loadSavedQueries()
 loadCardLayouts()
+loadSkillIndex()
 
 /*
  * The user's keymap, over the defaults the table declares.

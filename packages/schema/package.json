@@ -20,7 +20,8 @@
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/dice": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
-		"@lifeboard/note-markdown": "workspace:*"
+		"@lifeboard/note-markdown": "workspace:*",
+		"@lifeboard/skill-tree": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/react": "^19.2.0",

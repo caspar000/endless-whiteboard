@@ -3,6 +3,7 @@ import {
 	BookOpen,
 	Boxes,
 	Dices,
+	ListChecks,
 	Frame,
 	Image as ImageIcon,
 	MousePointer2,
@@ -152,6 +153,7 @@ const NODE_SAMPLE: { label: string; icon: ReactNode }[] = [
 	{ label: 'Book', icon: <BookOpen size={20} /> },
 	{ label: 'Quote', icon: <QuoteIcon size={20} /> },
 	{ label: 'Roll', icon: <Dices size={20} /> },
+	{ label: 'Syllabus item', icon: <ListChecks size={20} /> },
 ]
 
 /** The picker's grid, as a still — the tour explains the button, this shows what opens. */

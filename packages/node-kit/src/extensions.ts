@@ -1,5 +1,12 @@
 import type { ComponentType } from 'react'
-import { registerGeoType, type Editor, type GeoTypeDefinition, type TLClipboardHooks, type TLContent } from '@lifeboard/canvas'
+import {
+	registerGeoType,
+	type Editor,
+	type GeoTypeDefinition,
+	type TLClipboardHooks,
+	type TLContent,
+	type TLShape,
+} from '@lifeboard/canvas'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import {
 	registerCommand,
@@ -224,6 +231,20 @@ export interface Extension {
 	 * Rendered above the derived sections, because a setting is something you came to do and a
 	 * contribution list is something you came to read.
 	 */
+	/**
+	 * Shapes of this extension's own types that should not be drawn right now, such as the children of
+	 * a collapsed skill item.
+	 *
+	 * A *view*, like hiding a relation: nothing in the store changes, so hiding makes no undo entry and
+	 * syncs nowhere. It is consulted from tldraw's visibility cache for every shape of the listed
+	 * `types`, so `isHidden` must be cheap: read the shape and at most the few records it points at,
+	 * never walk the page. Applies whether or not the extension is enabled, because a switched-off
+	 * extension's shapes keep rendering as they were.
+	 */
+	shapeVisibility?: {
+		types: readonly string[]
+		isHidden: (shape: TLShape, editor: Editor) => boolean
+	}
 	settings?: {
 		/** Section heading, e.g. `Appearance`. */
 		title: string
@@ -317,6 +338,26 @@ export function registerExtension(ext: Extension): void {
 	// Unconditional: the record above was *replaced*, so a re-registration under HMR has just swapped
 	// in a fresh component identity even when the overlay list looks unchanged.
 	invalidateOverlays()
+	visibilityByType = null
+}
+
+/** Built on first use and dropped on every registration, so a reloaded extension's predicate wins. */
+let visibilityByType: Map<string, (shape: TLShape, editor: Editor) => boolean> | null = null
+
+/**
+ * Whether an extension hides this shape (see `Extension.shapeVisibility`). One map lookup for every
+ * shape no extension claims, which is almost all of them.
+ */
+export function isShapeHiddenByExtension(shape: TLShape, editor: Editor): boolean {
+	if (!visibilityByType) {
+		visibilityByType = new Map()
+		for (const ext of extensions.values()) {
+			if (!ext.shapeVisibility) continue
+			for (const type of ext.shapeVisibility.types) visibilityByType.set(type, ext.shapeVisibility.isHidden)
+		}
+	}
+	const isHidden = visibilityByType.get(shape.type)
+	return isHidden ? isHidden(shape, editor) : false
 }
 
 /** Registration order, which is also toolbar order for their nodes. */
@@ -433,4 +474,5 @@ export function fileImportFor(fileName: string): FileImport | undefined {
 export function clearExtensionRegistry(): void {
 	extensions.clear()
 	invalidateOverlays()
+	visibilityByType = null
 }

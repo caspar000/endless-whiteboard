@@ -12,6 +12,7 @@ import {
 	type Extension,
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
+import { skillTreeExtension } from '@lifeboard/skill-tree'
 import {
 	createTLSchemaFromUtils,
 	defaultBindingUtils,
@@ -34,6 +35,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	// No node types — only canvas chrome, commands and an operation. Listed all the same: this is the
 	// list of what the build ships, not the list of what has shapes.
 	diceExtension,
+	skillTreeExtension,
 ]
 
 /**

@@ -74,6 +74,23 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 				typeof entry.layout === 'object' &&
 				Array.isArray(entry.layout.rows)
 		),
+	// The syllabus index (docs/skill-tree-plan.md): entries keyed by item id. Only the outline is
+	// checked; the client parses each entry and drops what it can't read.
+	skillIndex: (value) =>
+		!!value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every(
+			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { itemId?: unknown }).itemId === 'string'
+		),
+	// The habit index beside it, keyed by habit id.
+	skillHabits: (value) =>
+		!!value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every(
+			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { habitId?: unknown }).habitId === 'string'
+		),
 }
 
 /**

@@ -20,6 +20,7 @@
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@lifeboard/schema": "workspace:*",
+    "@lifeboard/skill-tree": "workspace:*",
     "@tldraw/tlschema": "5.5.2",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",

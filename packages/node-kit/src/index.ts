@@ -164,6 +164,7 @@ export {
 	getExtension,
 	getExtensions,
 	getVisibleCanvasOverlays,
+	isShapeHiddenByExtension,
 	registerExtension,
 	subscribeToCanvasOverlays,
 	type CanvasOverlay,
@@ -177,6 +178,7 @@ export {
 
 // The outbound-request seam for extensions that reach the outside world — implemented by the app.
 export { getNetworkBridge, setNetworkBridge, type NetworkBridge } from './network'
+export { getIconBridge, setIconBridge, type IconBridge } from './icons'
 
 // The storage seam for extensions that own binary content — implemented by the app (§4.5).
 export {

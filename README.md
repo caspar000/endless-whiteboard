@@ -131,6 +131,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
 | **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
+| **Syllabus & skill trees** (`@lifeboard/skill-tree`) | `node.skillItem`, `node.track`, `node.skill`, `node.skillTree`, `node.habit` | Ordered syllabi you tick through, habits per day, week or month, and skill trees that light up from the evidence. A tick records the day and files a note from the item's medium template beside it; a note still holding only the template leaves the tick hollow. Items hold children (Plato and his dialogues), done when their core children are, and collapse into a checklist. A track lists items in order with the next one lit. A skill node requires other nodes, an item, or a number of written-up items tagged to it, read from a vault-wide index, so a tree on one board lights from items on another. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -188,6 +189,7 @@ packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
 packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
 packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (three.js + cannon-es)
+packages/skill-tree/      @lifeboard/skill-tree — syllabus items and tracks, and (next) skill trees
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel

@@ -1,4 +1,5 @@
-import { createShapeId, react, type Editor, type TLShape } from '@lifeboard/canvas'
+import { createShapeId, react, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { isImporting, onImportEnd } from './importing'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { SKILL_SIZE } from './skill/definition'
 import { drawMounts, drawPrerequisites, layoutReach, nodeShapes, placeNewNodes, SKILL_EDGE_META } from './tree/ops'
@@ -11,6 +12,7 @@ import {
 	removeNodeDef,
 	updateTreeMeta,
 	upsertNodeDef,
+	upsertNodeDefs,
 	type NodeDef,
 	type TreeMeta,
 } from './treeDefs'
@@ -66,6 +68,7 @@ export function watchTrees(editor: Editor): void {
 
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
 		if (syncing) return
+		if (isImporting()) return void touchedBy(editor).add(shape.id)
 		if (live(shape)) upsertNodeDef(shape.props.treeId, nodeDefOf(shape))
 		// A header for a tree the vault has named takes the vault's name; otherwise it names the tree.
 		else if (liveHeader(shape) && !getTreeDef(shape.props.treeId)?.name) updateTreeMeta(shape.props.treeId, metaOf(shape))
@@ -73,6 +76,7 @@ export function watchTrees(editor: Editor): void {
 	})
 	editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
 		if (syncing) return
+		if (isImporting()) return void touchedBy(editor).add(next.id)
 		if (live(next)) {
 			// Moved to another tree, or renamed its id: the old node goes, the new one is written.
 			if (live(prev) && (prev.props.treeId !== next.props.treeId || prev.props.nodeId !== next.props.nodeId)) {
@@ -90,7 +94,9 @@ export function watchTrees(editor: Editor): void {
 		}
 	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
-		// Deleting a node on a board deletes it from its tree; undo writes it back.
+		// Deleting a node on a board deletes it from its tree; undo writes it back. A bulk change only
+		// ever deletes drafts, which the vault never had.
+		if (isImporting()) return
 		if (!syncing && live(shape)) removeNodeDef(shape.props.treeId, shape.props.nodeId)
 		if (!syncing && liveHeader(shape)) schedule(editor)
 	})
@@ -106,6 +112,28 @@ export function watchTrees(editor: Editor): void {
 }
 
 const disposed = new WeakSet<Editor>()
+
+/** Shapes a bulk change created or changed, written to the vault once it ends (importing.ts). */
+const touched = new WeakMap<Editor, Set<TLShapeId>>()
+const touchedBy = (editor: Editor) => {
+	let set = touched.get(editor)
+	if (!set) touched.set(editor, (set = new Set()))
+	return set
+}
+
+onImportEnd((editor) => {
+	const ids = touched.get(editor)
+	touched.delete(editor)
+	const byTree = new Map<string, NodeDef[]>()
+	for (const id of ids ?? []) {
+		const shape = editor.getShape(id)
+		// Still a draft (an import) stays out of the vault; confirmed or merged in place goes in.
+		if (live(shape)) byTree.set(shape.props.treeId, [...(byTree.get(shape.props.treeId) ?? []), nodeDefOf(shape)])
+		else if (liveHeader(shape)) updateTreeMeta(shape.props.treeId, metaOf(shape))
+	}
+	for (const [treeId, nodes] of byTree) upsertNodeDefs(treeId, nodes)
+	if (watched.has(editor)) schedule(editor)
+})
 
 const pending = new WeakSet<Editor>()
 
@@ -140,7 +168,7 @@ export function syncBoard(editor: Editor): void {
 	for (const [treeId, nodes] of byTree) {
 		const board = new Map(nodes.map((n) => [n.props.nodeId, nodeDefOf(n)]))
 		const plan = reconcile(getTreeDef(treeId), board)
-		for (const node of plan.adopt) upsertNodeDef(treeId, node)
+		upsertNodeDefs(treeId, plan.adopt)
 		for (const id of plan.remove) removals.push(...nodes.filter((n) => n.props.nodeId === id))
 		for (const def of plan.update) {
 			const shape = nodes.find((n) => n.props.nodeId === def.nodeId)!
@@ -176,7 +204,7 @@ export function syncBoard(editor: Editor): void {
 					editor.createShapes(
 						view.create.map(({ treeId, def, at }) => {
 							const { nodeId, ...rest } = def
-							return { id: createShapeId(), type: SKILL_TYPE, x: at.x - SKILL_SIZE / 2, y: at.y - SKILL_SIZE / 2, props: { ...rest, nodeId, treeId } }
+							return { id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: at.x - SKILL_SIZE / 2, y: at.y - SKILL_SIZE / 2, props: { ...rest, nodeId, treeId } }
 						}) as never
 					)
 					// An empty view is laid out whole beside its header; anything else joins its nearest ancestor.

@@ -22,7 +22,24 @@ export type Condition =
 
 export type ParseResult = { ok: true; conditions: Condition[] } | { ok: false; error: string }
 
+/**
+ * Parsed requirements by their text. Every node on a board evaluates its whole tree whenever the
+ * index or the vault changes, so the same few hundred strings were parsed by YAML again and again
+ * (a million times over for a confirmed /mu/core). Results are shared: treat them as read-only.
+ */
+const parsedCache = new Map<string, ParseResult>()
+
 export function parseRequirements(source: string): ParseResult {
+	const known = parsedCache.get(source)
+	if (known) return known
+	const result = parseUncached(source)
+	// Bounded, in case something feeds it endless distinct text (a requirement being typed).
+	if (parsedCache.size > 5000) parsedCache.clear()
+	parsedCache.set(source, result)
+	return result
+}
+
+function parseUncached(source: string): ParseResult {
 	if (!source.trim()) return { ok: true, conditions: [] }
 	let raw: unknown
 	try {

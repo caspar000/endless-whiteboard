@@ -1,5 +1,5 @@
 import { connectShapes, updateShapeProperties } from '@lifeboard/node-kit'
-import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
+import { createShapeId, type Editor, type TLParentId, type TLShapeId } from '@lifeboard/canvas'
 import {
 	childrenOf,
 	evidenceNoteFor,
@@ -140,6 +140,11 @@ export interface NewItem {
 	tags?: string
 	itemId?: string
 	collapsed?: boolean
+	/**
+	 * The page or frame to put the shape in. Unset, the canvas finds the frame under the point,
+	 * which costs a pass over every shape on the page: an import names the page instead.
+	 */
+	canvasParent?: TLParentId
 }
 
 /** Creates an item shape with its Kind and Medium filled in. Returns its id. */
@@ -160,7 +165,7 @@ export function createItem(
 		tags: spec.tags ?? '',
 	}
 	editor.run(() => {
-		editor.createShape({ id, type: ITEM_TYPE, x: at.x, y: at.y, props } as never)
+		editor.createShape({ id, type: ITEM_TYPE, x: at.x, y: at.y, ...(spec.canvasParent ? { parentId: spec.canvasParent } : {}), props } as never)
 		ensureProperties(editor, ['kind', 'medium'])
 		const shape = editor.getShape(id)
 		if (shape && (spec.kind || spec.medium)) {
@@ -201,7 +206,8 @@ export function addChildItem(
 		if (mark) editor.markHistoryStoppingPoint('add child item')
 		if (parent.props.collapsed) editor.updateShape({ id: parent.id, type: ITEM_TYPE, props: { collapsed: false } })
 		const fresh = editor.getShape(parent.id) as ItemShape
-		childId = createItem(editor, spec, nextChildPosition(editor, fresh), parent.id)
+		// A child lives where its parent does: the same page or frame.
+		childId = createItem(editor, { ...spec, canvasParent: fresh.parentId }, nextChildPosition(editor, fresh), parent.id)
 		connectShapes(editor, parent.id, childId, { hidden: true })
 		updateAncestors(editor, editor.getShape(childId) as ItemShape)
 	})

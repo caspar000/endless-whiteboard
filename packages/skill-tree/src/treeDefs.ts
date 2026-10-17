@@ -103,6 +103,16 @@ export function upsertNodeDef(treeId: string, node: NodeDef): void {
 	commit({ ...trees.get(), [treeId]: { ...tree, nodes, removed: tree.removed.filter((id) => id !== node.nodeId) } })
 }
 
+/** Adds or updates many nodes of one tree in a single change: one write, one redraw. */
+export function upsertNodeDefs(treeId: string, nodes: readonly NodeDef[]): void {
+	if (!treeId || !nodes.length) return
+	const tree = trees.get()[treeId] ?? emptyTree(treeId)
+	const byId = new Map(tree.nodes.map((n) => [n.nodeId, n]))
+	for (const node of nodes) if (node.nodeId) byId.set(node.nodeId, node)
+	const ids = new Set(nodes.map((n) => n.nodeId))
+	commit({ ...trees.get(), [treeId]: { ...tree, nodes: [...byId.values()], removed: tree.removed.filter((id) => !ids.has(id)) } })
+}
+
 /** Deletes a node from its tree, leaving a tombstone. */
 export function removeNodeDef(treeId: string, nodeId: string): void {
 	const tree = trees.get()[treeId]

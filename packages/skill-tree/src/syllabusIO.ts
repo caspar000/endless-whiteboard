@@ -22,6 +22,7 @@ import { addChildItem, createItem, createTrack, ITEM_HEIGHT, ITEM_WIDTH, setColl
 import { ensureProperties, hideOnCard, PROP_ID, readText } from './properties'
 import { drawMounts, drawPrerequisites, insertTree, layoutReach, placeNewNodes, treePositions } from './tree/ops'
 import type { DocItem, SyllabusDoc } from './syllabusYaml'
+import { whileImporting } from './importing'
 import { getTreeDef, updateTreeMeta } from './treeDefs'
 import { boardTrees, DRAFT_TREE_META, draftTreeMeta, treeGraph } from './views'
 
@@ -51,6 +52,10 @@ const COLUMN_HEIGHT = 2400
 const ITEM_COLUMN = ITEM_WIDTH + 40
 
 export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
+	return whileImporting(editor, () => importNow(editor, doc, at))
+}
+
+function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
 	const before = new Set(editor.getCurrentPageShapeIds())
 	let updated = 0
 	editor.run(() => {
@@ -99,6 +104,8 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 		const viewed: string[] = []
 		// Trees already on the board that this import adds nodes to, and how many it adds.
 		const grown: { treeId: string; fresh: string[]; had: number }[] = []
+		// Trees this import puts on the board for the first time.
+		const inserted: string[] = []
 		for (const tree of doc.trees) {
 			const nodes = tree.nodes.map((n) => ({ ...n }))
 			const existing = new Map(
@@ -124,6 +131,7 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 			const center = { x: x + 230 * ring + 200, y: at.y + 230 * ring + 200 }
 			if (!header && !mountedHere) {
 				insertTree(editor, { ...tree, nodes: fresh }, center, false)
+				inserted.push(tree.treeId)
 			} else {
 				if (header) {
 					editor.updateShape({
@@ -137,7 +145,7 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 				const positions = treePositions({ ...tree, nodes: fresh }, center)
 				for (const node of fresh) {
 					const p = positions.get(node.nodeId) ?? center
-					editor.createShape({ id: createShapeId(), type: SKILL_TYPE, x: p.x, y: p.y, props: { ...node, treeId: tree.treeId } } as never)
+					editor.createShape({ id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: p.x, y: p.y, props: { ...node, treeId: tree.treeId } } as never)
 				}
 				drawPrerequisites(editor, tree.treeId)
 			}
@@ -181,14 +189,15 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 		// nodes join their nearest ancestor and the rest stay where they are. Trees with others mounted
 		// in this document are laid out whole, branches and all; the mount arrows are part of the draft.
 		const mounted = doc.trees.some((t) => t.mount && inDoc.has(t.mount))
-		if (mounted || grown.length) {
+		if (mounted || grown.length || inserted.length) {
 			const graph = treeGraph(boardTrees(editor))
-			const regrown = new Set(grown.filter((g) => g.fresh.length > g.had).map((g) => g.treeId))
-			const whole = new Set([...(mounted ? viewed : []), ...regrown])
+			// New trees, and trees this import more than doubled, are laid out whole in the clear space
+			// right of everything else: how wide a tree is is only known once it is laid out.
+			const clear = new Set([...inserted, ...grown.filter((g) => g.fresh.length > g.had).map((g) => g.treeId)])
+			const whole = new Set([...(mounted ? viewed : []), ...clear])
 			for (const treeId of whole) {
 				const root = graph.rootOf.get(treeId)
-				// A tree laid out again from scratch goes into clear space; a new one stays where it was put.
-				if (root) layoutReach(editor, root, null, regrown.has(treeId) ? 'clear' : undefined)
+				if (root) layoutReach(editor, root, null, clear.has(treeId) ? 'clear' : undefined)
 			}
 			const few = grown.filter((g) => !whole.has(g.treeId)).flatMap((g) => g.fresh)
 			if (few.length) placeNewNodes(editor, new Set(few))
@@ -212,7 +221,7 @@ function placeItem(editor: Editor, item: DocItem, at: { x: number; y: number }, 
 		core: item.core,
 		childRule: item.childRule,
 	}
-	const id = parentId ? addChildItem(editor, parentId, spec, false)! : createItem(editor, spec, at)
+	const id = parentId ? addChildItem(editor, parentId, spec, false)! : createItem(editor, { ...spec, canvasParent: editor.getCurrentPageId() }, at)
 	for (const child of item.children) placeItem(editor, child, at, id)
 	if (item.children.length) setCollapsed(editor, id, true, false)
 	return id
@@ -247,6 +256,10 @@ function mergeItem(editor: Editor, shape: ItemShape, item: DocItem): number {
 
 /** Takes the draft marker off everything on the board: it joins the index, and its trees the vault, from here on. */
 export function confirmDraft(editor: Editor): number {
+	return whileImporting(editor, () => confirmNow(editor))
+}
+
+function confirmNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
 	if (!drafts.length) return 0
 	// A tree with no header of its own (mounted on another) carries its name and mount on its nodes.
@@ -264,6 +277,10 @@ export function confirmDraft(editor: Editor): number {
 
 /** Deletes every draft shape on the board, in one undo step. */
 export function discardDraft(editor: Editor): number {
+	return whileImporting(editor, () => discardNow(editor))
+}
+
+function discardNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
 	if (!drafts.length) return 0
 	editor.run(() => {

@@ -82,6 +82,7 @@ export function insertTree(
 		editor.createShape({
 			id: headerId,
 			type: TREE_TYPE,
+			parentId: editor.getCurrentPageId(),
 			x: center.x - 140,
 			y: top - 140,
 			props: {
@@ -98,6 +99,7 @@ export function insertTree(
 			editor.createShape({
 				id: createShapeId(),
 				type: SKILL_TYPE,
+				parentId: editor.getCurrentPageId(),
 				x: at.x,
 				y: at.y,
 				props: {

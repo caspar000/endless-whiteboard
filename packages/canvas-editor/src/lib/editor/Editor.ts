@@ -7572,8 +7572,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 				// Make sure that each partial will become the child of either the
 				// page or another shape that exists (or that will exist) in this page.
 
-				// find last parent id
-				const currentPageShapesSorted = this.getCurrentPageShapesSorted()
+				// find last parent id. Sorted lazily: it is O(shapes on the page) and invalidated by every
+				// create, so building it for partials that already name their parent made bulk creates
+				// (an import of a thousand items, one createShape each) quadratic. (Lifeboard change.)
+				let currentPageShapesSortedCache: TLShape[] | undefined
+				const getCurrentPageShapesSortedLazy = () =>
+					(currentPageShapesSortedCache ??= this.getCurrentPageShapesSorted())
 
 				partials = partials.map((partial) => {
 					// If the partial does not provide the parentId OR if the provided
@@ -7586,6 +7590,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 						!(this.store.has(partial.parentId) || partials.some((p) => p.id === partial.parentId))
 					) {
 						let parentId: TLParentId = this.getFocusedGroupId()
+						const currentPageShapesSorted = getCurrentPageShapesSortedLazy()
 
 						for (let i = currentPageShapesSorted.length - 1; i >= 0; i--) {
 							const parent = currentPageShapesSorted[i]

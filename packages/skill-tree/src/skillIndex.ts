@@ -1,5 +1,6 @@
 import { atom, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { isHiddenRelation } from '@lifeboard/node-kit'
+import { isImporting, onImportEnd } from './importing'
 import {
 	childrenOf,
 	evidenceNoteFor,
@@ -251,14 +252,17 @@ export function watchBoard(editor: Editor, boardId: string): void {
 	if (known === undefined) {
 		const relevant = (shape: TLShape) => isItem(shape) || (shape.type as string) === NOTE_TYPE
 		editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
+			if (isImporting()) return
 			if (reindexEntity(watched.get(editor) ?? boardId, shape)) return
 			if (relevant(shape)) reindexShape(editor, watched.get(editor) ?? boardId, shape)
 		})
 		editor.sideEffects.registerAfterChangeHandler('shape', (_prev, next) => {
+			if (isImporting()) return
 			if (reindexEntity(watched.get(editor) ?? boardId, next)) return
 			if (relevant(next)) reindexShape(editor, watched.get(editor) ?? boardId, next)
 		})
 		editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
+			if (isImporting()) return
 			if (unindexEntity(watched.get(editor) ?? boardId, shape)) return
 			if (!isItem(shape)) {
 				if ((shape.type as string) === NOTE_TYPE) reindexEvidenceOwner(editor, watched.get(editor) ?? boardId, shape)
@@ -275,6 +279,14 @@ export function watchBoard(editor: Editor, boardId: string): void {
 	rescanBoard(editor, boardId)
 	rescanEntities(editor, boardId)
 }
+
+// A bulk change skipped the side effects above; one rescan catches the board up.
+onImportEnd((editor) => {
+	const boardId = watched.get(editor)
+	if (boardId === undefined) return
+	rescanBoard(editor, boardId)
+	rescanEntities(editor, boardId)
+})
 
 /** A deleted evidence note takes the evidence with it. */
 function reindexEvidenceOwner(editor: Editor, boardId: string, note: TLShape): void {

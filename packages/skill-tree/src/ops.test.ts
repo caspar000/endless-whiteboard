@@ -36,6 +36,7 @@ function fakeEditor() {
 		},
 		getShape: (id: string) => shapes.get(id),
 		getCurrentPageShapes: () => [...shapes.values()],
+		getCurrentPageId: () => 'page:page',
 		getShapePageBounds: (id: string) => {
 			const s = shapes.get(id)
 			if (!s) return undefined

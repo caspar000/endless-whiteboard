@@ -91,6 +91,14 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 		Object.values(value).every(
 			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { habitId?: unknown }).habitId === 'string'
 		),
+	// And the track index, keyed by track id.
+	skillTracks: (value) =>
+		!!value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every(
+			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { trackId?: unknown }).trackId === 'string'
+		),
 }
 
 /**

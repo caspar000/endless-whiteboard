@@ -92,7 +92,7 @@ export function insertAdlerTree(editor: Editor, center: { x: number; y: number }
 				type: HABIT_TYPE,
 				x: (at?.x ?? center.x) + 300,
 				y: (at?.y ?? center.y) + i * 100,
-				props: { ...habit, goal: "Adler's reading list", startedAt: todayIso(), log: '{}', state: 'active' },
+				props: { ...habit, goal: 'Western canon reader', startedAt: todayIso(), log: '{}', state: 'active' },
 			} as never)
 		)
 	})

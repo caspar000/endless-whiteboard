@@ -190,3 +190,11 @@ export type HabitShape = TLShape & { type: typeof HABIT_TYPE; props: HabitProps 
 export function isHabit(shape: TLShape | undefined | null): shape is HabitShape {
 	return shape?.type === HABIT_TYPE
 }
+
+export const UP_NEXT_TYPE = 'node.upNext'
+
+export interface UpNextProps {
+	/** Only this goal's tracks and habits; '' for all of them. */
+	goal: string
+	autoHeight: boolean
+}

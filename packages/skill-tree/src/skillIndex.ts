@@ -1,6 +1,17 @@
 import { atom, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
-import { childrenOf, evidenceNoteFor, isHabit, isItem, isOrphan, NOTE_TYPE, type HabitShape, type ItemShape } from './board'
-import { hasEvidence, parseTags } from './model'
+import {
+	childrenOf,
+	evidenceNoteFor,
+	isHabit,
+	isItem,
+	isOrphan,
+	isTrack,
+	NOTE_TYPE,
+	type HabitShape,
+	type ItemShape,
+	type TrackShape,
+} from './board'
+import { hasEvidence, parseOrder, parseTags } from './model'
 import { isDone, readText } from './properties'
 import { templateFor } from './templates'
 
@@ -27,6 +38,8 @@ export interface IndexEntry {
 	core: boolean
 	parentItemId: string
 	hasChildren: boolean
+	/** Place among its siblings, top to bottom: the order a unit's steps are worked through. */
+	position: number
 	boardId: string
 	shapeId: string
 }
@@ -75,6 +88,7 @@ function parseEntry(value: unknown): IndexEntry | null {
 		core: bool('core'),
 		parentItemId: str('parentItemId'),
 		hasChildren: bool('hasChildren'),
+		position: typeof v.position === 'number' ? v.position : 0,
 		boardId: str('boardId'),
 		shapeId: str('shapeId'),
 	}
@@ -106,9 +120,15 @@ export function entryFor(editor: Editor, boardId: string, item: ItemShape): Inde
 		core: item.props.core,
 		parentItemId: parentOf(editor, item)?.props.itemId ?? '',
 		hasChildren: children.length > 0,
+		position: siblingPosition(editor, item),
 		boardId,
 		shapeId: item.id,
 	}
+}
+
+function siblingPosition(editor: Editor, item: ItemShape): number {
+	const parent = parentOf(editor, item)
+	return parent ? childrenOf(editor, parent.id).findIndex((c) => c.id === item.id) : 0
 }
 
 function parentOf(editor: Editor, item: ItemShape): ItemShape | null {
@@ -219,18 +239,15 @@ export function watchBoard(editor: Editor, boardId: string): void {
 	if (known === undefined) {
 		const relevant = (shape: TLShape) => isItem(shape) || (shape.type as string) === NOTE_TYPE
 		editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
-			if (isHabit(shape)) reindexHabit(watched.get(editor) ?? boardId, shape)
-			else if (relevant(shape)) reindexShape(editor, watched.get(editor) ?? boardId, shape)
+			if (reindexEntity(watched.get(editor) ?? boardId, shape)) return
+			if (relevant(shape)) reindexShape(editor, watched.get(editor) ?? boardId, shape)
 		})
 		editor.sideEffects.registerAfterChangeHandler('shape', (_prev, next) => {
-			if (isHabit(next)) reindexHabit(watched.get(editor) ?? boardId, next)
-			else if (relevant(next)) reindexShape(editor, watched.get(editor) ?? boardId, next)
+			if (reindexEntity(watched.get(editor) ?? boardId, next)) return
+			if (relevant(next)) reindexShape(editor, watched.get(editor) ?? boardId, next)
 		})
 		editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
-			if (isHabit(shape)) {
-				unindexHabit(watched.get(editor) ?? boardId, shape)
-				return
-			}
+			if (unindexEntity(watched.get(editor) ?? boardId, shape)) return
 			if (!isItem(shape)) {
 				if ((shape.type as string) === NOTE_TYPE) reindexEvidenceOwner(editor, watched.get(editor) ?? boardId, shape)
 				return
@@ -244,7 +261,7 @@ export function watchBoard(editor: Editor, boardId: string): void {
 		sweepOrphans(editor)
 	}
 	rescanBoard(editor, boardId)
-	rescanHabits(editor, boardId)
+	rescanEntities(editor, boardId)
 }
 
 /** A deleted evidence note takes the evidence with it. */
@@ -258,17 +275,69 @@ function reindexEvidenceOwner(editor: Editor, boardId: string, note: TLShape): v
 /** Clears everything, for tests. */
 export function resetSkillIndex(): void {
 	index.set({})
-	habits.set({})
+	habitStore.reset()
+	trackStore.reset()
 }
 
 /**
- * Every habit in the vault, so a skill node on one board can ask about a habit kept on another.
- * The habit's shape is the truth (its hand ticks live in its props); this is a copy, kept and
- * persisted the same way as the item index, under its own vault setting.
+ * A vault-wide copy of one kind of shape (habits, tracks), so a card on one board can read what is
+ * kept on another. The shape stays the truth; this is a copy, refreshed by the same side effects and
+ * rescans as the item index, and persisted by the app under its own vault setting.
  */
-export interface HabitEntry {
+interface Located {
+	boardId: string
+	shapeId: string
+}
+
+function entityStore<T extends Located>(name: string, idOf: (entry: T) => string, parse: (raw: Record<string, unknown>) => T | null) {
+	const store = atom<Readonly<Record<string, T>>>(name, {})
+	let persistStore: ((value: Readonly<Record<string, T>>) => void) | null = null
+	const commitStore = (next: Record<string, T>) => {
+		if (JSON.stringify(next) === JSON.stringify(store.get())) return
+		store.set(next)
+		persistStore?.(next)
+	}
+	return {
+		get: () => store.get(),
+		setPersistence: (listener: ((value: Readonly<Record<string, T>>) => void) | null) => {
+			persistStore = listener
+		},
+		replace(raw: unknown) {
+			if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
+			const next: Record<string, T> = {}
+			for (const value of Object.values(raw as Record<string, unknown>)) {
+				if (!value || typeof value !== 'object') continue
+				const entry = parse(value as Record<string, unknown>)
+				if (entry && idOf(entry) && entry.boardId) next[idOf(entry)] = entry
+			}
+			store.set(next)
+		},
+		upsert(entry: T) {
+			if (idOf(entry)) commitStore({ ...store.get(), [idOf(entry)]: entry })
+		},
+		remove(boardId: string, shapeId: string, id: string) {
+			const existing = store.get()[id]
+			if (!existing || existing.boardId !== boardId || existing.shapeId !== shapeId) return
+			const next = { ...store.get() }
+			delete next[id]
+			commitStore(next)
+		},
+		rescan(boardId: string, entries: readonly T[]) {
+			const next: Record<string, T> = {}
+			for (const [id, entry] of Object.entries(store.get())) if (entry.boardId !== boardId) next[id] = entry
+			for (const entry of entries) if (idOf(entry)) next[idOf(entry)] = entry
+			commitStore(next)
+		},
+		reset: () => store.set({}),
+	}
+}
+
+const str = (raw: Record<string, unknown>, key: string) => (typeof raw[key] === 'string' ? (raw[key] as string) : '')
+
+export interface HabitEntry extends Located {
 	habitId: string
 	name: string
+	goal: string
 	period: string
 	target: number
 	counts: string
@@ -276,89 +345,80 @@ export interface HabitEntry {
 	startedAt: string
 	log: string
 	state: string
-	boardId: string
-	shapeId: string
 }
 
 export type HabitIndex = Readonly<Record<string, HabitEntry>>
 
-const habits = atom<HabitIndex>('lifeboard:skill-habits', {})
-let persistHabits: ((value: HabitIndex) => void) | null = null
+const habitStore = entityStore<HabitEntry>('lifeboard:skill-habits', (e) => e.habitId, (raw) => ({
+	habitId: str(raw, 'habitId'),
+	name: str(raw, 'name'),
+	goal: str(raw, 'goal'),
+	period: str(raw, 'period') || 'week',
+	target: typeof raw.target === 'number' ? raw.target : 1,
+	counts: str(raw, 'counts'),
+	startedBy: str(raw, 'startedBy'),
+	startedAt: str(raw, 'startedAt'),
+	log: str(raw, 'log'),
+	state: str(raw, 'state') || 'active',
+	boardId: str(raw, 'boardId'),
+	shapeId: str(raw, 'shapeId'),
+}))
 
-export function getHabitIndex(): HabitIndex {
-	return habits.get()
-}
-
-export function setHabitIndexPersistence(listener: ((value: HabitIndex) => void) | null): void {
-	persistHabits = listener
-}
-
-export function replaceHabitIndex(raw: unknown): void {
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
-	const next: Record<string, HabitEntry> = {}
-	for (const value of Object.values(raw as Record<string, unknown>)) {
-		if (!value || typeof value !== 'object') continue
-		const v = value as Record<string, unknown>
-		const str = (key: string) => (typeof v[key] === 'string' ? (v[key] as string) : '')
-		if (!str('habitId') || !str('boardId')) continue
-		next[str('habitId')] = {
-			habitId: str('habitId'),
-			name: str('name'),
-			period: str('period') || 'week',
-			target: typeof v.target === 'number' ? v.target : 1,
-			counts: str('counts'),
-			startedBy: str('startedBy'),
-			startedAt: str('startedAt'),
-			log: str('log'),
-			state: str('state') || 'active',
-			boardId: str('boardId'),
-			shapeId: str('shapeId'),
-		}
-	}
-	habits.set(next)
-}
-
-function commitHabits(next: Record<string, HabitEntry>): void {
-	if (JSON.stringify(next) === JSON.stringify(habits.get())) return
-	habits.set(next)
-	persistHabits?.(next)
-}
+export const getHabitIndex = (): HabitIndex => habitStore.get()
+export const setHabitIndexPersistence = habitStore.setPersistence
+export const replaceHabitIndex = habitStore.replace
 
 function habitEntryFor(boardId: string, habit: HabitShape): HabitEntry {
-	const p = habit.props
-	return {
-		habitId: p.habitId,
-		name: p.name,
-		period: p.period,
-		target: p.target,
-		counts: p.counts,
-		startedBy: p.startedBy,
-		startedAt: p.startedAt,
-		log: p.log,
-		state: p.state,
-		boardId,
-		shapeId: habit.id,
-	}
+	const { habitId, name, goal, period, target, counts, startedBy, startedAt, log, state } = habit.props
+	return { habitId, name, goal, period, target, counts, startedBy, startedAt, log, state, boardId, shapeId: habit.id }
 }
 
-function reindexHabit(boardId: string, habit: HabitShape): void {
-	if (!habit.props.habitId) return
-	commitHabits({ ...habits.get(), [habit.props.habitId]: habitEntryFor(boardId, habit) })
+export interface TrackEntry extends Located {
+	trackId: string
+	name: string
+	goal: string
+	state: string
+	order: string[]
 }
 
-function unindexHabit(boardId: string, habit: HabitShape): void {
-	const existing = habits.get()[habit.props.habitId]
-	if (!existing || existing.boardId !== boardId || existing.shapeId !== habit.id) return
-	const next = { ...habits.get() }
-	delete next[habit.props.habitId]
-	commitHabits(next)
+export type TrackIndex = Readonly<Record<string, TrackEntry>>
+
+const trackStore = entityStore<TrackEntry>('lifeboard:skill-tracks', (e) => e.trackId, (raw) => ({
+	trackId: str(raw, 'trackId'),
+	name: str(raw, 'name'),
+	goal: str(raw, 'goal'),
+	state: str(raw, 'state') || 'notStarted',
+	order: Array.isArray(raw.order) ? raw.order.filter((id): id is string => typeof id === 'string') : [],
+	boardId: str(raw, 'boardId'),
+	shapeId: str(raw, 'shapeId'),
+}))
+
+export const getTrackIndex = (): TrackIndex => trackStore.get()
+export const setTrackIndexPersistence = trackStore.setPersistence
+export const replaceTrackIndex = trackStore.replace
+
+function trackEntryFor(boardId: string, track: TrackShape): TrackEntry {
+	const { trackId, name, goal, state, order } = track.props
+	return { trackId, name, goal, state, order: parseOrder(order), boardId, shapeId: track.id }
 }
 
-function rescanHabits(editor: Editor, boardId: string): void {
-	const next: Record<string, HabitEntry> = {}
-	for (const [id, entry] of Object.entries(habits.get())) if (entry.boardId !== boardId) next[id] = entry
-	for (const shape of editor.getCurrentPageShapes()) {
-		if (isHabit(shape) && shape.props.habitId) next[shape.props.habitId] = habitEntryFor(boardId, shape)
-	}
-	commitHabits(next)
+/** Indexes a habit or track shape that changed. False for any other shape. */
+function reindexEntity(boardId: string, shape: TLShape): boolean {
+	if (isHabit(shape)) habitStore.upsert(habitEntryFor(boardId, shape))
+	else if (isTrack(shape)) trackStore.upsert(trackEntryFor(boardId, shape))
+	else return false
+	return true
+}
+
+function unindexEntity(boardId: string, shape: TLShape): boolean {
+	if (isHabit(shape)) habitStore.remove(boardId, shape.id, shape.props.habitId)
+	else if (isTrack(shape)) trackStore.remove(boardId, shape.id, shape.props.trackId)
+	else return false
+	return true
+}
+
+function rescanEntities(editor: Editor, boardId: string): void {
+	const shapes = editor.getCurrentPageShapes()
+	habitStore.rescan(boardId, shapes.filter(isHabit).map((h) => habitEntryFor(boardId, h)))
+	trackStore.rescan(boardId, shapes.filter(isTrack).map((t) => trackEntryFor(boardId, t)))
 }

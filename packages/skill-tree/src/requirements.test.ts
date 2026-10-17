@@ -16,6 +16,7 @@ function entry(itemId: string, tags: string[], over: Partial<IndexEntry> = {}): 
 		core: false,
 		parentItemId: '',
 		hasChildren: false,
+		position: 0,
 		boardId: 'board:a',
 		shapeId: `shape:${itemId}`,
 		...over,

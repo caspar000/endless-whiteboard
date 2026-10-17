@@ -1,5 +1,5 @@
 import type { NodeBaseProps } from '@lifeboard/node-kit'
-import type { HabitProps, SkillItemProps, SkillNodeProps, SkillTreeProps, TrackProps } from './board'
+import type { HabitProps, SkillItemProps, SkillNodeProps, SkillTreeProps, TrackProps, UpNextProps } from './board'
 
 /**
  * Registers the syllabus node types with tldraw's closed `TLShape` union, the same pattern every
@@ -12,5 +12,6 @@ declare module '@tldraw/tlschema' {
 		'node.skill': SkillNodeProps & NodeBaseProps
 		'node.skillTree': SkillTreeProps & NodeBaseProps
 		'node.habit': HabitProps & NodeBaseProps
+		'node.upNext': UpNextProps & NodeBaseProps
 	}
 }

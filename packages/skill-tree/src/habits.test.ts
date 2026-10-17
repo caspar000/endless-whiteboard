@@ -17,6 +17,7 @@ function entry(itemId: string, doneAt: string, over: Partial<IndexEntry> = {}): 
 		core: false,
 		parentItemId: '',
 		hasChildren: false,
+		position: 0,
 		boardId: 'b',
 		shapeId: `shape:${itemId}`,
 		...over,
@@ -108,6 +109,7 @@ describe('habit conditions on skill nodes', () => {
 		const habit: HabitEntry = {
 			habitId: 'films',
 			name: 'Film week',
+			goal: '',
 			period: 'week',
 			target: 1,
 			counts: 'medium: film',

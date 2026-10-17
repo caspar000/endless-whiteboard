@@ -2,6 +2,7 @@ import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
 import { isHiddenByCollapse, isItem, ITEM_TYPE } from './board'
 import { habitNodeDefinition } from './habit/definition'
+import { upNextNodeDefinition } from './upnext/definition'
 import { skillTreeCommands } from './commands'
 import { itemNodeDefinition } from './item/definition'
 import { skillNodeDefinition } from './skill/definition'
@@ -25,6 +26,7 @@ export const skillTreeExtension: Extension = {
 		'A track is an ordered list of items. The next undone item is highlighted, and ticking a unit\'s row ticks its next step. Order is a guide, not a gate: anything can be ticked at any time.',
 		'A skill tree is a constellation of skill nodes. Each node says what it requires: other nodes unlocked first, a particular item done, or some number of written-up items tagged to it. Tag an item with a node id and its evidence counts there, from any board. A node is locked until its prerequisites are, in reach once they are, and lit when its requirement is met; after that, more evidence fills its ring toward Bronze, Silver and Gold.',
 		'A habit is a target per day, week or month: tick it by hand, or let it count written-up items that match a filter, such as one film sheet a week. It can wait until a syllabus item is done before it starts. A missed period is just a hollow dot, and a skill node can require a habit: so many in total, in a row, or on target.',
+		'Up next is the card to work from: the next step of every active track, the habits not yet met this period, and twelve weeks of the days you did something. Tick in place what is on this board; anything else opens its board and goes to it.',
 		'Kind, Medium, Done and Done at are ordinary properties, so tables, the kanban and the calendar work on items as they are. A calendar over Done at is your log.',
 		'Turning this off hides its tools and commands. Items and tracks already on your boards keep rendering.',
 	],
@@ -37,6 +39,7 @@ export const skillTreeExtension: Extension = {
 		defineNode(skillNodeDefinition),
 		defineNode(treeNodeDefinition),
 		defineNode(habitNodeDefinition),
+		defineNode(upNextNodeDefinition),
 	],
 	commands: skillTreeCommands,
 	hooks: {

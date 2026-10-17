@@ -1,7 +1,23 @@
 # Skill trees and syllabi: implementation plan
 
-Agreed 2026-10-17. Status: **Steps 1 to 3 are built** and checked on a running board; steps 4 to 6
+Agreed 2026-10-17. Status: **Steps 1 to 4 are built** and checked on a running board; steps 5 and 6
 and Phase B remain. The "as built" notes below say where the build diverged from the plan and why.
+
+### Step 4, as built
+
+- **`node.upNext`** lists the next undone step of every active track (depth first into units, in
+  the steps' order), then the habits not yet met this period, then a twelve-week heatmap of days
+  with completions. A goal filter narrows it to one goal's tracks and habits.
+- **It reads the vault, not the board.** Tracks joined the index (vault setting `skillTracks`), and
+  items record their place among their siblings (`position`) so a unit's next step is known without
+  opening its board. The habit and track copies share one small store (`entityStore`).
+- **Rows tick in place** when the step is on this board; otherwise they say "on another board", and
+  clicking any row opens its board through node-kit's `BoardBridge` and selects the item. A habit
+  ticked by hand has a + on the card when it lives on this board.
+- **The full log** is a calendar view over `Done at` (Tables & views picks the date property by
+  itself); the heatmap is the cross-board summary. No separate log shape was needed.
+- **Not yet:** habits on another board can't be ticked from the card; the first row is highlighted
+  as "the one to do", which is only the first track's step.
 
 ### Step 3, as built
 

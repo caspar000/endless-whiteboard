@@ -123,6 +123,19 @@ export function Syllabus({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Up next">
+				<p>
+					<strong>Up next</strong> is the card to work from. Put one on any board: it lists the next step
+					of every active track (inside a unit, the next undone step), then the habits not yet met this
+					period, then twelve weeks of the days you did something. Tick a step right there if it is on this
+					board; click any row to go to it, opening its board if it lives on another. Double-click the card
+					to show only one goal.
+				</p>
+				<p className="lb-help__aside">
+					For the whole history, add a table, switch it to a calendar and let it group by Done at.
+				</p>
+			</Section>
+
 			<Section title="Habits">
 				<p>
 					A <strong>habit</strong> is a target per day, week or month. Tick it with + and −, or give it a

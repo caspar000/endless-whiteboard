@@ -1,10 +1,13 @@
 import {
 	getHabitIndex,
 	getSkillIndex,
+	getTrackIndex,
 	replaceHabitIndex,
 	replaceSkillIndex,
+	replaceTrackIndex,
 	setHabitIndexPersistence,
 	setSkillIndexPersistence,
+	setTrackIndexPersistence,
 } from '@lifeboard/skill-tree'
 import { pushVaultSetting } from '../server/serverVault'
 
@@ -19,10 +22,11 @@ import { pushVaultSetting } from '../server/serverVault'
  */
 const WAIT_MS = 1000
 
-/** The two indexes, items and habits, persisted the same way under their own keys. */
+/** The three indexes, items, habits and tracks, persisted the same way under their own keys. */
 const STORES = [
 	{ key: 'skillIndex', cacheKey: 'lifeboard:skillIndex', get: getSkillIndex, replace: replaceSkillIndex, listen: setSkillIndexPersistence },
 	{ key: 'skillHabits', cacheKey: 'lifeboard:skillHabits', get: getHabitIndex, replace: replaceHabitIndex, listen: setHabitIndexPersistence },
+	{ key: 'skillTracks', cacheKey: 'lifeboard:skillTracks', get: getTrackIndex, replace: replaceTrackIndex, listen: setTrackIndexPersistence },
 ] as const
 
 export function loadSkillIndex(): void {
@@ -55,7 +59,7 @@ function cache(key: string, value: unknown): void {
 }
 
 /** The server vault's indexes win; this device's are what seed a vault that has none. */
-export function applyRemoteSkillIndex(remote: { skillIndex?: unknown; skillHabits?: unknown }): void {
+export function applyRemoteSkillIndex(remote: { skillIndex?: unknown; skillHabits?: unknown; skillTracks?: unknown }): void {
 	for (const store of STORES) {
 		const value = remote[store.key]
 		if (value === undefined) {

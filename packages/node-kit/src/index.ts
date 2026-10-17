@@ -473,7 +473,9 @@ export {
 export {
 	addElement,
 	addRow,
+	applyLayoutToMatching,
 	layoutsMatch,
+	matchingCards,
 	moveElement,
 	moveRow,
 	removeElement,

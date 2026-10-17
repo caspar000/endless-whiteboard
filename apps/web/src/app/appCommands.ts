@@ -4,10 +4,12 @@ import {
 	RELATION_VIEW_NOTES,
 	cycleRelationView,
 	isHiddenRelation,
+	applyLayoutToMatching,
 	copyLayout,
 	getCopiedLayout,
 	isRelation,
 	layoutsMatch,
+	matchingCards,
 	readPropertyLayout,
 	setPropertyLayouts,
 	registerCommand,
@@ -560,6 +562,24 @@ registerCommand({
 	run: (ctx) => {
 		const copied = getCopiedLayout()
 		if (ctx.editor && copied !== undefined) setPropertyLayouts(ctx.editor, ctx.editor.getSelectedShapes(), copied)
+	},
+})
+
+/**
+ * Copies the selected card's layout onto every card on the board with exactly the same properties,
+ * the same copy-not-link rule as paste.
+ */
+registerCommand({
+	id: 'shape.card-layout.matching',
+	title: 'Apply the card layout to matching cards',
+	group: CANVAS_GROUP,
+	when: (ctx) => {
+		const shape = onlySelected(ctx)
+		return !!shape && !!ctx.editor && matchingCards(shape, ctx.editor.getCurrentPageShapes()).length > 0
+	},
+	run: (ctx) => {
+		const shape = onlySelected(ctx)
+		if (shape && ctx.editor) applyLayoutToMatching(ctx.editor, shape)
 	},
 })
 

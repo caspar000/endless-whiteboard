@@ -4,6 +4,7 @@ import {
 	addElement,
 	addRow,
 	layoutsMatch,
+	matchingCards,
 	moveElement,
 	moveRow,
 	removeElement,
@@ -60,5 +61,22 @@ describe('several shapes', () => {
 		expect(layoutsMatch([meta(null), meta(null)])).toBe(true)
 		expect(layoutsMatch([meta(base), meta(null)])).toBe(false)
 		expect(layoutsMatch([meta(base), meta(addRow(base))])).toBe(false)
+	})
+
+	it('match for "Apply to matching" on exactly the same properties, values aside', () => {
+		const card = (id: string, props: Record<string, string>, layout: PropertyLayout | null = null) => ({
+			id,
+			meta: { 'lifeboard:props': props, ...(layout && { 'lifeboard:propLayout': layout as never }) },
+		})
+		const source = card('a', { price: '1', shop: 'x' }, base)
+		const pool = [
+			source,
+			card('same', { shop: 'y', price: '2' }),
+			card('fewer', { price: '3' }),
+			card('more', { price: '4', shop: 'z', note: 'n' }),
+			card('done', { price: '5', shop: 'w' }, base),
+		]
+		expect(matchingCards(source, pool).map((c) => c.id)).toEqual(['same'])
+		expect(matchingCards(card('bare', {}), [card('other', {})])).toEqual([])
 	})
 })

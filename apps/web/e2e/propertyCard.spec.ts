@@ -321,6 +321,42 @@ test.describe('reusing layouts', () => {
 		expect(stored).toContain('Event card')
 	})
 
+	test('applies a card’s layout to the cards with exactly the same properties', async ({ page }) => {
+		const cards = await pricedNote(page, 2)
+		await giveFirstCardALayout(page)
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(1)
+		await page.keyboard.press('Escape')
+		// A third note carries one property more, so it doesn't match.
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			editor.createShapes([
+				{
+					type: 'node.markdown',
+					x: 200,
+					y: 500,
+					props: { md: 'Note 3', w: 300 },
+					meta: { 'lifeboard:props': { type: 'EVENT', price: 420, description: null, extra: 'x' } },
+				},
+			])
+		})
+
+		// Store and DOM order both shift as shapes are added, so find the card with the layout itself.
+		const at = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle }).editor
+			const shape = editor.getCurrentPageShapes().find((s) => s.meta['lifeboard:propLayout'])!
+			const b = editor.getShapePageBounds(shape.id)!
+			return editor.pageToScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+		})
+		await page.mouse.click(at.x, at.y, { button: 'right' })
+		await page.getByRole('menuitem', { name: 'Edit card layout…' }).click()
+		const display = page.locator('.lb-props')
+		await display.getByRole('button', { name: 'Apply to 1 matching card' }).click()
+		await expect(cards.locator('.lb-el--xl')).toHaveCount(2)
+		await expect(cards).toHaveCount(3)
+		// Everything matching now looks the same, so the button goes.
+		await expect(display.getByRole('button', { name: /matching/ })).toHaveCount(0)
+	})
+
 	test('copies a card’s layout and pastes it onto another', async ({ page }) => {
 		const cards = await pricedNote(page, 2)
 		await giveFirstCardALayout(page)

@@ -84,6 +84,9 @@ Stop and report after each. Phase 1 done 2026-10-14 (d682a67). Phase 2 done 2026
 - The library is the vault setting `cardLayouts` (`[{ name, layout }]`), cached in localStorage like
   saved queries; the Display tab lists it with Apply and delete, and saves the current card's layout.
 - Copy and paste layout are ⌘K commands and right-click items. The clipboard lives for the session.
+- "Apply to matching" (added 2026-10-17; Display tab, right-click, ⌘K) copies one card's layout onto
+  every card on the board with exactly the same set of property ids. It is a button rather than
+  automatic syncing, so layouts stay per node.
 - Agents get `property.layout` (YAML, `null` for automatic, plus the automatic layout written out)
   and `property.set-layout` (YAML onto one or more shapes; errors with lines, nothing written).
 - Help's sample cards draw node-kit's own `AutoDisplay` under each shape, and the Properties page

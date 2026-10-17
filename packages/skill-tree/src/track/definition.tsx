@@ -1,16 +1,18 @@
-import { createShapePropsMigrationSequence, type NodeDefinition } from '@lifeboard/node-kit'
+import { createShapePropsMigrationIds, createShapePropsMigrationSequence, type NodeDefinition } from '@lifeboard/node-kit'
 import { T } from '@lifeboard/canvas'
 import { ListOrdered } from 'lucide-react'
 import { TRACK_TYPE, type TrackProps } from '../board'
-import { makeItemId } from '../model'
+import { TRACK_HEIGHT, TRACK_WIDTH } from '../ops'
+import { getTrack } from '../syllabus'
 import { TrackComponent } from './TrackComponent'
 
-export const TRACK_WIDTH = 360
-const TRACK_MIN_HEIGHT = 120
+export { TRACK_WIDTH } from '../ops'
+
+const versions = createShapePropsMigrationIds(TRACK_TYPE, { VaultTracks: 1 })
 
 /**
- * An ordered syllabus: the items to go through, in order, with the next one lit
- * (docs/skill-tree-plan.md, "Tracks"). The track owns the order, so one item can sit in two tracks.
+ * A list: one vault track as a full outline, in reading order (docs/skill-tree-plan.md, "Tracks").
+ * Its height is yours to set; double-click to scroll inside it.
  */
 export const trackNodeDefinition: NodeDefinition<TrackProps> = {
 	type: TRACK_TYPE,
@@ -19,28 +21,24 @@ export const trackNodeDefinition: NodeDefinition<TrackProps> = {
 	toolbarIcon: ListOrdered,
 	props: {
 		trackId: T.string,
-		name: T.string,
-		goal: T.string,
-		state: T.string,
-		order: T.string,
-		defaultTags: T.string,
-		autoHeight: T.boolean,
+		open: T.string,
 	},
-	// Empty for now; the sequence exists from day one so the first migration is a one-line change.
-	migrations: createShapePropsMigrationSequence({ sequence: [] }),
-	defaultProps: () => ({
-		trackId: '',
-		name: 'New track',
-		goal: '',
-		state: 'notStarted',
-		order: '',
-		defaultTags: '',
-		autoHeight: true,
+	migrations: createShapePropsMigrationSequence({
+		sequence: [
+			{
+				// Tracks moved into the vault: a list keeps only which track it shows, and how it is folded.
+				id: versions.VaultTracks,
+				up(props) {
+					for (const key of ['name', 'goal', 'state', 'order', 'defaultTags', 'autoHeight']) delete props[key]
+					props.open = ''
+				},
+			},
+		],
 	}),
-	onCreate: ({ shape }) => (shape.props.trackId ? null : { trackId: makeItemId(shape.props.name || 'track', 'track/') }),
-	defaultSize: { w: TRACK_WIDTH, h: TRACK_MIN_HEIGHT },
-	autoHeight: { minHeight: TRACK_MIN_HEIGHT },
+	defaultProps: () => ({ trackId: '', open: '' }),
+	defaultSize: { w: TRACK_WIDTH, h: TRACK_HEIGHT },
 	component: TrackComponent,
 	canEdit: true,
-	getLabel: (shape) => shape.props.name || undefined,
+	canScroll: true,
+	getLabel: (shape) => getTrack(shape.props.trackId)?.name || undefined,
 }

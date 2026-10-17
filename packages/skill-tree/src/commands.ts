@@ -1,8 +1,8 @@
-import type { Command, CommandContext } from '@lifeboard/node-kit'
+import type { Command } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
-import { childrenOf, isItem, isSkill, isTrack, MASTERY, type ItemShape, type SkillShape } from './board'
-import { addSelectionToTrack, arrangeChildren, setCollapsed, toggleItemDone, trackFromSelection } from './ops'
-import { insertAdlerSample } from './sample'
+import { isItem, isSkill, MASTERY, type SkillShape } from './board'
+import { tick } from './ops'
+import { getItem } from './syllabus'
 import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId } from './tree/ops'
 import { insertMasteryDemo } from './tree/masteryDemo'
 import { insertAdlerTree } from './tree/sample'
@@ -15,16 +15,8 @@ import { insertAdlerTree } from './tree/sample'
  */
 const GROUP = 'Syllabus'
 
-const selectedItems = (editor: Editor): ItemShape[] => editor.getSelectedShapes().filter(isItem)
-const oneItem = (ctx: CommandContext): ItemShape | null => {
-	if (!ctx.editor) return null
-	const items = selectedItems(ctx.editor)
-	return items.length === 1 && ctx.editor.getSelectedShapeIds().length === 1 ? (items[0] ?? null) : null
-}
-const hasChildren = (ctx: CommandContext) => {
-	const item = oneItem(ctx)
-	return !!item && !!ctx.editor && childrenOf(ctx.editor, item.id).length > 0
-}
+/** The vault items behind the selected cards. */
+const selectedCards = (editor: Editor): string[] => editor.getSelectedShapes().filter(isItem).map((card) => card.props.itemId)
 
 /** The one skill node selected, other than a Mastery node (whose branch is the whole board). */
 function selectedNode(editor: Editor): SkillShape | null {
@@ -38,52 +30,13 @@ export const skillTreeCommands: readonly Command[] = [
 		id: 'skill-tree.complete',
 		title: 'Complete or reopen item',
 		group: GROUP,
-		when: (ctx) =>
-			!!ctx.editor && selectedItems(ctx.editor).some((item) => childrenOf(ctx.editor!, item.id).length === 0),
+		when: (ctx) => !!ctx.editor && selectedCards(ctx.editor).some((id) => getItem(id)?.children.length === 0),
 		run: ({ editor }) => {
 			if (!editor) return
-			for (const item of selectedItems(editor)) toggleItemDone(editor, item.id)
-		},
-	},
-	{
-		id: 'skill-tree.toggle-children',
-		title: 'Collapse or expand children',
-		group: GROUP,
-		when: hasChildren,
-		run: (ctx) => {
-			const item = oneItem(ctx)
-			if (item && ctx.editor) setCollapsed(ctx.editor, item.id, !item.props.collapsed)
-		},
-	},
-	{
-		id: 'skill-tree.arrange-children',
-		title: 'Arrange children',
-		group: GROUP,
-		when: hasChildren,
-		run: (ctx) => {
-			const item = oneItem(ctx)
-			if (item && ctx.editor) arrangeChildren(ctx.editor, item.id)
-		},
-	},
-	{
-		id: 'skill-tree.track-from-selection',
-		title: 'Make a track from selected items',
-		group: GROUP,
-		when: (ctx) => !!ctx.editor && selectedItems(ctx.editor).some((item) => !item.props.parentId),
-		run: ({ editor }) => {
-			if (editor) trackFromSelection(editor)
-		},
-	},
-	{
-		id: 'skill-tree.add-to-track',
-		title: 'Add selection to track',
-		group: GROUP,
-		when: (ctx) =>
-			!!ctx.editor &&
-			ctx.editor.getSelectedShapes().filter(isTrack).length === 1 &&
-			selectedItems(ctx.editor).some((item) => !item.props.parentId),
-		run: ({ editor }) => {
-			if (editor) addSelectionToTrack(editor)
+			for (const card of editor.getSelectedShapes().filter(isItem)) {
+				const item = getItem(card.props.itemId)
+				if (item && !item.children.length) tick(editor, item.itemId, !item.done, card.id)
+			}
 		},
 	},
 	{
@@ -157,18 +110,6 @@ export const skillTreeCommands: readonly Command[] = [
 			if (!editor) return
 			const { center } = editor.getViewportPageBounds()
 			const id = insertAdlerTree(editor, { x: center.x, y: center.y })
-			editor.setSelectedShapes([id])
-		},
-	},
-	{
-		id: 'skill-tree.insert-adler-sample',
-		title: "Insert Adler's reading list (sample)",
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: ({ editor }) => {
-			if (!editor) return
-			const { center } = editor.getViewportPageBounds()
-			const id = insertAdlerSample(editor, { x: center.x - 400, y: center.y - 300 })
 			editor.setSelectedShapes([id])
 		},
 	},

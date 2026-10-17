@@ -1,15 +1,18 @@
 import {
+	getEvidence,
 	getHabitIndex,
-	getSkillIndex,
-	getTrackIndex,
+	getItems,
+	getTracks,
 	getTreeDefs,
+	replaceEvidence,
 	replaceHabitIndex,
-	replaceSkillIndex,
-	replaceTrackIndex,
+	replaceItems,
+	replaceTracks,
 	replaceTreeDefs,
+	setEvidencePersistence,
 	setHabitIndexPersistence,
-	setSkillIndexPersistence,
-	setTrackIndexPersistence,
+	setItemsPersistence,
+	setTracksPersistence,
 	setTreeDefsPersistence,
 } from '@lifeboard/skill-tree'
 import { pushVaultSetting } from '../server/serverVault'
@@ -26,14 +29,15 @@ import { pushVaultSetting } from '../server/serverVault'
 const WAIT_MS = 1000
 
 /**
- * The three indexes (items, habits, tracks) and the tree definitions, persisted the same way under
- * their own keys. The indexes are copies of boards; the trees are the only copy, so they are what
- * a server backup must not lose.
+ * The syllabus's vault data, persisted the same way under their own keys: the items and tracks and
+ * the tree definitions are the only copy (a server backup must keep them); the write-up and habit
+ * copies are rebuilt by any board that opens.
  */
 const STORES = [
-	{ key: 'skillIndex', cacheKey: 'lifeboard:skillIndex', get: getSkillIndex, replace: replaceSkillIndex, listen: setSkillIndexPersistence },
+	{ key: 'syllabusItems', cacheKey: 'lifeboard:syllabusItems', get: getItems, replace: replaceItems, listen: setItemsPersistence },
+	{ key: 'syllabusTracks', cacheKey: 'lifeboard:syllabusTracks', get: getTracks, replace: replaceTracks, listen: setTracksPersistence },
+	{ key: 'syllabusEvidence', cacheKey: 'lifeboard:syllabusEvidence', get: getEvidence, replace: replaceEvidence, listen: setEvidencePersistence },
 	{ key: 'skillHabits', cacheKey: 'lifeboard:skillHabits', get: getHabitIndex, replace: replaceHabitIndex, listen: setHabitIndexPersistence },
-	{ key: 'skillTracks', cacheKey: 'lifeboard:skillTracks', get: getTrackIndex, replace: replaceTrackIndex, listen: setTrackIndexPersistence },
 	{ key: 'skillTrees', cacheKey: 'lifeboard:skillTrees', get: getTreeDefs, replace: replaceTreeDefs, listen: setTreeDefsPersistence },
 ] as const
 
@@ -67,7 +71,7 @@ function cache(key: string, value: unknown): void {
 }
 
 /** The server vault's indexes win; this device's are what seed a vault that has none. */
-export function applyRemoteSkillIndex(remote: { skillIndex?: unknown; skillHabits?: unknown; skillTracks?: unknown; skillTrees?: unknown }): void {
+export function applyRemoteSkillIndex(remote: Partial<Record<(typeof STORES)[number]['key'], unknown>>): void {
 	for (const store of STORES) {
 		const value = remote[store.key]
 		if (value === undefined) {

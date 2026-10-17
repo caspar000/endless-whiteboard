@@ -1,4 +1,4 @@
-import { Jump, Section, type SectionProps } from '../kit'
+import { Section, type SectionProps } from '../kit'
 
 /**
  * A collapsed parent with its checklist, and a track with its next row lit.
@@ -80,61 +80,54 @@ function SyllabusDemo() {
 	)
 }
 
-export function Syllabus({ go }: SectionProps) {
+export function Syllabus(_props: SectionProps) {
 	return (
 		<>
-			<Section title="Items you tick off">
+			<Section title="One syllabus, many views">
 				<p>
-					A <strong>syllabus item</strong> is one thing to do: read a book, watch a film, build an
-					exercise. Tick it and it records the day, and a note appears beside it, started from a template
-					for its medium. A book gets Adler's four questions, a film the study sheet, a game the five
-					passes. Write in the note and the tick counts as evidence. A tick whose note is still only the
-					template shows hollow: done, but not written up.
+					A syllabus lives in your vault, not on a board: its <strong>entries</strong> (read Homer), their{' '}
+					<strong>works</strong> (the Iliad, the Odyssey), and the <strong>tracks</strong> that put them in
+					order. A board shows it in whichever views you put there: the skill tree, a list, Up next, or a
+					card for one entry. Every view reads and writes the same syllabus, so a tick in the list is a tick
+					in the tree, and on every other board.
 				</p>
 				<p>
-					Kind, Medium, Done and Done at are ordinary <Jump to="properties" go={go}>properties</Jump>, so a{' '}
-					<Jump to="tables" go={go}>calendar</Jump> over Done at is your log, and a table can count what you
-					have finished by kind.
+					Tick a work and it records the day, and a <strong>write-up note</strong> appears beside whatever
+					you ticked from, started from a template for its medium: Adler's four questions for a book, the
+					study sheet for a film, the five passes for a game. Write in the note and the tick counts as
+					evidence. A tick whose note is still only the template shows hollow: done, but not written up.
 				</p>
 			</Section>
 
-			<Section title="Items inside items">
+			<Section title="Entries and their works">
 				<SyllabusDemo />
 				<p>
-					An item can hold children: Plato and his dialogues, or a unit and its steps. Add them from the
-					item's editor (double-click it). A parent is done when its <strong>core</strong> children are, or
-					all of them, or some number of them, and you can't tick it by hand. Collapse a parent with its
-					arrow to hide the children and tick them from the card's checklist instead.
+					An entry holds its works: Plato and his dialogues, or a unit and its steps. An entry is done when
+					its <strong>core</strong> works are, or all of them, or some number of them, and you don't tick it
+					by hand. Add works from the entry's editor (double-click its card).
 				</p>
 			</Section>
 
-			<Section title="Tracks: the order to go in">
+			<Section title="The list">
 				<p>
-					A <strong>track</strong> is an ordered list of items. Select some items, then{' '}
-					<code>Make a track from selected items</code> in the command palette, or select a track and
-					more items and use <code>Add selection to track</code>. The next undone item is lit. On a
-					parent's row the tick finishes its next step, so a unit can be worked through from the track
-					without opening it. Click a title to go to the item.
+					<code>Show a track as a list</code> puts a track on the board as a full outline in reading order.
+					Every entry folds and unfolds to its works and shows its progress, and the next undone entry is
+					lit. On an entry's row the tick finishes its next work, so an entry can be worked through without
+					unfolding it. Drag the card's edge to make it taller; double-click it to scroll inside.
 				</p>
 				<p className="lb-help__aside">
-					Order is a guide, not a gate: anything can be ticked at any time. Double-click a track to rename
-					it, give it a goal and reorder it. <code>Insert Adler's reading list (sample)</code> puts the
-					first fifteen entries of Adler's list on the board to try it with, and{' '}
-					<code>Import Adler's full reading list (137 entries)</code> brings in all of it, with a tree of
-					fields by era, as a draft.
+					Order is a guide, not a gate: anything can be ticked at any time. Click a track's state to make it
+					active, paused or not started. The arrow at the end of a row puts a card for that entry on the
+					board, its works as a checklist; deleting a card deletes nothing.
 				</p>
 			</Section>
 
 			<Section title="Up next">
 				<p>
 					<strong>Up next</strong> is the card to work from. Put one on any board: it lists the next step
-					of every active track (inside a unit, the next undone step), then the habits not yet met this
-					period, then twelve weeks of the days you did something. Tick a step right there if it is on this
-					board; click any row to go to it, opening its board if it lives on another. Double-click the card
-					to show only one goal.
-				</p>
-				<p className="lb-help__aside">
-					For the whole history, add a table, switch it to a calendar and let it group by Done at.
+					of every active track (inside an entry, the next undone work), then the habits not yet met this
+					period, then twelve weeks of the days you did something. Tick a step right there. Double-click the
+					card to show only one goal.
 				</p>
 			</Section>
 
@@ -212,20 +205,23 @@ export function Syllabus({ go }: SectionProps) {
 
 			<Section title="Syllabi as YAML">
 				<p>
-					A whole syllabus, its tracks, items, tree and habits, can be written as one YAML document and
+					A whole syllabus, its tracks, entries, tree and habits, can be written as one YAML document and
 					brought in with <code>Import syllabus YAML from the clipboard</code>, or by dropping a{' '}
 					<code>.yaml</code> file on the board. The agent can write one for you from a pasted list or a
-					chart. An import arrives as a <strong>draft</strong>: dashed, selected, and counting toward
+					chart. The entries go into your vault and the board gets the skill tree; add a list or Up next
+					when you want them. An import arrives as a <strong>draft</strong>: dashed, and counting toward
 					nothing until you run <code>Confirm draft</code>. <code>Discard draft</code> removes it.
+					<code>Import Adler's full reading list (137 entries)</code> and{' '}
+					<code>Import /mu/core (1111 recordings)</code> bring in the two built-in syllabi.
 				</p>
 				<p>
 					Write ids short (<code>homer</code>); they get the document's <code>goal</code> as a prefix (
-					<code>adler/homer</code>). Importing an id that is already on the board updates it in place and
+					<code>adler/homer</code>). Importing an id that is already in your vault updates it in place and
 					keeps its ticks and notes, so you can edit a file and import it again. If something in the file is
 					wrong, nothing is imported and a note lists every problem with its place.
 				</p>
 				<p className="lb-help__aside">
-					<code>Copy a syllabus as YAML</code> writes one goal (the selected track's, or the board's first)
+					<code>Copy a syllabus as YAML</code> writes one goal (the selected list's, or the first)
 					with ids in full, which is the easiest way to see the format.
 				</p>
 			</Section>

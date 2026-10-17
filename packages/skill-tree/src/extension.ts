@@ -1,7 +1,6 @@
 import { watchTrees } from './treeSync'
 import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
-import { isHiddenByCollapse, isItem, ITEM_TYPE } from './board'
 import { habitNodeDefinition } from './habit/definition'
 import { upNextNodeDefinition } from './upnext/definition'
 import { skillTreeCommands } from './commands'
@@ -21,16 +20,16 @@ export const skillTreeExtension: Extension = {
 	id: 'lifeboard.skill-tree',
 	name: 'Syllabus & skill trees',
 	description:
-		'Ordered syllabi you tick through. Each finished item files a note from a template beside it, and items can hold children, like Plato and his dialogues.',
+		'Syllabi you work through and skill trees that light up from what you finish. One syllabus in your vault, shown as a tree, a list, Up next or cards.',
 	details: [
-		'A syllabus item is one thing to do: read a book, watch a film, build an exercise. Tick it and it records the day, and a note appears beside it from a template for its medium: Adler\'s four questions for a book, the film study sheet for a film. A tick whose note you never wrote in shows hollow, done but without evidence.',
-		'An item can hold children. A parent is done when its core children are, or all of them, or some number of them, whichever you choose. Collapse a parent to hide its children and tick them from a checklist on the card.',
-		'A track is an ordered list of items. The next undone item is highlighted, and ticking a unit\'s row ticks its next step. Order is a guide, not a gate: anything can be ticked at any time.',
-		'A skill tree is a constellation of skill nodes. Each node says what it requires: other nodes unlocked first, a particular item done, or some number of written-up items tagged to it. Tag an item with a node id and its evidence counts there, from any board. A node is locked until its prerequisites are, in reach once they are, and lit when its requirement is met; after that, more evidence fills its ring toward Bronze, Silver and Gold.',
-		'A habit is a target per day, week or month: tick it by hand, or let it count written-up items that match a filter, such as one film sheet a week. It can wait until a syllabus item is done before it starts. A missed period is just a hollow dot, and a skill node can require a habit: so many in total, in a row, or on target.',
-		'Up next is the card to work from: the next step of every active track, the habits not yet met this period, and twelve weeks of the days you did something. Tick in place what is on this board; anything else opens its board and goes to it.',
-		'Kind, Medium, Done and Done at are ordinary properties, so tables, the kanban and the calendar work on items as they are. A calendar over Done at is your log.',
-		'Turning this off hides its tools and commands. Items and tracks already on your boards keep rendering.',
+		"A syllabus lives in your vault: its entries (read Homer), their works (the Iliad, the Odyssey), and the tracks that put them in order. Every view of it reads and writes the same thing, so a tick in the list is a tick in the tree and on every board.",
+		"Tick a work and it records the day, and a write-up note appears beside what you ticked from, from a template for its medium: Adler's four questions for a book, the film study sheet for a film. A tick whose note you never wrote in shows hollow: done, but not yet evidence.",
+		"An entry is done when its core works are, or all of them, or some number of them, whichever you choose.",
+		"A list shows a track in reading order. Every entry folds and unfolds to its works and shows its progress, and the next undone entry is lit. Double-click a list to scroll it. The arrow on a row puts a card for that entry on the board.",
+		"A skill tree is a constellation of skill nodes. Each node says what it requires: other nodes unlocked first, a particular item done, or some number of written-up items tagged to it. A node is locked until its prerequisites are, in reach once they are, and lit when its requirement is met; after that, more evidence fills its ring toward Bronze, Silver and Gold.",
+		"A habit is a target per day, week or month: tick it by hand, or let it count written-up items that match a filter, such as one film sheet a week. A missed period is just a hollow dot, and a skill node can require a habit.",
+		"Up next is the card to work from: the next step of every active track, the habits not yet met this period, and twelve weeks of the days you did something.",
+		"Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the syllabus stays in your vault.",
 	],
 	icon: GraduationCap,
 	version: '0.1.0',
@@ -52,9 +51,5 @@ export const skillTreeExtension: Extension = {
 			watchBoard(editor, boardId)
 			watchTrees(editor)
 		},
-	},
-	shapeVisibility: {
-		types: [ITEM_TYPE],
-		isHidden: (shape, editor) => isItem(shape) && isHiddenByCollapse(editor, shape),
 	},
 }

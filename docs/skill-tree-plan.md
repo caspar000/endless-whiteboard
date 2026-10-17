@@ -37,6 +37,31 @@ list outline, the split import; (2) the tree view with entries and works, focus 
 remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
 (5) pop-out cards. Then the director content.
 
+### Rebuild phase 1 (items in the vault, the list, the split import), as built
+
+- **`syllabus.ts`** holds items (`ItemDef`: title, kind, medium, tags, core, child rule, parent, works
+  in order, a leaf's tick and day, draft), tracks (`TrackDef`) and the write-ups boards have seen
+  (`EvidenceEntry`), persisted as `syllabusItems`, `syllabusTracks` and `syllabusEvidence`. The index
+  every evaluator reads is now derived from them, so it is never out of date and is no longer stored.
+  A parent's tick and day are worked out from its works.
+- **Ticks are vault data**, so ⌘Z does not untick: ticking again does. The write-up note a tick files
+  is an ordinary note, beside what you ticked from, and undoes like one.
+- **Import** merges a document into the vault (`syllabusMerge.ts`, pure) and puts only the tree and
+  habit cards on the board: /mu/core imports in 0.4 s instead of 6, and the board holds 101 nodes, not
+  2,500 shapes. New items and tracks are drafts of the importing board (`draft` holds its id) until
+  Confirm draft; Discard removes them.
+- **The list** (`node.track`) is a resizable card for one vault track: the outline in reading order,
+  every entry folding to its works (folding is the board's view state, kept on the card and out of
+  undo), a parent's box ticking its next work, an arrow on each row putting a card on the board. It
+  scrolls while edited, which is when this canvas lets a shape scroll.
+- **Cards** (`node.skillItem`) show one vault item with its works as a nested checklist; a card made
+  from the dock makes a new item. Old cards and lists migrate to the new props; their content was not
+  migrated (the old boards were test boards, re-imported).
+- **Gone:** item shapes holding children, collapsing, Arrange children, Make a track from selected
+  items, Add selection to track, Insert Adler's reading list (sample). Kind, Medium, Done and Done at are
+  no longer board properties, so a table or calendar over them no longer sees syllabus items; Up next's
+  heatmap is the log for now.
+
 ### Phase B, /mu/core, as built
 
 - **`content/mucore.yaml`** is musicgenretree.org's "1111 Essential Recordings of Music" (Classics

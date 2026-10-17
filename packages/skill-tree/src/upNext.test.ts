@@ -17,8 +17,6 @@ function item(itemId: string, over: Partial<IndexEntry> = {}): IndexEntry {
 		parentItemId: '',
 		hasChildren: false,
 		position: 0,
-		boardId: 'b',
-		shapeId: `shape:${itemId}`,
 		...over,
 	}
 }
@@ -29,8 +27,6 @@ const track = (trackId: string, order: string[], over: Partial<TrackEntry> = {})
 	goal: 'g',
 	state: 'active',
 	order,
-	boardId: 'b',
-	shapeId: `shape:${trackId}`,
 	...over,
 })
 

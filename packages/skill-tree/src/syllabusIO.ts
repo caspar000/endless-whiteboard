@@ -1,55 +1,38 @@
 import { updateShapeProperties } from '@lifeboard/node-kit'
 import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import {
-	childrenOf,
-	DRAFT_META,
-	HABIT_TYPE,
-	isDraft,
-	isHabit,
-	isItem,
-	isSkill,
-	isTrack,
-	isTree,
-	itemByItemId,
-	SKILL_TYPE,
-	TRACK_TYPE,
-	TREE_TYPE,
-	type ItemShape,
-} from './board'
-import { formatOrder, formatTags, parseOrder, parseTags, todayIso } from './model'
-import { addChildItem, createItem, createTrack, ITEM_HEIGHT, ITEM_WIDTH, setCollapsed } from './ops'
-import { ensureProperties, hideOnCard, PROP_ID, readText } from './properties'
+import { DRAFT_META, HABIT_TYPE, isDraft, isHabit, isSkill, isTree, SKILL_TYPE, TREE_TYPE } from './board'
+import { parseTags, todayIso } from './model'
+import { boardIdOf } from './skillIndex'
+import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
+import { mergeDoc } from './syllabusMerge'
 import { drawMounts, drawPrerequisites, insertTree, layoutReach, placeNewNodes, treePositions } from './tree/ops'
-import type { DocItem, SyllabusDoc } from './syllabusYaml'
+import type { SyllabusDoc } from './syllabusYaml'
 import { whileImporting } from './importing'
 import { getTreeDef, updateTreeMeta } from './treeDefs'
 import { boardTrees, DRAFT_TREE_META, draftTreeMeta, treeGraph } from './views'
 
 /**
- * Putting a syllabus document on a board, and taking one off it (docs/skill-tree-plan.md, "The YAML
- * format" and "Drafts").
+ * Putting a syllabus document into the vault and its tree on a board, and taking one out
+ * (docs/skill-tree-plan.md, "The YAML format" and "Drafts").
  *
- * An import is a **draft**: every shape it creates carries `lifeboard:skillDraft`, draws dashed, and
- * stays out of the index until "Confirm draft". Ids that already exist on the board are updated in
- * place instead (titles, tags, requirements; never a tick, a note or a habit's log), so a YAML file
- * can be edited and imported again.
+ * Items and tracks go into the vault (syllabusMerge.ts), with no shapes: the board gets the tree view
+ * and the habit cards. "Show as list" and "Add Up Next" add the other views. An import is a
+ * **draft**: what it makes is marked as this board's draft, draws dashed, and stays out of the index
+ * until "Confirm draft". Ids that already exist are updated in place instead (titles, tags,
+ * requirements; never a tick, a note or a habit's log), so a YAML file can be edited and imported again.
  */
 export { DRAFT_META, isDraft } from './board'
 
 export interface ImportResult {
+	/** New items and tracks in the vault, and new shapes on the board. */
 	created: number
 	updated: number
 	draftIds: TLShapeId[]
 }
 
-const COLUMN = 1100
-const TRACK_TO_ITEMS = 420
-const ROW_GAP = 24
-const LIST_ROW = 24
-/** A long track's items wrap into a new column past this height, so 137 entries stay a block, not a strip. */
-const COLUMN_HEIGHT = 2400
-const ITEM_COLUMN = ITEM_WIDTH + 40
+/** The board an import is a draft of: the one its editor shows. */
+const boardOf = (editor: Editor) => boardIdOf(editor) ?? 'board'
 
 export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
 	return whileImporting(editor, () => importNow(editor, doc, at))
@@ -58,45 +41,16 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
 	const before = new Set(editor.getCurrentPageShapeIds())
 	let updated = 0
+	let vaultCreated = 0
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('import syllabus')
 		let x = at.x
 
-		for (const track of doc.tracks) {
-			const existingTrack = editor.getCurrentPageShapes().find((s) => isTrack(s) && s.props.trackId === track.trackId)
-			let y = at.y
-			let column = 0
-			for (const item of track.items) {
-				const withDefaults = { ...item, tags: [...new Set([...item.tags, ...track.defaultTags])] }
-				const existing = itemByItemId(editor, item.itemId)
-				if (existing) {
-					updated += mergeItem(editor, existing, withDefaults)
-					continue
-				}
-				if (y - at.y > COLUMN_HEIGHT) {
-					column++
-					y = at.y
-				}
-				placeItem(editor, withDefaults, { x: x + TRACK_TO_ITEMS + column * ITEM_COLUMN, y }, '')
-				y += ITEM_HEIGHT + 16 + (item.children.length ? item.children.length * LIST_ROW : 0) + ROW_GAP
-			}
-			if (existingTrack && isTrack(existingTrack)) {
-				const order = [...track.order, ...parseOrder(existingTrack.props.order).filter((id) => !track.order.includes(id))]
-				editor.updateShape({
-					id: existingTrack.id,
-					type: TRACK_TYPE,
-					props: { name: track.name, goal: doc.name, order: formatOrder(order), defaultTags: formatTags(track.defaultTags) },
-				} as never)
-				updated++
-			} else {
-				createTrack(
-					editor,
-					{ name: track.name, goal: doc.name, trackId: track.trackId, itemIds: track.order, state: track.state as 'active', defaultTags: formatTags(track.defaultTags) },
-					{ x, y: at.y }
-				)
-			}
-			x += Math.max(COLUMN, TRACK_TO_ITEMS + (column + 1) * ITEM_COLUMN + 200)
-		}
+		const merged = mergeDoc(doc, getItems(), getTracks(), boardOf(editor))
+		putItems(merged.items)
+		putTracks(merged.tracks)
+		vaultCreated = merged.created
+		updated += merged.updated
 
 		// A tree mounted on a node of another tree in this document shows inside that tree's view, so
 		// it gets no header of its own.
@@ -208,50 +162,7 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 		}
 	})
 	const draftIds = editor.getCurrentPageShapes().filter(isDraft).filter((s) => !before.has(s.id)).map((s) => s.id)
-	return { created: draftIds.length, updated, draftIds }
-}
-
-function placeItem(editor: Editor, item: DocItem, at: { x: number; y: number }, parentId: TLShapeId | ''): TLShapeId {
-	const spec = {
-		itemId: item.itemId,
-		title: item.title,
-		kind: (item.kind || undefined) as 'Study' | undefined,
-		medium: item.medium || undefined,
-		tags: formatTags(item.tags),
-		core: item.core,
-		childRule: item.childRule,
-	}
-	const id = parentId ? addChildItem(editor, parentId, spec, false)! : createItem(editor, { ...spec, canvasParent: editor.getCurrentPageId() }, at)
-	for (const child of item.children) placeItem(editor, child, at, id)
-	if (item.children.length) setCollapsed(editor, id, true, false)
-	return id
-}
-
-/** Updates an existing item and its children from a document. Returns how many shapes changed. */
-function mergeItem(editor: Editor, shape: ItemShape, item: DocItem): number {
-	editor.updateShape({
-		id: shape.id,
-		type: shape.type,
-		props: { title: item.title, tags: formatTags(item.tags), core: item.core, childRule: item.childRule },
-	} as never)
-	if (item.kind || item.medium) {
-		ensureProperties(editor, ['kind', 'medium'])
-		const fresh = editor.getShape(shape.id)
-		if (fresh) {
-			updateShapeProperties(editor, fresh, {
-				...(item.kind ? { [PROP_ID.kind]: item.kind } : {}),
-				...(item.medium ? { [PROP_ID.medium]: item.medium } : {}),
-			})
-			hideOnCard(editor, shape.id, ['kind', 'medium'])
-		}
-	}
-	let changed = 1
-	for (const child of item.children) {
-		const existing = itemByItemId(editor, child.itemId)
-		if (existing) changed += mergeItem(editor, existing, child)
-		else placeItem(editor, child, { x: shape.x, y: shape.y }, shape.id)
-	}
-	return changed
+	return { created: draftIds.length + vaultCreated, updated, draftIds }
 }
 
 /** Takes the draft marker off everything on the board: it joins the index, and its trees the vault, from here on. */
@@ -261,7 +172,8 @@ export function confirmDraft(editor: Editor): number {
 
 function confirmNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	if (!drafts.length) return 0
+	const vault = confirmDrafts(boardOf(editor))
+	if (!drafts.length) return vault
 	// A tree with no header of its own (mounted on another) carries its name and mount on its nodes.
 	for (const shape of drafts) {
 		if (!isSkill(shape)) continue
@@ -272,36 +184,45 @@ function confirmNow(editor: Editor): number {
 		editor.markHistoryStoppingPoint('confirm draft')
 		for (const shape of drafts) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: false } } as never)
 	})
-	return drafts.length
+	return drafts.length + vault
 }
 
-/** Deletes every draft shape on the board, in one undo step. */
+/** Deletes every draft shape on the board in one undo step, and what its imports put in the vault. */
 export function discardDraft(editor: Editor): number {
 	return whileImporting(editor, () => discardNow(editor))
 }
 
 function discardNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	if (!drafts.length) return 0
+	const vault = discardDrafts(boardOf(editor))
+	if (!drafts.length) return vault
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('discard draft')
 		editor.deleteShapes(drafts.map((s) => s.id))
 	})
-	return drafts.length
+	return drafts.length + vault
 }
 
-/** The goals a board holds syllabi for, by name: from its tracks, trees and habits. */
+/** Whether this board has a draft waiting: shapes, or vault items and tracks its imports made. */
+export function boardHasDraft(editor: Editor): boolean {
+	return hasDrafts(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
+}
+
+/** The goals there are syllabi for, by name: the vault's tracks, and this board's trees and habits. */
 export function boardGoals(editor: Editor): string[] {
-	const goals = editor
-		.getCurrentPageShapes()
-		.filter((s) => !isDraft(s))
-		.flatMap((s) => (isTrack(s) || isTree(s) || isHabit(s) ? [s.props.goal] : []))
+	const goals = [
+		...Object.values(getTracks()).filter((t) => !t.draft).map((t) => t.goal),
+		...editor
+			.getCurrentPageShapes()
+			.filter((s) => !isDraft(s))
+			.flatMap((s) => (isTree(s) || isHabit(s) ? [s.props.goal] : [])),
+	]
 	return [...new Set(goals.filter(Boolean))]
 }
 
 /**
- * One goal's syllabus on this board as YAML (the first goal if none is named): its tracks with their
- * items, its tree, its habits. One goal per document, because an import gives everything in it the
+ * One goal's syllabus as YAML (the first goal if none is named): its tracks with their items, from
+ * the vault, and this board's tree and habits for it. One goal per document, because an import gives everything in it the
  * document's goal. Ids are written in full, so importing the result again updates rather than
  * duplicates.
  */
@@ -309,35 +230,33 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 	const goal = goalName || boardGoals(editor)[0] || 'goal'
 	const shapes = editor.getCurrentPageShapes().filter((s) => !isDraft(s))
 	const ofGoal = (s: { props: { goal: string } }) => s.props.goal === goal || (!s.props.goal && !goalName)
-	const tracks = shapes.filter(isTrack).filter(ofGoal)
+	const tracks = Object.values(getTracks()).filter((t) => !t.draft && (t.goal === goal || (!t.goal && !goalName)))
 	const trees = shapes.filter(isTree).filter(ofGoal)
-	const prefix = (tracks[0]?.props.trackId || trees[0]?.props.treeId || '').split('/')[0]
-	const itemDoc = (item: ItemShape): Record<string, unknown> => {
-		const children = childrenOf(editor, item.id)
-		const out: Record<string, unknown> = { id: item.props.itemId, title: item.props.title }
-		const kind = readText(item, 'kind')
-		const medium = readText(item, 'medium')
-		if (kind) out.kind = kind.toLowerCase()
-		if (medium) out.medium = medium
-		const tags = parseTags(item.props.tags)
-		if (tags.length) out.tags = tags
-		if (item.props.core) out.core = true
-		if (children.length) {
-			if (item.props.childRule !== 'core') out.childRule = item.props.childRule
-			out.children = children.map(itemDoc)
+	const prefix = (tracks[0]?.trackId || trees[0]?.props.treeId || '').split('/')[0]
+	const all = getItems()
+	const itemDoc = (item: ItemDef, depth = 0): Record<string, unknown> => {
+		const children = item.children.map((id) => all[id]).filter((c): c is ItemDef => !!c && !c.draft)
+		const out: Record<string, unknown> = { id: item.itemId, title: item.title }
+		if (item.kind) out.kind = item.kind.toLowerCase()
+		if (item.medium) out.medium = item.medium
+		if (item.tags.length) out.tags = item.tags
+		if (item.core) out.core = true
+		if (children.length && depth < 16) {
+			if (item.childRule !== 'core') out.childRule = item.childRule
+			out.children = children.map((c) => itemDoc(c, depth + 1))
 		}
 		return out
 	}
 	const doc: Record<string, unknown> = { goal: prefix || goal.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: goal }
 	if (tracks.length) {
 		doc.tracks = tracks.map((t) => ({
-			id: t.props.trackId,
-			name: t.props.name,
-			state: t.props.state,
-			...(parseTags(t.props.defaultTags).length ? { defaultTags: parseTags(t.props.defaultTags) } : {}),
-			items: parseOrder(t.props.order).map((id) => {
-				const item = itemByItemId(editor, id)
-				return item && !isDraft(item) ? itemDoc(item) : id
+			id: t.trackId,
+			name: t.name,
+			state: t.state,
+			...(t.defaultTags.length ? { defaultTags: t.defaultTags } : {}),
+			items: t.order.map((id) => {
+				const item = all[id]
+				return item && !item.draft ? itemDoc(item) : id
 			}),
 		}))
 	}

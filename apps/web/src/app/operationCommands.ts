@@ -27,6 +27,7 @@ const PROJECTED: { id: string; title?: string; group: string }[] = [
 	// or to hang one tree from another's node, without writing YAML.
 	{ id: 'skill.tree.show', title: 'Show a skill tree on this board', group: 'Syllabus' },
 	{ id: 'skill.tree.mount', title: 'Hang a skill tree from a node', group: 'Syllabus' },
+	{ id: 'skill.track.show', title: 'Show a track as a list', group: 'Syllabus' },
 ]
 
 const onBoard = (ctx: CommandContext) => ctx.editor !== null

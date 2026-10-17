@@ -23,11 +23,7 @@ export {
 	getSkillIndex,
 	getTrackIndex,
 	replaceHabitIndex,
-	replaceSkillIndex,
-	replaceTrackIndex,
 	setHabitIndexPersistence,
-	setSkillIndexPersistence,
-	setTrackIndexPersistence,
 	type TrackEntry,
 	type TrackIndex,
 	type HabitEntry,
@@ -35,6 +31,19 @@ export {
 	type IndexEntry,
 	type SkillIndex,
 } from './skillIndex'
+export {
+	getEvidence,
+	getItems,
+	getTracks,
+	replaceEvidence,
+	replaceItems,
+	replaceTracks,
+	setEvidencePersistence,
+	setItemsPersistence,
+	setTracksPersistence,
+	type ItemDef,
+	type TrackDef,
+} from './syllabus'
 export { evaluateTree, parseRequirements, type Condition, type NodeStatus } from './requirements'
 export { getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
 export { itemNodeDefinition } from './item/definition'
@@ -43,5 +52,5 @@ export { skillNodeDefinition } from './skill/definition'
 export { treeNodeDefinition } from './tree/definition'
 export { habitNodeDefinition } from './habit/definition'
 export { upNextNodeDefinition } from './upnext/definition'
-export { ADLER_SAMPLE, insertAdlerSample } from './sample'
+export { ADLER_SAMPLE } from './sample'
 export { templateFor, MEDIA, type Medium, type Template } from './templates'

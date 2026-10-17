@@ -1,6 +1,5 @@
 import {
 	createShapePropsMigrationSequence,
-	getBoardBridge,
 	NodeEditorPopover,
 	type NodeComponentProps,
 	type NodeDefinition,
@@ -8,10 +7,10 @@ import {
 import { stopEventPropagation, T, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { ListTodo } from 'lucide-react'
 import { memo, type SyntheticEvent } from 'react'
-import { isHabit, isItem, UP_NEXT_TYPE, type UpNextProps } from '../board'
+import { isHabit, UP_NEXT_TYPE, type UpNextProps } from '../board'
 import { parseFilter, parseLog, periodKey, PERIOD_NOUN, type Period } from '../habits'
 import { todayIso } from '../model'
-import { revealItem, toggleItemDone } from '../ops'
+import { tick } from '../ops'
 import { boardIdOf, getHabitIndex, getSkillIndex, getTrackIndex, type HabitEntry } from '../skillIndex'
 import { goalsOf, upNext } from '../upNext'
 
@@ -22,14 +21,6 @@ const WEEKS = 12
 /** Whether a shape the index points at is on the board this editor shows. */
 function onThisBoard(editor: Editor, boardId: string, shapeId: string): boolean {
 	return boardIdOf(editor) === boardId && !!editor.getShape(shapeId as TLShapeId)
-}
-
-/** Goes to an item wherever it is: this board, or another one opened for it. */
-async function goTo(editor: Editor, boardId: string, shapeId: string): Promise<void> {
-	let target: Editor | null = editor
-	if (boardIdOf(editor) !== boardId) target = (await getBoardBridge()?.open(boardId)) ?? null
-	const shape = target?.getShape(shapeId as TLShapeId)
-	if (target && isItem(shape)) revealItem(target, shape)
 }
 
 function tickHabit(editor: Editor, habit: HabitEntry): void {
@@ -64,8 +55,7 @@ function heatmapWeeks(today: string): string[][] {
 
 /**
  * The list to work from: one row per active track (its next step), the habits still due this
- * period, and twelve weeks of days you did something. Ticks in place for what is on this board;
- * anything else opens its board and goes to it.
+ * period, and twelve weeks of days you did something. Steps tick in place: they are vault data.
  */
 function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<UpNextProps>) {
 	const goal = shape.props.goal
@@ -92,40 +82,22 @@ function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Up
 				<p className="lb-upnext__empty">Nothing due. Set a track to Active to see its next step here.</p>
 			) : (
 				<ul className="lb-upnext__list">
-					{data.steps.map(({ track, step, parent }) => {
-						const here = onThisBoard(editor, step.boardId, step.shapeId)
-						return (
-							<li key={track.trackId} className="lb-upnext__row">
-								{here ? (
-									<input
-										type="checkbox"
-										className="lb-skill__check"
-										checked={false}
-										onPointerDown={swallow}
-										onClick={swallow}
-										onChange={() => toggleItemDone(editor, step.shapeId as TLShapeId)}
-									/>
-								) : (
-									<span className="lb-upnext__dot" aria-hidden />
-								)}
-								<button
-									type="button"
-									className="lb-upnext__item"
-									onPointerDown={swallow}
-									onClick={(e) => {
-										e.stopPropagation()
-										void goTo(editor, step.boardId, step.shapeId)
-									}}
-								>
-									<span>{step.title}</span>
-									<span className="lb-upnext__meta">
-										{[track.name, parent?.title, step.kind, step.medium].filter(Boolean).join(' · ')}
-										{here ? '' : ' · on another board'}
-									</span>
-								</button>
-							</li>
-						)
-					})}
+					{data.steps.map(({ track, step, parent }) => (
+						<li key={track.trackId} className="lb-upnext__row">
+							<input
+								type="checkbox"
+								className="lb-skill__check"
+								checked={false}
+								onPointerDown={swallow}
+								onClick={swallow}
+								onChange={() => tick(editor, step.itemId, true, shape.id as TLShapeId)}
+							/>
+							<span className="lb-upnext__item">
+								<span>{step.title}</span>
+								<span className="lb-upnext__meta">{[track.name, parent?.title, step.kind, step.medium].filter(Boolean).join(' · ')}</span>
+							</span>
+						</li>
+					))}
 					{data.habits.map(({ habit, count, target, period }) => {
 						const here = onThisBoard(editor, habit.boardId, habit.shapeId)
 						const manual = !parseFilter(habit.counts)

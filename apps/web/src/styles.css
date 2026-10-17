@@ -13588,6 +13588,8 @@ button.lb-props__eye:hover {
 .lb-skill,
 .lb-track {
 	width: 100%;
+	height: 100%;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
@@ -13698,13 +13700,21 @@ button.lb-props__eye:hover {
 }
 .lb-skill__list li {
 	display: flex;
-	align-items: center;
-	gap: 7px;
+	flex-direction: column;
+	gap: 4px;
 	color: var(--lb-text);
 }
-.lb-skill__list .lb-skill__li--done {
+.lb-skill__li-row {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+.lb-skill__list .lb-skill__li--done > .lb-skill__li-row {
 	color: var(--lb-text-faint);
 	text-decoration: line-through;
+}
+.lb-skill--missing {
+	color: var(--lb-text-faint);
 }
 
 .lb-track__head {
@@ -13744,22 +13754,59 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-size: 12px;
 }
-.lb-track__list {
+.lb-track__list,
+.lb-track__works {
 	list-style: none;
-	margin: 6px 0 0;
+	margin: 0;
 	padding: 0;
 	display: flex;
 	flex-direction: column;
 }
-.lb-track__row {
+/* The outline scrolls inside the card; the canvas lets it while the card is being edited. */
+.lb-track__list {
+	margin-top: 6px;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden auto;
+}
+.lb-track__editing,
+.lb-track__editing > .lb-track {
+	height: 100%;
+}
+.lb-track__line {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 4px 6px;
+	gap: 6px;
+	padding: 3px 6px;
 	border-radius: 6px;
 }
-.lb-track__row--next {
+.lb-track__row--next > .lb-track__line {
 	background: var(--lb-accent-tint);
+}
+.lb-track__row.lb-draft > .lb-track__line {
+	outline: 1px dashed var(--lb-accent);
+	outline-offset: -1px;
+}
+.lb-track__fold,
+.lb-track__card {
+	flex: none;
+	width: 16px;
+	pointer-events: auto;
+	border: none;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	padding: 0;
+	cursor: pointer;
+}
+.lb-track__card {
+	opacity: 0;
+}
+.lb-track__line:hover .lb-track__card {
+	opacity: 1;
+}
+.lb-track--missing {
+	color: var(--lb-text-faint);
 }
 .lb-track__num {
 	flex: none;
@@ -13770,30 +13817,16 @@ button.lb-props__eye:hover {
 	font-variant-numeric: tabular-nums;
 }
 .lb-track__title {
-	pointer-events: auto;
 	flex: 1;
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
-	border: none;
-	background: transparent;
-	color: inherit;
-	font-family: inherit;
 	font-size: 12px;
-	text-align: left;
-	padding: 0;
-	cursor: pointer;
 }
-.lb-track__title:disabled {
-	cursor: default;
-}
-.lb-track__row--done .lb-track__title {
+.lb-track__row--done > .lb-track__line .lb-track__title {
 	color: var(--lb-text-faint);
 	text-decoration: line-through;
-}
-.lb-track__row--missing .lb-track__title {
-	color: var(--lb-text-faint);
 }
 .lb-track__step {
 	color: var(--lb-text-dim);

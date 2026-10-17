@@ -1,92 +1,94 @@
 import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
-import { stopEventPropagation, useValue, type Editor } from '@lifeboard/canvas'
+import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { memo, type PointerEvent, type SyntheticEvent } from 'react'
-import { childrenOf, draftClass, evidenceNoteFor, progressOf, type ItemShape, type SkillItemProps } from '../board'
-import { formatProgress, hasEvidence } from '../model'
-import { addChildItem, setCollapsed, toggleItemDone } from '../ops'
-import { isDone, readText } from '../properties'
-import { templateFor } from '../templates'
+import type { SkillItemProps } from '../board'
+import { formatProgress } from '../model'
+import { tick } from '../ops'
+import { getItems, getSkillIndex, isItemDone, progressOf, type ItemDef } from '../syllabus'
 import { ItemEditor } from './ItemEditor'
 
 /** Stops a click on a control from also selecting or dragging the shape. */
 const swallow = (e: SyntheticEvent | PointerEvent) => e.stopPropagation()
 
+/** A tick box for a leaf: hollow when done but not yet written up. */
+export function Tick({ item, editor, anchor }: { item: ItemDef; editor: Editor; anchor: TLShapeId }) {
+	const done = isItemDone(item.itemId)
+	const written = !!getSkillIndex()[item.itemId]?.evidence
+	const parent = item.children.length > 0
+	return (
+		<input
+			type="checkbox"
+			className={`lb-skill__check${done && !parent && !written ? ' lb-skill__check--hollow' : ''}`}
+			checked={done}
+			disabled={parent}
+			title={parent ? 'Done when its works are' : done && !written ? 'Done, no write-up yet: write in its note to count it' : undefined}
+			onPointerDown={swallow}
+			onClick={swallow}
+			onChange={() => tick(editor, item.itemId, !done, anchor)}
+		/>
+	)
+}
+
+/** Works under an item, each with its tick, and their own works indented below. */
+function Works({ item, editor, anchor, depth = 0 }: { item: ItemDef; editor: Editor; anchor: TLShapeId; depth?: number }) {
+	const all = getItems()
+	const works = item.children.map((id) => all[id]).filter((w): w is ItemDef => !!w)
+	if (!works.length || depth > 4) return null
+	return (
+		<ul className="lb-skill__list">
+			{works.map((work) => (
+				<li key={work.itemId} className={isItemDone(work.itemId) ? 'lb-skill__li--done' : undefined}>
+					<span className="lb-skill__li-row">
+						<Tick item={work} editor={editor} anchor={anchor} />
+						<span>{work.title || 'Untitled'}</span>
+						{work.core && <span className="lb-skill__core">core</span>}
+					</span>
+					<Works item={work} editor={editor} anchor={anchor} depth={depth + 1} />
+				</li>
+			))}
+		</ul>
+	)
+}
+
 /**
- * The item card. Display mode swallows no pointer events except on its controls (the checkbox, the
- * collapse arrow, a collapsed parent's checklist), so the card still drags and marquee-selects like
- * any shape. Double-click opens the editor for the title and the structure.
+ * A card for one vault item. Display mode swallows pointer events only on its tick boxes, so the card
+ * still drags and marquee-selects like any shape. Double-click opens the editor.
  */
 function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<SkillItemProps>) {
-	const item = shape as unknown as ItemShape
-	const view = useValue('lifeboard:skill-item', () => readItemView(editor, item), [editor, item])
+	// A fresh object per change of the vault or the index, so the card redraws when a work changes too,
+	// not only the item itself.
+	const { item } = useValue('lifeboard:skill-item', () => ({ item: getItems()[shape.props.itemId], index: getSkillIndex() }), [shape.props.itemId])
+	const anchor = shape.id as TLShapeId
+
+	if (!item) {
+		return (
+			<div className="lb-skill lb-skill--missing">
+				<span className="lb-skill__title">Not in the vault</span>
+				<span className="lb-skill__meta">{shape.props.itemId || 'No item'}</span>
+			</div>
+		)
+	}
+	const progress = item.children.length ? progressOf(item.itemId) : null
+	const done = isItemDone(item.itemId)
 
 	const body = (
-		<div className={`lb-skill${view.done ? ' lb-skill--done' : ''}${draftClass(shape as never)}`}>
+		<div className={`lb-skill${done ? ' lb-skill--done' : ''}${item.draft ? ' lb-draft' : ''}`}>
 			<div className="lb-skill__row">
-				<input
-					type="checkbox"
-					className={`lb-skill__check${view.done && !view.evidence ? ' lb-skill__check--hollow' : ''}`}
-					checked={view.done}
-					disabled={view.hasChildren}
-					title={
-						view.hasChildren
-							? 'Done when its children are'
-							: view.done && !view.evidence
-								? 'Done, no notes yet: write in the evidence note to count it'
-								: undefined
-					}
-					onPointerDown={swallow}
-					onClick={swallow}
-					onChange={() => toggleItemDone(editor, item.id)}
-				/>
-				<span className="lb-skill__title">{shape.props.title || 'Untitled item'}</span>
-				{view.hasChildren && (
-					<button
-						type="button"
-						className="lb-skill__fold"
-						aria-label={shape.props.collapsed ? 'Expand children' : 'Collapse children'}
-						onPointerDown={swallow}
-						onClick={(e) => {
-							e.stopPropagation()
-							setCollapsed(editor, item.id, !shape.props.collapsed)
-						}}
-					>
-						{shape.props.collapsed ? '▸' : '▾'}
-					</button>
-				)}
+				<Tick item={item} editor={editor} anchor={anchor} />
+				<span className="lb-skill__title">{item.title || 'Untitled item'}</span>
 			</div>
 			<div className="lb-skill__meta">
-				{view.kind && <span className={`lb-skill__kind lb-skill__kind--${view.kind.toLowerCase()}`}>{view.kind}</span>}
-				{view.medium && <span>{view.medium}</span>}
-				{shape.props.core && <span className="lb-skill__core">core</span>}
-				{view.progress && <span className="lb-skill__progress">{view.progress}</span>}
-				{view.doneAt && <span className="lb-skill__date">{view.doneAt}</span>}
+				{item.kind && <span className={`lb-skill__kind lb-skill__kind--${item.kind.toLowerCase()}`}>{item.kind}</span>}
+				{item.medium && <span>{item.medium}</span>}
+				{progress && <span className="lb-skill__progress">{formatProgress(progress)}</span>}
+				{done && !progress && item.doneAt && <span className="lb-skill__date">{item.doneAt}</span>}
 			</div>
-			{view.hasChildren && (
+			{progress && (
 				<div className="lb-skill__bar" aria-hidden>
-					<span style={{ width: `${view.fraction * 100}%` }} />
+					<span style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
 				</div>
 			)}
-			{shape.props.collapsed && view.children.length > 0 && (
-				<ul className="lb-skill__list">
-					{view.children.map((child) => (
-						<li key={child.id} className={child.done ? 'lb-skill__li--done' : undefined}>
-							<input
-								type="checkbox"
-								className={`lb-skill__check${child.done && !child.evidence ? ' lb-skill__check--hollow' : ''}`}
-								checked={child.done}
-								disabled={child.hasChildren}
-								title={child.done && !child.evidence ? 'Done, no notes yet' : undefined}
-								onPointerDown={swallow}
-								onClick={swallow}
-								onChange={() => toggleItemDone(editor, child.id)}
-							/>
-							<span>{child.title || 'Untitled'}</span>
-							{child.core && <span className="lb-skill__core">core</span>}
-						</li>
-					))}
-				</ul>
-			)}
+			<Works item={item} editor={editor} anchor={anchor} />
 		</div>
 	)
 
@@ -96,60 +98,10 @@ function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 		<div onPointerDown={stopEventPropagation} onTouchStart={stopEventPropagation} style={{ pointerEvents: 'all' }}>
 			{body}
 			<NodeEditorPopover shape={shape} editor={editor} width={300}>
-				<ItemEditor
-					item={item}
-					editor={editor}
-					onAddChild={(title) => addChildItem(editor, item.id, { title })}
-				/>
+				<ItemEditor item={item} />
 			</NodeEditorPopover>
 		</div>
 	)
-}
-
-interface ItemView {
-	done: boolean
-	evidence: boolean
-	kind: string
-	medium: string
-	doneAt: string
-	hasChildren: boolean
-	progress: string
-	fraction: number
-	children: { id: ItemShape['id']; title: string; done: boolean; evidence: boolean; core: boolean; hasChildren: boolean }[]
-}
-
-function readItemView(editor: Editor, item: ItemShape): ItemView {
-	const fresh = (editor.getShape(item.id) as ItemShape | undefined) ?? item
-	const children = childrenOf(editor, fresh.id)
-	const done = isDone(fresh)
-	const medium = readText(fresh, 'medium')
-	const evidence = done && children.length === 0 && evidenceWritten(editor, fresh)
-	const progress = children.length > 0 ? progressOf(editor, fresh) : null
-	return {
-		done,
-		evidence,
-		kind: readText(fresh, 'kind'),
-		medium,
-		doneAt: readText(fresh, 'doneAt'),
-		hasChildren: children.length > 0,
-		progress: progress ? formatProgress(progress) : '',
-		fraction: progress && progress.total ? progress.done / progress.total : 0,
-		children: children.map((child) => ({
-			id: child.id,
-			title: child.props.title,
-			done: isDone(child),
-			evidence: isDone(child) && evidenceWritten(editor, child),
-			core: child.props.core,
-			hasChildren: childrenOf(editor, child.id).length > 0,
-		})),
-	}
-}
-
-/** Whether the item's note holds anything beyond its title and template. */
-function evidenceWritten(editor: Editor, item: ItemShape): boolean {
-	const note = evidenceNoteFor(editor, item.props.itemId)
-	const md = note ? String((note.props as { md?: unknown }).md ?? '') : ''
-	return hasEvidence(md, templateFor(readText(item, 'medium')).md)
 }
 
 export const ItemComponent = memo(

@@ -54,6 +54,16 @@ const isStringArray = (value: unknown): value is string[] =>
  * The settings that follow the vault rather than the device, and what each must look like. Anything
  * else is refused: the client applies these straight into its registries.
  */
+/** An object of entries that each name themselves by a string `key`: the outline every keyed setting has. */
+function keyedBy(value: unknown, key: string): boolean {
+	return (
+		!!value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		Object.values(value).every((entry) => !!entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>)[key] === 'string')
+	)
+}
+
 const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 	disabledExtensions: isStringArray,
 	savedQueries: (value) =>
@@ -99,6 +109,10 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 		Object.values(value).every(
 			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { trackId?: unknown }).trackId === 'string'
 		),
+	// The syllabus: items and tracks keyed by id (the only copy of them), and the write-ups boards found.
+	syllabusItems: (value) => keyedBy(value, 'itemId'),
+	syllabusTracks: (value) => keyedBy(value, 'trackId'),
+	syllabusEvidence: (value) => keyedBy(value, 'itemId'),
 	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
 	skillTrees: (value) =>
 		!!value &&

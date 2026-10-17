@@ -235,6 +235,10 @@ describe('board index', () => {
 		expect((await put('skillTracks', { t: { order: [] } })).statusCode).toBe(400)
 		expect((await put('skillTrees', { t: { treeId: 't', nodes: [] } })).statusCode).toBe(204)
 		expect((await put('skillTrees', { t: { treeId: 't' } })).statusCode).toBe(400)
+		expect((await put('syllabusItems', { i: { itemId: 'i', children: [] } })).statusCode).toBe(204)
+		expect((await put('syllabusItems', { i: { title: 'no id' } })).statusCode).toBe(400)
+		expect((await put('syllabusTracks', { t: { trackId: 't', order: [] } })).statusCode).toBe(204)
+		expect((await put('syllabusEvidence', { e: { itemId: 'i', boardId: 'b' } })).statusCode).toBe(204)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
@@ -243,6 +247,9 @@ describe('board index', () => {
 			skillHabits: { h: { habitId: 'h', boardId: 'b' } },
 			skillTracks: { t: { trackId: 't', boardId: 'b' } },
 			skillTrees: { t: { treeId: 't', nodes: [] } },
+			syllabusItems: { i: { itemId: 'i', children: [] } },
+			syllabusTracks: { t: { trackId: 't', order: [] } },
+			syllabusEvidence: { e: { itemId: 'i', boardId: 'b' } },
 		})
 	})
 

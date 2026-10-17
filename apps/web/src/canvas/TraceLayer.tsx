@@ -82,7 +82,10 @@ export function TraceLayer() {
 		[editor, preset]
 	)
 
-	const phase = useAuraPhase(outlines !== null && preset.drift > 0)
+	const cameraMoving = useValue('lifeboard:camera-moving', () => editor.getCameraState() === 'moving', [
+		editor,
+	])
+	const phase = useAuraPhase(outlines !== null && preset.drift > 0, cameraMoving)
 	if (!outlines) return null
 
 	return (

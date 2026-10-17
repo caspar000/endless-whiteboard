@@ -3,6 +3,7 @@ import {
 	createComment,
 	createCommentThread,
 	toRichText,
+	type Computed,
 	type Editor,
 	type TLComment,
 	type TLCommentAnchor,
@@ -26,7 +27,26 @@ import { currentAccount } from '../../server/accounts'
  * data layer's own typing), so the store is read and written through the two casts below.
  */
 
-const records = (editor: Editor) => editor.store.allRecords() as unknown as Array<{ typeName: string }>
+/**
+ * Each type read through the store's own index of it. Filtering `allRecords()` made every reader
+ * depend on every record on the board, and the pins overlay reads threads on every camera frame.
+ * Cached per editor because `query.records` builds a new computed on each call.
+ */
+const queries = new WeakMap<
+	Editor,
+	{ threads: Computed<TLCommentThread[]>; comments: Computed<TLComment[]> }
+>()
+function recordsOf(editor: Editor) {
+	let cached = queries.get(editor)
+	if (!cached) {
+		const query = <T>(typeName: string) =>
+			editor.store.query.records(typeName as TLRecord['typeName']) as unknown as Computed<T[]>
+		cached = { threads: query<TLCommentThread>('comment-thread'), comments: query<TLComment>('comment') }
+		queries.set(editor, cached)
+	}
+	return cached
+}
+
 const put = (editor: Editor, list: Array<TLCommentThread | TLComment>) =>
 	editor.run(() => editor.store.put(list as unknown as TLRecord[]), { history: 'ignore' })
 
@@ -47,7 +67,8 @@ export const commentsPanelOpen = atom('lifeboard:comments-panel', false)
 
 /** The board's threads that haven't been deleted, oldest first. */
 export function threadsOf(editor: Editor): TLCommentThread[] {
-	return (records(editor).filter((r) => r.typeName === 'comment-thread') as TLCommentThread[])
+	return recordsOf(editor)
+		.threads.get()
 		.filter((thread) => !thread.isDeleted)
 		.sort((a, b) => a.createdAt - b.createdAt)
 }
@@ -59,7 +80,8 @@ export function threadById(editor: Editor, id: TLCommentThreadId): TLCommentThre
 
 /** A thread's comments that haven't been deleted, in order. */
 export function commentsOf(editor: Editor, threadId: TLCommentThreadId): TLComment[] {
-	return (records(editor).filter((r) => r.typeName === 'comment') as TLComment[])
+	return recordsOf(editor)
+		.comments.get()
 		.filter((comment) => comment.threadId === threadId && !comment.isDeleted)
 		.sort((a, b) => a.createdAt - b.createdAt)
 }

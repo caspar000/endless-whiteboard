@@ -1,6 +1,7 @@
 # Canvas performance plan
 
-Status: Phases 1–5 done, Phase 5 awaiting review. Stop and report after each phase.
+Status: Phases 1–5 done. Phase 6 and unmounting off-screen shapes are not needed yet; they wait in
+[#47](https://github.com/caspar000/endless-whiteboard/issues/47) with their measurements.
 
 ### Phase 5, as built
 
@@ -262,6 +263,9 @@ still worth doing for the cold start, once exports can ask for the shapes they n
   5,000 (in batches of 250). With the cap raised in Phase 4, boards that size can now exist.
 
 ## Phase 6: level of detail when zoomed out
+
+Deferred to [#47](https://github.com/caspar000/endless-whiteboard/issues/47), along with unmounting
+off-screen shapes.
 
 A design decision before any code. Below a zoom threshold, draw nodes as plain boxes and relations as
 plain lines on one `<canvas>`, and mount full shapes again as you zoom in. This is the phase that

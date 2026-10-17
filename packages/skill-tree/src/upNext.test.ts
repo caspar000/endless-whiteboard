@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HabitEntry, IndexEntry, TrackEntry } from './skillIndex'
-import { goalsOf, upNext } from './upNext'
+import { goalsOf, upcomingSteps, upNext } from './upNext'
 
 function item(itemId: string, over: Partial<IndexEntry> = {}): IndexEntry {
 	return {
@@ -87,5 +87,29 @@ describe('upNext', () => {
 
 	it('collects goals for the filter', () => {
 		expect(goalsOf([track('t', [], { goal: 'b' })], [])).toEqual(['b'])
+	})
+})
+
+describe('upcomingSteps', () => {
+	const it2 = (itemId: string, children: string[] = [], done = false) => ({ itemId, children, done })
+	const items = {
+		homer: it2('homer', ['iliad', 'odyssey']),
+		iliad: it2('iliad', [], true),
+		odyssey: it2('odyssey'),
+		bible: it2('bible'),
+		plato: it2('plato', ['republic', 'symposium', 'phaedo']),
+		republic: it2('republic'),
+		symposium: it2('symposium'),
+		phaedo: it2('phaedo'),
+	}
+
+	it('walks the track in reading order, through each entry\'s works, skipping what is done', () => {
+		const steps = upcomingSteps(['homer', 'bible', 'plato'], items, 4)
+		expect(steps.map((s) => [s.step.itemId, s.entry.itemId])).toEqual([
+			['odyssey', 'homer'],
+			['bible', 'bible'],
+			['republic', 'plato'],
+			['symposium', 'plato'],
+		])
 	})
 })

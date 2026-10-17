@@ -37,6 +37,17 @@ list outline, the split import; (2) the tree view with entries and works, focus 
 remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
 (5) pop-out cards. Then the director content.
 
+### Rebuild phases 4 and 5 (Up next per track, pop-out cards), as built
+
+- **Up next** (`node.upNext`, migration `PerTrack`) shows one track: `trackId`, or the first active
+  track when empty. Its current step is lit and ticks in place; the next five (`upcomingSteps`, pure,
+  depth first through each entry's works) are greyed. Below, the habits of the track's goal still due
+  and the twelve-week heatmap of what the track's entries finished. Checked: Adler's card showed the
+  Iliad then five greyed, and a tick moved it on to the Odyssey and filed the note beside the card.
+- **Pop-out cards** came in along the way: the arrow on a list row (phase 1) and right-click › Put a
+  card on the board on an entry or work (phase 2) put a card for that vault item beside it, clear of
+  what is there; the card shows its works as a checklist and deleting it deletes nothing.
+
 ### Rebuild phase 3 (springy drag, live physics, Re-calculate), as built
 
 - **`tree/physics.ts`** listens to the editor's frame tick. When the select tool starts translating a

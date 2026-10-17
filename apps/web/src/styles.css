@@ -14521,3 +14521,12 @@ button.lb-props__eye:hover {
 	color: var(--lb-text);
 	border-color: var(--lb-accent);
 }
+
+/* Up next: the current step lit, the next ones greyed (upnext/definition.tsx). */
+.lb-upnext__row--current {
+	background: var(--lb-accent-tint);
+	border-radius: 6px;
+}
+.lb-upnext__row--later {
+	opacity: 0.5;
+}

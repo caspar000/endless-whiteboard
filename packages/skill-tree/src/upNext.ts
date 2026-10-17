@@ -108,3 +108,30 @@ function rootOf(entry: IndexEntry, index: SkillIndex): string {
 export function goalsOf(tracks: readonly TrackEntry[], habits: readonly HabitEntry[]): string[] {
 	return [...new Set([...tracks.map((t) => t.goal), ...habits.map((h) => h.goal)].filter(Boolean))].sort()
 }
+
+/**
+ * A track's next `count` steps in reading order: undone leaves, depth first through each entry's
+ * works, each with the entry it belongs to (itself when it has no works). Pure.
+ */
+export function upcomingSteps<T extends { itemId: string; children: readonly string[]; done: boolean }>(
+	order: readonly string[],
+	items: Readonly<Record<string, T>>,
+	count: number
+): { step: T; entry: T }[] {
+	const out: { step: T; entry: T }[] = []
+	const walk = (id: string, entry: T, depth: number) => {
+		const item = items[id]
+		if (!item || out.length >= count || depth > 16) return
+		if (!item.children.length) {
+			if (!item.done) out.push({ step: item, entry })
+			return
+		}
+		for (const child of item.children) walk(child, entry, depth + 1)
+	}
+	for (const id of order) {
+		const entry = items[id]
+		if (entry) walk(id, entry, 0)
+		if (out.length >= count) break
+	}
+	return out
+}

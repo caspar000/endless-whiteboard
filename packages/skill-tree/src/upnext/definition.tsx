@@ -1,4 +1,5 @@
 import {
+	createShapePropsMigrationIds,
 	createShapePropsMigrationSequence,
 	NodeEditorPopover,
 	type NodeComponentProps,
@@ -11,12 +12,15 @@ import { isHabit, UP_NEXT_TYPE, type UpNextProps } from '../board'
 import { parseFilter, parseLog, periodKey, PERIOD_NOUN, type Period } from '../habits'
 import { todayIso } from '../model'
 import { tick } from '../ops'
-import { boardIdOf, getHabitIndex, getSkillIndex, getTrackIndex, type HabitEntry } from '../skillIndex'
-import { goalsOf, upNext } from '../upNext'
+import { boardIdOf, getHabitIndex, getSkillIndex, type HabitEntry } from '../skillIndex'
+import { getItems, getTracks } from '../syllabus'
+import { upcomingSteps, upNext } from '../upNext'
 
 const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
 const WEEKS = 12
+
+const versions = createShapePropsMigrationIds(UP_NEXT_TYPE, { PerTrack: 1 })
 
 /** Whether a shape the index points at is on the board this editor shows. */
 function onThisBoard(editor: Editor, boardId: string, shapeId: string): boolean {
@@ -53,51 +57,74 @@ function heatmapWeeks(today: string): string[][] {
 	return weeks
 }
 
+const UPCOMING = 5
+
 /**
- * The list to work from: one row per active track (its next step), the habits still due this
- * period, and twelve weeks of days you did something. Steps tick in place: they are vault data.
+ * The card to work from, for one track (docs/skill-tree-plan.md, "Rebuild"): its current step, lit and
+ * ready to tick, the next five greyed so you can see what is coming, then the habits of its goal still
+ * due this period and twelve weeks of the days you did something. It follows the first active track
+ * unless you pick one (double-click it).
  */
 function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<UpNextProps>) {
-	const goal = shape.props.goal
 	const today = todayIso()
 	const data = useValue(
 		'lifeboard:up-next',
 		() => {
-			const tracks = Object.values(getTrackIndex())
+			const tracks = Object.values(getTracks()).filter((t) => !t.draft)
+			const track = shape.props.trackId ? tracks.find((t) => t.trackId === shape.props.trackId) : tracks.find((t) => t.state === 'active')
+			const items = getItems()
+			const live = Object.fromEntries(Object.entries(items).filter(([, i]) => !i.draft))
+			const steps = track ? upcomingSteps(track.order, live, UPCOMING + 1) : []
 			const habits = Object.values(getHabitIndex())
-			return { ...upNext(tracks, getSkillIndex(), habits, today, goal), goals: goalsOf(tracks, habits) }
+			// Habits and days are this track's goal's; the heatmap counts what this track's entries finished.
+			const rest = track ? upNext([track], getSkillIndex(), habits, today, track.goal) : { habits: [], days: new Map<string, number>() }
+			return { track, tracks, steps, habits: rest.habits, days: rest.days }
 		},
-		[goal, today]
+		[shape.props.trackId, today]
 	)
 	const weeks = heatmapWeeks(today)
 	const total = [...data.days.values()].reduce((a, b) => a + b, 0)
+	const [current, ...later] = data.steps
 
 	const body = (
 		<div className="lb-upnext">
 			<header className="lb-upnext__head">
 				<span className="lb-upnext__title">Up next</span>
-				<span className="lb-upnext__goal">{goal || 'All goals'}</span>
+				<span className="lb-upnext__goal">{data.track ? data.track.name : 'No active track'}</span>
 			</header>
-			{data.steps.length === 0 && data.habits.length === 0 ? (
-				<p className="lb-upnext__empty">Nothing due. Set a track to Active to see its next step here.</p>
+			{!current ? (
+				<p className="lb-upnext__empty">{data.track ? 'Everything on this track is done.' : 'Set a track to Active, or pick one: double-click this card.'}</p>
 			) : (
 				<ul className="lb-upnext__list">
-					{data.steps.map(({ track, step, parent }) => (
-						<li key={track.trackId} className="lb-upnext__row">
-							<input
-								type="checkbox"
-								className="lb-skill__check"
-								checked={false}
-								onPointerDown={swallow}
-								onClick={swallow}
-								onChange={() => tick(editor, step.itemId, true, shape.id as TLShapeId)}
-							/>
+					<li className="lb-upnext__row lb-upnext__row--current">
+						<input
+							type="checkbox"
+							className="lb-skill__check"
+							checked={false}
+							onPointerDown={swallow}
+							onClick={swallow}
+							onChange={() => tick(editor, current.step.itemId, true, shape.id as TLShapeId)}
+						/>
+						<span className="lb-upnext__item">
+							<span>{current.step.title}</span>
+							<span className="lb-upnext__meta">
+								{[current.entry !== current.step ? current.entry.title : '', current.step.kind, current.step.medium].filter(Boolean).join(' · ')}
+							</span>
+						</span>
+					</li>
+					{later.map(({ step, entry }) => (
+						<li key={step.itemId} className="lb-upnext__row lb-upnext__row--later">
+							<span className="lb-upnext__dot" aria-hidden />
 							<span className="lb-upnext__item">
 								<span>{step.title}</span>
-								<span className="lb-upnext__meta">{[track.name, parent?.title, step.kind, step.medium].filter(Boolean).join(' · ')}</span>
+								{entry !== step && <span className="lb-upnext__meta">{entry.title}</span>}
 							</span>
 						</li>
 					))}
+				</ul>
+			)}
+			{data.habits.length > 0 && (
+				<ul className="lb-upnext__list">
 					{data.habits.map(({ habit, count, target, period }) => {
 						const here = onThisBoard(editor, habit.boardId, habit.shapeId)
 						const manual = !parseFilter(habit.counts)
@@ -150,14 +177,16 @@ function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Up
 			<NodeEditorPopover shape={shape} editor={editor} width={260}>
 				<div className="lb-skill-editor">
 					<label>
-						<span>Goal</span>
+						<span>Track</span>
 						<select
-							value={goal}
-							onChange={(e) => editor.updateShape({ id: shape.id, type: UP_NEXT_TYPE, props: { goal: e.target.value } } as never)}
+							value={shape.props.trackId}
+							onChange={(e) => editor.updateShape({ id: shape.id, type: UP_NEXT_TYPE, props: { trackId: e.target.value } } as never)}
 						>
-							<option value="">All goals</option>
-							{data.goals.map((g) => (
-								<option key={g}>{g}</option>
+							<option value="">Follow the first active track</option>
+							{data.tracks.map((t) => (
+								<option key={t.trackId} value={t.trackId}>
+									{t.name}
+								</option>
 							))}
 						</select>
 					</label>
@@ -174,10 +203,20 @@ export const upNextNodeDefinition: NodeDefinition<UpNextProps> = {
 	label: 'Up next',
 	icon: '▶',
 	toolbarIcon: ListTodo,
-	props: { goal: T.string, autoHeight: T.boolean },
-	// Empty for now; the sequence exists from day one so the first migration is a one-line change.
-	migrations: createShapePropsMigrationSequence({ sequence: [] }),
-	defaultProps: () => ({ goal: '', autoHeight: true }),
+	props: { trackId: T.string, autoHeight: T.boolean },
+	migrations: createShapePropsMigrationSequence({
+		sequence: [
+			{
+				// One card per track now, instead of one for every track of a goal.
+				id: versions.PerTrack,
+				up(props) {
+					delete props.goal
+					props.trackId = ''
+				},
+			},
+		],
+	}),
+	defaultProps: () => ({ trackId: '', autoHeight: true }),
 	defaultSize: { w: 340, h: 160 },
 	autoHeight: { minHeight: 160 },
 	component: UpNextComponent,

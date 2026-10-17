@@ -160,8 +160,8 @@ export function isHabit(shape: TLShape | undefined | null): shape is HabitShape 
 export const UP_NEXT_TYPE = 'node.upNext'
 
 export interface UpNextProps {
-	/** Only this goal's tracks and habits; '' for all of them. */
-	goal: string
+	/** The track this card shows; '' follows the first active one. */
+	trackId: string
 	autoHeight: boolean
 }
 

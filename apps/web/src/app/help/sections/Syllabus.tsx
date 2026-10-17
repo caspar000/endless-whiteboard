@@ -124,10 +124,11 @@ export function Syllabus(_props: SectionProps) {
 
 			<Section title="Up next">
 				<p>
-					<strong>Up next</strong> is the card to work from. Put one on any board: it lists the next step
-					of every active track (inside an entry, the next undone work), then the habits not yet met this
-					period, then twelve weeks of the days you did something. Tick a step right there. Double-click the
-					card to show only one goal.
+					<strong>Up next</strong> is the card to work from, one per track. It shows the track's current
+					step, lit, to tick right there, and the next five greyed so you can see what is coming; then the
+					habits of that track's goal still due this period, and twelve weeks of the days you did something.
+					It follows the first active track; double-click it to pick another, and put one card per track you
+					are working on.
 				</p>
 			</Section>
 

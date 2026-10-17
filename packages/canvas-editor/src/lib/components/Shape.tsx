@@ -1,5 +1,4 @@
 import type { TLUnknownShape } from '@tldraw/tlschema'
-import type { TLShape } from '../editor/types/shape-types'
 import { track, useQuickReactor, useStateTracking } from '@tldraw/state-react'
 import {
 	TLShapeId,
@@ -26,20 +25,21 @@ opacity based on its own opacity and that of its parent's.
 */
 export const Shape = track(function Shape({
 	id,
-	shape,
 	util,
 	index,
 	backgroundIndex,
 	opacity,
 }: {
 	id: TLShapeId
-	shape: TLShape
 	util: ShapeUtil
 	index: number
 	backgroundIndex: number
 	opacity: number
 }) {
 	const editor = useEditor()
+	// Read here rather than passed down: the list of shapes to render does not change when a shape
+	// moves, so it cannot carry the record. Read inside `track`, a change re-renders this shape only.
+	const shape = editor.getShape(id)
 
 	const { ShapeErrorFallback, ShapeWrapper: ShapeWrapperOrNull } = useEditorComponents()
 	const ShapeWrapper = ShapeWrapperOrNull ?? DefaultShapeWrapper
@@ -84,7 +84,7 @@ export const Shape = track(function Shape({
 			if (!shape) return null
 
 			const bounds = editor.getShapeGeometry(shape).bounds
-			const dpr = Math.floor(editor.getInstanceState().devicePixelRatio * 100) / 100
+			const dpr = Math.floor(editor.getDevicePixelRatio() * 100) / 100
 			// dprMultiple is the smallest number we can multiply dpr by to get an integer
 			// it's usually 1, 2, or 4 (for e.g. dpr of 2, 2.5 and 2.25 respectively)
 			const dprMultiple = nearestMultiple(dpr)
@@ -107,7 +107,7 @@ export const Shape = track(function Shape({
 	useQuickReactor(
 		'set shape container display',
 		() => {
-			const display = editor.isShapeCulled(id) ? 'none' : 'block'
+			const display = editor._isShapeCulledForRender(id) ? 'none' : 'block'
 			if (rDisplay.current === display) return
 			rDisplay.current = display
 			setProperty('display', display)

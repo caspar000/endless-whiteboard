@@ -45,6 +45,7 @@ import {
 	getStraightArrowHandlePath,
 	toDomPrecision,
 	useIsEditing,
+	useValue,
 } from '@lifeboard/canvas-editor'
 import React, { type JSX } from 'react'
 import { ShapeFill, getShapeFillSvg, useDefaultColorTheme } from '../shared/ShapeFill'
@@ -530,14 +531,24 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		// Not a class component, but eslint can't tell that :(
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
-		const onlySelectedShape = this.editor.getOnlySelectedShape()
-		const shouldDisplayHandles =
-			this.editor.isInAny(
-				'select.idle',
-				'select.pointing_handle',
-				'select.dragging_handle',
-				'arrow.dragging'
-			) && !this.editor.getInstanceState().isReadonly
+		const editor = this.editor
+		// Through `useValue`, so each arrow re-renders when *its* answer flips. Read inline, the
+		// selection was a dependency of every arrow's render, and a brush across a board with two
+		// thousand relations re-rendered all of them on every pointer move.
+		// eslint-disable-next-line react-hooks/rules-of-hooks
+		const shouldDisplayHint = useValue(
+			'arrow hint',
+			() =>
+				editor.isOnlySelectedShape(shape.id) &&
+				editor.isInAny(
+					'select.idle',
+					'select.pointing_handle',
+					'select.dragging_handle',
+					'arrow.dragging'
+				) &&
+				!editor.getInstanceState().isReadonly,
+			[editor, shape.id]
+		)
 
 		const info = this.editor.getArrowInfo(shape)
 		const bounds = Box2d.ZeroFix(this.editor.getShapeGeometry(shape).bounds)
@@ -559,7 +570,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		let handlePath: null | JSX.Element = null
 
-		if (onlySelectedShape === shape && shouldDisplayHandles) {
+		if (shouldDisplayHint) {
 			const sw = 2
 			const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(
 				info.isStraight

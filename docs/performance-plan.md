@@ -1,6 +1,59 @@
 # Canvas performance plan
 
-Status: Phases 1–2 done, Phase 2 awaiting review. Stop and report after each phase.
+Status: Phases 1–3 done, Phase 3 awaiting review. Stop and report after each phase.
+
+### Phase 3, as built
+
+Planned as a spatial index. Profiling the interactions it was meant to speed up showed that hit
+testing was not where the time went, so the phase went after what was:
+
+- **A write woke every shape.** A signal visits every reactor below it when it changes, whatever the
+  computeds in between return. Each shape had reactors under the instance and page-state records
+  (`isEditing`, its size, its display, the arrow hint, the expression text), so a brush move, a hover
+  or a selection change visited about 20,000 reactors at 2,000 nodes. `IdFlags`
+  (`derivations/idFlags.ts`) gives each shape its own atom for "am I culled / being edited / the only
+  one selected", set by one reactor only when that shape's answer flips. `isShapeBeingEdited(id)` and
+  `isOnlySelectedShape(id)` are the public face; `useIsEditing`, the text labels, `RichText`, the text
+  and node components and the expression hooks use them.
+- **`getCurrentPageId()` read the whole instance record**, so the shape list (and everything else that
+  asked for the page) rebuilt on every brush move. It is a computed now.
+- **The device pixel ratio** every shape container reads is an atom mirrored from the instance
+  record (`getDevicePixelRatio()`), for the same reason.
+- **Every arrow re-rendered on a selection change**: it read the selection in its render. It reads
+  `isOnlySelectedShape` through `useValue`.
+- **Expression text read the page facts even without a `{`**, tying every note and label to every
+  property edit on the board. Both hooks check for a brace first.
+- **Dragging rebuilt the shape list every frame**, because each entry carried the shape record and its
+  masked bounds. The list now reads `_getShapeRenderInfoCache` (type, opacity, hidden, provides a
+  background), compared by value, and `Shape` reads its own record.
+- **A label-aware broad phase** in `getShapeAtPoint` and `getShapesAtPoint`: a cached page box that
+  includes label geometry, which `Group2d` leaves out of its bounds. Worth about 9% on zoomed-out hover
+  and brush; a unit test covers the label case.
+
+| 2,000 nodes + 1,999 relations | After phase 2 | After phase 3 |
+|---|---|---|
+| Brush update write | 8.0 ms | 2.4 ms |
+| Hover change write | 7.3 ms | 2.3 ms |
+| Selection change write | 11.3 ms | 3.7 ms |
+| Brush selection, 100% zoom, per pointer move | 34 ms | 17.5 ms |
+| Drag a node, per frame | 24.4 ms | 15.9 ms |
+| Pan at 100% zoom, relations shown | 10.2 ms | 8.9 ms |
+
+The first column was measured after the `getCurrentPageId` and arrow-hint fixes had landed, so it
+understates what the phase changed.
+
+**Why there is no spatial index.** At 100% zoom hit tests only look at the ~50 shapes that are on
+screen, and the remaining cost per hover is the signals library checking the dependencies of the
+visible-shape list, not geometry. Zoomed out, a Chrome trace of hovering puts 9 ms per move in the
+browser's own DOM hit test and ~16 ms per frame in layerization, against 7 ms of our JavaScript: the
+cost of thousands of positioned elements, which Phase 6 removes. An index would have saved a few
+milliseconds on brush selection at 2,000 nodes. It stays an option after Phase 6, if measurements
+call for it.
+
+**Left as is:** every arrow's geometry still reads one shared bindings map built from a store query, so
+any write still visits each arrow once (about 1 ms per write at 2,000 arrows). Fixing it means keeping
+per-arrow binding atoms in step with the store synchronously, and a write path that skipped them
+would silently detach arrows; not worth the risk for 1 ms.
 
 ### Phase 2, as built
 
@@ -114,11 +167,9 @@ relations shown, and per-frame JS on large boards drops by the comments and hove
 - A tripwire test in the style of `e2e/perf.spec.ts`: panning recomputes `getRenderingShapes` zero
   times.
 
-## Phase 3: spatial index
+## Phase 3: interactions cost the same on any board
 
-- An R-tree (rbush, MIT) of shape page bounds, kept up to date from store changes.
-- Culling, `getShapeAtPoint`, brush and scribble selection, and `getShapesAtPoint` query it instead of
-  scanning every shape.
+Originally "spatial index"; see *Phase 3, as built* for why it became this.
 
 ## Phase 4: unmount what is far away
 

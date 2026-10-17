@@ -80,3 +80,21 @@ it('culls exactly again once the camera stops', () => {
 	expect(isCulled(near)).toBe(true)
 })
 
+it('does not rebuild the list of shapes to render when a shape moves', () => {
+	const moving = createShapeId('moving')
+	editor.createShapes([
+		{ id: moving, type: 'geo', x: 0, y: 0, props: { w: 100, h: 100 } },
+		{ type: 'geo', x: 300, y: 0, props: { w: 100, h: 100 } },
+	])
+	let rebuilds = 0
+	const stop = react('count rebuilds', () => {
+		editor.getRenderingShapeList()
+		rebuilds++
+	})
+	for (let i = 1; i <= 20; i++) editor.updateShape({ id: moving, type: 'geo', x: i * 10, y: i * 5 })
+	expect(rebuilds).toBe(1)
+	// What the list does carry still reaches it.
+	editor.updateShape({ id: moving, type: 'geo', opacity: 0.5 })
+	stop()
+	expect(rebuilds).toBe(2)
+})

@@ -6,7 +6,7 @@ import { ArrowBindingUtil } from './bindings/ArrowBindingUtil'
 import { BindingUtil, TLBindingUtilConstructor } from './bindings/BindingUtil'
 import type { TLBindingCreate, TLBindingUpdate } from './types/binding-types'
 import { getDefaultColorTheme } from '../theme/defaultColorTheme'
-import { EMPTY_ARRAY, atom, computed, transact } from '@tldraw/state'
+import { EMPTY_ARRAY, atom, computed, react, transact } from '@tldraw/state'
 import { ComputedCache, RecordType } from '@tldraw/store'
 import {
 	CameraRecordType,
@@ -115,6 +115,7 @@ import { exportShapeFromDom } from '../utils/exportShapeFromDom'
 import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
 import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
+import { IdFlags } from './derivations/idFlags'
 import {
 	getArrowTerminal,
 	isArrowTerminal,
@@ -684,10 +685,35 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		this.updateRenderingBounds()
 
+		// Per-shape answers that every shape reads while rendering. See `IdFlags` for why they are
+		// not plain computeds: a write to the brush would otherwise visit every shape on the board.
+		this._culledFlags = new IdFlags('culled', () => this.getCulledShapeIds())
+		this._editingFlags = new IdFlags('editing', () => {
+			const id = this.getEditingShapeId()
+			return id ? [id] : []
+		})
+		this._onlySelectedFlags = new IdFlags('only selected', () => {
+			const shape = this.getOnlySelectedShape()
+			return shape ? [shape.id] : []
+		})
+		this.disposables.add(this._culledFlags.dispose)
+		this.disposables.add(this._editingFlags.dispose)
+		this.disposables.add(this._onlySelectedFlags.dispose)
+		this.disposables.add(
+			react('mirror device pixel ratio', () => {
+				this._devicePixelRatio.set(this.getInstanceState().devicePixelRatio)
+			})
+		)
+
 		requestAnimationFrame(() => {
 			this._tickManager.start()
 		})
 	}
+
+	private readonly _culledFlags: IdFlags<TLShapeId>
+	private readonly _editingFlags: IdFlags<TLShapeId>
+	private readonly _onlySelectedFlags: IdFlags<TLShapeId>
+	private readonly _devicePixelRatio = atom('device pixel ratio', 1)
 
 	/**
 	 * The editor's store
@@ -3978,12 +4004,10 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const renderingShapes: {
 			id: TLShapeId
-			shape: TLShape
 			util: ShapeUtil
 			index: number
 			backgroundIndex: number
 			opacity: number
-			maskedPageBounds: Box2d | undefined
 		}[] = []
 
 		let nextIndex = MAX_SHAPES_PER_PAGE * 2
@@ -3994,13 +4018,17 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// the whole list, and re-rendered it in React, on every frame of a pan.
 		const erasingShapeIds = new Set(useEditorState ? this.getErasingShapeIds() : [])
 
-		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
-			const shape = this.getShape(id)
-			if (!shape || this.isShapeHidden(shape)) return
+		// Nothing here reads a shape's record or position: only `_getShapeRenderInfoCache`, which
+		// does not change when a shape moves. Reading the records made every drag frame rebuild, sort
+		// and re-render this whole list for one shape's x and y.
+		const renderInfo = this._getShapeRenderInfoCache()
 
-			opacity *= shape.opacity
-			const util = this.getShapeUtil(shape)
-			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
+		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
+			const info = renderInfo.get(id)
+			if (!info || info.hidden) return
+
+			opacity *= info.opacity
+			const util = this.getShapeUtil(info.type)
 
 			const isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
 			if (isShapeErasing) {
@@ -4009,12 +4037,10 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 			renderingShapes.push({
 				id,
-				shape,
 				util,
 				index: nextIndex,
 				backgroundIndex: nextBackgroundIndex,
 				opacity,
-				maskedPageBounds,
 			})
 
 			nextIndex += 1
@@ -4024,7 +4050,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			if (!childIds.length) return
 
 			let backgroundIndexToRestore = null
-			if (util.providesBackgroundForChildren(shape)) {
+			if (info.providesBackground) {
 				backgroundIndexToRestore = nextBackgroundIndex
 				nextBackgroundIndex = nextIndex
 				nextIndex += MAX_SHAPES_PER_PAGE
@@ -4053,7 +4079,35 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 */
 	@computed getRenderingShapes() {
 		const culled = this.getCulledShapeIds()
-		return this.getRenderingShapeList().map((entry) => ({ ...entry, isCulled: culled.has(entry.id) }))
+		return this.getRenderingShapeList().map((entry) => ({
+			...entry,
+			shape: this.getShape(entry.id)!,
+			maskedPageBounds: this.getShapeMaskedPageBounds(entry.id),
+			isCulled: culled.has(entry.id),
+		}))
+	}
+
+	/**
+	 * What the list of shapes to render needs from each shape, none of which changes when it moves.
+	 * Compared by value, so a drag recomputes the dragged shape's entry and stops there.
+	 */
+	@computed private _getShapeRenderInfoCache() {
+		return this.store.createComputedCache<ShapeRenderInfo, TLShape>(
+			'shapeRenderInfo',
+			(shape) => ({
+				type: shape.type,
+				opacity: shape.opacity,
+				hidden: this.isShapeHidden(shape),
+				providesBackground: this.getShapeUtil(shape).providesBackgroundForChildren(shape),
+			}),
+			{
+				areResultsEqual: (a, b) =>
+					a.type === b.type &&
+					a.opacity === b.opacity &&
+					a.hidden === b.hidden &&
+					a.providesBackground === b.providesBackground,
+			}
+		)
 	}
 
 	/**
@@ -4098,7 +4152,10 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
 		const renderingBoundsAhead = this._renderingBoundsAhead.get()
 
-		for (const { id, shape, util, maskedPageBounds } of this.getRenderingShapeList()) {
+		for (const { id, util } of this.getRenderingShapeList()) {
+			const shape = this.getShape(id)
+			if (!shape) continue
+			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
 			const isCulled =
 				// only cull shapes that allow unmounting, i.e. not stateful components
 				util.canUnmount(shape) &&
@@ -4124,6 +4181,36 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 */
 	isShapeCulled(id: TLShapeId): boolean {
 		return this.getCulledShapeIds().has(id)
+	}
+
+	/**
+	 * `isShapeCulled` for a shape's own container: the same answer, updated when the change settles,
+	 * and waking only the shapes whose answer changed.
+	 *
+	 * @internal
+	 */
+	_isShapeCulledForRender(id: TLShapeId): boolean {
+		return this._culledFlags.get(id)
+	}
+
+	/**
+	 * Whether this shape is the one being edited, for rendering. Waking only the shape that starts or
+	 * stops being edited, where `getEditingShapeId() === id` in each shape woke all of them on every
+	 * hover, selection and brush move.
+	 *
+	 * @public
+	 */
+	isShapeBeingEdited(id: TLShapeId): boolean {
+		return this._editingFlags.get(id)
+	}
+
+	/**
+	 * Whether this shape is the only one selected, for rendering. Same reason as `isShapeBeingEdited`.
+	 *
+	 * @public
+	 */
+	isOnlySelectedShape(id: TLShapeId): boolean {
+		return this._onlySelectedFlags.get(id)
 	}
 
 	/**
@@ -4290,11 +4377,26 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/**
-	 * The current page id.
+	 * The screen's device pixel ratio, for rendering. Every shape's container reads it, so it is an
+	 * atom mirrored from the instance record rather than a computed over it: a computed would still
+	 * put every shape below the record, where each brush move visits it (see `IdFlags`).
 	 *
 	 * @public
 	 */
-	getCurrentPageId(): TLPageId {
+	getDevicePixelRatio(): number {
+		return this._devicePixelRatio.get()
+	}
+
+	/**
+	 * The current page id.
+	 *
+	 * A computed, so a reader depends on the id rather than on the whole instance record: that record
+	 * also holds the brush, the cursor and the scribbles, and every computed that asks for the page
+	 * (the list of shapes to render among them) was rebuilt on each brush move.
+	 *
+	 * @public
+	 */
+	@computed getCurrentPageId(): TLPageId {
 		return this.getInstanceState().currentPageId
 	}
 
@@ -5018,6 +5120,33 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/** @internal */
+	/**
+	 * The page box a point has to be in, give or take the margin, to hit a shape: its page bounds
+	 * with its labels included, which `Group2d` leaves out of its bounds. Hit tests check this first
+	 * so most shapes are rejected by a cached box rather than a transform and a distance query.
+	 */
+	@computed private _getShapeHitPageBoundsCache(): ComputedCache<Box2d, TLShape> {
+		return this._createShapeCache<Box2d>('hitPageBoundsCache', (shape) => {
+			const pageTransform = this._getShapePageTransformCache().get(shape.id)
+			if (!pageTransform) return new Box2d()
+			const geometry = this.getShapeGeometry(shape)
+			const local =
+				geometry instanceof Group2d
+					? Box2d.Common(geometry.children.map((child) => child.bounds))
+					: geometry.bounds
+			return Box2d.FromPoints(Matrix2d.applyToPoints(pageTransform, local.corners))
+		})
+	}
+
+	/**
+	 * Whether a point is close enough to a shape's box to be worth hit-testing. A margin grows by up to
+	 * √2 when the shape is rotated, so the box is padded by half as much again.
+	 */
+	private _mayHitShape(shape: TLShape, point: VecLike, margin: number): boolean {
+		const box = this._getShapeHitPageBoundsCache().get(shape.id)
+		return !box || box.containsPoint(point, margin * 1.5)
+	}
+
 	@computed private _getShapePageBoundsCache(): ComputedCache<Box2d, TLShape> {
 		return this._createShapeCache<Box2d>('pageBoundsCache', (shape) => {
 			const pageTransform = this._getShapePageTransformCache().get(shape.id)
@@ -5394,7 +5523,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 				? this.getCurrentPageRenderingShapesSorted()
 				: this.getCurrentPageShapesSorted()
 		).filter((shape) => {
-			if (this.isShapeOfType(shape, 'group') || this.isShapeHidden(shape)) return false
+			if (this.isShapeOfType(shape, 'group') || !this._mayHitShape(shape, point, margin)) return false
+			if (this.isShapeHidden(shape)) return false
 			const pageMask = this.getShapeMask(shape)
 			if (pageMask && !pointInPolygon(point, pageMask)) return false
 			if (filter) return filter(shape)
@@ -5554,8 +5684,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 		point: VecLike,
 		opts = {} as { margin?: number; hitInside?: boolean }
 	): TLShape[] {
+		const margin = opts.margin ?? 0
 		return this.getCurrentPageShapes().filter(
-			(shape) => !this.isShapeHidden(shape) && this.isPointInShape(shape, point, opts)
+			(shape) =>
+				this._mayHitShape(shape, point, margin) &&
+				!this.isShapeHidden(shape) &&
+				this.isPointInShape(shape, point, opts)
 		)
 	}
 
@@ -5713,7 +5847,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		return this.getRenderingShapeList()
 			.filter(({ id }) => !culled.has(id))
 			.sort((a, b) => a.index - b.index)
-			.map(({ shape }) => shape)
+			.map(({ id }) => this.getShape(id)!)
 	}
 
 	/**
@@ -9298,9 +9432,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		// ---Figure out which shapes we need to include
 		const shapeIdsToInclude = this.getShapeAndDescendantIds(ids)
-		const renderingShapes = this.getUnorderedRenderingShapes(false).filter(({ id }) =>
-			shapeIdsToInclude.has(id)
-		)
+		const renderingShapes = this.getUnorderedRenderingShapes(false)
+			.filter(({ id }) => shapeIdsToInclude.has(id))
+			.map((entry) => ({ ...entry, maskedPageBounds: this.getShapeMaskedPageBounds(entry.id) }))
 
 		// --- Common bounding box of all shapes
 		let bbox = null
@@ -10319,4 +10453,12 @@ function areSetsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
 	if (a.size !== b.size) return false
 	for (const item of a) if (!b.has(item)) return false
 	return true
+}
+
+/** See `Editor._getShapeRenderInfoCache`. */
+interface ShapeRenderInfo {
+	type: string
+	opacity: number
+	hidden: boolean
+	providesBackground: boolean
 }

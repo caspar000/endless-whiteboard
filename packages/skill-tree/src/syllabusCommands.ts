@@ -98,6 +98,19 @@ export const syllabusCommands: readonly Command[] = [
 		},
 	},
 	{
+		id: 'skill-tree.import-adler',
+		title: "Import Adler's full reading list (137 entries)",
+		group: GROUP,
+		when: (ctx) => ctx.editor !== null,
+		run: async ({ editor }) => {
+			if (!editor) return
+			// Loaded on demand: the document is sixty kilobytes the board never needs otherwise.
+			const { default: text } = await import('../content/adler.yaml?raw')
+			const outcome = importText(editor, text)
+			if (!outcome.ok) reportProblems(editor, "Adler's list not imported", outcome.errors)
+		},
+	},
+	{
 		id: 'skill-tree.confirm-draft',
 		title: 'Confirm draft',
 		group: GROUP,

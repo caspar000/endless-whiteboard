@@ -18,9 +18,9 @@ import {
 	type ItemShape,
 } from './board'
 import { formatOrder, formatTags, parseOrder, parseTags, todayIso } from './model'
-import { addChildItem, createItem, createTrack, ITEM_HEIGHT, setCollapsed } from './ops'
+import { addChildItem, createItem, createTrack, ITEM_HEIGHT, ITEM_WIDTH, setCollapsed } from './ops'
 import { ensureProperties, hideOnCard, PROP_ID, readText } from './properties'
-import { drawMounts, drawPrerequisites, insertTree, layoutReach, treePositions } from './tree/ops'
+import { drawMounts, drawPrerequisites, insertTree, layoutReach, placeNewNodes, treePositions } from './tree/ops'
 import type { DocItem, SyllabusDoc } from './syllabusYaml'
 import { getTreeDef, updateTreeMeta } from './treeDefs'
 import { boardTrees, DRAFT_TREE_META, draftTreeMeta, treeGraph } from './views'
@@ -46,6 +46,9 @@ const COLUMN = 1100
 const TRACK_TO_ITEMS = 420
 const ROW_GAP = 24
 const LIST_ROW = 24
+/** A long track's items wrap into a new column past this height, so 137 entries stay a block, not a strip. */
+const COLUMN_HEIGHT = 2400
+const ITEM_COLUMN = ITEM_WIDTH + 40
 
 export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
 	const before = new Set(editor.getCurrentPageShapeIds())
@@ -57,6 +60,7 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 		for (const track of doc.tracks) {
 			const existingTrack = editor.getCurrentPageShapes().find((s) => isTrack(s) && s.props.trackId === track.trackId)
 			let y = at.y
+			let column = 0
 			for (const item of track.items) {
 				const withDefaults = { ...item, tags: [...new Set([...item.tags, ...track.defaultTags])] }
 				const existing = itemByItemId(editor, item.itemId)
@@ -64,7 +68,11 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 					updated += mergeItem(editor, existing, withDefaults)
 					continue
 				}
-				placeItem(editor, withDefaults, { x: x + TRACK_TO_ITEMS, y }, '')
+				if (y - at.y > COLUMN_HEIGHT) {
+					column++
+					y = at.y
+				}
+				placeItem(editor, withDefaults, { x: x + TRACK_TO_ITEMS + column * ITEM_COLUMN, y }, '')
 				y += ITEM_HEIGHT + 16 + (item.children.length ? item.children.length * LIST_ROW : 0) + ROW_GAP
 			}
 			if (existingTrack && isTrack(existingTrack)) {
@@ -82,13 +90,15 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 					{ x, y: at.y }
 				)
 			}
-			x += COLUMN
+			x += Math.max(COLUMN, TRACK_TO_ITEMS + (column + 1) * ITEM_COLUMN + 200)
 		}
 
 		// A tree mounted on a node of another tree in this document shows inside that tree's view, so
 		// it gets no header of its own.
 		const inDoc = new Set(doc.trees.flatMap((t) => t.nodes.map((n) => n.nodeId)))
 		const viewed: string[] = []
+		// Trees already on the board that this import adds nodes to, and how many it adds.
+		const grown: { treeId: string; fresh: string[]; had: number }[] = []
 		for (const tree of doc.trees) {
 			const nodes = tree.nodes.map((n) => ({ ...n }))
 			const existing = new Map(
@@ -123,6 +133,7 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 					} as never)
 					updated++
 				}
+				if (existing.size && fresh.length) grown.push({ treeId: tree.treeId, fresh: fresh.map((n) => n.nodeId), had: existing.size })
 				const positions = treePositions({ ...tree, nodes: fresh }, center)
 				for (const node of fresh) {
 					const p = positions.get(node.nodeId) ?? center
@@ -165,15 +176,22 @@ export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number
 			editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true, ...(carried ? { [DRAFT_TREE_META]: carried } : {}) } } as never)
 		}
 
-		// Trees with others mounted in this document are laid out whole, branches and all. After the
-		// marking above, because the draft nodes carry the mounts the layout reads; the mount arrows
-		// drawn here are part of the draft too.
-		if (doc.trees.some((t) => t.mount && inDoc.has(t.mount))) {
+		// Placing after the marking above, because the layout reads draft nodes (and the mounts they
+		// carry) from the board. A tree this import grew a lot is laid out again whole; a few new
+		// nodes join their nearest ancestor and the rest stay where they are. Trees with others mounted
+		// in this document are laid out whole, branches and all; the mount arrows are part of the draft.
+		const mounted = doc.trees.some((t) => t.mount && inDoc.has(t.mount))
+		if (mounted || grown.length) {
 			const graph = treeGraph(boardTrees(editor))
-			for (const treeId of viewed) {
+			const regrown = new Set(grown.filter((g) => g.fresh.length > g.had).map((g) => g.treeId))
+			const whole = new Set([...(mounted ? viewed : []), ...regrown])
+			for (const treeId of whole) {
 				const root = graph.rootOf.get(treeId)
-				if (root) layoutReach(editor, root, null)
+				// A tree laid out again from scratch goes into clear space; a new one stays where it was put.
+				if (root) layoutReach(editor, root, null, regrown.has(treeId) ? 'clear' : undefined)
 			}
+			const few = grown.filter((g) => !whole.has(g.treeId)).flatMap((g) => g.fresh)
+			if (few.length) placeNewNodes(editor, new Set(few))
 			drawMounts(editor)
 			for (const shape of editor.getCurrentPageShapes()) {
 				if (!before.has(shape.id) && !isDraft(shape)) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)

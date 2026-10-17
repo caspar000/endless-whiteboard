@@ -119,7 +119,9 @@ export function Syllabus({ go }: SectionProps) {
 				<p className="lb-help__aside">
 					Order is a guide, not a gate: anything can be ticked at any time. Double-click a track to rename
 					it, give it a goal and reorder it. <code>Insert Adler's reading list (sample)</code> puts the
-					first fifteen entries of Adler's list on the board to try it with.
+					first fifteen entries of Adler's list on the board to try it with, and{' '}
+					<code>Import Adler's full reading list (137 entries)</code> brings in all of it, with a tree of
+					fields by era, as a draft.
 				</p>
 			</Section>
 

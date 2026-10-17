@@ -222,10 +222,11 @@ function fanOrder(graph: TreeGraph, ids: readonly string[]): string[] {
 
 /**
  * Lays out what a view reaches from `start` on this board, `start` staying where it is (or put at
- * `anchor`): every tree mounted on the way is a branch, and each tree's header hangs beside its root.
- * Returns how many shapes moved.
+ * `anchor`, or, with `'clear'`, moved into the empty space right of everything else on the board):
+ * every tree mounted on the way is a branch, and each tree's header hangs beside its root. Returns
+ * how many shapes moved.
  */
-export function layoutReach(editor: Editor, start: string, label: string | null, anchor?: { x: number; y: number }): number {
+export function layoutReach(editor: Editor, start: string, label: string | null, anchor?: { x: number; y: number } | 'clear'): number {
 	const graph = treeGraph(boardTrees(editor))
 	const shapes = nodeShapes(editor)
 	const startShape = shapes.get(start)
@@ -248,6 +249,19 @@ export function layoutReach(editor: Editor, start: string, label: string | null,
 		nodes.push({ id: HEADER + header.id, w: b?.w ?? 280, h: b?.h ?? 72 })
 		headerEdges.push({ from: root, to: HEADER + header.id })
 		placed.push({ graphId: HEADER + header.id, shape: header })
+	}
+	if (anchor === 'clear') {
+		// Laid out alone, then set down so its left edge is clear of the rest of the board.
+		const at = layoutGraph(nodes, [...drawn, ...loose, ...headerEdges], { root: start, clearEdges: (e) => drawn.includes(e as never) })
+		const size = new Map(nodes.map((n) => [n.id, n]))
+		const left = Math.min(...[...at].map(([id, p]) => p.x - size.get(id)!.w / 2))
+		const moving = new Set<string>(placed.map((p) => p.shape.id))
+		const rest = editor.getCurrentPageShapes().filter((s) => !moving.has(s.id) && s.type !== 'arrow' && s.parentId === editor.getCurrentPageId())
+		const boxes = rest.flatMap((s) => editor.getShapePageBounds(s.id) ?? [])
+		const right = boxes.length ? Math.max(...boxes.map((b) => b.maxX)) : 0
+		const top = boxes.length ? Math.min(...boxes.map((b) => b.minY)) : 0
+		const upper = Math.min(...[...at].map(([id, p]) => p.y - size.get(id)!.h / 2))
+		return place(editor, placed, at, { x: right + 600 - left, y: top - upper }, label)
 	}
 	const at0 = anchor ?? centreOf(editor, startShape.id)
 	const at = layoutGraph(nodes, [...drawn, ...loose, ...headerEdges], {

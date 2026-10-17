@@ -5,6 +5,27 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+### Phase B, Adler, as built
+
+- **`packages/skill-tree/content/adler.yaml`** is the whole list: 137 entries in their order as one
+  track, and a 49-node tree of fields by era (literature, philosophy, science, history and politics,
+  theology; ancient to twentieth century), each era's node needing the same field's node before it,
+  with cross-links where the reading does (Ptolemy before the Scientific Revolution, Kant after
+  both Rationalists and Empiricists). Hand-editable; `content.test.ts` checks that it parses, that
+  every entry is tagged to a node, that every node is reachable from the root and that no count asks
+  for more written-up works than its node can get.
+- **Source:** the list as printed on tosummarise.com, checked against the book; its typos are
+  corrected (Aristotle, Bacon, Galileo, Nicomachean, Journal to Stella, Burnt Njal).
+- **Merges with the sample:** the first fifteen keep the sample's ids, titles and children, and the
+  eight sample nodes their ids and requirements, so importing on a board with the sample updates it
+  in place and keeps ticks and notes.
+- **"Import Adler's full reading list (137 entries)"** imports the bundled file as a draft (loaded on
+  demand, so the board bundle does not carry it).
+- **Two import fixes it needed:** a long track's new items wrap into columns past 2400 px, and a tree
+  an import grows past its own size is laid out again whole, in clear space to the right of the
+  board (new item cards have not been measured yet when it runs, so fitting the tree among them
+  went wrong). Smaller additions slide in beside their nearest ancestor.
+
 ### Pillars and the Mastery demo, as built
 
 - **YAML:** `trees:` holds several trees in one document (each after the first needs an `id`), and

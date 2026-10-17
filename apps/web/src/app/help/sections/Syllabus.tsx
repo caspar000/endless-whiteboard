@@ -167,13 +167,33 @@ export function Syllabus(_props: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Focus, everything, and back">
+				<p>
+					A tree opens on its skill nodes. <strong>Double-click a node to focus on it</strong>: it moves to
+					the middle with its entries and their works around it, and its neighbouring skill nodes stay,
+					folded, so you know where you are. Double-click Homer and his works unfold around him. Right-click
+					› Focus here does the same; Enter, or right-click › Edit, opens a skill node's editor.
+				</p>
+				<p>
+					The tree's header card shows which arrangement you are in, with <strong>Show all</strong> (every
+					entry and work, however many), <strong>Back</strong> to the skill nodes, and{' '}
+					<strong>Re-calculate</strong> to lay the arrangement out again. Each arrangement remembers where
+					you put its nodes: come back to it and they are where you left them. Tick a work's dot right there
+					in the tree; right-click an entry › Put a card on the board for its checklist.
+				</p>
+				<p className="lb-help__aside">
+					Settings › Extensions › Syllabus & skill trees sets what an import opens on and how far a focus
+					reaches; a tree's header editor overrides both for that tree.
+				</p>
+			</Section>
+
 			<Section title="Laying a tree out">
 				<p>
-					Select a tree's header or any of its nodes and run <code>Lay out tree</code>: the root stays where
-					it is, its dependents fan out around it, families stay together, and nothing overlaps, not even
-					the cards already on the board. Pick a different root in the header's editor (double-click it) to
-					grow the tree from there. <code>Lay out from this node</code> arranges one node and everything
-					that depends on it and leaves the rest alone.
+					<code>Lay out tree</code> (or Re-calculate) arranges the tree: the root stays where it is, its
+					dependents fan out around it, families stay together, and nothing overlaps, not even the cards
+					already on the board. Pick a different root in the header's editor (double-click it) to grow the
+					tree from there. <code>Lay out from this node</code> arranges one node and everything that depends
+					on it and leaves the rest alone.
 				</p>
 				<p>
 					<code>Gather every tree around a Mastery node</code> puts one Mastery node in the middle of the

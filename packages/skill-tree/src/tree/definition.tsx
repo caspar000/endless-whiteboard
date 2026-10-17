@@ -1,14 +1,18 @@
 import { createShapePropsMigrationIds, createShapePropsMigrationSequence, NodeEditorPopover, type NodeComponentProps, type NodeDefinition } from '@lifeboard/node-kit'
 import { stopEventPropagation, T, useValue, type Editor } from '@lifeboard/canvas'
 import { Network } from 'lucide-react'
-import { memo, type KeyboardEvent } from 'react'
-import { draftClass, TREE_TYPE, treeNodes, type SkillTreeProps } from '../board'
+import { memo, type KeyboardEvent, type SyntheticEvent } from 'react'
+import { draftClass, TREE_TYPE, treeNodes, type SkillTreeProps, type TreeShape } from '../board'
+import { getItem } from '../syllabus'
+import { setView } from './focus'
+import { recalculate } from './viewSync'
 import { makeItemId } from '../model'
 import { TIERS } from '../requirements'
 import { treeStatus } from './status'
 import { boardTrees, reachFrom, treeGraph } from '../views'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
+const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
 function rootChoices(editor: Editor, treeId: string): { id: string; nodeId: string; name: string }[] {
 	const graph = treeGraph(boardTrees(editor))
@@ -17,12 +21,20 @@ function rootChoices(editor: Editor, treeId: string): { id: string; nodeId: stri
 	return [...reachFrom(graph, root)].map((id) => ({ id, nodeId: id, name: graph.nodes.get(id)!.def.name }))
 }
 
-const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1 })
+const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1, AddView: 2 })
+
+/** What a header's arrangement is called on its card. */
+function arrangementLabel(editor: Editor, header: TreeShape): string {
+	if (header.props.mode === 'all') return 'Everything'
+	if (header.props.mode !== 'focus' || !header.props.focus) return 'Skill nodes'
+	const node = treeGraph(boardTrees(editor)).nodes.get(header.props.focus)
+	return `Focus: ${node?.def.name ?? getItem(header.props.focus)?.title ?? header.props.focus}`
+}
 
 /**
- * A tree's header card: its name and goal, how much of it is unlocked, and the axes auto-layout
- * places its nodes on (docs/skill-tree-plan.md, "Layout"). The nodes are separate shapes that name
- * this tree by id.
+ * A tree's header card, and this board's view of the tree (docs/skill-tree-plan.md, "Rebuild"): its
+ * name and goal, how much of it is unlocked, which arrangement the board shows, and the buttons that
+ * switch it. The nodes are separate shapes the view puts on the board.
  */
 function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<SkillTreeProps>) {
 	const summary = useValue(
@@ -43,6 +55,22 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	const nodes = isEditing ? rootChoices(editor, shape.props.treeId) : []
 	const set = (props: Partial<SkillTreeProps>) => editor.updateShape({ id: shape.id, type: TREE_TYPE, props } as never)
 
+	const header = shape as unknown as TreeShape
+	const mode = shape.props.mode
+	const button = (label: string, title: string, run: () => void) => (
+		<button
+			type="button"
+			className="lb-skilltree__button"
+			title={title}
+			onPointerDown={swallow}
+			onClick={(e) => {
+				e.stopPropagation()
+				run()
+			}}
+		>
+			{label}
+		</button>
+	)
 	const body = (
 		<div className={`lb-skilltree${draftClass(shape as never)}`}>
 			<span className="lb-skilltree__name">{shape.props.name || 'Untitled Tree'}</span>
@@ -52,6 +80,12 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 				{summary.tiers.some(Boolean) &&
 					` · ${TIERS.map((name, t) => (summary.tiers[t] ? `${summary.tiers[t]} ${name}` : '')).filter(Boolean).join(', ')}`}
 			</span>
+			<div className="lb-skilltree__bar">
+				<span className="lb-skilltree__mode">{arrangementLabel(editor, header)}</span>
+				{mode !== 'all' && button('Show all', 'Every entry and work of this tree, however many', () => setView(editor, header, 'all'))}
+				{mode !== 'overview' && button('Back', 'Back to the skill nodes', () => setView(editor, header, 'overview'))}
+				{button('Re-calculate', 'Lay this arrangement out again from scratch', () => recalculate(editor, header))}
+			</div>
 		</div>
 	)
 
@@ -88,7 +122,27 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 						<span>Rings</span>
 						<input value={shape.props.rings} placeholder="inner to outer" onKeyDown={keepKeys} onChange={(e) => set({ rings: e.target.value })} />
 					</label>
-					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Run "Lay out tree" to place them again.</p>
+					<div className="lb-skill-editor__pair">
+						<label>
+							<span>Focus reaches</span>
+							<select value={shape.props.depth} onChange={(e) => set({ depth: Number(e.target.value) })}>
+								<option value={-1}>Default</option>
+								<option value={0}>Only the node</option>
+								<option value={1}>1 step</option>
+								<option value={2}>2 steps</option>
+								<option value={3}>3 steps</option>
+							</select>
+						</label>
+						<label>
+							<span>Live physics</span>
+							<select value={shape.props.live} onChange={(e) => set({ live: e.target.value })}>
+								<option value="">Default</option>
+								<option value="on">On</option>
+								<option value="off">Off</option>
+							</select>
+						</label>
+					</div>
+					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Double-click a node to focus on it; Re-calculate lays the arrangement out again.</p>
 					<p className="lb-skill-editor__id">{shape.props.treeId}</p>
 				</div>
 			</NodeEditorPopover>
@@ -111,6 +165,11 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		sectors: T.string,
 		rings: T.string,
 		root: T.string,
+		mode: T.string,
+		focus: T.string,
+		depth: T.number,
+		live: T.string,
+		places: T.string,
 		autoHeight: T.boolean,
 	},
 	migrations: createShapePropsMigrationSequence({
@@ -119,6 +178,17 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 				id: versions.AddRoot,
 				up(props) {
 					props.root = ''
+				},
+			},
+			{
+				// A header became the board's view of its tree: what it shows, and where things were.
+				id: versions.AddView,
+				up(props) {
+					props.mode = 'overview'
+					props.focus = ''
+					props.depth = -1
+					props.live = ''
+					props.places = '{}'
 				},
 			},
 		],
@@ -131,6 +201,11 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		sectors: '',
 		rings: '',
 		root: '',
+		mode: 'overview',
+		focus: '',
+		depth: -1,
+		live: '',
+		places: '{}',
 		autoHeight: true,
 	}),
 	onCreate: ({ shape }) => (shape.props.treeId ? null : { treeId: makeItemId(shape.props.name || 'tree', 'tree/') }),

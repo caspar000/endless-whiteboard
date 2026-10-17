@@ -3,7 +3,8 @@ import type { Editor } from '@lifeboard/canvas'
 import { isItem, isSkill, MASTERY, type SkillShape } from './board'
 import { tick } from './ops'
 import { getItem } from './syllabus'
-import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId } from './tree/ops'
+import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId, treeHeader } from './tree/ops'
+import { recalculate } from './tree/viewSync'
 import { insertMasteryDemo } from './tree/masteryDemo'
 import { insertAdlerTree } from './tree/sample'
 
@@ -63,7 +64,11 @@ export const skillTreeCommands: readonly Command[] = [
 			if (!editor || !treeId) return
 			// The Mastery node's tree is every tree on the board.
 			if (treeId === MASTERY) gatherAroundMastery(editor)
-			else layoutTree(editor, treeId)
+			else {
+				const header = treeHeader(editor, treeId)
+				if (header) recalculate(editor, header)
+				else layoutTree(editor, treeId)
+			}
 		},
 	},
 	{

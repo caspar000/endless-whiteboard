@@ -161,12 +161,21 @@ export function layoutGraph(
 
 	// Ring radii: at least a box and a gap further out than the ring inside, and wide enough that
 	// the ring's nodes fit around it side by side.
-	const unit = Math.max(...ids.map((id) => Math.hypot(byId.get(id)!.w, byId.get(id)!.h) * 0.75)) + gap
-	const perRing = new Map<number, number>()
-	for (const p of placed.values()) perRing.set(p.depth, (perRing.get(p.depth) ?? 0) + 1)
+	// Each node's own reach, so a ring of small work dots sits close and a ring of skill discs wide.
+	const reachOf = (id: string) => Math.hypot(byId.get(id)!.w, byId.get(id)!.h) * 0.45
+	const widest = new Map<number, number>()
+	const around = new Map<number, number>()
+	for (const [id, p] of placed) {
+		widest.set(p.depth, Math.max(widest.get(p.depth) ?? 0, reachOf(id)))
+		around.set(p.depth, (around.get(p.depth) ?? 0) + 2 * reachOf(id) + gap)
+	}
 	const radius: number[] = [0]
-	const deepest = Math.max(0, ...perRing.keys())
-	for (let d = 1; d <= deepest; d++) radius[d] = Math.max(radius[d - 1]! + unit, ((perRing.get(d) ?? 0) * unit) / (2 * Math.PI))
+	const deepest = Math.max(0, ...widest.keys())
+	for (let d = 1; d <= deepest; d++) {
+		const step = (widest.get(d - 1) ?? 0) + (widest.get(d) ?? 0) + gap
+		radius[d] = Math.max(radius[d - 1]! + step, (around.get(d) ?? 0) / (2 * Math.PI))
+	}
+	const unit = Math.max(...ids.map(reachOf)) * 2 + gap
 
 	const bodies: Body[] = ids.map((id) => {
 		const p = placed.get(id)!
@@ -183,7 +192,7 @@ export function layoutGraph(
 		.filter((e) => index.has(e.from) && index.has(e.to))
 		.map((e) => ({ a: index.get(e.from)!, b: index.get(e.to)!, tree: parentOf(e.to) === e.from, clear: options.clearEdges?.(e) ?? true }))
 
-	relax(bodies, springs, unit)
+	relax(bodies, springs, unit, gap)
 	separate(bodies, springs, gap)
 
 	const out = new Map<string, { x: number; y: number }>()
@@ -192,7 +201,10 @@ export function layoutGraph(
 }
 
 /** The soft pass: a few hundred cooling steps of repulsion, springs and the pull home. */
-function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[], unit: number): void {
+function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[], unit: number, gap: number): void {
+	// How far apart two bodies want to be: their reaches and a gap.
+	const reach = bodies.map((b) => Math.hypot(b.w, b.h) * 0.45)
+	const want = (i: number, j: number) => reach[i]! + reach[j]! + gap
 	const steps = 240
 	for (let step = 0; step < steps; step++) {
 		const heat = 1 - step / steps
@@ -205,8 +217,9 @@ function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[
 				const dy = bodies[j]!.y - bodies[i]!.y
 				const d2 = Math.max(1, dx * dx + dy * dy)
 				const d = Math.sqrt(d2)
-				if (d > unit * 3) continue
-				const f = (unit * unit) / d2
+				const w = want(i, j)
+				if (d > w * 3) continue
+				const f = (w * w) / d2
 				fx[i]! -= (f * dx) / d
 				fy[i]! -= (f * dy) / d
 				fx[j]! += (f * dx) / d
@@ -219,7 +232,7 @@ function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[
 			const dx = b.x - a.x
 			const dy = b.y - a.y
 			const d = Math.max(1, Math.hypot(dx, dy))
-			const f = (d - unit) * (s.tree ? 0.05 : 0.01)
+			const f = (d - want(s.a, s.b)) * (s.tree ? 0.05 : 0.01)
 			fx[s.a]! += (f * dx) / d
 			fy[s.a]! += (f * dy) / d
 			fx[s.b]! -= (f * dx) / d

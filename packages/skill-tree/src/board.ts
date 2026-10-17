@@ -71,9 +71,39 @@ export interface SkillTreeProps {
 	/** Comma-separated, in order. */
 	sectors: string
 	rings: string
-	/** The node id the tree is laid out from; empty for its node of kind root. */
+	/** The node id the view starts from ("Show from"); empty for its node of kind root. */
 	root: string
+	/** What this board shows of the tree: skill nodes only, one node's neighbourhood, or everything. */
+	mode: string
+	/** In focus mode, the node or item at the middle. */
+	focus: string
+	/** Focus reach for this tree; -1 takes the default from Settings. */
+	depth: number
+	/** Live physics for this tree: '' takes the default, 'on' or 'off' overrides it. */
+	live: string
+	/** Where nodes were in each view of this tree on this board, as JSON: `{ context: { id: [x, y] } }`. */
+	places: string
 	autoHeight: boolean
+}
+
+export const VIEW_MODES = ['overview', 'focus', 'all'] as const
+export type ViewMode = (typeof VIEW_MODES)[number]
+
+/** An entry (Homer) or a work (the Iliad) drawn in a tree view: a view of a vault item. */
+export const ENTRY_TYPE = 'node.skillEntry'
+
+export interface EntryProps {
+	itemId: string
+	/** The tree whose view put it here. */
+	treeId: string
+	/** `entry` (a small disc with a progress ring) or `work` (a dot with its title). */
+	variant: string
+}
+
+export type EntryShape = TLShape & { type: typeof ENTRY_TYPE; props: EntryProps }
+
+export function isEntry(shape: TLShape | undefined | null): shape is EntryShape {
+	return shape?.type === ENTRY_TYPE
 }
 
 export type SkillShape = TLShape & { type: typeof SKILL_TYPE; props: SkillNodeProps }

@@ -37,6 +37,34 @@ list outline, the split import; (2) the tree view with entries and works, focus 
 remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
 (5) pop-out cards. Then the director content.
 
+### Rebuild phase 2 (entries in the tree, focus mode, Show all), as built
+
+- **`node.skillEntry`** draws a vault item in a tree view: an entry as a 60 px disc with a ring for its
+  works done, a work as a tick dot with its title (`entry/`). The view puts them on the board and takes
+  them off; they are not in the dock. Light grey lines (arrows, meta `lifeboard:skillEdge: line`) join a
+  skill node to its entries and an entry to its works. Skill nodes are 110 px now.
+- **What a view shows** (`views.ts`, `viewContents`, pure): the overview is its skill nodes; all adds
+  every entry tagged to one of them and every work; focus on a skill node is it, its entries unfurled,
+  and its neighbours within the depth folded; focus on an entry (or a work) is the entry unfurled among
+  its node's other entries, folded. An entry hangs from the first of its tags in the view's reach.
+- **The header is the view's state:** `mode`, `focus`, `depth` and `live` overrides, and `places`, the
+  positions of every node in each arrangement it has shown (`overview`, `all`, `focus:<id>`). The
+  board records the current arrangement in header meta; switching saves the one left and restores the
+  one entered (`tree/viewSync.ts`). An arrangement never seen, or mostly new, is laid out whole around
+  its start, which stays put; a few new nodes slide in beside their nearest neighbour. All of it is
+  history-ignored; the switch itself (double-click, Show all, Back) is the one undo step.
+- **Double-click** is a new node-kit hook (`NodeDefinition.onDoubleClick`, from the select tool's own
+  double-click handler); a skill node keeps `canEdit`, so Enter and right-click › Edit still edit it.
+  New shape actions: Focus here, Edit, Put a card on the board.
+- **Layout** spaces each node by its own size (a ring of work dots sits close, a ring of skill discs
+  wide), orients edges away from the start so a focused entry is the middle, and lays the header out
+  as a leaf of the start instead of above it.
+- **Settings** (`treePrefs.ts`, device-local like the dice's): what an import opens on, focus reach,
+  live physics; the panel is on the extension's Settings page.
+- Checked in a fresh profile on Adler: focus on Greek Epic and Drama (5 entries, 13 works, no overlaps),
+  on Homer (his 2 works, siblings folded), Back to the exact earlier positions, Show all (137 entries,
+  273 works, 410 lines, no overlaps, about 2 s), a tick on a work's dot.
+
 ### Rebuild phase 1 (items in the vault, the list, the split import), as built
 
 - **`syllabus.ts`** holds items (`ItemDef`: title, kind, medium, tags, core, child rule, parent, works

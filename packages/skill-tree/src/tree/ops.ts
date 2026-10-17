@@ -7,6 +7,7 @@ import { parseRequirements } from '../requirements'
 import { SKILL_SIZE } from '../skill/definition'
 import { layoutGraph, type GraphEdge, type GraphNode } from './layout'
 import { prerequisitesOf } from './prerequisites'
+import { getTreePrefs } from '../treePrefs'
 
 /** Meta on the arrows this extension draws between prerequisites, so redrawing can find its own. */
 export const SKILL_EDGE_META = 'lifeboard:skillEdge'
@@ -92,6 +93,8 @@ export function insertTree(
 				layout: spec.layout ?? 'sectors',
 				sectors: spec.sectors.join(', '),
 				rings: spec.rings.join(', '),
+				// A new tree opens on whatever Settings says an import shows.
+				mode: getTreePrefs().importShows,
 			},
 		} as never)
 		for (const node of spec.nodes) {

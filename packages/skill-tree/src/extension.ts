@@ -6,6 +6,11 @@ import { upNextNodeDefinition } from './upnext/definition'
 import { skillTreeCommands } from './commands'
 import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
 import { itemNodeDefinition } from './item/definition'
+import { entryNodeDefinition } from './entry/definition'
+import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE } from './board'
+import { putCard } from './ops'
+import { focusOn } from './tree/focus'
+import { TreeSettings } from './TreeSettings'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
 import { trackNodeDefinition } from './track/definition'
@@ -41,7 +46,36 @@ export const skillTreeExtension: Extension = {
 		defineNode(treeNodeDefinition),
 		defineNode(habitNodeDefinition),
 		defineNode(upNextNodeDefinition),
+		defineNode(entryNodeDefinition),
 	],
+	actions: [
+		{
+			id: 'skill-tree.focus',
+			label: 'Focus here',
+			appliesTo: (shape) => shape.type === SKILL_TYPE || shape.type === ENTRY_TYPE,
+			run: ({ editor, shape }) => {
+				const s = editor.getShape(shape.id as never)
+				if (isSkill(s)) focusOn(editor, s.props.nodeId)
+				else if (isEntry(s)) focusOn(editor, s.props.itemId)
+			},
+		},
+		{
+			id: 'skill-tree.edit',
+			label: 'Edit',
+			appliesTo: (shape) => shape.type === SKILL_TYPE,
+			run: ({ editor, shape }) => editor.setEditingShape(shape.id as never),
+		},
+		{
+			id: 'skill-tree.card',
+			label: 'Put a card on the board',
+			appliesTo: (shape) => shape.type === ENTRY_TYPE,
+			run: ({ editor, shape }) => {
+				const s = editor.getShape(shape.id as never)
+				if (isEntry(s)) putCard(editor, s.props.itemId, { beside: s.id })
+			},
+		},
+	],
+	settings: { title: 'Skill trees', Component: TreeSettings },
 	commands: [...skillTreeCommands, ...syllabusCommands],
 	operations: syllabusOperations,
 	fileImports: [syllabusFileImport],

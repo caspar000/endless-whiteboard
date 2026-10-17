@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NodeDef, TreeDef, TreeDefs } from './treeDefs'
-import { reachFrom, rootOfTree, treeGraph, viewStart } from './views'
+import { reachFrom, rootOfTree, treeGraph, viewContents, viewStart } from './views'
 
 const node = (nodeId: string, requires: string[] = [], kind = 'skill'): NodeDef => ({
 	nodeId,
@@ -63,5 +63,50 @@ describe('viewStart and rootOfTree', () => {
 	it('prefers a node of kind root or mastery, then one without prerequisites', () => {
 		expect(rootOfTree([node('x/a', ['x/b']), node('x/b')])).toBe('x/b')
 		expect(rootOfTree([node('x/a'), node('x/b', [], 'root')])).toBe('x/b')
+	})
+})
+
+describe('viewContents', () => {
+	const graph = treeGraph(VAULT)
+	const entry = (itemId: string, tags: string[], children: string[] = []) => ({ itemId, parent: '', children, tags })
+	const work = (itemId: string, parent: string) => ({ itemId, parent, children: [], tags: [] })
+	const ITEMS = {
+		'a/homer': entry('a/homer', ['adler/epic'], ['a/homer/iliad', 'a/homer/odyssey']),
+		'a/homer/iliad': work('a/homer/iliad', 'a/homer'),
+		'a/homer/odyssey': work('a/homer/odyssey', 'a/homer'),
+		'a/virgil': entry('a/virgil', ['adler/epic']),
+		'a/plato': entry('a/plato', ['adler/root']),
+		'x/elsewhere': entry('x/elsewhere', ['nowhere']),
+	}
+	const view = (mode: string, focus = '', depth = 1) => viewContents(graph, ITEMS, { treeId: 'adler', root: '', mode, focus }, depth)
+
+	it('shows skill nodes only in the overview', () => {
+		const v = view('overview')
+		expect([...v.skills].sort()).toEqual(['adler/epic', 'adler/method', 'adler/root'])
+		expect(v.items.size).toBe(0)
+		expect(v.context).toBe('overview')
+	})
+
+	it('shows every entry tagged to the tree, with its works, in all', () => {
+		const v = view('all')
+		expect([...v.items.keys()].sort()).toEqual(['a/homer', 'a/homer/iliad', 'a/homer/odyssey', 'a/plato', 'a/virgil'])
+		expect(v.items.get('a/homer')).toEqual({ parent: 'adler/epic', variant: 'entry' })
+		expect(v.items.get('a/homer/iliad')).toEqual({ parent: 'a/homer', variant: 'work' })
+	})
+
+	it('focuses a skill node: its entries unfurled, its neighbours folded', () => {
+		const v = view('focus', 'adler/epic')
+		expect(v.start).toBe('adler/epic')
+		expect([...v.skills].sort()).toEqual(['adler/epic', 'adler/root'])
+		expect([...v.items.keys()].sort()).toEqual(['a/homer', 'a/homer/iliad', 'a/homer/odyssey', 'a/virgil'])
+	})
+
+	it('focuses an entry from one of its works: the entry unfurled, its siblings folded, depth 0 keeps only the node', () => {
+		const v = view('focus', 'a/homer/odyssey', 0)
+		expect(v.context).toBe('focus:a/homer')
+		expect(v.start).toBe('a/homer')
+		expect([...v.skills]).toEqual(['adler/epic'])
+		expect(v.items.get('a/virgil')).toEqual({ parent: 'adler/epic', variant: 'entry' })
+		expect(v.items.has('a/homer/iliad')).toBe(true)
 	})
 })

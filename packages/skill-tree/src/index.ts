@@ -47,6 +47,7 @@ export {
 export { evaluateTree, parseRequirements, type Condition, type NodeStatus } from './requirements'
 export { getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
 export { itemNodeDefinition } from './item/definition'
+export { entryNodeDefinition } from './entry/definition'
 export { trackNodeDefinition } from './track/definition'
 export { skillNodeDefinition } from './skill/definition'
 export { treeNodeDefinition } from './tree/definition'

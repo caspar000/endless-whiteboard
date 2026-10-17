@@ -165,6 +165,11 @@ export interface NodeDefinition<Props extends object = object> {
 	/** `true` → double-click enters tldraw's editing state and the component gets `isEditing`. */
 	canEdit?: boolean
 	/**
+	 * Claims a double-click before editing starts. Return `true` when it was handled (a skill node
+	 * focuses its tree on itself); the node then does not enter editing, though Enter still edits it.
+	 */
+	onDoubleClick?: (ctx: { editor: Editor; shape: TLShape }) => boolean
+	/**
 	 * Every handle scales both axes: the node is a picture, and a picture with the wrong proportions is
 	 * not a smaller picture.
 	 *
@@ -287,6 +292,13 @@ export function createNodeShapeUtil<Props extends object>(
 
 		override canEdit(): boolean {
 			return def.canEdit ?? false
+		}
+
+		override onDoubleClick(shape: TLBaseBoxShape) {
+			// A partial that changes nothing is how a double-click handler tells the select tool it was
+			// handled, so it neither edits nor crops.
+			if (def.onDoubleClick?.({ editor: this.editor, shape: shape as unknown as TLShape })) return { id: shape.id, type: shape.type }
+			return undefined
 		}
 
 		override canResize(): boolean {

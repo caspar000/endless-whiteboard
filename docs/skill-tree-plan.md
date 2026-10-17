@@ -5,6 +5,38 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+## Rebuild: one syllabus, many views (agreed 2026-10-17)
+
+Using Adler and /mu/core on real boards showed three problems. An import made three separate
+representations at once (a track, a card per entry and work, a tree). The tree couldn't show the
+entries. And 2,500 shapes made a board heavy. Agreed in a grilling round:
+
+- **Items live in the vault**, like tree definitions. Every view reads and writes the same items, so a
+  tick anywhere is a tick everywhere. Nodes stay real board shapes; no separate renderer.
+- **Write-ups stay notes on the board for now:** beside the node or card you ticked on, found from
+  other boards through the index. (To be reworked later, toward an AFFiNE-style document.)
+- **Import** writes the syllabus into the vault as a draft and puts one tree view on the board, folded
+  to skill nodes. "Show as list" and "Add Up Next" add the other views.
+- **The list** is the track card as a full outline in reading order. Every entry folds and unfolds to
+  its works, and shows progress. It ticks in place, has a height you set and scrolls inside.
+- **The tree view** has three sizes: skill nodes, entries (about 60 px) and works (dots with labels).
+  Double-click is focus mode, a local graph: the node sits in the middle with everything below it
+  unfurled, its parent and siblings stay visible but folded, and the rest leaves the board. Right-click
+  › Focus here does the same; editing is right-click › Edit or Enter. The header has Show all, Back,
+  Re-calculate and a live-simulation toggle. Folded nodes come back where you left them.
+- **Dragging is springy** (the branch follows, neighbours make room, it settles); live simulation is a
+  setting. New nodes settle near their parent by themselves.
+- **Settings:** defaults in Settings › Skill trees, overridable per tree in its header.
+- **Up Next:** one card per track, the current step lit and the next five greyed.
+- **Cards** are pop-out views of a vault item (right-click › Put a card on the board), with works as a
+  checklist inside and no child shapes. Deleting a card deletes nothing.
+- **Old boards** are not migrated; the content is re-imported.
+
+Build order, each phase committed on `develop` and checked in the browser: (1) items in the vault, the
+list outline, the split import; (2) the tree view with entries and works, focus mode, Show all,
+remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
+(5) pop-out cards. Then the director content.
+
 ### Phase B, /mu/core, as built
 
 - **`content/mucore.yaml`** is musicgenretree.org's "1111 Essential Recordings of Music" (Classics

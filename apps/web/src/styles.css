@@ -13882,6 +13882,11 @@ button.lb-props__eye:hover {
 	opacity: 0.5;
 	cursor: default;
 }
+.lb-skill-editor__hint {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
 .lb-skill-editor__id {
 	margin: 0;
 	color: var(--lb-text-faint);
@@ -13972,6 +13977,9 @@ button.lb-props__eye:hover {
 .lb-skillnode--root .lb-skillnode__disc,
 .lb-skillnode--keystone .lb-skillnode__disc {
 	border-width: 2px;
+}
+.lb-skillnode--mastery .lb-skillnode__disc {
+	border-width: 3px;
 }
 .lb-skillnode--method .lb-skillnode__disc {
 	border-radius: 30%;

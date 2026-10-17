@@ -144,11 +144,16 @@ export interface SkillTreeProps {
 	/** Comma-separated, in order. */
 	sectors: string
 	rings: string
+	/** The node id the tree is laid out from; empty for its node of kind root. */
+	root: string
 	autoHeight: boolean
 }
 
 export type SkillShape = TLShape & { type: typeof SKILL_TYPE; props: SkillNodeProps }
 export type TreeShape = TLShape & { type: typeof TREE_TYPE; props: SkillTreeProps }
+
+/** The tree id, node id and kind of the one node that can sit above every tree on a board. */
+export const MASTERY = 'mastery'
 
 export function isSkill(shape: TLShape | undefined | null): shape is SkillShape {
 	return shape?.type === SKILL_TYPE

@@ -1,7 +1,7 @@
 import { getIconBridge, NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
-import { draftClass, type SkillNodeProps, type SkillShape } from '../board'
+import { draftClass, isSkill, MASTERY, type SkillNodeProps, type SkillShape } from '../board'
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
 import { SkillEditor } from './SkillEditor'
@@ -19,8 +19,9 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 		() => treeStatus(editor, shape.props.treeId).get(shape.props.nodeId) ?? null,
 		[editor, shape.props.treeId, shape.props.nodeId]
 	)
-	const state = status?.state ?? 'locked'
-	const { fraction, caption } = ringFor(status)
+	const mastery = useValue('lifeboard:skill-mastery', () => (shape.props.kind === MASTERY ? boardProgress(editor) : null), [editor, shape.props.kind])
+	const state = mastery ? 'unlocked' : (status?.state ?? 'locked')
+	const { fraction, caption } = mastery ?? ringFor(status)
 	const tier = status?.mastery.tier ?? 0
 	const { Icon } = getIconBridge()
 
@@ -59,6 +60,21 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 			</NodeEditorPopover>
 		</div>
 	)
+}
+
+/** For the Mastery node: how much of every tree on the board is unlocked. */
+function boardProgress(editor: NodeComponentProps<SkillNodeProps>['editor']): { fraction: number; caption: string } {
+	const treeIds = new Set(editor.getCurrentPageShapes().flatMap((s) => (isSkill(s) && s.props.kind !== MASTERY ? [s.props.treeId] : [])))
+	let total = 0
+	let unlocked = 0
+	for (const treeId of treeIds) {
+		for (const s of treeStatus(editor, treeId).values()) {
+			total++
+			if (s.state === 'unlocked') unlocked++
+		}
+	}
+	const trees = `${treeIds.size} ${treeIds.size === 1 ? 'tree' : 'trees'}`
+	return { fraction: total ? unlocked / total : 0, caption: `${trees} · ${unlocked}/${total}` }
 }
 
 function ringFor(status: NodeStatus | null): { fraction: number; caption: string } {

@@ -172,6 +172,21 @@ export function Syllabus({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Laying a tree out">
+				<p>
+					Select a tree's header or any of its nodes and run <code>Lay out tree</code>: the root stays where
+					it is, its dependents fan out around it, families stay together, and nothing overlaps, not even
+					the cards already on the board. Pick a different root in the header's editor (double-click it) to
+					grow the tree from there. <code>Lay out from this node</code> arranges one node and everything
+					that depends on it and leaves the rest alone.
+				</p>
+				<p>
+					<code>Gather every tree around a Mastery node</code> puts one Mastery node in the middle of the
+					board with every tree as a branch of it. Its ring shows how much of all of them you have
+					unlocked. Each layout is one undo step, and nothing moves on its own afterwards.
+				</p>
+			</Section>
+
 			<Section title="Syllabi as YAML">
 				<p>
 					A whole syllabus, its tracks, items, tree and habits, can be written as one YAML document and

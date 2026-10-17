@@ -1,11 +1,12 @@
 import { defineOperation, fail, ok, type Command, type FileImport, type JsonValue, type RegisteredOperation } from '@lifeboard/node-kit'
 import { createShapeId, type Editor } from '@lifeboard/canvas'
 import { parse as parseYaml } from 'yaml'
-import { isDraft, isHabit, isTrack, isTree, itemByItemId, NOTE_TYPE, treeNodes } from './board'
+import { isDraft, isHabit, isSkill, isTrack, isTree, itemByItemId, NOTE_TYPE, treeNodes, type SkillShape } from './board'
 import { formatTags } from './model'
 import { setItemDone } from './ops'
 import { evaluateTree } from './requirements'
 import { getHabitIndex, getSkillIndex, getTrackIndex } from './skillIndex'
+import { gatherAroundMastery, layoutFrom, layoutTree } from './tree/ops'
 import { boardGoals, confirmDraft, discardDraft, exportSyllabus, importSyllabus } from './syllabusIO'
 import { describeDoc, parseSyllabus } from './syllabusYaml'
 
@@ -268,6 +269,29 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 			}
 			// The index entries are plain JSON already; the round trip drops undefined fields and satisfies JsonValue.
 			return ok(JSON.parse(JSON.stringify({ tracks, items, habits, nodes })) as JsonValue)
+		},
+	}),
+	defineOperation({
+		id: 'skill.tree.layout',
+		title: 'Lay out a skill tree',
+		description:
+			'Places a skill tree on the open board so no nodes overlap and no line runs through a node: the tree from its root, one node and everything depending on it, or every tree around a Mastery node. One undo step.',
+		params: {
+			treeId: { type: 'string', description: 'The tree to lay out, e.g. "adler". Leave empty with mastery set.' },
+			from: { type: 'string', description: 'A node id: lay out only it and what depends on it, around where it stands.' },
+			mastery: { type: 'boolean', description: 'True to gather every tree on the board around a Mastery node (made if missing).' },
+		},
+		run: async (ctx, args) => {
+			const editor = ctx.editor
+			if (!editor) return fail(NO_BOARD)
+			if (args.mastery) return ok({ moved: gatherAroundMastery(editor) })
+			if (args.from) {
+				const node = editor.getCurrentPageShapes().find((s): s is SkillShape => isSkill(s) && s.props.nodeId === args.from)
+				return node ? ok({ moved: layoutFrom(editor, node) }) : fail(`No node "${args.from}" on this board.`)
+			}
+			if (!args.treeId) return fail('Name a treeId, a from node, or set mastery.')
+			const moved = layoutTree(editor, args.treeId)
+			return moved ? ok({ moved }) : fail(`No tree "${args.treeId}" on this board.`)
 		},
 	}),
 	defineOperation({

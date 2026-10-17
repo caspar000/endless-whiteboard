@@ -1,4 +1,4 @@
-import { createShapePropsMigrationSequence, NodeEditorPopover, type NodeComponentProps, type NodeDefinition } from '@lifeboard/node-kit'
+import { createShapePropsMigrationIds, createShapePropsMigrationSequence, NodeEditorPopover, type NodeComponentProps, type NodeDefinition } from '@lifeboard/node-kit'
 import { stopEventPropagation, T, useValue } from '@lifeboard/canvas'
 import { Network } from 'lucide-react'
 import { memo, type KeyboardEvent } from 'react'
@@ -8,6 +8,8 @@ import { TIERS } from '../requirements'
 import { treeStatus } from './status'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
+
+const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1 })
 
 /**
  * A tree's header card: its name and goal, how much of it is unlocked, and the axes auto-layout
@@ -29,6 +31,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 		[editor, shape.props.treeId]
 	)
 
+	const nodes = isEditing ? treeNodes(editor, shape.props.treeId).map((n) => ({ id: n.id, nodeId: n.props.nodeId, name: n.props.name })) : []
 	const set = (props: Partial<SkillTreeProps>) => editor.updateShape({ id: shape.id, type: TREE_TYPE, props } as never)
 
 	const body = (
@@ -58,21 +61,25 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 						<input value={shape.props.goal} onKeyDown={keepKeys} onChange={(e) => set({ goal: e.target.value })} />
 					</label>
 					<label>
-						<span>Layout</span>
-						<select value={shape.props.layout} onChange={(e) => set({ layout: e.target.value })}>
-							<option value="sectors">Sectors and rings</option>
-							<option value="lineage">Lineage</option>
-							<option value="free">Free</option>
+						<span>Lay out from</span>
+						<select value={shape.props.root} onChange={(e) => set({ root: e.target.value })}>
+							<option value="">Its root node</option>
+							{nodes.map((n) => (
+								<option key={n.id} value={n.nodeId}>
+									{n.name || n.nodeId}
+								</option>
+							))}
 						</select>
 					</label>
 					<label>
 						<span>Sectors</span>
-						<input value={shape.props.sectors} placeholder="comma-separated" onKeyDown={keepKeys} onChange={(e) => set({ sectors: e.target.value })} />
+						<input value={shape.props.sectors} placeholder="comma-separated, in fan order" onKeyDown={keepKeys} onChange={(e) => set({ sectors: e.target.value })} />
 					</label>
 					<label>
 						<span>Rings</span>
 						<input value={shape.props.rings} placeholder="inner to outer" onKeyDown={keepKeys} onChange={(e) => set({ rings: e.target.value })} />
 					</label>
+					<p className="lb-skill-editor__hint">Run "Lay out tree" to place the nodes again. Nodes fan out in sector order.</p>
 					<p className="lb-skill-editor__id">{shape.props.treeId}</p>
 				</div>
 			</NodeEditorPopover>
@@ -94,10 +101,19 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		layout: T.string,
 		sectors: T.string,
 		rings: T.string,
+		root: T.string,
 		autoHeight: T.boolean,
 	},
-	// Empty for now; the sequence exists from day one so the first migration is a one-line change.
-	migrations: createShapePropsMigrationSequence({ sequence: [] }),
+	migrations: createShapePropsMigrationSequence({
+		sequence: [
+			{
+				id: versions.AddRoot,
+				up(props) {
+					props.root = ''
+				},
+			},
+		],
+	}),
 	defaultProps: () => ({
 		treeId: '',
 		name: 'New tree',
@@ -105,6 +121,7 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		layout: 'sectors',
 		sectors: '',
 		rings: '',
+		root: '',
 		autoHeight: true,
 	}),
 	onCreate: ({ shape }) => (shape.props.treeId ? null : { treeId: makeItemId(shape.props.name || 'tree', 'tree/') }),

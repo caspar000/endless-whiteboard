@@ -1,9 +1,9 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
-import { childrenOf, isItem, isTrack, type ItemShape } from './board'
+import { childrenOf, isItem, isSkill, isTrack, MASTERY, type ItemShape, type SkillShape } from './board'
 import { addSelectionToTrack, arrangeChildren, setCollapsed, toggleItemDone, trackFromSelection } from './ops'
 import { insertAdlerSample } from './sample'
-import { drawPrerequisites, selectedTreeId } from './tree/ops'
+import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId } from './tree/ops'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -23,6 +23,13 @@ const oneItem = (ctx: CommandContext): ItemShape | null => {
 const hasChildren = (ctx: CommandContext) => {
 	const item = oneItem(ctx)
 	return !!item && !!ctx.editor && childrenOf(ctx.editor, item.id).length > 0
+}
+
+/** The one skill node selected, other than a Mastery node (whose branch is the whole board). */
+function selectedNode(editor: Editor): SkillShape | null {
+	const selected = editor.getSelectedShapes()
+	const only = selected.length === 1 ? selected[0] : undefined
+	return isSkill(only) && only.props.kind !== MASTERY ? only : null
 }
 
 export const skillTreeCommands: readonly Command[] = [
@@ -90,6 +97,38 @@ export const skillTreeCommands: readonly Command[] = [
 				editor.markHistoryStoppingPoint('redraw prerequisites')
 				drawPrerequisites(editor, treeId)
 			})
+		},
+	},
+	{
+		id: 'skill-tree.layout',
+		title: 'Lay out tree',
+		group: GROUP,
+		when: (ctx) => !!ctx.editor && selectedTreeId(ctx.editor) !== null,
+		run: ({ editor }) => {
+			const treeId = editor && selectedTreeId(editor)
+			if (!editor || !treeId) return
+			// The Mastery node's tree is every tree on the board.
+			if (treeId === MASTERY) gatherAroundMastery(editor)
+			else layoutTree(editor, treeId)
+		},
+	},
+	{
+		id: 'skill-tree.layout-from-here',
+		title: 'Lay out from this node',
+		group: GROUP,
+		when: (ctx) => !!ctx.editor && selectedNode(ctx.editor) !== null,
+		run: ({ editor }) => {
+			const node = editor && selectedNode(editor)
+			if (editor && node) layoutFrom(editor, node)
+		},
+	},
+	{
+		id: 'skill-tree.gather-mastery',
+		title: 'Gather every tree around a Mastery node',
+		group: GROUP,
+		when: (ctx) => !!ctx.editor && ctx.editor.getCurrentPageShapes().some((s) => isSkill(s) && s.props.kind !== MASTERY),
+		run: ({ editor }) => {
+			if (editor) gatherAroundMastery(editor)
 		},
 	},
 	{

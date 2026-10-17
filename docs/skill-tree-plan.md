@@ -1,7 +1,33 @@
 # Skill trees and syllabi: implementation plan
 
-Agreed 2026-10-17. Status: **Steps 1 to 5 are built** and checked on a running board; step 6 and
-Phase B remain. The "as built" notes below say where the build diverged from the plan and why.
+Agreed 2026-10-17. Status: **Steps 1 to 5 and the layout half of step 6 are built** and checked on
+a running board; the rest of step 6 (visuals, tree views across boards) and Phase B remain. The "as
+built" notes below say where the build diverged from the plan and why.
+
+### Step 6a (layout), as built
+
+- **One layout, not three.** Sectors-and-rings placement is gone; every tree is laid out as a graph
+  (`tree/layout.ts`, `layoutGraph`): a radial tidy tree from the root, a short deterministic force
+  pass (repulsion, springs on edges, a pull back toward the tidy spot so the shape survives), then
+  hard passes until no two boxes overlap and no edge runs through a node. Sectors and rings now only
+  set the order nodes fan out in, so a sectored tree keeps its wedges side by side. The `layout` prop
+  stays on the header for old data and is not read.
+- **The root.** A node hangs from its prerequisite nearest the root; its other prerequisites stay
+  edges that pull gently. The tree header has a new `root` prop (migration `AddRoot`), picked in its
+  editor; empty means the node of kind root. Nodes with no prerequisites (method nodes) hang from the
+  root by an edge nobody draws, and so does the header.
+- **The rest of the board is in the way.** Every other shape on the page is a fixed obstacle, so a
+  laid-out tree never lands on a card. An edge that would cross one moves its own end instead.
+- **Commands:** Lay out tree (on a header or node; on the Mastery node it gathers), Lay out from this
+  node (that node and everything depending on it, around where it stands; the rest of the tree is an
+  obstacle), Gather every tree around a Mastery node. Operation `skill.tree.layout` (`treeId`,
+  `from`, or `mastery`). Each is one undo step, Mastery's creation and edges included.
+- **Mastery** is a `node.skill` of kind `mastery` in its own tree `mastery`, with an arrow to each
+  tree's root (meta `lifeboard:skillEdge: mastery`). Its ring is the share of every tree on the board
+  that is unlocked; it requires nothing and nothing requires it.
+- **Not yet:** the same tree shown from different roots on different boards (see "Graph layout and
+  roots": it needs tree definitions in the vault, still to be decided). A YAML import into an
+  existing tree places its new nodes beside it; run Lay out tree afterwards.
 
 ### Step 5, as built
 

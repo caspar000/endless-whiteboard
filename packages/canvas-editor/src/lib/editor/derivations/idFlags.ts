@@ -54,13 +54,13 @@ export class IdFlags<Id extends string> {
  */
 export class IdValues<Id extends string, V> {
 	private readonly atoms = new Map<Id, Atom<V | undefined>>()
-	private current = {} as Readonly<Partial<Record<Id, V>>>
+	private current: { get(id: Id): V | undefined } = new Map<Id, V>()
 	syncedSource: unknown = undefined
 	readonly dispose: () => void
 
 	constructor(
 		private readonly name: string,
-		source: () => Readonly<Partial<Record<Id, V>>>,
+		source: () => { get(id: Id): V | undefined },
 		isEqual: (a: V | undefined, b: V | undefined) => boolean
 	) {
 		this.dispose = react(name, () => {
@@ -69,8 +69,8 @@ export class IdValues<Id extends string, V> {
 			this.current = next
 			this.syncedSource = next
 			transact(() => {
-				for (const [id, flag] of this.atoms) {
-					if (!isEqual(prev[id], next[id])) flag.set(next[id])
+				for (const [id, value] of this.atoms) {
+					if (!isEqual(prev.get(id), next.get(id))) value.set(next.get(id))
 				}
 			})
 		})
@@ -79,7 +79,7 @@ export class IdValues<Id extends string, V> {
 	get(id: Id): V | undefined {
 		let value = this.atoms.get(id)
 		if (!value) {
-			value = atom(`${this.name}:${id}`, this.current[id])
+			value = atom(`${this.name}:${id}`, this.current.get(id))
 			this.atoms.set(id, value)
 		}
 		return value.get()

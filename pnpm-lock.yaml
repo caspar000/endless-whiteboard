@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@tldraw/store@5.5.2': fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a
+
 importers:
 
   .: {}
@@ -384,7 +387,7 @@ importers:
         version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tldraw/store':
         specifier: 5.5.2
-        version: 5.5.2(react@19.2.8)
+        version: 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
       '@tldraw/tlschema':
         specifier: 5.5.2
         version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -499,7 +502,7 @@ importers:
         version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tldraw/store':
         specifier: 5.5.2
-        version: 5.5.2(react@19.2.8)
+        version: 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
       '@tldraw/tlschema':
         specifier: 5.5.2
         version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -629,7 +632,7 @@ importers:
         version: 5.5.2
       '@tldraw/store':
         specifier: 5.5.2
-        version: 5.5.2(react@19.2.8)
+        version: 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
     devDependencies:
       '@tldraw/tlschema':
         specifier: 5.5.2
@@ -753,7 +756,7 @@ importers:
     devDependencies:
       '@tldraw/store':
         specifier: 5.5.2
-        version: 5.5.2(react@19.2.8)
+        version: 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
       '@tldraw/tlschema':
         specifier: 5.5.2
         version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -7724,7 +7727,7 @@ snapshots:
     dependencies:
       '@tldraw/utils': 5.5.2
 
-  '@tldraw/store@5.5.2(react@19.2.8)':
+  '@tldraw/store@5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)':
     dependencies:
       '@tldraw/state': 5.5.2
       '@tldraw/utils': 5.5.2
@@ -7733,7 +7736,7 @@ snapshots:
   '@tldraw/tlschema@5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@tldraw/state': 5.5.2
-      '@tldraw/store': 5.5.2(react@19.2.8)
+      '@tldraw/store': 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
       '@tldraw/utils': 5.5.2
       '@tldraw/validate': 5.5.2
       react: 19.2.8

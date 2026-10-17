@@ -117,7 +117,8 @@ import { uniqueId } from '../utils/uniqueId'
 import {
 	arrowBindingsByArrow,
 	arrowBindingsIndex,
-	type TLArrowBindingsByArrow,
+	bindingMap,
+	type TLArrowEnds,
 } from './derivations/arrowBindingsIndex'
 import { IdFlags, IdValues } from './derivations/idFlags'
 import {
@@ -440,53 +441,6 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const invalidParents = new Set<TLShapeId>()
 
-		const cleanupInstancePageState = (
-			prevPageState: TLInstancePageState,
-			shapesNoLongerInPage: Set<TLShapeId>
-		) => {
-			let nextPageState = null as null | TLInstancePageState
-
-			const selectedShapeIds = prevPageState.selectedShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (selectedShapeIds.length !== prevPageState.selectedShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.selectedShapeIds = selectedShapeIds
-			}
-
-			const erasingShapeIds = prevPageState.erasingShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (erasingShapeIds.length !== prevPageState.erasingShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.erasingShapeIds = erasingShapeIds
-			}
-
-			if (prevPageState.hoveredShapeId && shapesNoLongerInPage.has(prevPageState.hoveredShapeId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.hoveredShapeId = null
-			}
-
-			if (prevPageState.editingShapeId && shapesNoLongerInPage.has(prevPageState.editingShapeId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.editingShapeId = null
-			}
-
-			const hintingShapeIds = prevPageState.hintingShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (hintingShapeIds.length !== prevPageState.hintingShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.hintingShapeIds = hintingShapeIds
-			}
-
-			if (prevPageState.focusedGroupId && shapesNoLongerInPage.has(prevPageState.focusedGroupId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.focusedGroupId = null
-			}
-			return nextPageState
-		}
-
 		this.sideEffects = new SideEffectManager(this)
 
 		this.sideEffects.registerBatchCompleteHandler(() => {
@@ -727,7 +681,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	private readonly _editingFlags: IdFlags<TLShapeId>
 	private readonly _onlySelectedFlags: IdFlags<TLShapeId>
 	/** Each arrow's bindings, for `getArrowBinding`. Unset until the constructor has run. */
-	private _arrowBindingValues?: IdValues<TLShapeId, NonNullable<TLArrowBindingsByArrow[TLShapeId]>>
+	private _arrowBindingValues?: IdValues<TLShapeId, TLArrowEnds>
 	private readonly _devicePixelRatio = atom('device pixel ratio', 1)
 
 	/**
@@ -1227,19 +1181,16 @@ export class Editor extends EventEmitter<TLEventMap> {
 	/** Every binding, by the id of each shape it involves. @internal */
 	@computed
 	private _getBindingsIndex() {
-		const bindings = this.store.query.records('binding')
-		return computed('bindingsIndex', () => {
-			const index = new Map<TLShapeId, TLUnknownBinding[]>()
-			for (const binding of bindings.get() as TLUnknownBinding[]) {
-				// A binding from a shape to itself is listed once.
-				const ids = binding.fromId === binding.toId ? [binding.fromId] : [binding.fromId, binding.toId]
-				for (const id of ids) {
-					const list = index.get(id)
-					if (list) list.push(binding)
-					else index.set(id, [binding])
-				}
-			}
-			return index
+		return bindingMap<TLShapeId, TLUnknownBinding[]>(this.store, 'bindingsIndex', {
+			include: () => true,
+			// A binding from a shape to itself is listed once.
+			keys: (binding) =>
+				binding.fromId === binding.toId ? [binding.fromId] : [binding.fromId, binding.toId],
+			add: (list, binding) => [...(list ?? []), binding],
+			remove: (list, binding) => {
+				const rest = list.filter((b) => b.id !== binding.id)
+				return rest.length ? rest : undefined
+			},
 		})
 	}
 
@@ -1528,7 +1479,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	getArrowsBoundTo(shapeId: TLShapeId) {
-		return this._getArrowBindingsIndex().get()[shapeId] || EMPTY_ARRAY
+		return this._getArrowBindingsIndex().get().get(shapeId) || EMPTY_ARRAY
 	}
 
 	/** @internal */
@@ -1558,7 +1509,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (values && exact.__unsafe__getWithoutCapture() === values.syncedSource) {
 			return values.get(arrowId)?.[end]
 		}
-		return exact.get()[arrowId]?.[end]
+		return exact.get().get(arrowId)?.[end]
 	}
 
 	@computed
@@ -5841,30 +5792,19 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getCurrentPageShapesSorted(): TLShape[] {
-		// todo: consider making into a function call that includes options for selected-only, rendering, etc.
-		// todo: consider making a derivation or something, or merging with rendering shapes
-		const shapes = new Set(this.getCurrentPageShapes().sort(sortByIndex))
-
+		// A walk down the children, each parent's already in index order. Finding each shape's children
+		// by scanning every shape on the page was quadratic, and this runs whenever shapes are created:
+		// at 10,000 shapes it was most of the time a batch of new relations took.
 		const results: TLShape[] = []
-
-		function pushShapeWithDescendants(shape: TLShape): void {
-			results.push(shape)
-			shapes.delete(shape)
-
-			shapes.forEach((otherShape) => {
-				if (otherShape.parentId === shape.id) {
-					pushShapeWithDescendants(otherShape)
-				}
-			})
-		}
-
-		shapes.forEach((shape) => {
-			const parent = this.getShape(shape.parentId)
-			if (!isShape(parent)) {
-				pushShapeWithDescendants(shape)
+		const visit = (parentId: TLParentId) => {
+			for (const id of this.getSortedChildIdsForParent(parentId)) {
+				const shape = this.getShape(id)
+				if (!shape) continue
+				results.push(shape)
+				visit(id)
 			}
-		})
-
+		}
+		visit(this.getCurrentPageId())
 		return results
 	}
 
@@ -7829,6 +7769,22 @@ export class Editor extends EventEmitter<TLEventMap> {
 				// find last parent id
 				const currentPageShapesSorted = this.getCurrentPageShapesSorted()
 
+				// The shapes that could take a new shape of each type as a child, worked out once per type
+				// for the batch: asking every shape on the page for every new shape made a batch cost the
+				// page's size times its own, and almost no shape can take children.
+				const parentsByType = new Map<TLShape['type'], TLShape[]>()
+				const possibleParents = (type: TLShape['type']) => {
+					let parents = parentsByType.get(type)
+					if (!parents) {
+						parents = currentPageShapesSorted.filter((shape) =>
+							this.getShapeUtil(shape).canReceiveNewChildrenOfType(shape, type)
+						)
+						parentsByType.set(type, parents)
+					}
+					return parents
+				}
+				const idsInBatch = new Set(partials.map((p) => p.id))
+
 				partials = partials.map((partial) => {
 					// If the partial does not provide the parentId OR if the provided
 					// parentId is NOT in the store AND NOT among the other shapes being
@@ -7837,15 +7793,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 					// children of the creating shape's type, or else the page itself.
 					if (
 						!partial.parentId ||
-						!(this.store.has(partial.parentId) || partials.some((p) => p.id === partial.parentId))
+						!(this.store.has(partial.parentId) || idsInBatch.has(partial.parentId as TLShapeId))
 					) {
 						let parentId: TLParentId = this.getFocusedGroupId()
 
-						for (let i = currentPageShapesSorted.length - 1; i >= 0; i--) {
-							const parent = currentPageShapesSorted[i]
+						const candidates = possibleParents(partial.type)
+						for (let i = candidates.length - 1; i >= 0; i--) {
+							const parent = candidates[i]!
 							if (
-								// parent.type === 'frame'
-								this.getShapeUtil(parent).canReceiveNewChildrenOfType(parent, partial.type) &&
 								this.isPointInShape(
 									parent,
 									// If no parent is provided, then we can treat the
@@ -8483,7 +8438,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					const shape = this.getShape(id)
 
 					// Add any bound arrows to the snapshots, so that we can restore the bindings on undo
-					const bindings = arrowBindings[id]
+					const bindings = arrowBindings.get(id)
 					if (bindings && bindings.length > 0) {
 						return bindings.map(({ arrowId }) => this.getShape(arrowId)).concat(shape)
 					}
@@ -8511,6 +8466,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 		},
 		{
 			do: ({ deletedIds, postSelectedShapeIds }) => {
+				// Every page state cleaned once for the whole batch, so the per-shape handler finds
+				// nothing left to do instead of filtering the selection once per deleted shape.
+				const gone = new Set(deletedIds)
+				const cleaned = compact(this.getPageStates().map((state) => cleanupInstancePageState(state, gone)))
+				if (cleaned.length) this.store.put(cleaned)
 				this.store.remove(deletedIds)
 				this.store.update(this.getCurrentPageState().id, (state) => ({
 					...state,
@@ -10487,6 +10447,93 @@ function measureDrawnBounds(svg: SVGSVGElement): Box2d | null {
 
 /** Room for strokes around a trimmed export, in page units: half the widest stroke and some. */
 const TRIMMED_STROKE_ROOM = 6
+
+/** Every shape id a page state refers to, per page state record. See `cleanupInstancePageState`. */
+const pageStateIds = new WeakMap<TLInstancePageState, ReadonlySet<TLShapeId>>()
+
+function idsInPageState(state: TLInstancePageState): ReadonlySet<TLShapeId> {
+	let ids = pageStateIds.get(state)
+	if (!ids) {
+		ids = new Set<TLShapeId>([
+			...state.selectedShapeIds,
+			...state.erasingShapeIds,
+			...state.hintingShapeIds,
+			...(state.hoveredShapeId ? [state.hoveredShapeId] : []),
+			...(state.editingShapeId ? [state.editingShapeId] : []),
+			...(state.focusedGroupId ? [state.focusedGroupId] : []),
+		])
+		pageStateIds.set(state, ids)
+	}
+	return ids
+}
+
+/**
+ * A page state without the shapes that left the page, or `null` if it refers to none of them.
+ *
+ * Runs once per deleted shape, so the common answer, "none of them", is a lookup in a set cached per
+ * page state record rather than a pass over the selection: deleting a large selection used to filter
+ * all of it for every shape in it.
+ */
+function cleanupInstancePageState(
+	prevPageState: TLInstancePageState,
+	shapesNoLongerInPage: ReadonlySet<TLShapeId>
+): TLInstancePageState | null {
+	const mentioned = idsInPageState(prevPageState)
+	const [smaller, larger] =
+		mentioned.size < shapesNoLongerInPage.size
+			? [mentioned, shapesNoLongerInPage]
+			: [shapesNoLongerInPage, mentioned]
+	let affected = false
+	for (const id of smaller) {
+		if (larger.has(id)) {
+			affected = true
+			break
+		}
+	}
+	if (!affected) return null
+
+	let nextPageState = null as null | TLInstancePageState
+
+	const selectedShapeIds = prevPageState.selectedShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (selectedShapeIds.length !== prevPageState.selectedShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.selectedShapeIds = selectedShapeIds
+	}
+
+	const erasingShapeIds = prevPageState.erasingShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (erasingShapeIds.length !== prevPageState.erasingShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.erasingShapeIds = erasingShapeIds
+	}
+
+	if (prevPageState.hoveredShapeId && shapesNoLongerInPage.has(prevPageState.hoveredShapeId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.hoveredShapeId = null
+	}
+
+	if (prevPageState.editingShapeId && shapesNoLongerInPage.has(prevPageState.editingShapeId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.editingShapeId = null
+	}
+
+	const hintingShapeIds = prevPageState.hintingShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (hintingShapeIds.length !== prevPageState.hintingShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.hintingShapeIds = hintingShapeIds
+	}
+
+	if (prevPageState.focusedGroupId && shapesNoLongerInPage.has(prevPageState.focusedGroupId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.focusedGroupId = null
+	}
+	return nextPageState
+}
 
 /** Two sets hold the same members. */
 function areSetsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {

@@ -2,11 +2,16 @@ import { EASINGS } from './primitives/easings'
 
 /**
  * How many shapes a page holds; a batch that would go past it is refused. Today's tldraw allows 4000
- * (measured: 3999 are created, 4001 are refused); 2023's stopped at 2000, which a large board reaches.
+ * and 2023's stopped at 2000. Relations are shapes too, so 4000 meant 2,000 nodes with one relation
+ * each. Raised once panning and editing stopped costing time per shape on the board
+ * (docs/performance-plan.md, phase 4): 5,000 nodes with 5,000 relations pan at the frame rate.
+ *
+ * Shapes are stacked from z-index `2 ×` this upward, and each frame with children adds another `1 ×`,
+ * so it has to stay far below CSS's limit of 2^31 − 1. At 20,000 that leaves room for 100,000 frames.
  *
  * @internal
  */
-export const MAX_SHAPES_PER_PAGE = 4000
+export const MAX_SHAPES_PER_PAGE = 20000
 /** @internal */
 export const MAX_PAGES = 40
 

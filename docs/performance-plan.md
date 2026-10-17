@@ -1,6 +1,47 @@
 # Canvas performance plan
 
-Status: Phases 1–3 done, Phase 3 awaiting review. Stop and report after each phase.
+Status: Phases 1–4 done, Phase 4 awaiting review. Stop and report after each phase.
+
+### Phase 4, as built
+
+Planned as "unmount what is far away". Measuring first found two things that stood between Lifeboard
+and thousands of nodes sooner than the DOM did, so the phase went after those, and unmounting waits.
+
+- **A page held 4,000 shapes**, and relations are shapes: 2,000 nodes with a relation each was the
+  ceiling, and `createShapes` refused a batch that went past it. `MAX_SHAPES_PER_PAGE` is 20,000.
+  Z-indexes are allocated from it (twice it upward, once more per frame with children), which still
+  leaves room for 100,000 frames below CSS's limit; property strips stack at three times it, so they
+  move with it.
+- **Every write visited every arrow.** The arrow's geometry read its bindings from one map built by a
+  store query, and queries sit below the store's history. At 5,000 relations a hover cost 11.8 ms.
+  `IdValues` (next to `IdFlags`) keeps each arrow's bindings in its own atom; `getArrowBinding` reads
+  it whenever it is in step with the map and the map itself in the middle of a change, so the answer
+  is always current. The values are created before anything can compute an arrow's geometry: an arrow
+  that read the map before they existed kept depending on it, which is how a reloaded board lost the
+  gain. `arrowBindingValues.test.ts` walks the signal graph to keep it that way.
+- **Selecting re-decided culling for every shape**, because selected and edited shapes are never
+  culled. The full pass (`_getOffScreenShapeIds`) no longer reads the selection; `getCulledShapeIds`
+  takes the selected and edited shapes out of its result, returning it untouched when none are in it.
+- **Opening a board rebuilt TipTap's schema once per label.** `generateHTML` builds it on every call;
+  `renderHtmlFromRichText` now caches it per set of extensions.
+
+| | Before | After |
+|---|---|---|
+| 5,000 nodes + 5,000 relations: pan at 100% | 14.6 ms | 8.3 ms |
+| 5,000 nodes + 5,000 relations: hover write | 11.8 ms | 0.66 ms |
+| 10,000 shapes: selection write | 14.5 ms | 1.4 ms |
+| 10,000 shapes: cold start with the board open | 3.3–3.8 s | 2.6 s |
+
+The "before" column for the 5,000-node rows was measured with the cap already raised, since a board
+that size could not exist under the old one.
+
+**Why nothing is unmounted yet.** Culled shapes stay mounted and hidden, and that is now cheap while
+the board is in use: hidden shapes have no layout objects, panning 10,000 shapes runs at the frame
+rate, and the JS heap is about 300 MB. What they still cost is the cold start: React mounting, text
+measurement and markdown parsing for every shape take most of the 2.6 s. Unmounting would cut that,
+but thumbnails and the agent's view of the board export HTML nodes by copying their element from the
+page (`exportShapeFromDom`), so an unmounted shape would export as a grey box. It needs a way to mount
+the shapes an export asks for, and wait for them, before it is safe.
 
 ### Phase 3, as built
 
@@ -171,7 +212,10 @@ relations shown, and per-frame JS on large boards drops by the comments and hove
 
 Originally "spatial index"; see *Phase 3, as built* for why it became this.
 
-## Phase 4: unmount what is far away
+## Phase 4: boards past 4,000 shapes
+
+Originally "unmount what is far away"; see *Phase 4, as built* for why it became this. Unmounting is
+still worth doing for the cold start, once exports can ask for the shapes they need to be mounted.
 
 - Shapes well outside the culling margin unmount instead of hiding. Shapes that hold state (editing,
   video, readers, anything with `canUnmount` false) stay mounted.
@@ -181,6 +225,8 @@ Originally "spatial index"; see *Phase 3, as built* for why it became this.
 
 - Batch `arrowDidUpdate` so it runs once per arrow per operation rather than once per binding.
   Paste, import, and the agent's bulk edits get linear.
+- Measured: creating one relation per node takes 0.3 s at 500 nodes, 6.5 s at 2,000 and 45–62 s at
+  5,000 (in batches of 250). With the cap raised in Phase 4, boards that size can now exist.
 
 ## Phase 6: level of detail when zoomed out
 

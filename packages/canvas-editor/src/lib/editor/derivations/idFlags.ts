@@ -43,3 +43,45 @@ export class IdFlags<Id extends string> {
 		return flag.get()
 	}
 }
+
+/**
+ * A value per id, derived from one record of them, where a change wakes only the ids whose value
+ * changed. The same idea as {@link IdFlags}, for values rather than yes/no.
+ *
+ * `syncedSource` is the source object the atoms were last brought in line with. A reader that needs
+ * the answer mid-transaction, before the reactor has run, compares it with the source's current
+ * value and reads the source directly when they differ.
+ */
+export class IdValues<Id extends string, V> {
+	private readonly atoms = new Map<Id, Atom<V | undefined>>()
+	private current = {} as Readonly<Partial<Record<Id, V>>>
+	syncedSource: unknown = undefined
+	readonly dispose: () => void
+
+	constructor(
+		private readonly name: string,
+		source: () => Readonly<Partial<Record<Id, V>>>,
+		isEqual: (a: V | undefined, b: V | undefined) => boolean
+	) {
+		this.dispose = react(name, () => {
+			const next = source()
+			const prev = this.current
+			this.current = next
+			this.syncedSource = next
+			transact(() => {
+				for (const [id, flag] of this.atoms) {
+					if (!isEqual(prev[id], next[id])) flag.set(next[id])
+				}
+			})
+		})
+	}
+
+	get(id: Id): V | undefined {
+		let value = this.atoms.get(id)
+		if (!value) {
+			value = atom(`${this.name}:${id}`, this.current[id])
+			this.atoms.set(id, value)
+		}
+		return value.get()
+	}
+}

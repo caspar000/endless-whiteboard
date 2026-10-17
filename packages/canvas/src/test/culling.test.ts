@@ -98,3 +98,15 @@ it('does not rebuild the list of shapes to render when a shape moves', () => {
 	stop()
 	expect(rebuilds).toBe(2)
 })
+
+it('keeps a selected shape drawn off screen, and culls it again once deselected', () => {
+	const far = createShapeId('farSelected')
+	editor.createShapes([{ id: far, type: 'geo', x: 5000, y: 0, props: { w: 100, h: 100 } }])
+	editor.setCamera({ x: 0, y: 0, z: 1 })
+	jest.advanceTimersByTime(500)
+	expect(isCulled(far)).toBe(true)
+	editor.select(far)
+	expect(isCulled(far)).toBe(false)
+	editor.selectNone()
+	expect(isCulled(far)).toBe(true)
+})

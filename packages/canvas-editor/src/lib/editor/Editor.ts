@@ -114,8 +114,12 @@ import { DEFAULT_THEME, type TLColorMode, type TLTheme } from '../theme/theme'
 import { exportShapeFromDom } from '../utils/exportShapeFromDom'
 import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
-import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
-import { IdFlags } from './derivations/idFlags'
+import {
+	arrowBindingsByArrow,
+	arrowBindingsIndex,
+	type TLArrowBindingsByArrow,
+} from './derivations/arrowBindingsIndex'
+import { IdFlags, IdValues } from './derivations/idFlags'
 import {
 	getArrowTerminal,
 	isArrowTerminal,
@@ -655,6 +659,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 		)
 		this._parentIdsToChildIds = parentsToChildren(this.store)
 
+		// Before anything can compute an arrow's geometry: one computed while these are missing reads
+		// the map of all bindings, and keeps depending on it (see `getArrowBinding`).
+		this._arrowBindingValues = new IdValues(
+			'arrow bindings',
+			() => this._getArrowBindingsByArrow().get(),
+			(a, b) => a?.start === b?.start && a?.end === b?.end
+		)
+		this.disposables.add(this._arrowBindingValues.dispose)
+
 		this.disposables.add(
 			this.store.listen((changes) => {
 				this.emit('change', changes)
@@ -713,6 +726,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 	private readonly _culledFlags: IdFlags<TLShapeId>
 	private readonly _editingFlags: IdFlags<TLShapeId>
 	private readonly _onlySelectedFlags: IdFlags<TLShapeId>
+	/** Each arrow's bindings, for `getArrowBinding`. Unset until the constructor has run. */
+	private _arrowBindingValues?: IdValues<TLShapeId, NonNullable<TLArrowBindingsByArrow[TLShapeId]>>
 	private readonly _devicePixelRatio = atom('device pixel ratio', 1)
 
 	/**
@@ -1529,7 +1544,21 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	getArrowBinding(arrowId: TLShapeId, end: TLArrowEnd): TLArrowBinding | undefined {
-		return this._getArrowBindingsByArrow().get()[arrowId]?.[end]
+		const exact = this._getArrowBindingsByArrow()
+		/*
+		 * Through the arrow's own value whenever that is up to date, so an arrow depends on its own
+		 * bindings rather than on the map of all of them. The map comes from a store query, and a
+		 * query sits below the store's history, so every write to anything (a camera move, a hover)
+		 * visited every arrow on the board through it: about 12ms a write at 5,000 relations.
+		 *
+		 * In the middle of a change to bindings, before the reactor has caught up, the map is read as
+		 * before: the answer is always the current one.
+		 */
+		const values = this._arrowBindingValues
+		if (values && exact.__unsafe__getWithoutCapture() === values.syncedSource) {
+			return values.get(arrowId)?.[end]
+		}
+		return exact.get()[arrowId]?.[end]
 	}
 
 	@computed
@@ -4137,18 +4166,34 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * The rendering shapes that are mounted but hidden because they are off screen.
 	 *
 	 * Compared by contents, so a refresh of the culling bounds that changes nothing wakes no shape.
+	 * The selected shapes and the one being edited are never culled; they are taken out here, from
+	 * a set that does not depend on them, so a click does not re-decide culling for every shape.
 	 *
 	 * @public
 	 */
 	@computed({ isEqual: areSetsEqual })
 	getCulledShapeIds(): ReadonlySet<TLShapeId> {
+		const offScreen = this._getOffScreenShapeIds()
+		// A selected shape stays drawn off screen, unless its frame clips it away entirely; the one
+		// being edited always does.
+		const keep = this.getSelectedShapeIds().filter(
+			(id) => offScreen.has(id) && this.getShapeMaskedPageBounds(id) !== undefined
+		)
+		const editingShapeId = this.getEditingShapeId()
+		if (editingShapeId && offScreen.has(editingShapeId)) keep.push(editingShapeId)
+		if (!keep.length) return offScreen
+		const culled = new Set(offScreen)
+		for (const id of keep) culled.delete(id)
+		return culled
+	}
+
+	/** Every rendering shape off screen, whether or not it is selected. */
+	@computed({ isEqual: areSetsEqual })
+	private _getOffScreenShapeIds(): ReadonlySet<TLShapeId> {
 		const culled = new Set<TLShapeId>()
 		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
 		if (!Number.isFinite(this.renderingBoundsMargin)) return culled
 
-		const editingShapeId = this.getEditingShapeId()
-		// A set, not an array: every shape asks about it, and a brush can select hundreds (P3).
-		const selectedShapeIds = new Set(this.getSelectedShapeIds())
 		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
 		const renderingBoundsAhead = this._renderingBoundsAhead.get()
 
@@ -4159,16 +4204,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 			const isCulled =
 				// only cull shapes that allow unmounting, i.e. not stateful components
 				util.canUnmount(shape) &&
-				// never cull editing shapes
-				editingShapeId !== id &&
 				// if the shape is fully outside of its parent's clipping bounds...
 				(maskedPageBounds === undefined ||
-					// ...or if the shape is outside of the expanded viewport bounds...
-					(!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
+					// ...or if the shape is outside of the expanded viewport bounds
+					!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
 						maskedPageBounds
-					) &&
-						// ...and if it's not selected... then cull it
-						!selectedShapeIds.has(id)))
+					))
 			if (isCulled) culled.add(id)
 		}
 		return culled

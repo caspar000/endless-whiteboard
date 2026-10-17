@@ -1,7 +1,9 @@
 import { atom, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { isHiddenRelation } from '@lifeboard/node-kit'
 import {
 	childrenOf,
 	evidenceNoteFor,
+	isDraft,
 	isHabit,
 	isItem,
 	isOrphan,
@@ -176,7 +178,7 @@ export function reindexShape(editor: Editor, boardId: string, shape: TLShape): v
 	const next = { ...index.get() }
 	for (const item of items) {
 		if (!item.props.itemId) continue
-		if (isOrphan(editor, item)) delete next[item.props.itemId]
+		if (isOrphan(editor, item) || isDraft(item)) delete next[item.props.itemId]
 		else next[item.props.itemId] = entryFor(editor, boardId, item)
 	}
 	commit(next)
@@ -198,10 +200,20 @@ export function unindexShape(editor: Editor, boardId: string, shape: TLShape): v
 	commit(next)
 }
 
-/** Deletes items whose parent is gone. Run when a board opens, when no undo can want them back. */
+/**
+ * Deletes items whose parent is gone, with the hidden arrows that tied them to it. Run when a board
+ * opens, when no undo can want them back. A hidden arrow left with one loose end is swept too: tldraw
+ * keeps an arrow when the shape at one end is deleted, and once it joins nothing it draws again.
+ */
 export function sweepOrphans(editor: Editor): void {
-	const orphans = editor.getCurrentPageShapes().filter((s) => isItem(s) && isOrphan(editor, s))
-	if (orphans.length) editor.deleteShapes(orphans.map((s) => s.id))
+	const shapes = editor.getCurrentPageShapes()
+	const doomed = new Set<TLShapeId>(shapes.filter((s) => isItem(s) && isOrphan(editor, s)).map((s) => s.id))
+	for (const arrow of shapes) {
+		if (!isHiddenRelation(arrow)) continue
+		const ends = editor.getBindingsFromShape(arrow, 'arrow')
+		if (ends.some((b) => doomed.has(b.toId)) || (ends.length === 1 && isItem(editor.getShape(ends[0]!.toId)))) doomed.add(arrow.id)
+	}
+	if (doomed.size) editor.deleteShapes([...doomed])
 }
 
 /**
@@ -212,7 +224,7 @@ export function rescanBoard(editor: Editor, boardId: string): void {
 	const next: Record<string, IndexEntry> = {}
 	for (const [id, entry] of Object.entries(index.get())) if (entry.boardId !== boardId) next[id] = entry
 	for (const shape of editor.getCurrentPageShapes()) {
-		if (isItem(shape) && shape.props.itemId && !isOrphan(editor, shape)) next[shape.props.itemId] = entryFor(editor, boardId, shape)
+		if (isItem(shape) && shape.props.itemId && !isOrphan(editor, shape) && !isDraft(shape)) next[shape.props.itemId] = entryFor(editor, boardId, shape)
 	}
 	commit(next)
 }
@@ -404,6 +416,7 @@ function trackEntryFor(boardId: string, track: TrackShape): TrackEntry {
 
 /** Indexes a habit or track shape that changed. False for any other shape. */
 function reindexEntity(boardId: string, shape: TLShape): boolean {
+	if ((isHabit(shape) || isTrack(shape)) && isDraft(shape)) return unindexEntity(boardId, shape)
 	if (isHabit(shape)) habitStore.upsert(habitEntryFor(boardId, shape))
 	else if (isTrack(shape)) trackStore.upsert(trackEntryFor(boardId, shape))
 	else return false
@@ -419,6 +432,7 @@ function unindexEntity(boardId: string, shape: TLShape): boolean {
 
 function rescanEntities(editor: Editor, boardId: string): void {
 	const shapes = editor.getCurrentPageShapes()
-	habitStore.rescan(boardId, shapes.filter(isHabit).map((h) => habitEntryFor(boardId, h)))
-	trackStore.rescan(boardId, shapes.filter(isTrack).map((t) => trackEntryFor(boardId, t)))
+	const live = shapes.filter((s) => !isDraft(s))
+	habitStore.rescan(boardId, live.filter(isHabit).map((h) => habitEntryFor(boardId, h)))
+	trackStore.rescan(boardId, live.filter(isTrack).map((t) => trackEntryFor(boardId, t)))
 }

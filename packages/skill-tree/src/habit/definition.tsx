@@ -7,7 +7,7 @@ import {
 import { stopEventPropagation, T, useValue, type Editor } from '@lifeboard/canvas'
 import { Repeat } from 'lucide-react'
 import { memo, type KeyboardEvent, type SyntheticEvent } from 'react'
-import { HABIT_TYPE, type HabitProps, type HabitShape } from '../board'
+import { draftClass, HABIT_TYPE, type HabitProps, type HabitShape } from '../board'
 import {
 	currentStreak,
 	habitHistory,
@@ -91,7 +91,7 @@ function HabitComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Hab
 	const shown = view.history.slice(-SHOWN)
 
 	const body = (
-		<div className={`lb-habit${view.current.met ? ' lb-habit--met' : ''}${paused || !view.started ? ' lb-habit--idle' : ''}`}>
+		<div className={`lb-habit${view.current.met ? ' lb-habit--met' : ''}${paused || !view.started ? ' lb-habit--idle' : ''}${draftClass(shape as never)}`}>
 			<div className="lb-habit__head">
 				<span className="lb-habit__name">{shape.props.name || 'Untitled habit'}</span>
 				<span className="lb-habit__count">

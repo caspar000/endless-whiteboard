@@ -14301,3 +14301,15 @@ button.lb-props__eye:hover {
 .lb-upnext__day--future {
 	opacity: 0.3;
 }
+
+/* An imported syllabus that hasn't been confirmed: dashed, so a draft never passes for the real thing. */
+.lb-skill.lb-draft,
+.lb-track.lb-draft,
+.lb-skilltree.lb-draft,
+.lb-habit.lb-draft {
+	border-style: dashed;
+	border-color: var(--lb-accent);
+}
+.lb-skillnode.lb-draft .lb-skillnode__disc {
+	border-style: dashed;
+}

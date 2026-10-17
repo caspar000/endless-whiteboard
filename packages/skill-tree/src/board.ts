@@ -198,3 +198,16 @@ export interface UpNextProps {
 	goal: string
 	autoHeight: boolean
 }
+
+/** Marks a shape an import created and nobody has confirmed yet (syllabusIO.ts). */
+export const DRAFT_META = 'lifeboard:skillDraft'
+
+/** A draft draws dashed and stays out of the index until "Confirm draft". */
+export function isDraft(shape: TLShape): boolean {
+	return !!shape.meta[DRAFT_META]
+}
+
+/** The class a card adds to its root while it is a draft. */
+export function draftClass(shape: TLShape): string {
+	return isDraft(shape) ? ' lb-draft' : ''
+}

@@ -1,7 +1,7 @@
 import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue, type Editor } from '@lifeboard/canvas'
 import { memo, type PointerEvent, type SyntheticEvent } from 'react'
-import { childrenOf, evidenceNoteFor, progressOf, type ItemShape, type SkillItemProps } from '../board'
+import { childrenOf, draftClass, evidenceNoteFor, progressOf, type ItemShape, type SkillItemProps } from '../board'
 import { formatProgress, hasEvidence } from '../model'
 import { addChildItem, setCollapsed, toggleItemDone } from '../ops'
 import { isDone, readText } from '../properties'
@@ -21,7 +21,7 @@ function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	const view = useValue('lifeboard:skill-item', () => readItemView(editor, item), [editor, item])
 
 	const body = (
-		<div className={`lb-skill${view.done ? ' lb-skill--done' : ''}`}>
+		<div className={`lb-skill${view.done ? ' lb-skill--done' : ''}${draftClass(shape as never)}`}>
 			<div className="lb-skill__row">
 				<input
 					type="checkbox"

@@ -171,6 +171,26 @@ export function Syllabus({ go }: SectionProps) {
 					back together.
 				</p>
 			</Section>
+
+			<Section title="Syllabi as YAML">
+				<p>
+					A whole syllabus, its tracks, items, tree and habits, can be written as one YAML document and
+					brought in with <code>Import syllabus YAML from the clipboard</code>, or by dropping a{' '}
+					<code>.yaml</code> file on the board. The agent can write one for you from a pasted list or a
+					chart. An import arrives as a <strong>draft</strong>: dashed, selected, and counting toward
+					nothing until you run <code>Confirm draft</code>. <code>Discard draft</code> removes it.
+				</p>
+				<p>
+					Write ids short (<code>homer</code>); they get the document's <code>goal</code> as a prefix (
+					<code>adler/homer</code>). Importing an id that is already on the board updates it in place and
+					keeps its ticks and notes, so you can edit a file and import it again. If something in the file is
+					wrong, nothing is imported and a note lists every problem with its place.
+				</p>
+				<p className="lb-help__aside">
+					<code>Copy a syllabus as YAML</code> writes one goal (the selected track's, or the board's first)
+					with ids in full, which is the easiest way to see the format.
+				</p>
+			</Section>
 		</>
 	)
 }

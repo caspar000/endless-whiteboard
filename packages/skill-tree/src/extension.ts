@@ -4,6 +4,7 @@ import { isHiddenByCollapse, isItem, ITEM_TYPE } from './board'
 import { habitNodeDefinition } from './habit/definition'
 import { upNextNodeDefinition } from './upnext/definition'
 import { skillTreeCommands } from './commands'
+import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
 import { itemNodeDefinition } from './item/definition'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
@@ -41,7 +42,9 @@ export const skillTreeExtension: Extension = {
 		defineNode(habitNodeDefinition),
 		defineNode(upNextNodeDefinition),
 	],
-	commands: skillTreeCommands,
+	commands: [...skillTreeCommands, ...syllabusCommands],
+	operations: syllabusOperations,
+	fileImports: [syllabusFileImport],
 	hooks: {
 		// Every open board feeds the vault-wide index, and catches it up on what changed elsewhere.
 		onBoardOpen: ({ editor, boardId }) => watchBoard(editor, boardId),

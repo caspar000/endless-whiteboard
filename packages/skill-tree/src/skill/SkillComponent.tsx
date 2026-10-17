@@ -1,7 +1,7 @@
 import { getIconBridge, NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
-import type { SkillNodeProps, SkillShape } from '../board'
+import { draftClass, type SkillNodeProps, type SkillShape } from '../board'
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
 import { SkillEditor } from './SkillEditor'
@@ -25,7 +25,7 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	const { Icon } = getIconBridge()
 
 	const body = (
-		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}`}>
+		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never)}`}>
 			<svg className="lb-skillnode__ring" viewBox="0 0 100 100" aria-hidden>
 				<circle className="lb-skillnode__track" cx="50" cy="50" r="44" />
 				<circle

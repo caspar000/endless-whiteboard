@@ -174,7 +174,7 @@ export function evaluateTree(
 				)
 				consumed = Math.max(consumed, min)
 				const filter = [kind, medium, method].filter(Boolean).join(', ')
-				statuses.push({ label: filter ? `${min} pieces (${filter})` : `${min} pieces`, have: Math.min(matching.length, min), need: min, met: matching.length >= min })
+				statuses.push({ label: `${min} ${min === 1 ? 'piece' : 'pieces'}${filter ? ` (${filter})` : ''}`, have: Math.min(matching.length, min), need: min, met: matching.length >= min })
 			} else {
 				const { id, rule, min } = condition.habit
 				const habit = habits[id]

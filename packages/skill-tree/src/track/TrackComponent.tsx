@@ -1,7 +1,7 @@
 import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue, type Editor } from '@lifeboard/canvas'
 import { memo, type KeyboardEvent, type SyntheticEvent } from 'react'
-import { childrenOf, itemByItemId, progressOf, TRACK_TYPE, type ItemShape, type TrackProps, type TrackShape } from '../board'
+import { childrenOf, draftClass, itemByItemId, progressOf, TRACK_TYPE, type ItemShape, type TrackProps, type TrackShape } from '../board'
 import { formatProgress, nextInOrder, parseOrder } from '../model'
 import { cycleTrackState, moveInTrack, nextStep, removeFromTrack, revealItem, toggleItemDone } from '../ops'
 import { isDone, readText } from '../properties'
@@ -44,7 +44,7 @@ function TrackComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Tra
 	)
 
 	const body = (
-		<div className={`lb-track lb-track--${shape.props.state}`}>
+		<div className={`lb-track lb-track--${shape.props.state}${draftClass(shape as never)}`}>
 			<header className="lb-track__head">
 				<span className="lb-track__name">{shape.props.name || 'Untitled track'}</span>
 				<button

@@ -2,7 +2,7 @@ import { createShapePropsMigrationSequence, NodeEditorPopover, type NodeComponen
 import { stopEventPropagation, T, useValue } from '@lifeboard/canvas'
 import { Network } from 'lucide-react'
 import { memo, type KeyboardEvent } from 'react'
-import { TREE_TYPE, treeNodes, type SkillTreeProps } from '../board'
+import { draftClass, TREE_TYPE, treeNodes, type SkillTreeProps } from '../board'
 import { makeItemId } from '../model'
 import { TIERS } from '../requirements'
 import { treeStatus } from './status'
@@ -32,7 +32,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	const set = (props: Partial<SkillTreeProps>) => editor.updateShape({ id: shape.id, type: TREE_TYPE, props } as never)
 
 	const body = (
-		<div className="lb-skilltree">
+		<div className={`lb-skilltree${draftClass(shape as never)}`}>
 			<span className="lb-skilltree__name">{shape.props.name || 'Untitled tree'}</span>
 			{shape.props.goal && <span className="lb-skilltree__goal">{shape.props.goal}</span>}
 			<span className="lb-skilltree__stats">

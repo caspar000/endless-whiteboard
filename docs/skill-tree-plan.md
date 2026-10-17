@@ -1,7 +1,37 @@
 # Skill trees and syllabi: implementation plan
 
-Agreed 2026-10-17. Status: **Steps 1 to 4 are built** and checked on a running board; steps 5 and 6
-and Phase B remain. The "as built" notes below say where the build diverged from the plan and why.
+Agreed 2026-10-17. Status: **Steps 1 to 5 are built** and checked on a running board; step 6 and
+Phase B remain. The "as built" notes below say where the build diverged from the plan and why.
+
+### Step 5, as built
+
+- **One goal per document.** An import gives every track, tree and habit in it the document's goal,
+  so a file holding two goals would merge them. Export writes one goal at a time (the selected
+  track's, tree's or habit's, or the board's first); `skill.export` takes a `goal` and lists the
+  board's goals.
+- **Ids.** Short ids are qualified on the way in (`homer` in goal `adler` is `adler/homer`, its child
+  `iliad` is `adler/homer/iliad`); tags, default tags, habit filters and requirement references are
+  qualified with the tree's id. An id with a `/` is kept as written. Export writes ids in full, so
+  importing an export updates in place and creates nothing (checked on a board).
+- **Merging.** An id already on the board is updated: titles, tags, kind and medium, child rules,
+  requirements, track order (the document's order first, then anything the track already had).
+  Ticks, notes and habit logs are never touched.
+- **Drafts** are every shape the import made, arrows included, except a prerequisite edge redrawn
+  between two nodes that were already there. A draft is dashed, joins no index, and selecting and
+  zooming to it is the import's last step. Without a drop point an import lands to the right of
+  everything on the board.
+- **Problems** are listed, every one with its place ("Track 1 › item 2: kind is one of …", or the
+  YAML line). From the palette or a dropped file they arrive as a note on the board, because an
+  extension has no toast to reach; an operation returns them to the agent.
+- **Commands:** Import syllabus YAML from the clipboard, Copy a syllabus as YAML, Confirm draft,
+  Discard draft. A dropped `.yaml` or `.yml` file is imported where it lands.
+- **Operations:** `skill.import`, `skill.export`, `skill.item.complete`, `skill.tag` (a YAML map of
+  item id to node ids, the bulk tagging pass), `skill.read` (tracks, items, habits, and the state of
+  every node on the open board), `skill.draft.confirm`, `skill.draft.discard`.
+- **Diverged from the spec below:** unknown keys are dropped, not kept; an item's own `method` is
+  not read yet (the method comes from its medium's template); a document holds one goal.
+- **Fixed on the way:** sweeping orphaned children on board open now takes their hidden arrows too.
+  tldraw keeps an arrow whose end shape is deleted, and once it joins nothing it draws again.
 
 ### Step 4, as built
 

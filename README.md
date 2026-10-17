@@ -113,8 +113,8 @@ take the same colours and text, `{…}` expressions included, and dragging a cor
 text and all; the drawing is in
 `packages/canvas/src/lib/shapes/note/paper.ts`.
 
-**Quick look** — tap <kbd>Space</kbd> on any node, image, sticky, text or frame and the camera zooms
-onto it while the rest of the board blurs. It is the real node, so it can still be edited in place.
+**Quick look** — tap <kbd>Space</kbd> on any shape (a node, picture, note, frame, group, box or
+drawing) and the camera zooms onto it while the rest of the board blurs. It is the real node, so it can still be edited in place.
 <kbd>←</kbd>/<kbd>→</kbd> step through the selection, or, with one node selected, through its
 neighbours in reading order. A frame counts as one slide. <kbd>Esc</kbd> or a click on the blur puts
 the camera back. Holding Space still pans. A node type sets how far it zooms with
@@ -151,8 +151,8 @@ icon, a bar, stars or a checkbox), tables, separators and labels. "Edit card lay
 menu opens the properties panel's Display tab, where you build one by hand, or "Edit as YAML" for
 longer ones; the card follows as you edit. Select several cards with the same layout and they change
 together. Every card owns its layout: save one under a name (saved layouts follow the vault) and apply
-it to a selection, or copy and paste a card's layout from the right-click menu, and each card gets a
-copy. An agent reads and writes layouts as the same YAML (`property.layout`, `property.set-layout`).
+it to a selection, copy and paste a card's layout from the right-click menu, or apply it to every
+card on the board with exactly the same properties ("Apply to matching"), and each card gets a copy. An agent reads and writes layouts as the same YAML (`property.layout`, `property.set-layout`).
 See `docs/property-display-plan.md`.
 
 Two legacy types (`node.item`, `node.rollup`) remain registered but hidden: store migrations rewrite

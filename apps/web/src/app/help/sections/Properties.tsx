@@ -207,8 +207,10 @@ export function Properties({ go }: SectionProps) {
 				<p className="lb-help__aside">
 					Every card owns its layout. To reuse one, save it under a name in the Display tab (saved
 					layouts follow your vault to every board) and apply it to a selection, or copy a card's
-					layout from the right-click menu and paste it onto others. Either way each card gets a copy,
-					so changing one later leaves the rest alone.
+					layout from the right-click menu and paste it onto others. "Apply to matching", in the
+					Display tab and on the right-click menu, gives it to every card on the board with exactly
+					the same properties: the same set, not just some in common. Either way each card gets a
+					copy, so changing one later leaves the rest alone.
 				</p>
 			</Section>
 

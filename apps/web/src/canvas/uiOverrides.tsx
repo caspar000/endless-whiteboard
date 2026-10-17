@@ -4,8 +4,10 @@ import {
 	getNodeDefinitions,
 	getVisibleNodeDefinitions,
 	isNodeTypeEnabled,
+	applyLayoutToMatching,
 	copyLayout,
 	getCopiedLayout,
+	matchingCards,
 	nextPropertyView,
 	readPropertyLayout,
 	setPropertyLayouts,
@@ -169,6 +171,14 @@ function PropertiesMenuItem() {
 	])
 	const phone = usePhone()
 	const canPaste = useValue('lifeboard:can-paste-layout', () => getCopiedLayout() !== undefined, [])
+	const matching = useValue(
+		'lifeboard:layout-matching-count',
+		() => {
+			const shape = editor.getOnlySelectedShape()
+			return shape ? matchingCards(shape, editor.getCurrentPageShapes()).length : 0
+		},
+		[editor]
+	)
 	if (!selectedIds.length) return null
 	return (
 		<TldrawUiMenuGroup id="lifeboard-properties-group">
@@ -195,6 +205,16 @@ function PropertiesMenuItem() {
 					onSelect={() => {
 						const shape = editor.getShape(selectedIds[0]!)
 						if (shape) copyLayout(readPropertyLayout(shape))
+					}}
+				/>
+			)}
+			{matching > 0 && (
+				<TldrawUiMenuItem
+					id="lifeboard-card-layout-matching"
+					label={`Apply layout to ${matching} matching ${matching === 1 ? 'card' : 'cards'}`}
+					onSelect={() => {
+						const shape = editor.getOnlySelectedShape()
+						if (shape) applyLayoutToMatching(editor, shape)
 					}}
 				/>
 			)}

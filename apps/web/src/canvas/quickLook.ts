@@ -36,14 +36,19 @@ const DOCUMENT: Preset = { fill: 0.85, maxZoom: 2.5 }
 const PICTURE: Preset = { fill: 0.85, maxZoom: null }
 /** Small things shouldn't take the whole screen. */
 const SMALL: Preset = { fill: 0.6, maxZoom: 4 }
+/** Boxes, drawings, arrows and anything else without a preset of its own. */
+const SHAPE: Preset = { fill: 0.85, maxZoom: 4 }
 
-/** tldraw's own shapes that are worth looking at. Arrows, drawings and plain boxes are not. */
 const NATIVE_PRESETS: Record<string, Preset> = {
 	image: PICTURE,
 	video: PICTURE,
 	frame: PICTURE,
+	group: PICTURE,
 	note: SMALL,
+	'pinned-note': SMALL,
 	text: SMALL,
+	bookmark: DOCUMENT,
+	embed: DOCUMENT,
 }
 
 const ANIMATION = { animation: { duration: 250 } }
@@ -69,15 +74,15 @@ export function getQuickLookShapeId(editor: Editor): TLShapeId | null {
 	return state ? (state.ids[state.index] ?? null) : null
 }
 
-export function presetFor(type: string): Preset | null {
+export function presetFor(type: string): Preset {
 	const def = getNodeDefinition(type)
 	if (def) return { ...DOCUMENT, ...def.quickLook }
-	return NATIVE_PRESETS[type] ?? null
+	return NATIVE_PRESETS[type] ?? SHAPE
 }
 
 function isPreviewable(editor: Editor, id: TLShapeId): boolean {
 	const shape = editor.getShape(id)
-	return !!shape && presetFor(shape.type) !== null && !editor.isShapeHidden(shape)
+	return !!shape && !editor.isShapeHidden(shape)
 }
 
 /** Whether Space has anything to show: some selected shape that can be previewed. */
@@ -154,13 +159,13 @@ function cycleFor(editor: Editor): { ids: TLShapeId[]; index: number } | null {
 function frameShape(editor: Editor, id: TLShapeId, immediate = false): void {
 	const shape = editor.getShape(id)
 	const bounds = editor.getShapePageBounds(id)
-	const preset = shape && presetFor(shape.type)
-	if (!bounds || !preset) return
+	if (!shape || !bounds) return
 	const viewport = editor.getSafeViewportBounds()
-	// A zero-sized viewport or shape fits to NaN, and `setCamera` throws on that since tldraw 5.5.
-	if (!viewport.w || !viewport.h || !bounds.w || !bounds.h) return
+	// A zero-sized viewport fits to NaN, and `setCamera` throws on that since tldraw 5.5. A flat
+	// shape (a straight line or arrow) is fine: its flat side fits to Infinity and the other wins.
+	if (!viewport.w || !viewport.h) return
 	const zoomLimit = editor.getCameraOptions().zoomSteps.at(-1)! * editor.getBaseZoom()
-	editor.setCamera(fitCamera(bounds, viewport, preset, zoomLimit), {
+	editor.setCamera(fitCamera(bounds, viewport, presetFor(shape.type), zoomLimit), {
 		force: true,
 		...(immediate ? {} : ANIMATION),
 	})

@@ -14,7 +14,7 @@ below was re-checked against the 5.5.2 source and still holds. What changed, and
   pending edits. `DRAIN_MS` stays as a margin and for uploads that land after a tab closes.
 - **Deleting a board's database no longer waits for other tabs.** A `blocking()` handler makes the
   other connection close, so that tab's next write shows tldraw's "can't write" alert.
-- **`setCamera` throws on non-finite values.** Quick Look guards zero-sized viewports and shapes.
+- **`setCamera` throws on non-finite values.** Quick Look guards zero-sized viewports; a flat shape still fits by its long side.
 - **Rich text gained Typography and WrapSelection by default.** Stickies and text curl quotes, turn
   `->` into `→`, and typing `{` over a selection wraps it.
 - **Pasting a URL with one shape selected sets that shape's link** instead of making a bookmark.

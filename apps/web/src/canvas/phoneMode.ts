@@ -1,6 +1,6 @@
 import { atom, react, type Atom, type Editor, type TLEventInfo } from '@lifeboard/canvas'
 import { PHONE_QUERY } from '../app/usePhone'
-import { openQuickLook, presetFor } from './quickLook'
+import { openQuickLook } from './quickLook'
 
 /**
  * Hand first, on a phone (docs/mobile-plan.md). Moving around a board with a thumb kept changing it by
@@ -69,7 +69,6 @@ export function installPhoneMode(editor: Editor): () => void {
 			editor.setEditingShape(shape.id)
 			return
 		}
-		if (!presetFor(shape.type)) return
 		// Quick look starts from the selection; once open it keeps its own list, and a selection left
 		// behind would bring up the selection toolbar, Delete and all, in Hand.
 		editor.select(shape.id)

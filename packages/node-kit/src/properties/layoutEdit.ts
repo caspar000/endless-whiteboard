@@ -10,7 +10,7 @@ import {
 	type RowAlign,
 	type Slot,
 } from './layout'
-import type { ShapeWithMeta } from './values'
+import { readShapeProperties, type ShapeWithMeta } from './values'
 
 /**
  * The edits the Display tab makes to a layout, as pure functions: each takes a layout and returns a
@@ -155,4 +155,30 @@ export function setPropertyLayouts(editor: Editor, shapes: readonly TLShape[], l
 	editor.run(() => {
 		for (const shape of shapes) setPropertyLayout(editor, shape, layout)
 	})
+}
+
+/**
+ * The cards "Apply to matching" changes: every other shape in `pool` that carries exactly the same
+ * properties as `shape` (the same set, whatever the values) and doesn't already have its layout. A
+ * shape with no properties matches nothing.
+ */
+export function matchingCards<T extends ShapeWithMeta & { id: string }>(shape: T, pool: readonly T[]): T[] {
+	const ids = propertyIdsKey(shape)
+	if (ids === '[]') return []
+	const layout = JSON.stringify(readPropertyLayout(shape))
+	return pool.filter(
+		(other) =>
+			other.id !== shape.id &&
+			propertyIdsKey(other) === ids &&
+			JSON.stringify(readPropertyLayout(other)) !== layout
+	)
+}
+
+function propertyIdsKey(shape: ShapeWithMeta): string {
+	return JSON.stringify(Object.keys(readShapeProperties(shape)).sort())
+}
+
+/** Copies `shape`'s layout onto every matching card on its page, as one undo step. */
+export function applyLayoutToMatching(editor: Editor, shape: TLShape): void {
+	setPropertyLayouts(editor, matchingCards(shape, editor.getCurrentPageShapes()), readPropertyLayout(shape))
 }

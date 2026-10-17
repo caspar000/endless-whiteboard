@@ -388,3 +388,41 @@ test.describe('pictures at the size they are shown (P6)', () => {
 		await expect.poll(natural).toBe(1600)
 	})
 })
+
+test.describe('Quick look', () => {
+	test('Space opens on any shape: a pinned note, a group, a box, a line', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page)
+		await page.evaluate(() => {
+			const editor = (window as unknown as { editor: EditorHandle & { groupShapes(ids: string[], groupId: string): void } }).editor
+			editor.createShapes([
+				{ id: 'shape:pinned', type: 'pinned-note', x: 100, y: 100 },
+				{ id: 'shape:box', type: 'geo', x: 500, y: 100, props: { w: 120, h: 80 } },
+				{ id: 'shape:g1', type: 'geo', x: 100, y: 500, props: { w: 120, h: 80 } },
+				{ id: 'shape:g2', type: 'geo', x: 300, y: 500, props: { w: 120, h: 80 } },
+				{
+					id: 'shape:line',
+					type: 'line',
+					x: 500,
+					y: 500,
+					props: { points: { a: { id: 'a', index: 'a1', x: 0, y: 0 }, b: { id: 'b', index: 'a2', x: 200, y: 0 } } },
+				},
+			])
+			editor.groupShapes(['shape:g1', 'shape:g2'], 'shape:group')
+			editor.selectNone()
+			editor.setCamera({ x: 0, y: 0, z: 1 })
+		})
+		await page.locator('.lb-board-host:not([data-hidden]) .tl-canvas').click({ position: { x: 900, y: 400 } })
+
+		const board = page.locator('.lb-board--quick-look')
+		for (const id of ['shape:pinned', 'shape:group', 'shape:box', 'shape:line']) {
+			await page.evaluate((id) => (window as unknown as { editor: { select(id: string): void } }).editor.select(id), id)
+			await page.keyboard.press('Space')
+			await expect(board, id).toBeVisible()
+			expect(await selected(page)).toEqual([id])
+			await page.keyboard.press('Escape')
+			await expect(board, id).toBeHidden()
+		}
+	})
+})

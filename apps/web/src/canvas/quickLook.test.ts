@@ -40,6 +40,12 @@ describe('fitCamera', () => {
 		expect(fitCamera(box('a', 0, 0, 50, 50), viewport, { fill: 0.8, maxZoom: 2.5 }, 8).z).toBe(2.5)
 	})
 
+	it('fits a flat shape, such as a straight line, by its long side', () => {
+		const camera = fitCamera(box('a', 0, 0, 400, 0), viewport, { fill: 0.8, maxZoom: 4 }, 8)
+		expect(camera.z).toBe(2) // 1000 * 0.8 / 400
+		expect(Number.isFinite(camera.x) && Number.isFinite(camera.y)).toBe(true)
+	})
+
 	it("never passes the canvas's own limit", () => {
 		expect(fitCamera(box('a', 0, 0, 10, 10), viewport, { fill: 0.8, maxZoom: null }, 8).z).toBe(8)
 	})

@@ -22,8 +22,10 @@ import {
 import {
 	addElement,
 	addRow,
+	applyLayoutToMatching,
 	elementAt,
 	layoutsMatch,
+	matchingCards,
 	moveElement,
 	moveRow,
 	removeElement,
@@ -107,6 +109,7 @@ export function LayoutPanel({
 						</button>
 					)}
 				</div>
+				{!many && <ApplyToMatching editor={editor} shape={shape} />}
 				<Library layout={null} onApply={commit} />
 			</div>
 		)
@@ -242,7 +245,38 @@ export function LayoutPanel({
 					Use automatic
 				</button>
 			</div>
+			{!many && <ApplyToMatching editor={editor} shape={shape} />}
 			<Library layout={layout} onApply={(next) => (commit(next), setSelected(null))} />
+		</div>
+	)
+}
+
+/**
+ * Copies this card's layout onto the board's other cards with exactly the same properties. Hidden
+ * when there are none, or they already look like this one.
+ */
+function ApplyToMatching({ editor, shape }: { editor: Editor; shape: TLShape }) {
+	const count = useValue(
+		'lifeboard:layout-matching',
+		() => {
+			const current = editor.getShape(shape.id)
+			return current ? matchingCards(current, editor.getCurrentPageShapes()).length : 0
+		},
+		[editor, shape.id]
+	)
+	if (!count) return null
+	return (
+		<div className="lb-display__footer">
+			<button
+				className="lb-display__button"
+				title="Cards on this board with exactly the same properties"
+				onClick={() => {
+					const current = editor.getShape(shape.id)
+					if (current) applyLayoutToMatching(editor, current)
+				}}
+			>
+				Apply to {count} matching {count === 1 ? 'card' : 'cards'}
+			</button>
 		</div>
 	)
 }

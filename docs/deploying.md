@@ -56,12 +56,22 @@ previous build stays up and the container logs say why. The server and the web a
    gh pr merge --squash   # or --rebase
    ```
 
-   Either way `main` gets new commits that `develop` doesn't have, so merge `main` back into
-   `develop` straight after, or the next pull request carries this one's changes again. The content
-   is the same on both sides, so it merges cleanly, and nothing pushed to `develop` meanwhile is lost:
+   Either way `main` gets copies of `develop`'s commits under new ids. The *Sync develop* workflow
+   (`.github/workflows/sync-develop.yml`) fixes that by itself once the pull request merges: it
+   replays whatever was pushed to `develop` after the merged commit onto `main` and force-pushes
+   `develop` there, so the next pull request holds only new work. Don't merge `main` back into
+   `develop` by hand: the merge conflicts whenever later work touched the same lines, and its merge
+   commit stops *Rebase and merge* from working on the next pull request.
+
+   A local `develop` is behind the rewritten one afterwards. Move it with
+   `git fetch && git switch develop && git reset --hard origin/develop`, after committing anything
+   unpushed and putting it back on top. If the workflow fails (a newer commit doesn't replay cleanly),
+   do its job by hand, where `<merged>` is the last commit of the merged pull request:
 
    ```sh
-   git switch develop && git pull && git merge origin/main && git push
+   git fetch && git switch develop && git reset --hard origin/develop
+   git rebase --onto origin/main <merged>
+   git push --force-with-lease origin develop
    ```
 
    When one spec fails in CI, read its trace (the run's `e2e-results` artifact) before calling it a

@@ -1,0 +1,46 @@
+# After a pull request from develop merges into main, puts develop back on top of main
+# (docs/deploying.md).
+#
+# Rebase and merge and squash and merge both give main new commits with new ids, so develop keeps the
+# old copies and the next develop → main pull request conflicts with itself. This job takes the
+# commits pushed to develop after the merged head and replays them onto main, then moves develop
+# there. When nothing was pushed meanwhile, develop simply becomes main.
+name: Sync develop
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-develop
+
+jobs:
+  sync:
+    name: Put develop on top of main
+    if: github.event.pull_request.merged && github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replay develop's newer commits onto main
+        env:
+          MERGED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main develop
+          develop=$(git rev-parse origin/develop)
+          git switch --detach origin/develop
+          # Commits after the merged head are new work; everything up to it is already on main.
+          if ! git rebase --onto origin/main "$MERGED_HEAD"; then
+            git rebase --abort
+            echo "::error::develop's newer commits don't replay cleanly onto main. Rebase develop by hand (docs/deploying.md)."
+            exit 1
+          fi
+          # The lease refuses the push if develop moved while this ran; the next merge syncs it.
+          git push --force-with-lease="develop:$develop" origin HEAD:develop

@@ -8,7 +8,7 @@ import { getSkillIndex } from '../skillIndex'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
 
-const KINDS = ['skill', 'method', 'keystone', 'root'] as const
+const KINDS = ['skill', 'method', 'keystone', 'root', 'pillar', 'mastery'] as const
 
 /**
  * A node's settings, what it is waiting for, and the items that would advance it. The requirement is

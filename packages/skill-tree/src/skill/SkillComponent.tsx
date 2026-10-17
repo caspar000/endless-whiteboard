@@ -1,7 +1,8 @@
 import { getIconBridge, NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
-import { draftClass, isSkill, MASTERY, type SkillNodeProps, type SkillShape } from '../board'
+import { AGGREGATE_KINDS, draftClass, type SkillNodeProps, type SkillShape } from '../board'
+import { boardTrees, reachFrom, treeGraph } from '../views'
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
 import { SkillEditor } from './SkillEditor'
@@ -19,7 +20,11 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 		() => treeStatus(editor, shape.props.treeId).get(shape.props.nodeId) ?? null,
 		[editor, shape.props.treeId, shape.props.nodeId]
 	)
-	const mastery = useValue('lifeboard:skill-mastery', () => (shape.props.kind === MASTERY ? boardProgress(editor) : null), [editor, shape.props.kind])
+	const mastery = useValue(
+		'lifeboard:skill-aggregate',
+		() => (AGGREGATE_KINDS.includes(shape.props.kind) ? progressBelow(editor, shape.props.nodeId) : null),
+		[editor, shape.props.kind, shape.props.nodeId]
+	)
 	const state = mastery ? 'unlocked' : (status?.state ?? 'locked')
 	const { fraction, caption } = mastery ?? ringFor(status)
 	const tier = status?.mastery.tier ?? 0
@@ -62,19 +67,18 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	)
 }
 
-/** For the Mastery node: how much of every tree on the board is unlocked. */
-function boardProgress(editor: NodeComponentProps<SkillNodeProps>['editor']): { fraction: number; caption: string } {
-	const treeIds = new Set(editor.getCurrentPageShapes().flatMap((s) => (isSkill(s) && s.props.kind !== MASTERY ? [s.props.treeId] : [])))
-	let total = 0
-	let unlocked = 0
-	for (const treeId of treeIds) {
-		for (const s of treeStatus(editor, treeId).values()) {
-			total++
-			if (s.state === 'unlocked') unlocked++
-		}
-	}
-	const trees = `${treeIds.size} ${treeIds.size === 1 ? 'tree' : 'trees'}`
-	return { fraction: total ? unlocked / total : 0, caption: `${trees} · ${unlocked}/${total}` }
+/**
+ * For Mastery and a pillar: how much of everything below it is unlocked, across every tree mounted
+ * under it, whether or not this board shows them.
+ */
+function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { fraction: number; caption: string } {
+	const graph = treeGraph(boardTrees(editor))
+	const below = [...reachFrom(graph, nodeId)].filter((id) => !AGGREGATE_KINDS.includes(graph.nodes.get(id)!.def.kind))
+	const trees = new Set(below.map((id) => graph.nodes.get(id)!.treeId))
+	const statuses = new Map([...trees].flatMap((treeId) => [...treeStatus(editor, treeId)]))
+	const unlocked = below.filter((id) => statuses.get(id)?.state === 'unlocked').length
+	const count = `${trees.size} ${trees.size === 1 ? 'tree' : 'trees'}`
+	return { fraction: below.length ? unlocked / below.length : 0, caption: `${count} · ${unlocked}/${below.length}` }
 }
 
 function ringFor(status: NodeStatus | null): { fraction: number; caption: string } {

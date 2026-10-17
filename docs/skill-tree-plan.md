@@ -23,6 +23,25 @@ Decided 2026-10-17: trees are vault data, and a board's node shapes are views of
   shows one branch still evaluates against the whole tree. Draft nodes are added to it until
   confirmed.
 
+### Step 6c, part two: views, as built
+
+- **A header is a view.** A `node.skillTree` shape shows its tree from a root (its `root` prop,
+  "Show from" in its editor; empty means the tree's root): that node and everything reachable from
+  it through prerequisites, the tree's loose nodes, and trees mounted on any of them (`views.ts`).
+  Nodes in reach that the board lacks are created; node shapes of a covered tree that fall out of
+  reach are removed from this board only. A board without headers has no views and is left alone.
+- **Placement.** A view with nothing on the board yet is laid out whole below its header. Nodes added
+  to a view later are placed beside their nearest ancestor already on the board, everything else an
+  obstacle. Both are vault-following writes, so they skip undo like the rest of the sync.
+- **Mounts.** A tree's `mount` names a node of another tree; views of that node include the tree,
+  joined by an arrow from the mount node to the tree's root (meta `lifeboard:skillEdge: mount:<id>`).
+  Mastery is now an ordinary tree, `mastery`, rooted at `mastery/root`; "Gather every tree around a
+  Mastery node" mounts the board's unmounted trees on it and adds a Mastery header. Kinds `mastery`
+  and `pillar` show the share of everything below them that is unlocked.
+- **Operations:** `skill.tree.show` (a tree and an optional root; a header on this board),
+  `skill.tree.mount` (tree, node; vault data). Both are in ⌘K. Export writes a tree from the vault,
+  whole, so a board showing a branch still exports the tree.
+
 ### Step 6a (layout), as built
 
 - **One layout, not three.** Sectors-and-rings placement is gone; every tree is laid out as a graph

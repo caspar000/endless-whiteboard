@@ -187,7 +187,7 @@ export function parseSyllabus(source: string): SyllabusResult {
 			nodes.push({
 				nodeId: qualify(treeId, slug(text(value.id))),
 				name: text(value.name) || text(value.id),
-				kind: ['root', 'skill', 'method', 'keystone'].includes(text(value.kind)) ? text(value.kind) : 'skill',
+				kind: ['root', 'skill', 'method', 'keystone', 'pillar', 'mastery'].includes(text(value.kind)) ? text(value.kind) : 'skill',
 				icon: text(value.icon),
 				sector: text(value.sector),
 				ring: text(value.ring),

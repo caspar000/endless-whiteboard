@@ -1,20 +1,19 @@
 import { connectShapes } from '@lifeboard/node-kit'
 import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
-import { isSkill, isTree, MASTERY, SKILL_TYPE, TREE_TYPE, treeNodes, type SkillShape, type TreeShape } from '../board'
+import { isDraft, isSkill, isTree, MASTERY, MASTERY_NODE, SKILL_TYPE, TREE_TYPE, treeNodes, type SkillShape, type TreeShape } from '../board'
+import { getTreeDef, getTreeDefs, updateTreeMeta, upsertNodeDef } from '../treeDefs'
+import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph } from '../views'
 import { parseRequirements } from '../requirements'
 import { SKILL_SIZE } from '../skill/definition'
 import { layoutGraph, type GraphEdge, type GraphNode } from './layout'
+import { prerequisitesOf } from './prerequisites'
 
 /** Meta on the arrows this extension draws between prerequisites, so redrawing can find its own. */
 export const SKILL_EDGE_META = 'lifeboard:skillEdge'
 
-export { MASTERY } from '../board'
+export { MASTERY, MASTERY_NODE } from '../board'
 
-/** The node ids a node's requirements name as prerequisites, in order. */
-export function prerequisitesOf(requires: string): string[] {
-	const parsed = parseRequirements(requires)
-	return parsed.ok ? parsed.conditions.flatMap((c) => ('node' in c ? c.node : [])) : []
-}
+export { prerequisitesOf } from './prerequisites'
 
 export interface NewSkill {
 	nodeId: string
@@ -43,7 +42,7 @@ function bySector<T extends { sector?: string; ring?: string }>(nodes: readonly 
  * chosen one, else the node of kind root, else the first without prerequisites). The other nodes
  * without prerequisites, method nodes say, hang from that root by an edge nobody draws.
  */
-function treeGraph(
+function specGraph(
 	nodes: readonly { nodeId: string; kind?: string; requires?: string; w: number; h: number }[],
 	chosenRoot = ''
 ): { nodes: GraphNode[]; edges: GraphEdge[]; hidden: GraphEdge[]; root: string } {
@@ -61,7 +60,7 @@ export function treePositions(
 	center: { x: number; y: number }
 ): Map<string, { x: number; y: number }> {
 	const nodes = bySector(spec.nodes, spec.sectors, spec.rings).map((n) => ({ ...n, w: SKILL_SIZE, h: SKILL_SIZE }))
-	const graph = treeGraph(nodes, spec.root)
+	const graph = specGraph(nodes, spec.root)
 	const at = layoutGraph(graph.nodes, [...graph.edges, ...graph.hidden], { root: graph.root })
 	const out = new Map<string, { x: number; y: number }>()
 	for (const [id, p] of at) out.set(id, { x: center.x + p.x - SKILL_SIZE / 2, y: center.y + p.y - SKILL_SIZE / 2 })
@@ -170,20 +169,15 @@ interface Placed {
 	shape: SkillShape | TreeShape
 }
 
-/** One tree's nodes, sized as they are drawn, in the order the layout should fan them. */
-function boardTree(editor: Editor, treeId: string) {
-	const header = treeHeader(editor, treeId)
-	const list = (value = '') => value.split(',').map((s) => s.trim()).filter(Boolean)
-	const shapes = bySector(
-		treeNodes(editor, treeId).map((shape) => ({ shape, sector: shape.props.sector, ring: shape.props.ring })),
-		list(header?.props.sectors),
-		list(header?.props.rings)
-	).map(({ shape }) => shape)
-	const sized = shapes.map((shape) => {
-		const b = editor.getShapePageBounds(shape.id)
-		return { nodeId: shape.props.nodeId, kind: shape.props.kind, requires: shape.props.requires, w: b?.w ?? SKILL_SIZE, h: b?.h ?? SKILL_SIZE }
-	})
-	return { header, shapes, sized }
+/** The one shape standing for each node on this board (a confirmed one over a draft). */
+export function nodeShapes(editor: Editor): Map<string, SkillShape> {
+	const out = new Map<string, SkillShape>()
+	for (const s of editor.getCurrentPageShapes()) {
+		if (!isSkill(s) || !s.props.nodeId) continue
+		const had = out.get(s.props.nodeId)
+		if (!had || (isDraft(had) && !isDraft(s))) out.set(s.props.nodeId, s)
+	}
+	return out
 }
 
 /**
@@ -199,8 +193,7 @@ function obstaclesFor(editor: Editor, placed: readonly Placed[], anchor: { x: nu
 	})
 }
 
-/** Moves shapes so that the graph centres land around `anchor`, in one undo step. */
-/** `label` names the undo step; `null` when an outer `editor.run` already owns it. */
+/** Moves shapes so that the graph centres land around `anchor`. `label` names the undo step; `null` when an outer `editor.run` already owns it. */
 function place(editor: Editor, placed: readonly Placed[], at: Map<string, { x: number; y: number }>, anchor: { x: number; y: number }, label: string | null): number {
 	const moves = placed.flatMap(({ graphId, shape }) => {
 		const p = at.get(graphId)
@@ -217,127 +210,163 @@ function place(editor: Editor, placed: readonly Placed[], at: Map<string, { x: n
 
 const centreOf = (editor: Editor, id: TLShapeId) => editor.getShapePageBounds(id)?.center ?? { x: 0, y: 0 }
 
-/**
- * Lays a tree out from its root (the header's chosen root, else its node of kind root), its header
- * hung beside the root. The root stays where it is. One undo step; returns how many shapes moved.
- */
-export function layoutTree(editor: Editor, treeId: string): number {
-	const { header, shapes, sized } = boardTree(editor, treeId)
-	const graph = treeGraph(sized, header?.props.root)
-	const rootShape = shapes.find((s) => s.props.nodeId === graph.root)
-	if (!rootShape) return 0
-	const headerEdge = header ? [{ from: graph.root, to: HEADER + treeId }] : []
-	const headerBox = header ? editor.getShapePageBounds(header.id) : undefined
-	const placed: Placed[] = [...shapes.map((shape) => ({ graphId: shape.props.nodeId, shape })), ...(header ? [{ graphId: HEADER + treeId, shape: header }] : [])]
-	const anchor = centreOf(editor, rootShape.id)
-	const at = layoutGraph(
-		[...graph.nodes, ...(header ? [{ id: HEADER + treeId, w: headerBox?.w ?? 280, h: headerBox?.h ?? 72 }] : [])],
-		[...graph.edges, ...graph.hidden, ...headerEdge],
-		{ root: graph.root, clearEdges: (e) => graph.edges.includes(e), obstacles: obstaclesFor(editor, placed, anchor) }
-	)
-	return place(editor, placed, at, anchor, 'lay out tree')
+/** Nodes in fan order: each tree's sectors side by side (see `bySector`). */
+function fanOrder(graph: TreeGraph, ids: readonly string[]): string[] {
+	const list = (value = '') => value.split(',').map((s) => s.trim()).filter(Boolean)
+	const trees = getTreeDefs()
+	const withSector = ids.map((id) => ({ id, ...graph.nodes.get(id)!.def, treeId: graph.nodes.get(id)!.treeId }))
+	const byTree = new Map<string, typeof withSector>()
+	for (const n of withSector) byTree.set(n.treeId, [...(byTree.get(n.treeId) ?? []), n])
+	return [...byTree].flatMap(([treeId, nodes]) => bySector(nodes, list(trees[treeId]?.sectors), list(trees[treeId]?.rings)).map((n) => n.id))
 }
 
 /**
- * Lays out one node and everything that depends on it, around that node where it stands. The rest
- * of the board is left alone.
+ * Lays out what a view reaches from `start` on this board, `start` staying where it is (or put at
+ * `anchor`): every tree mounted on the way is a branch, and each tree's header hangs beside its root.
+ * Returns how many shapes moved.
  */
-export function layoutFrom(editor: Editor, node: SkillShape): number {
-	const { shapes, sized } = boardTree(editor, node.props.treeId)
-	const graph = treeGraph(sized, node.props.nodeId)
-	// The branch: the node and everything that depends on it. The rest of the tree is in the way like anything else.
-	const branch = new Set([node.props.nodeId])
-	for (let grew = true; grew; ) {
-		grew = false
-		for (const e of graph.edges) {
-			if (!branch.has(e.from) || branch.has(e.to)) continue
-			branch.add(e.to)
-			grew = true
-		}
+export function layoutReach(editor: Editor, start: string, label: string | null, anchor?: { x: number; y: number }): number {
+	const graph = treeGraph(boardTrees(editor))
+	const shapes = nodeShapes(editor)
+	const startShape = shapes.get(start)
+	if (!startShape) return 0
+	const reach = [...reachFrom(graph, start)].filter((id) => shapes.has(id))
+	const ids = fanOrder(graph, reach)
+	const inSet = new Set(ids)
+	const drawn = [...graph.prerequisites, ...graph.mounts].filter((e) => inSet.has(e.from) && inSet.has(e.to))
+	const loose = graph.loose.filter((e) => inSet.has(e.from) && inSet.has(e.to))
+	const nodes: GraphNode[] = ids.map((id) => {
+		const b = editor.getShapePageBounds(shapes.get(id)!.id)
+		return { id, w: b?.w ?? SKILL_SIZE, h: b?.h ?? SKILL_SIZE }
+	})
+	const placed: Placed[] = ids.map((id) => ({ graphId: id, shape: shapes.get(id)! }))
+	const headerEdges: GraphEdge[] = []
+	for (const header of editor.getCurrentPageShapes().filter(isTree)) {
+		const root = graph.rootOf.get(header.props.treeId)
+		if (!root || !inSet.has(root)) continue
+		const b = editor.getShapePageBounds(header.id)
+		nodes.push({ id: HEADER + header.id, w: b?.w ?? 280, h: b?.h ?? 72 })
+		headerEdges.push({ from: root, to: HEADER + header.id })
+		placed.push({ graphId: HEADER + header.id, shape: header })
 	}
-	const placed = shapes.filter((s) => branch.has(s.props.nodeId)).map((shape) => ({ graphId: shape.props.nodeId, shape }))
-	const anchor = centreOf(editor, node.id)
-	const at = layoutGraph(graph.nodes, graph.edges, { root: node.props.nodeId, obstacles: obstaclesFor(editor, placed, anchor) })
-	return place(editor, placed, at, anchor, 'lay out from node')
+	const at0 = anchor ?? centreOf(editor, startShape.id)
+	const at = layoutGraph(nodes, [...drawn, ...loose, ...headerEdges], {
+		root: start,
+		clearEdges: (e) => drawn.includes(e as never),
+		obstacles: obstaclesFor(editor, placed, at0),
+	})
+	return place(editor, placed, at, at0, label)
+}
+
+/** Lays a tree out as its header views it (its chosen root, else its root), the root staying put. One undo step. */
+export function layoutTree(editor: Editor, treeId: string): number {
+	const header = treeHeader(editor, treeId)
+	const start = viewStart(treeGraph(boardTrees(editor)), header?.props ?? { treeId, root: '' })
+	return layoutReach(editor, start, 'lay out tree')
+}
+
+/** Lays out one node and everything that grows from it, mounted trees included, around where it stands. */
+export function layoutFrom(editor: Editor, node: SkillShape): number {
+	return layoutReach(editor, node.props.nodeId, 'lay out from node')
+}
+
+/**
+ * Places nodes a view has just put on the board: each beside its nearest ancestor that was already
+ * there, laid out with that ancestor as the root and everything else as obstacles. Runs inside the
+ * caller's `editor.run`.
+ */
+export function placeNewNodes(editor: Editor, created: ReadonlySet<string>): void {
+	const graph = treeGraph(boardTrees(editor))
+	const shapes = nodeShapes(editor)
+	const parents = new Map<string, string[]>()
+	for (const e of [...graph.prerequisites, ...graph.mounts, ...graph.loose]) parents.set(e.to, [...(parents.get(e.to) ?? []), e.from])
+	const anchorOf = (id: string): string => {
+		const seen = new Set([id])
+		const queue = [id]
+		for (let i = 0; i < queue.length; i++) {
+			for (const p of parents.get(queue[i]!) ?? []) {
+				if (seen.has(p) || !shapes.has(p)) continue
+				if (!created.has(p)) return p
+				seen.add(p)
+				queue.push(p)
+			}
+		}
+		return ''
+	}
+	const groups = new Map<string, string[]>()
+	for (const id of created) {
+		const a = anchorOf(id)
+		if (a) groups.set(a, [...(groups.get(a) ?? []), id])
+	}
+	for (const [ancestor, group] of groups) {
+		const ids = new Set([ancestor, ...group])
+		const edges = [...graph.prerequisites, ...graph.mounts, ...graph.loose].filter((e) => ids.has(e.from) && ids.has(e.to))
+		const nodes = [...ids].map((id) => ({ id, w: SKILL_SIZE, h: SKILL_SIZE }))
+		const placed = group.map((id) => ({ graphId: id, shape: shapes.get(id)! }))
+		const anchor = centreOf(editor, shapes.get(ancestor)!.id)
+		const at = layoutGraph(nodes, edges, { root: ancestor, obstacles: obstaclesFor(editor, placed, anchor) })
+		place(editor, placed, at, anchor, null)
+	}
+}
+
+/** One arrow from each mount node to the root of the tree mounted on it, where both are on the board. */
+export function drawMounts(editor: Editor): void {
+	const graph = treeGraph(boardTrees(editor))
+	const shapes = nodeShapes(editor)
+	const stale = editor
+		.getCurrentPageShapes()
+		.filter((s) => s.type === 'arrow' && String(s.meta[SKILL_EDGE_META] ?? '').startsWith('mount:'))
+		.map((s) => s.id)
+	editor.run(() => {
+		if (stale.length) editor.deleteShapes(stale)
+		for (const m of graph.mounts) {
+			const from = shapes.get(m.from)
+			const to = shapes.get(m.to)
+			const arrow = from && to && connectShapes(editor, from.id, to.id)
+			if (arrow) editor.updateShape({ id: arrow, type: 'arrow', meta: { [SKILL_EDGE_META]: `mount:${m.treeId}` } })
+		}
+	})
 }
 
 /** The board's Mastery node, if it has one. */
 export function masteryNode(editor: Editor): SkillShape | undefined {
-	return editor.getCurrentPageShapes().find((s): s is SkillShape => isSkill(s) && s.props.kind === MASTERY)
+	return nodeShapes(editor).get(MASTERY_NODE)
 }
 
 /**
- * Puts a Mastery node above every tree on the board (making one at their common centre if there is
- * none), joins it to each tree's root, and lays the whole board out around it: each tree a branch,
- * each header beside its root. One undo step; returns how many shapes moved.
+ * Puts the Mastery tree on this board and every tree on the board under it: the vault gets a
+ * Mastery node if it has none, each tree here that hangs from nothing is mounted on it, and a
+ * Mastery header views it all, laid out around the Mastery node. Trees already mounted elsewhere
+ * (on a pillar, say) keep their mount and come along through it. One undo step for the board; the
+ * mounts are vault data and stay.
  */
 export function gatherAroundMastery(editor: Editor): number {
-	const treeIds = [...new Set(editor.getCurrentPageShapes().flatMap((s) => (isSkill(s) && s.props.kind !== MASTERY ? [s.props.treeId] : [])))]
-	if (!treeIds.length) return 0
+	const treeIds = [...new Set([...nodeShapes(editor).values()].filter((s) => !isDraft(s) && s.props.treeId !== MASTERY).map((s) => s.props.treeId))]
+	if (!treeIds.length && !getTreeDef(MASTERY)) return 0
+	if (!getTreeDef(MASTERY)?.nodes.some((n) => n.nodeId === MASTERY_NODE)) {
+		upsertNodeDef(MASTERY, { nodeId: MASTERY_NODE, name: 'Mastery', kind: MASTERY, icon: 'trophy', sector: '', ring: '', requires: '' })
+		updateTreeMeta(MASTERY, { name: 'Mastery' })
+	}
+	for (const treeId of treeIds) if (!getTreeDef(treeId)?.mount) updateTreeMeta(treeId, { mount: MASTERY_NODE })
+
 	let moved = 0
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('gather trees around Mastery')
-		const mastery = masteryNode(editor) ?? createMastery(editor)
-		moved = gather(editor, mastery, treeIds)
+		const c = editor.getCurrentPageBounds()?.center ?? { x: 0, y: 0 }
+		if (!masteryNode(editor)) {
+			editor.createShape({
+				id: createShapeId(),
+				type: SKILL_TYPE,
+				x: c.x - SKILL_SIZE / 2,
+				y: c.y - SKILL_SIZE / 2,
+				props: { nodeId: MASTERY_NODE, treeId: MASTERY, name: 'Mastery', kind: MASTERY, icon: 'trophy' },
+			} as never)
+		}
+		if (!treeHeader(editor, MASTERY)) {
+			editor.createShape({ id: createShapeId(), type: TREE_TYPE, x: c.x - 140, y: c.y - 300, props: { treeId: MASTERY, name: 'Mastery' } } as never)
+		}
+		drawMounts(editor)
+		moved = layoutReach(editor, MASTERY_NODE, null)
 	})
 	return moved
-}
-
-function createMastery(editor: Editor): SkillShape {
-	const c = editor.getCurrentPageBounds()?.center ?? { x: 0, y: 0 }
-	const id = createShapeId()
-	editor.createShape({
-		id,
-		type: SKILL_TYPE,
-		x: c.x - SKILL_SIZE / 2,
-		y: c.y - SKILL_SIZE / 2,
-		props: { nodeId: MASTERY, treeId: MASTERY, name: 'Mastery', kind: MASTERY, icon: 'trophy' },
-	} as never)
-	return editor.getShape(id) as SkillShape
-}
-
-function gather(editor: Editor, mastery: SkillShape, treeIds: readonly string[]): number {
-
-	const nodes: GraphNode[] = [{ id: MASTERY, w: SKILL_SIZE, h: SKILL_SIZE }]
-	const drawn: GraphEdge[] = []
-	const undrawn: GraphEdge[] = []
-	const placed: Placed[] = [{ graphId: MASTERY, shape: mastery }]
-	const roots: string[] = []
-	for (const treeId of treeIds) {
-		const { header, shapes, sized } = boardTree(editor, treeId)
-		const graph = treeGraph(sized, header?.props.root)
-		nodes.push(...graph.nodes)
-		drawn.push(...graph.edges, { from: MASTERY, to: graph.root })
-		undrawn.push(...graph.hidden)
-		placed.push(...shapes.map((shape) => ({ graphId: shape.props.nodeId, shape })))
-		roots.push(graph.root)
-		if (header) {
-			const b = editor.getShapePageBounds(header.id)
-			nodes.push({ id: HEADER + treeId, w: b?.w ?? 280, h: b?.h ?? 72 })
-			undrawn.push({ from: graph.root, to: HEADER + treeId })
-			placed.push({ graphId: HEADER + treeId, shape: header })
-		}
-	}
-	const anchor = centreOf(editor, mastery.id)
-	const at = layoutGraph(nodes, [...drawn, ...undrawn], { root: MASTERY, clearEdges: (e) => drawn.includes(e), obstacles: obstaclesFor(editor, placed, anchor) })
-	const moved = place(editor, placed, at, anchor, null)
-	drawMasteryEdges(editor, mastery, roots)
-	return moved
-}
-
-/** One arrow from the Mastery node to each tree's root, replacing the ones drawn before. */
-function drawMasteryEdges(editor: Editor, mastery: SkillShape, roots: readonly string[]): void {
-	const stale = editor
-		.getCurrentPageShapes()
-		.filter((s) => s.type === 'arrow' && s.meta[SKILL_EDGE_META] === MASTERY)
-		.map((s) => s.id)
-	const byNodeId = new Map(editor.getCurrentPageShapes().flatMap((s) => (isSkill(s) ? [[s.props.nodeId, s] as const] : [])))
-	editor.run(() => {
-		if (stale.length) editor.deleteShapes(stale)
-		for (const root of roots) {
-			const to = byNodeId.get(root)
-			const arrow = to && connectShapes(editor, mastery.id, to.id)
-			if (arrow) editor.updateShape({ id: arrow, type: 'arrow', meta: { [SKILL_EDGE_META]: MASTERY } })
-		}
-	})
 }

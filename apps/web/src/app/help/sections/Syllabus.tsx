@@ -187,6 +187,25 @@ export function Syllabus({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="One tree, many boards">
+				<p>
+					A skill tree lives in your vault, not on a board. A tree's header card is a <strong>view</strong>{' '}
+					of it: double-click the header and pick <strong>Show from</strong> to see the tree from any of its
+					nodes, that node and everything that grows from it. <code>Show a skill tree on this board</code>{' '}
+					puts a view of any tree on another board, so the whole tree can sit on one board and one branch of
+					it on another.
+				</p>
+				<p>
+					Edit a node anywhere and every board showing it follows. Deleting a node deletes it from the tree,
+					on every board; undo brings it back. To show less on one board, change its view instead.
+				</p>
+				<p className="lb-help__aside">
+					<code>Hang a skill tree from a node</code> mounts one tree on another tree's node: a pillar, or
+					Mastery. A view of that node then shows the mounted tree as its branch, and the node's ring shows
+					how much of everything below it is unlocked.
+				</p>
+			</Section>
+
 			<Section title="Syllabi as YAML">
 				<p>
 					A whole syllabus, its tracks, items, tree and habits, can be written as one YAML document and

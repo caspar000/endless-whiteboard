@@ -152,8 +152,12 @@ export interface SkillTreeProps {
 export type SkillShape = TLShape & { type: typeof SKILL_TYPE; props: SkillNodeProps }
 export type TreeShape = TLShape & { type: typeof TREE_TYPE; props: SkillTreeProps }
 
-/** The tree id, node id and kind of the one node that can sit above every tree on a board. */
+/** The tree id and node kind of Mastery, the tree every other tree can hang from. */
 export const MASTERY = 'mastery'
+/** Mastery's own node: the root of the Mastery tree. */
+export const MASTERY_NODE = 'mastery/root'
+/** Kinds whose ring is the share of everything below them that is unlocked, not a requirement. */
+export const AGGREGATE_KINDS: readonly string[] = [MASTERY, 'pillar']
 
 export function isSkill(shape: TLShape | undefined | null): shape is SkillShape {
 	return shape?.type === SKILL_TYPE

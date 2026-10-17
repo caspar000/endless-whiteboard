@@ -22,6 +22,8 @@ import { addChildItem, createItem, createTrack, ITEM_HEIGHT, setCollapsed } from
 import { ensureProperties, hideOnCard, PROP_ID, readText } from './properties'
 import { drawPrerequisites, insertTree, treePositions } from './tree/ops'
 import type { DocItem, SyllabusDoc } from './syllabusYaml'
+import { getTreeDef, updateTreeMeta } from './treeDefs'
+import { draftTreeMeta } from './views'
 
 /**
  * Putting a syllabus document on a board, and taking one off it (docs/skill-tree-plan.md, "The YAML
@@ -197,10 +199,16 @@ function mergeItem(editor: Editor, shape: ItemShape, item: DocItem): number {
 	return changed
 }
 
-/** Takes the draft marker off everything on the board: it joins the index from here on. */
+/** Takes the draft marker off everything on the board: it joins the index, and its trees the vault, from here on. */
 export function confirmDraft(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
 	if (!drafts.length) return 0
+	// A tree with no header of its own (mounted on another) carries its name and mount on its nodes.
+	for (const shape of drafts) {
+		if (!isSkill(shape)) continue
+		const meta = draftTreeMeta(shape)
+		if (Object.keys(meta).length) updateTreeMeta(shape.props.treeId, meta)
+	}
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('confirm draft')
 		for (const shape of drafts) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: false } } as never)
@@ -272,24 +280,24 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 	}
 	const tree = trees[0]
 	if (tree) {
+		// The vault's tree, whole: this board may show only a branch of it.
+		const def = getTreeDef(tree.props.treeId)
+		const nodes = def?.nodes ?? shapes.filter(isSkill).filter((s) => s.props.treeId === tree.props.treeId).map((s) => s.props)
 		doc.tree = {
 			id: tree.props.treeId,
-			name: tree.props.name,
-			layout: tree.props.layout,
+			name: def?.name || tree.props.name,
+			...(def?.mount ? { mount: def.mount } : {}),
 			...(tree.props.sectors ? { sectors: parseTags(tree.props.sectors) } : {}),
 			...(tree.props.rings ? { rings: parseTags(tree.props.rings) } : {}),
-			nodes: shapes
-				.filter(isSkill)
-				.filter((s) => s.props.treeId === tree.props.treeId)
-				.map((s) => ({
-					id: s.props.nodeId,
-					name: s.props.name,
-					kind: s.props.kind,
-					...(s.props.icon ? { icon: s.props.icon } : {}),
-					...(s.props.sector ? { sector: s.props.sector } : {}),
-					...(s.props.ring ? { ring: s.props.ring } : {}),
-					...(s.props.requires ? { requires: parseYaml(s.props.requires) as unknown } : {}),
-				})),
+			nodes: nodes.map((n) => ({
+				id: n.nodeId,
+				name: n.name,
+				kind: n.kind,
+				...(n.icon ? { icon: n.icon } : {}),
+				...(n.sector ? { sector: n.sector } : {}),
+				...(n.ring ? { ring: n.ring } : {}),
+				...(n.requires ? { requires: parseYaml(n.requires) as unknown } : {}),
+			})),
 		}
 	}
 	const habits = shapes.filter(isHabit).filter(ofGoal)

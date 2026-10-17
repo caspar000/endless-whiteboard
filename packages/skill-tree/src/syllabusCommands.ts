@@ -6,7 +6,9 @@ import { formatTags } from './model'
 import { setItemDone } from './ops'
 import { evaluateTree } from './requirements'
 import { getHabitIndex, getSkillIndex, getTrackIndex } from './skillIndex'
-import { gatherAroundMastery, layoutFrom, layoutTree } from './tree/ops'
+import { gatherAroundMastery, layoutFrom, layoutTree, treeHeader } from './tree/ops'
+import { getTreeDef, getTreeDefs, updateTreeMeta } from './treeDefs'
+import { treeGraph } from './views'
 import { boardGoals, confirmDraft, discardDraft, exportSyllabus, importSyllabus } from './syllabusIO'
 import { describeDoc, parseSyllabus } from './syllabusYaml'
 
@@ -292,6 +294,57 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 			if (!args.treeId) return fail('Name a treeId, a from node, or set mastery.')
 			const moved = layoutTree(editor, args.treeId)
 			return moved ? ok({ moved }) : fail(`No tree "${args.treeId}" on this board.`)
+		},
+	}),
+	defineOperation({
+		id: 'skill.tree.show',
+		title: 'Show a skill tree on this board',
+		description:
+			'Puts a view of a skill tree from the vault on the open board: a header and the nodes it reaches from its root (or from the node given), laid out, trees mounted on them included. The same tree can be shown on any number of boards, each from its own root; edits on any of them change the one tree.',
+		params: {
+			tree: { type: 'string', description: 'The tree id.', required: true, liveChoices: () => Object.keys(getTreeDefs()).sort() },
+			root: { type: 'string', description: 'A node id to show the tree from (that node and what grows from it). Optional.' },
+		},
+		run: async (ctx, args) => {
+			const editor = ctx.editor
+			if (!editor) return fail(NO_BOARD)
+			const def = getTreeDef(args.tree)
+			if (!def) return fail(`No tree "${args.tree}". Trees: ${Object.keys(getTreeDefs()).join(', ') || 'none yet'}.`)
+			if (args.root && !treeGraph(getTreeDefs()).nodes.has(args.root)) return fail(`No node "${args.root}" in the vault.`)
+			if (treeHeader(editor, args.tree)) return fail(`This board already shows "${def.name || args.tree}". Change its root in the header's editor instead.`)
+			const c = editor.getViewportPageBounds().center
+			editor.run(() => {
+				editor.markHistoryStoppingPoint('show skill tree')
+				editor.createShape({
+					id: createShapeId(),
+					type: 'node.skillTree',
+					x: c.x - 140,
+					y: c.y - 300,
+					props: { treeId: def.treeId, name: def.name, goal: def.goal, sectors: def.sectors, rings: def.rings, root: args.root ?? '' },
+				} as never)
+			})
+			// The board fills the view in after the change (treeSync.ts); give it that turn.
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			return ok({ shown: def.treeId, nodes: editor.getCurrentPageShapes().filter((s) => isSkill(s)).length })
+		},
+	}),
+	defineOperation({
+		id: 'skill.tree.mount',
+		title: 'Hang a skill tree from a node',
+		description:
+			'Mounts a tree on a node of another tree (a pillar, Mastery), so any view of that node shows the tree as its branch. Empty "on" takes the mount away. Vault data: it changes every board.',
+		params: {
+			tree: { type: 'string', description: 'The tree to hang.', required: true, liveChoices: () => Object.keys(getTreeDefs()).sort() },
+			on: { type: 'string', description: 'The node id to hang it from, e.g. "mastery/mental". Empty to unmount.' },
+		},
+		run: async (_ctx, args) => {
+			if (!getTreeDef(args.tree)) return fail(`No tree "${args.tree}".`)
+			const graph = treeGraph(getTreeDefs())
+			const on = args.on ?? ''
+			if (on && !graph.nodes.has(on)) return fail(`No node "${on}" in the vault.`)
+			if (on && graph.nodes.get(on)!.treeId === args.tree) return fail('A tree cannot hang from one of its own nodes.')
+			updateTreeMeta(args.tree, { mount: on })
+			return ok({ tree: args.tree, mount: on })
 		},
 	}),
 	defineOperation({

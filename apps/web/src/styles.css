@@ -13981,6 +13981,9 @@ button.lb-props__eye:hover {
 .lb-skillnode--mastery .lb-skillnode__disc {
 	border-width: 3px;
 }
+.lb-skillnode--pillar .lb-skillnode__disc {
+	border-width: 2.5px;
+}
 /* Method nodes count how you worked, not what about: a dashed edge, the disc still round. */
 .lb-skillnode--method .lb-skillnode__disc {
 	border-style: dashed;

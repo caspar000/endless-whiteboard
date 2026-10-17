@@ -1,6 +1,8 @@
-import { react, type Editor, type TLShape } from '@lifeboard/canvas'
+import { createShapeId, react, type Editor, type TLShape } from '@lifeboard/canvas'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
-import { drawPrerequisites } from './tree/ops'
+import { SKILL_SIZE } from './skill/definition'
+import { drawMounts, drawPrerequisites, layoutReach, nodeShapes, placeNewNodes, SKILL_EDGE_META } from './tree/ops'
+import { boardTrees, reachFrom, treeGraph, viewStart } from './views'
 import {
 	getTreeDef,
 	getTreeDefs,
@@ -65,8 +67,8 @@ export function watchTrees(editor: Editor): void {
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
 		if (syncing) return
 		if (live(shape)) upsertNodeDef(shape.props.treeId, nodeDefOf(shape))
-		// A header for a tree the vault knows takes the vault's name; a new one names its tree.
-		else if (liveHeader(shape) && !getTreeDef(shape.props.treeId)) updateTreeMeta(shape.props.treeId, metaOf(shape))
+		// A header for a tree the vault has named takes the vault's name; otherwise it names the tree.
+		else if (liveHeader(shape) && !getTreeDef(shape.props.treeId)?.name) updateTreeMeta(shape.props.treeId, metaOf(shape))
 		else if (liveHeader(shape)) schedule(editor)
 	})
 	editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
@@ -78,13 +80,19 @@ export function watchTrees(editor: Editor): void {
 			}
 			const changed = !live(prev) || NODE_FIELDS.some((f) => prev.props[f] !== next.props[f]) || prev.props.treeId !== next.props.treeId
 			if (changed) upsertNodeDef(next.props.treeId, nodeDefOf(next))
-		} else if (liveHeader(next) && liveHeader(prev) && HEADER_FIELDS.some((f) => prev.props[f] !== next.props[f])) {
+		} else if (liveHeader(next) && !liveHeader(prev)) {
+			// A confirmed draft header names its tree.
 			updateTreeMeta(next.props.treeId, metaOf(next))
+		} else if (liveHeader(next) && liveHeader(prev)) {
+			if (HEADER_FIELDS.some((f) => prev.props[f] !== next.props[f])) updateTreeMeta(next.props.treeId, metaOf(next))
+			// A view looking from somewhere else shows different nodes.
+			if (prev.props.root !== next.props.root || prev.props.treeId !== next.props.treeId) schedule(editor)
 		}
 	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
 		// Deleting a node on a board deletes it from its tree; undo writes it back.
 		if (!syncing && live(shape)) removeNodeDef(shape.props.treeId, shape.props.nodeId)
+		if (!syncing && liveHeader(shape)) schedule(editor)
 	})
 
 	const stop = react('lifeboard:skill-tree-sync', () => {
@@ -146,13 +154,16 @@ export function syncBoard(editor: Editor): void {
 		if (!def || HEADER_FIELDS.every((f) => header.props[f] === def[f])) return []
 		return [{ id: header.id, type: TREE_TYPE, props: { name: def.name, goal: def.goal, sectors: def.sectors, rings: def.rings } }]
 	})
-	if (!removals.length && !updates.length && !headerUpdates.length) return
+	const view = planViews(editor, headers, new Set(removals.map((s) => s.id)))
+	for (const treeId of view.trees) redraw.add(treeId)
+	if (!removals.length && !updates.length && !headerUpdates.length && !view.create.length && !view.hide.length && !view.mountsStale) return
 
 	syncing = true
 	try {
 		editor.run(
 			() => {
-				if (removals.length) editor.deleteShapes(removals.map((s) => s.id))
+				const gone = [...removals, ...view.hide].map((s) => s.id)
+				if (gone.length) editor.deleteShapes(gone)
 				editor.updateShapes([
 					...updates.map(({ shape, def }) => {
 						const { nodeId, ...props } = def
@@ -161,11 +172,80 @@ export function syncBoard(editor: Editor): void {
 					}),
 					...headerUpdates,
 				] as never)
+				if (view.create.length) {
+					editor.createShapes(
+						view.create.map(({ treeId, def, at }) => {
+							const { nodeId, ...rest } = def
+							return { id: createShapeId(), type: SKILL_TYPE, x: at.x - SKILL_SIZE / 2, y: at.y - SKILL_SIZE / 2, props: { ...rest, nodeId, treeId } }
+						}) as never
+					)
+					// An empty view is laid out whole beside its header; anything else joins its nearest ancestor.
+					const laidOut = new Set<string>()
+					for (const fresh of view.fresh) {
+						layoutReach(editor, fresh.start, null, fresh.anchor)
+						for (const id of fresh.reach) laidOut.add(id)
+					}
+					placeNewNodes(editor, new Set(view.create.map((c) => c.def.nodeId).filter((id) => !laidOut.has(id))))
+				}
 				for (const treeId of redraw) drawPrerequisites(editor, treeId)
+				if (view.create.length || view.hide.length || view.mountsStale) drawMounts(editor)
 			},
 			{ history: 'ignore' }
 		)
 	} finally {
 		syncing = false
 	}
+}
+
+/**
+ * What the board's views want changed: nodes they reach that have no shape here yet, and node shapes
+ * of the trees they cover that they no longer reach (hidden from this board; the vault keeps them).
+ * A board without headers has no views and is left as it is.
+ */
+function planViews(editor: Editor, headers: readonly TreeShape[], going: ReadonlySet<string>) {
+	const plan = { create: [] as { treeId: string; def: NodeDef; at: { x: number; y: number } }[], hide: [] as SkillShape[], fresh: [] as { start: string; anchor: { x: number; y: number }; reach: Set<string> }[], trees: new Set<string>(), mountsStale: false }
+	if (!headers.length) return plan
+	const graph = treeGraph(boardTrees(editor))
+	const shapes = new Map([...nodeShapes(editor)].filter(([, s]) => !going.has(s.id)))
+	const reached = new Set<string>()
+	for (const header of headers) {
+		const start = viewStart(graph, header.props)
+		if (!start) continue
+		const reach = reachFrom(graph, start)
+		for (const id of reach) reached.add(id)
+		// Nothing of this view on the board yet: it is laid out whole, the root below its header.
+		if (![...reach].some((id) => shapes.has(id))) {
+			const b = editor.getShapePageBounds(header.id)
+			plan.fresh.push({ start, reach, anchor: { x: b?.center.x ?? 0, y: (b?.maxY ?? 0) + 260 } })
+		}
+	}
+	const covered = new Set([...headers.map((h) => h.props.treeId), ...[...reached].map((id) => graph.nodes.get(id)!.treeId)])
+	for (const id of reached) {
+		if (shapes.has(id)) continue
+		const node = graph.nodes.get(id)!
+		const fresh = plan.fresh.find((f) => f.reach.has(id))
+		plan.create.push({ treeId: node.treeId, def: node.def, at: fresh?.anchor ?? editor.getViewportPageBounds().center })
+		plan.trees.add(node.treeId)
+	}
+	for (const shape of shapes.values()) {
+		if (!live(shape) || reached.has(shape.props.nodeId) || !covered.has(shape.props.treeId)) continue
+		plan.hide.push(shape)
+		plan.trees.add(shape.props.treeId)
+	}
+	// Mount arrows: redrawn when the arrows on the board don't match the mounts that can be drawn.
+	const want = graph.mounts.filter((m) => shapes.has(m.from) && shapes.has(m.to)).map((m) => `${m.from}>${m.to}`).sort()
+	const have = editor
+		.getCurrentPageShapes()
+		.filter((s) => s.type === 'arrow' && String(s.meta[SKILL_EDGE_META] ?? '').startsWith('mount:'))
+		.map((a) => {
+			const ends = editor.getBindingsFromShape(a, 'arrow')
+			const end = (t: string) => {
+				const target = editor.getShape(ends.find((b) => b.props.terminal === t)?.toId as never)
+				return isSkill(target) ? target.props.nodeId : '?'
+			}
+			return `${end('start')}>${end('end')}`
+		})
+		.sort()
+	plan.mountsStale = want.join() !== have.join()
+	return plan
 }

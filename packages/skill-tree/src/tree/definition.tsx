@@ -1,13 +1,21 @@
 import { createShapePropsMigrationIds, createShapePropsMigrationSequence, NodeEditorPopover, type NodeComponentProps, type NodeDefinition } from '@lifeboard/node-kit'
-import { stopEventPropagation, T, useValue } from '@lifeboard/canvas'
+import { stopEventPropagation, T, useValue, type Editor } from '@lifeboard/canvas'
 import { Network } from 'lucide-react'
 import { memo, type KeyboardEvent } from 'react'
 import { draftClass, TREE_TYPE, treeNodes, type SkillTreeProps } from '../board'
 import { makeItemId } from '../model'
 import { TIERS } from '../requirements'
 import { treeStatus } from './status'
+import { boardTrees, reachFrom, treeGraph } from '../views'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
+
+function rootChoices(editor: Editor, treeId: string): { id: string; nodeId: string; name: string }[] {
+	const graph = treeGraph(boardTrees(editor))
+	const root = graph.rootOf.get(treeId)
+	if (!root) return treeNodes(editor, treeId).map((n) => ({ id: n.id, nodeId: n.props.nodeId, name: n.props.name }))
+	return [...reachFrom(graph, root)].map((id) => ({ id, nodeId: id, name: graph.nodes.get(id)!.def.name }))
+}
 
 const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1 })
 
@@ -22,7 +30,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 		() => {
 			const statuses = [...treeStatus(editor, shape.props.treeId).values()]
 			return {
-				total: treeNodes(editor, shape.props.treeId).length,
+				total: statuses.length,
 				unlocked: statuses.filter((s) => s.state === 'unlocked').length,
 				available: statuses.filter((s) => s.state === 'available').length,
 				tiers: TIERS.map((_, t) => statuses.filter((s) => s.mastery.tier === t + 1).length),
@@ -31,7 +39,8 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 		[editor, shape.props.treeId]
 	)
 
-	const nodes = isEditing ? treeNodes(editor, shape.props.treeId).map((n) => ({ id: n.id, nodeId: n.props.nodeId, name: n.props.name })) : []
+	// Any node the tree reaches can be the view's root, including those of trees mounted on it.
+	const nodes = isEditing ? rootChoices(editor, shape.props.treeId) : []
 	const set = (props: Partial<SkillTreeProps>) => editor.updateShape({ id: shape.id, type: TREE_TYPE, props } as never)
 
 	const body = (
@@ -61,7 +70,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 						<input value={shape.props.goal} onKeyDown={keepKeys} onChange={(e) => set({ goal: e.target.value })} />
 					</label>
 					<label>
-						<span>Lay out from</span>
+						<span>Show from</span>
 						<select value={shape.props.root} onChange={(e) => set({ root: e.target.value })}>
 							<option value="">Its root node</option>
 							{nodes.map((n) => (
@@ -79,7 +88,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 						<span>Rings</span>
 						<input value={shape.props.rings} placeholder="inner to outer" onKeyDown={keepKeys} onChange={(e) => set({ rings: e.target.value })} />
 					</label>
-					<p className="lb-skill-editor__hint">Run "Lay out tree" to place the nodes again. Nodes fan out in sector order.</p>
+					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Run "Lay out tree" to place them again.</p>
 					<p className="lb-skill-editor__id">{shape.props.treeId}</p>
 				</div>
 			</NodeEditorPopover>

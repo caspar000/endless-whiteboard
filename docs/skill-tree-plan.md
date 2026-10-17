@@ -37,6 +37,22 @@ list outline, the split import; (2) the tree view with entries and works, focus 
 remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
 (5) pop-out cards. Then the director content.
 
+### Rebuild phase 3 (springy drag, live physics, Re-calculate), as built
+
+- **`tree/physics.ts`** listens to the editor's frame tick. When the select tool starts translating a
+  skill node or an entry, it takes the view the node is in: the held nodes stay where the pointer puts
+  them, each held node's branch (its descendants, edges pointing away from the view's start) follows
+  at the offset it had, on damped springs, and every other node of the view is pushed out of the way
+  of anything moving. After release it eases for up to 1.4 s, then a last pass separates anything still
+  overlapping.
+- **Live physics** (Settings, or a tree's header) makes the whole view take part: every pair repels,
+  every line pulls its two ends to a rest length, cooling after release.
+- **Undo:** the moves are ordinary updates made while the drag's own undo step is open, so one ⌘Z
+  puts the dragged node and everything it pulled back. Checked: a 300 px drag in focus on Greek Epic and
+  Drama took Homer and the Iliad within 30 px of the same move, left nothing overlapping, and one undo
+  restored every position; live, all 21 nodes moved and came to rest with no overlap.
+- **Re-calculate** shipped in phase 2.
+
 ### Rebuild phase 2 (entries in the tree, focus mode, Show all), as built
 
 - **`node.skillEntry`** draws a vault item in a tree view: an entry as a 60 px disc with a ring for its

@@ -190,7 +190,7 @@ function snapshot(editor: Editor, header: TreeShape, graph: TreeGraph): Record<s
 }
 
 /** The shapes a view shows, by layout key. */
-function viewShapes(editor: Editor, view: ViewContents): Map<string, SkillShape | EntryShape> {
+export function viewShapes(editor: Editor, view: ViewContents): Map<string, SkillShape | EntryShape> {
 	const out = new Map<string, SkillShape | EntryShape>()
 	const skills = nodeShapes(editor)
 	for (const id of view.skills) {
@@ -213,6 +213,13 @@ function viewGraph(editor: Editor, view: ViewContents) {
 	const loose = graph.loose.filter((e) => inView(e.from) && inView(e.to))
 	const lines: GraphEdge[] = [...view.items].map(([id, at]) => ({ from: at.variant === 'entry' ? at.parent : itemKey(at.parent), to: itemKey(id) }))
 	return { drawn, loose, lines }
+}
+
+/** A view's edges, each pointing away from its start: what a branch is, for dragging (physics.ts). */
+export function viewEdges(editor: Editor, view: ViewContents): GraphEdge[] {
+	const startKey = view.items.has(view.start) ? itemKey(view.start) : view.start
+	const { drawn, loose, lines } = viewGraph(editor, view)
+	return orientFrom(startKey, [...drawn, ...loose, ...lines])
 }
 
 /**

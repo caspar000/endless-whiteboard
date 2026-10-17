@@ -181,9 +181,15 @@ export function Syllabus(_props: SectionProps) {
 					you put its nodes: come back to it and they are where you left them. Tick a work's dot right there
 					in the tree; right-click an entry › Put a card on the board for its checklist.
 				</p>
+				<p>
+					Drag a node and its branch follows on springs, and whatever it runs into makes room; let go and
+					the board eases to rest, nothing covering anything. One ⌘Z puts it all back. With{' '}
+					<strong>live physics</strong> on, the whole view takes part, like Obsidian's graph: every node
+					pushes the others away and every line pulls its two ends together.
+				</p>
 				<p className="lb-help__aside">
-					Settings › Extensions › Syllabus & skill trees sets what an import opens on and how far a focus
-					reaches; a tree's header editor overrides both for that tree.
+					Settings › Extensions › Syllabus & skill trees sets what an import opens on, how far a focus
+					reaches and whether physics is live; a tree's header editor overrides each for that tree.
 				</p>
 			</Section>
 

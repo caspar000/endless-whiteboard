@@ -4,6 +4,7 @@ import { getItems } from './syllabus'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews } from './tree/viewSync'
+import { watchPhysics } from './tree/physics'
 import {
 	getTreeDef,
 	getTreeDefs,
@@ -110,8 +111,11 @@ export function watchTrees(editor: Editor): void {
 		getItems()
 		schedule(editor)
 	})
+	// Dragging a tree node pulls its branch and eases the board to rest (tree/physics.ts).
+	const stopPhysics = watchPhysics(editor)
 	editor.disposables.add(() => {
 		stop()
+		stopPhysics()
 		disposed.add(editor)
 	})
 }

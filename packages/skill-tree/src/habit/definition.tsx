@@ -93,7 +93,7 @@ function HabitComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Hab
 	const body = (
 		<div className={`lb-habit${view.current.met ? ' lb-habit--met' : ''}${paused || !view.started ? ' lb-habit--idle' : ''}${draftClass(shape as never)}`}>
 			<div className="lb-habit__head">
-				<span className="lb-habit__name">{shape.props.name || 'Untitled habit'}</span>
+				<span className="lb-habit__name">{shape.props.name || 'Untitled Habit'}</span>
 				<span className="lb-habit__count">
 					{view.current.count}/{Math.max(1, shape.props.target)}
 				</span>

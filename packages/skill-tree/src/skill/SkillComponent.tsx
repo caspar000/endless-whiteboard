@@ -44,7 +44,7 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 						<Icon name={shape.props.icon} size={26} />
 					</span>
 				)}
-				<span className="lb-skillnode__name">{shape.props.name || 'Unnamed skill'}</span>
+				<span className="lb-skillnode__name">{shape.props.name || 'Unnamed Skill'}</span>
 				<span className="lb-skillnode__caption">{caption}</span>
 			</div>
 		</div>

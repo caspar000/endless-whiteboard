@@ -36,7 +36,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 
 	const body = (
 		<div className={`lb-skilltree${draftClass(shape as never)}`}>
-			<span className="lb-skilltree__name">{shape.props.name || 'Untitled tree'}</span>
+			<span className="lb-skilltree__name">{shape.props.name || 'Untitled Tree'}</span>
 			{shape.props.goal && <span className="lb-skilltree__goal">{shape.props.goal}</span>}
 			<span className="lb-skilltree__stats">
 				{summary.unlocked}/{summary.total} unlocked · {summary.available} in reach
@@ -116,7 +116,7 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 	}),
 	defaultProps: () => ({
 		treeId: '',
-		name: 'New tree',
+		name: 'New Tree',
 		goal: '',
 		layout: 'sectors',
 		sectors: '',

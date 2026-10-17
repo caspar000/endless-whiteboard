@@ -16,7 +16,7 @@ const NODES: NewSkill[] = [
 	{ nodeId: 'adler/root', icon: 'building-arch', name: 'Start with the Greeks', kind: 'root' },
 	{
 		nodeId: 'adler/inspectional', icon: 'zoom-scan',
-		name: 'Inspectional reading',
+		name: 'Inspectional Reading',
 		kind: 'method',
 		sector: 'literature',
 		ring: 'method',
@@ -24,7 +24,7 @@ const NODES: NewSkill[] = [
 	},
 	{
 		nodeId: 'adler/analytical', icon: 'brain',
-		name: 'Analytical reading',
+		name: 'Analytical Reading',
 		kind: 'method',
 		sector: 'science',
 		ring: 'method',
@@ -32,28 +32,28 @@ const NODES: NewSkill[] = [
 	},
 	{
 		nodeId: 'adler/greek-epic-drama', icon: 'masks-theater',
-		name: 'Greek epic and drama',
+		name: 'Greek Epic and Drama',
 		sector: 'literature',
 		ring: 'ancient',
 		requires: '- node: [adler/root]\n- count: { min: 3 }',
 	},
 	{
 		nodeId: 'adler/greek-philosophy', icon: 'bulb',
-		name: 'Greek philosophy',
+		name: 'Greek Philosophy',
 		sector: 'philosophy',
 		ring: 'ancient',
 		requires: '- node: [adler/root]\n- count: { min: 2 }',
 	},
 	{
 		nodeId: 'adler/greek-science', icon: 'math-function',
-		name: 'Greek science and mathematics',
+		name: 'Greek Science and Mathematics',
 		sector: 'science',
 		ring: 'ancient',
 		requires: '- node: [adler/analytical]\n- count: { min: 2 }',
 	},
 	{
 		nodeId: 'adler/reading-habit', icon: 'flame',
-		name: 'The reading habit',
+		name: 'The Reading Habit',
 		kind: 'keystone',
 		sector: 'history',
 		ring: 'method',
@@ -61,7 +61,7 @@ const NODES: NewSkill[] = [
 	},
 	{
 		nodeId: 'adler/greek-history', icon: 'history',
-		name: 'Greek history',
+		name: 'Greek History',
 		sector: 'history',
 		ring: 'ancient',
 		requires: '- node: [adler/root]\n- count: { min: 2 }',
@@ -73,8 +73,8 @@ const NODES: NewSkill[] = [
  * keystone above asks four weeks of) and one ticked by hand.
  */
 const HABITS = [
-	{ habitId: 'adler/weekly-entry', name: 'Write up an entry', period: 'week', target: 1, counts: 'method: analytical' },
-	{ habitId: 'adler/daily-reading', name: 'Read for 30 minutes', period: 'day', target: 1, counts: '' },
+	{ habitId: 'adler/weekly-entry', name: 'Write Up an Entry', period: 'week', target: 1, counts: 'method: analytical' },
+	{ habitId: 'adler/daily-reading', name: 'Read for 30 Minutes', period: 'day', target: 1, counts: '' },
 ]
 
 export function insertAdlerTree(editor: Editor, center: { x: number; y: number }): TLShapeId {
@@ -82,7 +82,7 @@ export function insertAdlerTree(editor: Editor, center: { x: number; y: number }
 	editor.run(() => {
 		header = insertTree(
 			editor,
-			{ treeId: 'adler', name: 'Western canon reader', goal: "Adler's reading list", sectors: SECTORS, rings: RINGS, nodes: NODES },
+			{ treeId: 'adler', name: 'Western Canon Reader', goal: "Adler's reading list", sectors: SECTORS, rings: RINGS, nodes: NODES },
 			center
 		)
 		const at = editor.getShapePageBounds(header)

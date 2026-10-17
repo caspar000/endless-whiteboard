@@ -93,9 +93,9 @@ export function watchTrees(editor: Editor): void {
 			updateTreeMeta(next.props.treeId, metaOf(next))
 		} else if (liveHeader(next) && liveHeader(prev)) {
 			if (HEADER_FIELDS.some((f) => prev.props[f] !== next.props[f])) updateTreeMeta(next.props.treeId, metaOf(next))
-			// A view looking from somewhere else shows different nodes.
-			if (VIEW_FIELDS.some((f) => prev.props[f] !== next.props[f])) schedule(editor)
 		}
+		// A view switched (focus, Show all, Back, another root) shows different nodes: a draft's as well.
+		if (isTree(next) && isTree(prev) && VIEW_FIELDS.some((f) => prev.props[f] !== next.props[f])) schedule(editor)
 	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
 		// Deleting a node on a board deletes it from its tree; undo writes it back. A bulk change only
@@ -191,7 +191,9 @@ export function syncBoard(editor: Editor): void {
 		if (!def || HEADER_FIELDS.every((f) => header.props[f] === def[f])) return []
 		return [{ id: header.id, type: TREE_TYPE, props: { name: def.name, goal: def.goal, sectors: def.sectors, rings: def.rings } }]
 	})
-	const view = planViews(editor, headers, new Set(removals.map((s) => s.id)))
+	// Every header is a view, a draft's too: reviewing a draft is when you most want to look inside it.
+	const views = shapes.filter((s): s is TreeShape => isTree(s) && !!s.props.treeId)
+	const view = planViews(editor, views, new Set(removals.map((s) => s.id)))
 	for (const treeId of view.trees) redraw.add(treeId)
 	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return
 

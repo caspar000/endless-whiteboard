@@ -76,7 +76,12 @@ export const planIsEmpty = (p: ViewPlan) =>
 /** What the board's views want changed. A board without headers has no views and is left alone. */
 export function planViews(editor: Editor, headers: readonly TreeShape[], going: ReadonlySet<string>): ViewPlan {
 	const plan: ViewPlan = { views: [], createSkills: [], createItems: [], remove: [], trees: new Set(), mountsStale: false, linesStale: false }
-	if (!headers.length) return plan
+	// Entries only exist inside a view: with no header left (a discarded draft, a deleted header), they go.
+	if (!headers.length) {
+		plan.remove = [...entryShapes(editor).values()]
+		plan.linesStale = linesDrawn(editor).length > 0
+		return plan
+	}
 	const graph = treeGraph(boardTrees(editor))
 	const skills = new Map([...nodeShapes(editor)].filter(([, s]) => !going.has(s.id)))
 	const entries = entryShapes(editor)

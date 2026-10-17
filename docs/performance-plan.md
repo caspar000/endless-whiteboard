@@ -1,6 +1,35 @@
 # Canvas performance plan
 
-Status: Phase 1 done, awaiting review. Stop and report after each phase.
+Status: Phases 1–2 done, Phase 2 awaiting review. Stop and report after each phase.
+
+### Phase 2, as built
+
+- `getRenderingShapeList()` is the list the canvas renders: order, z-index, opacity, masked bounds.
+  It depends on the document, not the camera.
+- `getCulledShapeIds()` decides what is off screen, compared by contents so an unchanged answer wakes
+  nothing. Each shape reads `isShapeCulled(id)` in a quick reactor and writes `display` to its own
+  container, so a camera move re-renders nothing in React. `getRenderingShapes()` still returns
+  entries with `isCulled`, merged from the two, for the code and tests that read it.
+- `getRenderingBounds()` still follows the viewport on every move. The culling bounds move only when
+  the viewport leaves them, and then with half a screen of slack; when the camera stops they are set
+  exactly again (viewport plus `renderingBoundsMargin`).
+- Exact culling waits until the camera has been idle for `CULLING_SETTLE_MS` (250 ms), not the 64 ms
+  that makes it "idle". Without that, a frame slower than 64 ms flipped the camera to idle mid-pan,
+  the exact refresh hid hundreds of shapes, the next move showed them again, and those two frames
+  were slow enough to cause the next flip. That loop put the zoomed-out p95 at 97 ms.
+- The tripwire is a unit test rather than an e2e one (`culling.test.ts`): thirty camera moves rebuild
+  the list zero times. A unit test cannot flake under load.
+
+| Pan, all relations shown | Original | After phase 1 | After phase 2 |
+|---|---|---|---|
+| 1,000 nodes, 100% zoom | 31.6 ms | 11.4 ms | 8.3 ms |
+| 2,000 nodes, 100% zoom | 35.1 ms | 22.1 ms | 10.2 ms |
+| 2,000 nodes, relations hidden, 100% zoom | 20 ms | 12.9 ms | 8.4 ms |
+| 2,000 nodes, zoomed to fit (avg / p95) | 144 / 174 ms | 53.7 / 66.9 ms | 36.9 / 48.4 ms |
+
+Not touched by this phase: dragging. Every drag frame still rebuilds `getRenderingShapeList` (it reads
+every shape) and re-decides culling, about 24 ms at 2,000 nodes. That belongs with the spatial index
+in Phase 3.
 
 ### Phase 1, as built
 

@@ -71,6 +71,7 @@ import {
 	CAMERA_SLIDE_FRICTION,
 	COARSE_DRAG_DISTANCE,
 	COLLABORATOR_IDLE_TIMEOUT,
+	CULLING_SETTLE_MS,
 	DEFAULT_ANIMATION_OPTIONS,
 	DRAG_DISTANCE,
 	FOLLOW_CHASE_PAN_SNAP,
@@ -3917,8 +3918,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	// Camera state lets us subscribe to whether the camera is moving or not. The rendering bounds
 	// follow the camera on every move: upstream froze them for the first 620ms of a movement, so a
-	// quick flick showed nothing new until it stopped. Culled shapes stay mounted, so updating them
-	// is cheap, and a longer pan already updated every frame.
+	// quick flick showed nothing new until it stopped. The *culling* bounds only move when the
+	// viewport leaves them, and are made exact again once the camera has settled (`_settleCulling`).
 
 	private _cameraStateTimeoutRemaining = 0
 
@@ -3928,12 +3929,30 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (this._cameraStateTimeoutRemaining <= 0) {
 			this.off('tick', this._decayCameraStateTimeout)
 			this._cameraState.set('idle')
+			this._cullingSettleRemaining = CULLING_SETTLE_MS
+			this.on('tick', this._settleCulling)
 		}
+	}
+
+	/*
+	 * Exact culling waits until the camera has been still for a moment, not just for the 64ms that
+	 * makes it "idle". A frame slower than that flips the camera to idle in the middle of a pan, and
+	 * an exact refresh there hid hundreds of shapes that the next move showed again: two slow frames
+	 * that made the following ones slow too.
+	 */
+	private _cullingSettleRemaining = 0
+
+	private _settleCulling = (elapsed: number) => {
+		this._cullingSettleRemaining -= elapsed
+		if (this._cullingSettleRemaining > 0) return
+		this.off('tick', this._settleCulling)
+		this._updateCullingBounds(true)
 	}
 
 	private _tickCameraState = () => {
 		// always reset the timeout
 		this._cameraStateTimeoutRemaining = CAMERA_MOVING_TIMEOUT
+		this.off('tick', this._settleCulling)
 		if (this._cameraState.__unsafe__getWithoutCapture() === 'idle') {
 			this._cameraState.set('moving')
 			this.on('tick', this._decayCameraStateTimeout)
@@ -3964,54 +3983,28 @@ export class Editor extends EventEmitter<TLEventMap> {
 			index: number
 			backgroundIndex: number
 			opacity: number
-			isCulled: boolean
 			maskedPageBounds: Box2d | undefined
 		}[] = []
 
 		let nextIndex = MAX_SHAPES_PER_PAGE * 2
 		let nextBackgroundIndex = MAX_SHAPES_PER_PAGE
 
-		// We only really need these if we're using editor state, but that's ok
-		const editingShapeId = this.getEditingShapeId()
-		// Sets, not arrays: every shape asks about them, and a brush can select hundreds (P3).
-		const selectedShapeIds = new Set(this.getSelectedShapeIds())
-		const erasingShapeIds = new Set(this.getErasingShapeIds())
-		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
-		const renderingBoundsAhead = this._renderingBoundsAhead.get()
-
-		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
-		const isCullingOffScreenShapes = Number.isFinite(this.renderingBoundsMargin)
+		// Culling is not decided here: this list follows the document, and which of its shapes are on
+		// screen is `getCulledShapeIds`, which follows the camera. Mixing the two rebuilt and re-sorted
+		// the whole list, and re-rendered it in React, on every frame of a pan.
+		const erasingShapeIds = new Set(useEditorState ? this.getErasingShapeIds() : [])
 
 		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
 			const shape = this.getShape(id)
 			if (!shape || this.isShapeHidden(shape)) return
 
 			opacity *= shape.opacity
-			let isCulled = false
-			let isShapeErasing = false
 			const util = this.getShapeUtil(shape)
 			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
 
-			if (useEditorState) {
-				isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
-				if (isShapeErasing) {
-					opacity *= 0.32
-				}
-
-				isCulled =
-					isCullingOffScreenShapes &&
-					// only cull shapes that allow unmounting, i.e. not stateful components
-					util.canUnmount(shape) &&
-					// never cull editingg shapes
-					editingShapeId !== id &&
-					// if the shape is fully outside of its parent's clipping bounds...
-					(maskedPageBounds === undefined ||
-						// ...or if the shape is outside of the expanded viewport bounds...
-						(!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
-							maskedPageBounds
-						) &&
-							// ...and if it's not selected... then cull it
-							!selectedShapeIds.has(id)))
+			const isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
+			if (isShapeErasing) {
+				opacity *= 0.32
 			}
 
 			renderingShapes.push({
@@ -4021,7 +4014,6 @@ export class Editor extends EventEmitter<TLEventMap> {
 				index: nextIndex,
 				backgroundIndex: nextBackgroundIndex,
 				opacity,
-				isCulled,
 				maskedPageBounds,
 			})
 
@@ -4060,6 +4052,18 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getRenderingShapes() {
+		const culled = this.getCulledShapeIds()
+		return this.getRenderingShapeList().map((entry) => ({ ...entry, isCulled: culled.has(entry.id) }))
+	}
+
+	/**
+	 * The shapes to mount, in the order to mount them, without whether each is on screen. The canvas
+	 * renders this list, so it changes when the document does and not when the camera moves; each
+	 * shape reads `isShapeCulled` for itself.
+	 *
+	 * @public
+	 */
+	@computed getRenderingShapeList() {
 		const renderingShapes = this.getUnorderedRenderingShapes(true)
 
 		// Its IMPORTANT that the result be sorted by id AND include the index
@@ -4073,6 +4077,53 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// same order; but we later use index to set the element's 'z-index'
 		// to change the "rendered" position in z-space.
 		return renderingShapes.sort(sortById)
+	}
+
+	/**
+	 * The rendering shapes that are mounted but hidden because they are off screen.
+	 *
+	 * Compared by contents, so a refresh of the culling bounds that changes nothing wakes no shape.
+	 *
+	 * @public
+	 */
+	@computed({ isEqual: areSetsEqual })
+	getCulledShapeIds(): ReadonlySet<TLShapeId> {
+		const culled = new Set<TLShapeId>()
+		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
+		if (!Number.isFinite(this.renderingBoundsMargin)) return culled
+
+		const editingShapeId = this.getEditingShapeId()
+		// A set, not an array: every shape asks about it, and a brush can select hundreds (P3).
+		const selectedShapeIds = new Set(this.getSelectedShapeIds())
+		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
+		const renderingBoundsAhead = this._renderingBoundsAhead.get()
+
+		for (const { id, shape, util, maskedPageBounds } of this.getRenderingShapeList()) {
+			const isCulled =
+				// only cull shapes that allow unmounting, i.e. not stateful components
+				util.canUnmount(shape) &&
+				// never cull editing shapes
+				editingShapeId !== id &&
+				// if the shape is fully outside of its parent's clipping bounds...
+				(maskedPageBounds === undefined ||
+					// ...or if the shape is outside of the expanded viewport bounds...
+					(!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
+						maskedPageBounds
+					) &&
+						// ...and if it's not selected... then cull it
+						!selectedShapeIds.has(id)))
+			if (isCulled) culled.add(id)
+		}
+		return culled
+	}
+
+	/**
+	 * Whether a rendering shape is mounted but hidden because it is off screen.
+	 *
+	 * @public
+	 */
+	isShapeCulled(id: TLShapeId): boolean {
+		return this.getCulledShapeIds().has(id)
 	}
 
 	/**
@@ -4146,19 +4197,46 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const viewportPageBounds = this.getViewportPageBounds()
 		if (viewportPageBounds.equals(this._renderingBounds.__unsafe__getWithoutCapture())) return this
 		this._renderingBounds.set(viewportPageBounds.clone())
-
-		if (Number.isFinite(this.renderingBoundsMargin)) {
-			this._renderingBoundsExpanded.set(
-				viewportPageBounds.clone().expandBy(this.renderingBoundsMargin / this.getZoomLevel())
-			)
-			const { width, height } = viewportPageBounds
-			const ahead = Math.max(this.renderingBoundsMargin / this.getZoomLevel(), width / 2, height / 2)
-			this._renderingBoundsAhead.set(viewportPageBounds.clone().expandBy(ahead))
-		} else {
-			this._renderingBoundsExpanded.set(viewportPageBounds)
-			this._renderingBoundsAhead.set(viewportPageBounds)
-		}
+		this._updateCullingBounds(this._cameraState.__unsafe__getWithoutCapture() === 'idle')
 		return this
+	}
+
+	/**
+	 * Moves the bounds shapes are culled against.
+	 *
+	 * While the camera is moving they are left alone for as long as the viewport stays inside them,
+	 * because every move re-decides culling for every shape on the board. When the viewport does
+	 * leave, they are set with half a screen of slack on each side, so a steady pan refreshes them
+	 * every half screen rather than every frame. Once the camera has settled (`exact`), they are set to
+	 * the viewport plus the margin, and shapes that drifted out of range are hidden again.
+	 *
+	 * Nothing that comes into view is ever left hidden: shapes inside the viewport are inside these
+	 * bounds, because the viewport is.
+	 */
+	private _updateCullingBounds(exact: boolean) {
+		const viewport = this.getViewportPageBounds()
+		if (!Number.isFinite(this.renderingBoundsMargin)) {
+			this._renderingBoundsExpanded.set(viewport)
+			this._renderingBoundsAhead.set(viewport)
+			return
+		}
+
+		const zoom = this.getZoomLevel()
+		const margin = this.renderingBoundsMargin / zoom
+		const { width, height } = viewport
+		const halfScreen = Math.max(width / 2, height / 2)
+
+		if (!exact) {
+			const expanded = this._renderingBoundsExpanded.__unsafe__getWithoutCapture()
+			if (expanded.contains(viewport)) return
+			const slack = Math.max(margin, halfScreen)
+			this._renderingBoundsExpanded.set(viewport.clone().expandBy(slack))
+			this._renderingBoundsAhead.set(viewport.clone().expandBy(Math.max(slack, halfScreen * 2)))
+			return
+		}
+
+		this._renderingBoundsExpanded.set(viewport.clone().expandBy(margin))
+		this._renderingBoundsAhead.set(viewport.clone().expandBy(Math.max(margin, halfScreen)))
 	}
 
 	/**
@@ -5631,8 +5709,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getCurrentPageRenderingShapesSorted(): TLShape[] {
-		return this.getRenderingShapes()
-			.filter(({ isCulled }) => !isCulled)
+		const culled = this.getCulledShapeIds()
+		return this.getRenderingShapeList()
+			.filter(({ id }) => !culled.has(id))
 			.sort((a, b) => a.index - b.index)
 			.map(({ shape }) => shape)
 	}
@@ -10233,3 +10312,11 @@ function measureDrawnBounds(svg: SVGSVGElement): Box2d | null {
 
 /** Room for strokes around a trimmed export, in page units: half the widest stroke and some. */
 const TRIMMED_STROKE_ROOM = 6
+
+/** Two sets hold the same members. */
+function areSetsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
+	if (a === b) return true
+	if (a.size !== b.size) return false
+	for (const item of a) if (!b.has(item)) return false
+	return true
+}

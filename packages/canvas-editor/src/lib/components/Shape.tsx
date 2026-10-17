@@ -31,7 +31,6 @@ export const Shape = track(function Shape({
 	index,
 	backgroundIndex,
 	opacity,
-	isCulled,
 }: {
 	id: TLShapeId
 	shape: TLShape
@@ -39,7 +38,6 @@ export const Shape = track(function Shape({
 	index: number
 	backgroundIndex: number
 	opacity: number
-	isCulled: boolean
 }) {
 	const editor = useEditor()
 
@@ -103,10 +101,19 @@ export const Shape = track(function Shape({
 	)
 
 	// A culled shape stays mounted and is only hidden, as in today's tldraw: what it draws (a table's
-	// value, a view's cards) is still in the page, and scrolling it back in costs no remount.
-	React.useLayoutEffect(() => {
-		setProperty('display', isCulled ? 'none' : 'block')
-	}, [isCulled, setProperty])
+	// value, a view's cards) is still in the page, and scrolling it back in costs no remount. Written
+	// straight to the container, so the camera moving re-renders nothing in React.
+	const rDisplay = React.useRef<string | null>(null)
+	useQuickReactor(
+		'set shape container display',
+		() => {
+			const display = editor.isShapeCulled(id) ? 'none' : 'block'
+			if (rDisplay.current === display) return
+			rDisplay.current = display
+			setProperty('display', display)
+		},
+		[editor, setProperty]
+	)
 
 	// Set the opacity of the container when the opacity changes
 	React.useLayoutEffect(() => {

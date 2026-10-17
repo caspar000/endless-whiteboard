@@ -93,6 +93,9 @@ export const INTERNAL_POINTER_IDS = {
 /** @internal */
 export const CAMERA_MOVING_TIMEOUT = 64
 
+/** How long the camera stays idle before culling is made exact again. @internal */
+export const CULLING_SETTLE_MS = 250
+
 
 /** @public */
 export const HIT_TEST_MARGIN = 8

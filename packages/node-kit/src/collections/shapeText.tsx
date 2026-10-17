@@ -43,17 +43,21 @@ export function useExpressionShape<S extends ShapeWithRichText>(editor: Editor, 
 			 * hands. Reading the editing id inside the computed means switching in and out of edit mode
 			 * re-runs this on its own.
 			 */
-			if (editor.getEditingShapeId() === shape.id) return shape.props.richText
+			if (editor.isShapeBeingEdited(shape.id)) return shape.props.richText
 			return substituteRichText(shape.props.richText, (text) =>
-				renderExpressions(text, {
-					facts: getPageFacts(editor).get(),
-					edges: getPageEdges(editor).get(),
-					properties: propertyMap(readPropertyRegistry(editor)),
-					rates: getCurrentRates(),
-					selfId: shape.id,
-					values: readShapeProperties(shape),
-					units: readShapePropertyUnits(shape),
-				})
+				// Checked before the context is built: text with no brace never reads the facts, so the
+				// shape does not depend on them and a property edit elsewhere leaves it alone.
+				!text.includes('{')
+					? text
+					: renderExpressions(text, {
+							facts: getPageFacts(editor).get(),
+							edges: getPageEdges(editor).get(),
+							properties: propertyMap(readPropertyRegistry(editor)),
+							rates: getCurrentRates(),
+							selfId: shape.id,
+							values: readShapeProperties(shape),
+							units: readShapePropertyUnits(shape),
+						})
 			)
 		},
 		// Narrow on purpose: a sticky rewrites its own record as it auto-sizes, and none of that can

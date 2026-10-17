@@ -83,7 +83,9 @@ test.describe('the property card', () => {
 	test('pressing the card selects its shape, and dragging it moves the shape', async ({ page }) => {
 		const card = await pricedNote(page)
 		await expect(card).toHaveCount(1)
-		await page.evaluate(() => (window as unknown as { editor: EditorHandle }).editor.selectNone())
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorHandle }).editor.selectNone()
+		})
 
 		const box = (await card.boundingBox())!
 		const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 }

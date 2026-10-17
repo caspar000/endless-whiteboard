@@ -14,7 +14,7 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  */
 test.skip(!process.env.LB_BENCH, 'Set LB_BENCH=1 to run the canvas benchmark.')
 
-/** `LB_BENCH_NODES` for a bigger board; the page holds up to 4000 shapes. */
+/** `LB_BENCH_NODES` for a bigger board; the page holds up to 20,000 shapes. */
 const NODES = Number(process.env.LB_BENCH_NODES ?? 500)
 const RUNS = 3
 

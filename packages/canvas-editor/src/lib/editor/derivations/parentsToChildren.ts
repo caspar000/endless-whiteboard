@@ -36,6 +36,25 @@ export const parentsToChildren = (store: TLStore) => {
 		return result
 	}
 
+	/** Takes each of `moved` out of `arr` and puts it back after the last sibling not above it. In place. */
+	function reinsert(arr: TLShapeId[], moved: ReadonlySet<TLShapeId>) {
+		for (const id of moved) {
+			const at = arr.indexOf(id)
+			if (at === -1) continue
+			arr.splice(at, 1)
+			const shape = store.get(id)
+			if (!shape) continue
+			let lo = 0
+			let hi = arr.length
+			while (lo < hi) {
+				const mid = (lo + hi) >> 1
+				if (store.get(arr[mid]!)!.index <= shape.index) lo = mid + 1
+				else hi = mid
+			}
+			arr.splice(lo, 0, id)
+		}
+	}
+
 	return computed<Parents2Children>(
 		'parentsToChildrenWithIndexes',
 		(lastValue, lastComputedEpoch) => {
@@ -64,7 +83,13 @@ export const parentsToChildren = (store: TLStore) => {
 				}
 			}
 
-			const toSort = new Set<TLShapeId[]>()
+			// Each changed array, with the ids that moved into it or within it.
+			const toSort = new Map<TLShapeId[], Set<TLShapeId>>()
+			const markMoved = (arr: TLShapeId[], id: TLShapeId) => {
+				let moved = toSort.get(arr)
+				if (!moved) toSort.set(arr, (moved = new Set()))
+				moved.add(id)
+			}
 
 			let changes: RecordsDiff<TLRecord>
 
@@ -76,7 +101,7 @@ export const parentsToChildren = (store: TLStore) => {
 					if (!isShape(record)) continue
 					ensureNewArray(record.parentId)
 					newValue![record.parentId].push(record.id)
-					toSort.add(newValue![record.parentId])
+					markMoved(newValue![record.parentId], record.id)
 				}
 
 				// Iterate through the updated shapes, add them to their parents in the new value and mark them for sorting
@@ -90,13 +115,13 @@ export const parentsToChildren = (store: TLStore) => {
 						ensureNewArray(to.parentId)
 						newValue![from.parentId].splice(newValue![from.parentId].indexOf(to.id), 1)
 						newValue![to.parentId].push(to.id)
-						toSort.add(newValue![to.parentId])
+						markMoved(newValue![to.parentId], to.id)
 					} else if (from.index !== to.index) {
 						// If the parent is the same but the index has changed (e.g. if they've been reordered), update the parent's array at the new index
 						ensureNewArray(to.parentId)
 						const idx = newValue![to.parentId].indexOf(to.id)
 						newValue![to.parentId][idx] = to.id
-						toSort.add(newValue![to.parentId])
+						markMoved(newValue![to.parentId], to.id)
 					}
 				}
 
@@ -109,7 +134,14 @@ export const parentsToChildren = (store: TLStore) => {
 			}
 
 			// Sort the arrays that have been marked for sorting
-			for (const arr of toSort) {
+			for (const [arr, moved] of toSort) {
+				// A few moved shapes go back in by binary search; the rest of the array is still in order.
+				// Sorting the whole array again read every shape in it, for every change: creating a
+				// relation reorders its arrow, so a batch of them was quadratic in the page's size.
+				if (moved.size * 8 < arr.length) {
+					reinsert(arr, moved)
+					continue
+				}
 				// It's possible that some of the shapes may be deleted. But in which case would this be so?
 				const shapesInArr = compact(arr.map((id) => store.get(id)))
 				shapesInArr.sort(sortByIndex)

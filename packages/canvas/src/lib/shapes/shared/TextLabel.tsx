@@ -48,7 +48,7 @@ export const TextLabel = React.memo(function TextLabel<
 	scale?: number
 }) {
 	const editor = useEditor()
-	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
+	const isEditing = useValue('isEditing', () => editor.isShapeBeingEdited(id), [editor, id])
 	const isEmpty = isEmptyRichText(richText)
 
 	const legacyAlign = isLegacyAlign(align)

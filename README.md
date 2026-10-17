@@ -589,6 +589,18 @@ upstream's looser compiler settings: `pnpm types:canvas` builds them, and runs o
 `pnpm typecheck`. The local IndexedDB naming in `persistence/tldrawLocalDb.ts` is pinned by a test that
 reads the fork's persistence source.
 
+**`@tldraw/store` carries a patch** (`patches/@tldraw__store@5.5.2.patch`, registered in
+`pnpm-workspace.yaml`). Its diff squash checked a growing diff for keys once per diff, which made a
+transaction with thousands of small writes quadratic; the patch checks once. Upgrading the store means
+re-applying it with `pnpm patch`, or dropping it if upstream has fixed the loop.
+`bulkRelations.bench.test.ts` (`LB_BENCH=1`) shows whether it is still needed.
+
+**Large boards stay fast because per-shape work is kept off shared signals.** A signal visits every
+reactor below it when it changes, so anything each shape reads (am I edited, selected, culled; an
+arrow's bindings) goes through a per-shape atom (`IdFlags`, `IdValues` in
+`canvas-editor/src/lib/editor/derivations/idFlags.ts`) rather than a computed over shared state.
+`docs/performance-plan.md` has the measurements and the tests that guard it.
+
 **Aggregations must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero
 re-aggregations during a drag on a 500-node board. In dev, a badge in the bottom-left shows the
 counters live. If that number starts climbing during drags, the facts `isEqual` stage has been broken.

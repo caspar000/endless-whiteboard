@@ -417,7 +417,10 @@ test.describe('Quick look', () => {
 
 		const board = page.locator('.lb-board--quick-look')
 		for (const id of ['shape:pinned', 'shape:group', 'shape:box', 'shape:line']) {
-			await page.evaluate((id) => (window as unknown as { editor: { select(id: string): void } }).editor.select(id), id)
+			// Braces: `select` returns the editor, which `page.evaluate` cannot serialize.
+			await page.evaluate((id) => {
+				;(window as unknown as { editor: { select(id: string): void } }).editor.select(id)
+			}, id)
 			await page.keyboard.press('Space')
 			await expect(board, id).toBeVisible()
 			expect(await selected(page)).toEqual([id])

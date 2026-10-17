@@ -368,7 +368,7 @@ export function createNodeShapeUtil<Props extends object>(
 
 		override component(rawShape: TLBaseBoxShape) {
 			const shape = rawShape as unknown as Shape
-			const isEditing = this.editor.getEditingShapeId() === shape.id
+			const isEditing = this.editor.isShapeBeingEdited(shape.id)
 			const Component = def.component
 
 			// Called unconditionally — `enabled` gates the behaviour rather than the hook, so hook

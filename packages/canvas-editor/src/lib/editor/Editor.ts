@@ -6,7 +6,7 @@ import { ArrowBindingUtil } from './bindings/ArrowBindingUtil'
 import { BindingUtil, TLBindingUtilConstructor } from './bindings/BindingUtil'
 import type { TLBindingCreate, TLBindingUpdate } from './types/binding-types'
 import { getDefaultColorTheme } from '../theme/defaultColorTheme'
-import { EMPTY_ARRAY, atom, computed, transact } from '@tldraw/state'
+import { EMPTY_ARRAY, atom, computed, react, transact } from '@tldraw/state'
 import { ComputedCache, RecordType } from '@tldraw/store'
 import {
 	CameraRecordType,
@@ -71,6 +71,7 @@ import {
 	CAMERA_SLIDE_FRICTION,
 	COARSE_DRAG_DISTANCE,
 	COLLABORATOR_IDLE_TIMEOUT,
+	CULLING_SETTLE_MS,
 	DEFAULT_ANIMATION_OPTIONS,
 	DRAG_DISTANCE,
 	FOLLOW_CHASE_PAN_SNAP,
@@ -113,7 +114,13 @@ import { DEFAULT_THEME, type TLColorMode, type TLTheme } from '../theme/theme'
 import { exportShapeFromDom } from '../utils/exportShapeFromDom'
 import { getSvgAsImage } from '../utils/export'
 import { uniqueId } from '../utils/uniqueId'
-import { arrowBindingsByArrow, arrowBindingsIndex } from './derivations/arrowBindingsIndex'
+import {
+	arrowBindingsByArrow,
+	arrowBindingsIndex,
+	bindingMap,
+	type TLArrowEnds,
+} from './derivations/arrowBindingsIndex'
+import { IdFlags, IdValues } from './derivations/idFlags'
 import {
 	getArrowTerminal,
 	isArrowTerminal,
@@ -434,53 +441,6 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const invalidParents = new Set<TLShapeId>()
 
-		const cleanupInstancePageState = (
-			prevPageState: TLInstancePageState,
-			shapesNoLongerInPage: Set<TLShapeId>
-		) => {
-			let nextPageState = null as null | TLInstancePageState
-
-			const selectedShapeIds = prevPageState.selectedShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (selectedShapeIds.length !== prevPageState.selectedShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.selectedShapeIds = selectedShapeIds
-			}
-
-			const erasingShapeIds = prevPageState.erasingShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (erasingShapeIds.length !== prevPageState.erasingShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.erasingShapeIds = erasingShapeIds
-			}
-
-			if (prevPageState.hoveredShapeId && shapesNoLongerInPage.has(prevPageState.hoveredShapeId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.hoveredShapeId = null
-			}
-
-			if (prevPageState.editingShapeId && shapesNoLongerInPage.has(prevPageState.editingShapeId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.editingShapeId = null
-			}
-
-			const hintingShapeIds = prevPageState.hintingShapeIds.filter(
-				(id) => !shapesNoLongerInPage.has(id)
-			)
-			if (hintingShapeIds.length !== prevPageState.hintingShapeIds.length) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.hintingShapeIds = hintingShapeIds
-			}
-
-			if (prevPageState.focusedGroupId && shapesNoLongerInPage.has(prevPageState.focusedGroupId)) {
-				if (!nextPageState) nextPageState = { ...prevPageState }
-				nextPageState.focusedGroupId = null
-			}
-			return nextPageState
-		}
-
 		this.sideEffects = new SideEffectManager(this)
 
 		this.sideEffects.registerBatchCompleteHandler(() => {
@@ -653,6 +613,15 @@ export class Editor extends EventEmitter<TLEventMap> {
 		)
 		this._parentIdsToChildIds = parentsToChildren(this.store)
 
+		// Before anything can compute an arrow's geometry: one computed while these are missing reads
+		// the map of all bindings, and keeps depending on it (see `getArrowBinding`).
+		this._arrowBindingValues = new IdValues(
+			'arrow bindings',
+			() => this._getArrowBindingsByArrow().get(),
+			(a, b) => a?.start === b?.start && a?.end === b?.end
+		)
+		this.disposables.add(this._arrowBindingValues.dispose)
+
 		this.disposables.add(
 			this.store.listen((changes) => {
 				this.emit('change', changes)
@@ -683,10 +652,37 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		this.updateRenderingBounds()
 
+		// Per-shape answers that every shape reads while rendering. See `IdFlags` for why they are
+		// not plain computeds: a write to the brush would otherwise visit every shape on the board.
+		this._culledFlags = new IdFlags('culled', () => this.getCulledShapeIds())
+		this._editingFlags = new IdFlags('editing', () => {
+			const id = this.getEditingShapeId()
+			return id ? [id] : []
+		})
+		this._onlySelectedFlags = new IdFlags('only selected', () => {
+			const shape = this.getOnlySelectedShape()
+			return shape ? [shape.id] : []
+		})
+		this.disposables.add(this._culledFlags.dispose)
+		this.disposables.add(this._editingFlags.dispose)
+		this.disposables.add(this._onlySelectedFlags.dispose)
+		this.disposables.add(
+			react('mirror device pixel ratio', () => {
+				this._devicePixelRatio.set(this.getInstanceState().devicePixelRatio)
+			})
+		)
+
 		requestAnimationFrame(() => {
 			this._tickManager.start()
 		})
 	}
+
+	private readonly _culledFlags: IdFlags<TLShapeId>
+	private readonly _editingFlags: IdFlags<TLShapeId>
+	private readonly _onlySelectedFlags: IdFlags<TLShapeId>
+	/** Each arrow's bindings, for `getArrowBinding`. Unset until the constructor has run. */
+	private _arrowBindingValues?: IdValues<TLShapeId, TLArrowEnds>
+	private readonly _devicePixelRatio = atom('device pixel ratio', 1)
 
 	/**
 	 * The editor's store
@@ -1185,19 +1181,16 @@ export class Editor extends EventEmitter<TLEventMap> {
 	/** Every binding, by the id of each shape it involves. @internal */
 	@computed
 	private _getBindingsIndex() {
-		const bindings = this.store.query.records('binding')
-		return computed('bindingsIndex', () => {
-			const index = new Map<TLShapeId, TLUnknownBinding[]>()
-			for (const binding of bindings.get() as TLUnknownBinding[]) {
-				// A binding from a shape to itself is listed once.
-				const ids = binding.fromId === binding.toId ? [binding.fromId] : [binding.fromId, binding.toId]
-				for (const id of ids) {
-					const list = index.get(id)
-					if (list) list.push(binding)
-					else index.set(id, [binding])
-				}
-			}
-			return index
+		return bindingMap<TLShapeId, TLUnknownBinding[]>(this.store, 'bindingsIndex', {
+			include: () => true,
+			// A binding from a shape to itself is listed once.
+			keys: (binding) =>
+				binding.fromId === binding.toId ? [binding.fromId] : [binding.fromId, binding.toId],
+			add: (list, binding) => [...(list ?? []), binding],
+			remove: (list, binding) => {
+				const rest = list.filter((b) => b.id !== binding.id)
+				return rest.length ? rest : undefined
+			},
 		})
 	}
 
@@ -1486,7 +1479,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	getArrowsBoundTo(shapeId: TLShapeId) {
-		return this._getArrowBindingsIndex().get()[shapeId] || EMPTY_ARRAY
+		return this._getArrowBindingsIndex().get().get(shapeId) || EMPTY_ARRAY
 	}
 
 	/** @internal */
@@ -1502,7 +1495,21 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	getArrowBinding(arrowId: TLShapeId, end: TLArrowEnd): TLArrowBinding | undefined {
-		return this._getArrowBindingsByArrow().get()[arrowId]?.[end]
+		const exact = this._getArrowBindingsByArrow()
+		/*
+		 * Through the arrow's own value whenever that is up to date, so an arrow depends on its own
+		 * bindings rather than on the map of all of them. The map comes from a store query, and a
+		 * query sits below the store's history, so every write to anything (a camera move, a hover)
+		 * visited every arrow on the board through it: about 12ms a write at 5,000 relations.
+		 *
+		 * In the middle of a change to bindings, before the reactor has caught up, the map is read as
+		 * before: the answer is always the current one.
+		 */
+		const values = this._arrowBindingValues
+		if (values && exact.__unsafe__getWithoutCapture() === values.syncedSource) {
+			return values.get(arrowId)?.[end]
+		}
+		return exact.get().get(arrowId)?.[end]
 	}
 
 	@computed
@@ -3917,8 +3924,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 	// Camera state lets us subscribe to whether the camera is moving or not. The rendering bounds
 	// follow the camera on every move: upstream froze them for the first 620ms of a movement, so a
-	// quick flick showed nothing new until it stopped. Culled shapes stay mounted, so updating them
-	// is cheap, and a longer pan already updated every frame.
+	// quick flick showed nothing new until it stopped. The *culling* bounds only move when the
+	// viewport leaves them, and are made exact again once the camera has settled (`_settleCulling`).
 
 	private _cameraStateTimeoutRemaining = 0
 
@@ -3928,12 +3935,30 @@ export class Editor extends EventEmitter<TLEventMap> {
 		if (this._cameraStateTimeoutRemaining <= 0) {
 			this.off('tick', this._decayCameraStateTimeout)
 			this._cameraState.set('idle')
+			this._cullingSettleRemaining = CULLING_SETTLE_MS
+			this.on('tick', this._settleCulling)
 		}
+	}
+
+	/*
+	 * Exact culling waits until the camera has been still for a moment, not just for the 64ms that
+	 * makes it "idle". A frame slower than that flips the camera to idle in the middle of a pan, and
+	 * an exact refresh there hid hundreds of shapes that the next move showed again: two slow frames
+	 * that made the following ones slow too.
+	 */
+	private _cullingSettleRemaining = 0
+
+	private _settleCulling = (elapsed: number) => {
+		this._cullingSettleRemaining -= elapsed
+		if (this._cullingSettleRemaining > 0) return
+		this.off('tick', this._settleCulling)
+		this._updateCullingBounds(true)
 	}
 
 	private _tickCameraState = () => {
 		// always reset the timeout
 		this._cameraStateTimeoutRemaining = CAMERA_MOVING_TIMEOUT
+		this.off('tick', this._settleCulling)
 		if (this._cameraState.__unsafe__getWithoutCapture() === 'idle') {
 			this._cameraState.set('moving')
 			this.on('tick', this._decayCameraStateTimeout)
@@ -3959,70 +3984,43 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const renderingShapes: {
 			id: TLShapeId
-			shape: TLShape
 			util: ShapeUtil
 			index: number
 			backgroundIndex: number
 			opacity: number
-			isCulled: boolean
-			maskedPageBounds: Box2d | undefined
 		}[] = []
 
 		let nextIndex = MAX_SHAPES_PER_PAGE * 2
 		let nextBackgroundIndex = MAX_SHAPES_PER_PAGE
 
-		// We only really need these if we're using editor state, but that's ok
-		const editingShapeId = this.getEditingShapeId()
-		// Sets, not arrays: every shape asks about them, and a brush can select hundreds (P3).
-		const selectedShapeIds = new Set(this.getSelectedShapeIds())
-		const erasingShapeIds = new Set(this.getErasingShapeIds())
-		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
-		const renderingBoundsAhead = this._renderingBoundsAhead.get()
+		// Culling is not decided here: this list follows the document, and which of its shapes are on
+		// screen is `getCulledShapeIds`, which follows the camera. Mixing the two rebuilt and re-sorted
+		// the whole list, and re-rendered it in React, on every frame of a pan.
+		const erasingShapeIds = new Set(useEditorState ? this.getErasingShapeIds() : [])
 
-		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
-		const isCullingOffScreenShapes = Number.isFinite(this.renderingBoundsMargin)
+		// Nothing here reads a shape's record or position: only `_getShapeRenderInfoCache`, which
+		// does not change when a shape moves. Reading the records made every drag frame rebuild, sort
+		// and re-render this whole list for one shape's x and y.
+		const renderInfo = this._getShapeRenderInfoCache()
 
 		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
-			const shape = this.getShape(id)
-			if (!shape || this.isShapeHidden(shape)) return
+			const info = renderInfo.get(id)
+			if (!info || info.hidden) return
 
-			opacity *= shape.opacity
-			let isCulled = false
-			let isShapeErasing = false
-			const util = this.getShapeUtil(shape)
-			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
+			opacity *= info.opacity
+			const util = this.getShapeUtil(info.type)
 
-			if (useEditorState) {
-				isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
-				if (isShapeErasing) {
-					opacity *= 0.32
-				}
-
-				isCulled =
-					isCullingOffScreenShapes &&
-					// only cull shapes that allow unmounting, i.e. not stateful components
-					util.canUnmount(shape) &&
-					// never cull editingg shapes
-					editingShapeId !== id &&
-					// if the shape is fully outside of its parent's clipping bounds...
-					(maskedPageBounds === undefined ||
-						// ...or if the shape is outside of the expanded viewport bounds...
-						(!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
-							maskedPageBounds
-						) &&
-							// ...and if it's not selected... then cull it
-							!selectedShapeIds.has(id)))
+			const isShapeErasing = !isAncestorErasing && erasingShapeIds.has(id)
+			if (isShapeErasing) {
+				opacity *= 0.32
 			}
 
 			renderingShapes.push({
 				id,
-				shape,
 				util,
 				index: nextIndex,
 				backgroundIndex: nextBackgroundIndex,
 				opacity,
-				isCulled,
-				maskedPageBounds,
 			})
 
 			nextIndex += 1
@@ -4032,7 +4030,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 			if (!childIds.length) return
 
 			let backgroundIndexToRestore = null
-			if (util.providesBackgroundForChildren(shape)) {
+			if (info.providesBackground) {
 				backgroundIndexToRestore = nextBackgroundIndex
 				nextBackgroundIndex = nextIndex
 				nextIndex += MAX_SHAPES_PER_PAGE
@@ -4060,6 +4058,46 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getRenderingShapes() {
+		const culled = this.getCulledShapeIds()
+		return this.getRenderingShapeList().map((entry) => ({
+			...entry,
+			shape: this.getShape(entry.id)!,
+			maskedPageBounds: this.getShapeMaskedPageBounds(entry.id),
+			isCulled: culled.has(entry.id),
+		}))
+	}
+
+	/**
+	 * What the list of shapes to render needs from each shape, none of which changes when it moves.
+	 * Compared by value, so a drag recomputes the dragged shape's entry and stops there.
+	 */
+	@computed private _getShapeRenderInfoCache() {
+		return this.store.createComputedCache<ShapeRenderInfo, TLShape>(
+			'shapeRenderInfo',
+			(shape) => ({
+				type: shape.type,
+				opacity: shape.opacity,
+				hidden: this.isShapeHidden(shape),
+				providesBackground: this.getShapeUtil(shape).providesBackgroundForChildren(shape),
+			}),
+			{
+				areResultsEqual: (a, b) =>
+					a.type === b.type &&
+					a.opacity === b.opacity &&
+					a.hidden === b.hidden &&
+					a.providesBackground === b.providesBackground,
+			}
+		)
+	}
+
+	/**
+	 * The shapes to mount, in the order to mount them, without whether each is on screen. The canvas
+	 * renders this list, so it changes when the document does and not when the camera moves; each
+	 * shape reads `isShapeCulled` for itself.
+	 *
+	 * @public
+	 */
+	@computed getRenderingShapeList() {
 		const renderingShapes = this.getUnorderedRenderingShapes(true)
 
 		// Its IMPORTANT that the result be sorted by id AND include the index
@@ -4073,6 +4111,98 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// same order; but we later use index to set the element's 'z-index'
 		// to change the "rendered" position in z-space.
 		return renderingShapes.sort(sortById)
+	}
+
+	/**
+	 * The rendering shapes that are mounted but hidden because they are off screen.
+	 *
+	 * Compared by contents, so a refresh of the culling bounds that changes nothing wakes no shape.
+	 * The selected shapes and the one being edited are never culled; they are taken out here, from
+	 * a set that does not depend on them, so a click does not re-decide culling for every shape.
+	 *
+	 * @public
+	 */
+	@computed({ isEqual: areSetsEqual })
+	getCulledShapeIds(): ReadonlySet<TLShapeId> {
+		const offScreen = this._getOffScreenShapeIds()
+		// A selected shape stays drawn off screen, unless its frame clips it away entirely; the one
+		// being edited always does.
+		const keep = this.getSelectedShapeIds().filter(
+			(id) => offScreen.has(id) && this.getShapeMaskedPageBounds(id) !== undefined
+		)
+		const editingShapeId = this.getEditingShapeId()
+		if (editingShapeId && offScreen.has(editingShapeId)) keep.push(editingShapeId)
+		if (!keep.length) return offScreen
+		const culled = new Set(offScreen)
+		for (const id of keep) culled.delete(id)
+		return culled
+	}
+
+	/** Every rendering shape off screen, whether or not it is selected. */
+	@computed({ isEqual: areSetsEqual })
+	private _getOffScreenShapeIds(): ReadonlySet<TLShapeId> {
+		const culled = new Set<TLShapeId>()
+		// If renderingBoundsMargin is set to Infinity, then we won't cull offscreen shapes
+		if (!Number.isFinite(this.renderingBoundsMargin)) return culled
+
+		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
+		const renderingBoundsAhead = this._renderingBoundsAhead.get()
+
+		for (const { id, util } of this.getRenderingShapeList()) {
+			const shape = this.getShape(id)
+			if (!shape) continue
+			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
+			const isCulled =
+				// only cull shapes that allow unmounting, i.e. not stateful components
+				util.canUnmount(shape) &&
+				// if the shape is fully outside of its parent's clipping bounds...
+				(maskedPageBounds === undefined ||
+					// ...or if the shape is outside of the expanded viewport bounds
+					!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
+						maskedPageBounds
+					))
+			if (isCulled) culled.add(id)
+		}
+		return culled
+	}
+
+	/**
+	 * Whether a rendering shape is mounted but hidden because it is off screen.
+	 *
+	 * @public
+	 */
+	isShapeCulled(id: TLShapeId): boolean {
+		return this.getCulledShapeIds().has(id)
+	}
+
+	/**
+	 * `isShapeCulled` for a shape's own container: the same answer, updated when the change settles,
+	 * and waking only the shapes whose answer changed.
+	 *
+	 * @internal
+	 */
+	_isShapeCulledForRender(id: TLShapeId): boolean {
+		return this._culledFlags.get(id)
+	}
+
+	/**
+	 * Whether this shape is the one being edited, for rendering. Waking only the shape that starts or
+	 * stops being edited, where `getEditingShapeId() === id` in each shape woke all of them on every
+	 * hover, selection and brush move.
+	 *
+	 * @public
+	 */
+	isShapeBeingEdited(id: TLShapeId): boolean {
+		return this._editingFlags.get(id)
+	}
+
+	/**
+	 * Whether this shape is the only one selected, for rendering. Same reason as `isShapeBeingEdited`.
+	 *
+	 * @public
+	 */
+	isOnlySelectedShape(id: TLShapeId): boolean {
+		return this._onlySelectedFlags.get(id)
 	}
 
 	/**
@@ -4146,19 +4276,46 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const viewportPageBounds = this.getViewportPageBounds()
 		if (viewportPageBounds.equals(this._renderingBounds.__unsafe__getWithoutCapture())) return this
 		this._renderingBounds.set(viewportPageBounds.clone())
-
-		if (Number.isFinite(this.renderingBoundsMargin)) {
-			this._renderingBoundsExpanded.set(
-				viewportPageBounds.clone().expandBy(this.renderingBoundsMargin / this.getZoomLevel())
-			)
-			const { width, height } = viewportPageBounds
-			const ahead = Math.max(this.renderingBoundsMargin / this.getZoomLevel(), width / 2, height / 2)
-			this._renderingBoundsAhead.set(viewportPageBounds.clone().expandBy(ahead))
-		} else {
-			this._renderingBoundsExpanded.set(viewportPageBounds)
-			this._renderingBoundsAhead.set(viewportPageBounds)
-		}
+		this._updateCullingBounds(this._cameraState.__unsafe__getWithoutCapture() === 'idle')
 		return this
+	}
+
+	/**
+	 * Moves the bounds shapes are culled against.
+	 *
+	 * While the camera is moving they are left alone for as long as the viewport stays inside them,
+	 * because every move re-decides culling for every shape on the board. When the viewport does
+	 * leave, they are set with half a screen of slack on each side, so a steady pan refreshes them
+	 * every half screen rather than every frame. Once the camera has settled (`exact`), they are set to
+	 * the viewport plus the margin, and shapes that drifted out of range are hidden again.
+	 *
+	 * Nothing that comes into view is ever left hidden: shapes inside the viewport are inside these
+	 * bounds, because the viewport is.
+	 */
+	private _updateCullingBounds(exact: boolean) {
+		const viewport = this.getViewportPageBounds()
+		if (!Number.isFinite(this.renderingBoundsMargin)) {
+			this._renderingBoundsExpanded.set(viewport)
+			this._renderingBoundsAhead.set(viewport)
+			return
+		}
+
+		const zoom = this.getZoomLevel()
+		const margin = this.renderingBoundsMargin / zoom
+		const { width, height } = viewport
+		const halfScreen = Math.max(width / 2, height / 2)
+
+		if (!exact) {
+			const expanded = this._renderingBoundsExpanded.__unsafe__getWithoutCapture()
+			if (expanded.contains(viewport)) return
+			const slack = Math.max(margin, halfScreen)
+			this._renderingBoundsExpanded.set(viewport.clone().expandBy(slack))
+			this._renderingBoundsAhead.set(viewport.clone().expandBy(Math.max(slack, halfScreen * 2)))
+			return
+		}
+
+		this._renderingBoundsExpanded.set(viewport.clone().expandBy(margin))
+		this._renderingBoundsAhead.set(viewport.clone().expandBy(Math.max(margin, halfScreen)))
 	}
 
 	/**
@@ -4212,11 +4369,26 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/**
-	 * The current page id.
+	 * The screen's device pixel ratio, for rendering. Every shape's container reads it, so it is an
+	 * atom mirrored from the instance record rather than a computed over it: a computed would still
+	 * put every shape below the record, where each brush move visits it (see `IdFlags`).
 	 *
 	 * @public
 	 */
-	getCurrentPageId(): TLPageId {
+	getDevicePixelRatio(): number {
+		return this._devicePixelRatio.get()
+	}
+
+	/**
+	 * The current page id.
+	 *
+	 * A computed, so a reader depends on the id rather than on the whole instance record: that record
+	 * also holds the brush, the cursor and the scribbles, and every computed that asks for the page
+	 * (the list of shapes to render among them) was rebuilt on each brush move.
+	 *
+	 * @public
+	 */
+	@computed getCurrentPageId(): TLPageId {
 		return this.getInstanceState().currentPageId
 	}
 
@@ -4940,6 +5112,33 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/** @internal */
+	/**
+	 * The page box a point has to be in, give or take the margin, to hit a shape: its page bounds
+	 * with its labels included, which `Group2d` leaves out of its bounds. Hit tests check this first
+	 * so most shapes are rejected by a cached box rather than a transform and a distance query.
+	 */
+	@computed private _getShapeHitPageBoundsCache(): ComputedCache<Box2d, TLShape> {
+		return this._createShapeCache<Box2d>('hitPageBoundsCache', (shape) => {
+			const pageTransform = this._getShapePageTransformCache().get(shape.id)
+			if (!pageTransform) return new Box2d()
+			const geometry = this.getShapeGeometry(shape)
+			const local =
+				geometry instanceof Group2d
+					? Box2d.Common(geometry.children.map((child) => child.bounds))
+					: geometry.bounds
+			return Box2d.FromPoints(Matrix2d.applyToPoints(pageTransform, local.corners))
+		})
+	}
+
+	/**
+	 * Whether a point is close enough to a shape's box to be worth hit-testing. A margin grows by up to
+	 * √2 when the shape is rotated, so the box is padded by half as much again.
+	 */
+	private _mayHitShape(shape: TLShape, point: VecLike, margin: number): boolean {
+		const box = this._getShapeHitPageBoundsCache().get(shape.id)
+		return !box || box.containsPoint(point, margin * 1.5)
+	}
+
 	@computed private _getShapePageBoundsCache(): ComputedCache<Box2d, TLShape> {
 		return this._createShapeCache<Box2d>('pageBoundsCache', (shape) => {
 			const pageTransform = this._getShapePageTransformCache().get(shape.id)
@@ -5316,7 +5515,8 @@ export class Editor extends EventEmitter<TLEventMap> {
 				? this.getCurrentPageRenderingShapesSorted()
 				: this.getCurrentPageShapesSorted()
 		).filter((shape) => {
-			if (this.isShapeOfType(shape, 'group') || this.isShapeHidden(shape)) return false
+			if (this.isShapeOfType(shape, 'group') || !this._mayHitShape(shape, point, margin)) return false
+			if (this.isShapeHidden(shape)) return false
 			const pageMask = this.getShapeMask(shape)
 			if (pageMask && !pointInPolygon(point, pageMask)) return false
 			if (filter) return filter(shape)
@@ -5476,8 +5676,12 @@ export class Editor extends EventEmitter<TLEventMap> {
 		point: VecLike,
 		opts = {} as { margin?: number; hitInside?: boolean }
 	): TLShape[] {
+		const margin = opts.margin ?? 0
 		return this.getCurrentPageShapes().filter(
-			(shape) => !this.isShapeHidden(shape) && this.isPointInShape(shape, point, opts)
+			(shape) =>
+				this._mayHitShape(shape, point, margin) &&
+				!this.isShapeHidden(shape) &&
+				this.isPointInShape(shape, point, opts)
 		)
 	}
 
@@ -5588,30 +5792,19 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getCurrentPageShapesSorted(): TLShape[] {
-		// todo: consider making into a function call that includes options for selected-only, rendering, etc.
-		// todo: consider making a derivation or something, or merging with rendering shapes
-		const shapes = new Set(this.getCurrentPageShapes().sort(sortByIndex))
-
+		// A walk down the children, each parent's already in index order. Finding each shape's children
+		// by scanning every shape on the page was quadratic, and this runs whenever shapes are created:
+		// at 10,000 shapes it was most of the time a batch of new relations took.
 		const results: TLShape[] = []
-
-		function pushShapeWithDescendants(shape: TLShape): void {
-			results.push(shape)
-			shapes.delete(shape)
-
-			shapes.forEach((otherShape) => {
-				if (otherShape.parentId === shape.id) {
-					pushShapeWithDescendants(otherShape)
-				}
-			})
-		}
-
-		shapes.forEach((shape) => {
-			const parent = this.getShape(shape.parentId)
-			if (!isShape(parent)) {
-				pushShapeWithDescendants(shape)
+		const visit = (parentId: TLParentId) => {
+			for (const id of this.getSortedChildIdsForParent(parentId)) {
+				const shape = this.getShape(id)
+				if (!shape) continue
+				results.push(shape)
+				visit(id)
 			}
-		})
-
+		}
+		visit(this.getCurrentPageId())
 		return results
 	}
 
@@ -5631,10 +5824,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 * @public
 	 */
 	@computed getCurrentPageRenderingShapesSorted(): TLShape[] {
-		return this.getRenderingShapes()
-			.filter(({ isCulled }) => !isCulled)
+		const culled = this.getCulledShapeIds()
+		return this.getRenderingShapeList()
+			.filter(({ id }) => !culled.has(id))
 			.sort((a, b) => a.index - b.index)
-			.map(({ shape }) => shape)
+			.map(({ id }) => this.getShape(id)!)
 	}
 
 	/**
@@ -7579,6 +7773,22 @@ export class Editor extends EventEmitter<TLEventMap> {
 				const getCurrentPageShapesSortedLazy = () =>
 					(currentPageShapesSortedCache ??= this.getCurrentPageShapesSorted())
 
+				// The shapes that could take a new shape of each type as a child, worked out once per type
+				// for the batch: asking every shape on the page for every new shape made a batch cost the
+				// page's size times its own, and almost no shape can take children.
+				const parentsByType = new Map<TLShape['type'], TLShape[]>()
+				const possibleParents = (type: TLShape['type']) => {
+					let parents = parentsByType.get(type)
+					if (!parents) {
+						parents = getCurrentPageShapesSortedLazy().filter((shape) =>
+							this.getShapeUtil(shape).canReceiveNewChildrenOfType(shape, type)
+						)
+						parentsByType.set(type, parents)
+					}
+					return parents
+				}
+				const idsInBatch = new Set(partials.map((p) => p.id))
+
 				partials = partials.map((partial) => {
 					// If the partial does not provide the parentId OR if the provided
 					// parentId is NOT in the store AND NOT among the other shapes being
@@ -7587,16 +7797,14 @@ export class Editor extends EventEmitter<TLEventMap> {
 					// children of the creating shape's type, or else the page itself.
 					if (
 						!partial.parentId ||
-						!(this.store.has(partial.parentId) || partials.some((p) => p.id === partial.parentId))
+						!(this.store.has(partial.parentId) || idsInBatch.has(partial.parentId as TLShapeId))
 					) {
 						let parentId: TLParentId = this.getFocusedGroupId()
-						const currentPageShapesSorted = getCurrentPageShapesSortedLazy()
 
-						for (let i = currentPageShapesSorted.length - 1; i >= 0; i--) {
-							const parent = currentPageShapesSorted[i]
+						const candidates = possibleParents(partial.type)
+						for (let i = candidates.length - 1; i >= 0; i--) {
+							const parent = candidates[i]!
 							if (
-								// parent.type === 'frame'
-								this.getShapeUtil(parent).canReceiveNewChildrenOfType(parent, partial.type) &&
 								this.isPointInShape(
 									parent,
 									// If no parent is provided, then we can treat the
@@ -8234,7 +8442,7 @@ export class Editor extends EventEmitter<TLEventMap> {
 					const shape = this.getShape(id)
 
 					// Add any bound arrows to the snapshots, so that we can restore the bindings on undo
-					const bindings = arrowBindings[id]
+					const bindings = arrowBindings.get(id)
 					if (bindings && bindings.length > 0) {
 						return bindings.map(({ arrowId }) => this.getShape(arrowId)).concat(shape)
 					}
@@ -8262,6 +8470,11 @@ export class Editor extends EventEmitter<TLEventMap> {
 		},
 		{
 			do: ({ deletedIds, postSelectedShapeIds }) => {
+				// Every page state cleaned once for the whole batch, so the per-shape handler finds
+				// nothing left to do instead of filtering the selection once per deleted shape.
+				const gone = new Set(deletedIds)
+				const cleaned = compact(this.getPageStates().map((state) => cleanupInstancePageState(state, gone)))
+				if (cleaned.length) this.store.put(cleaned)
 				this.store.remove(deletedIds)
 				this.store.update(this.getCurrentPageState().id, (state) => ({
 					...state,
@@ -9224,9 +9437,9 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		// ---Figure out which shapes we need to include
 		const shapeIdsToInclude = this.getShapeAndDescendantIds(ids)
-		const renderingShapes = this.getUnorderedRenderingShapes(false).filter(({ id }) =>
-			shapeIdsToInclude.has(id)
-		)
+		const renderingShapes = this.getUnorderedRenderingShapes(false)
+			.filter(({ id }) => shapeIdsToInclude.has(id))
+			.map((entry) => ({ ...entry, maskedPageBounds: this.getShapeMaskedPageBounds(entry.id) }))
 
 		// --- Common bounding box of all shapes
 		let bbox = null
@@ -10238,3 +10451,106 @@ function measureDrawnBounds(svg: SVGSVGElement): Box2d | null {
 
 /** Room for strokes around a trimmed export, in page units: half the widest stroke and some. */
 const TRIMMED_STROKE_ROOM = 6
+
+/** Every shape id a page state refers to, per page state record. See `cleanupInstancePageState`. */
+const pageStateIds = new WeakMap<TLInstancePageState, ReadonlySet<TLShapeId>>()
+
+function idsInPageState(state: TLInstancePageState): ReadonlySet<TLShapeId> {
+	let ids = pageStateIds.get(state)
+	if (!ids) {
+		ids = new Set<TLShapeId>([
+			...state.selectedShapeIds,
+			...state.erasingShapeIds,
+			...state.hintingShapeIds,
+			...(state.hoveredShapeId ? [state.hoveredShapeId] : []),
+			...(state.editingShapeId ? [state.editingShapeId] : []),
+			...(state.focusedGroupId ? [state.focusedGroupId] : []),
+		])
+		pageStateIds.set(state, ids)
+	}
+	return ids
+}
+
+/**
+ * A page state without the shapes that left the page, or `null` if it refers to none of them.
+ *
+ * Runs once per deleted shape, so the common answer, "none of them", is a lookup in a set cached per
+ * page state record rather than a pass over the selection: deleting a large selection used to filter
+ * all of it for every shape in it.
+ */
+function cleanupInstancePageState(
+	prevPageState: TLInstancePageState,
+	shapesNoLongerInPage: ReadonlySet<TLShapeId>
+): TLInstancePageState | null {
+	const mentioned = idsInPageState(prevPageState)
+	const [smaller, larger] =
+		mentioned.size < shapesNoLongerInPage.size
+			? [mentioned, shapesNoLongerInPage]
+			: [shapesNoLongerInPage, mentioned]
+	let affected = false
+	for (const id of smaller) {
+		if (larger.has(id)) {
+			affected = true
+			break
+		}
+	}
+	if (!affected) return null
+
+	let nextPageState = null as null | TLInstancePageState
+
+	const selectedShapeIds = prevPageState.selectedShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (selectedShapeIds.length !== prevPageState.selectedShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.selectedShapeIds = selectedShapeIds
+	}
+
+	const erasingShapeIds = prevPageState.erasingShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (erasingShapeIds.length !== prevPageState.erasingShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.erasingShapeIds = erasingShapeIds
+	}
+
+	if (prevPageState.hoveredShapeId && shapesNoLongerInPage.has(prevPageState.hoveredShapeId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.hoveredShapeId = null
+	}
+
+	if (prevPageState.editingShapeId && shapesNoLongerInPage.has(prevPageState.editingShapeId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.editingShapeId = null
+	}
+
+	const hintingShapeIds = prevPageState.hintingShapeIds.filter(
+		(id) => !shapesNoLongerInPage.has(id)
+	)
+	if (hintingShapeIds.length !== prevPageState.hintingShapeIds.length) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.hintingShapeIds = hintingShapeIds
+	}
+
+	if (prevPageState.focusedGroupId && shapesNoLongerInPage.has(prevPageState.focusedGroupId)) {
+		if (!nextPageState) nextPageState = { ...prevPageState }
+		nextPageState.focusedGroupId = null
+	}
+	return nextPageState
+}
+
+/** Two sets hold the same members. */
+function areSetsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
+	if (a === b) return true
+	if (a.size !== b.size) return false
+	for (const item of a) if (!b.has(item)) return false
+	return true
+}
+
+/** See `Editor._getShapeRenderInfoCache`. */
+interface ShapeRenderInfo {
+	type: string
+	opacity: number
+	hidden: boolean
+	providesBackground: boolean
+}

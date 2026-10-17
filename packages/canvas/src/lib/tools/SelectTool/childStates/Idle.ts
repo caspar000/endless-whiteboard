@@ -2,6 +2,7 @@ import { getNewShapeScale } from '../../../utils/dynamicSize'
 import {
 	Editor,
 	HIT_TEST_MARGIN,
+	INTERNAL_POINTER_IDS,
 	StateNode,
 	TLClickEventInfo,
 	TLEventHandlers,
@@ -39,7 +40,40 @@ export class Idle extends StateNode {
 		)
 	}
 
-	override onPointerMove: TLEventHandlers['onPointerMove'] = () => {
+	override onExit = () => {
+		this.stopWaitingForCamera()
+	}
+
+	override onPointerMove: TLEventHandlers['onPointerMove'] = (info) => {
+		// The editor sends a pointer move with every camera change, because the pointer's page point
+		// moved under it. Hit-testing every shape on each of those frames was a large share of a pan on
+		// a big board, and a hover that changes mid-pan is invisible anyway. So the hover catches up
+		// once, when the camera stops.
+		if (info.pointerId === INTERNAL_POINTER_IDS.CAMERA_MOVE) {
+			this.waitForCamera()
+			return
+		}
+		this.stopWaitingForCamera()
+		updateHoveredId(this.editor)
+	}
+
+	private isWaitingForCamera = false
+
+	private waitForCamera() {
+		if (this.isWaitingForCamera) return
+		this.isWaitingForCamera = true
+		this.editor.on('tick', this.updateHoverOnceCameraStops)
+	}
+
+	private stopWaitingForCamera() {
+		if (!this.isWaitingForCamera) return
+		this.isWaitingForCamera = false
+		this.editor.off('tick', this.updateHoverOnceCameraStops)
+	}
+
+	private updateHoverOnceCameraStops = () => {
+		if (this.editor.getCameraState() !== 'idle') return
+		this.stopWaitingForCamera()
 		updateHoveredId(this.editor)
 	}
 

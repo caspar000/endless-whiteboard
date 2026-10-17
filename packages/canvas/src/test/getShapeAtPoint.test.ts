@@ -166,3 +166,29 @@ describe('with filter', () => {
 		expect(editor.getShapeAtPoint({ x: 310, y: 310 }, opts)?.id).toBe(undefined)
 	})
 })
+
+it("hits an arrow's label where it stands off the line", () => {
+	// A horizontal arrow's bounds are a sliver, and `Group2d` leaves the label out of them: the
+	// broad phase has to count the label or a click on it would miss.
+	const arrow = createShapeId('labelled')
+	editor.createShapes([
+		{
+			id: arrow,
+			type: 'arrow',
+			x: 1000,
+			y: 1000,
+			props: {
+				start: { x: 0, y: 0 },
+				end: { x: 400, y: 0 },
+				richText: toRichText('a label\nover two lines'),
+			},
+		},
+	])
+	const geometry = editor.getShapeGeometry(arrow) as unknown as {
+		children: { isLabel: boolean; bounds: { minY: number; midX: number } }[]
+	}
+	const label = geometry.children.find((child) => child.isLabel)!
+	expect(label.bounds.minY).toBeLessThan(-10)
+	const point = { x: 1000 + label.bounds.midX, y: 1000 + label.bounds.minY + 2 }
+	expect(editor.getShapeAtPoint(point, { hitInside: true })?.id).toBe(arrow)
+})

@@ -30,7 +30,7 @@ export const ArrowTextLabel = React.memo(function ArrowTextLabel({
 	scale?: number
 } & Pick<TLArrowShape['props'], 'size' | 'font'>) {
 	const editor = useEditor()
-	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === id, [editor, id])
+	const isEditing = useValue('isEditing', () => editor.isShapeBeingEdited(id), [editor, id])
 	const isEmpty = isEmptyRichText(richText)
 
 	if (!isEditing && isEmpty) {

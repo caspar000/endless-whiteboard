@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import adlerYaml from '../content/adler.yaml?raw'
+import mucoreYaml from '../content/mucore.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
@@ -10,6 +11,37 @@ const load = (text: string) => {
 	const result = parseSyllabus(text)
 	if (!result.ok) throw new Error(result.errors.join('\n'))
 	return result.doc
+}
+
+/** Every tag names a node, every node is reachable from the root, and no count asks for more than its node can get. */
+function checkTree(doc: ReturnType<typeof load>) {
+	const items = doc.tracks.flatMap((t) => t.items)
+	const tree = doc.trees[0]!
+	const nodeIds = new Set(tree.nodes.map((n) => n.nodeId))
+	for (const item of items) for (const tag of item.tags) expect(nodeIds.has(tag), `${item.title} → ${tag}`).toBe(true)
+	const root = tree.nodes.find((n) => n.kind === 'root')!.nodeId
+	const reached = new Set([root])
+	for (let grew = true; grew; ) {
+		grew = false
+		for (const node of tree.nodes) {
+			const pre = prerequisitesOf(node.requires)
+			if (!reached.has(node.nodeId) && pre.length && pre.every((p) => reached.has(p))) {
+				reached.add(node.nodeId)
+				grew = true
+			}
+		}
+	}
+	expect([...nodeIds].filter((id) => !reached.has(id))).toEqual([])
+	for (const node of tree.nodes) {
+		const parsed = parseRequirements(node.requires)
+		expect(parsed.ok, node.nodeId).toBe(true)
+		if (!parsed.ok) continue
+		for (const c of parsed.conditions) {
+			if (!('count' in c) || c.count.method) continue
+			const available = items.filter((i) => i.tags.includes(node.nodeId)).reduce((n, i) => n + leaves(i), 0)
+			expect(c.count.min, node.nodeId).toBeLessThanOrEqual(available)
+		}
+	}
 }
 
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -46,6 +78,7 @@ describe('content/adler.yaml', () => {
 	})
 
 	it('reaches every node from the root, and asks no node for more than it can get', () => {
+		checkTree(doc)
 		const reached = new Set(['adler/root'])
 		for (let grew = true; grew; ) {
 			grew = false
@@ -68,5 +101,26 @@ describe('content/adler.yaml', () => {
 				expect(c.count.min, node.nodeId).toBeLessThanOrEqual(available)
 			}
 		}
+	})
+})
+
+describe('content/mucore.yaml', () => {
+	const doc = load(mucoreYaml)
+	const units = doc.tracks[0]!.items
+
+	it('holds every one of the 1111 recordings once, grouped into 84 families in chart order', () => {
+		const recordings = units.flatMap((u) => u.children)
+		expect(units).toHaveLength(84)
+		expect(recordings).toHaveLength(1111)
+		expect(new Set(recordings.map((r) => r.itemId)).size).toBe(1111)
+		expect(recordings[0]!.title).toMatch(/^Prehistoric: /)
+	})
+
+	it('feeds every family node, and the tree holds together', () => {
+		const tree = doc.trees[0]!
+		const pillars = tree.nodes.filter((n) => n.kind === 'pillar')
+		expect(pillars).toHaveLength(16)
+		for (const unit of units) expect(unit.tags).toHaveLength(1)
+		checkTree(doc)
 	})
 })

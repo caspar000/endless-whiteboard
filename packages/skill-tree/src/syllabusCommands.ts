@@ -111,6 +111,18 @@ export const syllabusCommands: readonly Command[] = [
 		},
 	},
 	{
+		id: 'skill-tree.import-mucore',
+		title: 'Import /mu/core (1111 recordings)',
+		group: GROUP,
+		when: (ctx) => ctx.editor !== null,
+		run: async ({ editor }) => {
+			if (!editor) return
+			const { default: text } = await import('../content/mucore.yaml?raw')
+			const outcome = importText(editor, text)
+			if (!outcome.ok) reportProblems(editor, '/mu/core not imported', outcome.errors)
+		},
+	},
+	{
 		id: 'skill-tree.confirm-draft',
 		title: 'Confirm draft',
 		group: GROUP,

@@ -5,6 +5,34 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+### Phase B, /mu/core, as built
+
+- **`content/mucore.yaml`** is musicgenretree.org's "1111 Essential Recordings of Music" (Classics
+  edition), the chart the /mu/ wiki calls New /mu/core: one recording per genre. The recordings come
+  from the site's text list; their category and family from the chart's image map (each cover's
+  `title`), so nothing was transcribed from the image.
+- **Shape:** one track, "/mu/core", of 84 family units in chart order ("Rock: Metal"), each holding
+  its recordings as a collapsed checklist ("Thrash Metal: Metallica - Master of Puppets (1986)").
+  The tree is a root, 16 categories as pillars (their rings show how much below is unlocked), and a
+  node per family asking for a fifth of its recordings written up. The four categories with one
+  family (Prehistoric, Ancient, Central Asian, Indigenous American) are one node. A habit asks for
+  three albums a week. "Import /mu/core (1111 recordings)" brings it in as a draft.
+- **What it took at this size** (about 2,500 shapes in one import, timed in a fresh profile):
+  - The canvas built its sorted list of every shape on each create to look for a frame to drop the
+    shape in, even when the shape named its parent: quadratic. `canvas-editor` now builds it only
+    when a shape needs a parent found (a fork change), and items, nodes, headers and relation arrows
+    created in bulk name the page.
+  - The index and the tree sync reacted to every one of the creates, and saw the import's shapes
+    before it marked them as drafts, so a draft's nodes reached the vault at once and stayed there
+    after Discard. Imports, confirms and discards now run in `whileImporting` (importing.ts): both
+    wait, and catch up once at the end, drafts left out.
+  - Confirming wrote the vault once per node, and each write made every node on the board parse
+    every requirement of its tree again. Writes are batched per tree (`upsertNodeDefs`) and parsed
+    requirements are cached by their text.
+  - Result: import 40 s to 6 s, confirm 6 s to 2 s; panning stays at 20 ms a frame.
+- **New trees go into clear space.** A tree an import puts on the board for the first time is laid
+  out whole to the right of everything else, since its width is only known once it is laid out.
+
 ### Phase B, Adler, as built
 
 - **`packages/skill-tree/content/adler.yaml`** is the whole list: 137 entries in their order as one

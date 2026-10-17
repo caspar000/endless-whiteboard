@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseRequirements } from './requirements'
 import { parseSyllabus, type SyllabusDoc } from './syllabusYaml'
 import { radialTree } from './tree/layout'
+import MASTERY_DEMO from '../content/mastery.yaml?raw'
 
 const SOURCE = `
 goal: adler
@@ -178,8 +179,7 @@ describe('radialTree', () => {
 })
 
 describe('the Mastery demo', () => {
-	it('parses, with five pillars and a tree mounted on each', async () => {
-		const { MASTERY_DEMO } = await import('./tree/masteryDemo')
+	it('parses, with five pillars and a tree mounted on each', () => {
 		const doc = parsed(MASTERY_DEMO)
 		const pillars = doc.trees[0]!.nodes.filter((n) => n.kind === 'pillar').map((n) => n.name)
 		expect(pillars).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])

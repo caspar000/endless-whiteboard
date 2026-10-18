@@ -1050,7 +1050,7 @@ tracks:
           - { id: aprili-1962, title: "აპრილი (1962)", medium: film }
           - { id: giorgobistve, title: "გიორგობისთვე (1966)", medium: film, core: true }
           - { id: iko-shashvi-mgalobeli, title: "იყო შაშვი მგალობელი (1970)", medium: film, core: true }
-          - { id: pastorali, title: "პასტორალი (1975)", medium: film, core: true }
+          - { id: pastorali, title: "პასტორალი (1976)", medium: film, core: true }
       - id: kobakhidze
         title: "მიხეილ კობახიძე"
         kind: study
@@ -1069,8 +1069,8 @@ tracks:
         childRule: core
         children:
           - { id: vedreba, title: "ვედრება (1967)", medium: film }
-          - { id: natvris-khe, title: "ნატვრის ხე (1976)", medium: film }
-          - { id: monanieba, title: "მონანიება (1984)", medium: film, core: true }
+          - { id: natvris-khe, title: "ნატვრის ხე (1977)", medium: film }
+          - { id: monanieba, title: "მონანიება (1986)", medium: film, core: true }
       - id: kokochashvili
         title: "მერაბ კოკოჩაშვილი"
         kind: study
@@ -1086,7 +1086,7 @@ tracks:
         tags: [golden-age]
         childRule: all
         children:
-          - { id: ar-daidardo, title: "არ დაიდარდო (1969)", medium: film }
+          - { id: ar-daidardo, title: "არ იდარდო! (1969)", medium: film }
           - { id: mimino, title: "მიმინო (1977)", medium: film }
           - { id: kin-dza-dza, title: "Кин-дза-дза! (1986)", medium: film }
       - id: giorgi-shengelaia
@@ -1104,7 +1104,7 @@ tracks:
         tags: [golden-age]
         childRule: core
         children:
-          - { id: tsvet-granata, title: "Цвет граната (1969)", medium: film, core: true }
+          - { id: tsvet-granata, title: "Цвет граната (1968)", medium: film, core: true }
           - { id: suramis-tsikhe, title: "ამბავი სურამის ციხისა (1985)", medium: film, core: true }
           - { id: arabeskebi, title: "არაბესკები ფიროსმანის თემაზე (1985)", medium: film }
           - { id: ashik-keribi, title: "აშიკ-ქერიბი (1988)", medium: film }
@@ -1115,8 +1115,8 @@ tracks:
         tags: [golden-age]
         childRule: all
         children:
-          - { id: sherekilebi, title: "შერეკილები (1973)", medium: film }
-          - { id: tsisferi-mtebi, title: "ცისფერი მთები, ანუ დაუჯერებელი ამბავი (1983)", medium: film, core: true }
+          - { id: sherekilebi, title: "შერეკილები (1974)", medium: film }
+          - { id: tsisferi-mtebi, title: "ცისფერი მთები, ანუ დაუჯერებელი ამბავი (1984)", medium: film, core: true }
       - id: rekhviashvili
         title: "ალექსანდრე რეხვიაშვილი"
         kind: study
@@ -1124,7 +1124,7 @@ tracks:
         tags: [golden-age]
         childRule: all
         children:
-          - { id: kartuli-kronika, title: "XIX საუკუნის ქართული ქრონიკა (1979)", medium: film }
+          - { id: kartuli-kronika, title: "XIX საუკუნის ქართული ქრონიკა (1978)", medium: film }
       - id: babluani
         title: "გელა ბაბლუანი"
         kind: study
@@ -1191,7 +1191,7 @@ tracks:
         childRule: all
         children:
           - { id: ras-vkhedavt, title: "რას ვხედავთ, როცა ცას ვუყურებთ? (2021)", medium: film, core: true }
-          - { id: khmeli-potoli, title: "ხმელი ფოთოლი (2023)", medium: film }
+          - { id: khmeli-potoli, title: "ხმელი ფოთოლი (2025)", medium: film }
       - id: kotetishvili
         title: "თატო კოტეტიშვილი"
         kind: study
@@ -1199,7 +1199,7 @@ tracks:
         tags: [new-georgian]
         childRule: all
         children:
-          - { id: tsminda-elektrooba, title: "წმინდა ელექტროობა (2024)", medium: film }
+          - { id: tsminda-elektroenergia, title: "წმინდა ელექტროენერგია (2024)", medium: film }
   - id: weeks
     name: "Film Weeks"
     state: active

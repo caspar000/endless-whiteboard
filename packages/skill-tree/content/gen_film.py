@@ -4,7 +4,8 @@ The director curriculum (gen_director.py) is being split into three trees, film,
 each built the way Adler's is: a skill node is a school or an era, an entry is a person, its works
 are what they made. This is the film one. The canon lists (Scorsese's 39, the Sight & Sound
 directors' poll) come from gen_director.py, merged and sorted by director and era. Russian and
-Georgian directors and works go by their own names, as the user reads both and looks them up by them.
+Georgian directors and works go by their own names, as the user reads both and looks them up by them;
+Georgian titles and years as Georgian Wikipedia gives them (checked 2026-10-18).
 Run `python3 gen_film.py` here after editing; the YAML is what ships.
 """
 
@@ -246,7 +247,7 @@ GEORGIAN = [
         work('aprili-1962', 'აპრილი (1962)'),
         work('giorgobistve', 'გიორგობისთვე (1966)', core=True),
         work('iko-shashvi-mgalobeli', 'იყო შაშვი მგალობელი (1970)', core=True),
-        work('pastorali', 'პასტორალი (1975)', core=True),
+        work('pastorali', 'პასტორალი (1976)', core=True),
     ]),
     person('kobakhidze', 'მიხეილ კობახიძე', 'golden-age', [
         work('kortsili', 'ქორწილი (1964)'),
@@ -255,27 +256,27 @@ GEORGIAN = [
     ]),
     person('abuladze', 'თენგიზ აბულაძე', 'golden-age', [
         work('vedreba', 'ვედრება (1967)'),
-        work('natvris-khe', 'ნატვრის ხე (1976)'),
-        work('monanieba', 'მონანიება (1984)', core=True),
+        work('natvris-khe', 'ნატვრის ხე (1977)'),
+        work('monanieba', 'მონანიება (1986)', core=True),
     ], rule='core'),
     person('kokochashvili', 'მერაბ კოკოჩაშვილი', 'golden-age', [work('didi-mtsvane-veli', 'დიდი მწვანე ველი (1967)')]),
     person('danelia', 'გიორგი დანელია', 'golden-age', [
-        work('ar-daidardo', 'არ დაიდარდო (1969)'),
+        work('ar-daidardo', 'არ იდარდო! (1969)'),
         work('mimino', 'მიმინო (1977)'),
         work('kin-dza-dza', 'Кин-дза-дза! (1986)'),
     ]),
     person('giorgi-shengelaia', 'გიორგი შენგელაია', 'golden-age', [work('pirosmani', 'ფიროსმანი (1969)')]),
     person('parajanov', 'სერგო ფარაჯანოვი', 'golden-age', [
-        work('tsvet-granata', 'Цвет граната (1969)', core=True),
+        work('tsvet-granata', 'Цвет граната (1968)', core=True),
         work('suramis-tsikhe', 'ამბავი სურამის ციხისა (1985)', core=True),
         work('arabeskebi', 'არაბესკები ფიროსმანის თემაზე (1985)'),
         work('ashik-keribi', 'აშიკ-ქერიბი (1988)'),
     ], rule='core'),
     person('eldar-shengelaia', 'ელდარ შენგელაია', 'golden-age', [
-        work('sherekilebi', 'შერეკილები (1973)'),
-        work('tsisferi-mtebi', 'ცისფერი მთები, ანუ დაუჯერებელი ამბავი (1983)', core=True),
+        work('sherekilebi', 'შერეკილები (1974)'),
+        work('tsisferi-mtebi', 'ცისფერი მთები, ანუ დაუჯერებელი ამბავი (1984)', core=True),
     ]),
-    person('rekhviashvili', 'ალექსანდრე რეხვიაშვილი', 'golden-age', [work('kartuli-kronika', 'XIX საუკუნის ქართული ქრონიკა (1979)')]),
+    person('rekhviashvili', 'ალექსანდრე რეხვიაშვილი', 'golden-age', [work('kartuli-kronika', 'XIX საუკუნის ქართული ქრონიკა (1978)')]),
     # Since 1991.
     person('babluani', 'გელა ბაბლუანი', 'new-georgian', [work('13-tzameti', '13 Tzameti (2005)')]),
     person('ekvtimishvili-gross', 'ნანა ექვთიმიშვილი და სიმონ გროსი', 'new-georgian', [
@@ -292,9 +293,9 @@ GEORGIAN = [
     ]),
     person('koberidze', 'ალექსანდრე კობერიძე', 'new-georgian', [
         work('ras-vkhedavt', 'რას ვხედავთ, როცა ცას ვუყურებთ? (2021)', core=True),
-        work('khmeli-potoli', 'ხმელი ფოთოლი (2023)'),
+        work('khmeli-potoli', 'ხმელი ფოთოლი (2025)'),
     ]),
-    person('kotetishvili', 'თატო კოტეტიშვილი', 'new-georgian', [work('tsminda-elektrooba', 'წმინდა ელექტროობა (2024)')]),
+    person('kotetishvili', 'თატო კოტეტიშვილი', 'new-georgian', [work('tsminda-elektroenergia', 'წმინდა ელექტროენერგია (2024)')]),
 ]
 
 # ---------------------------------------------------------------------------------------------------

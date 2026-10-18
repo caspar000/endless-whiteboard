@@ -1,12 +1,13 @@
 import { connectShapes } from '@lifeboard/node-kit'
-import { Box, createShapeId, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { Box, createShapeId, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
 import { ENTRY_SIZE, WORK_SIZE } from '../entry/definition'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
 import { contentsOf } from './focus'
-import { layoutGraph, type GraphEdge, type GraphNode } from './layout'
+import { clusterLayout, workAnchor } from './clusters'
+import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
 
 /**
@@ -185,7 +186,10 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 			editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [CONTEXT_META]: context }, props: { places: JSON.stringify(places) } } as never)
 		}
 	}
-	if (plan.linesStale) drawLines(editor, plan)
+	if (plan.linesStale) {
+		drawLines(editor, plan)
+		anchorWorkLines(editor)
+	}
 	return laidOutNew
 }
 
@@ -234,32 +238,6 @@ export function viewEdges(editor: Editor, view: ViewContents): GraphEdge[] {
 }
 
 /**
- * Edges pointing away from `start`, found breadth first through edges either way, so a focused
- * entry sits in the middle with its skill node and siblings around it rather than above it.
- */
-function orientFrom(start: string, edges: readonly GraphEdge[]): GraphEdge[] {
-	const adjacent = new Map<string, GraphEdge[]>()
-	for (const e of edges) {
-		adjacent.set(e.from, [...(adjacent.get(e.from) ?? []), e])
-		adjacent.set(e.to, [...(adjacent.get(e.to) ?? []), e])
-	}
-	const seen = new Set([start])
-	const queue = [start]
-	const out: GraphEdge[] = []
-	for (let i = 0; i < queue.length; i++) {
-		const at = queue[i]!
-		for (const e of adjacent.get(at) ?? []) {
-			const other = e.from === at ? e.to : e.from
-			if (seen.has(other)) continue
-			seen.add(other)
-			queue.push(other)
-			out.push({ from: at, to: other })
-		}
-	}
-	return out
-}
-
-/**
  * Lays a whole view out around its start (the focus, or the view's root), which stays where it is,
  * everything else on the board an obstacle. `label` names the undo step; `null` inside a sync.
  */
@@ -292,7 +270,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	// on an entry is laid out whole around that entry, so it is the middle.
 	const clustered = view.items.size > 0 && !view.items.has(view.start)
 	const at = clustered
-		? clusterLayout(nodes, edges, view, startKey, obstacles)
+		? clusterLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, arrows: drawn, unlined: new Set([HEADER]), obstacles })
 		: layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
@@ -302,83 +280,9 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
+		anchorWorkLines(editor)
 	})
 	return moves.length
-}
-
-/**
- * The compact layout for a view with entries (docs/skill-tree-plan.md, "Rebuild"). Each skill node's
- * entries and works are laid out first as a tight cluster around it; then the skill nodes are laid out
- * as if each were as big as its cluster, so clusters sit side by side instead of every work landing on
- * one outer ring and leaving the middle empty. Anything else (the header) hangs from its node.
- */
-function clusterLayout(
-	nodes: readonly GraphNode[],
-	edges: readonly GraphEdge[],
-	view: ViewContents,
-	startKey: string,
-	obstacles: readonly { x: number; y: number; w: number; h: number }[]
-): Map<string, { x: number; y: number }> {
-	const size = new Map(nodes.map((n) => [n.id, n]))
-	const children = new Map<string, string[]>()
-	for (const e of edges) children.set(e.from, [...(children.get(e.from) ?? []), e.to])
-	// A skill node's cluster: everything reachable from it that is not a skill node.
-	const skills = nodes.filter((n) => view.skills.has(n.id)).map((n) => n.id)
-	const clusterOf = new Map<string, string[]>()
-	for (const skill of skills) {
-		const members: string[] = []
-		const queue = [...(children.get(skill) ?? [])].filter((id) => !view.skills.has(id))
-		for (let i = 0; i < queue.length; i++) {
-			members.push(queue[i]!)
-			for (const c of children.get(queue[i]!) ?? []) if (!view.skills.has(c)) queue.push(c)
-		}
-		clusterOf.set(skill, members)
-	}
-	// 1. Each cluster around its skill node, close.
-	const local = new Map<string, Map<string, { x: number; y: number }>>()
-	const radius = new Map<string, number>()
-	for (const skill of skills) {
-		const members = clusterOf.get(skill)!
-		const self = size.get(skill)!
-		if (!members.length) {
-			radius.set(skill, Math.max(self.w, self.h) / 2)
-			continue
-		}
-		const ids = new Set([skill, ...members])
-		const at = layoutGraph(
-			[...ids].map((id) => size.get(id)!),
-			edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
-			{ root: skill, gap: 28 }
-		)
-		local.set(skill, at)
-		let r = Math.max(self.w, self.h) / 2
-		for (const [id, p] of at) {
-			const n = size.get(id)!
-			r = Math.max(r, Math.hypot(p.x, p.y) + Math.hypot(n.w, n.h) / 2)
-		}
-		radius.set(skill, r)
-	}
-	// 2. The skill nodes, each as big as its cluster.
-	const skillEdges = edges.filter((e) => view.skills.has(e.from) && view.skills.has(e.to))
-	const big = skills.map((id) => ({ id, w: radius.get(id)! * 2, h: radius.get(id)! * 2 }))
-	const startSkill = view.skills.has(startKey) ? startKey : skills[0]!
-	const placed = layoutGraph(big, skillEdges, { root: startSkill, gap: 50, obstacles, balloon: true })
-	// 3. Members where their cluster put them, relative to their node; the rest hang off what holds them.
-	const out = new Map<string, { x: number; y: number }>()
-	for (const skill of skills) {
-		const centre = placed.get(skill)
-		if (!centre) continue
-		out.set(skill, centre)
-		for (const [id, p] of local.get(skill) ?? []) if (id !== skill) out.set(id, { x: centre.x + p.x, y: centre.y + p.y })
-	}
-	for (const n of nodes) {
-		if (out.has(n.id)) continue
-		const holder = edges.find((e) => e.to === n.id && out.has(e.from))
-		const at = holder ? out.get(holder.from)! : { x: 0, y: 0 }
-		const r = holder ? (radius.get(holder.from) ?? 0) : 0
-		out.set(n.id, { x: at.x, y: at.y - r - n.h / 2 - 40 })
-	}
-	return out
 }
 
 /**
@@ -514,6 +418,29 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 			} as never)
 		}
 	}
+}
+
+/**
+ * Ends each line to a work at the work's end nearer what it hangs from (clusters.ts, `workAnchor`),
+ * so the lines to a column of works fan out beside it instead of running through the works above.
+ */
+export function anchorWorkLines(editor: Editor): void {
+	const updates: TLArrowBinding[] = []
+	for (const arrow of lineArrows(editor)) {
+		const ends = editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow')
+		const start = ends.find((b) => b.props.terminal === 'start')
+		const end = ends.find((b) => b.props.terminal === 'end')
+		const work = end && editor.getShape(end.toId)
+		if (!start || !end || !isEntry(work) || work.props.variant !== 'work') continue
+		const from = editor.getShapePageBounds(start.toId)
+		const to = editor.getShapePageBounds(work.id)
+		if (!from || !to) continue
+		const anchor = workAnchor({ x: to.center.x, y: to.center.y, w: to.w, h: to.h }, from.center)
+		const now = end.props.normalizedAnchor
+		if (end.props.isPrecise && now.x === anchor.x && now.y === anchor.y) continue
+		updates.push({ ...end, props: { ...end.props, normalizedAnchor: anchor, isPrecise: true } })
+	}
+	if (updates.length) editor.updateBindings(updates)
 }
 
 /** Brings the camera to what a view shows. */

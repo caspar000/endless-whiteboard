@@ -61,6 +61,34 @@ From the user's first go with the rebuilt Adler, 2026-10-18:
   Checked with a Playwright run in a fresh profile on an unconfirmed import: focus, Back, Show all,
   Confirm (no dashes left), and Discard (no shapes or trees left).
 
+### Compact clusters (asked for 2026-10-18)
+
+Show all was unreadable on big trees: nodes covered about 2% of the area, and arrows ran through
+nodes. The user wants it as compact as Path of Exile's passive tree, with no arrow over a node. Three
+phases, stopping after each:
+
+1. **Tight clusters** (built). `tree/clusters.ts` replaces the cluster pass of `layoutView`. An entry
+   and its works are one unit: the disc, then its works stacked in a column beside it (two columns,
+   one each side, past 8), centred on the entry or hanging away from the skill node. A line to a work
+   ends at the work's end nearer its entry (`workAnchor`, set by `anchorWorkLines` after a layout, a
+   sync that draws lines, or a drag coming to rest), so a column's lines fan out in the gap and cross
+   nothing. Units go round the skill node, each in a wedge sized by its span. A unit stays wholly
+   inside its wedge, at the nearest spot where it covers nothing, covers no line and its own line
+   crosses nothing. Every arrow to another skill node keeps a gap open through the cluster.
+   Measured on Show all (`clusters.test.ts`, `showAll.fixture.ts`), before → after:
+   Adler 14341×14167 → 11843×12608 px, Director 17962×14436 → 9888×8715 (fill 2.1% → 6.4%), µ/core
+   15993×17777 → 15171×15042. Lines through nodes 0 / 93 / 386 → 0 everywhere, overlaps 4 → 0.
+   Arrows between skill nodes through a node: 53 / 57 / 78 → 1 / 29 / 103; that is phases 2 and 3.
+2. **Pack the clusters.** They are still placed as discs by `layoutGraph`'s balloon, which wastes the
+   space around a wide flat cluster. Pack them by their real footprints, angles by size, and pull
+   them together.
+3. **Arrows clear of nodes.** Check every arrow between skill nodes against every node; move the node
+   aside or bend the arrow.
+
+Dead ends worth not repeating: placing works one at a time on rings around their entry (each line
+from the entry shadows everything behind its work, so lists of 20+ spread over 1000 px), and a soft
+wedge (early units take the near room and their shadows close the circle to later ones).
+
 ### Rebuild phases 4 and 5 (Up next per track, pop-out cards), as built
 
 - **Up next** (`node.upNext`, migration `PerTrack`) shows one track: `trackId`, or the first active

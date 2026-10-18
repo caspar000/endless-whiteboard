@@ -370,3 +370,29 @@ function separate(bodies: Body[], springs: { a: number; b: number; clear: boolea
 		if (!moved) return
 	}
 }
+
+/**
+ * Edges pointing away from `start`, found breadth first through edges either way, so a focused
+ * entry sits in the middle with its skill node and siblings around it rather than above it.
+ */
+export function orientFrom(start: string, edges: readonly GraphEdge[]): GraphEdge[] {
+	const adjacent = new Map<string, GraphEdge[]>()
+	for (const e of edges) {
+		adjacent.set(e.from, [...(adjacent.get(e.from) ?? []), e])
+		adjacent.set(e.to, [...(adjacent.get(e.to) ?? []), e])
+	}
+	const seen = new Set([start])
+	const queue = [start]
+	const out: GraphEdge[] = []
+	for (let i = 0; i < queue.length; i++) {
+		const at = queue[i]!
+		for (const e of adjacent.get(at) ?? []) {
+			const other = e.from === at ? e.to : e.from
+			if (seen.has(other)) continue
+			seen.add(other)
+			queue.push(other)
+			out.push({ from: at, to: other })
+		}
+	}
+	return out
+}

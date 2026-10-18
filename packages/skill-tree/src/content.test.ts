@@ -176,6 +176,11 @@ describe('content/director.yaml', () => {
 		for (const d of disciplines) expect(d.children.filter((c) => c.medium === 'game'), d.title).toHaveLength(3)
 	})
 
+	it('has a tree that holds together, hung under the Practical pillar', () => {
+		checkTree(doc)
+		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+	})
+
 	it("holds Schreiber's twenty Levels", () => {
 		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
 		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))

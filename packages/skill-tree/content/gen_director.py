@@ -657,7 +657,7 @@ def stagecraft():
         # A discipline whose book another track already holds lists it there, read alongside.
         if not isinstance(read, str):
             out.append(read)
-    out.append(item('vertical-slice', 'Vertical Slice: Three Linked Stages', 'exercise', ['staging', 'sets'], kind='ship'))
+    out.append(item('vertical-slice', 'Vertical Slice: Three Linked Stages', 'artefact', ['ship-a-stage'], kind='ship'))
     return out
 
 
@@ -688,6 +688,92 @@ THEATRE_WEEKS = [
 ]
 
 
+LITERATURE = [
+    # The literature spine. Adler's own list is its own tree, under Mental.
+    books('bauer-well-educated-mind', 'Bauer, The Well-Educated Mind', ['literature'], [
+        ('The Method: Grammar, Logic, Rhetoric', True), ('Novels', False), ('Autobiography', False), ('History', False),
+        ('Drama', False), ('Poetry', False), ('Science (2016 Edition)', False)]),
+    item('adler-how-to-read-a-book', 'Adler, How to Read a Book', 'book', ['literature']),
+    item('bloom-western-canon', 'Bloom, The Western Canon (as a Map)', 'book', ['literature']),
+    books('arts-guides', 'Visual Art and Music', ['literature'], [
+        ('Gombrich, The Story of Art', False), ('Berger, Ways of Seeing', False),
+        ('Copland, What to Listen for in Music', False), ('Ross, The Rest Is Noise', False)]),
+    ref('mcloud-understanding-comics'),
+]
+
+# The larger milestones of practice. The monthly stage is a habit; quarters and years are not periods.
+PRACTICE = [
+    *[item(f'jam-{q}', f'Game Jam, Quarter {q}', 'artefact', ['ship-a-stage'], kind='ship', rule='all', children=[
+        child('Enter Ludum Dare or GMTK', 'artefact', core=True, id=f'jam-{q}-enter'),
+        child('Write the Postmortem', 'artefact', core=True, id=f'jam-{q}-postmortem'),
+    ]) for q in range(1, 5)],
+    item('one-small-finished-game', 'One Small Finished Game', 'artefact', ['finished-game'], kind='ship'),
+]
+
+
+def node(id, name, icon, after=None, count=None, kind=None, extra=None):
+    requires = []
+    if after:
+        requires.append({'node': after})
+    if count:
+        requires.append({'count': {'min': count, **(extra or {})}})
+    return {'id': id, 'name': name, 'icon': icon, 'kind': kind, 'requires': requires}
+
+
+TREE = {
+    'id': 'director',
+    'name': 'Game Director',
+    'mount': 'mastery/practical',
+    'nodes': [
+        node('root', 'Keep One Journal', 'notebook', kind='root'),
+        # Games.
+        node('foundations', 'Game Design Foundations', 'device-gamepad-2', ['root'], 3),
+        node('design-craft', 'Design Craft', 'tools', ['foundations'], 2),
+        node('narrative', 'Narrative Design', 'writing', ['foundations'], 2),
+        node('play-literacy', 'Play Literacy', 'trophy', ['root'], 10),
+        node('close-reading', 'Close Reading', 'eye', ['play-literacy'], 2),
+        node('directors-intake', 'How Directors Learned', 'user-star', ['close-reading'], 1),
+        # Film.
+        node('film-craft', 'Film Craft', 'movie', ['root'], 3),
+        node('film-canon', 'Film Canon', 'books', ['film-craft'], 10),
+        node('soviet-film', 'Soviet Film', 'frame', ['film-craft'], 3),
+        node('georgian-film', 'Georgian Film', 'map-pin', ['film-craft'], 3),
+        node('montage', 'Montage', 'cut', ['soviet-film'], 2),
+        node('long-take', 'Long Take', 'clock-hour-4', ['soviet-film'], 2),
+        node('tableau', 'Tableau', 'layout-board', ['soviet-film', 'georgian-film'], 2),
+        node('one-rule', 'One Rule, One Stage', 'directions', ['georgian-film'], 2),
+        # Theatre.
+        node('western-theatre', 'Western Theatre', 'masks-theater', ['root'], 3),
+        node('russian-theatre', 'Russian Theatre', 'building-arch', ['root'], 3),
+        node('georgian-arts', 'Georgian Theatre and Arts', 'map', ['root'], 3),
+        node('theatre-theory', 'Theatre Theory', 'school', ['western-theatre'], 3),
+        node('literature', 'Literature and the Arts', 'book', ['root'], 2),
+        # The eight stagecraft disciplines.
+        node('scene-dramaturgy', 'Scene Dramaturgy', 'message-2', ['western-theatre'], 3),
+        node('staging', 'Staging and Blocking', 'walk', ['western-theatre'], 3),
+        node('atmosphere', 'Mood and Atmosphere', 'sun', ['russian-theatre'], 3),
+        node('lighting', 'Lighting', 'lamp', ['staging'], 3),
+        node('sound', 'Sound and Music', 'music', ['atmosphere'], 3),
+        node('costume', 'Costume and Readability', 'hanger', ['staging'], 3),
+        node('sets', 'Sets and Level Design', 'stairs', ['staging'], 3),
+        node('acting', 'Acting and Performance', 'mood-happy', ['russian-theatre'], 3),
+        # What all of it is for.
+        node('ship-a-stage', 'Ship a Stage', 'flag', ['design-craft', 'film-craft', 'staging'], 1, 'keystone', {'kind': 'ship'}),
+        node('finished-game', 'A Small Finished Game', 'rocket', ['ship-a-stage'], 1, 'keystone', {'kind': 'ship'}),
+    ],
+}
+
+# The practice rhythm, counted from what you write up: a week's game, film and theatre work, the
+# week's build, the month's stage.
+HABITS = [
+    {'id': 'play-as-a-director', 'name': 'Play a Game as a Director', 'period': 'week', 'target': 1, 'counts': {'method': 'five-passes'}},
+    {'id': 'film-weeks', 'name': 'Two Film Weeks', 'period': 'month', 'target': 2, 'counts': {'method': 'film-sheet'}},
+    {'id': 'theatre-weeks', 'name': 'Two Theatre Weeks', 'period': 'month', 'target': 2, 'counts': {'method': 'ball'}},
+    {'id': 'weekly-build', 'name': 'Build One Exercise', 'period': 'week', 'target': 1, 'counts': {'kind': 'Practice'}},
+    {'id': 'monthly-stage', 'name': 'Finish One Playable Stage', 'period': 'month', 'target': 1, 'counts': {'kind': 'Ship'}},
+]
+
+
 TRACKS = [
     ('game-design', 'Game Design', GAME_DESIGN),
     ('western-film', 'Western Film', WESTERN_FILM),
@@ -699,6 +785,8 @@ TRACKS = [
     ('georgian-theatre', 'Georgian Theatre and Arts', GEORGIAN_ARTS),
     ('stagecraft', 'Stagecraft', stagecraft()),
     ('theatre-weeks', 'Theatre Weeks', THEATRE_WEEKS),
+    ('literature', 'Literature and the Arts', LITERATURE),
+    ('practice', 'Practice', PRACTICE),
 ]
 
 
@@ -707,7 +795,7 @@ def write():
     lines = [
         '# A game director\'s self-education: the curriculum page\'s tracks, as one goal.',
         '# Generated by gen_director.py from the lists in it; edit those and run it again.',
-        '# Import with "Import the game director curriculum", or drop the file on a board.',
+        '# Import with "Import the game director curriculum (196 entries)", or drop the file on a board.',
         'goal: director',
         'name: Game director',
         '',
@@ -736,6 +824,15 @@ def write():
                 for c in it['children']:
                     core = ', core: true' if c['core'] else ''
                     lines.append(f'          - {{ id: {c["id"]}, title: {q(c["title"])}, medium: {c["medium"]}{core} }}')
+    flow = lambda v: json.dumps(v, ensure_ascii=False).replace('"', '') if isinstance(v, (dict, list)) else q(v)
+    lines += ['', 'trees:', f'  - id: {TREE["id"]}', f'    name: {q(TREE["name"])}', f'    mount: {TREE["mount"]}', '    nodes:']
+    for n in TREE['nodes']:
+        kind = f', kind: {n["kind"]}' if n['kind'] else ''
+        req = f', requires: {flow(n["requires"])}' if n['requires'] else ''
+        lines.append(f'      - {{ id: {n["id"]}, name: {q(n["name"])}{kind}, icon: {n["icon"]}{req} }}')
+    lines += ['', 'habits:']
+    for h in HABITS:
+        lines.append(f'  - {{ id: {h["id"]}, name: {q(h["name"])}, period: {h["period"]}, target: {h["target"]}, counts: {flow(h["counts"])} }}')
     open(OUT, 'w').write('\n'.join(lines) + '\n')
     print(f'{OUT}: {len(ids)} items')
 

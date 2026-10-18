@@ -114,6 +114,18 @@ export const syllabusCommands: readonly Command[] = [
 		},
 	},
 	{
+		id: 'skill-tree.import-director',
+		title: 'Import the game director curriculum (196 entries)',
+		group: GROUP,
+		when: (ctx) => ctx.editor !== null,
+		run: async ({ editor }) => {
+			if (!editor) return
+			const { default: text } = await import('../content/director.yaml?raw')
+			const outcome = importText(editor, text)
+			if (!outcome.ok) reportProblems(editor, 'The director curriculum not imported', outcome.errors)
+		},
+	},
+	{
 		id: 'skill-tree.import-mucore',
 		title: 'Import /mu/core (1111 recordings)',
 		group: GROUP,

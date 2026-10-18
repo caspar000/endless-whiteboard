@@ -238,8 +238,10 @@ export function Syllabus(_props: SectionProps) {
 					chart. The entries go into your vault and the board gets the skill tree; add a list or Up next
 					when you want them. An import arrives as a <strong>draft</strong>: dashed, and counting toward
 					nothing until you run <code>Confirm draft</code>. <code>Discard draft</code> removes it.
-					<code>Import Adler's full reading list (137 entries)</code> and{' '}
-					<code>Import /mu/core (1111 recordings)</code> bring in the two built-in syllabi.
+					<code>Import Adler's full reading list (137 entries)</code>,{' '}
+					<code>Import the game director curriculum (196 entries)</code> and{' '}
+					<code>Import /mu/core (1111 recordings)</code> bring in the three built-in syllabi. The director
+					curriculum's tree hangs from the Practical pillar once the Mastery demo is on a board.
 				</p>
 				<p>
 					Write ids short (<code>homer</code>); they get the document's <code>goal</code> as a prefix (

@@ -106,6 +106,10 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 						<dd>{stats.arrowCrossings}</dd>
 						<dt>Arrows through a skill node</dt>
 						<dd>{stats.arrowsThroughSkills}</dd>
+						<dt>Arrows over an entry or work</dt>
+						<dd>{stats.arrowsThroughItems}</dd>
+						<dt>Arrows over a light line</dt>
+						<dd>{stats.arrowsOverLines}</dd>
 						<dt>Arrow length</dt>
 						<dd>
 							{stats.shortestArrow}–{stats.longestArrow} px, mean {stats.meanArrow}

@@ -15,6 +15,10 @@ export interface LayoutStats {
 	arrowCrossings: number
 	/** Arrows between skill nodes that pass through a skill node other than their ends. */
 	arrowsThroughSkills: number
+	/** Arrows between skill nodes that pass over an entry or a work. */
+	arrowsThroughItems: number
+	/** Crossings of an arrow between skill nodes and a light line (a spoke or a link between works). */
+	arrowsOverLines: number
 	/** Arrow lengths between skill nodes, edge to edge. */
 	shortestArrow: number
 	longestArrow: number
@@ -32,6 +36,7 @@ export function measureLayout(
 	nodes: readonly GraphNode[],
 	at: ReadonlyMap<string, Point>,
 	arrows: readonly GraphEdge[],
+	lines: readonly GraphEdge[],
 	isSkill: (id: string) => boolean,
 	ms: number
 ): LayoutStats {
@@ -82,16 +87,20 @@ export function measureLayout(
 			if (s.e.from === t.e.from || s.e.from === t.e.to || s.e.to === t.e.from || s.e.to === t.e.to) continue
 			if (intersect(s.a, s.b, t.a, t.b)) arrowCrossings++
 		}
-	const skills = placed.filter((n) => isSkill(n.id))
 	let arrowsThroughSkills = 0
+	let arrowsThroughItems = 0
 	for (const { e, a, b } of segments) {
-		const through = skills.some((n) => {
-			if (n.id === e.from || n.id === e.to) return false
-			const c = at.get(n.id)!
-			return distanceToSegment(c, a, b) < n.w / 2
-		})
-		if (through) arrowsThroughSkills++
+		const hits = placed.filter((n) => n.id !== e.from && n.id !== e.to && distanceToSegment(at.get(n.id)!, a, b) < Math.min(n.w, n.h) / 2)
+		if (hits.some((n) => isSkill(n.id))) arrowsThroughSkills++
+		if (hits.some((n) => !isSkill(n.id))) arrowsThroughItems++
 	}
+	let arrowsOverLines = 0
+	const drawn = lines.filter((e) => at.has(e.from) && at.has(e.to))
+	for (const { e, a, b } of segments)
+		for (const l of drawn) {
+			if (l.from === e.from || l.from === e.to || l.to === e.from || l.to === e.to) continue
+			if (intersect(a, b, at.get(l.from)!, at.get(l.to)!)) arrowsOverLines++
+		}
 	const lengths = segments.map(({ e, a, b }) => Math.max(0, Math.hypot(b.x - a.x, b.y - a.y) - size.get(e.from)!.w / 2 - size.get(e.to)!.w / 2))
 	return {
 		nodes: placed.length,
@@ -102,6 +111,8 @@ export function measureLayout(
 		overlaps,
 		arrowCrossings,
 		arrowsThroughSkills,
+		arrowsThroughItems,
+		arrowsOverLines,
 		shortestArrow: Math.round(lengths.length ? Math.min(...lengths) : 0),
 		longestArrow: Math.round(lengths.length ? Math.max(...lengths) : 0),
 		meanArrow: Math.round(lengths.length ? lengths.reduce((n, l) => n + l, 0) / lengths.length : 0),

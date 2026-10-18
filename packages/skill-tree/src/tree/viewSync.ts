@@ -280,7 +280,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	const began = performance.now()
 	const isSkill = (id: string) => view.skills.has(id)
 	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: getLayoutConfig() })
-	lastLayoutStats.set(measureLayout(nodes, at, drawn, isSkill, performance.now() - began))
+	lastLayoutStats.set(measureLayout(nodes, at, drawn, lineEnds(view.items), isSkill, performance.now() - began))
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
 		const b = editor.getShapePageBounds(s.id)

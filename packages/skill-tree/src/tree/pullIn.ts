@@ -15,6 +15,11 @@ import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
 type Point = { x: number; y: number }
 type Box = Point & { w: number; h: number }
 
+export interface Segments {
+	arrows: readonly (readonly [string, string])[]
+	lines: readonly (readonly [string, string])[]
+}
+
 interface Line {
 	ax: number
 	ay: number
@@ -26,6 +31,8 @@ interface Line {
 const ARROW_MARGIN = 7
 /** The smallest slide worth trying. */
 const STEP = 10
+/** Turns tried for a cluster when facing its gaps toward its arrows, in degrees. */
+const REORIENT_STEP = 15
 /** The settings of the call in progress (`pullIn` sets them): the gap, rounds, passes and arrow rule. */
 let C: LayoutConfig = DEFAULT_LAYOUT
 
@@ -42,12 +49,16 @@ export function pullIn(
 	units: ReadonlyMap<string, readonly string[]> = new Map(),
 	/** No node but the start comes nearer the start than this, centre to edge: the open ring its arrows cross. */
 	hub = 0,
-	config: LayoutConfig = DEFAULT_LAYOUT
+	config: LayoutConfig = DEFAULT_LAYOUT,
+	/** What a move is judged by: the arrows between skill nodes (cross-links too) and the light lines, as pairs of ids. */
+	segments: Segments = { arrows: [], lines: [] },
+	/** A skill node's cluster laid out again with its gaps toward these angles: members' centres relative to it. */
+	repack?: (skill: string, gates: number[]) => ReadonlyMap<string, Point>
 ): void {
 	const outer = C
 	C = config
 	try {
-		pullInNow(at, size, children, parentOf, isSkill, start, clumps, units, hub)
+		pullInNow(at, size, children, parentOf, isSkill, start, clumps, units, hub, segments, repack)
 	} finally {
 		C = outer
 	}
@@ -62,7 +73,9 @@ function pullInNow(
 	start: string,
 	clumps: readonly string[],
 	units: ReadonlyMap<string, readonly string[]>,
-	hub: number
+	hub: number,
+	segments: Segments,
+	repack: ((skill: string, gates: number[]) => ReadonlyMap<string, Point>) | undefined
 ): void {
 	const ids = [...at.keys()].filter((id) => size.has(id))
 	const index = new Map(ids.map((id, i) => [id, i]))
@@ -70,13 +83,29 @@ function pullInNow(
 	const grid = new Grid()
 	const bounds = (b: Box) => [b.x - b.w / 2, b.y - b.h / 2, b.x + b.w / 2, b.y + b.h / 2] as const
 	boxes.forEach((b, i) => grid.add(i, ...bounds(b)))
-	// The arrows between skill nodes, by the index of each end.
 	const skillParent = (id: string) => {
 		let p = parentOf.get(id)
 		while (p && !isSkill(p)) p = parentOf.get(p)
 		return p
 	}
-	const arrows = ids.filter((id) => isSkill(id) && skillParent(id) && index.has(skillParent(id)!)).map((id) => [index.get(skillParent(id)!)!, index.get(id)!] as const)
+	const pairs = (list: readonly (readonly [string, string])[]) =>
+		list.filter(([x, y]) => x !== y && index.has(x) && index.has(y)).map(([x, y]) => [index.get(x)!, index.get(y)!] as const)
+	const arrows = pairs(segments.arrows)
+	const lines = pairs(segments.lines)
+	const arrowsAt = new Map<number, number[]>()
+	arrows.forEach(([x, y], k) => {
+		for (const e of [x, y]) arrowsAt.set(e, [...(arrowsAt.get(e) ?? []), k])
+	})
+	const linesAt = new Map<number, number[]>()
+	lines.forEach(([x, y], k) => {
+		for (const e of [x, y]) linesAt.set(e, [...(linesAt.get(e) ?? []), k])
+	})
+	const lineBox = (k: number) => {
+		const [x, y] = lines[k]!
+		return [Math.min(boxes[x]!.x, boxes[y]!.x), Math.min(boxes[x]!.y, boxes[y]!.y), Math.max(boxes[x]!.x, boxes[y]!.x), Math.max(boxes[x]!.y, boxes[y]!.y)] as const
+	}
+	const lineGrid = new Grid()
+	lines.forEach((_, k) => lineGrid.add(k, ...lineBox(k)))
 
 	const branch = (root: string) => {
 		const out = new Set<number>()
@@ -87,45 +116,140 @@ function pullInNow(
 		}
 		return out
 	}
-	const moved = (i: number, moving: ReadonlySet<number>, dx: number, dy: number): Box => (moving.has(i) ? { ...boxes[i]!, x: boxes[i]!.x + dx, y: boxes[i]!.y + dy } : boxes[i]!)
-	/** How many nodes the arrows a move affects pass through, with the branch shifted by (dx, dy). */
-	const crossings = (moving: ReadonlySet<number>, dx: number, dy: number, onlySkills = false) => {
-		const counts = (j: number) => !onlySkills || isSkill(ids[j]!)
-		let n = 0
-		for (const [a, c] of arrows) {
-			const ma = moving.has(a)
-			const mc = moving.has(c)
-			const pa = moved(a, moving, dx, dy)
-			const pc = moved(c, moving, dx, dy)
-			const l = { ax: pa.x, ay: pa.y, bx: pc.x, by: pc.y }
-			if (ma || mc) {
-				for (const j of grid.alongLine(l, C.compactGap + ARROW_MARGIN)) if (j !== a && j !== c && counts(j) && !(ma && mc && moving.has(j)) && crosses(l, moved(j, moving, dx, dy), ARROW_MARGIN)) n++
-			} else {
-				for (const i of moving) if (counts(i) && crosses(l, moved(i, moving, dx, dy), ARROW_MARGIN)) n++
+
+	/** Where a node is under a trial: `pos` says where the moving ones go. */
+	type Trial = { moving: ReadonlySet<number>; pos: (i: number) => Point; shift?: Point }
+	const shiftBy = (moving: ReadonlySet<number>, dx: number, dy: number): Trial => ({
+		moving,
+		pos: (i) => (moving.has(i) ? { x: boxes[i]!.x + dx, y: boxes[i]!.y + dy } : boxes[i]!),
+		shift: { x: dx, y: dy },
+	})
+	const still = (moving: ReadonlySet<number>): Trial => ({ moving, pos: (i) => boxes[i]!, shift: { x: 0, y: 0 } })
+	const boxAt = (t: Trial, i: number): Box => ({ ...boxes[i]!, ...t.pos(i) })
+	/** The light lines touching the moving nodes, worked out once per set. */
+	const movingLines = new WeakMap<ReadonlySet<number>, Set<number>>()
+	const linesOf = (moving: ReadonlySet<number>) => {
+		let out = movingLines.get(moving)
+		if (!out) {
+			out = new Set<number>()
+			for (const i of moving) for (const k of linesAt.get(i) ?? []) out.add(k)
+			movingLines.set(moving, out)
+		}
+		return out
+	}
+	const regionOf = (t: Trial) => {
+		let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
+		for (const i of t.moving) {
+			for (const p of [boxes[i]!, t.pos(i)]) {
+				const r = reach(boxes[i]!)
+				;[x0, y0, x1, y1] = [Math.min(x0, p.x - r), Math.min(y0, p.y - r), Math.max(x1, p.x + r), Math.max(y1, p.y + r)]
 			}
 		}
-		return n
+		return [x0, y0, x1, y1] as const
+	}
+	/** The arrows a trial can change: those with an end moving, and those passing the region it moves through. */
+	const affected = (t: Trial) => {
+		const [x0, y0, x1, y1] = regionOf(t)
+		const out: number[] = []
+		arrows.forEach(([x, y], k) => {
+			if (t.moving.has(x) || t.moving.has(y)) return out.push(k)
+			const [p, q] = [boxes[x]!, boxes[y]!]
+			if (Math.max(p.x, q.x) >= x0 && Math.min(p.x, q.x) <= x1 && Math.max(p.y, q.y) >= y0 && Math.min(p.y, q.y) <= y1) out.push(k)
+		})
+		return out
+	}
+	/**
+	 * What a trial costs on these arrows: crossings, by the arrow rule (of nodes, light lines and other
+	 * arrows; of skill nodes and arrows; or none), and how far arrows run past the longest allowed.
+	 */
+	const judge = (R: readonly number[], t: Trial) => {
+		const rule = C.arrowRule
+		const inR = new Set(R)
+		let crossings = 0
+		let excess = 0
+		const mLines = linesOf(t.moving)
+		for (const k of R) {
+			const [x, y] = arrows[k]!
+			const p = t.pos(x)
+			const q = t.pos(y)
+			if (t.moving.has(x) || t.moving.has(y)) excess += Math.max(0, Math.hypot(q.x - p.x, q.y - p.y) - reach(boxes[x]!) - reach(boxes[y]!) - C.maxArrow)
+			if (rule === 'none') continue
+			const l = { ax: p.x, ay: p.y, bx: q.x, by: q.y }
+			// Nodes: the still ones from the grid, the moving ones where the trial puts them.
+			for (const j of grid.alongLine(l, C.compactGap + ARROW_MARGIN)) {
+				if (j === x || j === y || t.moving.has(j) || (rule === 'skills' && !isSkill(ids[j]!))) continue
+				if (crosses(l, boxes[j]!, ARROW_MARGIN)) crossings++
+			}
+			// Moved by a shift, the moving nodes near the arrow are those the grid has near it shifted back.
+			const back = t.shift && { ax: l.ax - t.shift.x, ay: l.ay - t.shift.y, bx: l.bx - t.shift.x, by: l.by - t.shift.y }
+			const nearMoving = back ? grid.alongLine(back, C.compactGap + ARROW_MARGIN).filter((j) => t.moving.has(j)) : t.moving
+			for (const j of nearMoving) {
+				if (j === x || j === y || (rule === 'skills' && !isSkill(ids[j]!))) continue
+				if (crosses(l, boxAt(t, j), ARROW_MARGIN)) crossings++
+			}
+			// Other arrows, each pair once.
+			arrows.forEach(([u, v], m) => {
+				if (m === k || (inR.has(m) && m < k) || u === x || u === y || v === x || v === y) return
+				if (segmentsCross(p, q, t.pos(u), t.pos(v))) crossings++
+			})
+			if (rule !== 'all') continue
+			// Light lines: the still ones from their grid, the moving ones where the trial puts them.
+			for (const m of lineGrid.alongLine(l, C.compactGap)) {
+				if (mLines.has(m)) continue
+				const [u, v] = lines[m]!
+				if (u === x || u === y || v === x || v === y) continue
+				if (segmentsCross(p, q, boxes[u]!, boxes[v]!)) crossings++
+			}
+			for (const m of back ? lineGrid.alongLine(back, C.compactGap).filter((m) => mLines.has(m)) : mLines) {
+				const [u, v] = lines[m]!
+				if (u === x || u === y || v === x || v === y) continue
+				if (segmentsCross(p, q, t.pos(u), t.pos(v))) crossings++
+			}
+		}
+		return { crossings, excess }
 	}
 	const hubAt = at.get(start) ?? { x: 0, y: 0 }
 	const startIndex = index.get(start)
-	/** The crossings the arrow rule counts: of skill nodes, of every node, or none. */
-	const cross = (moving: ReadonlySet<number>, dx: number, dy: number) => (C.arrowRule === 'none' ? 0 : crossings(moving, dx, dy, C.arrowRule === 'skills'))
-	const covers = (moving: ReadonlySet<number>, dx: number, dy: number) => {
-		for (const i of moving) {
-			const b = moved(i, moving, dx, dy)
+	/** Whether a trial puts a moving node on another, or inside the open ring round the middle. */
+	const covers = (t: Trial) => {
+		for (const i of t.moving) {
+			const b = boxAt(t, i)
 			if (hub && i !== startIndex && Math.hypot(b.x - hubAt.x, b.y - hubAt.y) - reach(b) < hub) return true
 			const [x0, y0, x1, y1] = bounds(b)
-			for (const j of grid.near(x0 - C.compactGap, y0 - C.compactGap, x1 + C.compactGap, y1 + C.compactGap)) if (!moving.has(j) && overlaps(b, boxes[j]!, C.compactGap)) return true
+			for (const j of grid.near(x0 - C.compactGap, y0 - C.compactGap, x1 + C.compactGap, y1 + C.compactGap)) if (!t.moving.has(j) && overlaps(b, boxes[j]!, C.compactGap)) return true
 		}
 		return false
 	}
-	const move = (moving: ReadonlySet<number>, dx: number, dy: number) => {
-		for (const i of moving) {
+	/**
+	 * Whether a trial puts two of its moving nodes on each other: a shift can't, but a turn can, as the
+	 * works are boxes that don't turn with their cluster.
+	 */
+	const crowds = (t: Trial) => {
+		const list = [...t.moving].map((i) => boxAt(t, i))
+		for (let a = 0; a < list.length; a++) for (let b = a + 1; b < list.length; b++) if (overlaps(list[a]!, list[b]!, C.memberPad)) return true
+		return false
+	}
+	/** A trial is allowed when it covers nothing, crosses no more than before and stretches no arrow further past the longest allowed. */
+	const allowed = (t: Trial) => {
+		if (covers(t)) return false
+		const R = affected(t)
+		const before = judge(R, still(t.moving))
+		const after = judge(R, t)
+		return after.crossings <= before.crossings && after.excess <= before.excess + 0.5
+	}
+	const fits = (moving: ReadonlySet<number>, dx: number, dy: number) => allowed(shiftBy(moving, dx, dy))
+	const apply = (t: Trial) => {
+		const next = [...t.moving].map((i) => [i, t.pos(i)] as const)
+		const touched = linesOf(t.moving)
+		for (const k of touched) lineGrid.remove(k, ...lineBox(k))
+		for (const [i, p] of next) {
 			grid.remove(i, ...bounds(boxes[i]!))
-			boxes[i] = { ...boxes[i]!, x: boxes[i]!.x + dx, y: boxes[i]!.y + dy }
+			boxes[i] = { ...boxes[i]!, x: p.x, y: p.y }
 			grid.add(i, ...bounds(boxes[i]!))
 		}
+		for (const k of touched) lineGrid.add(k, ...lineBox(k))
 	}
+	const move = (moving: ReadonlySet<number>, dx: number, dy: number) => apply(shiftBy(moving, dx, dy))
 
 	const order = [start]
 	for (let i = 0; i < order.length; i++) order.push(...(children.get(order[i]!) ?? []))
@@ -137,16 +261,13 @@ function pullInNow(
 		const self = () => boxes[index.get(id)!]!
 		let gap = Math.hypot(self().x - p.x, self().y - p.y) - reach(self()) - reach(p) - C.compactGap
 		let step = gap / 2
-		const before = () => cross(moving, 0, 0)
-		let now = before()
 		while (step > STEP && gap > 0) {
 			const d = Math.hypot(p.x - self().x, p.y - self().y)
 			const [ux, uy] = [(p.x - self().x) / d, (p.y - self().y) / d]
 			const s = Math.min(step, gap)
-			if (!covers(moving, ux * s, uy * s) && cross(moving, ux * s, uy * s) <= now) {
+			if (fits(moving, ux * s, uy * s)) {
 				move(moving, ux * s, uy * s)
 				gap -= s
-				now = before()
 			} else step /= 2
 		}
 	}
@@ -185,15 +306,13 @@ function pullInNow(
 				// No further along this way than brings the clump nearest the start.
 				let left = d * Math.cos(turn)
 				let step = left / 2
-				let now = cross(members, 0, 0)
 				let went = 0
 				while (step > STEP && left > STEP) {
 					step = Math.min(step, left)
-					if (outward(ux * step, uy * step) && !covers(members, ux * step, uy * step) && cross(members, ux * step, uy * step) <= now) {
+					if (outward(ux * step, uy * step) && fits(members, ux * step, uy * step)) {
 						left -= step
 						move(members, ux * step, uy * step)
 						went += step
-						now = cross(members, 0, 0)
 					} else step /= 2
 				}
 				moved += went
@@ -202,7 +321,56 @@ function pullInNow(
 		if (moved < STEP) break
 	}
 	if (C.shrinkTree) shrinkTree()
+	if (C.reorientClusters) reorient()
 	ids.forEach((id, i) => at.set(id, { x: boxes[i]!.x, y: boxes[i]!.y }))
+
+	/**
+	 * Last, each cluster's gaps are turned to face where its arrows come in now that the clusters have
+	 * moved: the cluster laid out again with its gaps toward its arrows (`repack`), or turned whole
+	 * about its skill node, whichever crosses least and covers nothing; kept only if it crosses less
+	 * than the cluster does as it is.
+	 */
+	function reorient(): void {
+		for (const [u, list] of units) {
+			const centre = index.get(u)
+			if (centre === undefined) continue
+			const members = new Set(list.filter((id) => id !== u && index.has(id)).map((id) => index.get(id)!))
+			if (!members.size) continue
+			const c = boxes[centre]!
+			const candidates: Trial[] = []
+			const gates = (arrowsAt.get(centre) ?? []).map((k) => {
+				const [x, y] = arrows[k]!
+				const o = boxes[x === centre ? y : x]!
+				return Math.atan2(o.y - c.y, o.x - c.x)
+			})
+			const fresh = repack?.(u, gates)
+			if (fresh) candidates.push({ moving: members, pos: (i) => (members.has(i) && fresh.has(ids[i]!) ? { x: c.x + fresh.get(ids[i]!)!.x, y: c.y + fresh.get(ids[i]!)!.y } : boxes[i]!) })
+			for (let deg = REORIENT_STEP; deg < 360; deg += REORIENT_STEP) {
+				const [cos, sin] = [Math.cos((deg / 180) * Math.PI), Math.sin((deg / 180) * Math.PI)]
+				candidates.push({
+					moving: members,
+					pos: (i) => {
+						if (!members.has(i)) return boxes[i]!
+						const [dx, dy] = [boxes[i]!.x - c.x, boxes[i]!.y - c.y]
+						return { x: c.x + dx * cos - dy * sin, y: c.y + dx * sin + dy * cos }
+					},
+				})
+			}
+			// The change each candidate makes, over every arrow either it or the cluster as it is touches.
+			let best = 0
+			let pick: Trial | null = null
+			for (const t of candidates) {
+				if (covers(t) || crowds(t)) continue
+				const R = affected(t)
+				const change = judge(R, t).crossings - judge(R, still(members)).crossings
+				if (change < best) {
+					best = change
+					pick = t
+				}
+			}
+			if (pick) apply(pick)
+		}
+	}
 
 	/**
 	 * Last, ShrinkTree (ELK's SPOrE compaction, after Nachmanson et al.'s GTree run backwards): the
@@ -282,20 +450,28 @@ function pullInNow(
 				const moving = subtree(u)
 				let left = Math.max(0, d - from.r * 0.25)
 				let step = left / 2
-				let now = cross(moving, 0, 0)
 				while (step > STEP && left > STEP) {
 					step = Math.min(step, left)
-					if (!covers(moving, ux * step, uy * step) && cross(moving, ux * step, uy * step) <= now) {
+					if (fits(moving, ux * step, uy * step)) {
 						move(moving, ux * step, uy * step)
 						left -= step
 						moved += step
-						now = cross(moving, 0, 0)
 					} else step /= 2
 				}
 			}
 			if (moved < STEP) break
 		}
 	}
+}
+
+/** Do the segments p→q and r→s cross (not merely touch at an end)? */
+function segmentsCross(p: Point, q: Point, r: Point, s: Point): boolean {
+	const d = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+	const d1 = d(r, s, p)
+	const d2 = d(r, s, q)
+	const d3 = d(p, q, r)
+	const d4 = d(p, q, s)
+	return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
 }
 
 /** The free space between two shapes, 0 when they touch or overlap. */
@@ -315,7 +491,10 @@ class Grid {
 	private cells = new Map<number, number[]>()
 	private seen: number[] = []
 	private stamp = 0
-	private static SIZE = 64
+	/** About a node's size: a long arrow then walks few cells, and a cell holds few nodes. */
+	private static SIZE = 160
+	/** The cells a query has looked in already, so a line's overlapping steps don't look twice. */
+	private visited = new Set<number>()
 	private key = (i: number, j: number) => i * 65536 + j
 
 	add(index: number, x0: number, y0: number, x1: number, y1: number): void {
@@ -345,6 +524,7 @@ class Grid {
 	near(x0: number, y0: number, x1: number, y1: number): number[] {
 		const out: number[] = []
 		this.stamp++
+		this.visited.clear()
 		this.collect(x0, y0, x1, y1, out)
 		return out
 	}
@@ -353,6 +533,7 @@ class Grid {
 	alongLine(l: Line, pad: number): number[] {
 		const out: number[] = []
 		this.stamp++
+		this.visited.clear()
 		const steps = Math.max(1, Math.ceil(Math.hypot(l.bx - l.ax, l.by - l.ay) / (Grid.SIZE / 2)))
 		for (let i = 0; i <= steps; i++) {
 			const x = l.ax + ((l.bx - l.ax) * i) / steps
@@ -366,7 +547,10 @@ class Grid {
 		const s = Grid.SIZE
 		for (let i = Math.floor(x0 / s); i <= Math.floor(x1 / s); i++) {
 			for (let j = Math.floor(y0 / s); j <= Math.floor(y1 / s); j++) {
-				const cell = this.cells.get(this.key(i, j))
+				const k = this.key(i, j)
+				if (this.visited.has(k)) continue
+				this.visited.add(k)
+				const cell = this.cells.get(k)
 				if (!cell) continue
 				for (const index of cell) {
 					if (this.seen[index] === this.stamp) continue

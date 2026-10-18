@@ -125,7 +125,20 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	// against the others, closing the empty regions between branches.
 	const clumps = order.filter((id) => depth.get(id)! > C.sharedLevels)
 	const units = new Map(order.map((id) => [id, [id, ...clusters.get(id)!.at.keys()]]))
-	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, C)
+	// What every move is judged by: the arrows, and the light lines (a spoke to each entry, a chain through its works).
+	const lines: [string, string][] = []
+	for (const id of order)
+		for (const f of families.get(id)!) {
+			lines.push([id, f.entry.id])
+			let last = f.entry.id
+			for (const w of f.works) {
+				lines.push([last, w.id])
+				last = w.id
+			}
+		}
+	const arrows = (options.arrows ?? []).map((e) => [e.from, e.to] as const)
+	const repack = (skill: string, gates: number[]) => orbitCluster(size.get(skill)!, families.get(skill)!, gates, C).at
+	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, C, { arrows, lines }, repack)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - C.clusterGap * 4
 	for (const n of nodes) {
 		if (out.has(n.id)) continue

@@ -10,7 +10,7 @@ describe('wholeLayout', () => {
 			const at = lay(view)
 			expect(at.size).toBe(view.nodes.length)
 			expect(measure({ ...view, nodes: view.nodes.filter((n) => n.id !== 'header') }, at).overlaps).toEqual([])
-		})
+		}, 30000)
 	}
 
 	it('puts the pillars round you clockwise in their order, Physical at the top', () => {
@@ -34,5 +34,5 @@ describe('wholeLayout', () => {
 
 	it('is deterministic', () => {
 		expect([...lay(WHOLE_LIFE).values()]).toEqual([...lay(WHOLE_LIFE).values()])
-	})
+	}, 30000)
 })

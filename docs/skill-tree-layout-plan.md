@@ -190,3 +190,22 @@ than a maximum arrow length, shared nodes on the border between their parents, t
 crossings with bounded local moves. Compaction stays, under a minimum spacing. Each view is laid out
 on its own by the same algorithm. Each new step joins the tuner as a setting.
 
+## Crossings made visible to the layout (2026-10-18)
+
+The user found arrows over light lines and over orbits of works next to open space. Causes: the
+packing counted only arrows through nodes (skill nodes by default), never arrows over light lines or
+other arrows; each cluster's gaps faced where its arrows went before compaction moved it; ShrinkTree
+could stretch arrows without limit; and the "middle" rule allowed arrows over entries and works.
+
+Built: every compaction move is judged by every crossing (an arrow over a node, a light line or
+another arrow; `arrowRule` 'all', the new default) and by the longest arrow (`maxArrow`, 600: a move
+may not stretch an arrow past it further than it already is); last, each cluster is laid out again
+with its gaps toward its arrows, or turned whole, whichever crosses least (`reorientClusters`). The
+grid now walks bigger cells, each once per query.
+
+Adler board, old rules → now: arrows over works 31 → 2, over light lines 37 → 4, arrow over arrow
+1 → 1, through skill nodes 0 → 0; 5629×6193 px (17.9%) → 6519×8043 (11.9%); 0.36 s. The full test
+board: 2.8 s. Left: 17 of 56 arrows are longer than 600 px, most made by the skeleton itself (it
+spaces rings from the middle, not from each parent), and the longest are cross-links. That is phase
+B: placement from the parent within wedges, and sibling ordering.
+

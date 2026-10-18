@@ -36,14 +36,21 @@ export function showAll(name: string, source: string): ShowAll {
  * Several documents in one vault, viewed from one tree: `mounts` hang trees on nodes the way the
  * whole-life test board does. `mode` is `all` or `overview`.
  */
-export function showView(name: string, sources: readonly string[], treeId: string, mode: 'all' | 'overview', mounts: Record<string, string> = {}): ShowAll {
+export function showView(
+	name: string,
+	sources: readonly string[],
+	treeId: string,
+	mode: 'all' | 'overview',
+	mounts: Record<string, string> = {},
+	keep: (treeId: string) => boolean = () => true
+): ShowAll {
 	const docs = sources.map((source) => {
 		const parsed = parseSyllabus(source)
 		if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
 		return parsed.doc
 	})
 	const trees: TreeDefs = Object.fromEntries(
-		docs.flatMap((doc) => doc.trees).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '' }])
+		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '' }])
 	)
 	const items: Record<string, { itemId: string; parent: string; children: string[]; tags: string[] }> = {}
 	const add = (item: DocItem, parent: string) => {
@@ -73,6 +80,8 @@ export function showView(name: string, sources: readonly string[], treeId: strin
 const LIFE_MOUNTS = { adler: 'mastery/mental', director: 'mastery/practical' }
 /** The whole-life test board: you, the pillars, the test trees, Adler on Mental and Director on Practical. */
 export const WHOLE_LIFE = showView('whole-life', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'all', LIFE_MOUNTS)
+/** The test board as the dev command now makes it: you, the pillars and Adler. */
+export const ADLER_LIFE = showView('adler-life', [lifeYaml, adlerYaml], 'mastery', 'all', LIFE_MOUNTS, (t) => t === 'mastery' || t === 'adler')
 /** The same in the skill-node view. */
 export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'overview', LIFE_MOUNTS)
 

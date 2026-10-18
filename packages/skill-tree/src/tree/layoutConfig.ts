@@ -43,8 +43,12 @@ export interface LayoutConfig {
 	shrinkRounds: number
 	/** How far from straight in gravity may move a branch, in degrees. */
 	gravityFan: number
-	/** What a compaction move may not make worse: crossings of skill nodes, of every node, or nothing. */
+	/** The longest an arrow between skill nodes may get, edge to edge: compaction never stretches one past it. */
+	maxArrow: number
+	/** What a move may not make worse: every crossing (of nodes, light lines and arrows), of skill nodes and arrows, or nothing. */
 	arrowRule: 'skills' | 'all' | 'none'
+	/** Last, turn each cluster so its gaps face where its arrows come in. */
+	reorientClusters: boolean
 }
 
 export const DEFAULT_LAYOUT: LayoutConfig = {
@@ -67,7 +71,9 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	gravityRounds: 4,
 	shrinkRounds: 4,
 	gravityFan: 60,
-	arrowRule: 'skills',
+	maxArrow: 600,
+	arrowRule: 'all',
+	reorientClusters: true,
 }
 
 type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
@@ -99,16 +105,18 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Compaction', key: 'gravityRounds', label: 'Gravity rounds', min: 0, max: 12, step: 1 },
 	{ group: 'Compaction', key: 'shrinkRounds', label: 'ShrinkTree rounds', min: 0, max: 12, step: 1 },
 	{ group: 'Compaction', key: 'gravityFan', label: 'Gravity may veer (°)', min: 0, max: 90, step: 5 },
+	{ group: 'Arrows', key: 'maxArrow', label: 'Longest arrow (edge to edge)', min: 100, max: 4000, step: 50 },
 	{
-		group: 'Compaction',
+		group: 'Arrows',
 		key: 'arrowRule',
-		label: 'Arrows a move may not make cross',
+		label: 'Crossings a move may not add',
 		options: [
-			{ value: 'skills', label: 'Skill nodes' },
-			{ value: 'all', label: 'Any node' },
+			{ value: 'all', label: 'Any: nodes, lines, arrows' },
+			{ value: 'skills', label: 'Skill nodes and arrows' },
 			{ value: 'none', label: 'Anything goes' },
 		],
 	},
+	{ group: 'Arrows', key: 'reorientClusters', label: "Turn clusters' gaps toward their arrows" },
 ]
 
 const KEY = 'lifeboard:skill-tree-layout'

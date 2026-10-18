@@ -5,7 +5,7 @@ import type { EntryProps } from '../board'
 import { Tick } from '../item/ItemComponent'
 import { getItems, getSkillIndex, isItemDone, progressOf } from '../syllabus'
 
-const RING = 2 * Math.PI * 44
+const RING = 2 * Math.PI * 46
 
 /**
  * An entry or a work in a tree view (docs/skill-tree-plan.md, "Rebuild"): a view of a vault item.
@@ -32,14 +32,14 @@ function EntryComponentImpl({ shape, editor }: NodeComponentProps<EntryProps>) {
 	const fraction = progress ? (progress.total ? progress.done / progress.total : 0) : done ? 1 : 0
 	return (
 		<div className={`lb-entry${done ? ' lb-entry--done' : ''}${draft}`} title={item.title}>
+			<svg className="lb-entry__ring" viewBox="0 0 100 100" aria-hidden>
+				<circle className="lb-entry__track" cx="50" cy="50" r="46" />
+				<circle className="lb-entry__fill" cx="50" cy="50" r="46" strokeDasharray={`${RING * fraction} ${RING}`} transform="rotate(-90 50 50)" />
+			</svg>
 			<div className="lb-entry__disc">
-				<svg className="lb-entry__ring" viewBox="0 0 100 100" aria-hidden>
-					<circle className="lb-entry__track" cx="50" cy="50" r="44" />
-					<circle className="lb-entry__fill" cx="50" cy="50" r="44" strokeDasharray={`${RING * fraction} ${RING}`} transform="rotate(-90 50 50)" />
-				</svg>
+				<span className="lb-entry__title">{item.title || 'Untitled'}</span>
 				{progress ? <span className="lb-entry__count">{progress.done}/{progress.total}</span> : <Tick item={item} editor={editor} anchor={anchor} />}
 			</div>
-			<span className="lb-entry__title">{item.title || 'Untitled'}</span>
 		</div>
 	)
 }

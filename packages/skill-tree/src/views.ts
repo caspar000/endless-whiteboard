@@ -97,6 +97,7 @@ export function boardTrees(editor: Editor): TreeDefs {
 			mount: draftMount(shape),
 			nodes: [],
 			removed: [],
+			draft: '',
 		}
 		if (tree.nodes.some((n) => n.nodeId === shape.props.nodeId)) continue
 		const { nodeId, name, kind, icon, sector, ring, requires } = shape.props

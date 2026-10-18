@@ -37,6 +37,30 @@ list outline, the split import; (2) the tree view with entries and works, focus 
 remembered positions, settings; (3) springy drag, live simulation, Re-calculate; (4) the Up Next card;
 (5) pop-out cards. Then the director content.
 
+### Rebuild feedback round (node sizes, author and work, compact layout, focus), as built
+
+From the user's first go with the rebuilt Adler, 2026-10-18:
+
+- **Sizes.** Skill nodes are 150 px. An entry is a 110 px disc with its name inside, then its count
+  or tick, so a line from it starts at the disc's centre like a skill node's.
+- **Author and work.** Adler's entries are the author ("Herodotus", "Plato", "Virgil") with the works
+  as children ("History"; the dialogues; "Works"). Ids are unchanged, so re-importing merges.
+  Anonymous entries (Old Testament, Song of Roland) stay single entries.
+- **Drafts are vault data.** An imported tree and its new nodes carry `draft` (the importing board's
+  id) in the vault, like items. The import writes only the definitions and a header; the view makes
+  the node shapes and can therefore hide them. Shapes read their dashed outline from the vault.
+  Confirm clears the marks; Discard removes draft trees and draft nodes, with their shapes, and
+  leaves no tombstones. This replaces the draft node shapes and their `lifeboard:skillTreeMeta`.
+- **Compact Show all and focus.** A view with entries is laid out in clusters: each skill node with
+  its entries and works close around it, then the skill nodes placed as discs as big as their
+  clusters. A disc sits just beyond the one it hangs from (`layoutGraph`'s `balloon`), not on a ring
+  spaced by the biggest cluster at its depth. On Adler that doubled how much of Show all's area the
+  nodes fill.
+- **Focus** now leaves only the neighbourhood on the board: on Greek Philosophy, 4 skill nodes and
+  23 entries and works, nothing overlapping, the header included. Back restores every position.
+  Checked with a Playwright run in a fresh profile on an unconfirmed import: focus, Back, Show all,
+  Confirm (no dashes left), and Discard (no shapes or trees left).
+
 ### Rebuild phases 4 and 5 (Up next per track, pop-out cards), as built
 
 - **Up next** (`node.upNext`, migration `PerTrack`) shows one track: `trackId`, or the first active
@@ -171,7 +195,8 @@ remembered positions, settings; (3) springy drag, live simulation, Re-calculate;
 - **YAML:** `trees:` holds several trees in one document (each after the first needs an `id`), and
   any tree can say `mount: <node>` (qualified with the goal unless it has a `/`). A tree mounted on a
   node of the same document gets no header; its name, goal and mount travel on its draft nodes
-  (meta `lifeboard:skillTreeMeta`) and reach the vault on Confirm. The document is laid out whole
+  (meta `lifeboard:skillTreeMeta`) and reach the vault on Confirm. (Since the feedback round they go
+  straight into the vault, marked as a draft.) The document is laid out whole
   around each headed tree's root, mounted branches included.
 - **New branches on a laid-out board** (a tree hung on a pillar from another board) are laid out as
   their own little tree, then slid outward from the middle of the board's nodes until they cover
@@ -579,7 +604,7 @@ tracks:
           - { id: oedipus, title: Oedipus the King, core: true }
           - { id: antigone, title: Antigone }
       - id: 010-plato
-        title: Plato, Dialogues
+        title: Plato
         kind: study
         medium: book
         tags: [greek-philosophy]

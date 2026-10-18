@@ -94,6 +94,12 @@ export interface GraphLayoutOptions {
 	clearEdges?: (edge: GraphEdge) => boolean
 	/** Boxes already on the board that must not be covered, as centres relative to the root. They never move. */
 	obstacles?: readonly { x: number; y: number; w: number; h: number }[]
+	/**
+	 * Round boxes of very different sizes (a skill node with its entries around it): each node sits
+	 * just beyond its parent instead of on its depth's ring, so a small node isn't pushed out as far
+	 * as the biggest one beside it.
+	 */
+	balloon?: boolean
 }
 
 interface Body {
@@ -162,7 +168,7 @@ export function layoutGraph(
 	// Ring radii: at least a box and a gap further out than the ring inside, and wide enough that
 	// the ring's nodes fit around it side by side.
 	// Each node's own reach, so a ring of small work dots sits close and a ring of skill discs wide.
-	const reachOf = (id: string) => Math.hypot(byId.get(id)!.w, byId.get(id)!.h) * 0.45
+	const reachOf = (id: string) => reachOfBox(byId.get(id)!, options.balloon)
 	const widest = new Map<number, number>()
 	const around = new Map<number, number>()
 	for (const [id, p] of placed) {
@@ -177,12 +183,15 @@ export function layoutGraph(
 	}
 	const unit = Math.max(...ids.map(reachOf)) * 2 + gap
 
-	const bodies: Body[] = ids.map((id) => {
-		const p = placed.get(id)!
+	const at = new Map<string, { x: number; y: number }>()
+	for (const [id, p] of placed) {
 		const r = radius[p.depth] ?? 0
+		at.set(id, { x: r * Math.cos(p.angle), y: r * Math.sin(p.angle) })
+	}
+	if (options.balloon) balloon(ids, placed, parentOf, reachOf, gap, at)
+	const bodies: Body[] = ids.map((id) => {
+		const { x, y } = at.get(id)!
 		const n = byId.get(id)!
-		const x = r * Math.cos(p.angle)
-		const y = r * Math.sin(p.angle)
 		return { id, x, y, w: n.w, h: n.h, ax: x, ay: y, pinned: id === single }
 	})
 	const index = new Map(bodies.map((b, i) => [b.id, i]))
@@ -192,7 +201,7 @@ export function layoutGraph(
 		.filter((e) => index.has(e.from) && index.has(e.to))
 		.map((e) => ({ a: index.get(e.from)!, b: index.get(e.to)!, tree: parentOf(e.to) === e.from, clear: options.clearEdges?.(e) ?? true }))
 
-	relax(bodies, springs, unit, gap)
+	relax(bodies, springs, unit, gap, options.balloon)
 	separate(bodies, springs, gap)
 
 	const out = new Map<string, { x: number; y: number }>()
@@ -200,10 +209,46 @@ export function layoutGraph(
 	return out
 }
 
+/** How far a box reaches from its centre: its half-diagonal, a little short of it, or its radius when round. */
+const reachOfBox = (b: { w: number; h: number }, round = false) => (round ? Math.max(b.w, b.h) / 2 : Math.hypot(b.w, b.h) * 0.45)
+
+/**
+ * Moves each node to just beyond its parent, along the angle the tidy tree gave it: far enough for
+ * the two to clear, and for it and its siblings to fit side by side in its arc.
+ */
+function balloon(
+	ids: readonly string[],
+	placed: ReadonlyMap<string, Placement>,
+	parentOf: (id: string) => string,
+	reachOf: (id: string) => number,
+	gap: number,
+	at: Map<string, { x: number; y: number }>
+): void {
+	const kids = new Map<string, string[]>()
+	for (const id of ids) {
+		const parent = parentOf(id)
+		if (parent) kids.set(parent, [...(kids.get(parent) ?? []), id])
+	}
+	const queue = ids.filter((id) => !parentOf(id))
+	for (let i = 0; i < queue.length; i++) {
+		const parent = queue[i]!
+		const from = at.get(parent)!
+		const siblings = kids.get(parent) ?? []
+		// The arc the siblings share, at the distance that fits the widest of them.
+		const span = Math.max(0.3, (2 * Math.PI) / Math.max(1, siblings.length))
+		for (const id of siblings) {
+			const angle = placed.get(id)!.angle
+			const d = Math.max(reachOf(parent) + reachOf(id) + gap, (2 * reachOf(id) + gap) / span)
+			at.set(id, { x: from.x + d * Math.cos(angle), y: from.y + d * Math.sin(angle) })
+			queue.push(id)
+		}
+	}
+}
+
 /** The soft pass: a few hundred cooling steps of repulsion, springs and the pull home. */
-function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[], unit: number, gap: number): void {
+function relax(bodies: Body[], springs: { a: number; b: number; tree: boolean }[], unit: number, gap: number, round = false): void {
 	// How far apart two bodies want to be: their reaches and a gap.
-	const reach = bodies.map((b) => Math.hypot(b.w, b.h) * 0.45)
+	const reach = bodies.map((b) => reachOfBox(b, round))
 	const want = (i: number, j: number) => reach[i]! + reach[j]! + gap
 	const steps = 240
 	for (let step = 0; step < steps; step++) {

@@ -13973,7 +13973,7 @@ button.lb-props__eye:hover {
 	border: 1px solid var(--lb-border);
 }
 .lb-skillnode__name {
-	font-size: 11.5px;
+	font-size: 12.5px;
 	font-weight: 600;
 	line-height: 1.25;
 	overflow-wrap: anywhere;
@@ -14387,65 +14387,67 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 }
 
-/* Entries and works in a tree view (entry/EntryComponent.tsx): a small disc with a progress ring,
-   and a tick dot with its title. */
+/* Entries and works in a tree view (entry/EntryComponent.tsx): an entry is a disc with its name
+   inside and a ring for its works; a work is a tick dot with its title. */
 .lb-entry {
+	position: relative;
 	width: 100%;
 	height: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
+	display: grid;
+	place-items: center;
 	font-family: var(--lb-font);
 	color: var(--lb-text);
 }
-.lb-entry__disc {
-	position: relative;
-	width: 60px;
-	height: 60px;
-	flex: none;
-	display: grid;
-	place-items: center;
-	border-radius: 50%;
-	background: var(--lb-surface);
-	border: 1px solid var(--lb-border);
-}
 .lb-entry__ring {
 	position: absolute;
-	inset: -3px;
-	width: calc(100% + 6px);
-	height: calc(100% + 6px);
+	inset: 0;
+	width: 100%;
+	height: 100%;
 	overflow: visible;
 }
 .lb-entry__track {
 	fill: none;
 	stroke: var(--lb-border);
-	stroke-width: 5;
+	stroke-width: 4;
 }
 .lb-entry__fill {
 	fill: none;
 	stroke: var(--lb-accent);
-	stroke-width: 5;
+	stroke-width: 4;
 	stroke-linecap: round;
 	transition: stroke-dasharray 300ms ease;
 }
-.lb-entry__count {
+.lb-entry__disc {
+	width: 84%;
+	height: 84%;
+	border-radius: 50%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	padding: 8px;
+	text-align: center;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+}
+.lb-entry__title {
 	font-size: 11px;
-	color: var(--lb-text-dim);
+	font-weight: 600;
+	line-height: 1.2;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+.lb-entry__count {
+	font-size: 10px;
+	color: var(--lb-text-faint);
 	font-variant-numeric: tabular-nums;
 }
 .lb-entry .lb-skill__check {
 	pointer-events: auto;
-}
-.lb-entry__title {
-	width: 100%;
-	font-size: 11px;
-	line-height: 1.2;
-	text-align: center;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
 }
 .lb-entry--done .lb-entry__disc {
 	background: var(--lb-accent-tint);

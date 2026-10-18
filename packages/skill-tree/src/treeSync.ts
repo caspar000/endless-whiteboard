@@ -4,6 +4,7 @@ import { getItems } from './syllabus'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews } from './tree/viewSync'
+import type { ViewContents } from './views'
 import { watchPhysics } from './tree/physics'
 import {
 	getTreeDef,
@@ -197,6 +198,7 @@ export function syncBoard(editor: Editor): void {
 	for (const treeId of view.trees) redraw.add(treeId)
 	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return
 
+	let laidOutNew: ViewContents[] = []
 	syncing = true
 	try {
 		editor.run(
@@ -204,13 +206,15 @@ export function syncBoard(editor: Editor): void {
 				if (removals.length) editor.deleteShapes(removals.map((s) => s.id))
 				editor.updateShapes([
 					...updates.map(({ shape, def }) => {
-						const { nodeId, ...props } = def
+						// The draft mark lives in the vault only; the shape reads it from there.
+						const { nodeId, draft, ...props } = def
 						void nodeId
+						void draft
 						return { id: shape.id, type: SKILL_TYPE, props }
 					}),
 					...headerUpdates,
 				] as never)
-				applyViews(editor, view)
+				laidOutNew = applyViews(editor, view)
 				for (const treeId of redraw) drawPrerequisites(editor, treeId)
 				if (view.createSkills.length || view.remove.length || view.mountsStale) drawMounts(editor)
 			},
@@ -219,7 +223,7 @@ export function syncBoard(editor: Editor): void {
 	} finally {
 		syncing = false
 	}
-	// Coming into an arrangement brings the camera to it.
-	const switched = view.views.find((v) => v.from !== null)
-	if (switched) frameView(editor, switched.view)
+	// Coming into an arrangement, or a tree new to the board, brings the camera to it.
+	const switched = view.views.find((v) => v.from !== null)?.view ?? laidOutNew[0]
+	if (switched) frameView(editor, switched)
 }

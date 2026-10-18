@@ -24,7 +24,7 @@ tracks:
         medium: book
         tags: [scripture]
       - id: 003-aeschylus-tragedies
-        title: "Aeschylus, Tragedies"
+        title: "Aeschylus"
         kind: study
         medium: play
         tags: [greek-epic-drama]
@@ -32,7 +32,7 @@ tracks:
           - { id: oresteia, title: "Oresteia", medium: play, core: true }
           - { id: prometheus-bound, title: "Prometheus Bound", medium: play }
       - id: 004-sophocles-tragedies
-        title: "Sophocles, Tragedies"
+        title: "Sophocles"
         kind: study
         medium: play
         tags: [greek-epic-drama]
@@ -41,12 +41,15 @@ tracks:
           - { id: antigone, title: "Antigone", medium: play }
           - { id: oedipus-at-colonus, title: "Oedipus at Colonus", medium: play }
       - id: 005-herodotus-history
-        title: "Herodotus, History"
+        title: "Herodotus"
         kind: study
         medium: book
         tags: [greek-history]
+        childRule: all
+        children:
+          - { id: history, title: "History", medium: work, core: true }
       - id: 006-euripides-tragedies
-        title: "Euripides, Tragedies"
+        title: "Euripides"
         kind: study
         medium: play
         tags: [greek-epic-drama]
@@ -55,17 +58,23 @@ tracks:
           - { id: hippolytus, title: "Hippolytus", medium: play }
           - { id: the-bacchae, title: "The Bacchae", medium: play, core: true }
       - id: 007-thucydides-history-of-the-peloponnesian-war
-        title: "Thucydides, History of the Peloponnesian War"
+        title: "Thucydides"
         kind: study
         medium: book
         tags: [greek-history]
+        childRule: all
+        children:
+          - { id: history-of-the-peloponnesian-war, title: "History of the Peloponnesian War", medium: work, core: true }
       - id: 008-hippocrates-medical-writings
-        title: "Hippocrates, Medical writings"
+        title: "Hippocrates"
         kind: study
         medium: book
         tags: [greek-science]
+        childRule: all
+        children:
+          - { id: medical-writings, title: "Medical Writings", medium: work, core: true }
       - id: 009-aristophanes-comedies
-        title: "Aristophanes, Comedies"
+        title: "Aristophanes"
         kind: study
         medium: play
         tags: [greek-epic-drama]
@@ -74,7 +83,7 @@ tracks:
           - { id: the-birds, title: "The Birds", medium: play }
           - { id: the-frogs, title: "The Frogs", medium: play }
       - id: 010-plato-dialogues
-        title: "Plato, Dialogues"
+        title: "Plato"
         kind: study
         medium: book
         tags: [greek-philosophy]
@@ -104,7 +113,7 @@ tracks:
           - { id: on-the-soul, title: "On the Soul", medium: work }
           - { id: organon, title: "Organon", medium: work }
       - id: 012-epicurus-letters
-        title: "Epicurus, Letters"
+        title: "Epicurus"
         kind: study
         medium: book
         tags: [greek-philosophy]
@@ -113,10 +122,13 @@ tracks:
           - { id: letter-to-herodotus, title: "Letter to Herodotus", medium: work }
           - { id: letter-to-menoeceus, title: "Letter to Menoeceus", medium: work }
       - id: 013-euclid-elements
-        title: "Euclid, Elements"
+        title: "Euclid"
         kind: study
         medium: book
         tags: [greek-science]
+        childRule: all
+        children:
+          - { id: elements, title: "Elements", medium: work, core: true }
       - id: 014-archimedes
         title: "Archimedes"
         kind: study
@@ -128,12 +140,15 @@ tracks:
           - { id: on-floating-bodies, title: "On Floating Bodies", medium: work }
           - { id: the-sand-reckoner, title: "The Sand-Reckoner", medium: work }
       - id: 015-apollonius-of-perga-on-conic-sections
-        title: "Apollonius of Perga, On Conic Sections"
+        title: "Apollonius of Perga"
         kind: study
         medium: book
         tags: [greek-science]
+        childRule: all
+        children:
+          - { id: on-conic-sections, title: "On Conic Sections", medium: work, core: true }
       - id: 016-cicero-works
-        title: "Cicero, Works"
+        title: "Cicero"
         kind: study
         medium: book
         tags: [roman-philosophy]
@@ -143,17 +158,23 @@ tracks:
           - { id: on-friendship, title: "On Friendship", medium: work }
           - { id: on-old-age, title: "On Old Age", medium: work }
       - id: 017-lucretius-on-the-nature-of-things
-        title: "Lucretius, On the Nature of Things"
+        title: "Lucretius"
         kind: study
         medium: book
         tags: [roman-philosophy]
+        childRule: all
+        children:
+          - { id: on-the-nature-of-things, title: "On the Nature of Things", medium: work, core: true }
       - id: 018-virgil-works
-        title: "Virgil, Works"
+        title: "Virgil"
         kind: study
         medium: book
         tags: [roman-poetry]
+        childRule: all
+        children:
+          - { id: works, title: "Works", medium: work, core: true }
       - id: 019-horace-works
-        title: "Horace, Works"
+        title: "Horace"
         kind: study
         medium: book
         tags: [roman-poetry]
@@ -162,12 +183,15 @@ tracks:
           - { id: odes-and-epodes, title: "Odes and Epodes", medium: work }
           - { id: the-art-of-poetry, title: "The Art of Poetry", medium: work }
       - id: 020-livy-history-of-rome
-        title: "Livy, History of Rome"
+        title: "Livy"
         kind: study
         medium: book
         tags: [roman-history]
+        childRule: all
+        children:
+          - { id: history-of-rome, title: "History of Rome", medium: work, core: true }
       - id: 021-ovid-works
-        title: "Ovid, Works"
+        title: "Ovid"
         kind: study
         medium: book
         tags: [roman-poetry]
@@ -195,10 +219,13 @@ tracks:
           - { id: agricola, title: "Agricola", medium: work }
           - { id: germania, title: "Germania", medium: work }
       - id: 024-nicomachus-of-gerasa-introduction-to-arithmetic
-        title: "Nicomachus of Gerasa, Introduction to Arithmetic"
+        title: "Nicomachus of Gerasa"
         kind: study
         medium: book
         tags: [hellenistic-science]
+        childRule: all
+        children:
+          - { id: introduction-to-arithmetic, title: "Introduction to Arithmetic", medium: work, core: true }
       - id: 025-epictetus
         title: "Epictetus"
         kind: study
@@ -209,12 +236,15 @@ tracks:
           - { id: discourses, title: "Discourses", medium: work }
           - { id: encheiridion-handbook, title: "Encheiridion (Handbook)", medium: work }
       - id: 026-ptolemy-almagest
-        title: "Ptolemy, Almagest"
+        title: "Ptolemy"
         kind: study
         medium: book
         tags: [hellenistic-science]
+        childRule: all
+        children:
+          - { id: almagest, title: "Almagest", medium: work, core: true }
       - id: 027-lucian-works
-        title: "Lucian, Works"
+        title: "Lucian"
         kind: study
         medium: book
         tags: [roman-poetry]
@@ -224,27 +254,36 @@ tracks:
           - { id: the-true-history, title: "The True History", medium: work }
           - { id: the-sale-of-creeds, title: "The Sale of Creeds", medium: work }
       - id: 028-marcus-aurelius-meditations
-        title: "Marcus Aurelius, Meditations"
+        title: "Marcus Aurelius"
         kind: study
         medium: book
         tags: [roman-philosophy]
+        childRule: all
+        children:
+          - { id: meditations, title: "Meditations", medium: work, core: true }
       - id: 029-galen-on-the-natural-faculties
-        title: "Galen, On the Natural Faculties"
+        title: "Galen"
         kind: study
         medium: book
         tags: [hellenistic-science]
+        childRule: all
+        children:
+          - { id: on-the-natural-faculties, title: "On the Natural Faculties", medium: work, core: true }
       - id: 030-the-new-testament
         title: "The New Testament"
         kind: study
         medium: book
         tags: [scripture]
       - id: 031-plotinus-the-enneads
-        title: "Plotinus, The Enneads"
+        title: "Plotinus"
         kind: study
         medium: book
         tags: [christian-thought]
+        childRule: all
+        children:
+          - { id: the-enneads, title: "The Enneads", medium: work, core: true }
       - id: 032-st-augustine-works
-        title: "St. Augustine, Works"
+        title: "St. Augustine"
         kind: study
         medium: book
         tags: [christian-thought]
@@ -270,12 +309,15 @@ tracks:
         medium: book
         tags: [medieval-epic]
       - id: 036-st-thomas-aquinas-summa-theologica
-        title: "St. Thomas Aquinas, Summa Theologica"
+        title: "St. Thomas Aquinas"
         kind: study
         medium: book
         tags: [christian-thought]
+        childRule: all
+        children:
+          - { id: summa-theologica, title: "Summa Theologica", medium: work, core: true }
       - id: 037-dante-alighieri-works
-        title: "Dante Alighieri, Works"
+        title: "Dante Alighieri"
         kind: study
         medium: book
         tags: [dante-chaucer]
@@ -285,7 +327,7 @@ tracks:
           - { id: on-monarchy, title: "On Monarchy", medium: work }
           - { id: the-divine-comedy, title: "The Divine Comedy", medium: work }
       - id: 038-geoffrey-chaucer-works
-        title: "Geoffrey Chaucer, Works"
+        title: "Geoffrey Chaucer"
         kind: study
         medium: book
         tags: [dante-chaucer]
@@ -294,10 +336,13 @@ tracks:
           - { id: troilus-and-criseyde, title: "Troilus and Criseyde", medium: work }
           - { id: canterbury-tales, title: "Canterbury Tales", medium: work }
       - id: 039-leonardo-da-vinci-notebooks
-        title: "Leonardo da Vinci, Notebooks"
+        title: "Leonardo da Vinci"
         kind: study
         medium: book
         tags: [scientific-revolution]
+        childRule: all
+        children:
+          - { id: notebooks, title: "Notebooks", medium: work, core: true }
       - id: 040-niccolo-machiavelli
         title: "Niccolò Machiavelli"
         kind: study
@@ -308,20 +353,29 @@ tracks:
           - { id: the-prince, title: "The Prince", medium: work }
           - { id: discourses-on-the-first-ten-books-of-livy, title: "Discourses on the First Ten Books of Livy", medium: work }
       - id: 041-desiderius-erasmus-the-praise-of-folly
-        title: "Desiderius Erasmus, The Praise of Folly"
+        title: "Desiderius Erasmus"
         kind: study
         medium: book
         tags: [renaissance-literature]
+        childRule: all
+        children:
+          - { id: the-praise-of-folly, title: "The Praise of Folly", medium: work, core: true }
       - id: 042-nicolaus-copernicus-on-the-revolutions-of-the-heavenly-spheres
-        title: "Nicolaus Copernicus, On the Revolutions of the Heavenly Spheres"
+        title: "Nicolaus Copernicus"
         kind: study
         medium: book
         tags: [scientific-revolution]
+        childRule: all
+        children:
+          - { id: on-the-revolutions-of-the-heavenly-spheres, title: "On the Revolutions of the Heavenly Spheres", medium: work, core: true }
       - id: 043-sir-thomas-more-utopia
-        title: "Sir Thomas More, Utopia"
+        title: "Sir Thomas More"
         kind: study
         medium: book
         tags: [renaissance-politics]
+        childRule: all
+        children:
+          - { id: utopia, title: "Utopia", medium: work, core: true }
       - id: 044-martin-luther
         title: "Martin Luther"
         kind: study
@@ -332,30 +386,45 @@ tracks:
           - { id: three-treatises, title: "Three Treatises", medium: work }
           - { id: table-talk, title: "Table-Talk", medium: work }
       - id: 045-francois-rabelais-gargantua-and-pantagruel
-        title: "François Rabelais, Gargantua and Pantagruel"
+        title: "François Rabelais"
         kind: study
         medium: book
         tags: [renaissance-literature]
+        childRule: all
+        children:
+          - { id: gargantua-and-pantagruel, title: "Gargantua and Pantagruel", medium: work, core: true }
       - id: 046-john-calvin-institutes-of-the-christian-religion
-        title: "John Calvin, Institutes of the Christian Religion"
+        title: "John Calvin"
         kind: study
         medium: book
         tags: [reformation]
+        childRule: all
+        children:
+          - { id: institutes-of-the-christian-religion, title: "Institutes of the Christian Religion", medium: work, core: true }
       - id: 047-michel-de-montaigne-essays
-        title: "Michel de Montaigne, Essays"
+        title: "Michel de Montaigne"
         kind: study
         medium: book
         tags: [renaissance-thought]
+        childRule: all
+        children:
+          - { id: essays, title: "Essays", medium: work, core: true }
       - id: 048-william-gilbert-on-the-loadstone-and-magnetic-bodies
-        title: "William Gilbert, On the Loadstone and Magnetic Bodies"
+        title: "William Gilbert"
         kind: study
         medium: book
         tags: [scientific-revolution]
+        childRule: all
+        children:
+          - { id: on-the-loadstone-and-magnetic-bodies, title: "On the Loadstone and Magnetic Bodies", medium: work, core: true }
       - id: 049-miguel-de-cervantes-don-quixote
-        title: "Miguel de Cervantes, Don Quixote"
+        title: "Miguel de Cervantes"
         kind: study
         medium: book
         tags: [renaissance-literature]
+        childRule: all
+        children:
+          - { id: don-quixote, title: "Don Quixote", medium: work, core: true }
       - id: 050-edmund-spenser
         title: "Edmund Spenser"
         kind: study
@@ -377,10 +446,13 @@ tracks:
           - { id: novum-organum, title: "Novum Organum", medium: work }
           - { id: new-atlantis, title: "New Atlantis", medium: work }
       - id: 052-william-shakespeare-works
-        title: "William Shakespeare, Works"
+        title: "William Shakespeare"
         kind: study
         medium: play
         tags: [shakespeare]
+        childRule: all
+        children:
+          - { id: works, title: "Works", medium: play, core: true }
       - id: 053-galileo-galilei
         title: "Galileo Galilei"
         kind: study
@@ -410,10 +482,13 @@ tracks:
           - { id: on-the-circulation-of-the-blood, title: "On the Circulation of the Blood", medium: work }
           - { id: on-the-generation-of-animals, title: "On the Generation of Animals", medium: work }
       - id: 056-thomas-hobbes-leviathan
-        title: "Thomas Hobbes, Leviathan"
+        title: "Thomas Hobbes"
         kind: study
         medium: book
         tags: [social-contract]
+        childRule: all
+        children:
+          - { id: leviathan, title: "Leviathan", medium: work, core: true }
       - id: 057-rene-descartes
         title: "René Descartes"
         kind: study
@@ -437,7 +512,7 @@ tracks:
           - { id: paradise-lost, title: "Paradise Lost", medium: work }
           - { id: samson-agonistes, title: "Samson Agonistes", medium: work }
       - id: 059-moliere-comedies
-        title: "Molière, Comedies"
+        title: "Molière"
         kind: study
         medium: play
         tags: [poetry-drama-17]
@@ -459,15 +534,21 @@ tracks:
           - { id: pensees, title: "Pensées", medium: work }
           - { id: scientific-treatises, title: "Scientific treatises", medium: work }
       - id: 061-christiaan-huygens-treatise-on-light
-        title: "Christiaan Huygens, Treatise on Light"
+        title: "Christiaan Huygens"
         kind: study
         medium: book
         tags: [newtonian-science]
+        childRule: all
+        children:
+          - { id: treatise-on-light, title: "Treatise on Light", medium: work, core: true }
       - id: 062-benedict-de-spinoza-ethics
-        title: "Benedict de Spinoza, Ethics"
+        title: "Benedict de Spinoza"
         kind: study
         medium: book
         tags: [rationalists]
+        childRule: all
+        children:
+          - { id: ethics, title: "Ethics", medium: work, core: true }
       - id: 063-john-locke
         title: "John Locke"
         kind: study
@@ -480,7 +561,7 @@ tracks:
           - { id: essay-concerning-human-understanding, title: "Essay Concerning Human Understanding", medium: work }
           - { id: some-thoughts-concerning-education, title: "Some Thoughts Concerning Education", medium: work }
       - id: 064-jean-baptiste-racine-tragedies
-        title: "Jean Baptiste Racine, Tragedies"
+        title: "Jean Baptiste Racine"
         kind: study
         medium: play
         tags: [poetry-drama-17]
@@ -508,10 +589,13 @@ tracks:
           - { id: new-essays-concerning-human-understanding, title: "New Essays Concerning Human Understanding", medium: work }
           - { id: monadology, title: "Monadology", medium: work }
       - id: 067-daniel-defoe-robinson-crusoe
-        title: "Daniel Defoe, Robinson Crusoe"
+        title: "Daniel Defoe"
         kind: study
         medium: book
         tags: [rise-of-the-novel]
+        childRule: all
+        children:
+          - { id: robinson-crusoe, title: "Robinson Crusoe", medium: work, core: true }
       - id: 068-jonathan-swift
         title: "Jonathan Swift"
         kind: study
@@ -524,15 +608,21 @@ tracks:
           - { id: gullivers-travels, title: "Gulliver's Travels", medium: work }
           - { id: a-modest-proposal, title: "A Modest Proposal", medium: work }
       - id: 069-william-congreve-the-way-of-the-world
-        title: "William Congreve, The Way of the World"
+        title: "William Congreve"
         kind: study
         medium: play
         tags: [poetry-drama-17]
+        childRule: all
+        children:
+          - { id: the-way-of-the-world, title: "The Way of the World", medium: play, core: true }
       - id: 070-george-berkeley-principles-of-human-knowledge
-        title: "George Berkeley, Principles of Human Knowledge"
+        title: "George Berkeley"
         kind: study
         medium: book
         tags: [empiricists]
+        childRule: all
+        children:
+          - { id: principles-of-human-knowledge, title: "Principles of Human Knowledge", medium: work, core: true }
       - id: 071-alexander-pope
         title: "Alexander Pope"
         kind: study
@@ -653,12 +743,15 @@ tracks:
           - { id: london-journal, title: "London Journal", medium: work }
           - { id: life-of-samuel-johnson, title: "Life of Samuel Johnson", medium: work }
       - id: 083-antoine-laurent-lavoisier-elements-of-chemistry
-        title: "Antoine Laurent Lavoisier, Elements of Chemistry"
+        title: "Antoine Laurent Lavoisier"
         kind: study
         medium: book
         tags: [newtonian-science]
+        childRule: all
+        children:
+          - { id: elements-of-chemistry, title: "Elements of Chemistry", medium: work, core: true }
       - id: 084-jay-madison-and-hamilton-the-federalist-papers
-        title: "Jay, Madison and Hamilton, The Federalist Papers"
+        title: "Jay, Madison and Hamilton"
         kind: study
         medium: book
         tags: [social-contract]
@@ -687,10 +780,13 @@ tracks:
           - { id: faust, title: "Faust", medium: work }
           - { id: poetry-and-truth, title: "Poetry and Truth", medium: work }
       - id: 087-jean-baptiste-joseph-fourier-analytical-theory-of-heat
-        title: "Jean Baptiste Joseph Fourier, Analytical Theory of Heat"
+        title: "Jean Baptiste Joseph Fourier"
         kind: study
         medium: book
         tags: [physics-chemistry]
+        childRule: all
+        children:
+          - { id: analytical-theory-of-heat, title: "Analytical Theory of Heat", medium: work, core: true }
       - id: 088-georg-wilhelm-friedrich-hegel
         title: "Georg Wilhelm Friedrich Hegel"
         kind: study
@@ -702,7 +798,7 @@ tracks:
           - { id: philosophy-of-right, title: "Philosophy of Right", medium: work }
           - { id: lectures-on-the-philosophy-of-history, title: "Lectures on the Philosophy of History", medium: work }
       - id: 089-william-wordsworth-poems
-        title: "William Wordsworth, Poems"
+        title: "William Wordsworth"
         kind: study
         medium: book
         tags: [romantics]
@@ -732,10 +828,13 @@ tracks:
           - { id: pride-and-prejudice, title: "Pride and Prejudice", medium: work }
           - { id: emma, title: "Emma", medium: work }
       - id: 092-carl-von-clausewitz-on-war
-        title: "Carl von Clausewitz, On War"
+        title: "Carl von Clausewitz"
         kind: study
         medium: book
         tags: [war-democracy-capital]
+        childRule: all
+        children:
+          - { id: on-war, title: "On War", medium: work, core: true }
       - id: 093-stendhal
         title: "Stendhal"
         kind: study
@@ -747,15 +846,21 @@ tracks:
           - { id: the-charterhouse-of-parma, title: "The Charterhouse of Parma", medium: work }
           - { id: on-love, title: "On Love", medium: work }
       - id: 094-lord-byron-don-juan
-        title: "Lord Byron, Don Juan"
+        title: "Lord Byron"
         kind: study
         medium: book
         tags: [romantics]
+        childRule: all
+        children:
+          - { id: don-juan, title: "Don Juan", medium: work, core: true }
       - id: 095-arthur-schopenhauer-studies-in-pessimism
-        title: "Arthur Schopenhauer, Studies in Pessimism"
+        title: "Arthur Schopenhauer"
         kind: study
         medium: book
         tags: [german-idealism]
+        childRule: all
+        children:
+          - { id: studies-in-pessimism, title: "Studies in Pessimism", medium: work, core: true }
       - id: 096-michael-faraday
         title: "Michael Faraday"
         kind: study
@@ -766,15 +871,21 @@ tracks:
           - { id: chemical-history-of-a-candle, title: "Chemical History of a Candle", medium: work }
           - { id: experimental-researches-in-electricity, title: "Experimental Researches in Electricity", medium: work }
       - id: 097-charles-lyell-principles-of-geology
-        title: "Charles Lyell, Principles of Geology"
+        title: "Charles Lyell"
         kind: study
         medium: book
         tags: [life-earth-sciences]
+        childRule: all
+        children:
+          - { id: principles-of-geology, title: "Principles of Geology", medium: work, core: true }
       - id: 098-auguste-comte-the-positive-philosophy
-        title: "Auguste Comte, The Positive Philosophy"
+        title: "Auguste Comte"
         kind: study
         medium: book
         tags: [utilitarians]
+        childRule: all
+        children:
+          - { id: the-positive-philosophy, title: "The Positive Philosophy", medium: work, core: true }
       - id: 099-honore-de-balzac
         title: "Honoré de Balzac"
         kind: study
@@ -795,15 +906,21 @@ tracks:
           - { id: essays, title: "Essays", medium: work }
           - { id: journal, title: "Journal", medium: work }
       - id: 101-nathaniel-hawthorne-the-scarlet-letter
-        title: "Nathaniel Hawthorne, The Scarlet Letter"
+        title: "Nathaniel Hawthorne"
         kind: study
         medium: book
         tags: [nineteenth-century-novel]
+        childRule: all
+        children:
+          - { id: the-scarlet-letter, title: "The Scarlet Letter", medium: work, core: true }
       - id: 102-alexis-de-tocqueville-democracy-in-america
-        title: "Alexis de Tocqueville, Democracy in America"
+        title: "Alexis de Tocqueville"
         kind: study
         medium: book
         tags: [war-democracy-capital]
+        childRule: all
+        children:
+          - { id: democracy-in-america, title: "Democracy in America", medium: work, core: true }
       - id: 103-john-stuart-mill
         title: "John Stuart Mill"
         kind: study
@@ -828,7 +945,7 @@ tracks:
           - { id: the-descent-of-man, title: "The Descent of Man", medium: work }
           - { id: autobiography, title: "Autobiography", medium: work }
       - id: 105-charles-dickens-works
-        title: "Charles Dickens, Works"
+        title: "Charles Dickens"
         kind: study
         medium: book
         tags: [nineteenth-century-novel]
@@ -838,10 +955,13 @@ tracks:
           - { id: david-copperfield, title: "David Copperfield", medium: work }
           - { id: hard-times, title: "Hard Times", medium: work }
       - id: 106-claude-bernard-introduction-to-the-study-of-experimental-medicine
-        title: "Claude Bernard, Introduction to the Study of Experimental Medicine"
+        title: "Claude Bernard"
         kind: study
         medium: book
         tags: [life-earth-sciences]
+        childRule: all
+        children:
+          - { id: introduction-to-the-study-of-experimental-medicine, title: "Introduction to the Study of Experimental Medicine", medium: work, core: true }
       - id: 107-henry-david-thoreau
         title: "Henry David Thoreau"
         kind: study
@@ -898,7 +1018,7 @@ tracks:
           - { id: madame-bovary, title: "Madame Bovary", medium: work }
           - { id: three-stories, title: "Three Stories", medium: work }
       - id: 113-henrik-ibsen-plays
-        title: "Henrik Ibsen, Plays"
+        title: "Henrik Ibsen"
         kind: study
         medium: play
         tags: [modern-drama]
@@ -979,7 +1099,7 @@ tracks:
           - { id: civilization-and-its-discontents, title: "Civilization and Its Discontents", medium: work }
           - { id: new-introductory-lectures-on-psychoanalysis, title: "New Introductory Lectures on Psychoanalysis", medium: work }
       - id: 121-george-bernard-shaw-plays-and-prefaces
-        title: "George Bernard Shaw, Plays and Prefaces"
+        title: "George Bernard Shaw"
         kind: study
         medium: play
         tags: [modern-drama]
@@ -1044,15 +1164,21 @@ tracks:
           - { id: skepticism-and-animal-faith, title: "Skepticism and Animal Faith", medium: work }
           - { id: persons-and-places, title: "Persons and Places", medium: work }
       - id: 127-v-i-lenin-the-state-and-revolution
-        title: "V. I. Lenin, The State and Revolution"
+        title: "V. I. Lenin"
         kind: study
         medium: book
         tags: [history-revolution]
+        childRule: all
+        children:
+          - { id: the-state-and-revolution, title: "The State and Revolution", medium: work, core: true }
       - id: 128-marcel-proust-remembrance-of-things-past
-        title: "Marcel Proust, Remembrance of Things Past"
+        title: "Marcel Proust"
         kind: study
         medium: book
         tags: [modernist-fiction]
+        childRule: all
+        children:
+          - { id: remembrance-of-things-past, title: "Remembrance of Things Past", medium: work, core: true }
       - id: 129-bertrand-russell
         title: "Bertrand Russell"
         kind: study

@@ -1,16 +1,15 @@
-import { updateShapeProperties } from '@lifeboard/node-kit'
 import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { DRAFT_META, HABIT_TYPE, isDraft, isHabit, isSkill, isTree, SKILL_TYPE, TREE_TYPE } from './board'
+import { DRAFT_META, HABIT_TYPE, isDraft, isHabit, isSkill, isTree, TREE_TYPE } from './board'
 import { parseTags, todayIso } from './model'
 import { boardIdOf } from './skillIndex'
 import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
-import { drawMounts, drawPrerequisites, insertTree, layoutReach, placeNewNodes, treePositions } from './tree/ops'
 import type { SyllabusDoc } from './syllabusYaml'
 import { whileImporting } from './importing'
-import { getTreeDef, updateTreeMeta } from './treeDefs'
-import { boardTrees, DRAFT_TREE_META, draftTreeMeta, treeGraph } from './views'
+import { confirmTreeDrafts, discardTreeDrafts, getTreeDef, hasTreeDrafts, updateTreeMeta, upsertNodeDefs } from './treeDefs'
+import { getTreePrefs } from './treePrefs'
+import { draftTreeMeta } from './views'
 
 /**
  * Putting a syllabus document into the vault and its tree on a board, and taking one out
@@ -44,7 +43,6 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 	let vaultCreated = 0
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('import syllabus')
-		let x = at.x
 
 		const merged = mergeDoc(doc, getItems(), getTracks(), boardOf(editor))
 		putItems(merged.items)
@@ -52,61 +50,49 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 		vaultCreated = merged.created
 		updated += merged.updated
 
-		// A tree mounted on a node of another tree in this document shows inside that tree's view, so
-		// it gets no header of its own.
+		// Trees go into the vault, a new tree and new nodes as this board's draft. The board gets a
+		// header to view each (one mounted on a node of another tree in this document shows inside that
+		// tree's view instead); the view puts the nodes on and lays them out (treeSync.ts).
+		const board = boardOf(editor)
 		const inDoc = new Set(doc.trees.flatMap((t) => t.nodes.map((n) => n.nodeId)))
-		const viewed: string[] = []
-		// Trees already on the board that this import adds nodes to, and how many it adds.
-		const grown: { treeId: string; fresh: string[]; had: number }[] = []
-		// Trees this import puts on the board for the first time.
-		const inserted: string[] = []
+		let headerY = at.y
 		for (const tree of doc.trees) {
-			const nodes = tree.nodes.map((n) => ({ ...n }))
-			const existing = new Map(
-				editor
-					.getCurrentPageShapes()
-					.filter((s) => isSkill(s) && s.props.treeId === tree.treeId)
-					.map((s) => [(s as { props: { nodeId: string } }).props.nodeId, s])
+			const had = getTreeDef(tree.treeId)
+			const known = new Set(had?.nodes.map((n) => n.nodeId))
+			upsertNodeDefs(
+				tree.treeId,
+				tree.nodes.map(({ nodeId, name, kind, icon, sector, ring, requires }) => ({ nodeId, name, kind, icon, sector, ring, requires, ...(known.has(nodeId) ? {} : { draft: board }) }))
 			)
+			updated += tree.nodes.filter((n) => known.has(n.nodeId)).length
+			vaultCreated += tree.nodes.filter((n) => !known.has(n.nodeId)).length
+			updateTreeMeta(tree.treeId, {
+				name: tree.name,
+				goal: tree.goal,
+				sectors: tree.sectors.join(', '),
+				rings: tree.rings.join(', '),
+				// A document that names no mount leaves the tree hanging where it hangs.
+				...(tree.mount ? { mount: tree.mount } : {}),
+				...(had ? {} : { draft: board }),
+			})
+			if (tree.mount && inDoc.has(tree.mount)) continue
 			const header = editor.getCurrentPageShapes().find((s) => isTree(s) && s.props.treeId === tree.treeId)
-			const fresh = nodes.filter((n) => !existing.has(n.nodeId))
-			for (const node of nodes) {
-				const shape = existing.get(node.nodeId)
-				if (!shape) continue
-				const { nodeId, ...props } = node
-				void nodeId
-				editor.updateShape({ id: shape.id, type: SKILL_TYPE, props } as never)
+			const props = { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') }
+			if (header) {
+				editor.updateShape({ id: header.id, type: TREE_TYPE, props } as never)
 				updated++
-			}
-			// A tree the vault already has takes its new mount now, like any other merged field.
-			if (tree.mount && getTreeDef(tree.treeId)) updateTreeMeta(tree.treeId, { mount: tree.mount })
-			const mountedHere = !!tree.mount && inDoc.has(tree.mount)
-			const ring = Math.max(1, tree.rings.length || 3)
-			const center = { x: x + 230 * ring + 200, y: at.y + 230 * ring + 200 }
-			if (!header && !mountedHere) {
-				insertTree(editor, { ...tree, nodes: fresh }, center, false)
-				inserted.push(tree.treeId)
 			} else {
-				if (header) {
-					editor.updateShape({
-						id: header.id,
-						type: TREE_TYPE,
-						props: { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') },
-					} as never)
-					updated++
-				}
-				if (existing.size && fresh.length) grown.push({ treeId: tree.treeId, fresh: fresh.map((n) => n.nodeId), had: existing.size })
-				const positions = treePositions({ ...tree, nodes: fresh }, center)
-				for (const node of fresh) {
-					const p = positions.get(node.nodeId) ?? center
-					editor.createShape({ id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: p.x, y: p.y, props: { ...node, treeId: tree.treeId } } as never)
-				}
-				drawPrerequisites(editor, tree.treeId)
+				editor.createShape({
+					id: createShapeId(),
+					type: TREE_TYPE,
+					parentId: editor.getCurrentPageId(),
+					x: at.x,
+					y: headerY,
+					props: { ...props, treeId: tree.treeId, mode: getTreePrefs().importShows },
+				} as never)
+				headerY += 2400
 			}
-			if (mountedHere) continue
-			viewed.push(tree.treeId)
-			x = center.x + 230 * ring + 300
 		}
+		const x = at.x + 600
 		doc.habits.forEach((habit, i) => {
 			const existing = editor.getCurrentPageShapes().find((s) => isHabit(s) && s.props.habitId === habit.habitId)
 			if (existing) {
@@ -126,39 +112,9 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 			} as never)
 		})
 
-		// Everything this import made, arrows included, is the draft; except an edge redrawn between two
-		// nodes that were already there, which belongs to the confirmed tree.
-		const made = editor
-			.getCurrentPageShapes()
-			.filter((s) => !before.has(s.id))
-			.filter((s) => s.type !== 'arrow' || !editor.getBindingsFromShape(s, 'arrow').every((b) => before.has(b.toId)))
-		const treeMeta = new Map(doc.trees.map((t) => [t.treeId, { name: t.name, goal: t.goal, mount: t.mount }]))
-		for (const shape of made) {
-			const carried = isSkill(shape) ? treeMeta.get(shape.props.treeId) : undefined
-			editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true, ...(carried ? { [DRAFT_TREE_META]: carried } : {}) } } as never)
-		}
-
-		// Placing after the marking above, because the layout reads draft nodes (and the mounts they
-		// carry) from the board. A tree this import grew a lot is laid out again whole; a few new
-		// nodes join their nearest ancestor and the rest stay where they are. Trees with others mounted
-		// in this document are laid out whole, branches and all; the mount arrows are part of the draft.
-		const mounted = doc.trees.some((t) => t.mount && inDoc.has(t.mount))
-		if (mounted || grown.length || inserted.length) {
-			const graph = treeGraph(boardTrees(editor))
-			// New trees, and trees this import more than doubled, are laid out whole in the clear space
-			// right of everything else: how wide a tree is is only known once it is laid out.
-			const clear = new Set([...inserted, ...grown.filter((g) => g.fresh.length > g.had).map((g) => g.treeId)])
-			const whole = new Set([...(mounted ? viewed : []), ...clear])
-			for (const treeId of whole) {
-				const root = graph.rootOf.get(treeId)
-				if (root) layoutReach(editor, root, null, clear.has(treeId) ? 'clear' : undefined)
-			}
-			const few = grown.filter((g) => !whole.has(g.treeId)).flatMap((g) => g.fresh)
-			if (few.length) placeNewNodes(editor, new Set(few))
-			drawMounts(editor)
-			for (const shape of editor.getCurrentPageShapes()) {
-				if (!before.has(shape.id) && !isDraft(shape)) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)
-			}
+		// The cards this import made (headers, habits) are the draft on the board; the vault marks the rest.
+		for (const shape of editor.getCurrentPageShapes()) {
+			if (!before.has(shape.id)) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)
 		}
 	})
 	const draftIds = editor.getCurrentPageShapes().filter(isDraft).filter((s) => !before.has(s.id)).map((s) => s.id)
@@ -172,7 +128,7 @@ export function confirmDraft(editor: Editor): number {
 
 function confirmNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	const vault = confirmDrafts(boardOf(editor))
+	const vault = confirmDrafts(boardOf(editor)) + confirmTreeDrafts(boardOf(editor))
 	if (!drafts.length) return vault
 	// A tree with no header of its own (mounted on another) carries its name and mount on its nodes.
 	for (const shape of drafts) {
@@ -193,8 +149,11 @@ export function discardDraft(editor: Editor): number {
 }
 
 function discardNow(editor: Editor): number {
-	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	const vault = discardDrafts(boardOf(editor))
+	// The draft's node shapes go with it: the vault forgets those nodes, so nothing on the board may
+	// stand for them (the sync would otherwise take a stray shape for a node made offline).
+	const goneNodes = new Set(discardTreeDrafts(boardOf(editor)))
+	const drafts = editor.getCurrentPageShapes().filter((s) => isDraft(s) || (isSkill(s) && goneNodes.has(s.props.nodeId)))
+	const vault = discardDrafts(boardOf(editor)) + goneNodes.size
 	if (!drafts.length) return vault
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('discard draft')
@@ -205,7 +164,7 @@ function discardNow(editor: Editor): number {
 
 /** Whether this board has a draft waiting: shapes, or vault items and tracks its imports made. */
 export function boardHasDraft(editor: Editor): boolean {
-	return hasDrafts(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
+	return hasDrafts(boardOf(editor)) || hasTreeDrafts(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
 }
 
 /** The goals there are syllabi for, by name: the vault's tracks, and this board's trees and habits. */

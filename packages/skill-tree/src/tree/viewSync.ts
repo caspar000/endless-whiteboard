@@ -120,8 +120,12 @@ export function planViews(editor: Editor, headers: readonly TreeShape[], going: 
 	return plan
 }
 
-/** Puts the plan on the board. Call inside an `editor.run` with history ignored. */
-export function applyViews(editor: Editor, plan: ViewPlan): Set<string> {
+/**
+ * Puts the plan on the board. Call inside an `editor.run` with history ignored. Returns the views it
+ * laid out whole because they were new to the board, for the camera to go to.
+ */
+export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
+	const laidOutNew: ViewContents[] = []
 	const graph = treeGraph(boardTrees(editor))
 	const headerUpdates = new Map<TLShapeId, Places>()
 	// 1. Leaving an arrangement: remember where everything in it was.
@@ -143,7 +147,8 @@ export function applyViews(editor: Editor, plan: ViewPlan): Set<string> {
 	editor.createShapes([
 		...plan.createSkills.map(({ treeId, def }) => {
 			created.add(def.nodeId)
-			const { nodeId, ...rest } = def
+			const { nodeId, draft, ...rest } = def
+			void draft
 			const at = near(treeId)
 			return { id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: at.x - SKILL_SIZE / 2, y: at.y - SKILL_SIZE / 2, props: { ...rest, nodeId, treeId } }
 		}),
@@ -156,7 +161,6 @@ export function applyViews(editor: Editor, plan: ViewPlan): Set<string> {
 	] as never)
 
 	// 3. Each view's arrangement: remembered places first, then whatever is still unplaced.
-	const settled = new Set<string>()
 	for (const { header, view, from } of plan.views) {
 		const places = headerUpdates.get(header.id) ?? readPlaces(header)
 		const remembered = places[view.context] ?? {}
@@ -171,16 +175,18 @@ export function applyViews(editor: Editor, plan: ViewPlan): Set<string> {
 		if (moves.length) editor.updateShapes(moves as never)
 		// An arrangement never seen before, or one that is mostly new, is laid out whole.
 		const fresh = from !== null && !Object.keys(remembered).length
-		if (fresh || (unplaced.length && unplaced.length > shapes.size / 2)) layoutView(editor, header, view, null)
+		if (fresh || (unplaced.length && unplaced.length > shapes.size / 2)) {
+			layoutView(editor, header, view, null)
+			if (unplaced.length === shapes.size) laidOutNew.push(view)
+		}
 		else if (unplaced.length) placeNew(editor, view, new Set(unplaced))
-		for (const key of unplaced) settled.add(key)
 		const context = view.context
 		if (header.meta[CONTEXT_META] !== context || headerUpdates.has(header.id)) {
 			editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [CONTEXT_META]: context }, props: { places: JSON.stringify(places) } } as never)
 		}
 	}
 	if (plan.linesStale) drawLines(editor, plan)
-	return settled
+	return laidOutNew
 }
 
 /** Where every shape of this header's tree is now, by layout key. */
@@ -282,7 +288,12 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		nodes.push({ id: HEADER, w: hb.w, h: hb.h })
 		edges.push({ from: startKey, to: HEADER })
 	}
-	const at = layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })
+	// A view with entries around a skill node at its middle is laid out in clusters (compact); a focus
+	// on an entry is laid out whole around that entry, so it is the middle.
+	const clustered = view.items.size > 0 && !view.items.has(view.start)
+	const at = clustered
+		? clusterLayout(nodes, edges, view, startKey, obstacles)
+		: layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
 		const b = editor.getShapePageBounds(s.id)
@@ -293,6 +304,81 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		editor.updateShapes(moves as never)
 	})
 	return moves.length
+}
+
+/**
+ * The compact layout for a view with entries (docs/skill-tree-plan.md, "Rebuild"). Each skill node's
+ * entries and works are laid out first as a tight cluster around it; then the skill nodes are laid out
+ * as if each were as big as its cluster, so clusters sit side by side instead of every work landing on
+ * one outer ring and leaving the middle empty. Anything else (the header) hangs from its node.
+ */
+function clusterLayout(
+	nodes: readonly GraphNode[],
+	edges: readonly GraphEdge[],
+	view: ViewContents,
+	startKey: string,
+	obstacles: readonly { x: number; y: number; w: number; h: number }[]
+): Map<string, { x: number; y: number }> {
+	const size = new Map(nodes.map((n) => [n.id, n]))
+	const children = new Map<string, string[]>()
+	for (const e of edges) children.set(e.from, [...(children.get(e.from) ?? []), e.to])
+	// A skill node's cluster: everything reachable from it that is not a skill node.
+	const skills = nodes.filter((n) => view.skills.has(n.id)).map((n) => n.id)
+	const clusterOf = new Map<string, string[]>()
+	for (const skill of skills) {
+		const members: string[] = []
+		const queue = [...(children.get(skill) ?? [])].filter((id) => !view.skills.has(id))
+		for (let i = 0; i < queue.length; i++) {
+			members.push(queue[i]!)
+			for (const c of children.get(queue[i]!) ?? []) if (!view.skills.has(c)) queue.push(c)
+		}
+		clusterOf.set(skill, members)
+	}
+	// 1. Each cluster around its skill node, close.
+	const local = new Map<string, Map<string, { x: number; y: number }>>()
+	const radius = new Map<string, number>()
+	for (const skill of skills) {
+		const members = clusterOf.get(skill)!
+		const self = size.get(skill)!
+		if (!members.length) {
+			radius.set(skill, Math.max(self.w, self.h) / 2)
+			continue
+		}
+		const ids = new Set([skill, ...members])
+		const at = layoutGraph(
+			[...ids].map((id) => size.get(id)!),
+			edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
+			{ root: skill, gap: 28 }
+		)
+		local.set(skill, at)
+		let r = Math.max(self.w, self.h) / 2
+		for (const [id, p] of at) {
+			const n = size.get(id)!
+			r = Math.max(r, Math.hypot(p.x, p.y) + Math.hypot(n.w, n.h) / 2)
+		}
+		radius.set(skill, r)
+	}
+	// 2. The skill nodes, each as big as its cluster.
+	const skillEdges = edges.filter((e) => view.skills.has(e.from) && view.skills.has(e.to))
+	const big = skills.map((id) => ({ id, w: radius.get(id)! * 2, h: radius.get(id)! * 2 }))
+	const startSkill = view.skills.has(startKey) ? startKey : skills[0]!
+	const placed = layoutGraph(big, skillEdges, { root: startSkill, gap: 50, obstacles, balloon: true })
+	// 3. Members where their cluster put them, relative to their node; the rest hang off what holds them.
+	const out = new Map<string, { x: number; y: number }>()
+	for (const skill of skills) {
+		const centre = placed.get(skill)
+		if (!centre) continue
+		out.set(skill, centre)
+		for (const [id, p] of local.get(skill) ?? []) if (id !== skill) out.set(id, { x: centre.x + p.x, y: centre.y + p.y })
+	}
+	for (const n of nodes) {
+		if (out.has(n.id)) continue
+		const holder = edges.find((e) => e.to === n.id && out.has(e.from))
+		const at = holder ? out.get(holder.from)! : { x: 0, y: 0 }
+		const r = holder ? (radius.get(holder.from) ?? 0) : 0
+		out.set(n.id, { x: at.x, y: at.y - r - n.h / 2 - 40 })
+	}
+	return out
 }
 
 /**

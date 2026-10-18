@@ -43,7 +43,7 @@ function SyllabusDemo() {
 				<div className="lb-skill" style={{ width: 240 }}>
 					<div className="lb-skill__row">
 						<input type="checkbox" className="lb-skill__check" disabled readOnly tabIndex={-1} />
-						<span className="lb-skill__title">Plato, Dialogues</span>
+						<span className="lb-skill__title">Plato</span>
 						<span className="lb-skill__fold">▸</span>
 					</div>
 					<div className="lb-skill__meta">

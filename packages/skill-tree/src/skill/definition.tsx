@@ -10,7 +10,7 @@ import { makeItemId } from '../model'
 import { SkillComponent } from './SkillComponent'
 import { focusOn } from '../tree/focus'
 
-export const SKILL_SIZE = 110
+export const SKILL_SIZE = 150
 
 const versions = createShapePropsMigrationIds(SKILL_TYPE, { AddIcon: 1 })
 

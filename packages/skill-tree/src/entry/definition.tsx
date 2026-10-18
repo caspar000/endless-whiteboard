@@ -6,7 +6,8 @@ import { getItem } from '../syllabus'
 import { focusOn } from '../tree/focus'
 import { EntryComponent } from './EntryComponent'
 
-export const ENTRY_SIZE = { w: 120, h: 96 }
+/** A disc the size a skill node used to be, its name inside, so a line meets its middle. */
+export const ENTRY_SIZE = { w: 110, h: 110 }
 export const WORK_SIZE = { w: 180, h: 26 }
 
 /**

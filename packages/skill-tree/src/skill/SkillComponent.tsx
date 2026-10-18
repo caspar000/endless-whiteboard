@@ -5,6 +5,7 @@ import { AGGREGATE_KINDS, draftClass, type SkillNodeProps, type SkillShape } fro
 import { boardTrees, reachFrom, treeGraph } from '../views'
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
+import { isDraftNode } from '../treeDefs'
 import { SkillEditor } from './SkillEditor'
 
 const RING = 2 * Math.PI * 44
@@ -25,13 +26,15 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 		() => (AGGREGATE_KINDS.includes(shape.props.kind) ? progressBelow(editor, shape.props.nodeId) : null),
 		[editor, shape.props.kind, shape.props.nodeId]
 	)
+	// Dashed while the import that added it is unconfirmed: the vault holds the mark, not the shape.
+	const draft = useValue('lifeboard:skill-draft', () => isDraftNode(shape.props.treeId, shape.props.nodeId), [shape.props.treeId, shape.props.nodeId])
 	const state = mastery ? 'unlocked' : (status?.state ?? 'locked')
 	const { fraction, caption } = mastery ?? ringFor(status)
 	const tier = status?.mastery.tier ?? 0
 	const { Icon } = getIconBridge()
 
 	const body = (
-		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never)}`}>
+		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never) || (draft ? ' lb-draft' : '')}`}>
 			<svg className="lb-skillnode__ring" viewBox="0 0 100 100" aria-hidden>
 				<circle className="lb-skillnode__track" cx="50" cy="50" r="44" />
 				<circle

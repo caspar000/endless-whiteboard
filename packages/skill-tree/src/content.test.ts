@@ -59,11 +59,19 @@ describe('content/adler.yaml', () => {
 		expect(items.map((i) => i.itemId.slice(6, 9))).toEqual(Array.from({ length: 137 }, (_, i) => String(i + 1).padStart(3, '0')))
 	})
 
+	it('names each entry by its author, and keeps the ids it has always had', () => {
+		expect(items[4]!.title).toBe('Herodotus')
+		expect(items[4]!.children.map((c) => c.title)).toEqual(['History'])
+		expect(items[9]!.title).toBe('Plato')
+	})
+
 	it('keeps the in-app sample ids, so importing it merges with the sample', () => {
 		ADLER_SAMPLE.forEach((entry, i) => {
 			const id = `adler/${String(i + 1).padStart(3, '0')}-${slug(entry.title)}`
 			expect(items[i]!.itemId).toBe(id)
-			expect(items[i]!.children.map((c) => c.itemId)).toEqual((entry.works ?? []).map((w) => `${id}/${slug(w.title)}`))
+			// The sample's works are still there, by id; an entry may have gained the work its old title named.
+			const kids = items[i]!.children.map((c) => c.itemId)
+			for (const w of entry.works ?? []) expect(kids).toContain(`${id}/${slug(w.title)}`)
 		})
 		for (const id of ['root', 'inspectional', 'analytical', 'greek-epic-drama', 'greek-philosophy', 'greek-science', 'greek-history', 'reading-habit']) {
 			expect(nodeIds.has(`adler/${id}`)).toBe(true)

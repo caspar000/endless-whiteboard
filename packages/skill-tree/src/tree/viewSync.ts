@@ -5,6 +5,8 @@ import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definiti
 import { getItem } from '../syllabus'
 import { arcBend, itemKey, lineEnds } from './lines'
 import { orbitCluster } from './orbits'
+import { getLayoutConfig } from './layoutConfig'
+import { lastLayoutStats, measureLayout } from './layoutStats'
 import { SKILL_SIZE, sizeOfKind } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
@@ -275,7 +277,10 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		edges.push({ from: startKey, to: HEADER })
 	}
 	// Both views, everything and the skill nodes alone, are the whole-life layout from the view's start.
-	const at = wholeLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, arrows: drawn })
+	const began = performance.now()
+	const isSkill = (id: string) => view.skills.has(id)
+	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: getLayoutConfig() })
+	lastLayoutStats.set(measureLayout(nodes, at, drawn, isSkill, performance.now() - began))
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
 		const b = editor.getShapePageBounds(s.id)
@@ -444,7 +449,7 @@ function repackClusters(editor: Editor, view: ViewContents, skills: ReadonlySet<
 			.flatMap((e) => (e.from === skill ? [e.to] : e.to === skill ? [e.from] : []))
 			.filter((n) => shapes.has(n))
 			.map((n) => Math.atan2(centre(n).y - c.y, centre(n).x - c.x))
-		const cluster = orbitCluster(size(skill), entries.map((e) => ({ entry: size(e), works: descendants(e).map(size) })), gates)
+		const cluster = orbitCluster(size(skill), entries.map((e) => ({ entry: size(e), works: descendants(e).map(size) })), gates, getLayoutConfig())
 		for (const [key, p] of cluster.at) {
 			const s = shapes.get(key)
 			const b = s && editor.getShapePageBounds(s.id)

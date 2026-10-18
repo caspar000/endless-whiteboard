@@ -8,6 +8,7 @@ import { recalculate } from './tree/viewSync'
 import { insertMasteryDemo } from './tree/masteryDemo'
 import { toggleAllNodes } from './tree/view'
 import { recalculateAll } from './tree/StaleLayout'
+import { TUNER_TYPE } from './tree/LayoutTuner'
 import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
 import { insertAdlerTree } from './tree/sample'
 
@@ -119,6 +120,18 @@ export const skillTreeCommands: readonly Command[] = [
 			if (!editor) return
 			const bounds = editor.getCurrentPageBounds()
 			await insertWholeLifeTest(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center)
+		},
+	},
+	{
+		id: 'skill-tree.layout-tuner',
+		title: 'Add the layout tuner (dev)',
+		group: GROUP,
+		// For working on the layout: every setting of it on a card, laying the board out again live.
+		when: (ctx) => ctx.editor !== null && isDevBuild,
+		run: ({ editor }) => {
+			if (!editor) return
+			const c = editor.getViewportPageBounds()
+			editor.createShape({ type: TUNER_TYPE, x: c.minX + 40, y: c.minY + 40 } as never)
 		},
 	},
 	{

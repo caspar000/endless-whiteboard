@@ -13,6 +13,7 @@ import { getItem, isItemDone } from './syllabus'
 import type { TLShapeId } from '@lifeboard/canvas'
 import { TreeSettings } from './TreeSettings'
 import { StaleLayout } from './tree/StaleLayout'
+import { tunerNodeDefinition } from './tree/LayoutTuner'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
@@ -57,6 +58,7 @@ export const skillTreeExtension: Extension = {
 		defineNode(habitNodeDefinition),
 		defineNode(upNextNodeDefinition),
 		defineNode(entryNodeDefinition),
+		defineNode(tunerNodeDefinition),
 	],
 	actions: [
 		{

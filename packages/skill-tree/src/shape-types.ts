@@ -14,5 +14,6 @@ declare module '@tldraw/tlschema' {
 		'node.skillEntry': EntryProps & NodeBaseProps
 		'node.habit': HabitProps & NodeBaseProps
 		'node.upNext': UpNextProps & NodeBaseProps
+		'node.skillLayoutTuner': NodeBaseProps
 	}
 }

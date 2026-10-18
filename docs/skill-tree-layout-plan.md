@@ -173,3 +173,20 @@ Test board, everything view: 26113×24341 px (2.8% covered) → 11983×12905 (11
 skill node 2. Considered next: FORBID-style stress compaction (scale down, then remove overlaps by
 stress) for the last few per cent, at the cost of a slower layout.
 
+## Tuning, and the next algorithm (2026-10-18)
+
+**Built:** every number of the layout is a setting (`tree/layoutConfig.ts`, per device in
+localStorage): sizes, skeleton (room round the middle, gap between clusters, narrowest pillar slice,
+shared rings), clusters (member space, gate and spoke room, works arc, orbit growth) and compaction
+(each pass on or off, least space while compacting, rounds, how far gravity may veer, and which
+crossings a move may not make worse). "Add the layout tuner (dev)" puts a card with all of them on
+the board; a change lays every view out again, and the card shows the result (`tree/layoutStats.ts`:
+size, cover, arrows crossing arrows, arrows through skill nodes, arrow lengths, overlaps, time).
+Copy settings puts them on the clipboard as JSON.
+
+**Agreed next** (the user's sketch, refined): measure subtrees bottom-up, order siblings so related
+nodes sit together (try every order for small families), place top-down within wedges at no more
+than a maximum arrow length, shared nodes on the border between their parents, then repair any
+crossings with bounded local moves. Compaction stays, under a minimum spacing. Each view is laid out
+on its own by the same algorithm. Each new step joins the tuner as a setting.
+

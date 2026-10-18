@@ -1,0 +1,151 @@
+import { atom } from '@lifeboard/canvas'
+
+/**
+ * Every number the whole-life layout runs on (docs/skill-tree-layout-plan.md), so they can be tuned
+ * from the board (tree/LayoutTuner.tsx) instead of in the code. The layout functions take a config
+ * and default to `DEFAULT_LAYOUT`, so tests stay put; the board passes the tuned one.
+ */
+export interface LayoutConfig {
+	// Sizes
+	skillSize: number
+	pillarSize: number
+	masterySize: number
+	// Skeleton
+	/** Open ground between the middle and the pillars, for the arrows out to them. */
+	hubRoom: number
+	/** Free space kept between two clusters when the skeleton is placed. */
+	clusterGap: number
+	/** The narrowest a pillar's slice may be, in degrees. */
+	minSlice: number
+	/** Levels below the middle that share one ring across the board (pillars, tree roots). */
+	sharedLevels: number
+	// Clusters
+	/** Free space between two members of a cluster. */
+	memberPad: number
+	/** Room on each side of an arrow through a cluster's gap. */
+	gateRoom: number
+	/** Room for a spoke passing between two entries to one on the second orbit. */
+	spokeRoom: number
+	/** How far round its entry an arc of works reaches, either side of straight out, in degrees. */
+	worksArc: number
+	/** How much the first orbit widens each time its entries don't fit, as a factor. */
+	orbitGrowth: number
+	// Compaction
+	/** Slide each branch toward the node it hangs from. */
+	slideToParent: boolean
+	/** Draw each branch, whole, toward the middle. */
+	gravity: boolean
+	/** Draw each cluster toward its nearest neighbour (ShrinkTree). */
+	shrinkTree: boolean
+	/** The least free space between two nodes while compacting. */
+	compactGap: number
+	gravityRounds: number
+	shrinkRounds: number
+	/** How far from straight in gravity may move a branch, in degrees. */
+	gravityFan: number
+	/** What a compaction move may not make worse: crossings of skill nodes, of every node, or nothing. */
+	arrowRule: 'skills' | 'all' | 'none'
+}
+
+export const DEFAULT_LAYOUT: LayoutConfig = {
+	skillSize: 150,
+	pillarSize: 210,
+	masterySize: 380,
+	hubRoom: 150,
+	clusterGap: 60,
+	minSlice: 40,
+	sharedLevels: 2,
+	memberPad: 12,
+	gateRoom: 26,
+	spokeRoom: 28,
+	worksArc: 95,
+	orbitGrowth: 1.12,
+	slideToParent: true,
+	gravity: true,
+	shrinkTree: true,
+	compactGap: 12,
+	gravityRounds: 4,
+	shrinkRounds: 4,
+	gravityFan: 60,
+	arrowRule: 'skills',
+}
+
+type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
+type BooleanKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends boolean ? K : never }[keyof LayoutConfig]
+
+/** What the tuner shows for each setting, in order. */
+export type LayoutField =
+	| { key: NumberKey; label: string; min: number; max: number; step: number; group: string }
+	| { key: BooleanKey; label: string; group: string }
+	| { key: 'arrowRule'; label: string; group: string; options: readonly { value: LayoutConfig['arrowRule']; label: string }[] }
+
+export const LAYOUT_FIELDS: readonly LayoutField[] = [
+	{ group: 'Sizes', key: 'skillSize', label: 'Skill node', min: 80, max: 300, step: 10 },
+	{ group: 'Sizes', key: 'pillarSize', label: 'Pillar', min: 100, max: 400, step: 10 },
+	{ group: 'Sizes', key: 'masterySize', label: 'You (the middle)', min: 150, max: 700, step: 10 },
+	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
+	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },
+	{ group: 'Skeleton', key: 'minSlice', label: 'Narrowest pillar slice (°)', min: 0, max: 72, step: 1 },
+	{ group: 'Skeleton', key: 'sharedLevels', label: 'Rings shared across the board', min: 0, max: 4, step: 1 },
+	{ group: 'Clusters', key: 'memberPad', label: 'Space between members', min: 0, max: 80, step: 2 },
+	{ group: 'Clusters', key: 'gateRoom', label: 'Room for an arrow through a cluster', min: 0, max: 120, step: 2 },
+	{ group: 'Clusters', key: 'spokeRoom', label: 'Room for a spoke to the outer orbit', min: 0, max: 120, step: 2 },
+	{ group: 'Clusters', key: 'worksArc', label: 'Arc of works round an entry (°)', min: 20, max: 180, step: 5 },
+	{ group: 'Clusters', key: 'orbitGrowth', label: 'First orbit growth', min: 1.02, max: 1.5, step: 0.01 },
+	{ group: 'Compaction', key: 'slideToParent', label: 'Slide branches toward their parent' },
+	{ group: 'Compaction', key: 'gravity', label: 'Gravity toward the middle' },
+	{ group: 'Compaction', key: 'shrinkTree', label: 'ShrinkTree toward nearest neighbours' },
+	{ group: 'Compaction', key: 'compactGap', label: 'Least space while compacting', min: 0, max: 300, step: 2 },
+	{ group: 'Compaction', key: 'gravityRounds', label: 'Gravity rounds', min: 0, max: 12, step: 1 },
+	{ group: 'Compaction', key: 'shrinkRounds', label: 'ShrinkTree rounds', min: 0, max: 12, step: 1 },
+	{ group: 'Compaction', key: 'gravityFan', label: 'Gravity may veer (°)', min: 0, max: 90, step: 5 },
+	{
+		group: 'Compaction',
+		key: 'arrowRule',
+		label: 'Arrows a move may not make cross',
+		options: [
+			{ value: 'skills', label: 'Skill nodes' },
+			{ value: 'all', label: 'Any node' },
+			{ value: 'none', label: 'Anything goes' },
+		],
+	},
+]
+
+const KEY = 'lifeboard:skill-tree-layout'
+
+function read(): LayoutConfig {
+	try {
+		const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<LayoutConfig>
+		return clean({ ...DEFAULT_LAYOUT, ...raw })
+	} catch {
+		return { ...DEFAULT_LAYOUT }
+	}
+}
+
+/** Only the known settings, each of the right type and in range. */
+export function clean(raw: Partial<Record<keyof LayoutConfig, unknown>>): LayoutConfig {
+	const out = { ...DEFAULT_LAYOUT }
+	for (const field of LAYOUT_FIELDS) {
+		const v = raw[field.key]
+		if ('min' in field) {
+			if (typeof v === 'number' && Number.isFinite(v)) (out[field.key] as number) = Math.min(field.max, Math.max(field.min, v))
+		} else if ('options' in field) {
+			if (field.options.some((o) => o.value === v)) out.arrowRule = v as LayoutConfig['arrowRule']
+		} else if (typeof v === 'boolean') (out[field.key] as boolean) = v
+	}
+	return out
+}
+
+const current = atom<LayoutConfig>('lifeboard:skill-tree-layout', typeof localStorage === 'undefined' ? { ...DEFAULT_LAYOUT } : read())
+
+/** The layout settings in use on every board of this device. */
+export const getLayoutConfig = (): LayoutConfig => current.get()
+
+export function setLayoutConfig(patch: Partial<LayoutConfig>): void {
+	current.set(clean({ ...current.get(), ...patch }))
+	try {
+		localStorage.setItem(KEY, JSON.stringify(current.get()))
+	} catch {
+		// Kept for this session only.
+	}
+}

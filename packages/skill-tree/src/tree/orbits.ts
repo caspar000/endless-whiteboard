@@ -1,4 +1,5 @@
 import type { GraphNode } from './layout'
+import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
 
 /**
  * A skill node's cluster, like a group on Path of Exile's passive tree (docs/skill-tree-layout-plan.md,
@@ -30,23 +31,29 @@ export interface Orbits {
 	radius: number
 }
 
-/** Free space between two nodes. */
-const PAD = 12
-/** Room on each side of an arrow through a gap. */
-const GATE = 26
-/** Room for a spoke passing between two entries on the first orbit, to one on the second. */
-const SPOKE_ROOM = 28
-/** How far round its entry a family's arc of works reaches, either side of straight out. */
-const ARC = (95 / 180) * Math.PI
 /** Steps along an arc and round an orbit while looking for room. */
 const TURN = (2 / 180) * Math.PI
 
-export function orbitCluster(centre: GraphNode, families: readonly Family[], gates: readonly number[]): Orbits {
+/** The settings of the call in progress: helpers below read them (orbitCluster sets them for its call). */
+let C: LayoutConfig = DEFAULT_LAYOUT
+const worksArc = () => (C.worksArc / 180) * Math.PI
+
+export function orbitCluster(centre: GraphNode, families: readonly Family[], gates: readonly number[], config: LayoutConfig = DEFAULT_LAYOUT): Orbits {
+	const outer = C
+	C = config
+	try {
+		return orbitClusterNow(centre, families, gates)
+	} finally {
+		C = outer
+	}
+}
+
+function orbitClusterNow(centre: GraphNode, families: readonly Family[], gates: readonly number[]): Orbits {
 	const at = new Map<string, Point>()
 	const core = reach(centre)
 	if (!families.length) return { at, radius: core }
 	const entryReach = Math.max(...families.map((f) => reach(f.entry)))
-	let first = core + PAD + entryReach
+	let first = core + C.memberPad + entryReach
 
 	const middle: Box = { x: 0, y: 0, w: centre.w, h: centre.h }
 	// How many fit on the first orbit; the rest wait for the second, one per gap between them. The
@@ -56,12 +63,12 @@ export function orbitCluster(centre: GraphNode, families: readonly Family[], gat
 	let inner = fill(families, first, gates, 0, middle)
 	let open: number[] = []
 	for (let tries = 0; tries < 60 && inner.placed.length < families.length; tries++) {
-		const count = fill(smallFirst, first, gates, SPOKE_ROOM, middle).placed.length
+		const count = fill(smallFirst, first, gates, C.spokeRoom, middle).placed.length
 		const chosen = new Set(smallFirst.slice(0, count))
-		inner = fill(families.filter((f) => chosen.has(f)), first, gates, SPOKE_ROOM, middle)
+		inner = fill(families.filter((f) => chosen.has(f)), first, gates, C.spokeRoom, middle)
 		open = gapsOf(inner.placed, gates)
 		if (families.length - inner.placed.length <= open.length) break
-		first *= 1.12
+		first *= C.orbitGrowth
 	}
 	const onFirst = new Set(inner.placed.map((u) => u.family))
 	const rest = families.filter((f) => !onFirst.has(f))
@@ -73,14 +80,14 @@ export function orbitCluster(centre: GraphNode, families: readonly Family[], gat
 		// fits there: clear of everything placed, of the arrows' gaps, and with its spoke passing between
 		// the first orbit's families. Each finds its own distance, so one long list on the first orbit
 		// doesn't push all of them out.
-		const nearest = first + 2 * entryReach + PAD
-		const farthest = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + PAD
+		const nearest = first + 2 * entryReach + C.memberPad
+		const farthest = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + C.memberPad
 		const used = new Set<number>()
 		for (const family of rest) {
 			let best: { i: number; unit: Unit; r: number } | null = null
 			for (const [i, angle] of open.entries()) {
 				if (used.has(i)) continue
-				for (let r = nearest; r <= farthest + 4 * PAD && (!best || r < best.r); r += 2 * PAD) {
+				for (let r = nearest; r <= farthest + 4 * C.memberPad && (!best || r < best.r); r += 2 * C.memberPad) {
 					const unit = unitAt(family, r, angle)
 					const span = spanOf(unit)
 					const spoke = { ax: 0, ay: 0, bx: unit.boxes[0]!.x, by: unit.boxes[0]!.y }
@@ -97,7 +104,7 @@ export function orbitCluster(centre: GraphNode, families: readonly Family[], gat
 			// Nothing free inside the outer edge: the next free gap, past everything.
 			if (!best) {
 				const i = open.findIndex((_, k) => !used.has(k))
-				const r = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + PAD
+				const r = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + C.memberPad
 				best = { i: Math.max(0, i), unit: unitAt(family, r, open[Math.max(0, i)] ?? -Math.PI / 2), r }
 			}
 			used.add(best.i)
@@ -126,16 +133,16 @@ function gapsOf(placed: readonly Unit[], gates: readonly number[]): number[] {
 			const next = i + 1 < edges.length ? edges[i + 1]!.from : edges[0]!.from + 2 * Math.PI
 			return (e.to + next) / 2
 		})
-		.filter((g) => !gates.some((gate) => angleBetween(g, gate) < (GATE * 2) / radius))
+		.filter((g) => !gates.some((gate) => angleBetween(g, gate) < (C.gateRoom * 2) / radius))
 }
 
 /** As many families as fit round one orbit, in order, each as close after the last as it fits, clear of the gates. */
 function fill(families: readonly Family[], radius: number, gates: readonly number[], spacing: number, centre: Box): { placed: Unit[] } {
 	const placed: Unit[] = []
-	const start = gates.length ? Math.min(...gates.map(normalise)) + GATE / radius : -Math.PI / 2
+	const start = gates.length ? Math.min(...gates.map(normalise)) + C.gateRoom / radius : -Math.PI / 2
 	let cursor = start
-	const end = start + 2 * Math.PI - (gates.length ? (2 * GATE) / radius : 0)
-	const room = (spacing + PAD) / radius
+	const end = start + 2 * Math.PI - (gates.length ? (2 * C.gateRoom) / radius : 0)
+	const room = (spacing + C.memberPad) / radius
 	for (const family of families) {
 		let unit: Unit | null = null
 		let a = cursor
@@ -149,7 +156,7 @@ function fill(families: readonly Family[], radius: number, gates: readonly numbe
 			}
 			const gate = gates.find((g) => withinSpan(g, a + span.from, a + span.to, radius))
 			if (gate !== undefined) {
-				a = a + span.from + normalisePositive(gate - (a + span.from)) + GATE / radius - span.from + 1e-3
+				a = a + span.from + normalisePositive(gate - (a + span.from)) + C.gateRoom / radius - span.from + 1e-3
 				continue
 			}
 			if (a + span.to > end) break
@@ -175,8 +182,8 @@ function unitAt(family: Family, radius: number, angle: number): Unit {
 	const e = { id: family.entry.id, x: radius * Math.cos(angle), y: radius * Math.sin(angle), w: family.entry.w, h: family.entry.h }
 	const boxes: (Box & { id: string })[] = [e]
 	let row = 0
-	let edge = reach(family.entry) + PAD
-	let a = -ARC
+	let edge = reach(family.entry) + C.memberPad
+	let a = -worksArc()
 	let rowOuter = edge
 	for (const work of family.works) {
 		for (;;) {
@@ -190,11 +197,11 @@ function unitAt(family: Family, radius: number, angle: number): Unit {
 				break
 			}
 			a += TURN
-			if (a > ARC) {
+			if (a > worksArc()) {
 				// The arc is full: back along the next one out.
 				row++
-				edge = rowOuter + PAD
-				a = -ARC
+				edge = rowOuter + C.memberPad
+				a = -worksArc()
 			}
 		}
 	}
@@ -217,7 +224,7 @@ function spanOf(u: Unit): { from: number; to: number } {
 
 /** Is an arrow's gate (an angle) inside these angles, with its room on each side at this radius? */
 function withinSpan(gate: number, from: number, to: number, radius: number): boolean {
-	const room = GATE / radius
+	const room = C.gateRoom / radius
 	const g = from + normalisePositive(gate - from)
 	return g >= from - room && g <= to + room
 }
@@ -262,7 +269,7 @@ const reach = (b: { w: number; h: number }) => (isRound(b) ? b.w / 2 : Math.hypo
 const support = (b: { w: number; h: number }, a: number) => (isRound(b) ? b.w / 2 : (Math.abs(Math.cos(a)) * b.w) / 2 + (Math.abs(Math.sin(a)) * b.h) / 2)
 
 function overlaps(a: Box, b: Box, extra = 0): boolean {
-	const pad = PAD + extra
+	const pad = C.memberPad + extra
 	if (isRound(a) && isRound(b)) return Math.hypot(a.x - b.x, a.y - b.y) < a.w / 2 + b.w / 2 + pad
 	if (isRound(a) || isRound(b)) {
 		const [disc, box] = isRound(a) ? [a, b] : [b, a]

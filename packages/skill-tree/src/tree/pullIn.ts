@@ -1,4 +1,5 @@
 import type { GraphNode } from './layout'
+import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
 
 /**
  * Closes the gaps a layout leaves: each branch, nearest the start first, slides whole toward the
@@ -21,16 +22,12 @@ interface Line {
 	by: number
 }
 
-/** Free space kept between two nodes. */
-const PAD = 12
 /** How far an arrow keeps from a node it passes. */
 const ARROW_MARGIN = 7
 /** The smallest slide worth trying. */
 const STEP = 10
-/** At most this many rounds of drawing the clumps in. */
-const GRAVITY_ROUNDS = 4
-/** At most this many rounds of ShrinkTree. */
-const SHRINK_ROUNDS = 4
+/** The settings of the call in progress (`pullIn` sets them): the gap, rounds, passes and arrow rule. */
+let C: LayoutConfig = DEFAULT_LAYOUT
 
 export function pullIn(
 	at: Map<string, Point>,
@@ -44,7 +41,28 @@ export function pullIn(
 	/** Each skill node's cluster (it and its entries and works), moved whole by the last pass. */
 	units: ReadonlyMap<string, readonly string[]> = new Map(),
 	/** No node but the start comes nearer the start than this, centre to edge: the open ring its arrows cross. */
-	hub = 0
+	hub = 0,
+	config: LayoutConfig = DEFAULT_LAYOUT
+): void {
+	const outer = C
+	C = config
+	try {
+		pullInNow(at, size, children, parentOf, isSkill, start, clumps, units, hub)
+	} finally {
+		C = outer
+	}
+}
+
+function pullInNow(
+	at: Map<string, Point>,
+	size: ReadonlyMap<string, GraphNode>,
+	children: ReadonlyMap<string, readonly string[]>,
+	parentOf: ReadonlyMap<string, string>,
+	isSkill: (id: string) => boolean,
+	start: string,
+	clumps: readonly string[],
+	units: ReadonlyMap<string, readonly string[]>,
+	hub: number
 ): void {
 	const ids = [...at.keys()].filter((id) => size.has(id))
 	const index = new Map(ids.map((id, i) => [id, i]))
@@ -81,7 +99,7 @@ export function pullIn(
 			const pc = moved(c, moving, dx, dy)
 			const l = { ax: pa.x, ay: pa.y, bx: pc.x, by: pc.y }
 			if (ma || mc) {
-				for (const j of grid.alongLine(l, PAD + ARROW_MARGIN)) if (j !== a && j !== c && counts(j) && !(ma && mc && moving.has(j)) && crosses(l, moved(j, moving, dx, dy), ARROW_MARGIN)) n++
+				for (const j of grid.alongLine(l, C.compactGap + ARROW_MARGIN)) if (j !== a && j !== c && counts(j) && !(ma && mc && moving.has(j)) && crosses(l, moved(j, moving, dx, dy), ARROW_MARGIN)) n++
 			} else {
 				for (const i of moving) if (counts(i) && crosses(l, moved(i, moving, dx, dy), ARROW_MARGIN)) n++
 			}
@@ -90,12 +108,14 @@ export function pullIn(
 	}
 	const hubAt = at.get(start) ?? { x: 0, y: 0 }
 	const startIndex = index.get(start)
+	/** The crossings the arrow rule counts: of skill nodes, of every node, or none. */
+	const cross = (moving: ReadonlySet<number>, dx: number, dy: number) => (C.arrowRule === 'none' ? 0 : crossings(moving, dx, dy, C.arrowRule === 'skills'))
 	const covers = (moving: ReadonlySet<number>, dx: number, dy: number) => {
 		for (const i of moving) {
 			const b = moved(i, moving, dx, dy)
 			if (hub && i !== startIndex && Math.hypot(b.x - hubAt.x, b.y - hubAt.y) - reach(b) < hub) return true
 			const [x0, y0, x1, y1] = bounds(b)
-			for (const j of grid.near(x0 - PAD, y0 - PAD, x1 + PAD, y1 + PAD)) if (!moving.has(j) && overlaps(b, boxes[j]!, PAD)) return true
+			for (const j of grid.near(x0 - C.compactGap, y0 - C.compactGap, x1 + C.compactGap, y1 + C.compactGap)) if (!moving.has(j) && overlaps(b, boxes[j]!, C.compactGap)) return true
 		}
 		return false
 	}
@@ -109,21 +129,21 @@ export function pullIn(
 
 	const order = [start]
 	for (let i = 0; i < order.length; i++) order.push(...(children.get(order[i]!) ?? []))
-	for (const id of order) {
+	for (const id of C.slideToParent ? order : []) {
 		const parent = isSkill(id) ? skillParent(id) : undefined
 		if (!parent || !index.has(parent) || !index.has(id)) continue
 		const moving = branch(id)
 		const p = boxes[index.get(parent)!]!
 		const self = () => boxes[index.get(id)!]!
-		let gap = Math.hypot(self().x - p.x, self().y - p.y) - reach(self()) - reach(p) - PAD
+		let gap = Math.hypot(self().x - p.x, self().y - p.y) - reach(self()) - reach(p) - C.compactGap
 		let step = gap / 2
-		const before = () => crossings(moving, 0, 0)
+		const before = () => cross(moving, 0, 0)
 		let now = before()
 		while (step > STEP && gap > 0) {
 			const d = Math.hypot(p.x - self().x, p.y - self().y)
 			const [ux, uy] = [(p.x - self().x) / d, (p.y - self().y) / d]
 			const s = Math.min(step, gap)
-			if (!covers(moving, ux * s, uy * s) && crossings(moving, ux * s, uy * s) <= now) {
+			if (!covers(moving, ux * s, uy * s) && cross(moving, ux * s, uy * s) <= now) {
 				move(moving, ux * s, uy * s)
 				gap -= s
 				now = before()
@@ -140,7 +160,7 @@ export function pullIn(
 		for (const i of members) [x, y] = [x + boxes[i]!.x, y + boxes[i]!.y]
 		return { x: x / members.size, y: y / members.size }
 	}
-	for (let round = 0; round < GRAVITY_ROUNDS; round++) {
+	for (let round = 0; round < (C.gravity ? C.gravityRounds : 0); round++) {
 		let moved = 0
 		// Farthest first: an outer branch settles against what is inside it, then the branch it hangs
 		// from moves in with it.
@@ -155,7 +175,8 @@ export function pullIn(
 			const floor = parent && index.has(parent) ? Math.hypot(boxes[index.get(parent)!]!.x - origin.x, boxes[index.get(parent)!]!.y - origin.y) : 0
 			const root = index.get(id)!
 			const outward = (dx: number, dy: number) => Math.hypot(boxes[root]!.x + dx - origin.x, boxes[root]!.y + dy - origin.y) >= floor + reach(boxes[root]!)
-			for (const turn of [0, Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3]) {
+			const fan = (C.gravityFan / 180) * Math.PI
+			for (const turn of [0, fan / 2, -fan / 2, fan, -fan]) {
 				const c = centroid(members)
 				const d = Math.hypot(origin.x - c.x, origin.y - c.y)
 				if (d < STEP) break
@@ -164,15 +185,15 @@ export function pullIn(
 				// No further along this way than brings the clump nearest the start.
 				let left = d * Math.cos(turn)
 				let step = left / 2
-				let now = crossings(members, 0, 0, true)
+				let now = cross(members, 0, 0)
 				let went = 0
 				while (step > STEP && left > STEP) {
 					step = Math.min(step, left)
-					if (outward(ux * step, uy * step) && !covers(members, ux * step, uy * step) && crossings(members, ux * step, uy * step, true) <= now) {
+					if (outward(ux * step, uy * step) && !covers(members, ux * step, uy * step) && cross(members, ux * step, uy * step) <= now) {
 						left -= step
 						move(members, ux * step, uy * step)
 						went += step
-						now = crossings(members, 0, 0, true)
+						now = cross(members, 0, 0)
 					} else step /= 2
 				}
 				moved += went
@@ -180,7 +201,7 @@ export function pullIn(
 		}
 		if (moved < STEP) break
 	}
-	shrinkTree()
+	if (C.shrinkTree) shrinkTree()
 	ids.forEach((id, i) => at.set(id, { x: boxes[i]!.x, y: boxes[i]!.y }))
 
 	/**
@@ -198,7 +219,7 @@ export function pullIn(
 		if (unitIds.length < 2 || !index.has(start)) return
 		const membersOf = new Map(unitIds.map((u) => [u, (units.get(u) ?? []).filter((id) => index.has(id)).map((id) => index.get(id)!)]))
 		const rootUnit = unitIds.includes(start) ? start : unitIds[0]!
-		for (let round = 0; round < SHRINK_ROUNDS; round++) {
+		for (let round = 0; round < C.shrinkRounds; round++) {
 			const circle = new Map(
 				unitIds.map((u) => {
 					const members = membersOf.get(u)!
@@ -261,14 +282,14 @@ export function pullIn(
 				const moving = subtree(u)
 				let left = Math.max(0, d - from.r * 0.25)
 				let step = left / 2
-				let now = crossings(moving, 0, 0, true)
+				let now = cross(moving, 0, 0)
 				while (step > STEP && left > STEP) {
 					step = Math.min(step, left)
-					if (!covers(moving, ux * step, uy * step) && crossings(moving, ux * step, uy * step, true) <= now) {
+					if (!covers(moving, ux * step, uy * step) && cross(moving, ux * step, uy * step) <= now) {
 						move(moving, ux * step, uy * step)
 						left -= step
 						moved += step
-						now = crossings(moving, 0, 0, true)
+						now = cross(moving, 0, 0)
 					} else step /= 2
 				}
 			}

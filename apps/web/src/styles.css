@@ -14573,6 +14573,99 @@ button.lb-props__eye:hover {
 	font-size: 10px;
 }
 
+/* The layout tuner (tree/LayoutTuner.tsx), a dev card with every layout setting. */
+.lb-tuner {
+	pointer-events: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px 14px 14px;
+	border-radius: 14px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+}
+.lb-tuner__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 700;
+	font-size: 13px;
+}
+.lb-tuner__group h4 {
+	margin: 0 0 4px;
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--lb-text-faint);
+}
+.lb-tuner__row {
+	display: grid;
+	grid-template-columns: 1fr 96px 58px;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
+}
+.lb-tuner__row select {
+	grid-column: 2 / 4;
+}
+.lb-tuner__row--check {
+	grid-template-columns: auto 1fr;
+}
+.lb-tuner__row--changed > span {
+	color: var(--lb-accent);
+	font-weight: 600;
+}
+.lb-tuner input[type='number'],
+.lb-tuner select {
+	min-width: 0;
+	padding: 2px 4px;
+	border-radius: 6px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: inherit;
+	font: inherit;
+}
+.lb-tuner input[type='range'] {
+	min-width: 0;
+	accent-color: var(--lb-accent);
+}
+.lb-tuner__stats {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 2px 10px;
+	margin: 0;
+}
+.lb-tuner__stats dt {
+	color: var(--lb-text-faint);
+}
+.lb-tuner__stats dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+}
+.lb-tuner__hint {
+	margin: 0;
+	color: var(--lb-text-faint);
+}
+.lb-tuner__buttons {
+	display: flex;
+	gap: 6px;
+}
+.lb-tuner__buttons button {
+	flex: 1;
+	padding: 5px 8px;
+	border-radius: 8px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 /* "The tree's layout is out of date", over the board (tree/StaleLayout.tsx). */
 .lb-stale-layout {
 	position: absolute;

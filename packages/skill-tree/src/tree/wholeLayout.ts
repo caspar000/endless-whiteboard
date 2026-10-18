@@ -1,5 +1,6 @@
 import type { GraphEdge, GraphNode } from './layout'
 import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
+import { balloon } from './balloon'
 import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
 
@@ -149,6 +150,13 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
 	function skeleton(radius: (id: string) => number): Map<string, Point> {
+		const out = C.placement === 'rings' ? rings(radius) : balloon({ start, order, kids: skillKids, radius, config: C })
+		shareBetween(out, radius)
+		return out
+	}
+
+	/** Steps 2 and 3 as they were before phase B: rings round the middle, slices of them. */
+	function rings(radius: (id: string) => number): Map<string, Point> {
 		const out = new Map<string, Point>()
 		// 2. Rings, first only far enough out to clear the ring inside. The first levels share one ring each
 		// across the board; past them, a node's children share an arc of their own. A cluster that fits its
@@ -218,6 +226,11 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 			const r = ring(id)
 			out.set(id, id === start ? { x: 0, y: 0 } : { x: r * Math.cos(angle(id)), y: r * Math.sin(angle(id)) })
 		}
+		return out
+	}
+
+	/** Step 4, either way. */
+	function shareBetween(out: Map<string, Point>, radius: (id: string) => number): void {
 
 		// 4. A node required from two trees sits between its parents, clear of every other cluster.
 		const discs = () => order.filter((id) => out.has(id)).map((id) => ({ id, ...out.get(id)!, r: radius(id) }))
@@ -234,8 +247,6 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 			// Its own branch moves with it.
 			for (const d of order) if (inBranch(d, id, parentOf)) out.set(d, { x: out.get(d)!.x + to.x - from.x, y: out.get(d)!.y + to.y - from.y })
 		}
-
-		return out
 	}
 }
 

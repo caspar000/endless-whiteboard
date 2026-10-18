@@ -4,7 +4,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { memo, useState, type SyntheticEvent } from 'react'
 import { isTree } from '../board'
 import { syncBoard } from '../treeSync'
-import { DEFAULT_LAYOUT, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig, type LayoutConfig } from './layoutConfig'
+import { clean, DEFAULT_LAYOUT, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig, type LayoutConfig } from './layoutConfig'
 import { lastLayoutStats } from './layoutStats'
 import { recalculate } from './viewSync'
 
@@ -75,7 +75,7 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 							return (
 								<label key={field.key} className={`lb-tuner__row${changed ? ' lb-tuner__row--changed' : ''}`}>
 									<span>{field.label}</span>
-									<select value={config.arrowRule} onChange={(e) => set({ arrowRule: e.target.value as LayoutConfig['arrowRule'] })}>
+									<select value={config[field.key]} onChange={(e) => set(clean({ ...config, [field.key]: e.target.value }))}>
 										{field.options.map((o) => (
 											<option key={o.value} value={o.value}>
 												{o.label}

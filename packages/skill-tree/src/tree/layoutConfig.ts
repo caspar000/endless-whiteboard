@@ -11,6 +11,10 @@ export interface LayoutConfig {
 	pillarSize: number
 	masterySize: number
 	// Skeleton
+	/** How skill nodes are placed: each from its parent (a balloon layout, balloon.ts), or on rings round the middle. */
+	placement: 'fromParent' | 'rings'
+	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
+	fanSpread: number
 	/** Open ground between the middle and the pillars, for the arrows out to them. */
 	hubRoom: number
 	/** Free space kept between two clusters when the skeleton is placed. */
@@ -57,6 +61,8 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	skillSize: 150,
 	pillarSize: 210,
 	masterySize: 380,
+	placement: 'fromParent',
+	fanSpread: 240,
 	hubRoom: 150,
 	clusterGap: 60,
 	minSlice: 40,
@@ -87,11 +93,22 @@ export type LayoutField =
 	| { key: NumberKey; label: string; min: number; max: number; step: number; group: string }
 	| { key: BooleanKey; label: string; group: string }
 	| { key: 'arrowRule'; label: string; group: string; options: readonly { value: LayoutConfig['arrowRule']; label: string }[] }
+	| { key: 'placement'; label: string; group: string; options: readonly { value: LayoutConfig['placement']; label: string }[] }
 
 export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Sizes', key: 'skillSize', label: 'Skill node', min: 80, max: 300, step: 10 },
 	{ group: 'Sizes', key: 'pillarSize', label: 'Pillar', min: 100, max: 400, step: 10 },
 	{ group: 'Sizes', key: 'masterySize', label: 'You (the middle)', min: 150, max: 700, step: 10 },
+	{
+		group: 'Skeleton',
+		key: 'placement',
+		label: 'Place skill nodes',
+		options: [
+			{ value: 'fromParent', label: 'From their parent' },
+			{ value: 'rings', label: 'On rings round the middle' },
+		],
+	},
+	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
 	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },
 	{ group: 'Skeleton', key: 'minSlice', label: 'Narrowest pillar slice (°)', min: 0, max: 72, step: 1 },
@@ -142,7 +159,8 @@ export function clean(raw: Partial<Record<keyof LayoutConfig, unknown>>): Layout
 		if ('min' in field) {
 			if (typeof v === 'number' && Number.isFinite(v)) (out[field.key] as number) = Math.min(field.max, Math.max(field.min, v))
 		} else if ('options' in field) {
-			if (field.options.some((o) => o.value === v)) out.arrowRule = v as LayoutConfig['arrowRule']
+			if (field.key === 'arrowRule' && field.options.some((o) => o.value === v)) out.arrowRule = v as LayoutConfig['arrowRule']
+			if (field.key === 'placement' && field.options.some((o) => o.value === v)) out.placement = v as LayoutConfig['placement']
 		} else if (typeof v === 'boolean') (out[field.key] as boolean) = v
 	}
 	return out

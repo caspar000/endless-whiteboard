@@ -209,3 +209,29 @@ board: 2.8 s. Left: 17 of 56 arrows are longer than 600 px, most made by the ske
 spaces rings from the middle, not from each parent), and the longest are cross-links. That is phase
 B: placement from the parent within wedges, and sibling ordering.
 
+
+## Phase B, step 2: placing each node from its parent (2026-10-18)
+
+Step 1 (sibling ordering) was folded into this one. The four-tree test board (You, the pillars,
+Adler, Film, Theatre and Games) has 2 cross-links among its 132 arrows, so ordering siblings by them
+changes next to nothing there. Children keep the YAML's order.
+
+Built: `tree/balloon.ts`, a balloon layout, now the default (`placement`, with the old rings still
+there as `rings`). Bottom-up, each branch is laid out on its own, its node at the origin and the
+branch growing outward. A node's children are swept round it in order, each at the least angle at
+which its whole branch clears what is already placed. All of them sit at one distance, as short as
+the fan (`fanSpread`, 240°) allows: it grows only while they don't fit, and past `maxArrow` (here,
+space beyond the clusters touching) only if they don't fit at all. Top-down, each branch is turned
+to point away from its parent. The pillars stay on one ring round You, the first at the top, at
+least `minSlice` apart, sharing the spare angle evenly. Every branch clears its siblings' whole
+branches, so nothing overlaps by construction; compaction runs after it as before.
+
+Four-tree board, rings → from the parent: mean arrow 1695 → 788 px, longest 8135 → 5335, total
+length 224k → 104k, 6.8 s → 1.8 s, fill 6.1% → 8.9%, overlaps 0 → 0. Crossings went up: arrows over
+entries or works 1 → 10, over light lines 3 → 8, arrow over arrow 0 → 3, through a skill node 0 → 1.
+Fan spreads from 160° to 320° all come out within a few percent of each other.
+
+Left: the arrow from You to a pillar carrying big trees is long, as that pillar's whole branch has
+to clear the middle. Arrows are still at least two cluster radii long, about 700 px between big
+clusters, unless compaction nests clusters in each other's gaps. The new crossings are step 3's:
+repair with bounded local moves.

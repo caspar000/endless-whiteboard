@@ -837,4 +837,5 @@ def write():
     print(f'{OUT}: {len(ids)} items')
 
 
-write()
+if __name__ == '__main__':
+    write()

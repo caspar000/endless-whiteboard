@@ -3,6 +3,7 @@ import adlerYaml from '../content/adler.yaml?raw'
 import directorYaml from '../content/director.yaml?raw'
 import mucoreYaml from '../content/mucore.yaml?raw'
 import lifeYaml from '../content/whole-life-test.yaml?raw'
+import filmYaml from '../content/film.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
@@ -208,5 +209,24 @@ describe('content/whole-life-test.yaml', () => {
 	it('shares Steady Attention between Meditation and Attention', () => {
 		const steady = doc.trees.find((t) => t.treeId === 'meditation')!.nodes.find((n) => n.nodeId === 'meditation/steady-attention')!
 		expect(prerequisitesOf(steady.requires).map((id) => nodes.get(id))).toEqual(['meditation', 'attention'])
+	})
+})
+
+describe('content/film.yaml', () => {
+	const doc = load(filmYaml)
+	const entries = doc.tracks.flatMap((t) => t.items)
+
+	it('has a tree that holds together, hung under the Practical pillar', () => {
+		checkTree(doc)
+		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+	})
+
+	it('keeps every skill node to a dozen entries or so, each a person with their works', () => {
+		const per = new Map<string, number>()
+		for (const e of entries) per.set(e.tags[0]!, (per.get(e.tags[0]!) ?? 0) + 1)
+		for (const [node, n] of per) expect(n, node).toBeLessThanOrEqual(12)
+		const tarkovsky = entries.find((e) => e.itemId === 'film/tarkovsky')!
+		expect(tarkovsky.title).toBe('Андрей Тарковский')
+		expect(tarkovsky.children.map((c) => c.title)).toContain('Сталкер (1979)')
 	})
 })

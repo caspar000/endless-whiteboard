@@ -15,3 +15,4 @@ apps/server/data/
 packages/canvas-editor/types/
 packages/canvas/types/
 playwright-report-server/
+__pycache__/

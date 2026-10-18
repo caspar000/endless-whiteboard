@@ -1,7 +1,7 @@
 import { connectShapes } from '@lifeboard/node-kit'
-import { ARROW_STAYS_BEHIND_META, Box, createShapeId, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { ARROW_STAYS_BEHIND_META, Box, createShapeId, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
-import { ENTRY_SIZE, WORK_SIZE } from '../entry/definition'
+import { ENTRY_SIZE, WORK_ANCHOR, WORK_SIZE } from '../entry/definition'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
@@ -420,6 +420,18 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 function linesUnderNodes(editor: Editor): void {
 	const lines = lineArrows(editor)
 	if (!lines.length) return
+	// A work is a disc with its title below: a line meets the disc's middle, not the box's.
+	const anchored: TLArrowBinding[] = []
+	for (const line of lines) {
+		for (const b of editor.getBindingsFromShape<TLArrowBinding>(line, 'arrow')) {
+			const end = editor.getShape(b.toId)
+			if (!isEntry(end) || end.props.variant !== 'work') continue
+			const now = b.props.normalizedAnchor
+			if (b.props.isPrecise && now.x === WORK_ANCHOR.x && now.y === WORK_ANCHOR.y) continue
+			anchored.push({ ...b, props: { ...b.props, normalizedAnchor: WORK_ANCHOR, isPrecise: true } })
+		}
+	}
+	if (anchored.length) editor.updateBindings(anchored)
 	// Marked first: otherwise the canvas lifts each line back above the two shapes it joins.
 	const unmarked = lines.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
 	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)

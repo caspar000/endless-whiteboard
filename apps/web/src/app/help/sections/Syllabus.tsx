@@ -173,9 +173,11 @@ export function Syllabus(_props: SectionProps) {
 					A tree opens on <strong>everything</strong>: its skill nodes with their entries and works round
 					them. <code>Show all nodes or only skill nodes</code> (<kbd>Shift</kbd>+<kbd>E</kbd>) switches every
 					tree on the board to its skill nodes only and back. Each view remembers where you put its nodes:
-					come back to it and they are where you left them. Tick a work's dot right there in the tree;
-					right-click an entry › Put a card on the board for its checklist. Double-click a skill node, or
-					press Enter, to edit it.
+					come back to it and they are where you left them. A work is a small disc with the icon of what it
+					is (a book, a film, an album) and its title below; right-click it, or an entry without works, ›
+					Mark as done. Done fills it in; done but not written up yet leaves only its outline. Right-click
+					an entry › Put a card on the board for its checklist. Double-click a skill node, or press Enter,
+					to edit it.
 				</p>
 				<p>
 					Drag a node and its branch follows on springs, and whatever it runs into makes room; let go and

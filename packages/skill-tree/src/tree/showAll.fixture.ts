@@ -60,7 +60,7 @@ export function showView(name: string, sources: readonly string[], treeId: strin
 	edges.push({ from: view.start, to: HEADER })
 	const nodes: GraphNode[] = [
 		...[...view.skills].map((id) => ({ id, w: 150, h: 150 })),
-		...[...view.items].map(([id, at]) => (at.variant === 'work' ? { id: key(id), w: 180, h: 26 } : { id: key(id), w: 110, h: 110 })),
+		...[...view.items].map(([id, at]) => (at.variant === 'work' ? { id: key(id), w: 120, h: 100 } : { id: key(id), w: 110, h: 110 })),
 		{ id: HEADER, w: 280, h: 72 },
 	]
 	return { name, nodes, edges, start: view.start, skills: view.skills, arrows, lines }

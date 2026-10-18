@@ -8,13 +8,22 @@ import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syll
 import { itemNodeDefinition } from './item/definition'
 import { entryNodeDefinition } from './entry/definition'
 import { ENTRY_TYPE, isEntry, SKILL_TYPE, TREE_TYPE } from './board'
-import { putCard } from './ops'
+import { putCard, tick } from './ops'
+import { getItem, isItemDone } from './syllabus'
+import type { TLShapeId } from '@lifeboard/canvas'
 import { TreeSettings } from './TreeSettings'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
 import { trackNodeDefinition } from './track/definition'
 import { treeNodeDefinition } from './tree/definition'
+
+/** The item behind an entry or work in a tree, when it is a leaf: something that is ticked, not worked out from its works. */
+function leafInTree(shape: { type: string; props?: unknown }): { itemId: string; done: boolean } | null {
+	if (shape.type !== ENTRY_TYPE) return null
+	const item = getItem((shape.props as { itemId?: string } | undefined)?.itemId ?? '')
+	return item && !item.children.length ? { itemId: item.itemId, done: isItemDone(item.itemId) } : null
+}
 
 /**
  * Syllabi you tick through, and skill trees that light up from the evidence the ticks leave
@@ -49,6 +58,24 @@ export const skillTreeExtension: Extension = {
 		defineNode(entryNodeDefinition),
 	],
 	actions: [
+		{
+			id: 'skill-tree.mark-done',
+			label: 'Mark as done',
+			appliesTo: (shape) => leafInTree(shape)?.done === false,
+			run: ({ editor, shape }) => {
+				const leaf = leafInTree(shape)
+				if (leaf) tick(editor, leaf.itemId, true, shape.id as TLShapeId)
+			},
+		},
+		{
+			id: 'skill-tree.mark-not-done',
+			label: 'Mark as not done',
+			appliesTo: (shape) => leafInTree(shape)?.done === true,
+			run: ({ editor, shape }) => {
+				const leaf = leafInTree(shape)
+				if (leaf) tick(editor, leaf.itemId, false, shape.id as TLShapeId)
+			},
+		},
 		{
 			id: 'skill-tree.edit',
 			label: 'Edit',

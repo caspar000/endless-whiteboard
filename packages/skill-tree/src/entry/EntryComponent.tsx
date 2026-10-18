@@ -1,28 +1,33 @@
 import type { NodeComponentProps } from '@lifeboard/node-kit'
-import { useValue, type TLShapeId } from '@lifeboard/canvas'
+import { useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
 import type { EntryProps } from '../board'
-import { Tick } from '../item/ItemComponent'
 import { getItems, getSkillIndex, isItemDone, progressOf } from '../syllabus'
+import { mediumIcon } from './mediumIcon'
 
 const RING = 2 * Math.PI * 46
 
 /**
  * An entry or a work in a tree view (docs/skill-tree-plan.md, "Rebuild"): a view of a vault item.
- * An entry is a small disc whose ring is how many of its works are done; a work is a tick dot with
- * its title. Ticking either is the same tick as in the list.
+ * An entry is a disc with its name inside and a ring for how many of its works are done; a work is a
+ * smaller disc with the icon of its medium and its title below. Right-click › Mark as done ticks
+ * either, the same tick as in the list. A tick still waiting for its write-up shows as an outline.
  */
-function EntryComponentImpl({ shape, editor }: NodeComponentProps<EntryProps>) {
+function EntryComponentImpl({ shape }: NodeComponentProps<EntryProps>) {
 	const { item } = useValue('lifeboard:skill-entry', () => ({ item: getItems()[shape.props.itemId], index: getSkillIndex() }), [shape.props.itemId])
-	const anchor = shape.id as TLShapeId
 	if (!item) return <div className="lb-entry lb-entry--missing">{shape.props.itemId}</div>
 	const done = isItemDone(item.itemId)
 	const draft = item.draft ? ' lb-draft' : ''
+	// Done but no write-up yet: done, not yet evidence.
+	const hollow = done && !item.children.length && !getSkillIndex()[item.itemId]?.evidence
+	const Icon = mediumIcon(item)
 
 	if (shape.props.variant === 'work') {
 		return (
-			<div className={`lb-work${done ? ' lb-work--done' : ''}${draft}`} title={item.title}>
-				<Tick item={item} editor={editor} anchor={anchor} />
+			<div className={`lb-work${done ? ' lb-work--done' : ''}${hollow ? ' lb-work--hollow' : ''}${draft}`} title={item.title}>
+				<span className="lb-work__disc">
+					<Icon size={22} strokeWidth={1.75} aria-hidden />
+				</span>
 				<span className="lb-work__title">{item.title || 'Untitled'}</span>
 			</div>
 		)
@@ -38,7 +43,7 @@ function EntryComponentImpl({ shape, editor }: NodeComponentProps<EntryProps>) {
 			</svg>
 			<div className="lb-entry__disc">
 				<span className="lb-entry__title">{item.title || 'Untitled'}</span>
-				{progress ? <span className="lb-entry__count">{progress.done}/{progress.total}</span> : <Tick item={item} editor={editor} anchor={anchor} />}
+				{progress ? <span className="lb-entry__count">{progress.done}/{progress.total}</span> : <Icon className={hollow ? 'lb-entry__icon lb-entry__icon--hollow' : 'lb-entry__icon'} size={16} strokeWidth={1.75} aria-hidden />}
 			</div>
 		</div>
 	)

@@ -14388,7 +14388,7 @@ button.lb-props__eye:hover {
 }
 
 /* Entries and works in a tree view (entry/EntryComponent.tsx): an entry is a disc with its name
-   inside and a ring for its works; a work is a tick dot with its title. */
+   inside and a ring for its works; a work is a smaller disc with its medium's icon, its title below. */
 .lb-entry {
 	position: relative;
 	width: 100%;
@@ -14446,15 +14446,19 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-variant-numeric: tabular-nums;
 }
-.lb-entry .lb-skill__check {
-	pointer-events: auto;
+.lb-entry__icon {
+	color: var(--lb-text-faint);
+	flex-shrink: 0;
+}
+.lb-entry--done .lb-entry__icon {
+	color: var(--lb-accent);
 }
 .lb-entry--done .lb-entry__disc {
 	background: var(--lb-accent-tint);
 	border-color: var(--lb-accent);
 }
 .lb-entry.lb-draft .lb-entry__disc,
-.lb-work.lb-draft {
+.lb-work.lb-draft .lb-work__disc {
 	border-style: dashed;
 	border-color: var(--lb-accent);
 }
@@ -14462,29 +14466,46 @@ button.lb-props__eye:hover {
 	width: 100%;
 	height: 100%;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 6px;
-	padding: 0 8px 0 4px;
-	border-radius: 999px;
-	background: var(--lb-surface);
-	border: 1px solid var(--lb-border);
+	gap: 5px;
 	font-family: var(--lb-font);
-	font-size: 11px;
 	color: var(--lb-text);
 }
-.lb-work .lb-skill__check {
-	pointer-events: auto;
+.lb-work__disc {
+	width: 60px;
+	height: 60px;
+	flex-shrink: 0;
 	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	background: var(--lb-surface);
+	border: 1.5px solid var(--lb-border);
+	color: var(--lb-text-faint);
 }
 .lb-work__title {
-	min-width: 0;
-	white-space: nowrap;
+	max-width: 100%;
+	font-size: 10.5px;
+	font-weight: 500;
+	line-height: 1.2;
+	text-align: center;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 	overflow: hidden;
-	text-overflow: ellipsis;
+	overflow-wrap: anywhere;
+}
+/* Done: filled with the accent. Done but not yet written up: only its outline. */
+.lb-work--done .lb-work__disc {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-work--hollow .lb-work__disc {
+	background: var(--lb-surface);
 }
 .lb-work--done .lb-work__title {
 	color: var(--lb-text-faint);
-	text-decoration: line-through;
 }
 .lb-entry--missing {
 	color: var(--lb-text-faint);

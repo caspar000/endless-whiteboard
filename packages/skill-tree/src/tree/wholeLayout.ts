@@ -39,6 +39,8 @@ const GAP = 60
 const PAD = 12
 /** The narrowest a slice of the start's children may be. */
 const MIN_SLICE = (40 / 180) * Math.PI
+/** Open ground between the middle and the ring round it, so the arrows out to the pillars show. */
+const HUB_ROOM = 150
 /** Levels below the start that share one ring across the whole board: pillars, then tree roots. */
 const SHARED_LEVELS = 2
 
@@ -116,7 +118,7 @@ export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEd
 	// against the others, closing the empty regions between branches.
 	const clumps = order.filter((id) => depth.get(id)! > SHARED_LEVELS)
 	const units = new Map(order.map((id) => [id, [id, ...clusters.get(id)!.at.keys()]]))
-	pullIn(out, size, children, parentOf, isSkill, start, clumps, units)
+	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + HUB_ROOM)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - GAP * 4
 	for (const n of nodes) {
 		if (out.has(n.id)) continue
@@ -146,7 +148,8 @@ export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEd
 					const parent = parentSkill(id, parentOf, isSkill)!
 					// Clear of the parent's whole ring while it is a shared one, else of the parent alone.
 					const inner = depth.get(parent)! <= SHARED_LEVELS && depth.get(id)! <= SHARED_LEVELS ? widest.get(ringKey(parent))! : radius(parent)
-					const clear = ring(parent) + inner + widest.get(ringKey(id))! + GAP
+					// The first ring keeps open ground round the middle for its arrows (HUB_ROOM).
+					const clear = ring(parent) + inner + widest.get(ringKey(id))! + (d === 1 ? HUB_ROOM : GAP)
 					rings.set(ringKey(id), Math.max(ring(id), clear))
 				}
 			}

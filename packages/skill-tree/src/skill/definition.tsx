@@ -13,8 +13,11 @@ export const SKILL_SIZE = 150
 /** The middle of the tree (the Mastery node, "you"): a large disc, like the class portrait at the middle of Path of Exile's tree. */
 export const MASTERY_SIZE = 380
 
+/** A pillar, the root of one area of life: bigger than a skill node, smaller than the middle. */
+export const PILLAR_SIZE = 210
+
 /** How big a skill node of this kind is drawn. */
-export const sizeOfKind = (kind: string) => (kind === 'mastery' ? MASTERY_SIZE : SKILL_SIZE)
+export const sizeOfKind = (kind: string) => (kind === 'mastery' ? MASTERY_SIZE : kind === 'pillar' ? PILLAR_SIZE : SKILL_SIZE)
 
 const versions = createShapePropsMigrationIds(SKILL_TYPE, { AddIcon: 1, AddPicture: 2 })
 

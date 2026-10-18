@@ -42,7 +42,9 @@ export function pullIn(
 	/** The roots of the clumps that are then drawn in toward the start, each whole. */
 	clumps: readonly string[] = [],
 	/** Each skill node's cluster (it and its entries and works), moved whole by the last pass. */
-	units: ReadonlyMap<string, readonly string[]> = new Map()
+	units: ReadonlyMap<string, readonly string[]> = new Map(),
+	/** No node but the start comes nearer the start than this, centre to edge: the open ring its arrows cross. */
+	hub = 0
 ): void {
 	const ids = [...at.keys()].filter((id) => size.has(id))
 	const index = new Map(ids.map((id, i) => [id, i]))
@@ -86,9 +88,12 @@ export function pullIn(
 		}
 		return n
 	}
+	const hubAt = at.get(start) ?? { x: 0, y: 0 }
+	const startIndex = index.get(start)
 	const covers = (moving: ReadonlySet<number>, dx: number, dy: number) => {
 		for (const i of moving) {
 			const b = moved(i, moving, dx, dy)
+			if (hub && i !== startIndex && Math.hypot(b.x - hubAt.x, b.y - hubAt.y) - reach(b) < hub) return true
 			const [x0, y0, x1, y1] = bounds(b)
 			for (const j of grid.near(x0 - PAD, y0 - PAD, x1 + PAD, y1 + PAD)) if (!moving.has(j) && overlaps(b, boxes[j]!, PAD)) return true
 		}

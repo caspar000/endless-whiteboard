@@ -4,6 +4,7 @@ import directorYaml from '../content/director.yaml?raw'
 import mucoreYaml from '../content/mucore.yaml?raw'
 import lifeYaml from '../content/whole-life-test.yaml?raw'
 import filmYaml from '../content/film.yaml?raw'
+import theatreYaml from '../content/theatre.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
@@ -228,5 +229,25 @@ describe('content/film.yaml', () => {
 		const tarkovsky = entries.find((e) => e.itemId === 'film/tarkovsky')!
 		expect(tarkovsky.title).toBe('Андрей Тарковский')
 		expect(tarkovsky.children.map((c) => c.title)).toContain('Сталкер (1979)')
+	})
+})
+
+describe('content/theatre.yaml', () => {
+	const doc = load(theatreYaml)
+	const entries = doc.tracks.flatMap((t) => t.items)
+
+	it('has a tree that holds together, hung under the Practical pillar', () => {
+		checkTree(doc)
+		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+	})
+
+	it('keeps every skill node to a dozen entries or so, Russian and Georgian people under their own names', () => {
+		const per = new Map<string, number>()
+		for (const e of entries) per.set(e.tags[0]!, (per.get(e.tags[0]!) ?? 0) + 1)
+		for (const [node, n] of per) expect(n, node).toBeLessThanOrEqual(12)
+		expect(entries.find((e) => e.itemId === 'theatre/stanislavsky')!.title).toBe('Константин Станиславский')
+		const sturua = entries.find((e) => e.itemId === 'theatre/sturua')!
+		expect(sturua.title).toBe('რობერტ სტურუა')
+		expect(sturua.children.map((c) => c.title)).toContain('რიჩარდ III (1979)')
 	})
 })

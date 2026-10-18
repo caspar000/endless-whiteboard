@@ -3,6 +3,7 @@ import directorYaml from '../../content/director.yaml?raw'
 import mucoreYaml from '../../content/mucore.yaml?raw'
 import lifeYaml from '../../content/whole-life-test.yaml?raw'
 import filmYaml from '../../content/film.yaml?raw'
+import theatreYaml from '../../content/theatre.yaml?raw'
 import { parseSyllabus, type DocItem } from '../syllabusYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
@@ -81,9 +82,9 @@ export function showView(
 const LIFE_MOUNTS = { adler: 'mastery/mental', director: 'mastery/practical' }
 /** The whole-life test board: you, the pillars, the test trees, Adler on Mental and Director on Practical. */
 export const WHOLE_LIFE = showView('whole-life', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'all', LIFE_MOUNTS)
-/** The test board as the dev command now makes it: you, the pillars, Adler and Film. */
-export const ADLER_LIFE = showView('adler-life', [lifeYaml, adlerYaml, filmYaml], 'mastery', 'all', { ...LIFE_MOUNTS, film: 'mastery/practical' }, (t) =>
-	['mastery', 'adler', 'film'].includes(t)
+/** The test board as the dev command now makes it: you, the pillars, Adler, Film and Theatre. */
+export const ADLER_LIFE = showView('adler-life', [lifeYaml, adlerYaml, filmYaml, theatreYaml], 'mastery', 'all', { ...LIFE_MOUNTS, film: 'mastery/practical', theatre: 'mastery/practical' }, (t) =>
+	['mastery', 'adler', 'film', 'theatre'].includes(t)
 )
 /** The same in the skill-node view. */
 export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'overview', LIFE_MOUNTS)

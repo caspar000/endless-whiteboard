@@ -10,31 +10,30 @@ export const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }
 
 /**
  * The board the whole-life layout is tested on (docs/skill-tree-layout-plan.md, "Test board"): you at
- * the centre, the five pillars, Adler on Mental and Film on Practical, nothing else. One view, Mastery's, showing
- * everything; no habit cards. Only the Mastery tree of content/whole-life-test.yaml is used (its test
- * trees stay in the file for the layout tests). Every other tree hanging from a pillar is taken off
- * it (its mount cleared, nothing deleted), so the view reaches Adler alone; importing a tree again
- * hangs it back. Confirmed, as it is a sample to look at rather than an import to review.
+ * the centre, the five pillars, Adler on Mental and Film and Theatre on Practical, nothing else. One
+ * view, Mastery's, showing everything; no habit cards. Only the Mastery tree of
+ * content/whole-life-test.yaml is used (its test trees stay in the file for the layout tests). Every
+ * other tree hanging from a pillar is taken off it (its mount cleared, nothing deleted), so the view
+ * reaches only these; importing a tree again hangs it back. Confirmed, as it is a sample to look at rather than an import to review.
  */
 export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: number }): Promise<void> {
-	const [life, adler, film] = await Promise.all([
-		import('../../content/whole-life-test.yaml?raw'),
-		import('../../content/adler.yaml?raw'),
-		import('../../content/film.yaml?raw'),
-	])
-	const parsedLife = parseSyllabus(life.default)
-	const parsedAdler = parseSyllabus(adler.default)
-	const parsedFilm = parseSyllabus(film.default)
-	if (!parsedLife.ok || !parsedAdler.ok || !parsedFilm.ok) throw new Error('A whole-life test document does not parse')
-	importSyllabus(editor, { ...parsedLife.doc, trees: parsedLife.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [], habits: [] }, at)
-	importSyllabus(editor, { ...parsedAdler.doc, habits: [] }, at)
-	importSyllabus(editor, { ...parsedFilm.doc, habits: [] }, at)
+	const [life, ...trees] = (
+		await Promise.all([
+			import('../../content/whole-life-test.yaml?raw'),
+			import('../../content/adler.yaml?raw'),
+			import('../../content/film.yaml?raw'),
+			import('../../content/theatre.yaml?raw'),
+		])
+	).map((m) => parseSyllabus(m.default))
+	if (!life!.ok || trees.some((t) => !t.ok)) throw new Error('A whole-life test document does not parse')
+	importSyllabus(editor, { ...life!.doc, trees: life!.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [], habits: [] }, at)
+	for (const tree of trees) if (tree.ok) importSyllabus(editor, { ...tree.doc, habits: [] }, at)
 	confirmDraft(editor)
-	updateTreeMeta('adler', { mount: 'mastery/mental' })
-	updateTreeMeta('film', { mount: 'mastery/practical' })
-	const kept = new Set(['adler', 'film'])
+	const mounts: Record<string, string> = { adler: 'mastery/mental', film: 'mastery/practical', theatre: 'mastery/practical' }
+	for (const [treeId, mount] of Object.entries(mounts)) updateTreeMeta(treeId, { mount })
+	const kept = new Set(Object.keys(mounts))
 	for (const tree of Object.values(getTreeDefs())) if (!kept.has(tree.treeId) && tree.mount.startsWith('mastery/')) updateTreeMeta(tree.treeId, { mount: '' })
-	// Adler's and Film's imports made headers; Mastery's view reaches both, so Mastery's is the one.
+	// The imports made headers; Mastery's view reaches them all, so Mastery's is the one.
 	const headers = editor.getCurrentPageShapes().filter(isTree)
 	editor.run(() => {
 		editor.deleteShapes(headers.filter((h) => h.props.treeId !== 'mastery').map((h) => h.id))

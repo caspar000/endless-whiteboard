@@ -348,3 +348,851 @@ tracks:
           - { id: anthropy-clark-vocabulary, title: "Anthropy & Clark, A Game Design Vocabulary", medium: work }
           - { id: lantz-beauty-of-games, title: "Lantz, The Beauty of Games", medium: work }
           - { id: rogers-level-up, title: "Rogers, Level Up!", medium: work }
+  - id: western-film
+    name: "Western Film"
+    state: active
+    items:
+      - id: bordwell-thompson-film-art
+        title: "Bordwell & Thompson, Film Art: An Introduction"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: lumet-making-movies
+        title: "Lumet, Making Movies"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: scorsese-39
+        title: "Scorsese's 39 Foreign Films"
+        kind: study
+        medium: film
+        tags: [film-canon]
+        childRule: all
+        children:
+          - { id: scorsese-metropolis, title: "Metropolis", medium: film }
+          - { id: scorsese-nosferatu, title: "Nosferatu", medium: film }
+          - { id: scorsese-dr-mabuse-the-gambler, title: "Dr. Mabuse, the Gambler", medium: film }
+          - { id: scorsese-napoleon, title: "Napoleon", medium: film }
+          - { id: scorsese-grand-illusion, title: "Grand Illusion", medium: film }
+          - { id: scorsese-the-rules-of-the-game, title: "The Rules of the Game", medium: film }
+          - { id: scorsese-children-of-paradise, title: "Children of Paradise", medium: film }
+          - { id: scorsese-rome-open-city, title: "Rome, Open City", medium: film }
+          - { id: scorsese-paisan, title: "Paisan", medium: film }
+          - { id: scorsese-la-terra-trema, title: "La Terra Trema", medium: film }
+          - { id: scorsese-the-bicycle-thief, title: "The Bicycle Thief", medium: film }
+          - { id: scorsese-umberto-d, title: "Umberto D", medium: film }
+          - { id: scorsese-beauty-and-the-beast, title: "Beauty and the Beast", medium: film }
+          - { id: scorsese-tokyo-story, title: "Tokyo Story", medium: film }
+          - { id: scorsese-ikiru, title: "Ikiru", medium: film }
+          - { id: scorsese-seven-samurai, title: "Seven Samurai", medium: film }
+          - { id: scorsese-ugetsu, title: "Ugetsu", medium: film }
+          - { id: scorsese-sansho-the-bailiff, title: "Sansho the Bailiff", medium: film }
+          - { id: scorsese-high-and-low, title: "High and Low", medium: film }
+          - { id: scorsese-big-deal-on-madonna-street, title: "Big Deal on Madonna Street", medium: film }
+          - { id: scorsese-rocco-and-his-brothers, title: "Rocco and His Brothers", medium: film }
+          - { id: scorsese-the-400-blows, title: "The 400 Blows", medium: film }
+          - { id: scorsese-shoot-the-piano-player, title: "Shoot the Piano Player", medium: film }
+          - { id: scorsese-breathless, title: "Breathless", medium: film }
+          - { id: scorsese-band-of-outsiders, title: "Band of Outsiders", medium: film }
+          - { id: scorsese-il-sorpasso, title: "Il Sorpasso", medium: film }
+          - { id: scorsese-lavventura, title: "L’avventura", medium: film }
+          - { id: scorsese-blow-up, title: "Blow-Up", medium: film }
+          - { id: scorsese-before-the-revolution, title: "Before the Revolution", medium: film }
+          - { id: scorsese-le-boucher, title: "Le Boucher", medium: film }
+          - { id: scorsese-weekend, title: "Weekend", medium: film }
+          - { id: scorsese-death-by-hanging, title: "Death by Hanging", medium: film }
+          - { id: scorsese-the-merchant-of-four-seasons, title: "The Merchant of Four Seasons", medium: film }
+          - { id: scorsese-ali-fear-eats-the-soul, title: "Ali: Fear Eats the Soul", medium: film }
+          - { id: scorsese-the-marriage-of-maria-braun, title: "The Marriage of Maria Braun", medium: film }
+          - { id: scorsese-kings-of-the-road, title: "Kings of the Road", medium: film }
+          - { id: scorsese-the-american-friend, title: "The American Friend", medium: film }
+          - { id: scorsese-the-mystery-of-kaspar-hauser, title: "The Mystery of Kaspar Hauser", medium: film }
+          - { id: scorsese-aguirre-the-wrath-of-god, title: "Aguirre, the Wrath of God", medium: film }
+      - id: mackendrick-on-film-making
+        title: "Mackendrick, On Film-making"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: mamet-on-directing-film
+        title: "Mamet, On Directing Film"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: murch-in-the-blink-of-an-eye
+        title: "Murch, In the Blink of an Eye"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: weston-directing-actors
+        title: "Weston, Directing Actors"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: brook-empty-space
+        title: "Brook, The Empty Space"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: mitchell-directors-craft
+        title: "Mitchell, The Director's Craft"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: corrigan-writing-about-film
+        title: "Corrigan, A Short Guide to Writing About Film"
+        kind: study
+        medium: book
+        tags: [film-craft]
+      - id: film-method-books
+        title: "Method Books"
+        kind: study
+        medium: book
+        tags: [film-craft]
+        children:
+          - { id: van-sijll-cinematic-storytelling, title: "Van Sijll, Cinematic Storytelling", medium: work }
+          - { id: rabiger-directing, title: "Rabiger, Directing", medium: work }
+          - { id: block-visual-story, title: "Block, The Visual Story", medium: work }
+          - { id: katz-shot-by-shot, title: "Katz, Shot by Shot", medium: work }
+          - { id: nitsche-video-game-spaces, title: "Nitsche, Video Game Spaces", medium: work }
+      - id: film-to-level-talks
+        title: "Film to Level: Talks"
+        kind: study
+        medium: talk
+        tags: [film-craft]
+        children:
+          - { id: bellard-spatial-cinematography, title: "Bellard, \"Environment Design as Spatial Cinematography\" (GDC 2019)", medium: talk, core: true }
+          - { id: hill-interactive-pacing, title: "Hill, \"Interactive Pacing\"", medium: talk }
+      - id: every-frame-a-painting
+        title: "Every Frame a Painting"
+        kind: study
+        medium: talk
+        tags: [film-craft]
+        childRule: all
+        children:
+          - { id: efap-memories-of-murder, title: "Memories of Murder: Ensemble Staging", medium: talk }
+          - { id: efap-kurosawa-composing-movement, title: "Akira Kurosawa: Composing Movement", medium: talk }
+          - { id: efap-editor-think-and-feel, title: "How Does an Editor Think and Feel?", medium: talk }
+      - id: sight-and-sound-1-21
+        title: "Sight & Sound Directors' Poll: 1–21"
+        kind: study
+        medium: film
+        tags: [film-canon]
+        childRule: all
+        children:
+          - { id: ss-2001-a-space-odyssey-1968, title: "2001: A Space Odyssey (1968)", medium: film }
+          - { id: ss-citizen-kane-1941, title: "Citizen Kane (1941)", medium: film }
+          - { id: ss-the-godfather-1972, title: "The Godfather (1972)", medium: film }
+          - { id: ss-jeanne-dielman-23-quai-du-commerce-1080-bruxelles-1975, title: "Jeanne Dielman, 23 Quai du Commerce, 1080 Bruxelles (1975)", medium: film }
+          - { id: ss-tokyo-story-1953, title: "Tokyo Story (1953)", medium: film }
+          - { id: ss-vertigo-1958, title: "Vertigo (1958)", medium: film }
+          - { id: ss-8-1963, title: "8½ (1963)", medium: film }
+          - { id: ss-mirror-1975, title: "Mirror (1975)", medium: film }
+          - { id: ss-in-the-mood-for-love-2000, title: "In the Mood for Love (2000)", medium: film }
+          - { id: ss-close-up-1989, title: "Close-up (1989)", medium: film }
+          - { id: ss-persona-1966, title: "Persona (1966)", medium: film }
+          - { id: ss-taxi-driver-1976, title: "Taxi Driver (1976)", medium: film }
+          - { id: ss-barry-lyndon-1975, title: "Barry Lyndon (1975)", medium: film }
+          - { id: ss-beau-travail-1998, title: "Beau travail (1998)", medium: film }
+          - { id: ss-seven-samurai-1954, title: "Seven Samurai (1954)", medium: film }
+          - { id: ss-bout-de-souffle-1960, title: "À bout de souffle (1960)", medium: film }
+          - { id: ss-stalker-1979, title: "Stalker (1979)", medium: film }
+          - { id: ss-apocalypse-now-1979, title: "Apocalypse Now (1979)", medium: film }
+          - { id: ss-a-woman-under-the-influence-1974, title: "A Woman under the Influence (1974)", medium: film }
+          - { id: ss-bicycle-thieves-1948, title: "Bicycle Thieves (1948)", medium: film }
+          - { id: ss-rashomon-1950, title: "Rashomon (1950)", medium: film }
+      - id: sight-and-sound-22-41
+        title: "Sight & Sound Directors' Poll: 22–41"
+        kind: study
+        medium: film
+        tags: [film-canon]
+        childRule: all
+        children:
+          - { id: ss-mulholland-dr-2001, title: "Mulholland Dr. (2001)", medium: film }
+          - { id: ss-pather-panchali-1955, title: "Pather Panchali (1955)", medium: film }
+          - { id: ss-the-battle-of-algiers-1966, title: "The Battle of Algiers (1966)", medium: film }
+          - { id: ss-raging-bull-1980, title: "Raging Bull (1980)", medium: film }
+          - { id: ss-andrei-rublev-1966, title: "Andrei Rublev (1966)", medium: film }
+          - { id: ss-the-godfather-part-ii-1974, title: "The Godfather Part II (1974)", medium: film }
+          - { id: ss-goodfellas-1990, title: "GoodFellas (1990)", medium: film }
+          - { id: ss-do-the-right-thing-1989, title: "Do the Right Thing (1989)", medium: film }
+          - { id: ss-man-with-a-movie-camera-1929, title: "Man with a Movie Camera (1929)", medium: film }
+          - { id: ss-the-passion-of-joan-of-arc-1927, title: "The Passion of Joan of Arc (1927)", medium: film }
+          - { id: ss-ordet-1955, title: "Ordet (1955)", medium: film }
+          - { id: ss-sunrise-a-song-of-two-humans-1927, title: "Sunrise: A Song of Two Humans (1927)", medium: film }
+          - { id: ss-the-400-blows-1959, title: "The 400 Blows (1959)", medium: film }
+          - { id: ss-la-dolce-vita-1960, title: "La dolce vita (1960)", medium: film }
+          - { id: ss-la-jet-e-1962, title: "La Jetée (1962)", medium: film }
+          - { id: ss-au-hasard-balthazar-1966, title: "Au hasard Balthazar (1966)", medium: film }
+          - { id: ss-la-r-gle-du-jeu-1939, title: "La Règle du jeu (1939)", medium: film }
+          - { id: ss-lavventura-1960, title: "L'avventura (1960)", medium: film }
+          - { id: ss-la-strada-1954, title: "La strada (1954)", medium: film }
+          - { id: ss-playtime-1967, title: "Playtime (1967)", medium: film }
+          - { id: ss-the-night-of-the-hunter-1955, title: "The Night of the Hunter (1955)", medium: film }
+          - { id: ss-a-man-escaped-1956, title: "A Man Escaped (1956)", medium: film }
+          - { id: ss-vagabond-1985, title: "Vagabond (1985)", medium: film }
+          - { id: ss-come-and-see-1985, title: "Come and See (1985)", medium: film }
+      - id: sight-and-sound-46-62
+        title: "Sight & Sound Directors' Poll: 46–62"
+        kind: study
+        medium: film
+        tags: [film-canon]
+        childRule: all
+        children:
+          - { id: ss-psycho-1960, title: "Psycho (1960)", medium: film }
+          - { id: ss-latalante-1934, title: "L'Atalante (1934)", medium: film }
+          - { id: ss-le-m-pris-1963, title: "Le Mépris (1963)", medium: film }
+          - { id: ss-once-upon-a-time-in-the-west-1968, title: "Once upon a Time in the West (1968)", medium: film }
+          - { id: ss-dont-look-now-1973, title: "Don't Look Now (1973)", medium: film }
+          - { id: ss-dr-strangelove-or-how-i-learned-to-stop-worrying-and-love-the-bomb-1963, title: "Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb (1963)", medium: film }
+          - { id: ss-singin-in-the-rain-1951, title: "Singin' in the Rain (1951)", medium: film }
+          - { id: ss-cl-o-from-5-to-7-1962, title: "Cléo from 5 to 7 (1962)", medium: film }
+          - { id: ss-city-lights-1931, title: "City Lights (1931)", medium: film }
+          - { id: ss-the-piano-1992, title: "The Piano (1992)", medium: film }
+          - { id: ss-fear-eats-the-soul-1974, title: "Fear Eats the Soul (1974)", medium: film }
+          - { id: ss-la-maman-et-la-putain-1973, title: "La Maman et la Putain (1973)", medium: film }
+          - { id: ss-fanny-and-alexander-1982, title: "Fanny and Alexander (1982)", medium: film }
+          - { id: ss-la-notte-1961, title: "La notte (1961)", medium: film }
+          - { id: ss-eraserhead-1976, title: "Eraserhead (1976)", medium: film }
+          - { id: ss-viridiana-1961, title: "Viridiana (1961)", medium: film }
+          - { id: ss-meshes-of-the-afternoon-1943, title: "Meshes of the Afternoon (1943)", medium: film }
+          - { id: ss-late-spring-1949, title: "Late Spring (1949)", medium: film }
+          - { id: ss-some-like-it-hot-1959, title: "Some Like It Hot (1959)", medium: film }
+          - { id: ss-blade-runner-1982, title: "Blade Runner (1982)", medium: film }
+          - { id: ss-sunset-blvd-1950, title: "Sunset Blvd. (1950)", medium: film }
+          - { id: ss-s-t-ntang-1994, title: "Sátántangó (1994)", medium: film }
+          - { id: ss-tropical-malady-2004, title: "Tropical Malady (2004)", medium: film }
+          - { id: ss-jaws-1975, title: "Jaws (1975)", medium: film }
+          - { id: ss-lawrence-of-arabia-1962, title: "Lawrence of Arabia (1962)", medium: film }
+          - { id: ss-la-ci-naga-2001, title: "La ciénaga (2001)", medium: film }
+      - id: sight-and-sound-72-93
+        title: "Sight & Sound Directors' Poll: 72–93"
+        kind: study
+        medium: film
+        tags: [film-canon]
+        childRule: all
+        children:
+          - { id: ss-the-searchers-1956, title: "The Searchers (1956)", medium: film }
+          - { id: ss-shoah-1985, title: "Shoah (1985)", medium: film }
+          - { id: ss-news-from-home-1976, title: "News from Home (1976)", medium: film }
+          - { id: ss-sans-soleil-1982, title: "Sans soleil (1982)", medium: film }
+          - { id: ss-touki-bouki-1973, title: "Touki Bouki (1973)", medium: film }
+          - { id: ss-the-red-shoes-1948, title: "The Red Shoes (1948)", medium: film }
+          - { id: ss-modern-times-1936, title: "Modern Times (1936)", medium: film }
+          - { id: ss-a-brighter-summer-day-1991, title: "A Brighter Summer Day (1991)", medium: film }
+          - { id: ss-the-spirit-of-the-beehive-1973, title: "The Spirit of the Beehive (1973)", medium: film }
+          - { id: ss-blue-velvet-1986, title: "Blue Velvet (1986)", medium: film }
+          - { id: ss-wild-strawberries-1957, title: "Wild Strawberries (1957)", medium: film }
+          - { id: ss-the-ascent-1976, title: "The Ascent (1976)", medium: film }
+          - { id: ss-the-seventh-seal-1957, title: "The Seventh Seal (1957)", medium: film }
+          - { id: ss-chinatown-1974, title: "Chinatown (1974)", medium: film }
+          - { id: ss-ikiru-1952, title: "Ikiru (1952)", medium: film }
+          - { id: ss-where-is-the-friends-house-1987, title: "Where Is the Friend's House? (1987)", medium: film }
+          - { id: ss-largent-1983, title: "L'Argent (1983)", medium: film }
+          - { id: ss-the-conversation-1974, title: "The Conversation (1974)", medium: film }
+          - { id: ss-sal-or-the-120-days-of-sodom-1975, title: "Salò, or the 120 Days of Sodom (1975)", medium: film }
+          - { id: ss-a-separation-2011, title: "A Separation (2011)", medium: film }
+          - { id: ss-kes-1969, title: "Kes (1969)", medium: film }
+          - { id: ss-wanda-1970, title: "Wanda (1970)", medium: film }
+          - { id: ss-battleship-potemkin-1925, title: "Battleship Potemkin (1925)", medium: film }
+          - { id: ss-moonlight-2016, title: "Moonlight (2016)", medium: film }
+          - { id: ss-yi-yi-1999, title: "Yi Yi (1999)", medium: film }
+          - { id: ss-parasite-2019, title: "Parasite (2019)", medium: film }
+          - { id: ss-the-conformist-1970, title: "The Conformist (1970)", medium: film }
+          - { id: ss-the-colour-of-pomegranates-1968, title: "The Colour of Pomegranates (1968)", medium: film }
+          - { id: ss-pickpocket-1959, title: "Pickpocket (1959)", medium: film }
+          - { id: ss-taste-of-cherry-1997, title: "Taste of Cherry (1997)", medium: film }
+          - { id: ss-hidden-2004, title: "Hidden (2004)", medium: film }
+          - { id: ss-eternal-sunshine-of-the-spotless-mind-2004, title: "Eternal Sunshine of the Spotless Mind (2004)", medium: film }
+          - { id: ss-throne-of-blood-1957, title: "Throne of Blood (1957)", medium: film }
+      - id: 1001-movies
+        title: "1001 Movies You Must See Before You Die"
+        kind: study
+        medium: book
+        tags: [film-canon]
+  - id: soviet-film
+    name: "Soviet Film"
+    state: active
+    items:
+      - id: battleship-potemkin
+        title: "Battleship Potemkin (Eisenstein, 1925)"
+        kind: study
+        medium: film
+        tags: [soviet-film, montage]
+      - id: stalker
+        title: "Stalker (Tarkovsky, 1979)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: strugatsky-roadside-picnic
+        title: "Strugatsky, Roadside Picnic (Bormashenko)"
+        kind: study
+        medium: book
+        tags: [soviet-film, long-take]
+      - id: ivan-the-terrible
+        title: "Ivan the Terrible (Eisenstein, 1944–58)"
+        kind: study
+        medium: film
+        tags: [soviet-film, tableau]
+        childRule: all
+        children:
+          - { id: ivan-the-terrible-part-1, title: "Ivan the Terrible, Part I", medium: film, core: true }
+          - { id: ivan-the-terrible-part-2, title: "Ivan the Terrible, Part II", medium: film, core: true }
+      - id: andrei-rublev
+        title: "Andrei Rublev (Tarkovsky, 1966)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: the-cranes-are-flying
+        title: "The Cranes Are Flying (Kalatozov, 1957)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: come-and-see
+        title: "Come and See (Klimov, 1985)"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: man-with-a-movie-camera
+        title: "Man with a Movie Camera (Vertov, 1929)"
+        kind: study
+        medium: film
+        tags: [soviet-film, montage]
+      - id: i-am-cuba
+        title: "I Am Cuba (Kalatozov)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: russian-ark
+        title: "Russian Ark (Sokurov)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: mirror
+        title: "Mirror (Tarkovsky, 1975)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: solaris
+        title: "Solaris (Tarkovsky)"
+        kind: study
+        medium: film
+        tags: [soviet-film, long-take]
+      - id: kin-dza-dza
+        title: "Kin-dza-dza!"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: the-ascent
+        title: "The Ascent (Shepitko, 1976)"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: aleksei-german-late-trilogy
+        title: "Aleksei German's Late Trilogy"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: eisenstein-montage-films
+        title: "Eisenstein's Montage Films"
+        kind: study
+        medium: film
+        tags: [soviet-film, montage]
+        childRule: all
+        children:
+          - { id: strike, title: "Strike", medium: film }
+          - { id: october, title: "October", medium: film }
+          - { id: alexander-nevsky, title: "Alexander Nevsky", medium: film }
+      - id: pudovkin-films
+        title: "Pudovkin's Films"
+        kind: study
+        medium: film
+        tags: [soviet-film, montage]
+      - id: by-the-law
+        title: "By the Law (Kuleshov)"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: earth
+        title: "Earth (Dovzhenko)"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: muratova-films
+        title: "Muratova's Films"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: gaidai-comedies
+        title: "Gaidai's Comedies"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: ptushko-fantasies
+        title: "Ptushko's Fantasies"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: norstein-animation
+        title: "Norstein's Animation"
+        kind: study
+        medium: film
+        tags: [soviet-film]
+      - id: tarkovsky-sculpting-in-time
+        title: "Tarkovsky, Sculpting in Time"
+        kind: study
+        medium: book
+        tags: [soviet-film, long-take]
+      - id: eisenstein-film-form
+        title: "Eisenstein, Film Form and The Film Sense"
+        kind: study
+        medium: book
+        tags: [soviet-film, montage]
+      - id: eisenstein-selected-works
+        title: "Eisenstein, Selected Works 1–4 (ed. Taylor)"
+        kind: study
+        medium: book
+        tags: [soviet-film, montage]
+      - id: pudovkin-film-technique
+        title: "Pudovkin, Film Technique and Film Acting"
+        kind: study
+        medium: book
+        tags: [soviet-film, montage]
+      - id: vertov-kino-eye
+        title: "Vertov, Kino-Eye"
+        kind: study
+        medium: book
+        tags: [soviet-film, montage]
+      - id: kuleshov-on-film
+        title: "Kuleshov on Film"
+        kind: study
+        medium: book
+        tags: [soviet-film, montage]
+      - id: kozintsev-hamlet-lear
+        title: "Kozintsev on Hamlet and Lear"
+        kind: study
+        medium: book
+        tags: [soviet-film]
+      - id: bordwell-cinema-of-eisenstein
+        title: "Bordwell, The Cinema of Eisenstein"
+        kind: study
+        medium: book
+        tags: [soviet-film, tableau]
+      - id: bird-tarkovsky
+        title: "Bird, Andrei Tarkovsky: Elements of Cinema"
+        kind: study
+        medium: book
+        tags: [soviet-film, long-take]
+      - id: beumers-history-of-russian-cinema
+        title: "Beumers, A History of Russian Cinema"
+        kind: study
+        medium: book
+        tags: [soviet-film]
+  - id: georgian-film
+    name: "Georgian Film"
+    state: active
+    items:
+      - id: repentance
+        title: "Repentance (Abuladze, 1984)"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: the-color-of-pomegranates
+        title: "The Color of Pomegranates (Parajanov, 1969)"
+        kind: study
+        medium: film
+        tags: [georgian-film, tableau]
+      - id: pirosmani
+        title: "Pirosmani (G. Shengelaia, 1969)"
+        kind: study
+        medium: film
+        tags: [georgian-film, tableau]
+      - id: blue-mountains
+        title: "Blue Mountains (E. Shengelaia, 1983)"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: my-grandmother
+        title: "My Grandmother (Mikaberidze, 1929)"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: iosseliani-georgian-features
+        title: "Iosseliani's Three Georgian Features"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+        childRule: all
+        children:
+          - { id: falling-leaves, title: "Falling Leaves", medium: film, core: true }
+          - { id: singing-blackbird, title: "Singing Blackbird", medium: film, core: true }
+          - { id: pastorale, title: "Pastorale", medium: film, core: true }
+      - id: what-do-we-see
+        title: "What Do We See When We Look at the Sky? (Koberidze, 2021)"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: beginning
+        title: "Beginning (Kulumbegashvili, 2020)"
+        kind: study
+        medium: film
+        tags: [georgian-film, long-take]
+      - id: the-plea
+        title: "The Plea"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: the-wishing-tree
+        title: "The Wishing Tree"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: kobakhidze-shorts
+        title: "Kobakhidze's Dialogue-Free Shorts"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: my-happy-family
+        title: "My Happy Family"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: in-bloom
+        title: "In Bloom"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: april-2024
+        title: "April (Kulumbegashvili, 2024)"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: corn-island
+        title: "Corn Island"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: holy-electricity
+        title: "Holy Electricity"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: april-1962
+        title: "April (Iosseliani, 1962)"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: 19th-century-georgian-chronicle
+        title: "19th Century Georgian Chronicle"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: our-courtyard
+        title: "Our Courtyard"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: dont-grieve
+        title: "Don't Grieve!"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: mimino
+        title: "Mimino"
+        kind: study
+        medium: film
+        tags: [georgian-film, one-rule]
+      - id: parajanov-late-films
+        title: "Parajanov's Late Films"
+        kind: study
+        medium: film
+        tags: [georgian-film, tableau]
+        children:
+          - { id: suram-fortress, title: "The Legend of Suram Fortress", medium: film, core: true }
+          - { id: ashik-kerib, title: "Ashik Kerib", medium: film }
+          - { id: arabesques-on-pirosmani, title: "Arabesques on the Pirosmani Theme", medium: film }
+      - id: salt-for-svanetia
+        title: "Salt for Svanetia"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: eliso
+        title: "Eliso"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: the-eccentrics
+        title: "The Eccentrics"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: great-green-valley
+        title: "Great Green Valley"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: tangerines
+        title: "Tangerines"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: 13-tzameti
+        title: "13 Tzameti"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: dry-leaf
+        title: "Dry Leaf"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: city-of-the-sun
+        title: "City of the Sun"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: and-then-we-danced
+        title: "And Then We Danced"
+        kind: study
+        medium: film
+        tags: [georgian-film]
+      - id: georgian-film-reading
+        title: "Reading on Georgian Film"
+        kind: study
+        medium: book
+        tags: [georgian-film]
+        children:
+          - { id: discovering-georgian-cinema, title: "Discovering Georgian Cinema (BAMPFA/MoMA, 2014)", medium: work, core: true }
+          - { id: adrian-martin-parajanov, title: "Adrian Martin on Parajanov", medium: work }
+          - { id: kinokultura-12, title: "KinoKultura Special Issue 12", medium: work }
+          - { id: dzandzava-apparatus, title: "Nino Dzandzava in Apparatus", medium: work }
+          - { id: steffen-parajanov, title: "Steffen, The Cinema of Sergei Parajanov", medium: work }
+          - { id: family-affairs-arsenal, title: "Family Affairs (Arsenal Berlin)", medium: work }
+          - { id: le-cinema-georgien, title: "Radvanyi & Amiredzibi, Le Cinéma géorgien (French)", medium: work }
+  - id: film-weeks
+    name: "Film Weeks"
+    state: active
+    items:
+      - id: week-battleship-potemkin
+        title: "Film Week: Battleship Potemkin"
+        kind: practice
+        medium: film
+        tags: [montage]
+        childRule: all
+        children:
+          - { id: week-battleship-potemkin-watch, title: "Watch Battleship Potemkin Once, With No Notes", medium: film, core: true }
+          - { id: week-battleship-potemkin-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-battleship-potemkin-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-battleship-potemkin-game, title: "Play a game whose cuts and level transitions you want to study", medium: game, core: true }
+          - { id: week-battleship-potemkin-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-battleship-potemkin-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-battleship-potemkin-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-strike
+        title: "Film Week: Strike"
+        kind: practice
+        medium: film
+        tags: [montage]
+        childRule: all
+        children:
+          - { id: week-strike-watch, title: "Watch Strike Once, With No Notes", medium: film, core: true }
+          - { id: week-strike-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-strike-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-strike-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-strike-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-strike-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-strike-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-the-color-of-pomegranates
+        title: "Film Week: The Color of Pomegranates"
+        kind: practice
+        medium: film
+        tags: [tableau]
+        childRule: all
+        children:
+          - { id: week-the-color-of-pomegranates-watch, title: "Watch The Color of Pomegranates Once, With No Notes", medium: film, core: true }
+          - { id: week-the-color-of-pomegranates-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-the-color-of-pomegranates-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-the-color-of-pomegranates-game, title: "Play Pathologic 2", medium: game, core: true }
+          - { id: week-the-color-of-pomegranates-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-the-color-of-pomegranates-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-the-color-of-pomegranates-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-the-legend-of-suram-fortress
+        title: "Film Week: The Legend of Suram Fortress"
+        kind: practice
+        medium: film
+        tags: [tableau]
+        childRule: all
+        children:
+          - { id: week-the-legend-of-suram-fortress-watch, title: "Watch The Legend of Suram Fortress Once, With No Notes", medium: film, core: true }
+          - { id: week-the-legend-of-suram-fortress-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-the-legend-of-suram-fortress-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-the-legend-of-suram-fortress-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-the-legend-of-suram-fortress-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-the-legend-of-suram-fortress-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-the-legend-of-suram-fortress-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-stalker
+        title: "Film Week: Stalker"
+        kind: practice
+        medium: film
+        tags: [long-take]
+        childRule: all
+        children:
+          - { id: week-stalker-watch, title: "Watch Stalker Once, With No Notes", medium: film, core: true }
+          - { id: week-stalker-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-stalker-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-stalker-game, title: "Play S.T.A.L.K.E.R.: Shadow of Chernobyl", medium: game, core: true }
+          - { id: week-stalker-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-stalker-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-stalker-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-mirror
+        title: "Film Week: Mirror"
+        kind: practice
+        medium: film
+        tags: [long-take]
+        childRule: all
+        children:
+          - { id: week-mirror-watch, title: "Watch Mirror Once, With No Notes", medium: film, core: true }
+          - { id: week-mirror-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-mirror-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-mirror-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-mirror-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-mirror-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-mirror-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-blue-mountains
+        title: "Film Week: Blue Mountains"
+        kind: practice
+        medium: film
+        tags: [one-rule]
+        childRule: all
+        children:
+          - { id: week-blue-mountains-watch, title: "Watch Blue Mountains Once, With No Notes", medium: film, core: true }
+          - { id: week-blue-mountains-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-blue-mountains-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-blue-mountains-game, title: "Play Papers, Please", medium: game, core: true }
+          - { id: week-blue-mountains-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-blue-mountains-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-blue-mountains-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-falling-leaves
+        title: "Film Week: Falling Leaves"
+        kind: practice
+        medium: film
+        tags: [one-rule]
+        childRule: all
+        children:
+          - { id: week-falling-leaves-watch, title: "Watch Falling Leaves Once, With No Notes", medium: film, core: true }
+          - { id: week-falling-leaves-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-falling-leaves-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-falling-leaves-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-falling-leaves-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-falling-leaves-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-falling-leaves-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-october
+        title: "Film Week: October"
+        kind: practice
+        medium: film
+        tags: [montage]
+        childRule: all
+        children:
+          - { id: week-october-watch, title: "Watch October Once, With No Notes", medium: film, core: true }
+          - { id: week-october-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-october-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-october-game, title: "Play a game whose cuts and level transitions you want to study", medium: game, core: true }
+          - { id: week-october-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-october-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-october-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-alexander-nevsky
+        title: "Film Week: Alexander Nevsky"
+        kind: practice
+        medium: film
+        tags: [montage]
+        childRule: all
+        children:
+          - { id: week-alexander-nevsky-watch, title: "Watch Alexander Nevsky Once, With No Notes", medium: film, core: true }
+          - { id: week-alexander-nevsky-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-alexander-nevsky-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-alexander-nevsky-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-alexander-nevsky-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-alexander-nevsky-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-alexander-nevsky-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-pirosmani
+        title: "Film Week: Pirosmani"
+        kind: practice
+        medium: film
+        tags: [tableau]
+        childRule: all
+        children:
+          - { id: week-pirosmani-watch, title: "Watch Pirosmani Once, With No Notes", medium: film, core: true }
+          - { id: week-pirosmani-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-pirosmani-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-pirosmani-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-pirosmani-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-pirosmani-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-pirosmani-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-ivan-the-terrible
+        title: "Film Week: Ivan the Terrible"
+        kind: practice
+        medium: film
+        tags: [tableau]
+        childRule: all
+        children:
+          - { id: week-ivan-the-terrible-watch, title: "Watch Ivan the Terrible Once, With No Notes", medium: film, core: true }
+          - { id: week-ivan-the-terrible-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-ivan-the-terrible-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-ivan-the-terrible-game, title: "Play Pathologic 2", medium: game, core: true }
+          - { id: week-ivan-the-terrible-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-ivan-the-terrible-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-ivan-the-terrible-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-beginning
+        title: "Film Week: Beginning"
+        kind: practice
+        medium: film
+        tags: [long-take]
+        childRule: all
+        children:
+          - { id: week-beginning-watch, title: "Watch Beginning Once, With No Notes", medium: film, core: true }
+          - { id: week-beginning-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-beginning-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-beginning-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-beginning-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-beginning-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-beginning-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-russian-ark
+        title: "Film Week: Russian Ark"
+        kind: practice
+        medium: film
+        tags: [long-take]
+        childRule: all
+        children:
+          - { id: week-russian-ark-watch, title: "Watch Russian Ark Once, With No Notes", medium: film, core: true }
+          - { id: week-russian-ark-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-russian-ark-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-russian-ark-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-russian-ark-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-russian-ark-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-russian-ark-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-april-1962
+        title: "Film Week: April (1962)"
+        kind: practice
+        medium: film
+        tags: [one-rule]
+        childRule: all
+        children:
+          - { id: week-april-1962-watch, title: "Watch April (1962) Once, With No Notes", medium: film, core: true }
+          - { id: week-april-1962-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-april-1962-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-april-1962-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-april-1962-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-april-1962-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-april-1962-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+      - id: week-a-kobakhidze-short
+        title: "Film Week: A Kobakhidze Short"
+        kind: practice
+        medium: film
+        tags: [one-rule]
+        childRule: all
+        children:
+          - { id: week-a-kobakhidze-short-watch, title: "Watch A Kobakhidze Short Once, With No Notes", medium: film, core: true }
+          - { id: week-a-kobakhidze-short-log, title: "Rewatch and Log One Scene (Sheet 1–3)", medium: exercise, core: true }
+          - { id: week-a-kobakhidze-short-analyse, title: "Fill In the School's Panel and Where to Look (Sheet 4–5)", medium: exercise, core: true }
+          - { id: week-a-kobakhidze-short-game, title: "Play the Paired Game", medium: game, core: true }
+          - { id: week-a-kobakhidze-short-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
+          - { id: week-a-kobakhidze-short-playtest, title: "Playtest With Two People", medium: exercise, core: true }
+          - { id: week-a-kobakhidze-short-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }

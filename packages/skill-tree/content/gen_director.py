@@ -157,8 +157,337 @@ GAME_DESIGN = [
     ]),
 ]
 
+# Scorsese's 39, in the order of his note to Colin Levy, as (title, director).
+SCORSESE = [
+    ('Metropolis', 'Fritz Lang'), ('Nosferatu', 'F.W. Murnau'), ('Dr. Mabuse, the Gambler', 'Fritz Lang'),
+    ('Napoleon', 'Abel Gance'), ('Grand Illusion', 'Jean Renoir'), ('The Rules of the Game', 'Jean Renoir'),
+    ('Children of Paradise', 'Marcel Carné'), ('Rome, Open City', 'Roberto Rossellini'), ('Paisan', 'Roberto Rossellini'),
+    ('La Terra Trema', 'Luchino Visconti'), ('The Bicycle Thief', 'Vittorio De Sica'), ('Umberto D', 'Vittorio De Sica'),
+    ('Beauty and the Beast', 'Jean Cocteau'), ('Tokyo Story', 'Yasujirō Ozu'), ('Ikiru', 'Akira Kurosawa'),
+    ('Seven Samurai', 'Akira Kurosawa'), ('Ugetsu', 'Kenji Mizoguchi'), ('Sansho the Bailiff', 'Kenji Mizoguchi'),
+    ('High and Low', 'Akira Kurosawa'), ('Big Deal on Madonna Street', 'Mario Monicelli'),
+    ('Rocco and His Brothers', 'Luchino Visconti'), ('The 400 Blows', 'François Truffaut'),
+    ('Shoot the Piano Player', 'François Truffaut'), ('Breathless', 'Jean-Luc Godard'),
+    ('Band of Outsiders', 'Jean-Luc Godard'), ('Il Sorpasso', 'Dino Risi'), ('L’avventura', 'Michelangelo Antonioni'),
+    ('Blow-Up', 'Michelangelo Antonioni'), ('Before the Revolution', 'Bernardo Bertolucci'),
+    ('Le Boucher', 'Claude Chabrol'), ('Weekend', 'Jean-Luc Godard'), ('Death by Hanging', 'Nagisa Ōshima'),
+    ('The Merchant of Four Seasons', 'Rainer Werner Fassbinder'), ('Ali: Fear Eats the Soul', 'Rainer Werner Fassbinder'),
+    ('The Marriage of Maria Braun', 'Rainer Werner Fassbinder'), ('Kings of the Road', 'Wim Wenders'),
+    ('The American Friend', 'Wim Wenders'), ('The Mystery of Kaspar Hauser', 'Werner Herzog'),
+    ('Aguirre, the Wrath of God', 'Werner Herzog'),
+]
+assert len(SCORSESE) == 39
+
+# Sight & Sound 2022, the directors' poll (bfi.org.uk), as (rank, title, year, director). Twelve
+# films tie at 93, so it holds 104.
+SIGHT_AND_SOUND = [
+    (1, '2001: A Space Odyssey', 1968, 'Stanley Kubrick'),
+    (2, 'Citizen Kane', 1941, 'Orson Welles'),
+    (3, 'The Godfather', 1972, 'Francis Ford Coppola'),
+    (4, 'Jeanne Dielman, 23 Quai du Commerce, 1080 Bruxelles', 1975, 'Chantal Akerman'),
+    (4, 'Tokyo Story', 1953, 'Yasujirō Ozu'),
+    (6, 'Vertigo', 1958, 'Alfred Hitchcock'),
+    (6, '8½', 1963, 'Federico Fellini'),
+    (8, 'Mirror', 1975, 'Andrei Tarkovsky'),
+    (9, 'In the Mood for Love', 2000, 'Wong Kar Wai'),
+    (9, 'Close-up', 1989, 'Abbas Kiarostami'),
+    (9, 'Persona', 1966, 'Ingmar Bergman'),
+    (12, 'Taxi Driver', 1976, 'Martin Scorsese'),
+    (12, 'Barry Lyndon', 1975, 'Stanley Kubrick'),
+    (14, 'Beau travail', 1998, 'Claire Denis'),
+    (14, 'Seven Samurai', 1954, 'Akira Kurosawa'),
+    (14, 'À bout de souffle', 1960, 'Jean-Luc Godard'),
+    (14, 'Stalker', 1979, 'Andrei Tarkovsky'),
+    (18, 'Apocalypse Now', 1979, 'Francis Ford Coppola'),
+    (18, 'A Woman under the Influence', 1974, 'John Cassavetes'),
+    (20, 'Bicycle Thieves', 1948, 'Vittorio De Sica'),
+    (20, 'Rashomon', 1950, 'Akira Kurosawa'),
+    (22, 'Mulholland Dr.', 2001, 'David Lynch'),
+    (22, 'Pather Panchali', 1955, 'Satyajit Ray'),
+    (22, 'The Battle of Algiers', 1966, 'Gillo Pontecorvo'),
+    (22, 'Raging Bull', 1980, 'Martin Scorsese'),
+    (26, 'Andrei Rublev', 1966, 'Andrei Tarkovsky'),
+    (26, 'The Godfather Part II', 1974, 'Francis Ford Coppola'),
+    (28, 'GoodFellas', 1990, 'Martin Scorsese'),
+    (29, 'Do the Right Thing', 1989, 'Spike Lee'),
+    (30, 'Man with a Movie Camera', 1929, 'Dziga Vertov'),
+    (30, 'The Passion of Joan of Arc', 1927, 'Carl Th. Dreyer'),
+    (30, 'Ordet', 1955, 'Carl Th. Dreyer'),
+    (33, 'Sunrise: A Song of Two Humans', 1927, 'F.W. Murnau'),
+    (33, 'The 400 Blows', 1959, 'François Truffaut'),
+    (35, 'La dolce vita', 1960, 'Federico Fellini'),
+    (35, 'La Jetée', 1962, 'Chris Marker'),
+    (37, 'Au hasard Balthazar', 1966, 'Robert Bresson'),
+    (38, 'La Règle du jeu', 1939, 'Jean Renoir'),
+    (38, "L'avventura", 1960, 'Michelangelo Antonioni'),
+    (38, 'La strada', 1954, 'Federico Fellini'),
+    (41, 'Playtime', 1967, 'Jacques Tati'),
+    (41, 'The Night of the Hunter', 1955, 'Charles Laughton'),
+    (41, 'A Man Escaped', 1956, 'Robert Bresson'),
+    (41, 'Vagabond', 1985, 'Agnès Varda'),
+    (41, 'Come and See', 1985, 'Elem Klimov'),
+    (46, 'Psycho', 1960, 'Alfred Hitchcock'),
+    (46, "L'Atalante", 1934, 'Jean Vigo'),
+    (46, 'Le Mépris', 1963, 'Jean-Luc Godard'),
+    (46, 'Once upon a Time in the West', 1968, 'Sergio Leone'),
+    (46, "Don't Look Now", 1973, 'Nicolas Roeg'),
+    (46, 'Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb', 1963, 'Stanley Kubrick'),
+    (52, "Singin' in the Rain", 1951, 'Gene Kelly, Stanley Donen'),
+    (52, 'Cléo from 5 to 7', 1962, 'Agnès Varda'),
+    (52, 'City Lights', 1931, 'Charles Chaplin'),
+    (52, 'The Piano', 1992, 'Jane Campion'),
+    (52, 'Fear Eats the Soul', 1974, 'Rainer Werner Fassbinder'),
+    (52, 'La Maman et la Putain', 1973, 'Jean Eustache'),
+    (52, 'Fanny and Alexander', 1982, 'Ingmar Bergman'),
+    (52, 'La notte', 1961, 'Michelangelo Antonioni'),
+    (52, 'Eraserhead', 1976, 'David Lynch'),
+    (52, 'Viridiana', 1961, 'Luis Buñuel'),
+    (62, 'Meshes of the Afternoon', 1943, 'Maya Deren, Alexander Hackenschmied'),
+    (62, 'Late Spring', 1949, 'Yasujirō Ozu'),
+    (62, 'Some Like It Hot', 1959, 'Billy Wilder'),
+    (62, 'Blade Runner', 1982, 'Ridley Scott'),
+    (62, 'Sunset Blvd.', 1950, 'Billy Wilder'),
+    (62, 'Sátántangó', 1994, 'Béla Tarr'),
+    (62, 'Tropical Malady', 2004, 'Apichatpong Weerasethakul'),
+    (62, 'Jaws', 1975, 'Steven Spielberg'),
+    (62, 'Lawrence of Arabia', 1962, 'David Lean'),
+    (62, 'La ciénaga', 2001, 'Lucrecia Martel'),
+    (72, 'The Searchers', 1956, 'John Ford'),
+    (72, 'Shoah', 1985, 'Claude Lanzmann'),
+    (72, 'News from Home', 1976, 'Chantal Akerman'),
+    (72, 'Sans soleil', 1982, 'Chris Marker'),
+    (72, 'Touki Bouki', 1973, 'Djibril Diop Mambéty'),
+    (72, 'The Red Shoes', 1948, 'Michael Powell, Emeric Pressburger'),
+    (72, 'Modern Times', 1936, 'Charles Chaplin'),
+    (72, 'A Brighter Summer Day', 1991, 'Edward Yang'),
+    (72, 'The Spirit of the Beehive', 1973, 'Víctor Erice'),
+    (72, 'Blue Velvet', 1986, 'David Lynch'),
+    (72, 'Wild Strawberries', 1957, 'Ingmar Bergman'),
+    (72, 'The Ascent', 1976, 'Larissa Shepitko'),
+    (72, 'The Seventh Seal', 1957, 'Ingmar Bergman'),
+    (72, 'Chinatown', 1974, 'Roman Polanski'),
+    (72, 'Ikiru', 1952, 'Akira Kurosawa'),
+    (72, "Where Is the Friend's House?", 1987, 'Abbas Kiarostami'),
+    (72, "L'Argent", 1983, 'Robert Bresson'),
+    (72, 'The Conversation', 1974, 'Francis Ford Coppola'),
+    (72, 'Salò, or the 120 Days of Sodom', 1975, 'Pier Paolo Pasolini'),
+    (72, 'A Separation', 2011, 'Asghar Farhadi'),
+    (72, 'Kes', 1969, 'Ken Loach'),
+    (93, 'Wanda', 1970, 'Barbara Loden'),
+    (93, 'Battleship Potemkin', 1925, 'Sergei M. Eisenstein'),
+    (93, 'Moonlight', 2016, 'Barry Jenkins'),
+    (93, 'Yi Yi', 1999, 'Edward Yang'),
+    (93, 'Parasite', 2019, 'Bong Joon-ho'),
+    (93, 'The Conformist', 1970, 'Bernardo Bertolucci'),
+    (93, 'The Colour of Pomegranates', 1968, 'Sergei Paradjanov'),
+    (93, 'Pickpocket', 1959, 'Robert Bresson'),
+    (93, 'Taste of Cherry', 1997, 'Abbas Kiarostami'),
+    (93, 'Hidden', 2004, 'Michael Haneke'),
+    (93, 'Eternal Sunshine of the Spotless Mind', 2004, 'Michel Gondry'),
+    (93, 'Throne of Blood', 1957, 'Akira Kurosawa'),
+]
+assert len(SIGHT_AND_SOUND) == 104
+
+# The directors' poll in four bands of rank, so a band is a few months' viewing.
+SS_BANDS = [(1, 21), (22, 41), (46, 62), (72, 93)]
+
+
+def sight_and_sound():
+    out = []
+    for first, last in SS_BANDS:
+        films = [f for f in SIGHT_AND_SOUND if first <= f[0] <= last]
+        out.append(item(
+            f'sight-and-sound-{first}-{last}', f"Sight & Sound Directors' Poll: {first}–{last}", 'film', ['film-canon'],
+            children=[child(f'{t} ({y})', 'film', id=f'ss-{slug(t)}-{y}') for _, t, y, _ in films], rule='all',
+        ))
+    assert sum(len(b['children']) for b in out) == 104
+    return out
+
+
+WESTERN_FILM = [
+    # The spine: one chapter a month, with its "Where to Go from Here" viewings.
+    item('bordwell-thompson-film-art', 'Bordwell & Thompson, Film Art: An Introduction', 'book', ['film-craft']),
+    # Stage 1: Lumet, and one Scorsese film a week.
+    item('lumet-making-movies', 'Lumet, Making Movies', 'book', ['film-craft']),
+    item('scorsese-39', "Scorsese's 39 Foreign Films", 'film', ['film-canon'],
+         children=[child(t, 'film', id=f'scorsese-{slug(t)}') for t, _ in SCORSESE], rule='all'),
+    # Stage 2, and the rest of the craft shelf in the page's order.
+    item('mackendrick-on-film-making', 'Mackendrick, On Film-making', 'book', ['film-craft']),
+    item('mamet-on-directing-film', 'Mamet, On Directing Film', 'book', ['film-craft']),
+    item('murch-in-the-blink-of-an-eye', 'Murch, In the Blink of an Eye', 'book', ['film-craft']),
+    item('weston-directing-actors', 'Weston, Directing Actors', 'book', ['film-craft']),
+    item('brook-empty-space', 'Brook, The Empty Space', 'book', ['film-craft']),
+    item('mitchell-directors-craft', "Mitchell, The Director's Craft", 'book', ['film-craft']),
+    # How to read a scene: the sheet's sources, the method books and the free talks.
+    item('corrigan-writing-about-film', 'Corrigan, A Short Guide to Writing About Film', 'book', ['film-craft']),
+    item('film-method-books', 'Method Books', 'book', ['film-craft'], children=[
+        child('Van Sijll, Cinematic Storytelling', 'work', id='van-sijll-cinematic-storytelling'),
+        child('Rabiger, Directing', 'work', id='rabiger-directing'),
+        child('Block, The Visual Story', 'work', id='block-visual-story'),
+        child('Katz, Shot by Shot', 'work', id='katz-shot-by-shot'),
+        child('Nitsche, Video Game Spaces', 'work', id='nitsche-video-game-spaces'),
+    ]),
+    item('film-to-level-talks', 'Film to Level: Talks', 'talk', ['film-craft'], children=[
+        child('Bellard, "Environment Design as Spatial Cinematography" (GDC 2019)', 'talk', core=True, id='bellard-spatial-cinematography'),
+        child('Hill, "Interactive Pacing"', 'talk', id='hill-interactive-pacing'),
+    ]),
+    item('every-frame-a-painting', 'Every Frame a Painting', 'talk', ['film-craft'], children=[
+        child('Memories of Murder: Ensemble Staging', 'talk', id='efap-memories-of-murder'),
+        child('Akira Kurosawa: Composing Movement', 'talk', id='efap-kurosawa-composing-movement'),
+        child('How Does an Editor Think and Feel?', 'talk', id='efap-editor-think-and-feel'),
+    ], rule='all'),
+    # Stage 3: the canon.
+    *sight_and_sound(),
+    item('1001-movies', '1001 Movies You Must See Before You Die', 'book', ['film-canon']),
+]
+
+
+def film(title, tags, id=None):
+    return item(id or slug(title), title, 'film', tags)
+
+
+SOVIET_FILM = [
+    # The shortest route through all three schools, then the rest of Tier 1.
+    film('Battleship Potemkin (Eisenstein, 1925)', ['soviet-film', 'montage'], 'battleship-potemkin'),
+    film('Stalker (Tarkovsky, 1979)', ['soviet-film', 'long-take'], 'stalker'),
+    item('strugatsky-roadside-picnic', 'Strugatsky, Roadside Picnic (Bormashenko)', 'book', ['soviet-film', 'long-take']),
+    item('ivan-the-terrible', 'Ivan the Terrible (Eisenstein, 1944–58)', 'film', ['soviet-film', 'tableau'], children=[
+        child('Ivan the Terrible, Part I', 'film', core=True, id='ivan-the-terrible-part-1'),
+        child('Ivan the Terrible, Part II', 'film', core=True, id='ivan-the-terrible-part-2'),
+    ], rule='all'),
+    film('Andrei Rublev (Tarkovsky, 1966)', ['soviet-film', 'long-take'], 'andrei-rublev'),
+    film('The Cranes Are Flying (Kalatozov, 1957)', ['soviet-film', 'long-take'], 'the-cranes-are-flying'),
+    film('Come and See (Klimov, 1985)', ['soviet-film'], 'come-and-see'),
+    film('Man with a Movie Camera (Vertov, 1929)', ['soviet-film', 'montage'], 'man-with-a-movie-camera'),
+    film('I Am Cuba (Kalatozov)', ['soviet-film', 'long-take'], 'i-am-cuba'),
+    film('Russian Ark (Sokurov)', ['soviet-film', 'long-take'], 'russian-ark'),
+    film('Mirror (Tarkovsky, 1975)', ['soviet-film', 'long-take'], 'mirror'),
+    film('Solaris (Tarkovsky)', ['soviet-film', 'long-take'], 'solaris'),
+    film('Kin-dza-dza!', ['soviet-film'], 'kin-dza-dza'),
+    film('The Ascent (Shepitko, 1976)', ['soviet-film'], 'the-ascent'),
+    film("Aleksei German's Late Trilogy", ['soviet-film'], 'aleksei-german-late-trilogy'),
+    # Tier 2.
+    item('eisenstein-montage-films', "Eisenstein's Montage Films", 'film', ['soviet-film', 'montage'], children=[
+        child('Strike', 'film', id='strike'),
+        child('October', 'film', id='october'),
+        child('Alexander Nevsky', 'film', id='alexander-nevsky'),
+    ], rule='all'),
+    film("Pudovkin's Films", ['soviet-film', 'montage'], 'pudovkin-films'),
+    film('By the Law (Kuleshov)', ['soviet-film'], 'by-the-law'),
+    film('Earth (Dovzhenko)', ['soviet-film'], 'earth'),
+    film("Muratova's Films", ['soviet-film'], 'muratova-films'),
+    # Tier 3.
+    film("Gaidai's Comedies", ['soviet-film'], 'gaidai-comedies'),
+    film("Ptushko's Fantasies", ['soviet-film'], 'ptushko-fantasies'),
+    film("Norstein's Animation", ['soviet-film'], 'norstein-animation'),
+    # The theory shelf.
+    item('tarkovsky-sculpting-in-time', 'Tarkovsky, Sculpting in Time', 'book', ['soviet-film', 'long-take']),
+    item('eisenstein-film-form', 'Eisenstein, Film Form and The Film Sense', 'book', ['soviet-film', 'montage']),
+    item('eisenstein-selected-works', 'Eisenstein, Selected Works 1–4 (ed. Taylor)', 'book', ['soviet-film', 'montage']),
+    item('pudovkin-film-technique', 'Pudovkin, Film Technique and Film Acting', 'book', ['soviet-film', 'montage']),
+    item('vertov-kino-eye', 'Vertov, Kino-Eye', 'book', ['soviet-film', 'montage']),
+    item('kuleshov-on-film', 'Kuleshov on Film', 'book', ['soviet-film', 'montage']),
+    item('kozintsev-hamlet-lear', 'Kozintsev on Hamlet and Lear', 'book', ['soviet-film']),
+    item('bordwell-cinema-of-eisenstein', 'Bordwell, The Cinema of Eisenstein', 'book', ['soviet-film', 'tableau']),
+    item('bird-tarkovsky', 'Bird, Andrei Tarkovsky: Elements of Cinema', 'book', ['soviet-film', 'long-take']),
+    item('beumers-history-of-russian-cinema', 'Beumers, A History of Russian Cinema', 'book', ['soviet-film']),
+]
+
+GEORGIAN_FILM = [
+    # Classics and the new wave, in the page's order.
+    film('Repentance (Abuladze, 1984)', ['georgian-film', 'one-rule'], 'repentance'),
+    film('The Color of Pomegranates (Parajanov, 1969)', ['georgian-film', 'tableau'], 'the-color-of-pomegranates'),
+    film('Pirosmani (G. Shengelaia, 1969)', ['georgian-film', 'tableau'], 'pirosmani'),
+    film('Blue Mountains (E. Shengelaia, 1983)', ['georgian-film', 'one-rule'], 'blue-mountains'),
+    film('My Grandmother (Mikaberidze, 1929)', ['georgian-film', 'one-rule'], 'my-grandmother'),
+    item('iosseliani-georgian-features', "Iosseliani's Three Georgian Features", 'film', ['georgian-film', 'one-rule'], children=[
+        child('Falling Leaves', 'film', core=True, id='falling-leaves'),
+        child('Singing Blackbird', 'film', core=True, id='singing-blackbird'),
+        child('Pastorale', 'film', core=True, id='pastorale'),
+    ], rule='all'),
+    film('What Do We See When We Look at the Sky? (Koberidze, 2021)', ['georgian-film', 'one-rule'], 'what-do-we-see'),
+    film('Beginning (Kulumbegashvili, 2020)', ['georgian-film', 'long-take'], 'beginning'),
+    # The rest of Tier 1A.
+    film('The Plea', ['georgian-film', 'one-rule'], 'the-plea'),
+    film('The Wishing Tree', ['georgian-film'], 'the-wishing-tree'),
+    film("Kobakhidze's Dialogue-Free Shorts", ['georgian-film', 'one-rule'], 'kobakhidze-shorts'),
+    # Tier 1B: after 1991, films already built as stages.
+    film('My Happy Family', ['georgian-film'], 'my-happy-family'),
+    film('In Bloom', ['georgian-film'], 'in-bloom'),
+    film('April (Kulumbegashvili, 2024)', ['georgian-film'], 'april-2024'),
+    film('Corn Island', ['georgian-film'], 'corn-island'),
+    film('Holy Electricity', ['georgian-film'], 'holy-electricity'),
+    # More one-rule films.
+    film('April (Iosseliani, 1962)', ['georgian-film', 'one-rule'], 'april-1962'),
+    film('19th Century Georgian Chronicle', ['georgian-film', 'one-rule'], '19th-century-georgian-chronicle'),
+    film('Our Courtyard', ['georgian-film', 'one-rule'], 'our-courtyard'),
+    film("Don't Grieve!", ['georgian-film', 'one-rule'], 'dont-grieve'),
+    film('Mimino', ['georgian-film', 'one-rule'], 'mimino'),
+    # Tier 2.
+    item('parajanov-late-films', "Parajanov's Late Films", 'film', ['georgian-film', 'tableau'], children=[
+        child('The Legend of Suram Fortress', 'film', core=True, id='suram-fortress'),
+        child('Ashik Kerib', 'film', id='ashik-kerib'),
+        child('Arabesques on the Pirosmani Theme', 'film', id='arabesques-on-pirosmani'),
+    ]),
+    *[film(t, ['georgian-film'], slug(t)) for t in [
+        'Salt for Svanetia', 'Eliso', 'The Eccentrics', 'Great Green Valley', 'Tangerines', '13 Tzameti',
+        'Dry Leaf', 'City of the Sun', 'And Then We Danced']],
+    # Reading: no English history exists, so these are the pieces there are.
+    item('georgian-film-reading', 'Reading on Georgian Film', 'book', ['georgian-film'], children=[
+        child('Discovering Georgian Cinema (BAMPFA/MoMA, 2014)', 'work', core=True, id='discovering-georgian-cinema'),
+        child('Adrian Martin on Parajanov', 'work', id='adrian-martin-parajanov'),
+        child('KinoKultura Special Issue 12', 'work', id='kinokultura-12'),
+        child('Nino Dzandzava in Apparatus', 'work', id='dzandzava-apparatus'),
+        child('Steffen, The Cinema of Sergei Parajanov', 'work', id='steffen-parajanov'),
+        child('Family Affairs (Arsenal Berlin)', 'work', id='family-affairs-arsenal'),
+        child('Radvanyi & Amiredzibi, Le Cinéma géorgien (French)', 'work', id='le-cinema-georgien'),
+    ]),
+]
+
+# Film weeks as units: the month's school, two films a month, the rotation run twice. The paired
+# game is named only where the page names one.
+FILM_WEEKS = [
+    ('montage', 'Battleship Potemkin', 'a game whose cuts and level transitions you want to study'),
+    ('montage', 'Strike', None),
+    ('tableau', 'The Color of Pomegranates', 'Pathologic 2'),
+    ('tableau', 'The Legend of Suram Fortress', None),
+    ('long-take', 'Stalker', 'S.T.A.L.K.E.R.: Shadow of Chernobyl'),
+    ('long-take', 'Mirror', None),
+    ('one-rule', 'Blue Mountains', 'Papers, Please'),
+    ('one-rule', 'Falling Leaves', None),
+    ('montage', 'October', 'a game whose cuts and level transitions you want to study'),
+    ('montage', 'Alexander Nevsky', None),
+    ('tableau', 'Pirosmani', None),
+    ('tableau', 'Ivan the Terrible', 'Pathologic 2'),
+    ('long-take', 'Beginning', None),
+    ('long-take', 'Russian Ark', None),
+    ('one-rule', 'April (1962)', None),
+    ('one-rule', 'A Kobakhidze Short', None),
+]
+
+
+def film_weeks():
+    out = []
+    for school, title, game in FILM_WEEKS:
+        w = f'week-{slug(title)}'
+        out.append(item(w, f'Film Week: {title}', 'film', [school], children=[
+            child(f'Watch {title} Once, With No Notes', 'film', core=True, id=f'{w}-watch'),
+            child('Rewatch and Log One Scene (Sheet 1–3)', 'exercise', core=True, id=f'{w}-log'),
+            child("Fill In the School's Panel and Where to Look (Sheet 4–5)", 'exercise', core=True, id=f'{w}-analyse'),
+            child(f'Play {game}' if game else 'Play the Paired Game', 'game', core=True, id=f'{w}-game'),
+            child('Build the Scene From Its Beat Sheet (Sheet 6)', 'exercise', core=True, id=f'{w}-build'),
+            child('Playtest With Two People', 'exercise', core=True, id=f'{w}-playtest'),
+            child('Write the Verdict (Sheet 7)', 'exercise', core=True, id=f'{w}-verdict'),
+        ], kind='practice', rule='all'))
+    return out
+
+
 TRACKS = [
     ('game-design', 'Game Design', GAME_DESIGN),
+    ('western-film', 'Western Film', WESTERN_FILM),
+    ('soviet-film', 'Soviet Film', SOVIET_FILM),
+    ('georgian-film', 'Georgian Film', GEORGIAN_FILM),
+    ('film-weeks', 'Film Weeks', film_weeks()),
 ]
 
 

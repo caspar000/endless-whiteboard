@@ -148,6 +148,22 @@ describe('content/director.yaml', () => {
 		expect(years).toEqual([...years].sort((a, b) => a - b))
 	})
 
+	it("holds Scorsese's 39 and the directors' poll in rank order", () => {
+		const western = track('western-film').items
+		const scorsese = western.find((i) => i.itemId === 'director/scorsese-39')!
+		expect(scorsese.children).toHaveLength(39)
+		expect(scorsese.children[0]!.title).toBe('Metropolis')
+		const poll = western.filter((i) => i.itemId.startsWith('director/sight-and-sound-')).flatMap((i) => i.children)
+		expect(poll).toHaveLength(104)
+		expect(poll[0]!.title).toBe('2001: A Space Odyssey (1968)')
+	})
+
+	it('turns each film week into its seven steps', () => {
+		const weeks = track('film-weeks').items
+		expect(weeks).toHaveLength(16)
+		for (const week of weeks) expect(week.children, week.title).toHaveLength(7)
+	})
+
 	it("holds Schreiber's twenty Levels", () => {
 		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
 		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))

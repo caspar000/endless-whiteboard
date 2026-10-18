@@ -13,7 +13,7 @@ const SECTORS = ['literature', 'philosophy', 'science', 'history']
 const RINGS = ['method', 'ancient']
 
 const NODES: NewSkill[] = [
-	{ nodeId: 'adler/root', icon: 'building-arch', name: 'Start with the Greeks', kind: 'root' },
+	{ nodeId: 'adler/root', icon: 'building-arch', name: 'Literature', kind: 'root' },
 	{
 		nodeId: 'adler/inspectional', icon: 'zoom-scan',
 		name: 'Inspectional Reading',

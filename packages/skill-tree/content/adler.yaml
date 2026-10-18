@@ -1275,7 +1275,7 @@ tree:
   rings: [method, ancient, medieval, renaissance, enlightenment, nineteenth, twentieth]
   nodes:
     - id: root
-      name: "Start with the Greeks"
+      name: "Literature"
       kind: root
       icon: building-arch
     - id: inspectional

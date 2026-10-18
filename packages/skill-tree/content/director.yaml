@@ -1196,3 +1196,554 @@ tracks:
           - { id: week-a-kobakhidze-short-build, title: "Build the Scene From Its Beat Sheet (Sheet 6)", medium: exercise, core: true }
           - { id: week-a-kobakhidze-short-playtest, title: "Playtest With Two People", medium: exercise, core: true }
           - { id: week-a-kobakhidze-short-verdict, title: "Write the Verdict (Sheet 7)", medium: exercise, core: true }
+  - id: western-theatre
+    name: "Western Theatre"
+    state: active
+    items:
+      - id: ball-backwards-and-forwards
+        title: "Ball, Backwards & Forwards"
+        kind: study
+        medium: book
+        tags: [western-theatre, scene-dramaturgy]
+      - id: billington-101-greatest-plays
+        title: "Billington, The 101 Greatest Plays"
+        kind: study
+        medium: book
+        tags: [western-theatre]
+      - id: norton-anthology-of-drama
+        title: "The Norton Anthology of Drama (Shorter, 3rd ed.)"
+        kind: study
+        medium: book
+        tags: [western-theatre]
+      - id: nt2000
+        title: "The National Theatre's NT2000 List"
+        kind: study
+        medium: book
+        tags: [western-theatre]
+      - id: plays-that-show-their-rules
+        title: "Plays That Show Their Own Rules"
+        kind: study
+        medium: play
+        tags: [western-theatre]
+        children:
+          - { id: plays-that-show-their-rules-six-characters-in-search-of-an-author, title: "Six Characters in Search of an Author", medium: play, core: true }
+          - { id: plays-that-show-their-rules-rosencrantz-and-guildenstern-are-dead, title: "Rosencrantz and Guildenstern Are Dead", medium: play, core: true }
+          - { id: plays-that-show-their-rules-noises-off, title: "Noises Off", medium: play, core: true }
+          - { id: plays-that-show-their-rules-waiting-for-godot, title: "Waiting for Godot", medium: play, core: true }
+          - { id: plays-that-show-their-rules-woyzeck, title: "Woyzeck", medium: play, core: true }
+          - { id: plays-that-show-their-rules-an-inspector-calls, title: "An Inspector Calls", medium: play }
+      - id: first-25-plays
+        title: "The First 25 Plays"
+        kind: study
+        medium: play
+        tags: [western-theatre]
+        childRule: all
+        children:
+          - { id: first-25-plays-oedipus-the-king, title: "Oedipus the King", medium: play }
+          - { id: first-25-plays-hamlet, title: "Hamlet", medium: play }
+          - { id: first-25-plays-twelfth-night, title: "Twelfth Night", medium: play }
+          - { id: first-25-plays-macbeth, title: "Macbeth", medium: play }
+          - { id: first-25-plays-tartuffe, title: "Tartuffe", medium: play }
+          - { id: first-25-plays-a-dolls-house, title: "A Doll's House", medium: play }
+          - { id: first-25-plays-the-importance-of-being-earnest, title: "The Importance of Being Earnest", medium: play }
+          - { id: first-25-plays-the-cherry-orchard, title: "The Cherry Orchard", medium: play }
+          - { id: first-25-plays-machinal, title: "Machinal", medium: play }
+          - { id: first-25-plays-juno-and-the-paycock, title: "Juno and the Paycock", medium: play }
+          - { id: first-25-plays-the-front-page, title: "The Front Page", medium: play }
+          - { id: first-25-plays-pygmalion, title: "Pygmalion", medium: play }
+          - { id: first-25-plays-long-days-journey-into-night, title: "Long Day's Journey into Night", medium: play }
+          - { id: first-25-plays-a-streetcar-named-desire, title: "A Streetcar Named Desire", medium: play }
+          - { id: first-25-plays-death-of-a-salesman-or-the-crucible, title: "Death of a Salesman or The Crucible", medium: play }
+          - { id: first-25-plays-waiting-for-godot, title: "Waiting for Godot", medium: play }
+          - { id: first-25-plays-a-raisin-in-the-sun, title: "A Raisin in the Sun", medium: play }
+          - { id: first-25-plays-the-homecoming-or-the-caretaker, title: "The Homecoming or The Caretaker", medium: play }
+          - { id: first-25-plays-top-girls, title: "Top Girls", medium: play }
+          - { id: first-25-plays-men-should-weep, title: "Men Should Weep", medium: play }
+          - { id: first-25-plays-the-deep-blue-sea, title: "The Deep Blue Sea", medium: play }
+          - { id: first-25-plays-racing-demon, title: "Racing Demon", medium: play }
+          - { id: first-25-plays-serjeant-musgraves-dance, title: "Serjeant Musgrave's Dance", medium: play }
+          - { id: first-25-plays-fences, title: "Fences", medium: play }
+          - { id: first-25-plays-angels-in-america, title: "Angels in America", medium: play }
+          - { id: first-25-plays-death-and-the-kings-horseman, title: "Death and the King's Horseman", medium: play }
+      - id: hodge-mclain-play-directing
+        title: "Hodge & McLain, Play Directing"
+        kind: study
+        medium: book
+        tags: [western-theatre, staging]
+      - id: thomas-script-analysis
+        title: "Thomas, Script Analysis"
+        kind: study
+        medium: book
+        tags: [western-theatre, scene-dramaturgy]
+      - id: clurman-on-directing
+        title: "Clurman, On Directing"
+        kind: study
+        medium: book
+        tags: [western-theatre]
+      - id: william-ball-sense-of-direction
+        title: "William Ball, A Sense of Direction"
+        kind: study
+        medium: book
+        tags: [western-theatre]
+      - director/aristotle-poetics
+      - id: laurel-computers-as-theatre
+        title: "Laurel, Computers as Theatre"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+      - id: boal-games-for-actors
+        title: "Boal, Games for Actors and Non-Actors"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+      - id: johnstone-spolin
+        title: "Johnstone and Spolin"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+        childRule: all
+        children:
+          - { id: johnstone-spolin-johnstone-impro-status-and-narrative-skills, title: "Johnstone, Impro: Status and Narrative Skills", medium: work, core: true }
+          - { id: johnstone-spolin-spolin-improvisation-for-the-theater, title: "Spolin, Improvisation for the Theater", medium: work, core: true }
+      - id: brecht-short-description
+        title: "Brecht, \"Short Description of a New Technique of Acting\""
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+      - id: appia-craig-jones-wilson
+        title: "Appia, Craig, R. E. Jones, Wilson"
+        kind: study
+        medium: book
+        tags: [theatre-theory, sets]
+        children:
+          - { id: appia-craig-jones-wilson-appia, title: "Appia", medium: work }
+          - { id: appia-craig-jones-wilson-craig, title: "Craig", medium: work }
+          - { id: appia-craig-jones-wilson-r-e-jones, title: "R. E. Jones", medium: work }
+          - { id: appia-craig-jones-wilson-wilson, title: "Wilson", medium: work }
+      - id: artaud-grotowski
+        title: "Artaud and Grotowski"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+        children:
+          - { id: artaud-grotowski-artaud, title: "Artaud", medium: work }
+          - { id: artaud-grotowski-grotowski-towards-a-poor-theatre, title: "Grotowski, Towards a Poor Theatre", medium: work, core: true }
+      - id: schechner-performance-theory
+        title: "Schechner, Performance Theory"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+      - id: immersive-theatre
+        title: "Immersive Theatre and Games"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+        children:
+          - { id: immersive-theatre-emily-shorts-notes-from-a-punchdrunk-masterclass, title: "Emily Short's Notes From a Punchdrunk Masterclass", medium: work, core: true }
+          - { id: immersive-theatre-white-audience-participation-in-theatre, title: "White, Audience Participation in Theatre", medium: work }
+          - { id: immersive-theatre-faith-2020-on-immersive-theatre, title: "Faith (2020) on Immersive Theatre", medium: work }
+          - { id: immersive-theatre-charitos-timplalexi-2023-theatre-gamification, title: "Charitos & Timplalexi (2023), \"Theatre Gamification\"", medium: work }
+      - id: theatre-gdc-talks
+        title: "Theatre at GDC"
+        kind: study
+        medium: talk
+        tags: [theatre-theory]
+        children:
+          - { id: theatre-gdc-talks-horn-lessons-from-theatre-that-can-transform-xr-experiences-2021, title: "Horn, \"Lessons From Theatre That Can Transform XR Experiences\" (2021)", medium: talk }
+          - { id: theatre-gdc-talks-tender-claws-and-piehole-on-live-actors-in-vr-2019, title: "Tender Claws and Piehole on Live Actors in VR (2019)", medium: talk }
+          - { id: theatre-gdc-talks-to-be-with-hamlet-2017, title: "To Be With Hamlet (2017)", medium: talk }
+      - id: play-as-performance
+        title: "Play as Performance"
+        kind: study
+        medium: book
+        tags: [theatre-theory]
+        children:
+          - { id: play-as-performance-fern-ndez-vara-introduction-to-game-analysis, title: "Fernández-Vara, Introduction to Game Analysis", medium: work }
+          - { id: play-as-performance-calleja-in-game, title: "Calleja, In-Game", medium: work }
+      - id: theatre-footnotes
+        title: "Footnotes: Adler, Meisner, Kantor"
+        kind: study
+        medium: book
+        tags: [theatre-theory, acting]
+        children:
+          - { id: theatre-footnotes-stella-adler, title: "Stella Adler", medium: work }
+          - { id: theatre-footnotes-meisner, title: "Meisner", medium: work }
+          - { id: theatre-footnotes-kantor-a-journey-through-other-spaces, title: "Kantor, A Journey Through Other Spaces", medium: work }
+  - id: russian-theatre
+    name: "Russian Theatre"
+    state: active
+    items:
+      - id: skinner-russian-theatre-in-practice
+        title: "Skinner (ed.), Russian Theatre in Practice"
+        kind: study
+        medium: book
+        tags: [russian-theatre]
+      - id: carnicke-stanislavsky-in-focus
+        title: "Carnicke, Stanislavsky in Focus"
+        kind: study
+        medium: book
+        tags: [russian-theatre, acting]
+      - id: stanislavski-an-actors-work
+        title: "Stanislavski, An Actor's Work (Benedetti)"
+        kind: study
+        medium: book
+        tags: [russian-theatre, acting]
+      - id: merlin-stanislavsky-toolkit
+        title: "Merlin, The Complete Stanislavsky Toolkit"
+        kind: study
+        medium: book
+        tags: [russian-theatre, acting]
+      - id: michael-chekhov-to-the-actor
+        title: "Michael Chekhov, To the Actor"
+        kind: study
+        medium: book
+        tags: [russian-theatre, atmosphere]
+        childRule: all
+        children:
+          - { id: michael-chekhov-to-the-actor-chapter-4-atmosphere, title: "Chapter 4: Atmosphere", medium: work, core: true }
+          - { id: michael-chekhov-to-the-actor-chapter-5-the-psychological-gesture, title: "Chapter 5: The Psychological Gesture", medium: work, core: true }
+      - id: efros-joy-of-rehearsal
+        title: "Efros, The Joy of Rehearsal"
+        kind: study
+        medium: book
+        tags: [russian-theatre, scene-dramaturgy]
+      - id: pitches-meyerhold-on-theatre
+        title: "Meyerhold on Theatre (Pitches)"
+        kind: study
+        medium: book
+        tags: [russian-theatre, sets]
+      - id: bowlt-russian-avant-garde-theatre
+        title: "Bowlt, Russian Avant-Garde Theatre"
+        kind: study
+        medium: book
+        tags: [russian-theatre, sets]
+      - id: russian-plays
+        title: "Russian Plays"
+        kind: study
+        medium: play
+        tags: [russian-theatre]
+        children:
+          - { id: russian-plays-chekhov-the-cherry-orchard, title: "Chekhov, The Cherry Orchard", medium: play, core: true }
+          - { id: russian-plays-chekhov-three-sisters, title: "Chekhov, Three Sisters", medium: play, core: true }
+          - { id: russian-plays-gogol-the-government-inspector, title: "Gogol, The Government Inspector", medium: play, core: true }
+          - { id: russian-plays-erdman-the-suicide, title: "Erdman, The Suicide", medium: play }
+          - { id: russian-plays-bulgakov-flight, title: "Bulgakov, Flight", medium: play }
+          - { id: russian-plays-schwartz-the-dragon, title: "Schwartz, The Dragon", medium: play }
+          - { id: russian-plays-pushkin-boris-godunov, title: "Pushkin, Boris Godunov", medium: play }
+          - { id: russian-plays-gorky-the-lower-depths, title: "Gorky, The Lower Depths", medium: play }
+      - id: kulyabin-three-sisters
+        title: "Kulyabin's Three Sisters (Stage Russia, Kanopy)"
+        kind: study
+        medium: play
+        tags: [russian-theatre]
+      - id: maes-history-of-russian-music
+        title: "Maes, A History of Russian Music"
+        kind: study
+        medium: book
+        tags: [russian-theatre, sound]
+      - id: rimsky-korsakov-orchestration
+        title: "Rimsky-Korsakov, Principles of Orchestration"
+        kind: study
+        medium: book
+        tags: [russian-theatre, sound]
+      - id: russian-listening
+        title: "Listening: Mussorgsky and Prokofiev"
+        kind: study
+        medium: album
+        tags: [russian-theatre, sound]
+        childRule: all
+        children:
+          - { id: russian-listening-mussorgsky-pictures-at-an-exhibition, title: "Mussorgsky, Pictures at an Exhibition", medium: album, core: true }
+          - { id: russian-listening-prokofiev-peter-and-the-wolf, title: "Prokofiev, Peter and the Wolf", medium: album, core: true }
+      - id: russian-theory
+        title: "Shklovsky, Propp, Bakhtin"
+        kind: study
+        medium: book
+        tags: [russian-theatre, theatre-theory]
+        childRule: all
+        children:
+          - { id: russian-theory-shklovsky-on-ostranenie, title: "Shklovsky on Ostranenie", medium: work, core: true }
+          - { id: russian-theory-propps-31-functions, title: "Propp's 31 Functions", medium: work, core: true }
+          - { id: russian-theory-bakhtins-chronotope-and-carnival, title: "Bakhtin's Chronotope and Carnival", medium: work, core: true }
+      - id: pathologic-2
+        title: "Pathologic 2 (Ice-Pick Lodge)"
+        kind: study
+        medium: game
+        tags: [russian-theatre]
+  - id: georgian-theatre
+    name: "Georgian Theatre and Arts"
+    state: active
+    items:
+      - id: rayfield-literature-of-georgia
+        title: "Rayfield, The Literature of Georgia"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+      - id: sturua
+        title: "Sturua at the Rustaveli"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+        children:
+          - { id: sturua-vasadze-on-sturua, title: "Vasadze on Sturua", medium: work, core: true }
+          - { id: sturua-maltseva-on-sturuas-richard-iii, title: "Mal'tseva on Sturua's Richard III", medium: work, core: true }
+          - { id: sturua-the-caucasian-chalk-circle-1975, title: "The Caucasian Chalk Circle (1975)", medium: work }
+          - { id: sturua-richard-iii-1979, title: "Richard III (1979)", medium: work }
+      - id: gabriadze
+        title: "Gabriadze Marionette Theatre"
+        kind: study
+        medium: play
+        tags: [georgian-arts, acting]
+        children:
+          - { id: gabriadze-alfred-and-violetta, title: "Alfred and Violetta", medium: play, core: true }
+          - { id: gabriadze-ramona, title: "Ramona", medium: play }
+          - { id: gabriadze-the-battle-of-stalingrad, title: "The Battle of Stalingrad", medium: play }
+          - { id: gabriadze-a-backstage-tour, title: "A Backstage Tour", medium: play }
+      - id: georgian-stages
+        title: "Live Shows in Tbilisi"
+        kind: study
+        medium: visit
+        tags: [georgian-arts]
+        children:
+          - { id: georgian-stages-rustaveli-theatre, title: "Rustaveli Theatre", medium: visit, core: true }
+          - { id: georgian-stages-marjanishvili-theatre, title: "Marjanishvili Theatre", medium: visit, core: true }
+          - { id: georgian-stages-tbilisi-international-festival-of-theatre-september-october, title: "Tbilisi International Festival of Theatre (September–October)", medium: visit }
+      - id: art-palace
+        title: "The Art Palace: Stage-Design Sketches"
+        kind: study
+        medium: visit
+        tags: [georgian-arts, sets]
+        children:
+          - { id: art-palace-gamrekelis-stairs, title: "Gamrekeli's Stairs", medium: visit, core: true }
+          - { id: art-palace-otskhelis-othello, title: "Otskheli's Othello", medium: visit }
+      - id: pirosmani-art-museum
+        title: "Pirosmani at the Art Museum of Georgia"
+        kind: study
+        medium: visit
+        tags: [georgian-arts]
+      - id: places-to-walk-as-levels
+        title: "Places to Walk as Levels"
+        kind: study
+        medium: visit
+        tags: [georgian-arts, sets]
+        children:
+          - { id: places-to-walk-as-levels-vardzia, title: "Vardzia", medium: visit }
+          - { id: places-to-walk-as-levels-uplistsikhe, title: "Uplistsikhe", medium: visit }
+          - { id: places-to-walk-as-levels-the-svan-towers, title: "The Svan Towers", medium: visit }
+          - { id: places-to-walk-as-levels-david-gareja, title: "David Gareja", medium: visit }
+          - { id: places-to-walk-as-levels-tbilisis-balconied-courtyards, title: "Tbilisi's Balconied Courtyards", medium: visit }
+      - id: georgian-polyphony
+        title: "Georgian Polyphony"
+        kind: study
+        medium: album
+        tags: [georgian-arts, sound]
+        children:
+          - { id: georgian-polyphony-anchiskhati-choir-polyphonic-voices-of-georgia, title: "Anchiskhati Choir, Polyphonic Voices of Georgia", medium: album, core: true }
+          - { id: georgian-polyphony-the-rustavi-ensemble, title: "The Rustavi Ensemble", medium: album }
+          - { id: georgian-polyphony-kancheli-themes-from-the-songbook, title: "Kancheli, Themes from the Songbook", medium: album, core: true }
+          - { id: georgian-polyphony-polyphony-ge-bulletins, title: "polyphony.ge Bulletins", medium: album }
+      - id: knight-in-the-panthers-skin
+        title: "Rustaveli, The Knight in the Panther's Skin"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+        childRule: "n:1"
+        children:
+          - { id: knight-in-the-panthers-skin-coffins-rhymed-translation, title: "Coffin's Rhymed Translation", medium: work }
+          - { id: knight-in-the-panthers-skin-wardrops-translation, title: "Wardrop's Translation", medium: work }
+      - id: vazha-pshavela
+        title: "Vazha-Pshavela"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+      - id: kvachi
+        title: "Kvachi"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+      - id: vano-and-niko
+        title: "Vano and Niko"
+        kind: study
+        medium: book
+        tags: [georgian-arts]
+  - id: stagecraft
+    name: "Stagecraft"
+    state: active
+    items:
+      - id: stagecraft-scene-dramaturgy
+        title: "Scene Dramaturgy"
+        kind: practice
+        medium: exercise
+        tags: [scene-dramaturgy]
+        children:
+          - { id: scene-dramaturgy-bridge, title: "Bridge: Ingold, \"Sparkling Dialogue\"", medium: book, core: true }
+          - { id: scene-dramaturgy-play-pathologic-2, title: "Play Pathologic 2", medium: game, core: true }
+          - { id: scene-dramaturgy-play-kentucky-route-zero, title: "Play Kentucky Route Zero", medium: game, core: true }
+          - { id: scene-dramaturgy-play-disco-elysium, title: "Play Disco Elysium", medium: game, core: true }
+          - { id: scene-dramaturgy-exercise-a, title: "Analyse One Disco Elysium or Pentiment Scene Backwards", medium: exercise }
+          - { id: scene-dramaturgy-exercise-b, title: "Rewrite a Dialogue as Accept, Reject or Deflect, With One Loop and One Exit", medium: exercise, core: true }
+          - { id: scene-dramaturgy-exercise-c, title: "Build a Room That Shows What Happened There With No Text", medium: exercise }
+          - { id: scene-dramaturgy-exercise-d, title: "Write a Chorus That Recaps One Day of Your Prototype as a Mime", medium: exercise }
+      - director/ball-backwards-and-forwards
+      - id: stagecraft-staging
+        title: "Staging and Blocking"
+        kind: practice
+        medium: exercise
+        tags: [staging]
+        children:
+          - { id: staging-bridge, title: "Bridge: Totten, An Architectural Approach to Level Design, and Steve Lee (GDC 2017)", medium: book, core: true }
+          - { id: staging-play-hitman, title: "Play Hitman", medium: game, core: true }
+          - { id: staging-play-half-life-2, title: "Play Half-Life 2", medium: game, core: true }
+          - { id: staging-play-dishonored, title: "Play Dishonored", medium: game, core: true }
+          - { id: staging-exercise-a, title: "Mark the Stage Areas of a Room and Place Three NPCs", medium: exercise }
+          - { id: staging-exercise-b, title: "Draw the Level as Lynch's Five Elements, With Prospect and Refuge", medium: exercise }
+          - { id: staging-exercise-c, title: "Play a Half-Life 2 Chapter With Commentary and Log Where Your Eye Was Guided", medium: exercise }
+          - { id: staging-exercise-d, title: "Write a Blocking Chart of Five NPCs' Schedules", medium: exercise, core: true }
+      - director/hodge-mclain-play-directing
+      - id: stagecraft-atmosphere
+        title: "Mood and Atmosphere"
+        kind: practice
+        medium: exercise
+        tags: [atmosphere]
+        children:
+          - { id: atmosphere-bridge, title: "Bridge: Kasavin, \"Creating Atmosphere in Games\"", medium: book, core: true }
+          - { id: atmosphere-play-bastion, title: "Play Bastion", medium: game, core: true }
+          - { id: atmosphere-play-alan-wake-2, title: "Play Alan Wake 2", medium: game, core: true }
+          - { id: atmosphere-play-inside, title: "Play Inside", medium: game, core: true }
+          - { id: atmosphere-exercise-a, title: "One Sentence of Tone and One of Theme per Level", medium: exercise }
+          - { id: atmosphere-exercise-b, title: "One Adjective, Then the Same Action in Two Opposite Atmospheres", medium: exercise, core: true }
+          - { id: atmosphere-exercise-c, title: "Greybox a Corner, a Cellar and an Attic", medium: exercise }
+          - { id: atmosphere-exercise-d, title: "Recolour the Dominant Hue and Playtest", medium: exercise }
+      - director/michael-chekhov-to-the-actor
+      - id: stagecraft-lighting
+        title: "Lighting"
+        kind: practice
+        medium: exercise
+        tags: [lighting]
+        children:
+          - { id: lighting-read, title: "Read Pilbrow, Stage Lighting Design", medium: book, core: true }
+          - { id: lighting-bridge, title: "Bridge: Ding, \"Lighting of The Last of Us\"", medium: book, core: true }
+          - { id: lighting-play-the-last-of-us, title: "Play The Last of Us", medium: game, core: true }
+          - { id: lighting-play-inside, title: "Play Inside", medium: game, core: true }
+          - { id: lighting-play-control, title: "Play Control", medium: game, core: true }
+          - { id: lighting-exercise-a, title: "Rebuild a Concept Painting With One Key Light", medium: exercise }
+          - { id: lighting-exercise-b, title: "The Same Room Lit for Noon, Noir and Candlelight", medium: exercise }
+          - { id: lighting-exercise-c, title: "Craig's Drill: One Set, Four Moods", medium: exercise, core: true }
+          - { id: lighting-exercise-d, title: "A Commentary Walk Through Half-Life 2, Noting Where Light Steers", medium: exercise }
+      - id: stagecraft-sound
+        title: "Sound and Music"
+        kind: practice
+        medium: exercise
+        tags: [sound]
+        children:
+          - { id: sound-read, title: "Read Chion, Audio-Vision", medium: book, core: true }
+          - { id: sound-bridge, title: "Bridge: Bridgett, Leading with Sound", medium: book, core: true }
+          - { id: sound-play-journey, title: "Play Journey", medium: game, core: true }
+          - { id: sound-play-hades, title: "Play Hades", medium: game, core: true }
+          - { id: sound-play-outer-wilds, title: "Play Outer Wilds", medium: game, core: true }
+          - { id: sound-exercise-a, title: "Chion's Masking: Sound Only, Image Only, Then Both", medium: exercise }
+          - { id: sound-exercise-b, title: "Score a Level Three Ways", medium: exercise }
+          - { id: sound-exercise-c, title: "Bridgett's Audit: Why Each Sound Category Is There", medium: exercise }
+          - { id: sound-exercise-d, title: "The Promenade: A Traversal Theme and Two Variations", medium: exercise, core: true }
+          - { id: sound-exercise-e, title: "A Drone Plus Two State-Driven Layers", medium: exercise }
+          - { id: sound-exercise-f, title: "A Walk Noting How Sound Lines Up With the Pacing", medium: exercise }
+      - id: stagecraft-costume
+        title: "Costume and Readability"
+        kind: practice
+        medium: exercise
+        tags: [costume]
+        children:
+          - { id: costume-read, title: "Read Landis, FilmCraft: Costume Design", medium: book, core: true }
+          - { id: costume-bridge, title: "Bridge: Valve's Team Fortress 2 Paper and GDC 2008 Deck", medium: book, core: true }
+          - { id: costume-play-team-fortress-2, title: "Play Team Fortress 2", medium: game, core: true }
+          - { id: costume-play-overwatch, title: "Play Overwatch", medium: game, core: true }
+          - { id: costume-play-hades, title: "Play Hades", medium: game, core: true }
+          - { id: costume-exercise-a, title: "Silhouettes in Solid Black at Three Distances and Three Angles", medium: exercise, core: true }
+          - { id: costume-exercise-b, title: "The Read Order at 50 m, 10 m and 1 m", medium: exercise }
+          - { id: costume-exercise-c, title: "Three Factions From One Decade", medium: exercise }
+          - { id: costume-exercise-d, title: "What Each Garment Says About the Character's Past", medium: exercise }
+      - id: stagecraft-sets
+        title: "Sets and Level Design"
+        kind: practice
+        medium: exercise
+        tags: [sets]
+        children:
+          - { id: sets-read, title: "Read Totten, An Architectural Approach to Level Design", medium: book, core: true }
+          - { id: sets-bridge, title: "Bridge: Carson, \"Environmental Storytelling\"", medium: book, core: true }
+          - { id: sets-play-journey, title: "Play Journey", medium: game, core: true }
+          - { id: sets-play-dark-souls, title: "Play Dark Souls", medium: game, core: true }
+          - { id: sets-play-outer-wilds, title: "Play Outer Wilds", medium: game, core: true }
+          - { id: sets-exercise-a, title: "A Lynch Map, Then a Wayfinding Test With No HUD", medium: exercise }
+          - { id: sets-exercise-b, title: "A Prospect and Refuge Pass", medium: exercise }
+          - { id: sets-exercise-c, title: "Carson's Test: Can a Tester Narrate a Dressed Room?", medium: exercise }
+          - { id: sets-exercise-d, title: "One Concept Sketch and a Three-Colour Palette Before Greyboxing", medium: exercise }
+          - { id: sets-exercise-e, title: "Five Movable Abstract Planes, After Craig", medium: exercise }
+          - { id: sets-exercise-f, title: "Popova's Drill: Verbs First", medium: exercise, core: true }
+      - id: stagecraft-acting
+        title: "Acting and Performance"
+        kind: practice
+        medium: exercise
+        tags: [acting]
+        children:
+          - { id: acting-read, title: "Read Hooks, Acting for Animators", medium: book, core: true }
+          - { id: acting-bridge, title: "Bridge: Hooks's Course Page and Gibson's Overwatch Animation Talk", medium: book, core: true }
+          - { id: acting-play-shadow-of-the-colossus, title: "Play Shadow of the Colossus", medium: game, core: true }
+          - { id: acting-play-inside, title: "Play Inside", medium: game, core: true }
+          - { id: acting-play-the-last-of-us, title: "Play The Last of Us", medium: game, core: true }
+          - { id: acting-exercise-a, title: "One Dominant Laban Effort per Character", medium: exercise, core: true }
+          - { id: acting-exercise-b, title: "A Six-Line Exchange Where Status Flips Twice", medium: exercise }
+          - { id: acting-exercise-c, title: "The Same Walk Cycle at Tension Levels 2, 4 and 6", medium: exercise }
+          - { id: acting-exercise-d, title: "A Protagonist With No Facial Animation", medium: exercise }
+          - { id: acting-exercise-e, title: "A Psychological Gesture per Character", medium: exercise }
+          - { id: acting-exercise-f, title: "What Each Cutscene Pushes, Blocks or Denies", medium: exercise }
+      - id: vertical-slice
+        title: "Vertical Slice: Three Linked Stages"
+        kind: ship
+        medium: exercise
+        tags: [staging, sets]
+  - id: theatre-weeks
+    name: "Theatre Weeks"
+    state: active
+    items:
+      - id: theatre-week-three-sisters
+        title: "Theatre Week: Three Sisters"
+        kind: practice
+        medium: play
+        tags: [russian-theatre, atmosphere]
+        childRule: all
+        children:
+          - { id: theatre-week-three-sisters-read, title: "Read Three Sisters With Ball's Method", medium: play, core: true }
+          - { id: theatre-week-three-sisters-production, title: "Watch Kulyabin's Three Sisters (Kanopy)", medium: play, core: true }
+          - { id: theatre-week-three-sisters-film, title: "Watch Iosseliani, Falling Leaves", medium: film, core: true }
+          - { id: theatre-week-three-sisters-game, title: "Play Pathologic 2 Through the Atmosphere Lens", medium: game, core: true }
+          - { id: theatre-week-three-sisters-chapter, title: "Read M. Chekhov, To the Actor, Chapter 4", medium: book, core: true }
+          - { id: theatre-week-three-sisters-make, title: "Stage One NPC Action in Two Opposite Atmospheres", medium: exercise, core: true }
+          - { id: theatre-week-three-sisters-write, title: "Write One Page With the Five Passes and Choose Next Week", medium: exercise, core: true }
+      - id: theatre-week-chalk-circle
+        title: "Theatre Week: The Caucasian Chalk Circle"
+        kind: practice
+        medium: play
+        tags: [georgian-arts, theatre-theory]
+        childRule: all
+        children:
+          - { id: theatre-week-chalk-circle-read, title: "Read The Caucasian Chalk Circle With Ball's Method", medium: play, core: true }
+          - { id: theatre-week-chalk-circle-production, title: "Read About Sturua's Chalk Circle", medium: play, core: true }
+          - { id: theatre-week-chalk-circle-film, title: "Watch a Related Film", medium: film, core: true }
+          - { id: theatre-week-chalk-circle-game, title: "Play the Theatre Scenes in Pathologic 2", medium: game, core: true }
+          - { id: theatre-week-chalk-circle-chapter, title: "Read Brecht, \"Short Description of a New Technique of Acting\"", medium: book, core: true }
+          - { id: theatre-week-chalk-circle-make, title: "Build the Week's Exercise", medium: exercise, core: true }
+          - { id: theatre-week-chalk-circle-write, title: "Write One Page With the Five Passes and Choose Next Week", medium: exercise, core: true }
+      - id: theatre-week-government-inspector
+        title: "Theatre Week: The Government Inspector"
+        kind: practice
+        medium: play
+        tags: [russian-theatre, scene-dramaturgy]
+        childRule: all
+        children:
+          - { id: theatre-week-government-inspector-read, title: "Read The Government Inspector With Ball's Method", medium: play, core: true }
+          - { id: theatre-week-government-inspector-production, title: "Watch a Recorded Staging", medium: play, core: true }
+          - { id: theatre-week-government-inspector-film, title: "Watch a Related Film", medium: film, core: true }
+          - { id: theatre-week-government-inspector-game, title: "Play Disco Elysium", medium: game, core: true }
+          - { id: theatre-week-government-inspector-chapter, title: "Read Ball on the Single-Premise Engine", medium: book, core: true }
+          - { id: theatre-week-government-inspector-make, title: "Build the Week's Exercise", medium: exercise, core: true }
+          - { id: theatre-week-government-inspector-write, title: "Write One Page With the Five Passes and Choose Next Week", medium: exercise, core: true }

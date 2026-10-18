@@ -164,6 +164,18 @@ describe('content/director.yaml', () => {
 		for (const week of weeks) expect(week.children, week.title).toHaveLength(7)
 	})
 
+	it('lists an item in a second track by reference, and every reference resolves', () => {
+		const ids = new Set(doc.tracks.flatMap((t) => t.items.map((i) => i.itemId)))
+		expect(track('western-theatre').order).toContain('director/aristotle-poetics')
+		for (const t of doc.tracks) for (const id of t.order) expect(ids.has(id), `${t.trackId} → ${id}`).toBe(true)
+	})
+
+	it('gives each of the eight stagecraft disciplines its games and exercises', () => {
+		const disciplines = track('stagecraft').items.filter((i) => i.itemId.startsWith('director/stagecraft-'))
+		expect(disciplines).toHaveLength(8)
+		for (const d of disciplines) expect(d.children.filter((c) => c.medium === 'game'), d.title).toHaveLength(3)
+	})
+
 	it("holds Schreiber's twenty Levels", () => {
 		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
 		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))

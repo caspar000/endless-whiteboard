@@ -482,12 +482,223 @@ def film_weeks():
     return out
 
 
+def books(id, title, tags, works, rule=None, medium='book'):
+    """An entry whose works are listed as (title, core) pairs, ids from their titles."""
+    return item(id, title, medium, tags, children=[child(t, 'work' if medium == 'book' else medium, core=c, id=f'{id}-{slug(t)}') for t, c in works], rule=rule)
+
+
+# A play the curriculum names, by its id: listed again in another track, not copied.
+def ref(id):
+    return {'ref': f'director/{id}'}
+
+
+WESTERN_THEATRE = [
+    # Method and list.
+    item('ball-backwards-and-forwards', 'Ball, Backwards & Forwards', 'book', ['western-theatre', 'scene-dramaturgy']),
+    item('billington-101-greatest-plays', 'Billington, The 101 Greatest Plays', 'book', ['western-theatre']),
+    item('norton-anthology-of-drama', 'The Norton Anthology of Drama (Shorter, 3rd ed.)', 'book', ['western-theatre']),
+    item('nt2000', "The National Theatre's NT2000 List", 'book', ['western-theatre']),
+    # Read first: plays that show their own rules.
+    books('plays-that-show-their-rules', 'Plays That Show Their Own Rules', ['western-theatre'], [
+        ('Six Characters in Search of an Author', True), ('Rosencrantz and Guildenstern Are Dead', True),
+        ('Noises Off', True), ('Waiting for Godot', True), ('Woyzeck', True), ('An Inspector Calls', False)],
+        medium='play'),
+    # The first 25: plays on at least two of Billington, Norton and NT2000.
+    books('first-25-plays', 'The First 25 Plays', ['western-theatre'], [(t, False) for t in [
+        'Oedipus the King', 'Hamlet', 'Twelfth Night', 'Macbeth', 'Tartuffe', "A Doll's House",
+        'The Importance of Being Earnest', 'The Cherry Orchard', 'Machinal', 'Juno and the Paycock', 'The Front Page',
+        'Pygmalion', "Long Day's Journey into Night", 'A Streetcar Named Desire', 'Death of a Salesman or The Crucible',
+        'Waiting for Godot', 'A Raisin in the Sun', 'The Homecoming or The Caretaker', 'Top Girls', 'Men Should Weep',
+        'The Deep Blue Sea', 'Racing Demon', "Serjeant Musgrave's Dance", 'Fences', 'Angels in America',
+        "Death and the King's Horseman"]], rule='all', medium='play'),
+    # Directing textbooks.
+    item('hodge-mclain-play-directing', 'Hodge & McLain, Play Directing', 'book', ['western-theatre', 'staging']),
+    item('thomas-script-analysis', 'Thomas, Script Analysis', 'book', ['western-theatre', 'scene-dramaturgy']),
+    item('clurman-on-directing', 'Clurman, On Directing', 'book', ['western-theatre']),
+    item('william-ball-sense-of-direction', 'William Ball, A Sense of Direction', 'book', ['western-theatre']),
+    # Theory that transfers, in the page's order.
+    ref('aristotle-poetics'),
+    item('laurel-computers-as-theatre', 'Laurel, Computers as Theatre', 'book', ['theatre-theory']),
+    item('boal-games-for-actors', 'Boal, Games for Actors and Non-Actors', 'book', ['theatre-theory']),
+    books('johnstone-spolin', 'Johnstone and Spolin', ['theatre-theory'], [
+        ('Johnstone, Impro: Status and Narrative Skills', True), ('Spolin, Improvisation for the Theater', True)], rule='all'),
+    item('brecht-short-description', 'Brecht, "Short Description of a New Technique of Acting"', 'book', ['theatre-theory']),
+    books('appia-craig-jones-wilson', 'Appia, Craig, R. E. Jones, Wilson', ['theatre-theory', 'sets'], [
+        ('Appia', False), ('Craig', False), ('R. E. Jones', False), ('Wilson', False)]),
+    books('artaud-grotowski', 'Artaud and Grotowski', ['theatre-theory'], [
+        ('Artaud', False), ('Grotowski, Towards a Poor Theatre', True)]),
+    item('schechner-performance-theory', 'Schechner, Performance Theory', 'book', ['theatre-theory']),
+    # Immersive theatre and games.
+    books('immersive-theatre', 'Immersive Theatre and Games', ['theatre-theory'], [
+        ("Emily Short's Notes From a Punchdrunk Masterclass", True), ('White, Audience Participation in Theatre', False),
+        ('Faith (2020) on Immersive Theatre', False), ('Charitos & Timplalexi (2023), "Theatre Gamification"', False)]),
+    books('theatre-gdc-talks', 'Theatre at GDC', ['theatre-theory'], [
+        ('Horn, "Lessons From Theatre That Can Transform XR Experiences" (2021)', False),
+        ('Tender Claws and Piehole on Live Actors in VR (2019)', False), ('To Be With Hamlet (2017)', False)], medium='talk'),
+    books('play-as-performance', 'Play as Performance', ['theatre-theory'], [
+        ('Fernández-Vara, Introduction to Game Analysis', False), ('Calleja, In-Game', False)]),
+    books('theatre-footnotes', 'Footnotes: Adler, Meisner, Kantor', ['theatre-theory', 'acting'], [
+        ('Stella Adler', False), ('Meisner', False), ('Kantor, A Journey Through Other Spaces', False)]),
+]
+
+RUSSIAN_THEATRE = [
+    item('skinner-russian-theatre-in-practice', 'Skinner (ed.), Russian Theatre in Practice', 'book', ['russian-theatre']),
+    # Stanislavski, in the order that keeps his vocabulary straight.
+    item('carnicke-stanislavsky-in-focus', 'Carnicke, Stanislavsky in Focus', 'book', ['russian-theatre', 'acting']),
+    item('stanislavski-an-actors-work', "Stanislavski, An Actor's Work (Benedetti)", 'book', ['russian-theatre', 'acting']),
+    item('merlin-stanislavsky-toolkit', 'Merlin, The Complete Stanislavsky Toolkit', 'book', ['russian-theatre', 'acting']),
+    books('michael-chekhov-to-the-actor', 'Michael Chekhov, To the Actor', ['russian-theatre', 'atmosphere'], [
+        ('Chapter 4: Atmosphere', True), ('Chapter 5: The Psychological Gesture', True)], rule='all'),
+    item('efros-joy-of-rehearsal', 'Efros, The Joy of Rehearsal', 'book', ['russian-theatre', 'scene-dramaturgy']),
+    item('pitches-meyerhold-on-theatre', 'Meyerhold on Theatre (Pitches)', 'book', ['russian-theatre', 'sets']),
+    item('bowlt-russian-avant-garde-theatre', 'Bowlt, Russian Avant-Garde Theatre', 'book', ['russian-theatre', 'sets']),
+    # Plays, ranked by how well they transfer.
+    books('russian-plays', 'Russian Plays', ['russian-theatre'], [(t, c) for t, c in [
+        ('Chekhov, The Cherry Orchard', True), ('Chekhov, Three Sisters', True), ('Gogol, The Government Inspector', True),
+        ('Erdman, The Suicide', False), ('Bulgakov, Flight', False), ('Schwartz, The Dragon', False),
+        ('Pushkin, Boris Godunov', False), ('Gorky, The Lower Depths', False)]], medium='play'),
+    item('kulyabin-three-sisters', "Kulyabin's Three Sisters (Stage Russia, Kanopy)", 'play', ['russian-theatre']),
+    # Music and theory.
+    item('maes-history-of-russian-music', 'Maes, A History of Russian Music', 'book', ['russian-theatre', 'sound']),
+    item('rimsky-korsakov-orchestration', 'Rimsky-Korsakov, Principles of Orchestration', 'book', ['russian-theatre', 'sound']),
+    books('russian-listening', 'Listening: Mussorgsky and Prokofiev', ['russian-theatre', 'sound'], [
+        ('Mussorgsky, Pictures at an Exhibition', True), ('Prokofiev, Peter and the Wolf', True)], rule='all', medium='album'),
+    books('russian-theory', 'Shklovsky, Propp, Bakhtin', ['russian-theatre', 'theatre-theory'], [
+        ('Shklovsky on Ostranenie', True), ("Propp's 31 Functions", True), ("Bakhtin's Chronotope and Carnival", True)], rule='all'),
+    item('pathologic-2', 'Pathologic 2 (Ice-Pick Lodge)', 'game', ['russian-theatre']),
+]
+
+GEORGIAN_ARTS = [
+    item('rayfield-literature-of-georgia', 'Rayfield, The Literature of Georgia', 'book', ['georgian-arts']),
+    # Sturua.
+    books('sturua', 'Sturua at the Rustaveli', ['georgian-arts'], [
+        ('Vasadze on Sturua', True), ("Mal'tseva on Sturua's Richard III", True),
+        ('The Caucasian Chalk Circle (1975)', False), ('Richard III (1979)', False)]),
+    # Gabriadze.
+    books('gabriadze', 'Gabriadze Marionette Theatre', ['georgian-arts', 'acting'], [
+        ('Alfred and Violetta', True), ('Ramona', False), ('The Battle of Stalingrad', False), ('A Backstage Tour', False)],
+        medium='play'),
+    # Places to see and walk.
+    books('georgian-stages', 'Live Shows in Tbilisi', ['georgian-arts'], [
+        ('Rustaveli Theatre', True), ('Marjanishvili Theatre', True),
+        ('Tbilisi International Festival of Theatre (September–October)', False)], medium='visit'),
+    books('art-palace', 'The Art Palace: Stage-Design Sketches', ['georgian-arts', 'sets'], [
+        ("Gamrekeli's Stairs", True), ("Otskheli's Othello", False)], medium='visit'),
+    item('pirosmani-art-museum', 'Pirosmani at the Art Museum of Georgia', 'visit', ['georgian-arts']),
+    books('places-to-walk-as-levels', 'Places to Walk as Levels', ['georgian-arts', 'sets'], [
+        ('Vardzia', False), ('Uplistsikhe', False), ('The Svan Towers', False), ('David Gareja', False),
+        ("Tbilisi's Balconied Courtyards", False)], medium='visit'),
+    # Music.
+    books('georgian-polyphony', 'Georgian Polyphony', ['georgian-arts', 'sound'], [
+        ('Anchiskhati Choir, Polyphonic Voices of Georgia', True), ('The Rustavi Ensemble', False),
+        ('Kancheli, Themes from the Songbook', True), ('polyphony.ge Bulletins', False)], medium='album'),
+    # Literature.
+    books('knight-in-the-panthers-skin', "Rustaveli, The Knight in the Panther's Skin", ['georgian-arts'], [
+        ("Coffin's Rhymed Translation", False), ("Wardrop's Translation", False)], rule='n:1'),
+    item('vazha-pshavela', 'Vazha-Pshavela', 'book', ['georgian-arts']),
+    item('kvachi', 'Kvachi', 'book', ['georgian-arts']),
+    item('vano-and-niko', 'Vano and Niko', 'book', ['georgian-arts']),
+]
+
+# Each discipline: one book, one game-side source, three games, and its exercises (the page's "Do" is core).
+DISCIPLINES = [
+    ('scene-dramaturgy', 'Scene Dramaturgy', ref('ball-backwards-and-forwards'), 'Ingold, "Sparkling Dialogue"',
+     ['Pathologic 2', 'Kentucky Route Zero', 'Disco Elysium'], 1, [
+         'Analyse One Disco Elysium or Pentiment Scene Backwards',
+         'Rewrite a Dialogue as Accept, Reject or Deflect, With One Loop and One Exit',
+         'Build a Room That Shows What Happened There With No Text',
+         'Write a Chorus That Recaps One Day of Your Prototype as a Mime']),
+    ('staging', 'Staging and Blocking', ref('hodge-mclain-play-directing'),
+     'Totten, An Architectural Approach to Level Design, and Steve Lee (GDC 2017)', ['Hitman', 'Half-Life 2', 'Dishonored'], 3, [
+         'Mark the Stage Areas of a Room and Place Three NPCs',
+         "Draw the Level as Lynch's Five Elements, With Prospect and Refuge",
+         'Play a Half-Life 2 Chapter With Commentary and Log Where Your Eye Was Guided',
+         "Write a Blocking Chart of Five NPCs' Schedules"]),
+    ('atmosphere', 'Mood and Atmosphere', ref('michael-chekhov-to-the-actor'), 'Kasavin, "Creating Atmosphere in Games"',
+     ['Bastion', 'Alan Wake 2', 'Inside'], 1, [
+         'One Sentence of Tone and One of Theme per Level',
+         'One Adjective, Then the Same Action in Two Opposite Atmospheres',
+         'Greybox a Corner, a Cellar and an Attic', 'Recolour the Dominant Hue and Playtest']),
+    ('lighting', 'Lighting', 'Pilbrow, Stage Lighting Design', 'Ding, "Lighting of The Last of Us"',
+     ['The Last of Us', 'Inside', 'Control'], 2, [
+         'Rebuild a Concept Painting With One Key Light', 'The Same Room Lit for Noon, Noir and Candlelight',
+         "Craig's Drill: One Set, Four Moods", 'A Commentary Walk Through Half-Life 2, Noting Where Light Steers']),
+    ('sound', 'Sound and Music', 'Chion, Audio-Vision', 'Bridgett, Leading with Sound', ['Journey', 'Hades', 'Outer Wilds'], 3, [
+         "Chion's Masking: Sound Only, Image Only, Then Both", 'Score a Level Three Ways',
+         "Bridgett's Audit: Why Each Sound Category Is There", 'The Promenade: A Traversal Theme and Two Variations',
+         'A Drone Plus Two State-Driven Layers', 'A Walk Noting How Sound Lines Up With the Pacing']),
+    ('costume', 'Costume and Readability', 'Landis, FilmCraft: Costume Design', "Valve's Team Fortress 2 Paper and GDC 2008 Deck",
+     ['Team Fortress 2', 'Overwatch', 'Hades'], 0, [
+         'Silhouettes in Solid Black at Three Distances and Three Angles', 'The Read Order at 50 m, 10 m and 1 m',
+         'Three Factions From One Decade', "What Each Garment Says About the Character's Past"]),
+    ('sets', 'Sets and Level Design', 'Totten, An Architectural Approach to Level Design', 'Carson, "Environmental Storytelling"',
+     ['Journey', 'Dark Souls', 'Outer Wilds'], 5, [
+         'A Lynch Map, Then a Wayfinding Test With No HUD', 'A Prospect and Refuge Pass',
+         "Carson's Test: Can a Tester Narrate a Dressed Room?", 'One Concept Sketch and a Three-Colour Palette Before Greyboxing',
+         'Five Movable Abstract Planes, After Craig', "Popova's Drill: Verbs First"]),
+    ('acting', 'Acting and Performance', 'Hooks, Acting for Animators',
+     "Hooks's Course Page and Gibson's Overwatch Animation Talk", ['Shadow of the Colossus', 'Inside', 'The Last of Us'], 0, [
+         'One Dominant Laban Effort per Character', 'A Six-Line Exchange Where Status Flips Twice',
+         'The Same Walk Cycle at Tension Levels 2, 4 and 6', 'A Protagonist With No Facial Animation',
+         'A Psychological Gesture per Character', 'What Each Cutscene Pushes, Blocks or Denies']),
+]
+
+
+def stagecraft():
+    out = []
+    for tag, name, read, bridge, games, do, exercises in DISCIPLINES:
+        kids = []
+        if isinstance(read, str):
+            kids.append(child(f'Read {read}', 'book', core=True, id=f'{tag}-read'))
+        kids.append(child(f'Bridge: {bridge}', 'book', core=True, id=f'{tag}-bridge'))
+        kids += [child(f'Play {g}', 'game', core=True, id=f'{tag}-play-{slug(g)}') for g in games]
+        kids += [child(e, 'exercise', core=i == do, id=f'{tag}-exercise-{chr(97 + i)}') for i, e in enumerate(exercises)]
+        out.append(item(f'stagecraft-{tag}', name, 'exercise', [tag], kind='practice', children=kids))
+        # A discipline whose book another track already holds lists it there, read alongside.
+        if not isinstance(read, str):
+            out.append(read)
+    out.append(item('vertical-slice', 'Vertical Slice: Three Linked Stages', 'exercise', ['staging', 'sets'], kind='ship'))
+    return out
+
+
+def theatre_week(id, play, production, film, game, chapter, make, tags):
+    w = f'theatre-week-{id}'
+    return item(w, f'Theatre Week: {play}', 'play', tags, kind='practice', rule='all', children=[
+        child(f"Read {play} With Ball's Method", 'play', core=True, id=f'{w}-read'),
+        child(production, 'play', core=True, id=f'{w}-production'),
+        child(film, 'film', core=True, id=f'{w}-film'),
+        child(game, 'game', core=True, id=f'{w}-game'),
+        child(chapter, 'book', core=True, id=f'{w}-chapter'),
+        child(make, 'exercise', core=True, id=f'{w}-make'),
+        child("Write One Page With the Five Passes and Choose Next Week", 'exercise', core=True, id=f'{w}-write'),
+    ])
+
+
+# The weeks the page pairs; the rest of the plays are listed above, to pair as you go.
+THEATRE_WEEKS = [
+    theatre_week('three-sisters', 'Three Sisters', "Watch Kulyabin's Three Sisters (Kanopy)", 'Watch Iosseliani, Falling Leaves',
+                 'Play Pathologic 2 Through the Atmosphere Lens', 'Read M. Chekhov, To the Actor, Chapter 4',
+                 'Stage One NPC Action in Two Opposite Atmospheres', ['russian-theatre', 'atmosphere']),
+    theatre_week('chalk-circle', 'The Caucasian Chalk Circle', "Read About Sturua's Chalk Circle", 'Watch a Related Film',
+                 'Play the Theatre Scenes in Pathologic 2', 'Read Brecht, "Short Description of a New Technique of Acting"',
+                 "Build the Week's Exercise", ['georgian-arts', 'theatre-theory']),
+    theatre_week('government-inspector', 'The Government Inspector', 'Watch a Recorded Staging', 'Watch a Related Film',
+                 'Play Disco Elysium', "Read Ball on the Single-Premise Engine", "Build the Week's Exercise",
+                 ['russian-theatre', 'scene-dramaturgy']),
+]
+
+
 TRACKS = [
     ('game-design', 'Game Design', GAME_DESIGN),
     ('western-film', 'Western Film', WESTERN_FILM),
     ('soviet-film', 'Soviet Film', SOVIET_FILM),
     ('georgian-film', 'Georgian Film', GEORGIAN_FILM),
     ('film-weeks', 'Film Weeks', film_weeks()),
+    ('western-theatre', 'Western Theatre', WESTERN_THEATRE),
+    ('russian-theatre', 'Russian Theatre', RUSSIAN_THEATRE),
+    ('georgian-theatre', 'Georgian Theatre and Arts', GEORGIAN_ARTS),
+    ('stagecraft', 'Stagecraft', stagecraft()),
+    ('theatre-weeks', 'Theatre Weeks', THEATRE_WEEKS),
 ]
 
 
@@ -505,6 +716,9 @@ def write():
     for track_id, name, items in TRACKS:
         lines += [f'  - id: {track_id}', f'    name: {q(name)}', '    state: active', '    items:']
         for it in items:
+            if 'ref' in it:
+                lines.append(f'      - {it["ref"]}')
+                continue
             for key in [it['id'], *(c['id'] for c in it['children'])]:
                 assert key not in ids, key
                 ids.add(key)

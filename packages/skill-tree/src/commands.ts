@@ -7,6 +7,7 @@ import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selecte
 import { recalculate } from './tree/viewSync'
 import { insertMasteryDemo } from './tree/masteryDemo'
 import { toggleAllNodes } from './tree/view'
+import { recalculateAll } from './tree/StaleLayout'
 import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
 import { insertAdlerTree } from './tree/sample'
 
@@ -118,6 +119,15 @@ export const skillTreeCommands: readonly Command[] = [
 			if (!editor) return
 			const bounds = editor.getCurrentPageBounds()
 			await insertWholeLifeTest(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center)
+		},
+	},
+	{
+		id: 'skill-tree.recalculate',
+		title: 'Re-calculate the tree layout',
+		group: GROUP,
+		when: (ctx) => !!ctx.editor && ctx.editor.getCurrentPageShapes().some(isTree),
+		run: ({ editor }) => {
+			if (editor) recalculateAll(editor)
 		},
 	},
 	{

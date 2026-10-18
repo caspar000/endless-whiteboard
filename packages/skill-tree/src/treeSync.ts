@@ -3,7 +3,7 @@ import { isImporting, onImportEnd } from './importing'
 import { getItems } from './syllabus'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
-import { applyViews, frameView, planIsEmpty, planViews } from './tree/viewSync'
+import { applyViews, frameView, planIsEmpty, planViews, refreshStale } from './tree/viewSync'
 import { boardTrees, treeGraph, type ViewContents } from './views'
 import { watchPhysics } from './tree/physics'
 import {
@@ -205,7 +205,7 @@ export function syncBoard(editor: Editor): void {
 			if (from && to && from !== to && redraw.has(from)) redraw.add(to)
 		}
 	}
-	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return
+	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return refreshStale(editor)
 
 	let laidOutNew: ViewContents[] = []
 	syncing = true
@@ -232,6 +232,7 @@ export function syncBoard(editor: Editor): void {
 	} finally {
 		syncing = false
 	}
+	refreshStale(editor)
 	// Coming into an arrangement, or a tree new to the board, brings the camera to it.
 	const switched = view.views.find((v) => v.from !== null)?.view ?? laidOutNew[0]
 	if (switched) frameView(editor, switched)

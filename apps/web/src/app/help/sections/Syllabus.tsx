@@ -185,6 +185,14 @@ export function Syllabus(_props: SectionProps) {
 					<strong>live physics</strong> on, the whole view takes part, like Obsidian's graph: every node
 					pushes the others away and every line pulls its two ends together.
 				</p>
+				<p>
+					Nothing moves on its own. A new entry or work goes into its skill node's cluster, and only that
+					cluster is laid out again. A change to the tree's shape (a new node or tree, a node shared with
+					another tree, a tree hung somewhere else) puts a note over the board, <em>The tree's layout is
+					out of date</em>; its Re-calculate button, or <code>Re-calculate the tree layout</code>, lays it
+					out again. An entry tagged to more than one skill node is drawn once, under the first, with a
+					faint dotted line to each of the others.
+				</p>
 				<p className="lb-help__aside">
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill
 					trees can draw it again (to change where its view starts, or lay it out again with Re-calculate),

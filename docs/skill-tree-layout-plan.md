@@ -121,3 +121,17 @@ node, instead of stopping at the edge of the node's box. Light lines through a n
 board: 547 → 1. Arrows between skill nodes are straight; 37 of 124 still cross a node, mostly links
 between branches. Guide circles: for the user to decide.
 
+**Phase 5 done, 2026-10-18.** New entries and works lay out only their own skill node's cluster
+again where it is (`repackClusters`, orbits.ts); new skill nodes go beside a neighbour. Every full
+layout records the view's structure on its header (`structureOf`: its skill nodes and the arrows
+between them); when that changes, or a repacked cluster came out bigger than it was, the header is
+out of date. The sync and Re-calculate keep the out-of-date headers in a per-board atom
+(`staleViews`), which the overlay `tree/StaleLayout.tsx` reads: "The tree's layout is out of date ·
+Re-calculate". ⌘K has `Re-calculate the tree layout`. An entry tagged to more skill nodes in view
+gets a faint dotted violet line to each of the others (62 on the test board). No guide circles: the
+user liked the render without them.
+
+Checked in Chromium: no note after inserting the test board; deleting a skill node brings it up;
+Re-calculate (button or ⌘K) clears it; importing an entry with a work puts both in their cluster
+(on its first orbit) and moves nothing else.
+

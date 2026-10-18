@@ -14512,6 +14512,37 @@ button.lb-props__eye:hover {
 	font-size: 10px;
 }
 
+/* "The tree's layout is out of date", over the board (tree/StaleLayout.tsx). */
+.lb-stale-layout {
+	position: absolute;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 6px 6px 14px;
+	border-radius: 999px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-sm, 0 2px 8px rgb(0 0 0 / 0.08));
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+	pointer-events: auto;
+}
+.lb-stale-layout button {
+	padding: 4px 10px;
+	border-radius: 999px;
+	border: none;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent, #fff);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 /* A tree header's arrangement and its buttons (tree/definition.tsx). */
 .lb-skilltree__bar {
 	display: flex;

@@ -1,9 +1,10 @@
 import { connectShapes } from '@lifeboard/node-kit'
-import { ARROW_STAYS_BEHIND_META, Box, createShapeId, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
-import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
+import { ARROW_STAYS_BEHIND_META, atom, Box, createShapeId, type Atom, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { ENTRY_TYPE, isEntry, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
 import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definition'
 import { getItem } from '../syllabus'
 import { arcBend, itemKey, lineEnds } from './lines'
+import { orbitCluster } from './orbits'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
@@ -119,7 +120,7 @@ export function planViews(editor: Editor, headers: readonly TreeShape[], going: 
 	const staying = (id: string) => (skills.has(id) && !leaving.has(skills.get(id)!.id)) || wantSkills.has(id)
 	const want = graph.mounts.filter((m) => staying(m.from) && staying(m.to)).map((m) => `${m.from}>${m.to}`).sort()
 	plan.mountsStale = want.join() !== mountArrows(editor).join()
-	plan.linesStale = linesWanted(wantItems).join() !== linesDrawn(editor).join()
+	plan.linesStale = linesWanted(wantItems, wantSkills).join() !== linesDrawn(editor).join()
 	return plan
 }
 
@@ -182,7 +183,15 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 			layoutView(editor, header, view, null)
 			if (unplaced.length === shapes.size) laidOutNew.push(view)
 		}
-		else if (unplaced.length) placeNew(editor, view, new Set(unplaced))
+		else if (unplaced.length) {
+			// New entries and works: only their own cluster is laid out again. New skill nodes go beside
+			// their neighbour for now, and the view's skeleton is out of date until Re-calculate.
+			const items = unplaced.filter((k) => k.startsWith('item:'))
+			const skills = new Set(unplaced.filter((k) => !k.startsWith('item:')))
+			if (skills.size) placeNew(editor, view, skills)
+			const grew = repackClusters(editor, view, new Set(items.map((k) => skillOf(view, k.slice('item:'.length))).filter((s) => !!s)))
+			if (grew) editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [LAYOUT_STALE]: true } } as never)
+		}
 		const context = view.context
 		if (header.meta[CONTEXT_META] !== context || headerUpdates.has(header.id)) {
 			editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [CONTEXT_META]: context }, props: { places: JSON.stringify(places) } } as never)
@@ -275,6 +284,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
 		tidyLines(editor)
+		editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [LAYOUT_OF]: structureOf(editor, view), [LAYOUT_STALE]: false } } as never)
 	})
 	return moves.length
 }
@@ -350,9 +360,114 @@ function placeNew(editor: Editor, view: ViewContents, created: ReadonlySet<strin
 	}
 }
 
+/** Meta on a header: the structure (`structureOf`) its view was last laid out whole for. */
+const LAYOUT_OF = 'lifeboard:layoutOf'
+/** Meta on a header: a cluster outgrew its room since; the layout wants laying out again. */
+const LAYOUT_STALE = 'lifeboard:layoutStale'
+
+/**
+ * What a view's skeleton is made of: its skill nodes and the arrows between them. A new tree, node,
+ * shared node or mount changes it; a new entry or work doesn't (docs/skill-tree-layout-plan.md,
+ * "Stability").
+ */
+export function structureOf(editor: Editor, view: ViewContents): string {
+	const { drawn, loose } = viewGraph(editor, view)
+	return [[...view.skills].sort().join(','), [...drawn, ...loose].map((e) => `${e.from}>${e.to}`).sort().join(',')].join('|')
+}
+
+/**
+ * Whether a header's layout is out of date: something structural changed since it was laid out
+ * whole, or a cluster outgrew its room. A header laid out before this was recorded never is.
+ */
+export function layoutIsStale(editor: Editor, header: TreeShape): boolean {
+	const was = header.meta[LAYOUT_OF]
+	if (typeof was !== 'string') return false
+	return header.meta[LAYOUT_STALE] === true || was !== structureOf(editor, contentsOf(editor, header))
+}
+
+const staleByBoard = new WeakMap<Editor, Atom<TLShapeId[]>>()
+
+/**
+ * The headers on this board whose layout is out of date, as of the last sync or Re-calculate. Kept
+ * apart from the store so the note over the board doesn't work it out again on every change, a drag's
+ * frames included.
+ */
+export function staleViews(editor: Editor): Atom<TLShapeId[]> {
+	let stale = staleByBoard.get(editor)
+	if (!stale) staleByBoard.set(editor, (stale = atom<TLShapeId[]>('lifeboard:skill-tree-stale', [])))
+	return stale
+}
+
+export function refreshStale(editor: Editor): void {
+	const ids = editor
+		.getCurrentPageShapes()
+		.filter(isTree)
+		.filter((h) => layoutIsStale(editor, h))
+		.map((h) => h.id)
+	const stale = staleViews(editor)
+	if (ids.join() !== stale.get().join()) stale.set(ids)
+}
+
+/** The skill node an item's family hangs from in a view: its entry's parent. */
+function skillOf(view: ViewContents, itemId: string): string {
+	let at = view.items.get(itemId)
+	for (let guard = 0; at && at.variant === 'work' && guard < 16; guard++) at = view.items.get(at.parent)
+	return at?.parent ?? ''
+}
+
+/**
+ * Lays out the clusters of these skill nodes again where they are (orbits.ts), the rest of the board
+ * left alone. True when one came out bigger than it was, so it may now reach a neighbour.
+ */
+function repackClusters(editor: Editor, view: ViewContents, skills: ReadonlySet<string>): boolean {
+	if (!skills.size) return false
+	const shapes = viewShapes(editor, view)
+	const { drawn, loose, lines } = viewGraph(editor, view)
+	const children = new Map<string, string[]>()
+	for (const e of lines) children.set(e.from, [...(children.get(e.from) ?? []), e.to])
+	const size = (key: string) => {
+		const b = editor.getShapePageBounds(shapes.get(key)!.id)!
+		return { id: key, w: b.w, h: b.h }
+	}
+	const centre = (key: string) => editor.getShapePageBounds(shapes.get(key)!.id)!.center
+	const descendants = (key: string): string[] => (children.get(key) ?? []).flatMap((k) => (shapes.has(k) ? [k, ...descendants(k)] : []))
+	let grew = false
+	const moves: { id: TLShapeId; type: string; x: number; y: number }[] = []
+	for (const skill of skills) {
+		if (!shapes.has(skill)) continue
+		const c = centre(skill)
+		const entries = (children.get(skill) ?? []).filter((k) => shapes.has(k) && k.startsWith('item:'))
+		const members = entries.flatMap((e) => [e, ...descendants(e)])
+		const before = Math.max(size(skill).w / 2, ...members.map((m) => Math.hypot(centre(m).x - c.x, centre(m).y - c.y) + Math.hypot(size(m).w, size(m).h) / 2))
+		const gates = [...drawn, ...loose]
+			.flatMap((e) => (e.from === skill ? [e.to] : e.to === skill ? [e.from] : []))
+			.filter((n) => shapes.has(n))
+			.map((n) => Math.atan2(centre(n).y - c.y, centre(n).x - c.x))
+		const cluster = orbitCluster(size(skill), entries.map((e) => ({ entry: size(e), works: descendants(e).map(size) })), gates)
+		for (const [key, p] of cluster.at) {
+			const s = shapes.get(key)
+			const b = s && editor.getShapePageBounds(s.id)
+			if (s && b) moves.push({ id: s.id, type: s.type, x: c.x + p.x - b.w / 2, y: c.y + p.y - b.h / 2 })
+		}
+		if (cluster.radius > before + 1) grew = true
+	}
+	if (moves.length) editor.updateShapes(moves as never)
+	return grew
+}
+
+/** Faint lines from an entry to the other skill nodes it is tagged to in view; it is drawn under its first. */
+function secondTags(items: ReadonlyMap<string, { variant: 'entry' | 'work'; parent: string }>, skills: ReadonlySet<string>): { from: string; to: string }[] {
+	const out: { from: string; to: string }[] = []
+	for (const [id, at] of items) {
+		if (at.variant !== 'entry') continue
+		for (const tag of getItem(id)?.tags ?? []) if (tag !== at.parent && skills.has(tag)) out.push({ from: tag, to: itemKey(id) })
+	}
+	return out
+}
+
 /** The lines a set of shown items wants, as `parent>child` keys of shape ids' owners. */
-function linesWanted(items: ReadonlyMap<string, { variant: 'entry' | 'work'; parent: string }>): string[] {
-	return lineEnds(items)
+function linesWanted(items: ReadonlyMap<string, { variant: 'entry' | 'work'; parent: string }>, skills: ReadonlySet<string>): string[] {
+	return [...lineEnds(items), ...secondTags(items, skills)]
 		.map((e) => `${e.from}>${e.to}`)
 		.sort()
 }
@@ -386,8 +501,13 @@ function mountArrows(editor: Editor): string[] {
 /** Brings the light lines in line with what the views show: stale ones go, missing ones are drawn. */
 function drawLines(editor: Editor, plan: ViewPlan): void {
 	const items = new Map<string, { variant: 'entry' | 'work'; parent: string }>()
-	for (const { view } of plan.views) for (const [id, at] of view.items) items.set(id, at)
-	const want = new Set(linesWanted(items))
+	const skills = new Set<string>()
+	for (const { view } of plan.views) {
+		for (const [id, at] of view.items) items.set(id, at)
+		for (const id of view.skills) skills.add(id)
+	}
+	const want = new Set(linesWanted(items, skills))
+	const second = new Set(secondTags(items, skills).map((e) => `${e.from}>${e.to}`))
 	const stale: TLShapeId[] = []
 	const have = new Set<string>()
 	for (const arrow of lineArrows(editor)) {
@@ -410,7 +530,8 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 				id: arrow,
 				type: 'arrow',
 				meta: { [SKILL_EDGE_META]: LINE },
-				props: { arrowheadEnd: 'none', arrowheadStart: 'none', size: 's', color: 'grey' },
+				// An entry's other tags: faint and dotted, as it is drawn once, under its first.
+				props: { arrowheadEnd: 'none', arrowheadStart: 'none', size: 's', color: 'grey', ...(second.has(key) ? { dash: 'dotted', color: 'light-violet' } : {}) },
 			} as never)
 		}
 	}
@@ -473,5 +594,7 @@ export function frameView(editor: Editor, view: ViewContents): void {
 
 /** Re-calculate: lays the view out again from scratch, as it is arranged now. One undo step. */
 export function recalculate(editor: Editor, header: TreeShape): number {
-	return layoutView(editor, header, contentsOf(editor, header), 're-calculate tree')
+	const moved = layoutView(editor, header, contentsOf(editor, header), 're-calculate tree')
+	refreshStale(editor)
+	return moved
 }

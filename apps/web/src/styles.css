@@ -14017,6 +14017,67 @@ button.lb-props__eye:hover {
 .lb-skillnode--pillar .lb-skillnode__disc {
 	border-width: 2.5px;
 }
+/* The middle of the tree ("you"): large, its name bigger; with a picture, the picture fills the
+   disc and the name sits on it at the bottom (skill/SkillComponent.tsx). */
+.lb-skillnode__label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+.lb-skillnode--mastery .lb-skillnode__disc {
+	width: 88%;
+	height: 88%;
+	gap: 10px;
+}
+.lb-skillnode--mastery .lb-skillnode__name {
+	font-size: 26px;
+	letter-spacing: 0.01em;
+}
+.lb-skillnode--mastery .lb-skillnode__caption {
+	font-size: 14px;
+}
+.lb-skillnode--mastery .lb-skillnode__icon svg {
+	width: 56px;
+	height: 56px;
+}
+.lb-skillnode__disc--picture {
+	position: relative;
+	overflow: hidden;
+	padding: 0;
+	justify-content: flex-end;
+	border-width: 4px;
+}
+.lb-skillnode__picture {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+}
+.lb-skillnode__disc--picture .lb-skillnode__label {
+	position: relative;
+	width: 100%;
+	padding: 28% 12% 12%;
+	background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0));
+	color: #fff;
+}
+.lb-skillnode__disc--picture .lb-skillnode__caption {
+	color: rgb(255 255 255 / 0.8);
+}
+.lb-skill-editor__picture {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-skill-editor__picture img {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
 /* Method nodes count how you worked, not what about: a dashed edge, the disc still round. */
 .lb-skillnode--method .lb-skillnode__disc {
 	border-style: dashed;

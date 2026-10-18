@@ -6,6 +6,7 @@ import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews, refreshStale } from './tree/viewSync'
 import { boardTrees, treeGraph, type ViewContents } from './views'
 import { watchPhysics } from './tree/physics'
+import { sizeOfKind } from './skill/definition'
 import {
 	getTreeDef,
 	getTreeDefs,
@@ -205,7 +206,15 @@ export function syncBoard(editor: Editor): void {
 			if (from && to && from !== to && redraw.has(from)) redraw.add(to)
 		}
 	}
-	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return refreshStale(editor)
+	// A node is as big as its kind: the Mastery node, the middle of it all, large; every other the same.
+	const resizes = [...byTree.values()].flat().flatMap((s) => {
+		const kind = updates.find((u) => u.shape.id === s.id)?.def.kind ?? s.props.kind
+		const size = sizeOfKind(kind)
+		const b = editor.getShapePageBounds(s.id)
+		if (!b || (Math.abs(b.w - size) < 0.5 && Math.abs(b.h - size) < 0.5)) return []
+		return [{ id: s.id, type: SKILL_TYPE, x: s.x + (b.w - size) / 2, y: s.y + (b.h - size) / 2, props: { w: size, h: size } }]
+	})
+	if (!removals.length && !updates.length && !headerUpdates.length && !resizes.length && planIsEmpty(view)) return refreshStale(editor)
 
 	let laidOutNew: ViewContents[] = []
 	syncing = true
@@ -222,6 +231,7 @@ export function syncBoard(editor: Editor): void {
 						return { id: shape.id, type: SKILL_TYPE, props }
 					}),
 					...headerUpdates,
+					...resizes,
 				] as never)
 				laidOutNew = applyViews(editor, view)
 				for (const treeId of redraw) drawPrerequisites(editor, treeId)

@@ -7,6 +7,7 @@ import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
 import { orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { lineEnds } from './lines'
+import { sizeOfKind } from '../skill/definition'
 
 /**
  * A content file's Show all, as the graph `layoutView` hands to the layout: skill nodes, entries,
@@ -62,7 +63,7 @@ export function showView(name: string, sources: readonly string[], treeId: strin
 	const edges = orientFrom(view.start, [...arrows, ...loose, ...hangs])
 	edges.push({ from: view.start, to: HEADER })
 	const nodes: GraphNode[] = [
-		...[...view.skills].map((id) => ({ id, w: 150, h: 150 })),
+		...[...view.skills].map((id) => ({ id, w: sizeOfKind(graph.nodes.get(id)!.def.kind), h: sizeOfKind(graph.nodes.get(id)!.def.kind) })),
 		...[...view.items].map(([id, at]) => (at.variant === 'work' ? { id: key(id), w: 120, h: 100 } : { id: key(id), w: 110, h: 110 })),
 		{ id: HEADER, w: 280, h: 72 },
 	]

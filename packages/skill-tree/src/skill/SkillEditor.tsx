@@ -1,7 +1,7 @@
 import type { Editor } from '@lifeboard/canvas'
 import { useValue } from '@lifeboard/canvas'
-import { getIconBridge } from '@lifeboard/node-kit'
-import { useState, type KeyboardEvent } from 'react'
+import { getAssetBridge, getIconBridge, useAssetUrl } from '@lifeboard/node-kit'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { SKILL_TYPE, type SkillNodeProps, type SkillShape } from '../board'
 import { parseRequirements, type NodeStatus } from '../requirements'
 import { getSkillIndex } from '../skillIndex'
@@ -20,6 +20,8 @@ export function SkillEditor({ skill, editor, status }: { skill: SkillShape; edit
 	const [picking, setPicking] = useState(false)
 	const { Icon, IconPicker } = getIconBridge()
 	const parsed = parseRequirements(draft)
+	const fileInput = useRef<HTMLInputElement>(null)
+	const picture = useAssetUrl(skill.props.picture ?? '')
 
 	const setProps = (props: Partial<SkillNodeProps>) => editor.updateShape({ id: skill.id, type: SKILL_TYPE, props } as never)
 
@@ -53,6 +55,31 @@ export function SkillEditor({ skill, editor, status }: { skill: SkillShape; edit
 						}}
 					/>
 				)}
+			</div>
+			<div className="lb-skill-editor__block">
+				<span>Picture</span>
+				<div className="lb-skill-editor__picture">
+					{picture && <img src={picture} alt="" />}
+					<button type="button" className="lb-skill-editor__iconbtn" onClick={() => fileInput.current?.click()}>
+						{picture ? 'Change' : 'Choose a picture'}
+					</button>
+					{picture && (
+						<button type="button" className="lb-skill-editor__iconbtn" onClick={() => setProps({ picture: '' })}>
+							Remove
+						</button>
+					)}
+				</div>
+				<input
+					ref={fileInput}
+					type="file"
+					accept="image/*"
+					hidden
+					onChange={async (e) => {
+						const file = e.target.files?.[0]
+						e.target.value = ''
+						if (file) setProps({ picture: await getAssetBridge().store(file) })
+					}}
+				/>
 			</div>
 			<label>
 				<span>Id</span>

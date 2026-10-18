@@ -5,7 +5,7 @@ import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definiti
 import { getItem } from '../syllabus'
 import { arcBend, itemKey, lineEnds } from './lines'
 import { orbitCluster } from './orbits'
-import { SKILL_SIZE } from '../skill/definition'
+import { SKILL_SIZE, sizeOfKind } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
 import { getTreePrefs } from '../treePrefs'
@@ -154,7 +154,8 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 			const { nodeId, draft, ...rest } = def
 			void draft
 			const at = near(treeId)
-			return { id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: at.x - SKILL_SIZE / 2, y: at.y - SKILL_SIZE / 2, props: { ...rest, nodeId, treeId } }
+			const size = sizeOfKind(rest.kind)
+			return { id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: at.x - size / 2, y: at.y - size / 2, props: { ...rest, nodeId, treeId, w: size, h: size } }
 		}),
 		...plan.createItems.map(({ itemId, treeId, variant }) => {
 			created.add(itemKey(itemId))

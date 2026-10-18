@@ -60,6 +60,8 @@ export interface SkillNodeProps {
 	requires: string
 	/** A board-icon name (Tabler), drawn on the disc; '' for none. */
 	icon: string
+	/** An `asset:` picture filling the disc, the way the middle of the whole-life tree shows you; '' for none. Kept on this board. */
+	picture: string
 }
 
 export interface SkillTreeProps {

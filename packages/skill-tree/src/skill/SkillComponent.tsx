@@ -1,4 +1,4 @@
-import { getIconBridge, NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
+import { getIconBridge, NodeEditorPopover, useAssetUrl, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
 import { AGGREGATE_KINDS, draftClass, type SkillNodeProps, type SkillShape } from '../board'
@@ -32,6 +32,7 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	const { fraction, caption } = mastery ?? ringFor(status)
 	const tier = status?.mastery.tier ?? 0
 	const { Icon } = getIconBridge()
+	const picture = useAssetUrl(shape.props.picture ?? '')
 
 	const body = (
 		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never) || (draft ? ' lb-draft' : '')}`}>
@@ -46,14 +47,17 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 					transform="rotate(-90 50 50)"
 				/>
 			</svg>
-			<div className="lb-skillnode__disc">
-				{shape.props.icon && (
+			<div className={`lb-skillnode__disc${picture ? ' lb-skillnode__disc--picture' : ''}`}>
+				{picture && <img className="lb-skillnode__picture" src={picture} alt="" draggable={false} />}
+				{!picture && shape.props.icon && (
 					<span className="lb-skillnode__icon">
 						<Icon name={shape.props.icon} size={26} />
 					</span>
 				)}
-				<span className="lb-skillnode__name">{shape.props.name || 'Unnamed Skill'}</span>
-				<span className="lb-skillnode__caption">{caption}</span>
+				<span className="lb-skillnode__label">
+					<span className="lb-skillnode__name">{shape.props.name || 'Unnamed Skill'}</span>
+					<span className="lb-skillnode__caption">{caption}</span>
+				</span>
 			</div>
 		</div>
 	)

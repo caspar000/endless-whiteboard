@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import adlerYaml from '../content/adler.yaml?raw'
+import directorYaml from '../content/director.yaml?raw'
 import mucoreYaml from '../content/mucore.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
@@ -130,5 +131,25 @@ describe('content/mucore.yaml', () => {
 		expect(pillars).toHaveLength(16)
 		for (const unit of units) expect(unit.tags).toHaveLength(1)
 		checkTree(doc)
+	})
+})
+
+describe('content/director.yaml', () => {
+	const doc = load(directorYaml)
+	const track = (id: string) => doc.tracks.find((t) => t.trackId === `director/${id}`)!
+
+	it("holds Mark Brown's 100 in his order, in chronological clusters", () => {
+		const clusters = track('game-design').items.filter((i) => i.itemId.startsWith('director/brown-'))
+		const games = clusters.flatMap((c) => c.children)
+		expect(games).toHaveLength(100)
+		expect(games[0]!.title).toBe('Space Invaders (1978)')
+		expect(games[99]!.title).toBe('Shadows of Doubt (2023)')
+		const years = games.map((g) => Number(/\((\d{4})\)$/.exec(g.title)![1]))
+		expect(years).toEqual([...years].sort((a, b) => a - b))
+	})
+
+	it("holds Schreiber's twenty Levels", () => {
+		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
+		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))
 	})
 })

@@ -68,6 +68,8 @@ export const skillNodeDefinition: NodeDefinition<SkillNodeProps> = {
 	onCreate: ({ shape }) => (shape.props.nodeId ? null : { nodeId: makeItemId(shape.props.name || 'skill') }),
 	defaultSize: { w: SKILL_SIZE, h: SKILL_SIZE },
 	aspectRatioLocked: true,
+	// A disc: arrows end on its circle, the same distance from its middle whichever way they come in.
+	outline: (shape) => ({ cx: shape.props.w / 2, cy: shape.props.h / 2, r: Math.min(shape.props.w, shape.props.h) / 2 }),
 	component: SkillComponent,
 	canEdit: true,
 	// Double-click, Enter, or right-click › Edit opens its editor.

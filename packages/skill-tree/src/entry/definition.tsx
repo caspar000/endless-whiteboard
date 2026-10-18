@@ -44,5 +44,10 @@ export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 	// menu the way a retired type is.
 	deprecated: true,
 	component: EntryComponent,
+	// An entry is a disc; a work a smaller disc with its title below, which still takes a click.
+	outline: (shape) =>
+		shape.props.variant === 'work'
+			? { cx: shape.props.w / 2, cy: WORK_DISC / 2, r: WORK_DISC / 2, rest: { x: 0, y: WORK_DISC, w: shape.props.w, h: Math.max(1, shape.props.h - WORK_DISC) } }
+			: { cx: shape.props.w / 2, cy: shape.props.h / 2, r: Math.min(shape.props.w, shape.props.h) / 2 },
 	getLabel: (shape) => getItem(shape.props.itemId)?.title || undefined,
 }

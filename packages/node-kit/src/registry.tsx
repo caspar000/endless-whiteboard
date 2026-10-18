@@ -1,6 +1,9 @@
 import {
 	BaseBoxShapeUtil,
+	Circle2d,
+	Group2d,
 	HTMLContainer,
+	Rectangle2d,
 	T,
 	TLBaseShape,
 	TLPropsMigrations,
@@ -178,6 +181,14 @@ export interface NodeDefinition<Props extends object = object> {
 	 * See the comment there; the book node is the case it was written for.
 	 */
 	aspectRatioLocked?: boolean
+	/**
+	 * A round node: the circle inside its box that is its outline, in the box's own units. Arrows end on
+	 * the circle instead of the box's edge, so every arrow to a round node stops the same distance from
+	 * its middle; clicks and the selection outline follow it too. `rest` is any other part of the box
+	 * that still counts as the node for clicking (a caption below the circle). Without it, a node is
+	 * its box.
+	 */
+	outline?: (shape: NodeShape<Props>) => { cx: number; cy: number; r: number; rest?: { x: number; y: number; w: number; h: number } }
 	/**
 	 * Let the wheel scroll the node's own content instead of zooming the canvas.
 	 *
@@ -371,10 +382,21 @@ export function createNodeShapeUtil<Props extends object>(
 			return resizeBox(shape, { ...info, scaleY: height / shape.props.h })
 		}
 
+		override getGeometry(shape: TLBaseBoxShape) {
+			const round = def.outline?.(shape as unknown as Shape)
+			if (!round) return super.getGeometry(shape)
+			const circle = new Circle2d({ x: round.cx - round.r, y: round.cy - round.r, radius: round.r, isFilled: true })
+			if (!round.rest) return circle
+			const { x, y, w, h } = round.rest
+			return new Group2d({ children: [circle, new Rectangle2d({ x, y, width: w, height: h, isFilled: true })] })
+		}
+
 		/** v5 replaced `indicator()` with `getIndicatorPath()`; see docs/tldraw-api-notes.md. */
 		override getIndicatorPath(shape: TLBaseBoxShape): Path2D {
 			const path = new Path2D()
-			path.rect(0, 0, shape.props.w, shape.props.h)
+			const round = def.outline?.(shape as unknown as Shape)
+			if (round) path.arc(round.cx, round.cy, round.r, 0, 2 * Math.PI)
+			else path.rect(0, 0, shape.props.w, shape.props.h)
 			return path
 		}
 

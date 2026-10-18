@@ -1,6 +1,7 @@
 import adlerYaml from '../../content/adler.yaml?raw'
 import directorYaml from '../../content/director.yaml?raw'
 import mucoreYaml from '../../content/mucore.yaml?raw'
+import lifeYaml from '../../content/whole-life-test.yaml?raw'
 import { parseSyllabus, type DocItem } from '../syllabusYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
@@ -26,20 +27,30 @@ export interface ShowAll {
 export const HEADER = 'header'
 
 export function showAll(name: string, source: string): ShowAll {
-	const parsed = parseSyllabus(source)
-	if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
-	const doc = parsed.doc
+	return showView(name, [source], '', 'all')
+}
+
+/**
+ * Several documents in one vault, viewed from one tree: `mounts` hang trees on nodes the way the
+ * whole-life test board does. `mode` is `all` or `overview`.
+ */
+export function showView(name: string, sources: readonly string[], treeId: string, mode: 'all' | 'overview', mounts: Record<string, string> = {}): ShowAll {
+	const docs = sources.map((source) => {
+		const parsed = parseSyllabus(source)
+		if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
+		return parsed.doc
+	})
 	const trees: TreeDefs = Object.fromEntries(
-		doc.trees.map((t) => [t.treeId, { ...t, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '' }])
+		docs.flatMap((doc) => doc.trees).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '' }])
 	)
 	const items: Record<string, { itemId: string; parent: string; children: string[]; tags: string[] }> = {}
 	const add = (item: DocItem, parent: string) => {
 		items[item.itemId] = { itemId: item.itemId, parent, children: item.children.map((c) => c.itemId), tags: item.tags }
 		for (const c of item.children) add(c, item.itemId)
 	}
-	for (const track of doc.tracks) for (const item of track.items) add(item, '')
+	for (const doc of docs) for (const track of doc.tracks) for (const item of track.items) add(item, '')
 	const graph = treeGraph(trees)
-	const view = viewContents(graph, items, { treeId: doc.trees[0]!.treeId, root: '', mode: 'all' })
+	const view = viewContents(graph, items, { treeId: treeId || docs[0]!.trees[0]!.treeId, root: '', mode })
 	const key = (id: string) => `item:${id}`
 	const inView = (id: string) => view.skills.has(id)
 	const arrows = [...graph.prerequisites, ...graph.mounts].filter((e) => inView(e.from) && inView(e.to))
@@ -54,6 +65,12 @@ export function showAll(name: string, source: string): ShowAll {
 	]
 	return { name, nodes, edges, start: view.start, skills: view.skills, arrows, lines }
 }
+
+const LIFE_MOUNTS = { adler: 'mastery/mental', director: 'mastery/practical' }
+/** The whole-life test board: you, the pillars, the test trees, Adler on Mental and Director on Practical. */
+export const WHOLE_LIFE = showView('whole-life', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'all', LIFE_MOUNTS)
+/** The same in the skill-node view. */
+export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'overview', LIFE_MOUNTS)
 
 export const SHOW_ALL = [showAll('adler', adlerYaml), showAll('director', directorYaml), showAll('mucore', mucoreYaml)]
 

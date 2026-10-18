@@ -7,7 +7,7 @@ import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
 import { getTreePrefs } from '../treePrefs'
 import { contentsOf } from './view'
-import { compactLayout } from './compact'
+import { wholeLayout } from './wholeLayout'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
 
@@ -239,8 +239,9 @@ export function viewEdges(editor: Editor, view: ViewContents): GraphEdge[] {
 }
 
 /**
- * Lays a whole view out around its start (the view's root), which stays where it is,
- * everything else on the board an obstacle. `label` names the undo step; `null` inside a sync.
+ * Lays a whole view out around its start (the view's root), which stays where it is. Other shapes
+ * on the board are not worked around: the tree is one disc (docs/skill-tree-layout-plan.md).
+ * `label` names the undo step; `null` inside a sync.
  */
 export function layoutView(editor: Editor, header: TreeShape, view: ViewContents, label: string | null): number {
 	const shapes = viewShapes(editor, view)
@@ -254,12 +255,6 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		return { id: key, w: b?.w ?? SKILL_SIZE, h: b?.h ?? SKILL_SIZE }
 	})
 	const anchor = editor.getShapePageBounds(startShape.id)?.center ?? { x: 0, y: 0 }
-	const moving = new Set<string>([...shapes.values()].map((s) => s.id))
-	const obstacles = editor.getCurrentPageShapes().flatMap((s) => {
-		if (moving.has(s.id) || s.id === header.id || s.type === 'arrow' || s.parentId !== editor.getCurrentPageId()) return []
-		const b = editor.getShapePageBounds(s.id)
-		return b ? [{ x: b.center.x - anchor.x, y: b.center.y - anchor.y, w: b.w, h: b.h }] : []
-	})
 	// A drawn header is laid out with the view, hung from its start like a leaf, so it lands clear of
 	// it. A hidden one (the default) takes no room.
 	const HEADER = 'header'
@@ -268,12 +263,8 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		nodes.push({ id: HEADER, w: hb.w, h: hb.h })
 		edges.push({ from: startKey, to: HEADER })
 	}
-	// Everything is grown compact (compact.ts); the skill nodes alone are laid out as a graph. Both give
-	// way to the whole-life layout (docs/skill-tree-layout-plan.md, phase 2).
-	const clustered = view.items.size > 0
-	const at = clustered
-		? compactLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, unlined: new Set([HEADER]), obstacles })
-		: layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })
+	// Both views, everything and the skill nodes alone, are the whole-life layout from the view's start.
+	const at = wholeLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, arrows: drawn })
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
 		const b = editor.getShapePageBounds(s.id)

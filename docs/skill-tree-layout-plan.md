@@ -79,3 +79,18 @@ Settings › Show tree headers; a hidden one takes no room in the layout. `Show 
 skill nodes` (Shift+E) switches every view on the board; an import opens on everything. Focus mode
 is gone: `tree/focus.ts` became `tree/view.ts`, migration `DropFocus` turns a stored focus into
 everything, double-click on a skill node edits it.
+
+**Phase 2 done, 2026-10-18.** `tree/wholeLayout.ts` lays both views out, replacing `compact.ts`
+and the graph layout of the skill-node view. Slices are shared by the angle each branch needs at
+its ring (its own width there, or its children's side by side), not by how much it holds: shared by
+content, a branch of small leaves got a sliver and was pushed far out. Rings: one each for the
+pillars and the tree roots; past them, each node's children share an arc, so one big cluster no
+longer drags its whole tree out. A ring moves out only when what is on it doesn't fit its slice,
+repeated until all fit. Then `tree/pullIn.ts` slides each branch toward its parent while nothing
+overlaps and no arrow crosses more nodes than before. Shared nodes sit between their parents.
+Other shapes on the board are no longer worked around.
+
+On the test board: skill nodes 4649×2804 px (15.7% covered), everything 15500×12892 (5.1%), nothing
+overlapping. Clusters are still placeholder rings round their node, so arrows run through their
+own cluster and the everything view is loose; phase 3.
+

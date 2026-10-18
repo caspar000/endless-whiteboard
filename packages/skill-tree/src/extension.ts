@@ -13,6 +13,7 @@ import { getItem, isItemDone } from './syllabus'
 import type { TLShapeId } from '@lifeboard/canvas'
 import { TreeSettings } from './TreeSettings'
 import { StaleLayout } from './tree/StaleLayout'
+import { Working } from './tree/Working'
 import { tunerNodeDefinition } from './tree/LayoutTuner'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
@@ -96,7 +97,10 @@ export const skillTreeExtension: Extension = {
 		},
 	],
 	settings: { title: 'Skill trees', Component: TreeSettings },
-	overlays: [{ id: 'lifeboard.skill-tree.stale-layout', Component: StaleLayout }],
+	overlays: [
+		{ id: 'lifeboard.skill-tree.stale-layout', Component: StaleLayout },
+		{ id: 'lifeboard.skill-tree.working', Component: Working },
+	],
 	// A tree's header is its view, not something to look at (docs/skill-tree-layout-plan.md, "Views"):
 	// hidden unless Settings asks for headers.
 	shapeVisibility: { types: [TREE_TYPE], isHidden: () => !getTreePrefs().showHeaders },

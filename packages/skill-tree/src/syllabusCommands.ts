@@ -12,6 +12,8 @@ import { getTreeDef, getTreeDefs, updateTreeMeta } from './treeDefs'
 import { treeGraph } from './views'
 import { boardGoals, boardHasDraft, confirmDraft, discardDraft, exportSyllabus, importSyllabus } from './syllabusIO'
 import { describeDoc, parseSyllabus } from './syllabusYaml'
+import { holdImport } from './importing'
+import { working } from './progress'
 
 /**
  * Getting syllabi in and out (docs/skill-tree-plan.md, step 5): commands for a person, operations
@@ -46,17 +48,37 @@ function freeSpot(editor: Editor): { x: number; y: number } {
 	return { x: bounds.maxX + 400, y: bounds.minY }
 }
 
-/** Parses and imports (at `at`, or in free space), shows the draft, and returns what happened or why not. */
-function importText(editor: Editor, text: string, at?: { x: number; y: number }) {
-	const parsed = parseSyllabus(text)
-	if (!parsed.ok) return parsed
-	const result = importSyllabus(editor, parsed.doc, at ?? freeSpot(editor))
+/**
+ * Reads (a document loaded on demand, or text), parses and imports it (at `at`, or in free space),
+ * shows the draft, and returns what happened or why not. A big one takes seconds, so the board says
+ * which step it is on (progress.ts) and lays the draft out once, at the end.
+ */
+async function importText(editor: Editor, source: string | (() => Promise<string>), title = 'Importing the syllabus', at?: { x: number; y: number }) {
+	const outcome = await working(editor, title, 3, async (step) => {
+		await step('Reading the document')
+		const parsed = parseSyllabus(typeof source === 'string' ? source : await source())
+		if (!parsed.ok) return parsed
+		const release = holdImport(editor)
+		try {
+			await step(`Adding ${describeDoc(parsed.doc)}`)
+			const result = importSyllabus(editor, parsed.doc, at ?? freeSpot(editor))
+			await step('Laying out the trees')
+			release()
+			// The tree sync lays the board out in a microtask once the hold ends.
+			await Promise.resolve()
+			return { ok: true as const, result, summary: describeDoc(parsed.doc) }
+		} finally {
+			release()
+		}
+	})
+	if (!outcome.ok) return outcome
+	const { result } = outcome
 	if (result.draftIds.length) {
 		editor.setSelectedShapes(result.draftIds)
 		const bounds = editor.getSelectionPageBounds()
 		if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 250 } })
 	}
-	return { ok: true as const, result, summary: describeDoc(parsed.doc) }
+	return outcome
 }
 
 /** The goal of the selected list, tree or habit, if one is selected. */
@@ -82,7 +104,7 @@ export const syllabusCommands: readonly Command[] = [
 				reportProblems(editor, 'Could not read the clipboard', ['Allow clipboard access, or drop a .yaml file on the board instead.'])
 				return
 			}
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, text)
 			if (!outcome.ok) reportProblems(editor, 'Syllabus not imported', outcome.errors)
 		},
 	},
@@ -108,8 +130,7 @@ export const syllabusCommands: readonly Command[] = [
 		run: async ({ editor }) => {
 			if (!editor) return
 			// Loaded on demand: the document is sixty kilobytes the board never needs otherwise.
-			const { default: text } = await import('../content/adler.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/adler.yaml?raw').then((m) => m.default), "Importing Adler's reading list")
 			if (!outcome.ok) reportProblems(editor, "Adler's list not imported", outcome.errors)
 		},
 	},
@@ -120,8 +141,7 @@ export const syllabusCommands: readonly Command[] = [
 		when: (ctx) => ctx.editor !== null,
 		run: async ({ editor }) => {
 			if (!editor) return
-			const { default: text } = await import('../content/director.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/director.yaml?raw').then((m) => m.default), 'Importing the game director curriculum')
 			if (!outcome.ok) reportProblems(editor, 'The director curriculum not imported', outcome.errors)
 		},
 	},
@@ -132,8 +152,7 @@ export const syllabusCommands: readonly Command[] = [
 		when: (ctx) => ctx.editor !== null,
 		run: async ({ editor }) => {
 			if (!editor) return
-			const { default: text } = await import('../content/film.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/film.yaml?raw').then((m) => m.default), 'Importing the film curriculum')
 			if (!outcome.ok) reportProblems(editor, 'The film curriculum not imported', outcome.errors)
 		},
 	},
@@ -144,8 +163,7 @@ export const syllabusCommands: readonly Command[] = [
 		when: (ctx) => ctx.editor !== null,
 		run: async ({ editor }) => {
 			if (!editor) return
-			const { default: text } = await import('../content/theatre.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/theatre.yaml?raw').then((m) => m.default), 'Importing the theatre curriculum')
 			if (!outcome.ok) reportProblems(editor, 'The theatre curriculum not imported', outcome.errors)
 		},
 	},
@@ -156,8 +174,7 @@ export const syllabusCommands: readonly Command[] = [
 		when: (ctx) => ctx.editor !== null,
 		run: async ({ editor }) => {
 			if (!editor) return
-			const { default: text } = await import('../content/games.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/games.yaml?raw').then((m) => m.default), 'Importing the games curriculum')
 			if (!outcome.ok) reportProblems(editor, 'The games curriculum not imported', outcome.errors)
 		},
 	},
@@ -168,8 +185,7 @@ export const syllabusCommands: readonly Command[] = [
 		when: (ctx) => ctx.editor !== null,
 		run: async ({ editor }) => {
 			if (!editor) return
-			const { default: text } = await import('../content/mucore.yaml?raw')
-			const outcome = importText(editor, text)
+			const outcome = await importText(editor, () => import('../content/mucore.yaml?raw').then((m) => m.default), 'Importing /mu/core')
 			if (!outcome.ok) reportProblems(editor, '/mu/core not imported', outcome.errors)
 		},
 	},
@@ -178,8 +194,19 @@ export const syllabusCommands: readonly Command[] = [
 		title: 'Confirm draft',
 		group: GROUP,
 		when: (ctx) => hasDraft(ctx.editor),
-		run: ({ editor }) => {
-			if (editor) confirmDraft(editor)
+		run: async ({ editor }) => {
+			if (!editor) return
+			await working(editor, 'Confirming the draft', 2, async (step) => {
+				const release = holdImport(editor)
+				try {
+					await step('Adding it to the vault')
+					confirmDraft(editor)
+					await step('Laying out the trees')
+				} finally {
+					release()
+				}
+				await Promise.resolve()
+			})
 		},
 	},
 	{
@@ -197,7 +224,7 @@ export const syllabusCommands: readonly Command[] = [
 export const syllabusFileImport: FileImport = {
 	extensions: ['yaml', 'yml'],
 	onFile: async ({ editor, file, point }) => {
-		const outcome = importText(editor, await file.text(), point)
+		const outcome = await importText(editor, await file.text(), `Importing ${file.name}`, point)
 		if (!outcome.ok) reportProblems(editor, `${file.name} not imported`, outcome.errors)
 	},
 }
@@ -222,7 +249,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 		},
 		run: async (ctx, args) => {
 			if (!ctx.editor) return fail(NO_BOARD)
-			const outcome = importText(ctx.editor, args.yaml)
+			const outcome = await importText(ctx.editor, args.yaml)
 			if (!outcome.ok) return fail(`Not imported:\n${outcome.errors.join('\n')}`)
 			return ok({
 				draft: true,

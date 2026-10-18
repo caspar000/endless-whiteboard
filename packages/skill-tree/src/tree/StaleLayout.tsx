@@ -1,5 +1,6 @@
 import { useEditor, useValue } from '@lifeboard/canvas'
 import { isTree } from '../board'
+import { getWork, working } from '../progress'
 import { recalculate, staleViews } from './viewSync'
 
 /**
@@ -10,7 +11,9 @@ import { recalculate, staleViews } from './viewSync'
 export function StaleLayout() {
 	const editor = useEditor()
 	const stale = useValue('lifeboard:skill-tree-stale-layout', () => staleViews(editor).get(), [editor])
-	if (!stale.length) return null
+	// While the board is busy (progress.ts), its note shows here instead.
+	const busy = useValue('lifeboard:skill-tree-busy', () => !!getWork(editor), [editor])
+	if (!stale.length || busy) return null
 	return (
 		<div
 			className="lb-stale-layout"
@@ -25,12 +28,16 @@ export function StaleLayout() {
 			<span>The tree&apos;s layout is out of date</span>
 			<button
 				type="button"
-				onClick={() => {
-					for (const id of stale) {
-						const header = editor.getShape(id)
-						if (isTree(header)) recalculate(editor, header)
-					}
-				}}
+				onClick={() =>
+					void working(editor, 'Re-calculating the layout', stale.length, async (step) => {
+						for (const id of stale) {
+							const header = editor.getShape(id)
+							if (!isTree(header)) continue
+							await step(`Laying out ${header.props.name || 'the tree'}`)
+							recalculate(editor, header)
+						}
+					})
+				}
 			>
 				Re-calculate
 			</button>

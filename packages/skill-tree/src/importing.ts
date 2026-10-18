@@ -19,10 +19,25 @@ export function onImportEnd(listener: (editor: Editor) => void): void {
 }
 
 export function whileImporting<T>(editor: Editor, fn: () => T): T {
-	depth++
+	const release = holdImport(editor)
 	try {
 		return fn()
 	} finally {
+		release()
+	}
+}
+
+/**
+ * The same across awaits, for a bulk change done in steps with a progress note between them
+ * (progress.ts): nothing catches up until the returned release, so the board is laid out once, at
+ * the end, rather than after every step.
+ */
+export function holdImport(editor: Editor): () => void {
+	depth++
+	let released = false
+	return () => {
+		if (released) return
+		released = true
 		depth--
 		if (depth === 0) for (const listener of listeners) listener(editor)
 	}

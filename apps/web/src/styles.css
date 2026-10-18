@@ -14701,6 +14701,104 @@ button.lb-props__eye:hover {
 	cursor: pointer;
 }
 
+/* What the board is busy with: an import, a layout (tree/Working.tsx). The spinner and the bar's
+   shimmer animate transforms only, which run on the compositor, so they keep moving while a step
+   holds the main thread. */
+.lb-working {
+	position: absolute;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 310;
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	column-gap: 10px;
+	row-gap: 8px;
+	min-width: 280px;
+	max-width: min(440px, calc(100vw - 32px));
+	padding: 10px 14px 12px;
+	border-radius: 14px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-sm, 0 2px 8px rgb(0 0 0 / 0.08));
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+	pointer-events: none;
+}
+.lb-working__spinner {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid var(--lb-border);
+	border-top-color: var(--lb-accent);
+	animation: lb-working-spin 0.8s linear infinite;
+	will-change: transform;
+}
+.lb-working__text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.lb-working__text strong {
+	font-weight: 600;
+}
+.lb-working__text span {
+	color: var(--lb-text-dim);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-working__count {
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-faint);
+	white-space: nowrap;
+}
+.lb-working__bar {
+	grid-column: 1 / -1;
+	position: relative;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--lb-border);
+	overflow: hidden;
+}
+.lb-working__bar > span {
+	position: absolute;
+	inset: 0;
+	background: var(--lb-accent);
+	transform-origin: left;
+	transition: transform 0.3s ease;
+}
+.lb-working__bar::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	width: 40%;
+	background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+	animation: lb-working-shimmer 1.2s ease-in-out infinite;
+	will-change: transform;
+}
+@keyframes lb-working-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes lb-working-shimmer {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(250%);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-working__spinner,
+	.lb-working__bar::after {
+		animation-duration: 2.4s;
+	}
+}
+
 /* A tree header's arrangement and its buttons (tree/definition.tsx). */
 .lb-skilltree__bar {
 	display: flex;

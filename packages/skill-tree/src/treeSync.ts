@@ -166,7 +166,8 @@ function schedule(editor: Editor): void {
 	pending.add(editor)
 	queueMicrotask(() => {
 		pending.delete(editor)
-		if (!disposed.has(editor)) syncBoard(editor)
+		// A bulk change held across awaits (importing.ts) schedules again when it ends.
+		if (!disposed.has(editor) && !isImporting()) syncBoard(editor)
 	})
 }
 

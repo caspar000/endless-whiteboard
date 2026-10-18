@@ -358,7 +358,7 @@ TREE = {
     'name': 'Film',
     'mount': 'mastery/practical',
     'nodes': [
-        node('root', 'Watch Like a Director', 'movie', kind='root'),
+        node('root', 'Film', 'movie', kind='root'),
         node('craft', 'Film Craft', 'camera', ['root'], 3),
         node('reading', 'Reading a Scene', 'eye', ['craft'], 2),
         # The world canon, by school and region.

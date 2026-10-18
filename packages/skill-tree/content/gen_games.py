@@ -273,7 +273,7 @@ TREE = {
     'name': 'Games',
     'mount': 'mastery/practical',
     'nodes': [
-        node('root', 'Play Like a Director', 'device-gamepad-2', kind='root'),
+        node('root', 'Games', 'device-gamepad-2', kind='root'),
         # Design.
         node('foundations', 'Game Design Foundations', 'school', ['root'], 3),
         node('design-craft', 'Design Craft', 'tools', ['foundations'], 2),

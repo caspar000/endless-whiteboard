@@ -316,7 +316,7 @@ TREE = {
     'name': 'Theatre',
     'mount': 'mastery/practical',
     'nodes': [
-        node('root', 'Read Plays as a Director', 'masks-theater', kind='root'),
+        node('root', 'Theatre', 'masks-theater', kind='root'),
         node('directing', 'Directing', 'speakerphone', ['root'], 2),
         node('canon', 'The Repertoire', 'books', ['root'], 1),
         node('greek-renaissance', 'Greek and Renaissance Drama', 'building-arch', ['canon'], 2),

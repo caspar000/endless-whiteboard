@@ -1048,7 +1048,7 @@ trees:
     name: "Games"
     mount: mastery/practical
     nodes:
-      - { id: root, name: "Play Like a Director", kind: root, icon: device-gamepad-2 }
+      - { id: root, name: "Games", kind: root, icon: device-gamepad-2 }
       - { id: foundations, name: "Game Design Foundations", icon: school, requires: [{node: [root]}, {count: {min: 3}}] }
       - { id: design-craft, name: "Design Craft", icon: tools, requires: [{node: [foundations]}, {count: {min: 2}}] }
       - { id: narrative, name: "Narrative Design", icon: writing, requires: [{node: [foundations]}, {count: {min: 2}}] }

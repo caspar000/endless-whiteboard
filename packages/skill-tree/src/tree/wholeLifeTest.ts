@@ -10,7 +10,7 @@ export const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }
 
 /**
  * The board the whole-life layout is tested on (docs/skill-tree-layout-plan.md, "Test board"): you at
- * the centre, the five pillars, Adler on Mental and Film and Theatre on Practical, nothing else. One
+ * the centre, the five pillars, Adler on Mental and Film, Theatre and Games on Practical, nothing else. One
  * view, Mastery's, showing everything; no habit cards. Only the Mastery tree of
  * content/whole-life-test.yaml is used (its test trees stay in the file for the layout tests). Every
  * other tree hanging from a pillar is taken off it (its mount cleared, nothing deleted), so the view
@@ -23,13 +23,14 @@ export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: nu
 			import('../../content/adler.yaml?raw'),
 			import('../../content/film.yaml?raw'),
 			import('../../content/theatre.yaml?raw'),
+			import('../../content/games.yaml?raw'),
 		])
 	).map((m) => parseSyllabus(m.default))
 	if (!life!.ok || trees.some((t) => !t.ok)) throw new Error('A whole-life test document does not parse')
 	importSyllabus(editor, { ...life!.doc, trees: life!.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [], habits: [] }, at)
 	for (const tree of trees) if (tree.ok) importSyllabus(editor, { ...tree.doc, habits: [] }, at)
 	confirmDraft(editor)
-	const mounts: Record<string, string> = { adler: 'mastery/mental', film: 'mastery/practical', theatre: 'mastery/practical' }
+	const mounts: Record<string, string> = { adler: 'mastery/mental', film: 'mastery/practical', theatre: 'mastery/practical', games: 'mastery/practical' }
 	for (const [treeId, mount] of Object.entries(mounts)) updateTreeMeta(treeId, { mount })
 	const kept = new Set(Object.keys(mounts))
 	for (const tree of Object.values(getTreeDefs())) if (!kept.has(tree.treeId) && tree.mount.startsWith('mastery/')) updateTreeMeta(tree.treeId, { mount: '' })

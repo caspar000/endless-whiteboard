@@ -5,6 +5,7 @@ import mucoreYaml from '../content/mucore.yaml?raw'
 import lifeYaml from '../content/whole-life-test.yaml?raw'
 import filmYaml from '../content/film.yaml?raw'
 import theatreYaml from '../content/theatre.yaml?raw'
+import gamesYaml from '../content/games.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
@@ -249,5 +250,24 @@ describe('content/theatre.yaml', () => {
 		const sturua = entries.find((e) => e.itemId === 'theatre/sturua')!
 		expect(sturua.title).toBe('რობერტ სტურუა')
 		expect(sturua.children.map((c) => c.title)).toContain('რიჩარდ III (1979)')
+	})
+})
+
+describe('content/games.yaml', () => {
+	const doc = load(gamesYaml)
+	const entries = doc.tracks.flatMap((t) => t.items)
+
+	it('has a tree that holds together, hung under the Practical pillar', () => {
+		checkTree(doc)
+		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+	})
+
+	it('keeps every skill node to a dozen entries or so, each a studio or designer with their games', () => {
+		const per = new Map<string, number>()
+		for (const e of entries) per.set(e.tags[0]!, (per.get(e.tags[0]!) ?? 0) + 1)
+		for (const [node, n] of per) expect(n, node).toBeLessThanOrEqual(12)
+		const valve = entries.find((e) => e.itemId === 'games/valve')!
+		expect(valve.children.map((c) => c.title)).toEqual(['Half-Life (1998)', 'Portal (2007)', 'Team Fortress 2 (2007)', 'Left 4 Dead (2008)', 'Half-Life: Alyx (2020)'])
+		expect(entries.find((e) => e.itemId === 'games/pajitnov')!.title).toBe('Алексей Пажитнов')
 	})
 })

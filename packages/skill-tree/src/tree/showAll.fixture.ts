@@ -6,6 +6,7 @@ import { parseSyllabus, type DocItem } from '../syllabusYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
 import { orientFrom, type GraphEdge, type GraphNode } from './layout'
+import { lineEnds } from './lines'
 
 /**
  * A content file's Show all, as the graph `layoutView` hands to the layout: skill nodes, entries,
@@ -20,7 +21,7 @@ export interface ShowAll {
 	skills: Set<string>
 	/** Drawn arrows between skill nodes. */
 	arrows: GraphEdge[]
-	/** Drawn light lines from a node to an entry or work. */
+	/** Drawn light lines: a spoke from a skill node to each entry, and a chain through each entry's works. */
 	lines: GraphEdge[]
 }
 
@@ -55,8 +56,10 @@ export function showView(name: string, sources: readonly string[], treeId: strin
 	const inView = (id: string) => view.skills.has(id)
 	const arrows = [...graph.prerequisites, ...graph.mounts].filter((e) => inView(e.from) && inView(e.to))
 	const loose = graph.loose.filter((e) => inView(e.from) && inView(e.to))
-	const lines = [...view.items].map(([id, at]) => ({ from: at.variant === 'entry' ? at.parent : key(at.parent), to: key(id) }))
-	const edges = orientFrom(view.start, [...arrows, ...loose, ...lines])
+	// What hangs from what, for the layout; and the lines drawn, a chain through each entry's works.
+	const hangs = [...view.items].map(([id, at]) => ({ from: at.variant === 'entry' ? at.parent : key(at.parent), to: key(id) }))
+	const lines = lineEnds(view.items)
+	const edges = orientFrom(view.start, [...arrows, ...loose, ...hangs])
 	edges.push({ from: view.start, to: HEADER })
 	const nodes: GraphNode[] = [
 		...[...view.skills].map((id) => ({ id, w: 150, h: 150 })),

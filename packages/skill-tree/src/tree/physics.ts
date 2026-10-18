@@ -2,7 +2,7 @@ import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { isEntry, isSkill, type TreeShape } from '../board'
 import { getTreePrefs } from '../treePrefs'
 import { contentsOf, viewHeaderFor } from './view'
-import { viewEdges, viewShapes } from './viewSync'
+import { tidyLines, viewEdges, viewShapes } from './viewSync'
 
 /**
  * Dragging a tree node (docs/skill-tree-plan.md, "Rebuild"). While you drag, its branch follows on
@@ -134,6 +134,7 @@ function tick(editor: Editor, elapsed: number): void {
 		// Coming to rest, nothing is left covering anything: the springs ease, this guarantees.
 		const rest = separate(run)
 		if (rest.length) editor.updateShapes(rest as never)
+		tidyLines(editor)
 	}
 }
 

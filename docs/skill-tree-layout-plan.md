@@ -108,3 +108,16 @@ On the test board: skill arrows through a node 162 → 13 to 19, nothing overlap
 view about 21000×15500 px (the clusters are rings with empty middles, like PoE's). The light lines
 are still drawn from an entry to each work; phase 4 chains them.
 
+**Between phases 3 and 4, at the user's ask:** works are round, a 60 px disc with the icon of its
+medium (a dialogue of Plato's takes its entry's) and the title below, in a 120×100 box; the tree's
+checkboxes went, and right-click › Mark as done (or not done) ticks a work or an entry without works.
+
+**Phase 4 done, 2026-10-18.** `tree/lines.ts`: a skill node has a spoke to each entry, and an entry's
+works hang from it in a chain in track order (entry → first work → next). A link between two works
+about as far from their entry bends along the arc round it (`arcBend`, the canvas's bend); a step
+out to the next arc stays straight. `tidyLines` sets the bends after a layout, a sync that drew
+lines and a drag coming to rest, and runs each line's ends exactly to its disc's middle, under the
+node, instead of stopping at the edge of the node's box. Light lines through a node on the test
+board: 547 → 1. Arrows between skill nodes are straight; 37 of 124 still cross a node, mostly links
+between branches. Guide circles: for the user to decide.
+

@@ -1,7 +1,9 @@
 import { connectShapes } from '@lifeboard/node-kit'
 import { ARROW_STAYS_BEHIND_META, Box, createShapeId, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
-import { ENTRY_SIZE, WORK_ANCHOR, WORK_SIZE } from '../entry/definition'
+import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definition'
+import { getItem } from '../syllabus'
+import { arcBend, itemKey, lineEnds } from './lines'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
@@ -39,7 +41,6 @@ function readPlaces(header: TreeShape): Places {
 }
 
 /** Graph ids for layout: skill nodes by node id, items prefixed, since /mu/core gives a family and its node the same id. */
-const itemKey = (itemId: string) => `item:${itemId}`
 
 /** The entry and work shapes on this board, by item id. */
 export function entryShapes(editor: Editor): Map<string, EntryShape> {
@@ -189,7 +190,7 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 	}
 	if (plan.linesStale) {
 		drawLines(editor, plan)
-		linesUnderNodes(editor)
+		tidyLines(editor)
 	}
 	return laidOutNew
 }
@@ -273,7 +274,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
-		linesUnderNodes(editor)
+		tidyLines(editor)
 	})
 	return moves.length
 }
@@ -351,7 +352,9 @@ function placeNew(editor: Editor, view: ViewContents, created: ReadonlySet<strin
 
 /** The lines a set of shown items wants, as `parent>child` keys of shape ids' owners. */
 function linesWanted(items: ReadonlyMap<string, { variant: 'entry' | 'work'; parent: string }>): string[] {
-	return [...items].map(([id, at]) => `${at.variant === 'entry' ? at.parent : itemKey(at.parent)}>${itemKey(id)}`).sort()
+	return lineEnds(items)
+		.map((e) => `${e.from}>${e.to}`)
+		.sort()
 }
 
 const keyOfShape = (s: TLShape | undefined) => (isSkill(s) ? s.props.nodeId : isEntry(s) ? itemKey(s.props.itemId) : '?')
@@ -414,21 +417,43 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 }
 
 /**
- * Puts the light lines to entries and works under everything else. In a dense cluster a line can't
- * always miss the works between it and its own (compact.ts), so it passes under them instead.
+ * Sets the light lines to how a cluster is drawn: each to a work meeting its disc's middle, each
+ * between two neighbouring works bent along the arc round their entry (lines.ts, `arcBend`), and all
+ * of them under the nodes, so where one can't miss a node it passes under it. After a layout, a sync
+ * that drew lines, and a drag coming to rest.
  */
-function linesUnderNodes(editor: Editor): void {
+export function tidyLines(editor: Editor): void {
 	const lines = lineArrows(editor)
 	if (!lines.length) return
-	// A work is a disc with its title below: a line meets the disc's middle, not the box's.
+	const entries = entryShapes(editor)
+	const discCentre = (s: EntryShape) => {
+		const b = editor.getShapePageBounds(s.id)!
+		return s.props.variant === 'work' ? { x: b.center.x, y: b.minY + WORK_DISC / 2 } : b.center
+	}
+	const bends: { id: TLShapeId; type: 'arrow'; props: { bend: number } }[] = []
+	for (const line of lines) {
+		const ends = editor.getBindingsFromShape<TLArrowBinding>(line, 'arrow')
+		const a = editor.getShape(ends.find((b) => b.props.terminal === 'start')?.toId as never)
+		const b = editor.getShape(ends.find((b) => b.props.terminal === 'end')?.toId as never)
+		let bend = 0
+		if (isEntry(a) && isEntry(b) && a.props.variant === 'work' && b.props.variant === 'work') {
+			const parent = getItem(b.props.itemId)?.parent
+			const entry = parent ? entries.get(parent) : undefined
+			if (entry) bend = arcBend(discCentre(a), discCentre(b), discCentre(entry))
+		}
+		if (Math.abs(((line.props as { bend?: number }).bend ?? 0) - bend) > 0.5) bends.push({ id: line.id, type: 'arrow', props: { bend } })
+	}
+	if (bends.length) editor.updateShapes(bends as never)
+	// Each end runs right to the middle of its disc, a work's disc above its title: under the node,
+	// where the disc covers it, rather than stopping at the edge of the node's box.
 	const anchored: TLArrowBinding[] = []
 	for (const line of lines) {
 		for (const b of editor.getBindingsFromShape<TLArrowBinding>(line, 'arrow')) {
 			const end = editor.getShape(b.toId)
-			if (!isEntry(end) || end.props.variant !== 'work') continue
+			const anchor = isEntry(end) && end.props.variant === 'work' ? WORK_ANCHOR : { x: 0.5, y: 0.5 }
 			const now = b.props.normalizedAnchor
-			if (b.props.isPrecise && now.x === WORK_ANCHOR.x && now.y === WORK_ANCHOR.y) continue
-			anchored.push({ ...b, props: { ...b.props, normalizedAnchor: WORK_ANCHOR, isPrecise: true } })
+			if (b.props.isPrecise && b.props.isExact && now.x === anchor.x && now.y === anchor.y) continue
+			anchored.push({ ...b, props: { ...b.props, normalizedAnchor: anchor, isPrecise: true, isExact: true } })
 		}
 	}
 	if (anchored.length) editor.updateBindings(anchored)

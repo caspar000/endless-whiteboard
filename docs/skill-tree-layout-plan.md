@@ -94,3 +94,17 @@ On the test board: skill nodes 4649×2804 px (15.7% covered), everything 15500×
 overlapping. Clusters are still placeholder rings round their node, so arrows run through their
 own cluster and the everything view is loose; phase 3.
 
+**Phase 3 done, 2026-10-18.** `tree/orbits.ts` lays a cluster out: entries round the first orbit
+in track order, each as close after the last as it fits, with a gap where each of the skill
+node's arrows leaves. When they don't all fit, the families with the fewest works stay on the first
+orbit and the rest go on a second, one in each gap between two first-orbit families so its spoke
+passes between them; the first orbit widens until there are enough usable gaps. An entry's works go
+along an arc on its far side (95° either way of straight out), and a long list turns back along a
+second arc further out. Arrow directions are only known once the skeleton is placed, so clusters
+are packed with gaps spread evenly, the skeleton placed, packed again with the real gaps, and the
+skeleton placed again; the pull-in slides along arrows, so their directions survive it.
+
+On the test board: skill arrows through a node 162 → 13 to 19, nothing overlapping, the everything
+view about 21000×15500 px (the clusters are rings with empty middles, like PoE's). The light lines
+are still drawn from an entry to each work; phase 4 chains them.
+

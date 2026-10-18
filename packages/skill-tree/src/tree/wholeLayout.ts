@@ -1,4 +1,5 @@
 import type { GraphEdge, GraphNode } from './layout'
+import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
 
 /**
@@ -13,8 +14,8 @@ import { pullIn } from './pullIn'
  *   are one ring each across the whole board; past them, each tree spaces its own rings. A ring is
  *   far enough out that every cluster on it fits inside its own slice and clear of the ring inside
  *   it, so nothing overlaps by construction.
- * - **Clusters.** A skill node's entries and works go round it (`packCluster`), and the cluster is a
- *   disc as big as they need. In the skill-node view a cluster is the node alone, so the same
+ * - **Clusters.** A skill node's entries go on orbits round it and their works along arcs beyond
+ *   them (`orbitCluster`), and the cluster is a disc as big as they need. In the skill-node view a cluster is the node alone, so the same
  *   skeleton comes out tighter.
  * - **Shared nodes.** A node required from two trees moves to the border between its two parents.
  * - **Closing in.** Last, each branch slides toward its parent as far as it fits (`pullIn`).
@@ -40,12 +41,6 @@ const PAD = 12
 const MIN_SLICE = (40 / 180) * Math.PI
 /** Levels below the start that share one ring across the whole board: pillars, then tree roots. */
 const SHARED_LEVELS = 2
-
-interface Cluster {
-	/** Members' centres relative to the skill node. */
-	at: Map<string, Point>
-	radius: number
-}
 
 export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEdge[], options: WholeLayoutOptions): Map<string, Point> {
 	const size = new Map(nodes.map((n) => [n.id, n]))
@@ -75,94 +70,44 @@ export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEd
 		}
 	}
 
-	// 1. Each cluster on its own, for its size.
-	const clusters = new Map<string, Cluster>()
-	for (const id of order) clusters.set(id, packCluster(size.get(id)!, members(id, children, isSkill).map((m) => size.get(m)!)))
-	const radius = (id: string) => clusters.get(id)!.radius
-
-	// 2. Rings, first only far enough out to clear the ring inside. The first levels share one ring each
-	// across the board; past them, a node's children share an arc of their own. A cluster that fits its
-	// slice can't touch another slice, and clearing its parent keeps it off everything inside it, so a
-	// big cluster doesn't push the rest of its tree out with it.
-	const ringKey = (id: string) => (depth.get(id)! <= SHARED_LEVELS ? `shared:${depth.get(id)}` : `children:${parentSkill(id, parentOf, isSkill)}`)
-	const widest = new Map<string, number>()
-	for (const id of order) widest.set(ringKey(id), Math.max(widest.get(ringKey(id)) ?? 0, radius(id)))
-	const rings = new Map<string, number>([[ringKey(start), 0]])
-	const ring = (id: string) => rings.get(ringKey(id)) ?? 0
-	const deepest = Math.max(0, ...depth.values())
-	/** Every ring at least clear of the ring its parents are on, depth by depth. */
-	const clearRings = () => {
-		for (let d = 1; d <= deepest; d++) {
-			for (const id of order) {
-				if (depth.get(id) !== d) continue
-				const parent = parentSkill(id, parentOf, isSkill)!
-				// Clear of the parent's whole ring while it is a shared one, else of the parent alone.
-				const inner = depth.get(parent)! <= SHARED_LEVELS && depth.get(id)! <= SHARED_LEVELS ? widest.get(ringKey(parent))! : radius(parent)
-				const clear = ring(parent) + inner + widest.get(ringKey(id))! + GAP
-				rings.set(ringKey(id), Math.max(ring(id), clear))
-			}
-		}
-	}
-	clearRings()
-
-	// 3. Slices by the angle each branch needs on its rings: a node its own width at its ring, a
-	// branch the larger of that and what its children need side by side. Where a slice is still too
-	// narrow for a node, that node's ring moves out, and the slices are shared again, until all fit.
-	const slice = new Map<string, { from: number; to: number }>()
-	const own = (id: string) => (id === start ? 0 : (2 * radius(id) + GAP) / Math.max(1, ring(id)))
-	const pillarMin = skillKids(start).length * MIN_SLICE <= 2 * Math.PI ? MIN_SLICE : 0
-	for (let round = 0; round < 40; round++) {
-		const need = new Map<string, number>()
-		for (const id of [...order].reverse()) need.set(id, Math.max(own(id), skillKids(id).reduce((n, k) => n + need.get(k)!, 0)))
-		const share = (id: string, from: number, to: number) => {
-			slice.set(id, { from, to })
-			const kids = skillKids(id)
-			const spans = spread(kids.map((k) => need.get(k)!), to - from, id === start ? pillarMin : 0)
-			let cursor = from
-			kids.forEach((kid, i) => {
-				share(kid, cursor, cursor + spans[i]!)
-				cursor += spans[i]!
-			})
-		}
-		// The first child's slice is centred at the top.
-		const first = spread(skillKids(start).map((k) => need.get(k)!), 2 * Math.PI, pillarMin)[0] ?? 0
-		share(start, -Math.PI / 2 - first / 2, (3 * Math.PI) / 2 - first / 2)
-		let moved = false
-		for (const id of order) {
-			if (id === start) continue
-			const s = slice.get(id)!
-			const half = Math.min(Math.PI / 2, (s.to - s.from) / 2)
-			// Half the slice's chord at the ring at least the cluster's radius and half a gap.
-			const fits = (radius(id) + GAP / 2) / Math.sin(half)
-			if (fits > ring(id) + 1) {
-				rings.set(ringKey(id), fits)
-				moved = true
-			}
-		}
-		if (!moved) break
-		clearRings()
-	}
-	const angle = (id: string) => (slice.get(id)!.from + slice.get(id)!.to) / 2
+	// 1. Each cluster on its own, for its size: its entries on orbits round it, with a gap for each
+	// arrow. Where the arrows go isn't known until the skeleton is placed, so the clusters are packed
+	// with their gaps spread evenly, the skeleton placed, the clusters packed again with the gaps where
+	// the arrows go, and the skeleton placed again. Sliding a branch in along its arrow (step 6) keeps
+	// the arrows' directions, so the gaps stay where they are needed.
+	const families = new Map(
+		order.map((id) => [
+			id,
+			(children.get(id) ?? [])
+				.filter((c) => !isSkill(c))
+				.map((entry) => ({ entry: size.get(entry)!, works: members(entry, children, isSkill).map((m) => size.get(m)!) })),
+		])
+	)
+	const neighbours = new Map<string, Set<string>>(order.map((id) => [id, new Set<string>()]))
 	for (const id of order) {
-		const r = ring(id)
-		out.set(id, id === start ? { x: 0, y: 0 } : { x: r * Math.cos(angle(id)), y: r * Math.sin(angle(id)) })
+		const parent = parentSkill(id, parentOf, isSkill)
+		if (parent) {
+			neighbours.get(id)!.add(parent)
+			neighbours.get(parent)!.add(id)
+		}
 	}
-
-	// 4. A node required from two trees sits between its parents, clear of every other cluster.
-	const discs = () => order.filter((id) => out.has(id)).map((id) => ({ id, ...out.get(id)!, r: radius(id) }))
-	for (const id of shared(order, options.arrows ?? [], group, parentOf, isSkill)) {
-		const parents = (options.arrows ?? []).filter((e) => e.to === id && out.has(e.from)).map((e) => out.get(e.from)!)
-		if (parents.length < 2) continue
-		const mid = Math.atan2(parents.reduce((n, p) => n + Math.sin(Math.atan2(p.y, p.x)), 0), parents.reduce((n, p) => n + Math.cos(Math.atan2(p.y, p.x)), 0))
-		let r = Math.max(...parents.map((p) => Math.hypot(p.x, p.y))) + radius(id) + GAP
-		const others = discs().filter((d) => d.id !== id && !inBranch(d.id, id, parentOf))
-		const clear = (x: number, y: number) => others.every((d) => Math.hypot(d.x - x, d.y - y) >= d.r + radius(id) + GAP)
-		for (let step = 0; step < 400 && !clear(r * Math.cos(mid), r * Math.sin(mid)); step++) r += GAP
-		const from = out.get(id)!
-		const to = { x: r * Math.cos(mid), y: r * Math.sin(mid) }
-		// Its own branch moves with it.
-		for (const d of order) if (inBranch(d, id, parentOf)) out.set(d, { x: out.get(d)!.x + to.x - from.x, y: out.get(d)!.y + to.y - from.y })
+	for (const e of options.arrows ?? []) {
+		if (!neighbours.has(e.from) || !neighbours.has(e.to) || e.from === e.to) continue
+		neighbours.get(e.from)!.add(e.to)
+		neighbours.get(e.to)!.add(e.from)
 	}
+	const pack = (gatesOf: (id: string) => number[]) => new Map(order.map((id) => [id, orbitCluster(size.get(id)!, families.get(id)!, gatesOf(id))]))
+	const evenly = (id: string) => [...neighbours.get(id)!].map((_, i, all) => -Math.PI / 2 + (2 * Math.PI * i) / all.length)
+	const towards = (at: ReadonlyMap<string, Point>) => (id: string) =>
+		[...neighbours.get(id)!].filter((n) => at.has(n)).map((n) => Math.atan2(at.get(n)!.y - at.get(id)!.y, at.get(n)!.x - at.get(id)!.x))
+	const first = pack(evenly)
+	const firstSkeleton = skeleton((id) => first.get(id)!.radius)
+	const second = pack(towards(firstSkeleton))
+	const placed = skeleton((id) => second.get(id)!.radius)
+	const third = pack(towards(placed))
+	// The last packing where it is no bigger than the one the skeleton was placed for, else that one.
+	const clusters = new Map(order.map((id) => [id, third.get(id)!.radius <= second.get(id)!.radius + 0.5 ? third.get(id)! : second.get(id)!]))
+	for (const [id, p] of placed) out.set(id, p)
 
 	// 5. Members where their cluster put them; anything the edges don't reach, above the start.
 	for (const id of order) for (const [m, p] of clusters.get(id)!.at) out.set(m, { x: out.get(id)!.x + p.x, y: out.get(id)!.y + p.y })
@@ -175,6 +120,96 @@ export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEd
 		top -= Math.max(n.w, n.h) + GAP
 	}
 	return out
+
+	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
+	function skeleton(radius: (id: string) => number): Map<string, Point> {
+		const out = new Map<string, Point>()
+		// 2. Rings, first only far enough out to clear the ring inside. The first levels share one ring each
+		// across the board; past them, a node's children share an arc of their own. A cluster that fits its
+		// slice can't touch another slice, and clearing its parent keeps it off everything inside it, so a
+		// big cluster doesn't push the rest of its tree out with it.
+		const ringKey = (id: string) => (depth.get(id)! <= SHARED_LEVELS ? `shared:${depth.get(id)}` : `children:${parentSkill(id, parentOf, isSkill)}`)
+		const widest = new Map<string, number>()
+		for (const id of order) widest.set(ringKey(id), Math.max(widest.get(ringKey(id)) ?? 0, radius(id)))
+		const rings = new Map<string, number>([[ringKey(start), 0]])
+		const ring = (id: string) => rings.get(ringKey(id)) ?? 0
+		const deepest = Math.max(0, ...depth.values())
+		/** Every ring at least clear of the ring its parents are on, depth by depth. */
+		const clearRings = () => {
+			for (let d = 1; d <= deepest; d++) {
+				for (const id of order) {
+					if (depth.get(id) !== d) continue
+					const parent = parentSkill(id, parentOf, isSkill)!
+					// Clear of the parent's whole ring while it is a shared one, else of the parent alone.
+					const inner = depth.get(parent)! <= SHARED_LEVELS && depth.get(id)! <= SHARED_LEVELS ? widest.get(ringKey(parent))! : radius(parent)
+					const clear = ring(parent) + inner + widest.get(ringKey(id))! + GAP
+					rings.set(ringKey(id), Math.max(ring(id), clear))
+				}
+			}
+		}
+		clearRings()
+
+		// 3. Slices by the angle each branch needs on its rings: a node its own width at its ring, a
+		// branch the larger of that and what its children need side by side. Where a slice is still too
+		// narrow for a node, that node's ring moves out, and the slices are shared again, until all fit.
+		const slice = new Map<string, { from: number; to: number }>()
+		const own = (id: string) => (id === start ? 0 : (2 * radius(id) + GAP) / Math.max(1, ring(id)))
+		const pillarMin = skillKids(start).length * MIN_SLICE <= 2 * Math.PI ? MIN_SLICE : 0
+		for (let round = 0; round < 40; round++) {
+			const need = new Map<string, number>()
+			for (const id of [...order].reverse()) need.set(id, Math.max(own(id), skillKids(id).reduce((n, k) => n + need.get(k)!, 0)))
+			const share = (id: string, from: number, to: number) => {
+				slice.set(id, { from, to })
+				const kids = skillKids(id)
+				const spans = spread(kids.map((k) => need.get(k)!), to - from, id === start ? pillarMin : 0)
+				let cursor = from
+				kids.forEach((kid, i) => {
+					share(kid, cursor, cursor + spans[i]!)
+					cursor += spans[i]!
+				})
+			}
+			// The first child's slice is centred at the top.
+			const first = spread(skillKids(start).map((k) => need.get(k)!), 2 * Math.PI, pillarMin)[0] ?? 0
+			share(start, -Math.PI / 2 - first / 2, (3 * Math.PI) / 2 - first / 2)
+			let moved = false
+			for (const id of order) {
+				if (id === start) continue
+				const s = slice.get(id)!
+				const half = Math.min(Math.PI / 2, (s.to - s.from) / 2)
+				// Half the slice's chord at the ring at least the cluster's radius and half a gap.
+				const fits = (radius(id) + GAP / 2) / Math.sin(half)
+				if (fits > ring(id) + 1) {
+					rings.set(ringKey(id), fits)
+					moved = true
+				}
+			}
+			if (!moved) break
+			clearRings()
+		}
+		const angle = (id: string) => (slice.get(id)!.from + slice.get(id)!.to) / 2
+		for (const id of order) {
+			const r = ring(id)
+			out.set(id, id === start ? { x: 0, y: 0 } : { x: r * Math.cos(angle(id)), y: r * Math.sin(angle(id)) })
+		}
+
+		// 4. A node required from two trees sits between its parents, clear of every other cluster.
+		const discs = () => order.filter((id) => out.has(id)).map((id) => ({ id, ...out.get(id)!, r: radius(id) }))
+		for (const id of shared(order, options.arrows ?? [], group, parentOf, isSkill)) {
+			const parents = (options.arrows ?? []).filter((e) => e.to === id && out.has(e.from)).map((e) => out.get(e.from)!)
+			if (parents.length < 2) continue
+			const mid = Math.atan2(parents.reduce((n, p) => n + Math.sin(Math.atan2(p.y, p.x)), 0), parents.reduce((n, p) => n + Math.cos(Math.atan2(p.y, p.x)), 0))
+			let r = Math.max(...parents.map((p) => Math.hypot(p.x, p.y))) + radius(id) + GAP
+			const others = discs().filter((d) => d.id !== id && !inBranch(d.id, id, parentOf))
+			const clear = (x: number, y: number) => others.every((d) => Math.hypot(d.x - x, d.y - y) >= d.r + radius(id) + GAP)
+			for (let step = 0; step < 400 && !clear(r * Math.cos(mid), r * Math.sin(mid)); step++) r += GAP
+			const from = out.get(id)!
+			const to = { x: r * Math.cos(mid), y: r * Math.sin(mid) }
+			// Its own branch moves with it.
+			for (const d of order) if (inBranch(d, id, parentOf)) out.set(d, { x: out.get(d)!.x + to.x - from.x, y: out.get(d)!.y + to.y - from.y })
+		}
+
+		return out
+	}
 }
 
 /** A skill node's members: what hangs below it that isn't a skill node, each entry followed by its works. */
@@ -189,49 +224,6 @@ function members(id: string, children: ReadonlyMap<string, string[]>, isSkill: (
 	}
 	walk(id)
 	return out
-}
-
-/**
- * A skill node's members on rings round it, in order, each ring as far out as the one inside it
- * needs. A stand-in for the orbits of phase 3: compact enough to judge the skeleton by.
- */
-export function packCluster(centre: GraphNode, list: readonly GraphNode[], from = -Math.PI / 2): Cluster {
-	const at = new Map<string, Point>()
-	let radius = reach(centre)
-	if (!list.length) return { at, radius }
-	let i = 0
-	let inner = reach(centre)
-	const placed: (GraphNode & Point)[] = []
-	while (i < list.length) {
-		// This ring's distance: past the one inside by the biggest half-size still to place.
-		const deepest = Math.max(...list.slice(i).map((n) => Math.max(n.w, n.h) / 2))
-		const ring = inner + PAD + deepest
-		let swept = 0
-		let outer = ring
-		while (i < list.length) {
-			const n = list[i]!
-			const a = from + swept
-			// The member's width along the ring at this angle, as an angle.
-			const along = support(n, a + Math.PI / 2) + PAD / 2
-			const step = (2 * along) / ring
-			if (swept > 0 && swept + step > 2 * Math.PI) break
-			let mid = from + swept + step / 2
-			// The step is an estimate along the arc; a box's corners can still touch its neighbour's.
-			while (placed.some((p) => overlaps(p, { ...n, x: ring * Math.cos(mid), y: ring * Math.sin(mid) })) && mid - from < 2 * Math.PI) {
-				mid += 4 / ring
-				swept += 4 / ring
-			}
-			if (swept > 0 && swept + step > 2 * Math.PI) break
-			at.set(n.id, { x: ring * Math.cos(mid), y: ring * Math.sin(mid) })
-			placed.push({ ...n, x: ring * Math.cos(mid), y: ring * Math.sin(mid) })
-			outer = Math.max(outer, ring + support(n, mid))
-			radius = Math.max(radius, ring + reach(n))
-			swept += step
-			i++
-		}
-		inner = outer
-	}
-	return { at, radius }
 }
 
 /**

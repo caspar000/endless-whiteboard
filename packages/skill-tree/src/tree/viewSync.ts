@@ -578,10 +578,13 @@ export function tidyLines(editor: Editor): void {
 		}
 	}
 	if (anchored.length) editor.updateBindings(anchored)
-	// Marked first: otherwise the canvas lifts each line back above the two shapes it joins.
-	const unmarked = lines.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
+	// The arrows between skill nodes go under the nodes too: the layout lets one pass under a cluster's
+	// entries and works, never through a skill node (pullIn.ts), and under them nothing is hidden.
+	const all = editor.getCurrentPageShapes().filter((a) => a.type === 'arrow' && !!a.meta[SKILL_EDGE_META])
+	// Marked first: otherwise the canvas lifts each back above the two shapes it joins.
+	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
 	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
-	editor.sendToBack(lines.map((a) => a.id))
+	editor.sendToBack(all.map((a) => a.id))
 }
 
 /** Brings the camera to what a view shows. */

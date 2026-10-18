@@ -135,3 +135,41 @@ Checked in Chromium: no note after inserting the test board; deleting a skill no
 Re-calculate (button or ⌘K) clears it; importing an entry with a work puts both in their cluster
 (on its first orbit) and moves nothing else.
 
+## Compaction (2026-10-18, after phase 5)
+
+The user found the board still mostly empty space: clusters right, the whole loose. Researched how
+others pack a layout tighter without breaking its structure:
+
+- **Overlap removal that keeps the layout**: PRISM (Gansner & Hu, stress on a Delaunay proximity
+  graph), VPSC (Dwyer, Marriott & Stuckey, least squares with separation constraints; distorts more),
+  GTree (Nachmanson et al., grows a minimum spanning tree of the Delaunay triangulation), FORBID
+  (stress on all pairs by stochastic gradient descent, binary search on scale; best balance of
+  compactness and preservation in its comparison).
+- **Compaction**: Graphviz `overlap=compress` (scale down until the first contact, keeps orthogonal
+  order; stops at the tightest pair), and ELK's SPOrE **ShrinkTree**: GTree backwards, contracting a
+  spanning tree of the proximity graph so each piece moves toward its nearest neighbour.
+- **Packing separate pieces**: polyomino packing (Freivalds, Doğrusöz & Kikusts; Graphviz `pack`,
+  fCoSE), irregular nesting with no-fit polygons (SVGnest, Deepnest). Tightest, but they place pieces
+  anew, so the tree's structure is lost.
+- **Clustered layouts**: IPSep-CoLa / WebCola (stress with non-overlap and cluster constraints; its
+  clusters aren't rigid, so ours would be bent out of shape), Group-in-a-Box (treemap boxes; loses the
+  radial structure), circle packing (Wang et al.; circles waste the corners).
+- **Machine learning**: DeepGD and SmartGD learn general aesthetics (stress, crossings) from
+  examples; nothing for rigid clusters or packing, and they need training data. Not a fit.
+- **Physics engines** (Matter.js, Planck.js, Rapier): rigid compound bodies under gravity would pack,
+  but arrows are invisible to them and the result depends on the run.
+
+**As built** (`tree/pullIn.ts`, after the skeleton): first each branch slides toward its parent;
+then **gravity**: every skill node's branch, whole, farthest first, moves toward the start (straight
+in, else up to 60° to either side) as far as it fits, never nearer the start than the node it hangs
+from; then **ShrinkTree** over whole clusters: a minimum spanning tree of the gaps between their
+nearest nodes, rooted at the start, each cluster sliding along its edge toward its neighbour with
+everything beyond it, up to four rounds. Every move: nothing overlaps, and no arrow crosses more
+skill nodes than before (it may pass under entries and works; arrows between skill nodes are drawn
+under the nodes now). In `orbits.ts` each family on a second orbit finds its own distance instead of
+all sharing the farthest one.
+
+Test board, everything view: 26113×24341 px (2.8% covered) → 11983×12905 (11.3%); arrows through a
+skill node 2. Considered next: FORBID-style stress compaction (scale down, then remove overlaps by
+stress) for the last few per cent, at the cost of a slower layout.
+

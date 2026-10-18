@@ -112,7 +112,11 @@ export function wholeLayout(nodes: readonly GraphNode[], edges: readonly GraphEd
 	// 5. Members where their cluster put them; anything the edges don't reach, above the start.
 	for (const id of order) for (const [m, p] of clusters.get(id)!.at) out.set(m, { x: out.get(id)!.x + p.x, y: out.get(id)!.y + p.y })
 	// 6. Each branch slides in toward its parent while it fits, filling the space the arcs left.
-	pullIn(out, size, children, parentOf, isSkill, start)
+	// 7. Then each branch from a tree's root, whole, is drawn in toward the start until it rests
+	// against the others, closing the empty regions between branches.
+	const clumps = order.filter((id) => depth.get(id)! > SHARED_LEVELS)
+	const units = new Map(order.map((id) => [id, [id, ...clusters.get(id)!.at.keys()]]))
+	pullIn(out, size, children, parentOf, isSkill, start, clumps, units)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - GAP * 4
 	for (const n of nodes) {
 		if (out.has(n.id)) continue

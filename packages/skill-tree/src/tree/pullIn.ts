@@ -5,6 +5,10 @@ import type { GraphNode } from './layout'
  * node it hangs from, along its arrow, as far as it can with nothing covered and no arrow between
  * skill nodes crossing more nodes than it did. The structure stays; the empty space between a node
  * and the arc its children were put on is used.
+ *
+ * Then the clumps (each branch from a tree's root, whole) are drawn in toward the start like
+ * gravity, nearest first, under the same rules, until they rest against each other: the regions
+ * the skeleton left empty between branches are closed up without changing any branch's shape.
  */
 
 type Point = { x: number; y: number }
@@ -23,6 +27,10 @@ const PAD = 12
 const ARROW_MARGIN = 7
 /** The smallest slide worth trying. */
 const STEP = 10
+/** At most this many rounds of drawing the clumps in. */
+const GRAVITY_ROUNDS = 4
+/** At most this many rounds of ShrinkTree. */
+const SHRINK_ROUNDS = 4
 
 export function pullIn(
 	at: Map<string, Point>,
@@ -30,7 +38,11 @@ export function pullIn(
 	children: ReadonlyMap<string, readonly string[]>,
 	parentOf: ReadonlyMap<string, string>,
 	isSkill: (id: string) => boolean,
-	start: string
+	start: string,
+	/** The roots of the clumps that are then drawn in toward the start, each whole. */
+	clumps: readonly string[] = [],
+	/** Each skill node's cluster (it and its entries and works), moved whole by the last pass. */
+	units: ReadonlyMap<string, readonly string[]> = new Map()
 ): void {
 	const ids = [...at.keys()].filter((id) => size.has(id))
 	const index = new Map(ids.map((id, i) => [id, i]))
@@ -57,7 +69,8 @@ export function pullIn(
 	}
 	const moved = (i: number, moving: ReadonlySet<number>, dx: number, dy: number): Box => (moving.has(i) ? { ...boxes[i]!, x: boxes[i]!.x + dx, y: boxes[i]!.y + dy } : boxes[i]!)
 	/** How many nodes the arrows a move affects pass through, with the branch shifted by (dx, dy). */
-	const crossings = (moving: ReadonlySet<number>, dx: number, dy: number) => {
+	const crossings = (moving: ReadonlySet<number>, dx: number, dy: number, onlySkills = false) => {
+		const counts = (j: number) => !onlySkills || isSkill(ids[j]!)
 		let n = 0
 		for (const [a, c] of arrows) {
 			const ma = moving.has(a)
@@ -66,9 +79,9 @@ export function pullIn(
 			const pc = moved(c, moving, dx, dy)
 			const l = { ax: pa.x, ay: pa.y, bx: pc.x, by: pc.y }
 			if (ma || mc) {
-				for (const j of grid.alongLine(l, PAD + ARROW_MARGIN)) if (j !== a && j !== c && !(ma && mc && moving.has(j)) && crosses(l, moved(j, moving, dx, dy), ARROW_MARGIN)) n++
+				for (const j of grid.alongLine(l, PAD + ARROW_MARGIN)) if (j !== a && j !== c && counts(j) && !(ma && mc && moving.has(j)) && crosses(l, moved(j, moving, dx, dy), ARROW_MARGIN)) n++
 			} else {
-				for (const i of moving) if (crosses(l, moved(i, moving, dx, dy), ARROW_MARGIN)) n++
+				for (const i of moving) if (counts(i) && crosses(l, moved(i, moving, dx, dy), ARROW_MARGIN)) n++
 			}
 		}
 		return n
@@ -112,7 +125,159 @@ export function pullIn(
 			} else step /= 2
 		}
 	}
+	// Then gravity: each clump, nearest first, moves whole toward the start as far as it fits, along
+	// the straight way in and, when that is blocked, along ways a little to either side. Rounds repeat
+	// so an outer clump can follow into room an inner one left.
+	const origin = boxes[index.get(start)!] ?? { x: 0, y: 0 }
+	const groups = clumps.filter((id) => index.has(id)).map((id) => ({ id, members: branch(id) }))
+	const centroid = (members: ReadonlySet<number>) => {
+		let [x, y] = [0, 0]
+		for (const i of members) [x, y] = [x + boxes[i]!.x, y + boxes[i]!.y]
+		return { x: x / members.size, y: y / members.size }
+	}
+	for (let round = 0; round < GRAVITY_ROUNDS; round++) {
+		let moved = 0
+		// Farthest first: an outer branch settles against what is inside it, then the branch it hangs
+		// from moves in with it.
+		const byDistance = [...groups].sort((a, b) => {
+			const ca = centroid(a.members)
+			const cb = centroid(b.members)
+			return Math.hypot(cb.x - origin.x, cb.y - origin.y) - Math.hypot(ca.x - origin.x, ca.y - origin.y)
+		})
+		for (const { id, members } of byDistance) {
+			// Never nearer the start than the node it hangs from: the tree still grows outward.
+			const parent = skillParent(id)
+			const floor = parent && index.has(parent) ? Math.hypot(boxes[index.get(parent)!]!.x - origin.x, boxes[index.get(parent)!]!.y - origin.y) : 0
+			const root = index.get(id)!
+			const outward = (dx: number, dy: number) => Math.hypot(boxes[root]!.x + dx - origin.x, boxes[root]!.y + dy - origin.y) >= floor + reach(boxes[root]!)
+			for (const turn of [0, Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3]) {
+				const c = centroid(members)
+				const d = Math.hypot(origin.x - c.x, origin.y - c.y)
+				if (d < STEP) break
+				const a = Math.atan2(origin.y - c.y, origin.x - c.x) + turn
+				const [ux, uy] = [Math.cos(a), Math.sin(a)]
+				// No further along this way than brings the clump nearest the start.
+				let left = d * Math.cos(turn)
+				let step = left / 2
+				let now = crossings(members, 0, 0, true)
+				let went = 0
+				while (step > STEP && left > STEP) {
+					step = Math.min(step, left)
+					if (outward(ux * step, uy * step) && !covers(members, ux * step, uy * step) && crossings(members, ux * step, uy * step, true) <= now) {
+						left -= step
+						move(members, ux * step, uy * step)
+						went += step
+						now = crossings(members, 0, 0, true)
+					} else step /= 2
+				}
+				moved += went
+			}
+		}
+		if (moved < STEP) break
+	}
+	shrinkTree()
 	ids.forEach((id, i) => at.set(id, { x: boxes[i]!.x, y: boxes[i]!.y }))
+
+	/**
+	 * Last, ShrinkTree (ELK's SPOrE compaction, after Nachmanson et al.'s GTree run backwards): the
+	 * clusters, each whole, are joined by a minimum spanning tree of the gaps between them, rooted at
+	 * the start; then, from the root outward, each cluster slides along its tree edge toward its
+	 * neighbour, everything beyond it in the spanning tree with it, as far as it fits. Gravity draws
+	 * things toward the middle; this draws each toward whatever is nearest, so a cluster at the end of
+	 * a long branch, with nothing between it and the middle to rest on, still closes up. Unlike
+	 * gravity it may bring a branch nearer the middle than the node it hangs from: at a branch's end,
+	 * the only room left is inward. Rounds repeat with a fresh spanning tree.
+	 */
+	function shrinkTree(): void {
+		const unitIds = [...units.keys()].filter((u) => index.has(u))
+		if (unitIds.length < 2 || !index.has(start)) return
+		const membersOf = new Map(unitIds.map((u) => [u, (units.get(u) ?? []).filter((id) => index.has(id)).map((id) => index.get(id)!)]))
+		const rootUnit = unitIds.includes(start) ? start : unitIds[0]!
+		for (let round = 0; round < SHRINK_ROUNDS; round++) {
+			const circle = new Map(
+				unitIds.map((u) => {
+					const members = membersOf.get(u)!
+					const c = centroid(new Set(members))
+					return [u, { ...c, r: Math.max(...members.map((i) => Math.hypot(boxes[i]!.x - c.x, boxes[i]!.y - c.y) + reach(boxes[i]!))) }]
+				})
+			)
+			// Prim's minimum spanning tree over every pair, by the gap between their nearest nodes; the
+			// circles round them only rule out pairs too far apart to be nearest neighbours.
+			const gaps = new Map<string, number>()
+			const gap = (a: string, b: string) => {
+				const key = a < b ? `${a}|${b}` : `${b}|${a}`
+				const known = gaps.get(key)
+				if (known !== undefined) return known
+				const p = circle.get(a)!
+				const q = circle.get(b)!
+				let g = Math.hypot(p.x - q.x, p.y - q.y) - p.r - q.r
+				if (g < 2000) {
+					g = Infinity
+					for (const i of membersOf.get(a)!) for (const j of membersOf.get(b)!) g = Math.min(g, boxGap(boxes[i]!, boxes[j]!))
+				}
+				gaps.set(key, g)
+				return g
+			}
+			const parentUnit = new Map<string, string>()
+			const best = new Map(unitIds.filter((u) => u !== rootUnit).map((u) => [u, { cost: gap(rootUnit, u), from: rootUnit }]))
+			const childrenOf = new Map<string, string[]>()
+			while (best.size) {
+				let pick = ''
+				for (const [u, b] of best) if (!pick || b.cost < best.get(pick)!.cost) pick = u
+				const { from } = best.get(pick)!
+				best.delete(pick)
+				parentUnit.set(pick, from)
+				childrenOf.set(from, [...(childrenOf.get(from) ?? []), pick])
+				for (const [u, b] of best) {
+					const c = gap(pick, u)
+					if (c < b.cost) best.set(u, { cost: c, from: pick })
+				}
+			}
+			const subtree = (u: string): Set<number> => {
+				const out = new Set<number>()
+				const queue = [u]
+				for (let i = 0; i < queue.length; i++) {
+					for (const m of membersOf.get(queue[i]!)!) out.add(m)
+					queue.push(...(childrenOf.get(queue[i]!) ?? []))
+				}
+				return out
+			}
+			let moved = 0
+			const queue = [...(childrenOf.get(rootUnit) ?? [])]
+			for (let i = 0; i < queue.length; i++) {
+				const u = queue[i]!
+				queue.push(...(childrenOf.get(u) ?? []))
+				const from = circle.get(u)!
+				const to = circle.get(parentUnit.get(u)!)!
+				// Where the circles were before this round; the move is measured by what actually fits.
+				const d = Math.hypot(to.x - from.x, to.y - from.y)
+				if (d < STEP) continue
+				const [ux, uy] = [(to.x - from.x) / d, (to.y - from.y) / d]
+				const moving = subtree(u)
+				let left = Math.max(0, d - from.r * 0.25)
+				let step = left / 2
+				let now = crossings(moving, 0, 0, true)
+				while (step > STEP && left > STEP) {
+					step = Math.min(step, left)
+					if (!covers(moving, ux * step, uy * step) && crossings(moving, ux * step, uy * step, true) <= now) {
+						move(moving, ux * step, uy * step)
+						left -= step
+						moved += step
+						now = crossings(moving, 0, 0, true)
+					} else step /= 2
+				}
+			}
+			if (moved < STEP) break
+		}
+	}
+}
+
+/** The free space between two shapes, 0 when they touch or overlap. */
+function boxGap(a: Box, b: Box): number {
+	if (isRound(a) && isRound(b)) return Math.max(0, Math.hypot(a.x - b.x, a.y - b.y) - a.w / 2 - b.w / 2)
+	const dx = Math.max(0, Math.abs(a.x - b.x) - a.w / 2 - b.w / 2)
+	const dy = Math.max(0, Math.abs(a.y - b.y) - a.h / 2 - b.h / 2)
+	return Math.hypot(dx, dy)
 }
 
 /** Skill nodes and entries are discs; works and the header are boxes. Canvas sizes come back a hair off square. */

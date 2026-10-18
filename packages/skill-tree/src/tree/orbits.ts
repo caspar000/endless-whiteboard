@@ -69,33 +69,39 @@ export function orbitCluster(centre: GraphNode, families: readonly Family[], gat
 	for (const unit of inner.placed) put(unit, at, shapes)
 
 	if (rest.length) {
-		// Second orbit: each family in a gap of its own between two on the first, clear of everything
-		// inside it and of the others, the orbit moving out only when no free gap will take one.
-		const outerEdge = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b)))
-		let second = outerEdge + PAD + entryReach
-		for (let tries = 0; tries < 300; tries++) {
-			const units: Unit[] = []
-			const used = new Set<number>()
-			for (const family of rest) {
-				const choice = open
-					.map((angle, i) => ({ angle, i }))
-					.filter(({ i }) => !used.has(i))
-					.map(({ angle, i }) => ({ i, unit: unitAt(family, second, angle) }))
-					.find(
-						({ unit }) =>
-							units.every((v) => !touches(unit, v)) &&
-							unit.boxes.every((b) => !shapes.some((s) => overlaps(b, s))) &&
-							!gates.some((g) => withinSpan(g, unit.angle + spanOf(unit).from, unit.angle + spanOf(unit).to, second))
-					)
-				if (!choice) break
-				used.add(choice.i)
-				units.push(choice.unit)
+		// Second orbit: each family in a gap of its own between two on the first, as close in as it
+		// fits there: clear of everything placed, of the arrows' gaps, and with its spoke passing between
+		// the first orbit's families. Each finds its own distance, so one long list on the first orbit
+		// doesn't push all of them out.
+		const nearest = first + 2 * entryReach + PAD
+		const farthest = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + PAD
+		const used = new Set<number>()
+		for (const family of rest) {
+			let best: { i: number; unit: Unit; r: number } | null = null
+			for (const [i, angle] of open.entries()) {
+				if (used.has(i)) continue
+				for (let r = nearest; r <= farthest + 4 * PAD && (!best || r < best.r); r += 2 * PAD) {
+					const unit = unitAt(family, r, angle)
+					const span = spanOf(unit)
+					const spoke = { ax: 0, ay: 0, bx: unit.boxes[0]!.x, by: unit.boxes[0]!.y }
+					const clear =
+						unit.boxes.every((x) => !shapes.some((y) => overlaps(x, y))) &&
+						!gates.some((g) => withinSpan(g, angle + span.from, angle + span.to, r)) &&
+						!shapes.slice(1).some((y) => crossesBox(spoke, y))
+					if (clear) {
+						best = { i, unit, r }
+						break
+					}
+				}
 			}
-			if (units.length === rest.length || tries === 299) {
-				for (const unit of units) put(unit, at, shapes)
-				break
+			// Nothing free inside the outer edge: the next free gap, past everything.
+			if (!best) {
+				const i = open.findIndex((_, k) => !used.has(k))
+				const r = Math.max(...shapes.map((b) => Math.hypot(b.x, b.y) + reach(b))) + 2 * entryReach + PAD
+				best = { i: Math.max(0, i), unit: unitAt(family, r, open[Math.max(0, i)] ?? -Math.PI / 2), r }
 			}
-			second += 2 * PAD
+			used.add(best.i)
+			put(best.unit, at, shapes)
 		}
 	}
 	let radius = core
@@ -214,6 +220,17 @@ function withinSpan(gate: number, from: number, to: number, radius: number): boo
 	const room = GATE / radius
 	const g = from + normalisePositive(gate - from)
 	return g >= from - room && g <= to + room
+}
+
+/** Does the segment pass through the box (or disc)? Its ends are where the segment starts and stops, not inside anything. */
+function crossesBox(l: { ax: number; ay: number; bx: number; by: number }, b: Box): boolean {
+	const steps = Math.max(2, Math.ceil(Math.hypot(l.bx - l.ax, l.by - l.ay) / 8))
+	for (let k = 1; k < steps; k++) {
+		const x = l.ax + ((l.bx - l.ax) * k) / steps
+		const y = l.ay + ((l.by - l.ay) * k) / steps
+		if (isRound(b) ? Math.hypot(x - b.x, y - b.y) < b.w / 2 : Math.abs(x - b.x) < b.w / 2 && Math.abs(y - b.y) < b.h / 2) return true
+	}
+	return false
 }
 
 function touches(a: Unit, b: Unit, extra = 0): boolean {

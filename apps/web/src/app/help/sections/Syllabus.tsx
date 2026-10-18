@@ -177,7 +177,8 @@ export function Syllabus(_props: SectionProps) {
 					is (a book, a film, an album) and its title below; right-click it, or an entry without works, ›
 					Mark as done. Done fills it in; done but not written up yet leaves only its outline. Right-click
 					an entry › Put a card on the board for its checklist. Double-click a skill node, or press Enter,
-					to edit it.
+					to edit it. The Mastery node at the middle is drawn large, and its editor's <strong>Picture</strong>
+					fills it with a picture of you; any skill node can have one.
 				</p>
 				<p>
 					Drag a node and its branch follows on springs, and whatever it runs into makes room; let go and

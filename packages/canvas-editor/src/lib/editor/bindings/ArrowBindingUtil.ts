@@ -96,6 +96,13 @@ export class ArrowBindingUtil extends BindingUtil<TLArrowBinding> {
 	}
 }
 
+/**
+ * Meta on an arrow that stays where it is put in the stacking order, under the shapes it joins if
+ * sent there, instead of being lifted above them. Its ends sit on those shapes' outlines anyway, so
+ * nothing of it is hidden; what it gains is passing under other shapes rather than over them.
+ */
+export const ARROW_STAYS_BEHIND_META = 'lifeboard:arrowStaysBehind'
+
 function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 	const arrow = editor.getShape<TLArrowShape>(arrowId)
 	if (!arrow) return
@@ -130,6 +137,7 @@ function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 
 	const reparentedArrow = editor.getShape<TLArrowShape>(arrowId)
 	if (!reparentedArrow) throw Error('no reparented arrow')
+	if (reparentedArrow.meta[ARROW_STAYS_BEHIND_META]) return
 
 	const startSibling = editor.getShapeNearestSibling(reparentedArrow, startShape)
 	const endSibling = editor.getShapeNearestSibling(reparentedArrow, endShape)

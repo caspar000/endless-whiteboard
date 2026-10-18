@@ -61,7 +61,7 @@ export * from '@tldraw/tlschema'
 // Shadows the schema package's narrower versions: see shape-types.ts.
 export type { TLHandle, TLShape, TLShapePartial } from './lib/editor/types/shape-types'
 export type { TLBindingCreate, TLBindingUpdate } from './lib/editor/types/binding-types'
-export { ArrowBindingUtil } from './lib/editor/bindings/ArrowBindingUtil'
+export { ARROW_STAYS_BEHIND_META, ArrowBindingUtil } from './lib/editor/bindings/ArrowBindingUtil'
 export {
 	BindingUtil,
 	type BindingOnChangeOptions,

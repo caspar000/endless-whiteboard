@@ -61,33 +61,48 @@ From the user's first go with the rebuilt Adler, 2026-10-18:
   Checked with a Playwright run in a fresh profile on an unconfirmed import: focus, Back, Show all,
   Confirm (no dashes left), and Discard (no shapes or trees left).
 
-### Compact clusters (asked for 2026-10-18)
+### Compact layout (asked for 2026-10-18)
 
 Show all was unreadable on big trees: nodes covered about 2% of the area, and arrows ran through
-nodes. The user wants it as compact as Path of Exile's passive tree, with no arrow over a node. Three
-phases, stopping after each:
+nodes. The user wants it as compact as Path of Exile's passive tree, keeping the tree's flow, with no
+arrow over a node, and no imposed structure (a first try stacked works in columns beside their
+entry; the user rejected it as against the Path of Exile look).
 
-1. **Tight clusters** (built). `tree/clusters.ts` replaces the cluster pass of `layoutView`. An entry
-   and its works are one unit: the disc, then its works stacked in a column beside it (two columns,
-   one each side, past 8), centred on the entry or hanging away from the skill node. A line to a work
-   ends at the work's end nearer its entry (`workAnchor`, set by `anchorWorkLines` after a layout, a
-   sync that draws lines, or a drag coming to rest), so a column's lines fan out in the gap and cross
-   nothing. Units go round the skill node, each in a wedge sized by its span. A unit stays wholly
-   inside its wedge, at the nearest spot where it covers nothing, covers no line and its own line
-   crosses nothing. Every arrow to another skill node keeps a gap open through the cluster.
-   Measured on Show all (`clusters.test.ts`, `showAll.fixture.ts`), before → after:
-   Adler 14341×14167 → 11843×12608 px, Director 17962×14436 → 9888×8715 (fill 2.1% → 6.4%), µ/core
-   15993×17777 → 15171×15042. Lines through nodes 0 / 93 / 386 → 0 everywhere, overlaps 4 → 0.
-   Arrows between skill nodes through a node: 53 / 57 / 78 → 1 / 29 / 103; that is phases 2 and 3.
-2. **Pack the clusters.** They are still placed as discs by `layoutGraph`'s balloon, which wastes the
-   space around a wide flat cluster. Pack them by their real footprints, angles by size, and pull
-   them together.
-3. **Arrows clear of nodes.** Check every arrow between skill nodes against every node; move the node
-   aside or bend the arrow.
+**As built** (`tree/compact.ts`, replacing the cluster pass of `layoutView`). The tree is grown from
+its start, each node placed in turn at the cheapest free spot around what it hangs from: close to
+it, a little to its outer side, close to its skill node. A skill node's entries go first, each
+followed by its works so a family stays together, then its child skill nodes, each just outside
+the cluster toward its share of the branch's way out. The moment a skill node is placed, room for
+its cluster and a clear way out to each of its children are kept, so no cluster grown first can
+close it in. A last pass slides each branch whole toward the node it hangs from as far as it fits.
 
-Dead ends worth not repeating: placing works one at a time on rings around their entry (each line
-from the entry shadows everything behind its work, so lists of 20+ spread over 1000 px), and a soft
-wedge (early units take the near room and their shadows close the circle to later ones).
+Arrows between skill nodes are hard: nothing is placed over one. Light lines to entries and works
+are soft (a crossing costs 70 px of distance): a list of 30 works close around its entry can't give
+every line a clear path, so the lines are drawn under the nodes (`linesUnderNodes`). The canvas
+lifts an arrow above the shapes it joins; an arrow with `ARROW_STAYS_BEHIND_META` (canvas-editor,
+`ArrowBindingUtil`) stays where it is put.
+
+Measured on Show all (`compact.test.ts`, `showAll.fixture.ts`), before → after:
+
+| | Bounding box | Fill | Tree arrows through a node | Time |
+|---|---|---|---|---|
+| Adler | 14341×14167 → 5083×4983 | 1.8% → 14.5% | 53 → 0 | 0.1 s |
+| Director | 17962×14436 → 5509×4165 | 2.1% → 23.9% | 57 → 0 | 0.5 s |
+| µ/core | 15993×17777 → 6778×6164 | 2.7% → 18.7% | 78 → 0 | 1.2 s |
+
+Checked in the app on a fresh Director import, with the habit cards on the board as obstacles.
+Sizes from the canvas come back as 150 × 149.99999999999994, so round shapes are compared with a
+tolerance; compared exactly, three skill nodes counted as boxes and one branch landed 4000 px out.
+
+Not yet: cross-links between branches (2 on Adler, 3 on Director) can still pass over nodes; the
+layout depends on the order of children (shuffled, Director's fill ranges 17–24%); µ/core takes
+1.2 s against the old layout's 0.55 s.
+
+Dead ends worth not repeating: requiring every light line to be clear (a parent's lines shadow
+everything behind its children, so a list of 20 spreads into a ring 1000 px wide); hard wedges per
+entry (they force fans and columns); unbounded reserved lines (they fence the board off, and a
+child that finds no spot jumps 6000 px away); and landing a child only where its whole reserved
+room is free (slow, and children land far out).
 
 ### Rebuild phases 4 and 5 (Up next per track, pop-out cards), as built
 

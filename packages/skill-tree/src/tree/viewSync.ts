@@ -1,12 +1,12 @@
 import { connectShapes } from '@lifeboard/node-kit'
-import { Box, createShapeId, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { ARROW_STAYS_BEHIND_META, Box, createShapeId, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
 import { ENTRY_SIZE, WORK_SIZE } from '../entry/definition'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
 import { contentsOf } from './focus'
-import { clusterLayout, workAnchor } from './clusters'
+import { compactLayout } from './compact'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
 
@@ -188,7 +188,7 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 	}
 	if (plan.linesStale) {
 		drawLines(editor, plan)
-		anchorWorkLines(editor)
+		linesUnderNodes(editor)
 	}
 	return laidOutNew
 }
@@ -266,11 +266,11 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		nodes.push({ id: HEADER, w: hb.w, h: hb.h })
 		edges.push({ from: startKey, to: HEADER })
 	}
-	// A view with entries around a skill node at its middle is laid out in clusters (compact); a focus
-	// on an entry is laid out whole around that entry, so it is the middle.
+	// A view with entries around a skill node at its middle is grown compact (compact.ts); a focus on
+	// an entry is laid out whole around that entry, so it is the middle.
 	const clustered = view.items.size > 0 && !view.items.has(view.start)
 	const at = clustered
-		? clusterLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, arrows: drawn, unlined: new Set([HEADER]), obstacles })
+		? compactLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, unlined: new Set([HEADER]), obstacles })
 		: layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })
 	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
 		const p = at.get(key)
@@ -280,7 +280,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
-		anchorWorkLines(editor)
+		linesUnderNodes(editor)
 	})
 	return moves.length
 }
@@ -421,26 +421,16 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 }
 
 /**
- * Ends each line to a work at the work's end nearer what it hangs from (clusters.ts, `workAnchor`),
- * so the lines to a column of works fan out beside it instead of running through the works above.
+ * Puts the light lines to entries and works under everything else. In a dense cluster a line can't
+ * always miss the works between it and its own (compact.ts), so it passes under them instead.
  */
-export function anchorWorkLines(editor: Editor): void {
-	const updates: TLArrowBinding[] = []
-	for (const arrow of lineArrows(editor)) {
-		const ends = editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow')
-		const start = ends.find((b) => b.props.terminal === 'start')
-		const end = ends.find((b) => b.props.terminal === 'end')
-		const work = end && editor.getShape(end.toId)
-		if (!start || !end || !isEntry(work) || work.props.variant !== 'work') continue
-		const from = editor.getShapePageBounds(start.toId)
-		const to = editor.getShapePageBounds(work.id)
-		if (!from || !to) continue
-		const anchor = workAnchor({ x: to.center.x, y: to.center.y, w: to.w, h: to.h }, from.center)
-		const now = end.props.normalizedAnchor
-		if (end.props.isPrecise && now.x === anchor.x && now.y === anchor.y) continue
-		updates.push({ ...end, props: { ...end.props, normalizedAnchor: anchor, isPrecise: true } })
-	}
-	if (updates.length) editor.updateBindings(updates)
+function linesUnderNodes(editor: Editor): void {
+	const lines = lineArrows(editor)
+	if (!lines.length) return
+	// Marked first: otherwise the canvas lifts each line back above the two shapes it joins.
+	const unmarked = lines.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
+	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
+	editor.sendToBack(lines.map((a) => a.id))
 }
 
 /** Brings the camera to what a view shows. */

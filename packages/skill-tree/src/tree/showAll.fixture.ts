@@ -4,7 +4,6 @@ import mucoreYaml from '../../content/mucore.yaml?raw'
 import { parseSyllabus, type DocItem } from '../syllabusYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
-import { workAnchor } from './clusters'
 import { orientFrom, type GraphEdge, type GraphNode } from './layout'
 
 /**
@@ -60,7 +59,7 @@ export const SHOW_ALL = [showAll('adler', adlerYaml), showAll('director', direct
 
 type Point = { x: number; y: number }
 
-const round = (n: GraphNode) => n.w === n.h
+const round = (n: GraphNode) => Math.abs(n.w - n.h) < 0.5
 
 function gapBetween(a: GraphNode, pa: Point, b: GraphNode, pb: Point): number {
 	if (round(a) && round(b)) return Math.hypot(pa.x - pb.x, pa.y - pb.y) - a.w / 2 - b.w / 2
@@ -108,11 +107,8 @@ export function measure(view: ShowAll, at: ReadonlyMap<string, Point>): Measure 
 		let n = 0
 		for (const e of edges) {
 			const p = at.get(e.from)
-			const c = at.get(e.to)
-			if (!p || !c) continue
-			// A line to a work ends where the app anchors it, at the work's nearer end.
-			const to = view.nodes.find((n) => n.id === e.to)!
-			const q = round(to) ? c : { x: c.x + (workAnchor({ ...c, w: to.w, h: to.h }, p).x - 0.5) * to.w, y: c.y }
+			const q = at.get(e.to)
+			if (!p || !q) continue
 			for (const node of nodes) if (node.id !== e.from && node.id !== e.to && through(p, q, node, at.get(node.id)!)) n++
 		}
 		return n

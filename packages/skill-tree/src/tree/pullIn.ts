@@ -322,7 +322,65 @@ function pullInNow(
 	}
 	if (C.shrinkTree) shrinkTree()
 	if (C.reorientClusters) reorient()
+	if (C.pushOffArrows) pushOffArrows()
 	ids.forEach((id, i) => at.set(id, { x: boxes[i]!.x, y: boxes[i]!.y }))
+
+	/**
+	 * Arrows as rigid bodies: any node an arrow between skill nodes runs through is pushed off it,
+	 * sideways, with what belongs to it (a work its entry and siblings, an entry its works, a skill node
+	 * its cluster), to whichever side clears it with least movement. Kept only when it covers nothing
+	 * and leaves fewer crossings than before. Arrows may still cross each other.
+	 */
+	function pushOffArrows(): void {
+		/** What moves with a node: its family, or for a skill node its cluster. */
+		const groupOf = (j: number): Set<number> => {
+			const id = ids[j]!
+			if (isSkill(id)) return new Set((units.get(id) ?? [id]).filter((m) => index.has(m)).map((m) => index.get(m)!))
+			let entry = id
+			for (let p = parentOf.get(entry); p && !isSkill(p); p = parentOf.get(entry)) entry = p
+			return branch(entry)
+		}
+		for (let round = 0; round < 3; round++) {
+			let pushed = 0
+			for (const [x, y] of arrows) {
+				const l = { ax: boxes[x]!.x, ay: boxes[x]!.y, bx: boxes[y]!.x, by: boxes[y]!.y }
+				const len = Math.hypot(l.bx - l.ax, l.by - l.ay)
+				if (len < 1) continue
+				const [ux, uy] = [(l.bx - l.ax) / len, (l.by - l.ay) / len]
+				for (const j of grid.alongLine(l, C.compactGap + ARROW_MARGIN)) {
+					if (j === x || j === y || !crosses({ ax: boxes[x]!.x, ay: boxes[x]!.y, bx: boxes[y]!.x, by: boxes[y]!.y }, boxes[j]!, ARROW_MARGIN)) continue
+					const group = groupOf(j)
+					if (group.has(x) || group.has(y)) continue
+					// Which side of the arrow the node is on, and how far its edge reaches over it.
+					const b = boxes[j]!
+					const side = (b.x - l.ax) * -uy + (b.y - l.ay) * ux
+					const [nx, ny] = [-uy, ux]
+					const half = support(b, Math.atan2(ny, nx)) + ARROW_MARGIN + 2
+					const options = [
+						{ d: Math.sign(side || 1) * (half - Math.abs(side)) },
+						{ d: -Math.sign(side || 1) * (half + Math.abs(side)) },
+					].sort((p, q) => Math.abs(p.d) - Math.abs(q.d))
+					for (const { d } of options) {
+						let done = false
+						for (const extra of [0, 24, 60]) {
+							const shift = d + Math.sign(d) * extra
+							const t = shiftBy(group, nx * shift, ny * shift)
+							if (covers(t)) continue
+							const R = affected(t)
+							if (judge(R, t).crossings < judge(R, still(group)).crossings) {
+								apply(t)
+								pushed++
+								done = true
+								break
+							}
+						}
+						if (done) break
+					}
+				}
+			}
+			if (!pushed) break
+		}
+	}
 
 	/**
 	 * Last, each cluster's gaps are turned to face where its arrows come in now that the clusters have
@@ -485,6 +543,8 @@ function boxGap(a: Box, b: Box): number {
 /** Skill nodes and entries are discs; works and the header are boxes. Canvas sizes come back a hair off square. */
 const isRound = (b: { w: number; h: number }) => Math.abs(b.w - b.h) < 0.5
 const reach = (b: { w: number; h: number }) => (isRound(b) ? b.w / 2 : Math.hypot(b.w, b.h) / 2)
+/** How far a shape reaches from its centre in direction `a`. */
+const support = (b: { w: number; h: number }, a: number) => (isRound(b) ? b.w / 2 : (Math.abs(Math.cos(a)) * b.w) / 2 + (Math.abs(Math.sin(a)) * b.h) / 2)
 
 /** Buckets of what is where, so a spot is only checked against what is near it. */
 class Grid {

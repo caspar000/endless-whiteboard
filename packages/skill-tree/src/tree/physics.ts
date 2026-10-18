@@ -2,7 +2,8 @@ import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { isEntry, isSkill, type TreeShape } from '../board'
 import { getTreePrefs } from '../treePrefs'
 import { contentsOf, viewHeaderFor } from './view'
-import { tidyLines, viewEdges, viewShapes } from './viewSync'
+import { SKILL_EDGE_META } from './ops'
+import { LINE, tidyLines, viewEdges, viewShapes } from './viewSync'
 
 /**
  * Dragging a tree node (docs/skill-tree-plan.md, "Rebuild"). While you drag, its branch follows on
@@ -34,6 +35,8 @@ interface Run {
 	live: boolean
 	bodies: Map<string, Body>
 	edges: { a: string; b: string }[]
+	/** The arrows between skill nodes drawn on the board, by body: solid, so a node at rest is pushed off one. */
+	arrows: { a: string; b: string }[]
 	/** When the pointer let go; the run eases to rest from then. */
 	released: number | null
 	heat: number
@@ -90,7 +93,15 @@ function begin(editor: Editor): Run | null {
 	}
 	// Everything else in the view can be pushed aside (or, live, takes part in full).
 	for (const key of shapes.keys()) add(key)
-	return { live, bodies, edges: edges.map((e) => ({ a: e.from, b: e.to })), released: null, heat: 1 }
+	const keyOf = new Map([...bodies.values()].map((b) => [b.id as string, b.key]))
+	const arrows = editor.getCurrentPageShapes().flatMap((s) => {
+		if (s.type !== 'arrow' || !s.meta[SKILL_EDGE_META] || s.meta[SKILL_EDGE_META] === LINE) return []
+		const ends = editor.getBindingsFromShape(s, 'arrow')
+		const a = keyOf.get(ends.find((b) => (b.props as { terminal: string }).terminal === 'start')?.toId ?? '')
+		const b = keyOf.get(ends.find((b) => (b.props as { terminal: string }).terminal === 'end')?.toId ?? '')
+		return a && b ? [{ a, b }] : []
+	})
+	return { live, bodies, edges: edges.map((e) => ({ a: e.from, b: e.to })), arrows, released: null, heat: 1 }
 }
 
 function tick(editor: Editor, elapsed: number): void {
@@ -138,12 +149,38 @@ function tick(editor: Editor, elapsed: number): void {
 	}
 }
 
-/** A last pass that pushes apart any two bodies still overlapping. The held ones stay put. */
+/**
+ * A last pass that pushes apart any two bodies still overlapping, and pushes any body an arrow between
+ * skill nodes runs through off it, sideways, as if the arrow were solid. The held ones stay put.
+ */
 function separate(run: Run): { id: TLShapeId; type: string; x: number; y: number }[] {
 	const list = [...run.bodies.values()]
 	const moved = new Set<Body>()
 	for (let round = 0; round < 40; round++) {
 		let any = false
+		for (const { a: ka, b: kb } of run.arrows) {
+			const a = run.bodies.get(ka)
+			const b = run.bodies.get(kb)
+			if (!a || !b) continue
+			const [ax, ay, bx, by] = [a.x + a.w / 2, a.y + a.h / 2, b.x + b.w / 2, b.y + b.h / 2]
+			const len = Math.hypot(bx - ax, by - ay)
+			if (len < 1) continue
+			const [ux, uy] = [(bx - ax) / len, (by - ay) / len]
+			for (const c of list) {
+				if (c === a || c === b || c.held) continue
+				const [cx, cy] = [c.x + c.w / 2, c.y + c.h / 2]
+				const along = (cx - ax) * ux + (cy - ay) * uy
+				if (along <= 0 || along >= len) continue
+				const side = (cx - ax) * -uy + (cy - ay) * ux
+				const clear = Math.min(c.w, c.h) / 2 + PAD / 2
+				if (Math.abs(side) >= clear) continue
+				any = true
+				const push = (Math.sign(side) || 1) * (clear - Math.abs(side))
+				c.x += -uy * push
+				c.y += ux * push
+				moved.add(c)
+			}
+		}
 		for (let i = 0; i < list.length; i++) {
 			for (let j = i + 1; j < list.length; j++) {
 				const a = list[i]!

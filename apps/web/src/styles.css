@@ -13983,7 +13983,11 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-variant-numeric: tabular-nums;
 }
-.lb-skillnode--locked {
+/* Locked: dimmed, but the disc stays solid, so nothing behind it (an arrow, a line) shows through. */
+.lb-skillnode--locked .lb-skillnode__ring,
+.lb-skillnode--locked .lb-skillnode__icon,
+.lb-skillnode--locked .lb-skillnode__label,
+.lb-skillnode--locked .lb-skillnode__picture {
 	opacity: 0.45;
 }
 .lb-skillnode--available .lb-skillnode__disc {

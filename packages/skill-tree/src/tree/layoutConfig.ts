@@ -49,6 +49,8 @@ export interface LayoutConfig {
 	arrowRule: 'skills' | 'all' | 'none'
 	/** Last, turn each cluster so its gaps face where its arrows come in. */
 	reorientClusters: boolean
+	/** Then push every node an arrow runs through off it, sideways, as if the arrow were solid. */
+	pushOffArrows: boolean
 }
 
 export const DEFAULT_LAYOUT: LayoutConfig = {
@@ -74,6 +76,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	maxArrow: 600,
 	arrowRule: 'all',
 	reorientClusters: true,
+	pushOffArrows: true,
 }
 
 type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
@@ -117,6 +120,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		],
 	},
 	{ group: 'Arrows', key: 'reorientClusters', label: "Turn clusters' gaps toward their arrows" },
+	{ group: 'Arrows', key: 'pushOffArrows', label: 'Push nodes off arrows, as if solid' },
 ]
 
 const KEY = 'lifeboard:skill-tree-layout'

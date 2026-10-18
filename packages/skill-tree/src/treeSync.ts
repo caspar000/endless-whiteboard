@@ -1,6 +1,8 @@
 import { createShapeId, react, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { isImporting, onImportEnd } from './importing'
-import { getItems } from './syllabus'
+import { getItems, getSkillIndex } from './syllabus'
+import { getHabitIndex } from './skillIndex'
+import { styleArrows } from './tree/arrowStyle'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews, refreshStale } from './tree/viewSync'
@@ -113,10 +115,20 @@ export function watchTrees(editor: Editor): void {
 		getItems()
 		schedule(editor)
 	})
+	// What is unlocked decides which arrows are dotted (tree/arrowStyle.ts): restyled after the change.
+	const stopStyle = react('lifeboard:skill-arrow-style', () => {
+		getSkillIndex()
+		getHabitIndex()
+		getTreeDefs()
+		queueMicrotask(() => {
+			if (!disposed.has(editor)) styleArrows(editor)
+		})
+	})
 	// Dragging a tree node pulls its branch and eases the board to rest (tree/physics.ts).
 	const stopPhysics = watchPhysics(editor)
 	editor.disposables.add(() => {
 		stop()
+		stopStyle()
 		stopPhysics()
 		disposed.add(editor)
 	})
@@ -243,6 +255,7 @@ export function syncBoard(editor: Editor): void {
 		syncing = false
 	}
 	refreshStale(editor)
+	styleArrows(editor)
 	// Coming into an arrangement, or a tree new to the board, brings the camera to it.
 	const switched = view.views.find((v) => v.from !== null)?.view ?? laidOutNew[0]
 	if (switched) frameView(editor, switched)

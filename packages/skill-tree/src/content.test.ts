@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import adlerYaml from '../content/adler.yaml?raw'
 import directorYaml from '../content/director.yaml?raw'
 import mucoreYaml from '../content/mucore.yaml?raw'
+import lifeYaml from '../content/whole-life-test.yaml?raw'
 import { parseRequirements } from './requirements'
 import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
@@ -184,5 +185,28 @@ describe('content/director.yaml', () => {
 	it("holds Schreiber's twenty Levels", () => {
 		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
 		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))
+	})
+})
+
+describe('content/whole-life-test.yaml', () => {
+	const doc = load(lifeYaml)
+	const nodes = new Map(doc.trees.flatMap((t) => t.nodes.map((n) => [n.nodeId, t.treeId] as const)))
+
+	it('puts you at the centre of five pillars, and a tree on each of the other four', () => {
+		const mastery = doc.trees.find((t) => t.treeId === 'mastery')!
+		expect(mastery.nodes.filter((n) => n.kind === 'pillar').map((n) => n.name)).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])
+		const mounts = new Set(doc.trees.map((t) => t.mount).filter(Boolean))
+		expect([...mounts].sort()).toEqual(['mastery/mental', 'mastery/physical', 'mastery/social', 'mastery/spiritual'])
+	})
+
+	it('tags every item to a node it has, and requires only nodes it has', () => {
+		for (const item of doc.tracks.flatMap((t) => t.items)) for (const tag of item.tags) expect(nodes.has(tag), `${item.title} → ${tag}`).toBe(true)
+		for (const tree of doc.trees)
+			for (const node of tree.nodes) for (const id of prerequisitesOf(node.requires)) expect(nodes.has(id), `${node.nodeId} → ${id}`).toBe(true)
+	})
+
+	it('shares Steady Attention between Meditation and Attention', () => {
+		const steady = doc.trees.find((t) => t.treeId === 'meditation')!.nodes.find((n) => n.nodeId === 'meditation/steady-attention')!
+		expect(prerequisitesOf(steady.requires).map((id) => nodes.get(id))).toEqual(['meditation', 'attention'])
 	})
 })

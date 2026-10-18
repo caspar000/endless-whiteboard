@@ -1,0 +1,212 @@
+# The whole-life test board ("Insert the whole-life test board"): you at the centre, the five
+# pillars, and simple trees on each to lay out against (docs/skill-tree-layout-plan.md). Director
+# hangs on Practical and Adler on Mental from their own files. Placeholder content, to be replaced.
+goal: life-test
+name: Whole-life test
+
+trees:
+  - id: mastery
+    name: You
+    nodes:
+      - { id: root, name: You, kind: mastery, icon: user }
+      - { id: physical, name: Physical, kind: pillar, icon: barbell, requires: [ { node: [root] } ] }
+      - { id: mental, name: Mental, kind: pillar, icon: brain, requires: [ { node: [root] } ] }
+      - { id: spiritual, name: Spiritual, kind: pillar, icon: leaf, requires: [ { node: [root] } ] }
+      - { id: practical, name: Practical, kind: pillar, icon: hammer, requires: [ { node: [root] } ] }
+      - { id: social, name: Social, kind: pillar, icon: users, requires: [ { node: [root] } ] }
+
+  - id: calisthenics
+    name: Calisthenics
+    mount: mastery/physical
+    nodes:
+      - { id: basics, name: Bodyweight Basics, kind: root, icon: run }
+      - { id: push, name: Push Progression, icon: arrow-up, requires: [ { node: [basics] }, { count: { min: 2 } } ] }
+      - { id: pull, name: Pull Progression, icon: arrow-down, requires: [ { node: [basics] }, { count: { min: 2 } } ] }
+      - { id: legs, name: Leg Progression, icon: walk, requires: [ { node: [basics] }, { count: { min: 2 } } ] }
+      - { id: handstand, name: Handstand Push-up, icon: hand-stop, requires: [ { node: [push] }, { count: { min: 1 } } ] }
+      - { id: muscle-up, name: Muscle-up, icon: stairs-up, requires: [ { node: [push, pull] }, { count: { min: 1 } } ] }
+      - { id: pistol, name: Pistol Squat, icon: stretching, requires: [ { node: [legs] }, { count: { min: 1 } } ] }
+
+  - id: kettlebell
+    name: Kettlebells
+    mount: mastery/physical
+    nodes:
+      - { id: basics, name: Kettlebell Basics, kind: root, icon: weight }
+      - { id: swing, name: The Swing, icon: rotate, requires: [ { node: [basics] }, { count: { min: 1 } } ] }
+      - { id: get-up, name: Turkish Get-up, icon: arrow-bar-up, requires: [ { node: [basics] }, { count: { min: 1 } } ] }
+      - { id: clean-press, name: Clean and Press, icon: barbell, requires: [ { node: [swing] }, { count: { min: 1 } } ] }
+      - { id: sinister, name: Simple and Sinister, kind: keystone, icon: flame, requires: [ { node: [swing, get-up] }, { count: { min: 2 } } ] }
+
+  - id: diet
+    name: Diet
+    mount: mastery/physical
+    nodes:
+      - { id: basics, name: Know What You Eat, kind: root, icon: salad }
+      - { id: protein, name: Enough Protein, icon: egg, requires: [ { node: [basics] }, { count: { min: 1 } } ] }
+      - { id: cooking, name: Cook at Home, icon: chef-hat, requires: [ { node: [basics] }, { count: { min: 2 } } ] }
+      - { id: meal-prep, name: Meal Prep, icon: box, requires: [ { node: [cooking] }, { count: { min: 1 } } ] }
+
+  - id: attention
+    name: Attention
+    mount: mastery/mental
+    nodes:
+      - { id: deep-work, name: Deep Work, kind: root, icon: focus-2 }
+      - { id: single-tasking, name: Single-tasking, icon: target, requires: [ { node: [deep-work] }, { count: { min: 1 } } ] }
+      - { id: memory, name: Memory Palace, icon: building-castle, requires: [ { node: [deep-work] }, { count: { min: 1 } } ] }
+
+  - id: meditation
+    name: Meditation
+    mount: mastery/spiritual
+    nodes:
+      - { id: sit, name: Sit Daily, kind: root, icon: yoga }
+      - { id: breath, name: Breath Awareness, icon: wind, requires: [ { node: [sit] }, { count: { min: 2 } } ] }
+      - { id: body-scan, name: Body Scan, icon: scan, requires: [ { node: [sit] }, { count: { min: 1 } } ] }
+      - { id: metta, name: Loving-kindness, icon: heart, requires: [ { node: [sit] }, { count: { min: 1 } } ] }
+      - { id: concentration, name: Concentration, icon: circle-dot, requires: [ { node: [breath] }, { count: { min: 2 } } ] }
+      - { id: insight, name: Noting and Insight, icon: eye, requires: [ { node: [body-scan] }, { count: { min: 2 } } ] }
+      # Shared with Mental: it grows from Concentration here and from Single-tasking in Attention.
+      - { id: steady-attention, name: Steady Attention, kind: keystone, icon: link, requires: [ { node: [concentration, attention/single-tasking] }, { count: { min: 1 } } ] }
+
+  - id: tabletop
+    name: Tabletop Campaigns
+    mount: mastery/social
+    nodes:
+      - { id: play, name: Play at the Table, kind: root, icon: dice-5 }
+      - { id: one-shot, name: Run a One-shot, icon: sword, requires: [ { node: [play] }, { count: { min: 1 } } ] }
+      - { id: worldbuilding, name: Worldbuilding, icon: world, requires: [ { node: [play] }, { count: { min: 2 } } ] }
+      - { id: improv, name: Improvising NPCs, icon: masks-theater, requires: [ { node: [play] }, { count: { min: 1 } } ] }
+      - { id: campaign, name: Run a Campaign, kind: keystone, icon: map, requires: [ { node: [one-shot, worldbuilding] }, { count: { min: 1 } } ] }
+
+tracks:
+  - id: calisthenics
+    name: Calisthenics
+    state: active
+    items:
+      - id: recommended-routine
+        title: "The Recommended Routine"
+        kind: practice
+        medium: exercise
+        tags: [calisthenics/basics]
+        childRule: all
+        children:
+          - { id: rr-week-1, title: "Weeks 1-2: Learn the Moves", medium: work }
+          - { id: rr-week-3, title: "Weeks 3-4: Full Sets", medium: work }
+          - { id: rr-week-5, title: "Weeks 5-8: First Progressions", medium: work }
+      - { id: pushups-50, title: "50 Push-ups in One Set", kind: practice, medium: exercise, tags: [calisthenics/push] }
+      - { id: dips-20, title: "20 Dips", kind: practice, medium: exercise, tags: [calisthenics/push] }
+      - { id: pullups-10, title: "10 Strict Pull-ups", kind: practice, medium: exercise, tags: [calisthenics/pull] }
+      - { id: rows, title: "Ring Rows to Horizontal", kind: practice, medium: exercise, tags: [calisthenics/pull] }
+      - { id: squats-100, title: "100 Squats", kind: practice, medium: exercise, tags: [calisthenics/legs] }
+      - id: handstand-line
+        title: "Handstand Line"
+        kind: practice
+        medium: exercise
+        tags: [calisthenics/handstand]
+        children:
+          - { id: wall-hold, title: "60 s Wall Hold", medium: work }
+          - { id: freestanding, title: "10 s Freestanding", medium: work }
+          - { id: pike-pushups, title: "Pike Push-ups", medium: work }
+          - { id: wall-hspu, title: "Wall Handstand Push-up", medium: work }
+      - { id: first-muscle-up, title: "First Muscle-up", kind: ship, medium: exercise, tags: [calisthenics/muscle-up] }
+      - { id: first-pistol, title: "First Pistol Squat", kind: ship, medium: exercise, tags: [calisthenics/pistol] }
+
+  - id: kettlebell
+    name: Kettlebells
+    state: active
+    items:
+      - id: enter-the-kettlebell
+        title: "Tsatsouline, Enter the Kettlebell!"
+        kind: study
+        medium: book
+        tags: [kettlebell/basics]
+      - { id: swing-100, title: "100 Swings in 5 Minutes", kind: practice, medium: exercise, tags: [kettlebell/swing] }
+      - { id: getup-5, title: "5 Get-ups Each Side", kind: practice, medium: exercise, tags: [kettlebell/get-up] }
+      - { id: press-ladder, title: "Press Ladders", kind: practice, medium: exercise, tags: [kettlebell/clean-press] }
+      - id: sinister-plan
+        title: "Simple and Sinister Program"
+        kind: practice
+        medium: exercise
+        tags: [kettlebell/sinister]
+        children:
+          - { id: ss-16, title: "Timed with 16 kg", medium: work }
+          - { id: ss-24, title: "Timed with 24 kg", medium: work }
+          - { id: ss-32, title: "Simple: 32 kg", medium: work }
+
+  - id: diet
+    name: Diet
+    state: active
+    items:
+      - { id: food-log, title: "Log Two Weeks of Meals", kind: practice, medium: exercise, tags: [diet/basics] }
+      - { id: protein-target, title: "Hit a Protein Target for a Month", kind: practice, medium: exercise, tags: [diet/protein] }
+      - id: cook-ten
+        title: "Ten Dishes from Scratch"
+        kind: practice
+        medium: exercise
+        tags: [diet/cooking]
+        childRule: all
+        children:
+          - { id: dish-soup, title: "A Soup", medium: work }
+          - { id: dish-curry, title: "A Curry", medium: work }
+          - { id: dish-bread, title: "A Bread", medium: work }
+          - { id: dish-salad, title: "A Salad", medium: work }
+          - { id: dish-roast, title: "A Roast", medium: work }
+      - { id: salt-fat, title: "Nosrat, Salt Fat Acid Heat", kind: study, medium: book, tags: [diet/cooking] }
+      - { id: prep-sunday, title: "A Month of Sunday Prep", kind: practice, medium: exercise, tags: [diet/meal-prep] }
+
+  - id: attention
+    name: Attention
+    state: active
+    items:
+      - { id: deep-work-book, title: "Newport, Deep Work", kind: study, medium: book, tags: [attention/deep-work] }
+      - { id: no-phone-mornings, title: "A Month of Phone-free Mornings", kind: practice, medium: exercise, tags: [attention/single-tasking] }
+      - id: memory-palace
+        title: "Build a Memory Palace"
+        kind: practice
+        medium: exercise
+        tags: [attention/memory]
+        children:
+          - { id: mp-deck, title: "A Deck of Cards", medium: work }
+          - { id: mp-poem, title: "A Long Poem", medium: work }
+
+  - id: meditation
+    name: Meditation
+    state: active
+    items:
+      - { id: mind-illuminated, title: "Yates, The Mind Illuminated", kind: study, medium: book, tags: [meditation/sit] }
+      - id: thirty-days
+        title: "Thirty Days of Sitting"
+        kind: practice
+        medium: exercise
+        tags: [meditation/sit]
+        children:
+          - { id: sit-week-1, title: "Week 1: Ten Minutes", medium: work }
+          - { id: sit-week-2, title: "Week 2: Fifteen Minutes", medium: work }
+          - { id: sit-week-3, title: "Week 3: Twenty Minutes", medium: work }
+          - { id: sit-week-4, title: "Week 4: Thirty Minutes", medium: work }
+      - { id: breath-count, title: "Count Breaths to Ten", kind: practice, medium: exercise, tags: [meditation/breath] }
+      - { id: anapanasati, title: "Anapanasati Sutta", kind: study, medium: book, tags: [meditation/breath] }
+      - { id: scan-guided, title: "Guided Body Scans", kind: practice, medium: exercise, tags: [meditation/body-scan] }
+      - { id: metta-month, title: "A Month of Metta", kind: practice, medium: exercise, tags: [meditation/metta] }
+      - { id: retreat, title: "A Weekend Retreat", kind: ship, medium: visit, tags: [meditation/concentration] }
+      - { id: noting-practice, title: "Mahasi Noting", kind: practice, medium: exercise, tags: [meditation/insight] }
+      - { id: steady-month, title: "A Month of Single Sessions", kind: practice, medium: exercise, tags: [meditation/steady-attention] }
+
+  - id: tabletop
+    name: Tabletop
+    state: active
+    items:
+      - { id: player-campaign, title: "Play Through a Campaign", kind: practice, medium: exercise, tags: [tabletop/play] }
+      - id: run-oneshot
+        title: "Run Three One-shots"
+        kind: ship
+        medium: exercise
+        tags: [tabletop/one-shot]
+        children:
+          - { id: oneshot-1, title: "A Dungeon Crawl", medium: work }
+          - { id: oneshot-2, title: "A Mystery", medium: work }
+          - { id: oneshot-3, title: "A Heist", medium: work }
+      - { id: lazy-dm, title: "Shea, Return of the Lazy Dungeon Master", kind: study, medium: book, tags: [tabletop/one-shot] }
+      - { id: world-map, title: "Draw a Region Map", kind: practice, medium: exercise, tags: [tabletop/worldbuilding] }
+      - { id: factions, title: "Write Three Factions", kind: practice, medium: exercise, tags: [tabletop/worldbuilding] }
+      - { id: npc-voices, title: "Ten NPC Voices", kind: practice, medium: exercise, tags: [tabletop/improv] }
+      - { id: campaign-12, title: "Run a Twelve-session Campaign", kind: ship, medium: exercise, tags: [tabletop/campaign] }

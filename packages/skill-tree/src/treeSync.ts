@@ -4,7 +4,7 @@ import { getItems } from './syllabus'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews } from './tree/viewSync'
-import type { ViewContents } from './views'
+import { boardTrees, treeGraph, type ViewContents } from './views'
 import { watchPhysics } from './tree/physics'
 import {
 	getTreeDef,
@@ -56,7 +56,7 @@ const metaOf = (header: TreeShape): TreeMeta => ({
 })
 
 /** What decides which nodes a header's view shows. */
-const VIEW_FIELDS = ['root', 'treeId', 'mode', 'focus', 'depth'] as const
+const VIEW_FIELDS = ['root', 'treeId', 'mode'] as const
 
 /** What a header shows of its tree; the mount lives only in the vault. */
 const HEADER_FIELDS = ['name', 'goal', 'sectors', 'rings'] as const
@@ -95,7 +95,7 @@ export function watchTrees(editor: Editor): void {
 		} else if (liveHeader(next) && liveHeader(prev)) {
 			if (HEADER_FIELDS.some((f) => prev.props[f] !== next.props[f])) updateTreeMeta(next.props.treeId, metaOf(next))
 		}
-		// A view switched (focus, Show all, Back, another root) shows different nodes: a draft's as well.
+		// A view switched (everything, skill nodes, another root) shows different nodes: a draft's as well.
 		if (isTree(next) && isTree(prev) && VIEW_FIELDS.some((f) => prev.props[f] !== next.props[f])) schedule(editor)
 	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
@@ -196,6 +196,15 @@ export function syncBoard(editor: Editor): void {
 	const views = shapes.filter((s): s is TreeShape => isTree(s) && !!s.props.treeId)
 	const view = planViews(editor, views, new Set(removals.map((s) => s.id)))
 	for (const treeId of view.trees) redraw.add(treeId)
+	// A tree whose nodes require another tree's draws those arrows too, so it redraws with that tree.
+	if (redraw.size) {
+		const graph = treeGraph(boardTrees(editor))
+		for (const e of graph.prerequisites) {
+			const from = graph.nodes.get(e.from)?.treeId
+			const to = graph.nodes.get(e.to)?.treeId
+			if (from && to && from !== to && redraw.has(from)) redraw.add(to)
+		}
+	}
 	if (!removals.length && !updates.length && !headerUpdates.length && planIsEmpty(view)) return
 
 	let laidOutNew: ViewContents[] = []

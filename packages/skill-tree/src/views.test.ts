@@ -33,6 +33,20 @@ describe('treeGraph', () => {
 		])
 	})
 
+	it('takes a prerequisite from another tree: the node is shared and reached from both', () => {
+		const vault = { ...VAULT, body: tree('body', [node('body/train'), node('body/strength', ['body/train']), node('body/calm', ['body/train', 'adler/epic'])], 'mastery/physical') }
+		const g = treeGraph(vault)
+		expect(g.prerequisites).toContainEqual({ from: 'adler/epic', to: 'body/calm' })
+		expect(g.prerequisites).toContainEqual({ from: 'body/train', to: 'body/calm' })
+		expect(reachFrom(g, 'mastery/mental').has('body/calm')).toBe(true)
+		expect(reachFrom(g, 'mastery/physical').has('body/calm')).toBe(true)
+	})
+
+	it('ignores a prerequisite no tree has', () => {
+		const g = treeGraph({ a: tree('a', [node('a/x'), node('a/y', ['a/x', 'gone/z'])]) })
+		expect(g.prerequisites).toEqual([{ from: 'a/x', to: 'a/y' }])
+	})
+
 	it('ignores a mount on a missing node or on the tree itself', () => {
 		const g = treeGraph({ a: tree('a', [node('a/x')], 'nowhere'), b: tree('b', [node('b/x')], 'b/x') })
 		expect(g.mounts).toEqual([])
@@ -78,7 +92,7 @@ describe('viewContents', () => {
 		'a/plato': entry('a/plato', ['adler/root']),
 		'x/elsewhere': entry('x/elsewhere', ['nowhere']),
 	}
-	const view = (mode: string, focus = '', depth = 1) => viewContents(graph, ITEMS, { treeId: 'adler', root: '', mode, focus }, depth)
+	const view = (mode: string) => viewContents(graph, ITEMS, { treeId: 'adler', root: '', mode })
 
 	it('shows skill nodes only in the overview', () => {
 		const v = view('overview')
@@ -92,21 +106,5 @@ describe('viewContents', () => {
 		expect([...v.items.keys()].sort()).toEqual(['a/homer', 'a/homer/iliad', 'a/homer/odyssey', 'a/plato', 'a/virgil'])
 		expect(v.items.get('a/homer')).toEqual({ parent: 'adler/epic', variant: 'entry' })
 		expect(v.items.get('a/homer/iliad')).toEqual({ parent: 'a/homer', variant: 'work' })
-	})
-
-	it('focuses a skill node: its entries unfurled, its neighbours folded', () => {
-		const v = view('focus', 'adler/epic')
-		expect(v.start).toBe('adler/epic')
-		expect([...v.skills].sort()).toEqual(['adler/epic', 'adler/root'])
-		expect([...v.items.keys()].sort()).toEqual(['a/homer', 'a/homer/iliad', 'a/homer/odyssey', 'a/virgil'])
-	})
-
-	it('focuses an entry from one of its works: the entry unfurled, its siblings folded, depth 0 keeps only the node', () => {
-		const v = view('focus', 'a/homer/odyssey', 0)
-		expect(v.context).toBe('focus:a/homer')
-		expect(v.start).toBe('a/homer')
-		expect([...v.skills]).toEqual(['adler/epic'])
-		expect(v.items.get('a/virgil')).toEqual({ parent: 'adler/epic', variant: 'entry' })
-		expect(v.items.has('a/homer/iliad')).toBe(true)
 	})
 })

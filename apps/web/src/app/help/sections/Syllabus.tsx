@@ -168,19 +168,14 @@ export function Syllabus(_props: SectionProps) {
 				</p>
 			</Section>
 
-			<Section title="Focus, everything, and back">
+			<Section title="Everything, or the skill nodes">
 				<p>
-					A tree opens on its skill nodes. <strong>Double-click a node to focus on it</strong>: it moves to
-					the middle with its entries and their works around it, and its neighbouring skill nodes stay,
-					folded, so you know where you are. Double-click Homer and his works unfold around him. Right-click
-					› Focus here does the same; Enter, or right-click › Edit, opens a skill node's editor.
-				</p>
-				<p>
-					The tree's header card shows which arrangement you are in, with <strong>Show all</strong> (every
-					entry and work, however many), <strong>Back</strong> to the skill nodes, and{' '}
-					<strong>Re-calculate</strong> to lay the arrangement out again. Each arrangement remembers where
-					you put its nodes: come back to it and they are where you left them. Tick a work's dot right there
-					in the tree; right-click an entry › Put a card on the board for its checklist.
+					A tree opens on <strong>everything</strong>: its skill nodes with their entries and works round
+					them. <code>Show all nodes or only skill nodes</code> (<kbd>Shift</kbd>+<kbd>E</kbd>) switches every
+					tree on the board to its skill nodes only and back. Each view remembers where you put its nodes:
+					come back to it and they are where you left them. Tick a work's dot right there in the tree;
+					right-click an entry › Put a card on the board for its checklist. Double-click a skill node, or
+					press Enter, to edit it.
 				</p>
 				<p>
 					Drag a node and its branch follows on springs, and whatever it runs into makes room; let go and
@@ -189,8 +184,9 @@ export function Syllabus(_props: SectionProps) {
 					pushes the others away and every line pulls its two ends together.
 				</p>
 				<p className="lb-help__aside">
-					Settings › Extensions › Syllabus & skill trees sets what an import opens on, how far a focus
-					reaches and whether physics is live; a tree's header editor overrides each for that tree.
+					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill
+					trees can draw it again (to change where its view starts, or lay it out again with Re-calculate),
+					and sets what an import opens on and whether physics is live.
 				</p>
 			</Section>
 
@@ -198,8 +194,8 @@ export function Syllabus(_props: SectionProps) {
 				<p>
 					<code>Lay out tree</code> (or Re-calculate) arranges the tree: the root stays where it is, its
 					dependents fan out around it, families stay together, and nothing overlaps, not even the cards
-					already on the board. Pick a different root in the header's editor (double-click it) to grow the
-					tree from there. <code>Lay out from this node</code> arranges one node and everything that depends
+					already on the board. Pick a different root in the header's editor (with headers drawn, double-click
+					it) to grow the tree from there. <code>Lay out from this node</code> arranges one node and everything that depends
 					on it and leaves the rest alone.
 				</p>
 				<p>
@@ -212,7 +208,7 @@ export function Syllabus(_props: SectionProps) {
 			<Section title="One tree, many boards">
 				<p>
 					A skill tree lives in your vault, not on a board. A tree's header card is a <strong>view</strong>{' '}
-					of it: double-click the header and pick <strong>Show from</strong> to see the tree from any of its
+					of it: with headers drawn, double-click one and pick <strong>Show from</strong> to see the tree from any of its
 					nodes, that node and everything that grows from it. <code>Show a skill tree on this board</code>{' '}
 					puts a view of any tree on another board, so the whole tree can sit on one board and one branch of
 					it on another.

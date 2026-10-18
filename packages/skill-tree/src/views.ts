@@ -13,7 +13,10 @@ import { getTreeDefs, type NodeDef, type TreeDef, type TreeDefs, type TreeMeta }
 export interface TreeGraph {
 	/** Every node, with the tree it belongs to. */
 	nodes: ReadonlyMap<string, { treeId: string; def: NodeDef }>
-	/** Prerequisite edges inside a tree, drawn as arrows. */
+	/**
+	 * Prerequisite edges, drawn as arrows. Usually inside a tree; one from another tree's node makes
+	 * the node shared between the two (docs/skill-tree-layout-plan.md, "Sharing").
+	 */
 	prerequisites: GraphEdge[]
 	/** From a mount node to the root of a tree mounted on it, drawn as arrows. */
 	mounts: (GraphEdge & { treeId: string })[]
@@ -36,12 +39,15 @@ export function treeGraph(trees: TreeDefs): TreeGraph {
 	const loose: GraphEdge[] = []
 	const rootOf = new Map<string, string>()
 	for (const tree of Object.values(trees)) {
-		const ids = new Set(tree.nodes.map((n) => n.nodeId))
 		const root = rootOfTree(tree.nodes)
 		if (root) rootOf.set(tree.treeId, root)
+		for (const node of tree.nodes) nodes.set(node.nodeId, { treeId: tree.treeId, def: node })
+	}
+	// Then the edges, now that a prerequisite in another tree can be found too.
+	for (const tree of Object.values(trees)) {
+		const root = rootOf.get(tree.treeId)
 		for (const node of tree.nodes) {
-			nodes.set(node.nodeId, { treeId: tree.treeId, def: node })
-			const pre = prerequisitesOf(node.requires).filter((p) => ids.has(p) && p !== node.nodeId)
+			const pre = prerequisitesOf(node.requires).filter((p) => nodes.has(p) && p !== node.nodeId)
 			for (const from of pre) prerequisites.push({ from, to: node.nodeId })
 			if (!pre.length && node.nodeId !== root && root) loose.push({ from: root, to: node.nodeId })
 		}
@@ -125,9 +131,9 @@ const draftMount = (shape: SkillShape) => draftTreeMeta(shape).mount ?? ''
 
 /** What one tree view shows, and what each shown item hangs from. */
 export interface ViewContents {
-	/** Which arrangement this is, for remembering where things were: `overview`, `all`, `focus:<id>`. */
+	/** Which view this is, for remembering where things were: `overview` or `all`. */
 	context: string
-	/** The node or item at the middle of the layout. */
+	/** The node at the middle of the layout. */
 	start: string
 	skills: Set<string>
 	/** Items drawn, by id: what they hang from (a skill node id, or their parent item's id) and how. */
@@ -136,31 +142,11 @@ export interface ViewContents {
 
 type ItemLike = { itemId: string; parent: string; children: readonly string[]; tags: readonly string[] }
 
-/** Skill nodes within `depth` steps of a node, through any edge, either way. */
-function neighbourhood(graph: TreeGraph, node: string, depth: number, within: ReadonlySet<string>): Set<string> {
-	const adjacent = new Map<string, string[]>()
-	for (const e of [...graph.prerequisites, ...graph.mounts, ...graph.loose]) {
-		adjacent.set(e.from, [...(adjacent.get(e.from) ?? []), e.to])
-		adjacent.set(e.to, [...(adjacent.get(e.to) ?? []), e.from])
-	}
-	const seen = new Set([node])
-	let ring = [node]
-	for (let step = 0; step < depth; step++) {
-		const next: string[] = []
-		for (const id of ring) for (const n of adjacent.get(id) ?? []) if (within.has(n) && !seen.has(n)) (seen.add(n), next.push(n))
-		ring = next
-	}
-	return seen
-}
-
 /**
  * The nodes and items a header shows (docs/skill-tree-plan.md, "Rebuild"). Pure.
  *
  * - **overview**: the skill nodes its view reaches.
  * - **all**: those, every entry tagged to one of them, and every entry's works.
- * - **focus** on a skill node: it, its entries with their works, and its neighbouring skill nodes
- *   within `depth` steps, folded. On an entry (or one of its works): the entry with its works, the
- *   other entries of its skill node folded, and that node's neighbourhood.
  *
  * An entry hangs from the first of its tags that the view reaches; an entry tagged to nothing in
  * reach is not in this tree.
@@ -168,19 +154,16 @@ function neighbourhood(graph: TreeGraph, node: string, depth: number, within: Re
 export function viewContents(
 	graph: TreeGraph,
 	items: Readonly<Record<string, ItemLike>>,
-	header: { treeId: string; root: string; mode: string; focus: string },
-	depth: number
+	header: { treeId: string; root: string; mode: string }
 ): ViewContents {
 	const start = viewStart(graph, header)
 	const reach = reachFrom(graph, start)
 	const attached = new Map<string, string[]>()
-	const attachOf = new Map<string, string>()
 	for (const item of Object.values(items)) {
 		if (item.parent) continue
 		const node = item.tags.find((t) => reach.has(t))
 		if (!node) continue
 		attached.set(node, [...(attached.get(node) ?? []), item.itemId])
-		attachOf.set(item.itemId, node)
 	}
 	const shown = new Map<string, { parent: string; variant: 'entry' | 'work' }>()
 	const unfurl = (itemId: string, parent: string, variant: 'entry' | 'work', depthLeft = 16) => {
@@ -193,21 +176,6 @@ export function viewContents(
 	if (header.mode === 'all') {
 		for (const node of reach) for (const id of attached.get(node) ?? []) unfurl(id, node, 'entry')
 		return { context: 'all', start, skills: reach, items: shown }
-	}
-	if (header.mode === 'focus' && header.focus) {
-		if (reach.has(header.focus)) {
-			for (const id of attached.get(header.focus) ?? []) unfurl(id, header.focus, 'entry')
-			return { context: `focus:${header.focus}`, start: header.focus, skills: neighbourhood(graph, header.focus, depth, reach), items: shown }
-		}
-		// An item: climb to its entry, the thing tagged to a skill node.
-		let top = items[header.focus]
-		for (let guard = 0; top?.parent && guard < 16; guard++) top = items[top.parent]
-		const node = top && attachOf.get(top.itemId)
-		if (top && node) {
-			for (const id of attached.get(node) ?? []) if (id !== top.itemId) shown.set(id, { parent: node, variant: 'entry' })
-			unfurl(top.itemId, node, 'entry')
-			return { context: `focus:${top.itemId}`, start: top.itemId, skills: neighbourhood(graph, node, depth, reach), items: shown }
-		}
 	}
 	return { context: 'overview', start, skills: reach, items: shown }
 }

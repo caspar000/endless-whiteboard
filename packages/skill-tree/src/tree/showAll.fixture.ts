@@ -39,7 +39,7 @@ export function showAll(name: string, source: string): ShowAll {
 	}
 	for (const track of doc.tracks) for (const item of track.items) add(item, '')
 	const graph = treeGraph(trees)
-	const view = viewContents(graph, items, { treeId: doc.trees[0]!.treeId, root: '', mode: 'all', focus: '' }, 1)
+	const view = viewContents(graph, items, { treeId: doc.trees[0]!.treeId, root: '', mode: 'all' })
 	const key = (id: string) => `item:${id}`
 	const inView = (id: string) => view.skills.has(id)
 	const arrows = [...graph.prerequisites, ...graph.mounts].filter((e) => inView(e.from) && inView(e.to))

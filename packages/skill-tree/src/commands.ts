@@ -1,11 +1,13 @@
 import type { Command } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
-import { isItem, isSkill, MASTERY, type SkillShape } from './board'
+import { isItem, isSkill, isTree, MASTERY, type SkillShape } from './board'
 import { tick } from './ops'
 import { getItem } from './syllabus'
 import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId, treeHeader } from './tree/ops'
 import { recalculate } from './tree/viewSync'
 import { insertMasteryDemo } from './tree/masteryDemo'
+import { toggleAllNodes } from './tree/view'
+import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -104,6 +106,28 @@ export const skillTreeCommands: readonly Command[] = [
 			const b = editor.getSelectionPageBounds()
 			editor.selectNone()
 			if (b) editor.zoomToBounds(b, { animation: { duration: 250 } })
+		},
+	},
+	{
+		id: 'skill-tree.whole-life-test',
+		title: 'Insert the whole-life test board (dev)',
+		group: GROUP,
+		// For working on the layout; not something to ship to anyone.
+		when: (ctx) => ctx.editor !== null && isDevBuild,
+		run: async ({ editor }) => {
+			if (!editor) return
+			const bounds = editor.getCurrentPageBounds()
+			await insertWholeLifeTest(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center)
+		},
+	},
+	{
+		id: 'skill-tree.toggle-all',
+		title: 'Show all nodes or only skill nodes',
+		group: GROUP,
+		kbd: 'shift+e',
+		when: (ctx) => !!ctx.editor && ctx.editor.getCurrentPageShapes().some(isTree),
+		run: ({ editor }) => {
+			if (editor) toggleAllNodes(editor)
 		},
 	},
 	{

@@ -124,3 +124,21 @@ describe('masteryOf', () => {
 		expect(masteryOf(pieces(30, 3))).toMatchObject({ tier: 3, nextAt: null })
 	})
 })
+
+describe('evaluateTree across trees', () => {
+	const tree = (requires: string): TreeNode[] => [
+		{ nodeId: 'm/sit', name: 'Sit', requires: '', kind: 'root' },
+		{ nodeId: 'm/steady', name: 'Steady', requires },
+	]
+	const unlocked = { state: 'unlocked' } as ReturnType<typeof evaluateTree> extends Map<string, infer S> ? S : never
+
+	it("asks for the state of another tree's node", () => {
+		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18', (id) => (id === 'a/single' ? unlocked : undefined))
+		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
+	})
+
+	it("counts another tree's node as locked when nothing answers for it", () => {
+		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18')
+		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 1, need: 2, met: false })
+	})
+})

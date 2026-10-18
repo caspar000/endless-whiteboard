@@ -2,7 +2,7 @@ import type { Editor } from '@lifeboard/canvas'
 import { isDraft, treeNodes } from '../board'
 import { evaluateTree, type NodeStatus } from '../requirements'
 import { getHabitIndex, getSkillIndex } from '../skillIndex'
-import { getTreeDef } from '../treeDefs'
+import { getTreeDef, getTreeDefs } from '../treeDefs'
 
 /**
  * Every node of a tree, evaluated against the index. Read inside a `useValue`, so a node redraws
@@ -24,5 +24,17 @@ export function treeStatus(editor: Editor, treeId: string): Map<string, NodeStat
 	}))
 	const known = new Set(def?.nodes.map((n) => n.nodeId))
 	const nodes = [...(def?.nodes ?? []), ...fromShapes.filter((n) => !known.has(n.nodeId))]
-	return evaluateTree(nodes, getSkillIndex(), getHabitIndex())
+	// A node shared with another tree asks that tree for the state of what it requires there. Two
+	// trees requiring each other's nodes stop at the first one asked again: that node counts as locked.
+	evaluating.add(treeId)
+	try {
+		return evaluateTree(nodes, getSkillIndex(), getHabitIndex(), undefined, (nodeId) => {
+			const other = Object.values(getTreeDefs()).find((t) => t.nodes.some((n) => n.nodeId === nodeId))
+			return other && !evaluating.has(other.treeId) ? treeStatus(editor, other.treeId).get(nodeId) : undefined
+		})
+	} finally {
+		evaluating.delete(treeId)
+	}
 }
+
+const evaluating = new Set<string>()

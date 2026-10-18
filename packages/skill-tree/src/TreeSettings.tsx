@@ -6,20 +6,14 @@ export function TreeSettings() {
 	const prefs = useSyncExternalStore(subscribeToTreePrefs, getTreePrefs)
 	return (
 		<div className="lb-appearance__card">
-			<Row title="An import shows" hint="What a syllabus's tree view opens on. Double-click a node to focus on it either way.">
-				<select value={prefs.importShows} onChange={(e) => setTreePrefs({ importShows: e.target.value === 'all' ? 'all' : 'overview' })}>
-					<option value="overview">Skill nodes only</option>
+			<Row title="An import shows" hint="What a syllabus's tree view opens on. Shift+E switches between the two.">
+				<select value={prefs.importShows} onChange={(e) => setTreePrefs({ importShows: e.target.value === 'overview' ? 'overview' : 'all' })}>
 					<option value="all">Everything</option>
+					<option value="overview">Skill nodes only</option>
 				</select>
 			</Row>
-			<Row title="Focus reaches" hint="How many steps out from a focused node its neighbours stay visible, folded.">
-				<select value={prefs.focusDepth} onChange={(e) => setTreePrefs({ focusDepth: Number(e.target.value) })}>
-					{[0, 1, 2, 3].map((n) => (
-						<option key={n} value={n}>
-							{n === 0 ? 'Only the node' : n === 1 ? '1 step' : `${n} steps`}
-						</option>
-					))}
-				</select>
+			<Row title="Show tree headers" hint="Draw each tree's header card, to select it and change where its view starts.">
+				<input type="checkbox" checked={prefs.showHeaders} onChange={(e) => setTreePrefs({ showHeaders: e.target.checked })} />
 			</Row>
 			<Row title="Live physics" hint="Trees keep moving like Obsidian's graph instead of settling after a drag.">
 				<input type="checkbox" checked={prefs.live} onChange={(e) => setTreePrefs({ live: e.target.checked })} />

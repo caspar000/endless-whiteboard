@@ -73,12 +73,8 @@ export interface SkillTreeProps {
 	rings: string
 	/** The node id the view starts from ("Show from"); empty for its node of kind root. */
 	root: string
-	/** What this board shows of the tree: skill nodes only, one node's neighbourhood, or everything. */
+	/** What this board shows of the tree: skill nodes only (`overview`) or everything (`all`). */
 	mode: string
-	/** In focus mode, the node or item at the middle. */
-	focus: string
-	/** Focus reach for this tree; -1 takes the default from Settings. */
-	depth: number
 	/** Live physics for this tree: '' takes the default, 'on' or 'off' overrides it. */
 	live: string
 	/** Where nodes were in each view of this tree on this board, as JSON: `{ context: { id: [x, y] } }`. */
@@ -86,7 +82,7 @@ export interface SkillTreeProps {
 	autoHeight: boolean
 }
 
-export const VIEW_MODES = ['overview', 'focus', 'all'] as const
+export const VIEW_MODES = ['overview', 'all'] as const
 export type ViewMode = (typeof VIEW_MODES)[number]
 
 /** An entry (Homer) or a work (the Iliad) drawn in a tree view: a view of a vault item. */

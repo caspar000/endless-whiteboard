@@ -1,7 +1,7 @@
 import type { Editor, TLShapeId } from '@lifeboard/canvas'
 import { isEntry, isSkill, type TreeShape } from '../board'
 import { getTreePrefs } from '../treePrefs'
-import { contentsOf, viewHeaderFor } from './focus'
+import { contentsOf, viewHeaderFor } from './view'
 import { viewEdges, viewShapes } from './viewSync'
 
 /**

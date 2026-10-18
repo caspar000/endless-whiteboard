@@ -3,7 +3,6 @@ import { T } from '@lifeboard/canvas'
 import { CircleDot } from 'lucide-react'
 import { ENTRY_TYPE, type EntryProps } from '../board'
 import { getItem } from '../syllabus'
-import { focusOn } from '../tree/focus'
 import { EntryComponent } from './EntryComponent'
 
 /** A disc the size a skill node used to be, its name inside, so a line meets its middle. */
@@ -12,7 +11,7 @@ export const WORK_SIZE = { w: 180, h: 26 }
 
 /**
  * An entry or a work in a tree view. Put there by the view (treeSync.ts), not by hand, so it has no
- * dock button; double-click focuses the tree on it.
+ * dock button.
  */
 export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 	type: ENTRY_TYPE,
@@ -28,6 +27,5 @@ export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 	// menu the way a retired type is.
 	deprecated: true,
 	component: EntryComponent,
-	onDoubleClick: ({ editor, shape }) => focusOn(editor, (shape.props as EntryProps).itemId),
 	getLabel: (shape) => getItem(shape.props.itemId)?.title || undefined,
 }

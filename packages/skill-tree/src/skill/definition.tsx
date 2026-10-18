@@ -8,7 +8,6 @@ import { Sparkle } from 'lucide-react'
 import { SKILL_TYPE, type SkillNodeProps } from '../board'
 import { makeItemId } from '../model'
 import { SkillComponent } from './SkillComponent'
-import { focusOn } from '../tree/focus'
 
 export const SKILL_SIZE = 150
 
@@ -55,7 +54,6 @@ export const skillNodeDefinition: NodeDefinition<SkillNodeProps> = {
 	aspectRatioLocked: true,
 	component: SkillComponent,
 	canEdit: true,
-	// Double-click focuses the tree on the node; Enter, or right-click › Edit, opens its editor.
-	onDoubleClick: ({ editor, shape }) => focusOn(editor, (shape.props as SkillNodeProps).nodeId),
+	// Double-click, Enter, or right-click › Edit opens its editor.
 	getLabel: (shape) => shape.props.name || undefined,
 }

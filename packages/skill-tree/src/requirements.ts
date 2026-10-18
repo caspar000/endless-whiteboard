@@ -136,7 +136,9 @@ export function evaluateTree(
 	nodes: readonly TreeNode[],
 	index: SkillIndex,
 	habits: HabitIndex = {},
-	today: string = todayIso()
+	today: string = todayIso(),
+	/** The state of a node of another tree, for a node here that requires it. */
+	outside?: (nodeId: string) => NodeStatus | undefined
 ): Map<string, NodeStatus> {
 	const byId = new Map(nodes.map((n) => [n.nodeId, n]))
 	const evidenceByTag = new Map<string, IndexEntry[]>()
@@ -162,6 +164,10 @@ export function evaluateTree(
 		const done = out.get(nodeId)
 		if (done) return done
 		const node = byId.get(nodeId)
+		if (!node && outside) {
+			const there = outside(nodeId)
+			if (there) return there
+		}
 		const pool = byId.get(nodeId)?.kind === 'method' ? [...treeEvidence.values()] : (evidenceByTag.get(nodeId) ?? [])
 		const evidence = [...pool].sort((a, b) => a.doneAt.localeCompare(b.doneAt))
 		if (!node || visiting.has(nodeId)) return lockedStatus(evidence)

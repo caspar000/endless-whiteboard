@@ -5,7 +5,8 @@ import { ENTRY_SIZE, WORK_SIZE } from '../entry/definition'
 import { SKILL_SIZE } from '../skill/definition'
 import type { NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
-import { contentsOf } from './focus'
+import { getTreePrefs } from '../treePrefs'
+import { contentsOf } from './view'
 import { compactLayout } from './compact'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
@@ -15,7 +16,7 @@ import { nodeShapes, SKILL_EDGE_META } from './ops'
  * Runs inside the sync's `editor.run` with history ignored: following a view is not something the
  * user did, and their ⌘Z must not undo it.
  *
- * Each arrangement of a view (the overview, everything, a focus on one node) remembers where its
+ * Each arrangement of a view (the overview, everything) remembers where its
  * nodes were, on the header (`places`). Switching arrangement saves the one you leave and puts the
  * one you enter back; what has never been placed is laid out, the whole view the first time, beside
  * its nearest neighbour after that.
@@ -238,7 +239,7 @@ export function viewEdges(editor: Editor, view: ViewContents): GraphEdge[] {
 }
 
 /**
- * Lays a whole view out around its start (the focus, or the view's root), which stays where it is,
+ * Lays a whole view out around its start (the view's root), which stays where it is,
  * everything else on the board an obstacle. `label` names the undo step; `null` inside a sync.
  */
 export function layoutView(editor: Editor, header: TreeShape, view: ViewContents, label: string | null): number {
@@ -259,16 +260,17 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		const b = editor.getShapePageBounds(s.id)
 		return b ? [{ x: b.center.x - anchor.x, y: b.center.y - anchor.y, w: b.w, h: b.h }] : []
 	})
-	// The header is laid out with the view, hung from its start like a leaf, so it lands clear of it.
+	// A drawn header is laid out with the view, hung from its start like a leaf, so it lands clear of
+	// it. A hidden one (the default) takes no room.
 	const HEADER = 'header'
-	const hb = editor.getShapePageBounds(header.id)
+	const hb = getTreePrefs().showHeaders ? editor.getShapePageBounds(header.id) : undefined
 	if (hb) {
 		nodes.push({ id: HEADER, w: hb.w, h: hb.h })
 		edges.push({ from: startKey, to: HEADER })
 	}
-	// A view with entries around a skill node at its middle is grown compact (compact.ts); a focus on
-	// an entry is laid out whole around that entry, so it is the middle.
-	const clustered = view.items.size > 0 && !view.items.has(view.start)
+	// Everything is grown compact (compact.ts); the skill nodes alone are laid out as a graph. Both give
+	// way to the whole-life layout (docs/skill-tree-layout-plan.md, phase 2).
+	const clustered = view.items.size > 0
 	const at = clustered
 		? compactLayout(nodes, edges, { isSkill: (id) => view.skills.has(id), start: startKey, unlined: new Set([HEADER]), obstacles })
 		: layoutGraph(nodes, edges, { root: startKey, obstacles, clearEdges: (e) => e.to !== HEADER })

@@ -129,8 +129,8 @@ export function insertTree(
  */
 export function drawPrerequisites(editor: Editor, treeId: string): void {
 	const nodes = treeNodes(editor, treeId)
-	const byNodeId = new Map(nodes.map((n) => [n.props.nodeId, n]))
-	const ours = new Set(nodes.map((n) => n.id as string))
+	// A prerequisite may be another tree's node: the arrow is this tree's, as the requirement is.
+	const byNodeId = nodeShapes(editor)
 	const stale = editor
 		.getCurrentPageShapes()
 		.filter((s) => s.type === 'arrow' && s.meta[SKILL_EDGE_META] === treeId)
@@ -144,7 +144,7 @@ export function drawPrerequisites(editor: Editor, treeId: string): void {
 				if (!('node' in condition)) continue
 				for (const id of condition.node) {
 					const from = byNodeId.get(id)
-					if (!from || !ours.has(from.id)) continue
+					if (!from || from.id === node.id) continue
 					const arrow = connectShapes(editor, from.id, node.id)
 					if (arrow) editor.updateShape({ id: arrow, type: 'arrow', meta: { [SKILL_EDGE_META]: treeId } })
 				}

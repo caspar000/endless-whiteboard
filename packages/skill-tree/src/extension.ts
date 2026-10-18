@@ -7,10 +7,10 @@ import { skillTreeCommands } from './commands'
 import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
 import { itemNodeDefinition } from './item/definition'
 import { entryNodeDefinition } from './entry/definition'
-import { ENTRY_TYPE, isEntry, isSkill, SKILL_TYPE } from './board'
+import { ENTRY_TYPE, isEntry, SKILL_TYPE, TREE_TYPE } from './board'
 import { putCard } from './ops'
-import { focusOn } from './tree/focus'
 import { TreeSettings } from './TreeSettings'
+import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
 import { trackNodeDefinition } from './track/definition'
@@ -50,16 +50,6 @@ export const skillTreeExtension: Extension = {
 	],
 	actions: [
 		{
-			id: 'skill-tree.focus',
-			label: 'Focus here',
-			appliesTo: (shape) => shape.type === SKILL_TYPE || shape.type === ENTRY_TYPE,
-			run: ({ editor, shape }) => {
-				const s = editor.getShape(shape.id as never)
-				if (isSkill(s)) focusOn(editor, s.props.nodeId)
-				else if (isEntry(s)) focusOn(editor, s.props.itemId)
-			},
-		},
-		{
 			id: 'skill-tree.edit',
 			label: 'Edit',
 			appliesTo: (shape) => shape.type === SKILL_TYPE,
@@ -76,6 +66,9 @@ export const skillTreeExtension: Extension = {
 		},
 	],
 	settings: { title: 'Skill trees', Component: TreeSettings },
+	// A tree's header is its view, not something to look at (docs/skill-tree-layout-plan.md, "Views"):
+	// hidden unless Settings asks for headers.
+	shapeVisibility: { types: [TREE_TYPE], isHidden: () => !getTreePrefs().showHeaders },
 	commands: [...skillTreeCommands, ...syllabusCommands],
 	operations: syllabusOperations,
 	fileImports: [syllabusFileImport],

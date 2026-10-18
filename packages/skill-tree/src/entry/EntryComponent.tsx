@@ -10,7 +10,7 @@ const RING = 2 * Math.PI * 46
 /**
  * An entry or a work in a tree view (docs/skill-tree-plan.md, "Rebuild"): a view of a vault item.
  * An entry is a small disc whose ring is how many of its works are done; a work is a tick dot with
- * its title. Ticking either is the same tick as in the list. Double-click focuses the tree on it.
+ * its title. Ticking either is the same tick as in the list.
  */
 function EntryComponentImpl({ shape, editor }: NodeComponentProps<EntryProps>) {
 	const { item } = useValue('lifeboard:skill-entry', () => ({ item: getItems()[shape.props.itemId], index: getSkillIndex() }), [shape.props.itemId])

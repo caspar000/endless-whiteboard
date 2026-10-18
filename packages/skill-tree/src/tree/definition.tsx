@@ -4,7 +4,7 @@ import { Network } from 'lucide-react'
 import { memo, type KeyboardEvent, type SyntheticEvent } from 'react'
 import { draftClass, TREE_TYPE, treeNodes, type SkillTreeProps, type TreeShape } from '../board'
 import { getItem } from '../syllabus'
-import { setView } from './focus'
+import { setView } from './view'
 import { recalculate } from './viewSync'
 import { makeItemId } from '../model'
 import { TIERS } from '../requirements'
@@ -21,15 +21,8 @@ function rootChoices(editor: Editor, treeId: string): { id: string; nodeId: stri
 	return [...reachFrom(graph, root)].map((id) => ({ id, nodeId: id, name: graph.nodes.get(id)!.def.name }))
 }
 
-const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1, AddView: 2 })
+const versions = createShapePropsMigrationIds(TREE_TYPE, { AddRoot: 1, AddView: 2, DropFocus: 3 })
 
-/** What a header's arrangement is called on its card. */
-function arrangementLabel(editor: Editor, header: TreeShape): string {
-	if (header.props.mode === 'all') return 'Everything'
-	if (header.props.mode !== 'focus' || !header.props.focus) return 'Skill nodes'
-	const node = treeGraph(boardTrees(editor)).nodes.get(header.props.focus)
-	return `Focus: ${node?.def.name ?? getItem(header.props.focus)?.title ?? header.props.focus}`
-}
 
 /**
  * A tree's header card, and this board's view of the tree (docs/skill-tree-plan.md, "Rebuild"): its
@@ -81,7 +74,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 					` · ${TIERS.map((name, t) => (summary.tiers[t] ? `${summary.tiers[t]} ${name}` : '')).filter(Boolean).join(', ')}`}
 			</span>
 			<div className="lb-skilltree__bar">
-				<span className="lb-skilltree__mode">{arrangementLabel(editor, header)}</span>
+				<span className="lb-skilltree__mode">{mode === 'all' ? 'Everything' : 'Skill nodes'}</span>
 				{mode !== 'all' && button('Show all', 'Every entry and work of this tree, however many', () => setView(editor, header, 'all'))}
 				{mode !== 'overview' && button('Back', 'Back to the skill nodes', () => setView(editor, header, 'overview'))}
 				{button('Re-calculate', 'Lay this arrangement out again from scratch', () => recalculate(editor, header))}
@@ -124,16 +117,6 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 					</label>
 					<div className="lb-skill-editor__pair">
 						<label>
-							<span>Focus reaches</span>
-							<select value={shape.props.depth} onChange={(e) => set({ depth: Number(e.target.value) })}>
-								<option value={-1}>Default</option>
-								<option value={0}>Only the node</option>
-								<option value={1}>1 step</option>
-								<option value={2}>2 steps</option>
-								<option value={3}>3 steps</option>
-							</select>
-						</label>
-						<label>
 							<span>Live physics</span>
 							<select value={shape.props.live} onChange={(e) => set({ live: e.target.value })}>
 								<option value="">Default</option>
@@ -142,7 +125,7 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 							</select>
 						</label>
 					</div>
-					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Double-click a node to focus on it; Re-calculate lays the arrangement out again.</p>
+					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Re-calculate lays the view out again.</p>
 					<p className="lb-skill-editor__id">{shape.props.treeId}</p>
 				</div>
 			</NodeEditorPopover>
@@ -166,8 +149,6 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		rings: T.string,
 		root: T.string,
 		mode: T.string,
-		focus: T.string,
-		depth: T.number,
 		live: T.string,
 		places: T.string,
 		autoHeight: T.boolean,
@@ -191,6 +172,15 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 					props.places = '{}'
 				},
 			},
+			{
+				// Focus mode went (docs/skill-tree-layout-plan.md, "Views"): a focused view shows everything.
+				id: versions.DropFocus,
+				up(props) {
+					if (props.mode === 'focus') props.mode = 'all'
+					delete props.focus
+					delete props.depth
+				},
+			},
 		],
 	}),
 	defaultProps: () => ({
@@ -201,9 +191,7 @@ export const treeNodeDefinition: NodeDefinition<SkillTreeProps> = {
 		sectors: '',
 		rings: '',
 		root: '',
-		mode: 'overview',
-		focus: '',
-		depth: -1,
+		mode: 'all',
 		live: '',
 		places: '{}',
 		autoHeight: true,

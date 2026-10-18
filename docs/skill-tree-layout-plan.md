@@ -235,3 +235,33 @@ Left: the arrow from You to a pillar carrying big trees is long, as that pillar'
 to clear the middle. Arrows are still at least two cluster radii long, about 700 px between big
 clusters, unless compaction nests clusters in each other's gaps. The new crossings are step 3's:
 repair with bounded local moves.
+
+## Phase B, step 3: repairing crossings (2026-10-18)
+
+Built, in `tree/balloon.ts` and `tree/pullIn.ts`:
+
+- **Gaps facing the final skeleton.** Most new crossings came from the balloon itself: a node moves
+  whenever a cluster before it in the sweep changes size, so clusters packed toward one skeleton had
+  their gaps facing where the arrows used to come in. Packing and placing now repeat until no cluster
+  grows (at most five rounds). Arrows over items in the bare skeleton: 52 → 13.
+- **Sweeps that keep off arrows.** A child's branch is kept off its siblings' arrows and never across
+  them, and its own arrow off and never across what is already placed.
+- **Sibling order by cross-links** (step 1, after all): two children whose branches a cross-link
+  joins are brought next to each other, every order tried for a family of up to seven.
+- **The repair pass** (`repairCrossings`), run before compaction while there is room and again at
+  the end. For each arrow that runs over a node, a light line or another arrow, it tries, kept only
+  if fewer crossings are left and nothing is covered, crowded or stretched past the longest arrow:
+  turning a branch at either end, or the branch of what it runs over, up to 40° about its parent; a
+  cluster about its skill node; an entry with its works about its skill node, or its works about the
+  entry, up to 180°; and an entry swapped round its skill node with another entry's family.
+- **Keeping branches off the arrow into them** (`keepWayBack`) is there as a setting, off: it needs
+  arrows 600 to 1500 px longer on the families with big branches, for no fewer crossings here.
+
+Four-tree board, rings → from the parent with all of this: arrow over arrow 0 → 2, through a skill
+node 0 → 0, over items 0 → 1, over light lines 1 → 2; mean arrow 1791 → 828 px, total length 236k →
+109k, longest 7771 → 4502, fill 6.0% → 7.7%, 7.4 s → 2.9 s. The whole-life board: 8/1/1/0 → 7/1/2/1,
+fill 5.3% → 8.4%. The skill-node view: 5/1/0/0 → 5/1/0/0.
+
+Left: the two arrow crossings are a branch curling back over the arrow into its own tree (Film's
+weeks over You → Practical; Games' close reading over Practical → Games). The repair can't turn them
+clear without covering a neighbour, and keeping the way back clear costs more than it saves.

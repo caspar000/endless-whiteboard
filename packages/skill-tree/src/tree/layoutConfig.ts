@@ -15,6 +15,8 @@ export interface LayoutConfig {
 	placement: 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
+	/** Keep every branch off the arrow into its own node, at the cost of longer arrows (placed from the parent). */
+	keepWayBack: boolean
 	/** Open ground between the middle and the pillars, for the arrows out to them. */
 	hubRoom: number
 	/** Free space kept between two clusters when the skeleton is placed. */
@@ -55,6 +57,8 @@ export interface LayoutConfig {
 	reorientClusters: boolean
 	/** Then push every node an arrow runs through off it, sideways, as if the arrow were solid. */
 	pushOffArrows: boolean
+	/** Last, turn branches and clusters a little where that leaves fewer crossings (phase B, step 3). */
+	repairCrossings: boolean
 }
 
 export const DEFAULT_LAYOUT: LayoutConfig = {
@@ -63,6 +67,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	masterySize: 380,
 	placement: 'fromParent',
 	fanSpread: 240,
+	keepWayBack: false,
 	hubRoom: 150,
 	clusterGap: 60,
 	minSlice: 40,
@@ -83,6 +88,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	arrowRule: 'all',
 	reorientClusters: true,
 	pushOffArrows: true,
+	repairCrossings: true,
 }
 
 type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
@@ -109,6 +115,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
+	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
 	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },
 	{ group: 'Skeleton', key: 'minSlice', label: 'Narrowest pillar slice (°)', min: 0, max: 72, step: 1 },
@@ -138,6 +145,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	},
 	{ group: 'Arrows', key: 'reorientClusters', label: "Turn clusters' gaps toward their arrows" },
 	{ group: 'Arrows', key: 'pushOffArrows', label: 'Push nodes off arrows, as if solid' },
+	{ group: 'Arrows', key: 'repairCrossings', label: 'Turn branches to repair crossings' },
 ]
 
 const KEY = 'lifeboard:skill-tree-layout'

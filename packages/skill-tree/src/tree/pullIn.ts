@@ -251,6 +251,9 @@ function pullInNow(
 	}
 	const move = (moving: ReadonlySet<number>, dx: number, dy: number) => apply(shiftBy(moving, dx, dy))
 
+	// What the skeleton crosses is repaired first, while there is room to turn things; compaction
+	// never adds a crossing, and the repair runs again at the end for what it left.
+	if (C.repairCrossings) repair()
 	const order = [start]
 	for (let i = 0; i < order.length; i++) order.push(...(children.get(order[i]!) ?? []))
 	for (const id of C.slideToParent ? order : []) {
@@ -323,7 +326,138 @@ function pullInNow(
 	if (C.shrinkTree) shrinkTree()
 	if (C.reorientClusters) reorient()
 	if (C.pushOffArrows) pushOffArrows()
+	if (C.repairCrossings) repair()
 	ids.forEach((id, i) => at.set(id, { x: boxes[i]!.x, y: boxes[i]!.y }))
+
+	/**
+	 * Phase B, step 3: what still crosses, repaired by bounded local moves. For each arrow between
+	 * skill nodes that runs over a node, a light line or another arrow, the branches that could clear
+	 * it are tried turned a little (up to 40°) about the node they hang from: the branch at either end
+	 * of the arrow, and the branch of each node it runs over; a cluster the arrow runs through is also
+	 * tried turned about its own skill node. The turn that leaves fewest crossings is kept, if that is
+	 * fewer than now and it covers nothing, crowds nothing and stretches no arrow past the longest.
+	 */
+	function repair(): void {
+		const TURNS = [4, -4, 8, -8, 15, -15, 25, -25, 40, -40].map((d) => (d / 180) * Math.PI)
+		/** A family is small and loose: it may swing further, as far as round to the other side. */
+		const WIDE = [...TURNS, ...[60, -60, 90, -90, 135, -135, 180].map((d) => (d / 180) * Math.PI)]
+		/** The largest branch worth turning: past it a turn is a big move, and slow to judge. */
+		const LARGEST = 400
+		const skillOf = (id: string) => (isSkill(id) ? id : skillParent(id))
+		const turnAbout = (moving: ReadonlySet<number>, pivot: Point, a: number): Trial => {
+			const [cos, sin] = [Math.cos(a), Math.sin(a)]
+			return {
+				moving,
+				pos: (i) => {
+					if (!moving.has(i)) return boxes[i]!
+					const [dx, dy] = [boxes[i]!.x - pivot.x, boxes[i]!.y - pivot.y]
+					return { x: pivot.x + dx * cos - dy * sin, y: pivot.y + dx * sin + dy * cos }
+				},
+			}
+		}
+		/** Pairs of moving nodes on each other (works are boxes, which don't turn), by a grid of its own. */
+		const crowding = (t: Trial) => {
+			const cells = new Map<string, Box[]>()
+			const SIZE = 200
+			let n = 0
+			for (const i of t.moving) {
+				const b = boxAt(t, i)
+				const [cx, cy] = [Math.floor(b.x / SIZE), Math.floor(b.y / SIZE)]
+				for (let u = cx - 1; u <= cx + 1; u++) for (let v = cy - 1; v <= cy + 1; v++) for (const o of cells.get(`${u},${v}`) ?? []) if (overlaps(b, o, 0)) n++
+				const key = `${cx},${cy}`
+				cells.set(key, [...(cells.get(key) ?? []), b])
+			}
+			return n
+		}
+		/** Whether a turn puts moving nodes on each other more than they already are. */
+		const crowded = (t: Trial) => crowding(t) > crowding(still(t.moving))
+		const none = new Set<number>()
+		for (let round = 0; round < 3; round++) {
+			let repaired = 0
+			for (const [k, [x, y]] of arrows.entries()) {
+				if (!judge([k], still(none)).crossings) continue
+				// What could clear it: the branches at its ends, and the branch and cluster of what it runs over.
+				const tries: Trial[] = []
+				const turns = (moving: Set<number>, pivot: Point, angles: readonly number[]) => {
+					for (const a of angles) tries.push(turnAbout(moving, pivot, a))
+				}
+				const seen = new Set<string>()
+				const branchOf = (skill: string | undefined) => {
+					if (!skill || seen.has(`b:${skill}`)) return
+					seen.add(`b:${skill}`)
+					const parent = skillParent(skill)
+					if (!parent || !index.has(parent)) return
+					const moving = branch(skill)
+					if (moving.size <= LARGEST) turns(moving, boxes[index.get(parent)!]!, TURNS)
+				}
+				const clusterOf = (skill: string | undefined) => {
+					if (!skill || seen.has(`c:${skill}`) || !index.has(skill)) return
+					seen.add(`c:${skill}`)
+					const moving = new Set((units.get(skill) ?? []).filter((m) => m !== skill && index.has(m)).map((m) => index.get(m)!))
+					if (moving.size) turns(moving, boxes[index.get(skill)!]!, TURNS)
+				}
+				branchOf(ids[y]!)
+				branchOf(ids[x]!)
+				/**
+				 * An entry and its works turned round their skill node, or swapped round it with another
+				 * entry's family, or its works alone swung round the entry.
+				 */
+				const familyOf = (member: string) => {
+					let entry = member
+					for (let p = parentOf.get(entry); p && !isSkill(p); p = parentOf.get(entry)) entry = p
+					const skill = parentOf.get(entry)
+					if (seen.has(`f:${entry}`) || !index.has(entry) || !skill || !index.has(skill)) return
+					seen.add(`f:${entry}`)
+					const family = branch(entry)
+					const hub = boxes[index.get(skill)!]!
+					turns(family, hub, WIDE)
+					const works = new Set([...family].filter((i) => i !== index.get(entry)))
+					if (works.size) turns(works, boxes[index.get(entry)!]!, WIDE)
+					const angleOf = (i: number) => Math.atan2(boxes[i]!.y - hub.y, boxes[i]!.x - hub.x)
+					for (const other of children.get(skill) ?? []) {
+						if (other === entry || isSkill(other) || !index.has(other)) continue
+						const theirs = branch(other)
+						const turn = angleOf(index.get(other)!) - angleOf(index.get(entry)!)
+						const mine = turnAbout(family, hub, turn)
+						const back = turnAbout(theirs, hub, -turn)
+						tries.push({ moving: new Set([...family, ...theirs]), pos: (i) => (family.has(i) ? mine.pos(i) : back.pos(i)) })
+					}
+				}
+				const l = { ax: boxes[x]!.x, ay: boxes[x]!.y, bx: boxes[y]!.x, by: boxes[y]!.y }
+				// An arrow it crosses: the branches at that arrow's ends.
+				for (const [u, v] of arrows) {
+					if (u === x || u === y || v === x || v === y || !segmentsCross(boxes[x]!, boxes[y]!, boxes[u]!, boxes[v]!)) continue
+					branchOf(ids[v]!)
+					branchOf(ids[u]!)
+				}
+				for (const j of grid.alongLine(l, C.compactGap + ARROW_MARGIN)) {
+					if (j === x || j === y || !crosses(l, boxes[j]!, ARROW_MARGIN)) continue
+					const owner = skillOf(ids[j]!)
+					if (owner !== ids[x] && owner !== ids[y]) branchOf(owner)
+					clusterOf(owner)
+					if (!isSkill(ids[j]!)) familyOf(ids[j]!)
+				}
+				let best: Trial | null = null
+				let gain = 0
+				for (const t of tries) {
+					if (covers(t) || crowded(t)) continue
+					const R = affected(t)
+					const before = judge(R, still(t.moving))
+					const after = judge(R, t)
+					if (after.excess > before.excess + 0.5) continue
+					if (before.crossings - after.crossings > gain) {
+						gain = before.crossings - after.crossings
+						best = t
+					}
+				}
+				if (best) {
+					apply(best)
+					repaired++
+				}
+			}
+			if (!repaired) break
+		}
+	}
 
 	/**
 	 * Arrows as rigid bodies: any node an arrow between skill nodes runs through is pushed off it,

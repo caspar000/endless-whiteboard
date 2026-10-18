@@ -113,10 +113,21 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	const first = pack(evenly)
 	const firstSkeleton = skeleton((id) => first.get(id)!.radius)
 	const second = pack(towards(firstSkeleton))
-	const placed = skeleton((id) => second.get(id)!.radius)
-	const third = pack(towards(placed))
-	// The last packing where it is no bigger than the one the skeleton was placed for, else that one.
-	const clusters = new Map(order.map((id) => [id, third.get(id)!.radius <= second.get(id)!.radius + 0.5 ? third.get(id)! : second.get(id)!]))
+	let room = new Map(order.map((id) => [id, second.get(id)!.radius]))
+	let placed = skeleton((id) => room.get(id)!)
+	let clusters = second
+	// Packed again with the gaps toward the skeleton, keeping each cluster's latest packing that fits
+	// the room the skeleton gave it. Placed from the parent, a node moves whenever a cluster before it
+	// in the sweep changes size, so while any cluster grows the skeleton is placed again with room for
+	// it and the clusters packed again, so the gaps face where the arrows end up coming in.
+	for (let round = 0; ; round++) {
+		const next = pack(towards(placed))
+		clusters = new Map(order.map((id) => [id, next.get(id)!.radius <= room.get(id)! + 0.5 ? next.get(id)! : clusters.get(id)!]))
+		const grew = order.some((id) => next.get(id)!.radius > room.get(id)! + 0.5)
+		if (!grew || C.placement === 'rings' || round >= 4) break
+		room = new Map(order.map((id) => [id, Math.max(room.get(id)!, next.get(id)!.radius)]))
+		placed = skeleton((id) => room.get(id)!)
+	}
 	for (const [id, p] of placed) out.set(id, p)
 
 	// 5. Members where their cluster put them; anything the edges don't reach, above the start.
@@ -150,7 +161,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
 	function skeleton(radius: (id: string) => number): Map<string, Point> {
-		const out = C.placement === 'rings' ? rings(radius) : balloon({ start, order, kids: skillKids, radius, config: C })
+		const out = C.placement === 'rings' ? rings(radius) : balloon({ start, order, kids: skillKids, radius, arrows: options.arrows, config: C })
 		shareBetween(out, radius)
 		return out
 	}

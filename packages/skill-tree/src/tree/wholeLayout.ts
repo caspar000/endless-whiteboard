@@ -115,7 +115,9 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	const towards = (at: ReadonlyMap<string, Point>) => (id: string) =>
 		[...neighbours.get(id)!].filter((n) => at.has(n)).map((n) => Math.atan2(at.get(n)!.y - at.get(id)!.y, at.get(n)!.x - at.get(id)!.x))
 	const first = pack(evenly)
-	const firstSkeleton = skeleton((id) => first.get(id)!.radius)
+	// The first skeleton only places the clusters' gaps; compacted cones take seconds, so the strict
+	// cones they start from do for it.
+	const firstSkeleton = skeleton((id) => first.get(id)!.radius, C.placement === 'compactCones')
 	const second = pack(towards(firstSkeleton))
 	let room = new Map(order.map((id) => [id, second.get(id)!.radius]))
 	let placed = skeleton((id) => room.get(id)!)
@@ -128,7 +130,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 		const next = pack(towards(placed))
 		clusters = new Map(order.map((id) => [id, next.get(id)!.radius <= room.get(id)! + 0.5 ? next.get(id)! : clusters.get(id)!]))
 		const grew = order.some((id) => next.get(id)!.radius > room.get(id)! + 0.5)
-		if (!grew || C.placement === 'rings' || round >= 4) break
+		if (!grew || C.placement === 'rings' || C.placement === 'compactCones' || round >= 4) break
 		room = new Map(order.map((id) => [id, Math.max(room.get(id)!, next.get(id)!.radius)]))
 		placed = skeleton((id) => room.get(id)!)
 	}
@@ -169,10 +171,11 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	return out
 
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
-	function skeleton(radius: (id: string) => number): Map<string, Point> {
+	function skeleton(radius: (id: string) => number, rough = false): Map<string, Point> {
 		const input = { start, order, kids: skillKids, radius, arrows: options.arrows, config: C }
-		const out =
-			C.placement === 'rings'
+		const out = rough
+			? cones(input, true)
+			: C.placement === 'rings'
 				? rings(radius)
 				: C.placement === 'compactCones'
 					? compactCones(input)

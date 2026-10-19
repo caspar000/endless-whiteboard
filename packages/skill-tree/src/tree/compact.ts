@@ -12,7 +12,8 @@ import { cones } from './cones'
  * branch is pulled in along its arrow toward its parent as far as it will go, and tried turned a
  * little about its parent where that lets it come in further; and each family is tried fanned wider
  * round its parent and brought in together, so a family too wide for its slice spreads instead of
- * stopping at its siblings. A move is kept only if it puts no
+ * stopping at its siblings. Last, node by node, forces in the manner of Gray et al.'s refinement:
+ * arrows pull, near nodes push apart, and every move is checked the same way. A move is kept only if it puts no
  * cluster on another, no arrow of the tree across another, and no arrow through a cluster it
  * doesn't end at, and keeps the open ground round You.
  */
@@ -23,6 +24,20 @@ type Point = { x: number; y: number }
 const TURNS = [5, 15, 30, 60, 90]
 /** How much wider a family is tried fanned round its parent. */
 const FANS = [1, 1.4, 2, 3]
+/** Rounds of the node-by-node forces, how far a node may move in one to start with and to stop at, and how fast that shrinks. */
+const FORCE_ROUNDS = 200
+const STEP_FROM = 2000
+const STEP_TO = 5
+const COOLING = 0.97
+/** Ways tried when the straight way is blocked: turned off it, either side. */
+const SLIDES = [0, Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3]
+/** How much longer than touching an arrow may be before it pulls. */
+const SLACK = 40
+/** How hard an arrow pulls its parent, against its child. */
+const PARENT_PULL = 0.25
+/** How close two nodes may come before they push apart, past touching, and how hard. */
+const SPREAD = 120
+const PUSH = 0.5
 /** Rounds of pulling everything in. */
 const ROUNDS = 14
 
@@ -43,37 +58,42 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 	for (const id of [...ids].reverse()) below.set(id, [index.get(id)!, ...kids(id).flatMap((k) => below.get(k) ?? [])])
 
 	/**
-	 * Whether moving `moving` to `nx`, `ny` (indexed like `x`, `y`; the rest unmoved there) keeps every
-	 * rule. Moved nodes are checked against everything, each other included: a family fanned out
-	 * moves several branches at once, each its own way.
+	 * How many rules the moving nodes break where `nx`, `ny` puts them (indexed like `x`, `y`; the rest
+	 * where they are): clusters on each other, tree arrows across each other, arrows through clusters
+	 * they don't end at. Moved nodes are counted against everything, each other included: a family
+	 * fanned out moves several branches at once, each its own way.
 	 */
-	const allowed = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => {
+	const broken = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => {
+		let n = 0
 		for (const i of moving) {
 			for (let j = 0; j < ids.length; j++) {
 				if (j === i || (moving.has(j) && j < i)) continue
-				if (Math.hypot(nx[i]! - nx[j]!, ny[i]! - ny[j]!) < r[i]! + r[j]! + gap) return false
+				if (Math.hypot(nx[i]! - nx[j]!, ny[i]! - ny[j]!) < r[i]! + r[j]! + gap) n++
 			}
 		}
-		// Every arrow with an end moving, against every other arrow, and against every cluster it doesn't end at.
 		for (const [a, b] of edges) {
 			if (!moving.has(a) && !moving.has(b)) continue
 			const [ax, ay, bx, by] = [nx[a]!, ny[a]!, nx[b]!, ny[b]!]
 			for (const [c, d] of edges) {
 				if (c === a || c === b || d === a || d === b) continue
-				if (cross(ax, ay, bx, by, nx[c]!, ny[c]!, nx[d]!, ny[d]!)) return false
+				if (cross(ax, ay, bx, by, nx[c]!, ny[c]!, nx[d]!, ny[d]!)) n++
 			}
 			for (let j = 0; j < ids.length; j++) {
 				if (j === a || j === b) continue
-				if (nearSegment(nx[j]!, ny[j]!, ax, ay, bx, by) < r[j]!) return false
+				if (nearSegment(nx[j]!, ny[j]!, ax, ay, bx, by) < r[j]!) n++
 			}
 		}
-		// No still arrow through a moved cluster.
 		for (const [c, d] of edges) {
 			if (moving.has(c) || moving.has(d)) continue
-			for (const i of moving) if (nearSegment(nx[i]!, ny[i]!, nx[c]!, ny[c]!, nx[d]!, ny[d]!) < r[i]!) return false
+			for (const i of moving) if (nearSegment(nx[i]!, ny[i]!, nx[c]!, ny[c]!, nx[d]!, ny[d]!) < r[i]!) n++
 		}
-		return true
+		return n
 	}
+	/**
+	 * Whether a move keeps the rules: it breaks none it didn't already, so a layout that starts clean
+	 * stays clean, and a node already caught on something can still move to get free.
+	 */
+	const allowed = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => broken(moving, nx, ny) <= broken(moving, x, y)
 
 	/** `moving` turned by `turn` about point (`px`, `py`), then moved `dx`, `dy`. */
 	const moved = (moving: readonly number[], px: number, py: number, turn: number, dx: number, dy: number) => {
@@ -203,6 +223,65 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 		}
 		if (gained < 10) break
 	}
+
+	// Then node by node, as in Gray et al.'s refinement: every arrow pulls its ends toward a short
+	// length (the child harder than the parent), nodes near each other push apart so a wide family
+	// spreads round its parent, and each node moves alone, a step at a time, as far as the forces say
+	// but never into a crossing or an overlap. You and the pillars stay where they are.
+	const fixed = new Set([index.get(start)!, ...kids(start).map((p) => index.get(p)!)])
+	const free = ids.map((_, i) => i).filter((i) => !fixed.has(i))
+	let step = STEP_FROM
+	for (let round = 0; round < FORCE_ROUNDS && step > STEP_TO; round++, step *= COOLING) {
+		const fx = new Array<number>(ids.length).fill(0)
+		const fy = new Array<number>(ids.length).fill(0)
+		for (const [a, b] of edges) {
+			const [dx, dy] = [x[a]! - x[b]!, y[a]! - y[b]!]
+			const d = Math.hypot(dx, dy) || 1
+			const stretch = d - (r[a]! + r[b]! + gap + SLACK)
+			if (stretch <= 0) continue
+			// b is the child: pulled toward its parent a, which is pulled a little toward it.
+			fx[b]! += (dx / d) * stretch
+			fy[b]! += (dy / d) * stretch
+			fx[a]! -= (dx / d) * stretch * PARENT_PULL
+			fy[a]! -= (dy / d) * stretch * PARENT_PULL
+		}
+		for (let i = 0; i < ids.length; i++)
+			for (let j = i + 1; j < ids.length; j++) {
+				const [dx, dy] = [x[i]! - x[j]!, y[i]! - y[j]!]
+				const d = Math.hypot(dx, dy) || 1
+				const near = r[i]! + r[j]! + gap + SPREAD
+				if (d >= near) continue
+				const push = (near - d) * PUSH
+				fx[i]! += (dx / d) * push
+				fy[i]! += (dy / d) * push
+				fx[j]! -= (dx / d) * push
+				fy[j]! -= (dy / d) * push
+			}
+		let movedAny = false
+		for (const i of free) {
+			const f = Math.hypot(fx[i]!, fy[i]!)
+			if (f < 1) continue
+			const len = Math.min(step, f)
+			const set = new Set([i])
+			const before = broken(set, x, y)
+			const toward = Math.atan2(fy[i]!, fx[i]!)
+			// Straight where the forces say; blocked, sliding round what is in the way.
+			tries: for (const turn of SLIDES) {
+				for (const share of [1, 0.5]) {
+					const [nx, ny] = [[...x], [...y]]
+					nx[i] = x[i]! + Math.cos(toward + turn) * len * share
+					ny[i] = y[i]! + Math.sin(toward + turn) * len * share
+					if (broken(set, nx, ny) <= before) {
+						x[i] = nx[i]!
+						y[i] = ny[i]!
+						movedAny = true
+						break tries
+					}
+				}
+			}
+		}
+		if (!movedAny) break
+	}
 	return new Map(ids.map((id, i) => [id, { x: x[i]!, y: y[i]! }]))
 }
 
@@ -222,3 +301,4 @@ function nearSegment(px: number, py: number, ax: number, ay: number, bx: number,
 	const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)))
 	return Math.hypot(ax + t * dx - px, ay + t * dy - py)
 }
+

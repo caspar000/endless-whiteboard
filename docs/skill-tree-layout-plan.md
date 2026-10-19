@@ -370,3 +370,14 @@ Two new placements, picked in Settings › Syllabus & skill trees › Layout (an
 Bands with region cones stays the default. Both new ones keep their promises (no overlaps, next to no
 crossings) but leave the widest families far out; what each needs next is a way for a wide family to
 spread sideways instead of out.
+
+**Cones, compacted, node by node (2026-10-19).** After the branch pulls and family fans, a force pass
+in the manner of Gray et al.'s refinement: arrows pull their ends toward a short length (the child
+harder), near nodes push apart, You and the pillars stay; each node moves alone, a cooling step at a
+time, and when the straight way is blocked it slides round at 30° and 60°. Every move is kept only
+if it breaks no more rules than before (clusters on each other, tree arrows across each other,
+arrows through clusters), so a node already caught on something can still move to get free; the
+absolute rule left such nodes stuck for good. Only the final skeleton is compacted (the first,
+which only places the clusters' gaps, uses the strict cones): 4.2 s instead of 26. Four-tree board:
+27,025 × 36,531 px, mean arrow 1884, 1 arrow crossing, 9 overlapping boxes; the core is compact and
+reads as trees, but five leaves (two of the Play List's, three of Stagecraft's) stay far out.

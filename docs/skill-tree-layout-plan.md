@@ -381,3 +381,11 @@ absolute rule left such nodes stuck for good. Only the final skeleton is compact
 which only places the clusters' gaps, uses the strict cones): 4.2 s instead of 26. Four-tree board:
 27,025 × 36,531 px, mean arrow 1884, 1 arrow crossing, 9 overlapping boxes; the core is compact and
 reads as trees, but five leaves (two of the Play List's, three of Stagecraft's) stay far out.
+
+**Jumps (2026-10-19).** After the force pass, a node whose arrow is still twice its resting length
+or more jumps with its whole branch to the spot round its parent nearest to it (every 10°, at its
+resting distance or ring by ring further out), if that puts nothing on anything and crosses nothing
+more than where it is; it may run one more arrow over a cluster if the jump at least halves the
+arrow (the Play List's Systems and Horror found no spot that broke nothing). A short force pass then
+settles the rest. Four-tree board: 16,004 × 22,812 px, fill 5.6%, mean arrow 1317, longest 6579,
+1 arrow crossing, 1 through a skill node, 7 overlapping boxes, 5.8 s; no stragglers left.

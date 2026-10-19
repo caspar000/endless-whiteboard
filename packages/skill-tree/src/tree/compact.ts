@@ -29,6 +29,14 @@ const FORCE_ROUNDS = 200
 const STEP_FROM = 2000
 const STEP_TO = 5
 const COOLING = 0.97
+/** A node jumps when its arrow is this many times its resting length or more. */
+const JUMP_PAST = 2
+/** Where a jump looks: every this many degrees round the parent, on this many rings out from resting. */
+const JUMP_EVERY = 10
+const JUMP_RINGS = 40
+/** The settling force pass after jumps: rounds, and the step it starts from. */
+const SETTLE_ROUNDS = 80
+const SETTLE_FROM = 400
 /** Ways tried when the straight way is blocked: turned off it, either side. */
 const SLIDES = [0, Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3]
 /** How much longer than touching an arrow may be before it pulls. */
@@ -63,12 +71,14 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 	 * they don't end at. Moved nodes are counted against everything, each other included: a family
 	 * fanned out moves several branches at once, each its own way.
 	 */
-	const broken = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => {
-		let n = 0
+	const brokenBy = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => {
+		let over = 0
+		let crossing = 0
+		let through = 0
 		for (const i of moving) {
 			for (let j = 0; j < ids.length; j++) {
 				if (j === i || (moving.has(j) && j < i)) continue
-				if (Math.hypot(nx[i]! - nx[j]!, ny[i]! - ny[j]!) < r[i]! + r[j]! + gap) n++
+				if (Math.hypot(nx[i]! - nx[j]!, ny[i]! - ny[j]!) < r[i]! + r[j]! + gap) over++
 			}
 		}
 		for (const [a, b] of edges) {
@@ -76,19 +86,24 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 			const [ax, ay, bx, by] = [nx[a]!, ny[a]!, nx[b]!, ny[b]!]
 			for (const [c, d] of edges) {
 				if (c === a || c === b || d === a || d === b) continue
-				if (cross(ax, ay, bx, by, nx[c]!, ny[c]!, nx[d]!, ny[d]!)) n++
+				if (cross(ax, ay, bx, by, nx[c]!, ny[c]!, nx[d]!, ny[d]!)) crossing++
 			}
 			for (let j = 0; j < ids.length; j++) {
 				if (j === a || j === b) continue
-				if (nearSegment(nx[j]!, ny[j]!, ax, ay, bx, by) < r[j]!) n++
+				if (nearSegment(nx[j]!, ny[j]!, ax, ay, bx, by) < r[j]!) through++
 			}
 		}
 		for (const [c, d] of edges) {
 			if (moving.has(c) || moving.has(d)) continue
-			for (const i of moving) if (nearSegment(nx[i]!, ny[i]!, nx[c]!, ny[c]!, nx[d]!, ny[d]!) < r[i]!) n++
+			for (const i of moving) if (nearSegment(nx[i]!, ny[i]!, nx[c]!, ny[c]!, nx[d]!, ny[d]!) < r[i]!) through++
 		}
-		return n
+		return { over, crossing, through }
 	}
+	const broken = (moving: ReadonlySet<number>, nx: readonly number[], ny: readonly number[]) => {
+		const b = brokenBy(moving, nx, ny)
+		return b.over + b.crossing + b.through
+	}
+
 	/**
 	 * Whether a move keeps the rules: it breaks none it didn't already, so a layout that starts clean
 	 * stays clean, and a node already caught on something can still move to get free.
@@ -230,8 +245,9 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 	// but never into a crossing or an overlap. You and the pillars stay where they are.
 	const fixed = new Set([index.get(start)!, ...kids(start).map((p) => index.get(p)!)])
 	const free = ids.map((_, i) => i).filter((i) => !fixed.has(i))
-	let step = STEP_FROM
-	for (let round = 0; round < FORCE_ROUNDS && step > STEP_TO; round++, step *= COOLING) {
+	const forces = (rounds: number, from: number) => {
+	let step = from
+	for (let round = 0; round < rounds && step > STEP_TO; round++, step *= COOLING) {
 		const fx = new Array<number>(ids.length).fill(0)
 		const fy = new Array<number>(ids.length).fill(0)
 		for (const [a, b] of edges) {
@@ -282,6 +298,48 @@ export function compactCones(input: BalloonInput): Map<string, Point> {
 		}
 		if (!movedAny) break
 	}
+	}
+	forces(FORCE_ROUNDS, STEP_FROM)
+
+	// Then the stragglers: a node whose arrow is still far longer than it needs to be, stuck behind
+	// something, jumps with its whole branch to the spot round its parent nearest to it (every 10°, at
+	// its resting distance or ring by ring further) that puts nothing on anything and crosses nothing
+	// more than where it is; it may run one more arrow over a cluster if that at least halves it. Deepest first; then a short, gentle force pass lets the rest settle round them.
+	let jumped = 0
+	for (const id of [...ids].reverse()) {
+		if (id === start || parentOf.get(id) === start) continue
+		const i = index.get(id)!
+		const p = index.get(parentOf.get(id)!)!
+		const rest = r[p]! + r[i]! + gap + SLACK
+		const now = Math.hypot(x[i]! - x[p]!, y[i]! - y[p]!)
+		if (now < JUMP_PAST * rest) continue
+		const moving = below.get(id)!
+		const set = new Set(moving)
+		const before = brokenBy(set, x, y)
+		let best: { d: number; dx: number; dy: number } | null = null
+		for (let k = 0; k < JUMP_RINGS && !best; k++) {
+			const d = rest + k * (r[i]! + gap)
+			if (d >= now) break
+			for (let a = 0; a < 360; a += JUMP_EVERY) {
+				const t = (a * Math.PI) / 180
+				const [dx, dy] = [x[p]! + d * Math.cos(t) - x[i]!, y[p]! + d * Math.sin(t) - y[i]!]
+				const [nx, ny] = moved(moving, 0, 0, 0, dx, dy)
+				// Nothing more on top of anything, no more crossings; one more arrow over a cluster is the
+				// price a jump may pay if it at least halves the arrow.
+				const after = brokenBy(set, nx, ny)
+				const fair = after.over <= before.over && after.crossing <= before.crossing && after.through <= before.through + (d <= now / 2 ? 1 : 0)
+				if (fair && (!best || d < best.d)) best = { d, dx, dy }
+			}
+		}
+		if (best) {
+			for (const m of moving) {
+				x[m] = x[m]! + best.dx
+				y[m] = y[m]! + best.dy
+			}
+			jumped++
+		}
+	}
+	if (jumped) forces(SETTLE_ROUNDS, SETTLE_FROM)
 	return new Map(ids.map((id, i) => [id, { x: x[i]!, y: y[i]! }]))
 }
 

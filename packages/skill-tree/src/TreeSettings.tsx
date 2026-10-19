@@ -21,7 +21,10 @@ export function TreeSettings() {
 			<Row title="Show tree headers" hint="Draw each tree's header card, to select it and change where its view starts.">
 				<input type="checkbox" checked={prefs.showHeaders} onChange={(e) => setTreePrefs({ showHeaders: e.target.checked })} />
 			</Row>
-			<Row title="Layout" hint="How the whole-life board arranges its skill nodes. Re-calculate a board's layout to see it change.">
+			<Row
+				title="Layout"
+				hint={`${PLACEMENTS.find((o) => o.value === layout.placement)?.hint ?? ''} Re-calculate a board's layout (⌘K) to see it change.`}
+			>
 				<select value={layout.placement} onChange={(e) => setLayoutConfig(clean({ ...layout, placement: e.target.value }))}>
 					{PLACEMENTS.map((o) => (
 						<option key={o.value} value={o.value}>

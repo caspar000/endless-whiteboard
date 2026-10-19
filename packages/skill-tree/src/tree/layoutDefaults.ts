@@ -144,7 +144,7 @@ export type LayoutField =
 	| { key: NumberKey; label: string; min: number; max: number; step: number; group: string }
 	| { key: BooleanKey; label: string; group: string }
 	| { key: 'arrowRule'; label: string; group: string; options: readonly { value: LayoutConfig['arrowRule']; label: string }[] }
-	| { key: 'placement'; label: string; group: string; options: readonly { value: LayoutConfig['placement']; label: string }[] }
+	| { key: 'placement'; label: string; group: string; options: readonly { value: LayoutConfig['placement']; label: string; hint: string }[] }
 
 export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Sizes', key: 'skillSize', label: 'Skill node', min: 80, max: 300, step: 10 },
@@ -155,14 +155,14 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		key: 'placement',
 		label: 'Place skill nodes',
 		options: [
-			{ value: 'compactCones', label: 'Cones, compacted without crossing' },
-			{ value: 'compactBubbles', label: 'Bubbles, compacted without crossing' },
-			{ value: 'bubbles', label: 'Bubbles, each subtree in a circle' },
-			{ value: 'wedges', label: 'Radial wedges, compacted per wedge' },
-			{ value: 'cones', label: 'In cones, each inside its parent’s' },
-			{ value: 'bands', label: 'In bands, one ring per level' },
-			{ value: 'fromParent', label: 'From their parent' },
-			{ value: 'rings', label: 'On rings round the middle' },
+			{ value: 'compactBubbles', label: 'Compact bubbles (default)', hint: 'Bubbles, then drawn in as close as they go without an arrow crossing another or running through a cluster.' },
+			{ value: 'compactCones', label: 'Compact cones', hint: 'Strict cones, then drawn in the same way as compact bubbles.' },
+			{ value: 'bubbles', label: 'Bubbles', hint: 'Every subtree in a circle, its children’s circles round it. Loose but clean; wider with a wider fan (layout tuner).' },
+			{ value: 'cones', label: 'Cones', hint: 'Every node looks outward through a cone; its children share it.' },
+			{ value: 'wedges', label: 'Wedges', hint: 'A slice of the circle per subtree, one ring per level, each tree’s rings pulled in.' },
+			{ value: 'bands', label: 'Bands', hint: 'One ring per level round You, at the borders the band guides show.' },
+			{ value: 'fromParent', label: 'Fans (older)', hint: 'Children fanned out from their parent, then pulled in. An earlier layout.' },
+			{ value: 'rings', label: 'Rings (oldest)', hint: 'Shared rings round the middle. The first layout.' },
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },

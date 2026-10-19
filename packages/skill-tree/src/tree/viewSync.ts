@@ -591,7 +591,8 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
  */
 export function tidyLines(editor: Editor, moved?: ReadonlySet<TLShapeId>): void {
 	const lines = lineArrows(editor)
-	if (!lines.length) return
+	// With no light lines (the skill-node view) the skill arrows still need curving to where things are now.
+	if (!lines.length) return curveSkillArrows(editor, moved)
 	const entries = entryShapes(editor)
 	const discCentre = (s: EntryShape) => {
 		const b = editor.getShapePageBounds(s.id)!

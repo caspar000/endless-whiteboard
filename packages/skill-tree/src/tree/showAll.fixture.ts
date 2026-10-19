@@ -88,6 +88,10 @@ const PRACTICAL = { film: 'mastery/practical', theatre: 'mastery/practical', gam
 export const ADLER_LIFE = showView('adler-life', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'all', { ...LIFE_MOUNTS, ...PRACTICAL }, (t) =>
 	['mastery', 'adler', ...Object.keys(PRACTICAL)].includes(t)
 )
+/** The four-tree test board in the skill-node view. */
+export const ADLER_LIFE_SKILLS = showView('adler-life-skills', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'overview', { ...LIFE_MOUNTS, ...PRACTICAL }, (t) =>
+	['mastery', 'adler', ...Object.keys(PRACTICAL)].includes(t)
+)
 /** The same in the skill-node view. */
 export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'overview', LIFE_MOUNTS)
 

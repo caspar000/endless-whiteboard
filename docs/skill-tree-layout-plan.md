@@ -472,3 +472,18 @@ Compacted bubbles keep the old turn for their start (`bubbles(input, true)`): on
 (and of the angle sharing) compaction came out about the same, within the spread small changes to its
 start give (Adler-life 22.0k × 18.7k against 25.2k × 15.4k, mean arrow 1149 against 1126), so the
 layout already approved stays as it is.
+
+## Crossings in the skill-node view (2026-10-19)
+
+Two causes, both fixed:
+
+- **Stale curves.** `tidyLines` returned at once on a board with no light lines, which is the
+  skill-node view, so it never curved the skill arrows there: after the worker's compacted layout
+  landed, and after a drag, the arrows kept the curves worked out for where things had been (one made a
+  loop round a node). It now curves them either way. On the four-tree test board in the app: arrows
+  through skill nodes 10 → 0–1, crossing arrows 1 → 0.
+- **Arrows compaction didn't know.** Compaction checked only the tree's own arrows (each node to the
+  parent it is laid out under), not a skill's second prerequisite, so it could drag one across an
+  arrow it doesn't lay out. Its rules now count every drawn arrow; only the tree's pull. Four-tree
+  board, skill-node view: 1 crossing → 0; the whole-life board: 9 → 2 (through skill nodes 4 → 0),
+  its skill-node view 15 → 8; the four-tree board with everything about the same.

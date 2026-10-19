@@ -64,12 +64,20 @@ export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'c
 	const gap = C.compactGap
 	// The tree's arrows, as pairs of indices: every node to its parent.
 	const edges = ids.filter((id) => id !== start).map((id) => [index.get(parentOf.get(id)!)!, index.get(id)!] as const)
+	// Every arrow drawn, for the rules: the tree's, and the others (a skill's second prerequisite), so
+	// compaction can't drag an arrow across one it doesn't lay out.
+	const isEdge = new Set(edges.map(([a, b]) => `${a} ${b}`))
+	const extra = (input.arrows ?? []).flatMap(({ from, to }) => {
+		const [a, b] = [index.get(from), index.get(to)]
+		return a === undefined || b === undefined || a === b || isEdge.has(`${a} ${b}`) || isEdge.has(`${b} ${a}`) ? [] : [[a, b] as const]
+	})
+	const checked = [...edges, ...extra]
 	const below = new Map<string, number[]>()
 	for (const id of [...ids].reverse()) below.set(id, [index.get(id)!, ...kids(id).flatMap((k) => below.get(k) ?? [])])
 
 	/**
 	 * How many rules the moving nodes break where `nx`, `ny` puts them (indexed like `x`, `y`; the rest
-	 * where they are): clusters on each other, tree arrows across each other, arrows through clusters
+	 * where they are): clusters on each other, arrows across each other (every one drawn), arrows through clusters
 	 * they don't end at. Moved nodes are counted against everything, each other included: a family
 	 * fanned out moves several branches at once, each its own way.
 	 */
@@ -83,10 +91,10 @@ export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'c
 				if (Math.hypot(nx[i]! - nx[j]!, ny[i]! - ny[j]!) < r[i]! + r[j]! + gap) over++
 			}
 		}
-		for (const [a, b] of edges) {
+		for (const [a, b] of checked) {
 			if (!moving.has(a) && !moving.has(b)) continue
 			const [ax, ay, bx, by] = [nx[a]!, ny[a]!, nx[b]!, ny[b]!]
-			for (const [c, d] of edges) {
+			for (const [c, d] of checked) {
 				if (c === a || c === b || d === a || d === b) continue
 				if (cross(ax, ay, bx, by, nx[c]!, ny[c]!, nx[d]!, ny[d]!)) crossing++
 			}
@@ -95,7 +103,7 @@ export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'c
 				if (nearSegment(nx[j]!, ny[j]!, ax, ay, bx, by) < r[j]!) through++
 			}
 		}
-		for (const [c, d] of edges) {
+		for (const [c, d] of checked) {
 			if (moving.has(c) || moving.has(d)) continue
 			for (const i of moving) if (nearSegment(nx[i]!, ny[i]!, nx[c]!, ny[c]!, nx[d]!, ny[d]!) < r[i]!) through++
 		}

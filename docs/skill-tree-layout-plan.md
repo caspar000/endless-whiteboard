@@ -569,3 +569,28 @@ within some rings of its own (its children seeded where their footprints touch i
 (the four-tree board's clusters are 73 one-cell and 57 seven-cell), but each run took 46 s and left
 29 clusters without room (Theatre's Georgian branch), and the rewrite slowed the skill-node view. It
 needs the fork's split to think in footprints, not cells, before it comes back.
+
+## One maze for both views, and nothing cut off (2026-10-20)
+
+The user: the two views follow exactly the same rules. So with everything shown, every entry and
+work is a node of the maze too, a cell of its own at the same hexagon size, joined to its parent by a
+corridor along the light line drawn (a spoke to each entry, a chain through its works); no clusters,
+no orbits, no `pullIn`. Light lines run along their corridors like the arrows.
+
+And no node may be cut off, by construction (`grow` in tree/maze.ts):
+- every node placed sets aside a free cell beside it for each child (its door; past the free sides,
+  children share a corridor cell that forks again);
+- every door keeps a way of its own out to the grid's outer rim, sharing no cell with any other
+  door's (vertex-disjoint paths, kept as a flow; a new door is opened only if an augmenting path
+  gives it one, rerouting the others' but never dropping one);
+- so a door's own cell blocks nobody, and when its node is placed, the first cell of its way out is
+  free beside it: its first child always has room, the rest go through it. Only the grid's rim can
+  stop a branch, and then it's grown again in a bigger grid.
+- Skill nodes grow breadth first (a family gets its doors before anything deeper takes the room
+  round its node); cards depth first as soon as their skill node is placed, so they settle round it.
+- Two bugs on the way: chains hugging the walls were drawn to the grid's rim (it counted as a wall),
+  and the hole round You counted as a way out.
+
+Four-tree board: skill-node view 132 nodes in 13 ms, 3.5k × 3.3k px; everything 1,745 nodes in 1.7 s,
+11.5k × 13.4k px; nothing left out, nothing overlapping. Still long skill corridors where a skill
+node's own cards took the room before its child skill nodes got theirs.

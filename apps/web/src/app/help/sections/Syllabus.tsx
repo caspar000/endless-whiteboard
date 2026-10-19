@@ -199,7 +199,8 @@ export function Syllabus(_props: SectionProps) {
 					and sets what an import opens on. The whole-life board grows from You
 					through a maze of hexagons, branch by branch, each arrow running along its corridor, the maze only
 					as big as the tree needs; under Advanced are its settings (the hexagons' size, cells to an only
-					child, the room to start from and more). Re-calculate a board to see a change.
+					child, the grid it grows in and more). With everything shown, every entry and work is a node of the
+					maze too, in a cell of its own. Re-calculate a board to see a change.
 				</p>
 			</Section>
 

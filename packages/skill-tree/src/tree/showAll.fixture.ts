@@ -67,10 +67,10 @@ export function showView(
 	const inView = (id: string) => view.skills.has(id)
 	const arrows = [...graph.prerequisites, ...graph.mounts].filter((e) => inView(e.from) && inView(e.to))
 	const loose = graph.loose.filter((e) => inView(e.from) && inView(e.to))
-	// What hangs from what, for the layout; and the lines drawn, a chain through each entry's works.
-	const hangs = [...view.items].map(([id, at]) => ({ from: at.variant === 'entry' ? at.parent : key(at.parent), to: key(id) }))
+	// The lines drawn: a spoke to each entry, a chain through each entry's works.
 	const lines = lineEnds(view.items)
-	const edges = orientFrom(view.start, [...arrows, ...loose, ...hangs])
+	// The layout grows along what is drawn, as the board's does (viewSync.ts).
+	const edges = orientFrom(view.start, [...arrows, ...loose, ...lines])
 	edges.push({ from: view.start, to: HEADER })
 	const nodes: GraphNode[] = [
 		...[...view.skills].map((id) => ({ id, w: sizeOfKind(graph.nodes.get(id)!.def.kind), h: sizeOfKind(graph.nodes.get(id)!.def.kind) })),

@@ -14,7 +14,7 @@ export interface LayoutConfig {
 	mazeCell: number
 	/** Cells from a node to its only child: 1 next door, 2 with a corridor cell between. */
 	mazeSpacing: number
-	/** The room to start from, in cells per cell the tree takes; the region grows from it until everything fits. */
+	/** The grid the maze grows in, in cells per node (room to spare; a bigger one is tried if a branch reaches its edge). */
 	mazeRoom: number
 	/** How a chain winds: along the walls of the room left, or straight outward. */
 	mazeWalk: 'snake' | 'straight'
@@ -22,7 +22,7 @@ export interface LayoutConfig {
 	mazeGrid: 'hex' | 'square'
 	/** Open ground between You and the first cells. */
 	mazeHub: number
-	// Clusters (the view with everything)
+	// Cards placed round their skill node when added, until the next layout (orbits.ts)
 	/** Free space kept between two clusters. */
 	clusterGap: number
 	/** Free space between two members of a cluster. */
@@ -50,7 +50,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	masterySize: 380,
 	mazeCell: 210,
 	mazeSpacing: 1,
-	mazeRoom: 1.5,
+	mazeRoom: 2.5,
 	mazeWalk: 'snake',
 	mazeGrid: 'hex',
 	mazeHub: 20,
@@ -74,7 +74,7 @@ export type LayoutField =
 export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Maze', key: 'mazeCell', label: 'Hexagon size', hint: 'From one cell’s centre to the next. A skill node is 150 across.', min: 150, max: 600, step: 10 },
 	{ group: 'Maze', key: 'mazeSpacing', label: 'Cells to an only child', hint: '1 puts a node next to its only child; 2 leaves a corridor cell between.', min: 1, max: 3, step: 1 },
-	{ group: 'Maze', key: 'mazeRoom', label: 'Room to start from', hint: 'Cells per cell the tree takes. The region grows from here until every node fits; more gives a roomier maze.', min: 1, max: 4, step: 0.05 },
+	{ group: 'Maze', key: 'mazeRoom', label: 'Grid to grow in', hint: 'Cells per node in the grid the maze grows in. Only how much room it has to spare: it grows again in a bigger one if a branch reaches the edge. Bigger is slower.', min: 1.5, max: 6, step: 0.1 },
 	{
 		group: 'Maze',
 		key: 'mazeWalk',
@@ -99,12 +99,6 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Node sizes', key: 'skillSize', label: 'Skill node', hint: 'Across, in pixels.', min: 80, max: 300, step: 10 },
 	{ group: 'Node sizes', key: 'pillarSize', label: 'Pillar', hint: 'Across, in pixels.', min: 100, max: 400, step: 10 },
 	{ group: 'Node sizes', key: 'masterySize', label: 'You (the middle)', hint: 'Across, in pixels.', min: 150, max: 700, step: 10 },
-	{ group: 'Clusters (with everything shown)', key: 'clusterGap', label: 'Gap between clusters', hint: 'Free space kept between two clusters.', min: 0, max: 400, step: 5 },
-	{ group: 'Clusters (with everything shown)', key: 'memberPad', label: 'Space between members', hint: 'Free space between two cards of a cluster.', min: 0, max: 80, step: 2 },
-	{ group: 'Clusters (with everything shown)', key: 'gateRoom', label: 'Room for an arrow through a cluster', hint: 'Each side of an arrow passing through a cluster’s gap.', min: 0, max: 120, step: 2 },
-	{ group: 'Clusters (with everything shown)', key: 'spokeRoom', label: 'Room for a spoke to the outer orbit', hint: 'For a spoke between two entries to one further out.', min: 0, max: 120, step: 2 },
-	{ group: 'Clusters (with everything shown)', key: 'worksArc', label: 'Arc of works round an entry (°)', hint: 'Either side of straight out.', min: 20, max: 180, step: 5 },
-	{ group: 'Clusters (with everything shown)', key: 'orbitGrowth', label: 'First orbit growth', hint: 'How much the first orbit widens each time its entries don’t fit.', min: 1.02, max: 1.5, step: 0.01 },
 	{ group: 'Arrows', key: 'arrowCurve', label: 'How much arrows curve to spread evenly', hint: 'For arrows not along a corridor. 0 curves them only round what they cross.', min: 0, max: 1, step: 0.05 },
 ]
 

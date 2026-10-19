@@ -263,8 +263,10 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	const startKey = view.items.has(view.start) ? itemKey(view.start) : view.start
 	const startShape = shapes.get(startKey)
 	if (!startShape) return 0
-	const { drawn, loose, lines } = viewGraph(editor, view)
-	const edges = orientFrom(startKey, [...drawn, ...loose, ...lines])
+	const { drawn, loose } = viewGraph(editor, view)
+	// The maze grows along what is drawn: the arrows, and the light lines (a spoke to each entry, a
+	// chain through its works).
+	const edges = orientFrom(startKey, [...drawn, ...loose, ...lineEnds(view.items)])
 	const nodes: GraphNode[] = [...shapes].map(([key, s]) => {
 		const b = editor.getShapePageBounds(s.id)
 		return { id: key, w: b?.w ?? SKILL_SIZE, h: b?.h ?? SKILL_SIZE }
@@ -297,6 +299,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
+		laidOut.set(header.id, { routes, start: startShape.id })
 		routeArrows(editor, shapes, routes, anchor)
 		tidyLines(editor)
 		editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [LAYOUT_OF]: structureOf(editor, view), [LAYOUT_STALE]: false } } as never)
@@ -304,16 +307,35 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	return moves.length
 }
 
+/** Each view's corridors from its last layout (by header), and the shape it grew from. */
+const laidOut = new Map<TLShapeId, { routes: ReadonlyMap<string, readonly { x: number; y: number }[]> | null; start: TLShapeId }>()
+
 /**
- * The maze's corridors onto the view's skill arrows (canvas: arrows with waypoints): each arrow
- * between a parent and its child runs along the corridor between them. Without a maze (`routes`
+ * Every view's corridors onto its arrows and light lines again: a sync lays a view out before it
+ * draws the arrows, so the ones drawn after get their corridors here.
+ */
+export function routeLaidOut(editor: Editor): void {
+	for (const [id, { routes, start }] of laidOut) {
+		const header = editor.getShape(id) as TreeShape | undefined
+		const centre = editor.getShape(start) && editor.getShapePageBounds(start)?.center
+		if (!header || !centre) {
+			laidOut.delete(id)
+			continue
+		}
+		routeArrows(editor, viewShapes(editor, contentsOf(editor, header)), routes, centre)
+	}
+}
+
+/**
+ * The maze's corridors onto the view's arrows and light lines (canvas: arrows with waypoints): each
+ * one between a parent and its child runs along the corridor between them. Without a maze (`routes`
  * null), or for an arrow the maze has no corridor for, the waypoints are cleared.
  */
 function routeArrows(editor: Editor, shapes: ReadonlyMap<string, TLShape>, routes: ReadonlyMap<string, readonly { x: number; y: number }[]> | null, anchor: { x: number; y: number }): void {
 	const keyOf = new Map([...shapes].map(([key, s]) => [s.id as string, key]))
 	const changes: { id: TLShapeId; type: 'arrow'; meta: Record<string, unknown> }[] = []
 	for (const arrow of editor.getCurrentPageShapes()) {
-		if (arrow.type !== 'arrow' || !arrow.meta[SKILL_EDGE_META] || arrow.meta[SKILL_EDGE_META] === LINE) continue
+		if (arrow.type !== 'arrow' || !arrow.meta[SKILL_EDGE_META]) continue
 		const ends = editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow')
 		const from = keyOf.get(ends.find((b) => b.props.terminal === 'start')?.toId as string)
 		const to = keyOf.get(ends.find((b) => b.props.terminal === 'end')?.toId as string)

@@ -5,7 +5,7 @@ import { getHabitIndex } from './skillIndex'
 import { styleArrows } from './tree/arrowStyle'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
-import { applyViews, frameView, planIsEmpty, planViews, refreshStale, curveSkillArrows } from './tree/viewSync'
+import { applyViews, frameView, planIsEmpty, planViews, refreshStale, curveSkillArrows, routeLaidOut } from './tree/viewSync'
 import { boardTrees, treeGraph, type ViewContents } from './views'
 import { sizeOfKind } from './skill/definition'
 import {
@@ -246,8 +246,12 @@ export function syncBoard(editor: Editor): void {
 				for (const treeId of redraw) drawPrerequisites(editor, treeId)
 				const mounts = view.createSkills.length || view.remove.length || view.mountsStale
 				if (mounts) drawMounts(editor)
-				// The tree's arrows are drawn after the views laid out and tidied their lines: bent now.
-				if (redraw.size || mounts || laidOutNew.length) curveSkillArrows(editor)
+				// The tree's arrows are drawn after the views laid out and tidied their lines: along their
+				// corridors now, and the rest bent.
+				if (redraw.size || mounts || laidOutNew.length) {
+					routeLaidOut(editor)
+					curveSkillArrows(editor)
+				}
 			},
 			{ history: 'ignore' }
 		)

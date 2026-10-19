@@ -7,10 +7,13 @@ import { siblingOrder, type BalloonInput } from './balloon'
  *
  * - Bottom-up, a leaf's bubble is its cluster. A node's children's bubbles go round it in order, in a
  *   fan centred straight out (`fanSpread`; all the way round for You), each as close as its bubble
- *   clears the parent's cluster and the child clears it. Each child sits at the edge of its own
- *   bubble nearest the parent, on the line from the parent to the bubble's centre, so an arrow is
- *   short and the bubble opens out behind it. A fan too wide for its spread moves out, all together,
- *   until it fits. The node's own bubble is the smallest circle round its cluster and theirs.
+ *   clears the parent's cluster and the child clears it. A fan too wide for its spread moves out, all
+ *   together, until it fits. The node's own bubble is the smallest circle round its cluster and theirs.
+ * - Each subtree is turned so its parent is straight behind its node, in the gap its fan leaves (the
+ *   paper's "dummy circle", without its bend): the arrow comes in clear of the node's own children
+ *   however wide the fan. `centred`, the way compacted bubbles start (tree/compact.ts): turned
+ *   instead so the bubble's centre is straight out from the parent, the node on the line to it; that
+ *   only keeps the arrow clear while the fan is narrow.
  * - Top-down, each subtree is turned to face away from its parent.
  * - With `balanceSiblings`, each family goes round its parent in organ-pipe order (Lin and Yen): the
  *   biggest bubble in the middle of the fan, the smallest at its ends.
@@ -31,7 +34,7 @@ interface Bubble {
 
 const TURN = 2 * Math.PI
 
-export function bubbles({ start, order, kids: given, radius, arrows = [], config: C }: BalloonInput): Map<string, Point> {
+export function bubbles({ start, order, kids: given, radius, arrows = [], config: C }: BalloonInput, centred = false): Map<string, Point> {
 	const gap = C.clusterGap
 	const parentOf = new Map<string, string>()
 	for (const id of order) for (const kid of given(id)) parentOf.set(kid, id)
@@ -52,8 +55,9 @@ export function bubbles({ start, order, kids: given, radius, arrows = [], config
 		// Each child's bubble centre at the least distance that clears the parent, the child on the way.
 		const least = children.map((k, i) => {
 			const b = subs[i]!
-			const offset = Math.hypot(b.cx, b.cy)
-			return Math.max(r + gap + b.r, r + gap + radius(k) + offset)
+			if (centred) return Math.max(r + gap + b.r, r + gap + radius(k) + Math.hypot(b.cx, b.cy))
+			// The child no nearer than clears the parent, with the parent straight behind it.
+			return Math.max(r + gap + b.r, Math.hypot(b.cx + r + gap + radius(k), b.cy))
 		})
 		const halfAt = (i: number, d: number) => Math.asin(Math.min(1, (subs[i]!.r + gap / 2) / d))
 		let scale = 1
@@ -61,9 +65,17 @@ export function bubbles({ start, order, kids: given, radius, arrows = [], config
 		while (spanAt(scale) > fan && scale < 100) scale *= 1.05
 		const dist = least.map((d) => d * scale)
 		const span = spanAt(scale)
-		/** Child `k` with its bubble's centre `dist` out at `a`, the child on the line to it. */
+		/** Child `k` with its bubble's centre `dist` out at `a`. */
 		const place = (k: string, i: number, a: number, into: Map<string, { x: number; y: number; turn: number }>) => {
 			const b = subs[i]!
+			if (!centred) {
+				// Turned so the parent is straight behind the child, in the gap its own fan leaves: `t`
+				// out, where the bubble's centre comes `dist` from the parent.
+				const t = -b.cx + Math.sqrt(Math.max(0, dist[i]! ** 2 - b.cy ** 2))
+				const turn = a - Math.atan2(b.cy, b.cx + t)
+				into.set(k, { x: t * Math.cos(turn), y: t * Math.sin(turn), turn })
+				return
+			}
 			const offset = Math.hypot(b.cx, b.cy)
 			const d = dist[i]! - offset
 			// The child's subtree turned so its bubble's centre lies straight out from the parent.

@@ -53,7 +53,7 @@ const ROUNDS = 14
 /** `from`: the layout it starts from, which must not cross or overlap: strict cones, or bubbles. */
 export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'cones'): Map<string, Point> {
 	const { start, order, kids, radius, config: C } = input
-	const at = from === 'bubbles' ? bubbles(input) : cones(input, true)
+	const at = from === 'bubbles' ? bubbles(input, true) : cones(input, true)
 	const parentOf = new Map<string, string>()
 	for (const id of order) for (const k of kids(id)) parentOf.set(k, id)
 	const ids = order.filter((id) => at.has(id))

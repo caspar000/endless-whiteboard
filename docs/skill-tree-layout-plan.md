@@ -449,3 +449,26 @@ a call on the test board in the browser (the lines between works are arcs there)
 and discs now sit in a grid, 0.3 s. Inserting the four-tree test board: the board in about 5.4 s
 (mostly creating its 3,490 shapes), usable from then, the compacted layout landing at about 15 s.
 Not yet tried in a production build.
+
+## Bubbles against the paper (2026-10-19)
+
+Read against the full Bubble Tree paper (Grivet, Auber, Domenger and Melançon), four things were
+tried on the four-tree test board (Adler-life), plain bubbles at the default 240° fan unless said:
+
+| Tried | Plain bubbles | Kept |
+|---|---|---|
+| Before | 75.3k × 44.2k px, mean arrow 2339 px, 0 arrows through skill nodes | |
+| Parent in the gap the fan leaves (the paper's dummy circle, without its bend) | 70.1k × 42.3k; at 330°, 56.9k × 31.1k, mean 1888; 0 through skill nodes at any fan | yes, plain bubbles |
+| The paper's angle sharing (by radius, none past what it needs) | 48.4k × 29.4k at 330°, but 1–2 arrows through skill nodes | no |
+| Children out to the same outer edge | 90.1k × 87.7k | no |
+| The exact smallest enclosing circle (5,000 steps for 200) | no change | no |
+
+The turn: each subtree is now turned so its parent is straight behind its node, in the gap its own
+fan leaves, so the arrow comes in clear of the node's children however wide the fan. Before, it was
+turned so the bubble's centre was straight out from the parent, which only keeps the arrow clear while
+the fan is narrow (at 330°, 3 arrows went through skill nodes).
+
+Compacted bubbles keep the old turn for their start (`bubbles(input, true)`): on top of the new one
+(and of the angle sharing) compaction came out about the same, within the spread small changes to its
+start give (Adler-life 22.0k × 18.7k against 25.2k × 15.4k, mean arrow 1149 against 1126), so the
+layout already approved stays as it is.

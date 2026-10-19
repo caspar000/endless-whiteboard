@@ -1,5 +1,5 @@
 import { connectShapes } from '@lifeboard/node-kit'
-import { ARROW_STAYS_BEHIND_META, atom, Box, createShapeId, type Atom, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import { ARROW_STAYS_BEHIND_META, atom, Box, createShapeId, getArrowWaypoints, WAYPOINTS_META, type Atom, type Editor, type TLArrowBinding, type TLArrowShape, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
 import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definition'
 import { getItem } from '../syllabus'
@@ -20,6 +20,7 @@ import { canLayOutInWorker, layoutInWorker } from './layoutAsync'
 import { takeBandReport } from './bands'
 import { lastBands, lastBubbles } from './bandReport'
 import { takeBubbleReport } from './bubbles'
+import { forgetMazeRoutes, takeMazeRoutes } from './maze'
 import { working } from '../progress'
 
 /**
@@ -289,7 +290,9 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	const isSkill = (id: string) => view.skills.has(id)
 	const config = getLayoutConfig()
 	const later = SLOW.has(config.placement) && canLayOutInWorker()
+	forgetMazeRoutes()
 	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: later ? { ...config, placement: 'bubbles' } : config })
+	const routes = takeMazeRoutes()
 	if (config.placement === 'bands') lastBands.set(takeBandReport())
 	lastBubbles.set(config.placement === 'bubbles' ? (takeBubbleReport() ?? []).flatMap((g) => (shapes.has(g.id) ? [{ ...g, shape: shapes.get(g.id)!.id }] : [])) : null)
 	lastLayoutStats.set(measureLayout(nodes, at, drawn, lineEnds(view.items), isSkill, performance.now() - began))
@@ -304,6 +307,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
+		routeArrows(editor, shapes, routes, anchor)
 		tidyLines(editor)
 		editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [LAYOUT_OF]: structureOf(editor, view), [LAYOUT_STALE]: false } } as never)
 	})
@@ -328,6 +332,33 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		})
 	}
 	return moves.length
+}
+
+/**
+ * The maze's corridors onto the view's skill arrows (canvas: arrows with waypoints): each arrow
+ * between a parent and its child runs along the corridor between them. Without a maze (`routes`
+ * null), or for an arrow the maze has no corridor for, the waypoints are cleared.
+ */
+function routeArrows(editor: Editor, shapes: ReadonlyMap<string, TLShape>, routes: ReadonlyMap<string, readonly { x: number; y: number }[]> | null, anchor: { x: number; y: number }): void {
+	const keyOf = new Map([...shapes].map(([key, s]) => [s.id as string, key]))
+	const changes: { id: TLShapeId; type: 'arrow'; meta: Record<string, unknown> }[] = []
+	for (const arrow of editor.getCurrentPageShapes()) {
+		if (arrow.type !== 'arrow' || !arrow.meta[SKILL_EDGE_META] || arrow.meta[SKILL_EDGE_META] === LINE) continue
+		const ends = editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow')
+		const from = keyOf.get(ends.find((b) => b.props.terminal === 'start')?.toId as string)
+		const to = keyOf.get(ends.find((b) => b.props.terminal === 'end')?.toId as string)
+		if (from === undefined || to === undefined) continue
+		const forward = routes?.get(`${from} ${to}`)
+		const back = routes?.get(`${to} ${from}`)
+		const path = forward ?? (back ? [...back].reverse() : undefined)
+		const waypoints =
+			path && path.length > 2 ? path.slice(1, -1).map((p) => editor.getPointInShapeSpace(arrow, { x: anchor.x + p.x, y: anchor.y + p.y })).map(({ x, y }) => ({ x, y })) : null
+		const now = getArrowWaypoints(arrow as TLArrowShape)
+		if (!waypoints && !now.length) continue
+		if (waypoints && now.length === waypoints.length && now.every((p, i) => Math.abs(p.x - waypoints[i]!.x) < 0.5 && Math.abs(p.y - waypoints[i]!.y) < 0.5)) continue
+		changes.push({ id: arrow.id, type: 'arrow', meta: { [WAYPOINTS_META]: waypoints } })
+	}
+	if (changes.length) editor.updateShapes(changes as never)
 }
 
 /** The placements slow enough to run in a worker. */
@@ -659,7 +690,10 @@ export function curveSkillArrows(editor: Editor, moved?: ReadonlySet<TLShapeId>)
 		const e = ends(a)
 		return e ? { id: a.id as string, from: centre(e.from), to: centre(e.to), bend: (a.props as { bend?: number }).bend ?? 0, ends: [e.from.id as string, e.to.id as string] } : null
 	}
-	const arrows = shapes.filter((s) => s.type === 'arrow' && !!s.meta[SKILL_EDGE_META] && s.meta[SKILL_EDGE_META] !== LINE).flatMap((a) => toCurvable(a) ?? [])
+	// An arrow running along its maze corridor (waypoints) isn't curved.
+	const arrows = shapes
+		.filter((s) => s.type === 'arrow' && !!s.meta[SKILL_EDGE_META] && s.meta[SKILL_EDGE_META] !== LINE && !getArrowWaypoints(s as TLArrowShape).length)
+		.flatMap((a) => toCurvable(a) ?? [])
 	if (!arrows.length) return
 	const lines = shapes.filter((s) => s.type === 'arrow' && s.meta[SKILL_EDGE_META] === LINE).flatMap((a) => toCurvable(a) ?? [])
 	const discs = shapes.flatMap((s) => {

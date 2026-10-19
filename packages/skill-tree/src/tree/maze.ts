@@ -26,7 +26,32 @@ export function mazeLayout({ start, order, kids, radius, config: C }: BalloonInp
 	const pillars = new Set(kids(start))
 	const widest = Math.max(0, ...order.filter((id) => id !== start && !pillars.has(id)).map(radius))
 	const m = maze(start, order, kids, radius, { grid: 'hex', region: 'disc', walk: 'snake', fill: 1.5, spacing: C.mazeSpacing, cell: 2 * widest + C.clusterGap })
+	// Each node's whole way from its parent: through any shared corridor cells (`~n`) on the way.
+	const into = new Map(m.corridors.map((c) => [c.to, c]))
+	routes = new Map()
+	for (const id of order) {
+		let c = into.get(id)
+		if (!c) continue
+		let path = c.path
+		while (c.from.startsWith('~') && into.has(c.from)) {
+			c = into.get(c.from)!
+			path = [...c.path, ...path.slice(1)]
+		}
+		routes.set(`${c.from} ${id}`, path)
+	}
 	return new Map(order.map((id) => [id, m.at.get(id)!]))
+}
+
+let routes: Map<string, Point[]> | null = null
+
+/**
+ * The corridors of the last maze laid out here, `parent child` → the way from the parent's centre to
+ * the child's (the start at the origin); `null` when the last layout wasn't a maze (`forgetMazeRoutes`
+ * before laying out).
+ */
+export const takeMazeRoutes = (): ReadonlyMap<string, Point[]> | null => routes
+export const forgetMazeRoutes = (): void => {
+	routes = null
 }
 
 export interface MazeOptions {

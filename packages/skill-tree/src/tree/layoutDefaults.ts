@@ -21,11 +21,13 @@ export interface LayoutConfig {
 	 * bands, one ring per level, each branch a wedge (bands.ts); each
 	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
 	 */
-	placement: 'compactCones' | 'compactBubbles' | 'bubbles' | 'radial' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
+	placement: 'compactCones' | 'compactBubbles' | 'maze' | 'bubbles' | 'radial' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
 	/** In bubbles: each family round its parent with its biggest branch in the middle and smallest at the ends. */
 	balanceSiblings: boolean
+	/** Maze: cells from a node to its only child (1 next door, 2 a corridor cell between). */
+	mazeSpacing: number
 	/**
 	 * Each level's border round You, set by hand from the band guides (tree/BandGuides.tsx), the first
 	 * the pillars'; 0 or missing leaves a border to the layout (in bands).
@@ -103,6 +105,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	placement: 'compactBubbles',
 	fanSpread: 240,
 	balanceSiblings: false,
+	mazeSpacing: 1,
 	keepWayBack: false,
 	bandBorders: [],
 	bandFirst: 750,
@@ -157,6 +160,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		options: [
 			{ value: 'compactBubbles', label: 'Compact bubbles (default)', hint: 'Bubbles, then drawn in as close as they go without an arrow crossing another or running through a cluster.' },
 			{ value: 'compactCones', label: 'Compact cones', hint: 'Strict cones, then drawn in the same way as compact bubbles.' },
+			{ value: 'maze', label: 'Maze', hint: 'The skill nodes grown through a region of hexagons from You, branch by branch like corridors in a maze, the region only as big as they need. With everything shown: Compact bubbles.' },
 			{ value: 'bubbles', label: 'Bubbles', hint: 'Every subtree in a circle, its children’s circles round it. Loose but clean; wider with a wider fan (layout tuner).' },
 			{ value: 'cones', label: 'Cones', hint: 'Every node looks outward through a cone; its children share it.' },
 			{ value: 'radial', label: 'Radial (Eades)', hint: 'One ring per level; each subtree a wedge as big as how many nodes it holds, cut so no arrows cross.' },
@@ -168,6 +172,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
 	{ group: 'Skeleton', key: 'balanceSiblings', label: 'Balance each fan (biggest in the middle)' },
+	{ group: 'Skeleton', key: 'mazeSpacing', label: 'Maze: cells from a node to its only child', min: 1, max: 3, step: 1 },
 	{ group: 'Bands', key: 'bandFirst', label: 'Pillars’ border', min: 200, max: 5000, step: 50 },
 	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 8000, step: 50 },
 	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 12000, step: 50 },

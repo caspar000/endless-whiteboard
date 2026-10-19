@@ -14,7 +14,20 @@
  * - With `wedges`, the start's children get slices of the circle by size instead of grown pieces.
  */
 
+import type { BalloonInput } from './balloon'
+
 type Point = { x: number; y: number }
+
+/**
+ * The maze as a placement (wholeLayout.ts): hexagon cells as wide as the biggest skill node past
+ * the pillars and a gap, nodes side by side or `mazeSpacing` apart along a chain.
+ */
+export function mazeLayout({ start, order, kids, radius, config: C }: BalloonInput): Map<string, Point> {
+	const pillars = new Set(kids(start))
+	const widest = Math.max(0, ...order.filter((id) => id !== start && !pillars.has(id)).map(radius))
+	const m = maze(start, order, kids, radius, { grid: 'hex', region: 'disc', walk: 'snake', fill: 1.5, spacing: C.mazeSpacing, cell: 2 * widest + C.clusterGap })
+	return new Map(order.map((id) => [id, m.at.get(id)!]))
+}
 
 export interface MazeOptions {
 	grid: 'hex' | 'square'

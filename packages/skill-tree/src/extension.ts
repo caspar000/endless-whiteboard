@@ -15,6 +15,7 @@ import { TreeSettings } from './TreeSettings'
 import { StaleLayout } from './tree/StaleLayout'
 import { Working } from './tree/Working'
 import { tunerNodeDefinition } from './tree/LayoutTuner'
+import { MazeGuides } from './tree/MazeGuides'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
 import { watchBoard } from './skillIndex'
@@ -100,6 +101,7 @@ export const skillTreeExtension: Extension = {
 	overlays: [
 		{ id: 'lifeboard.skill-tree.stale-layout', Component: StaleLayout },
 		{ id: 'lifeboard.skill-tree.working', Component: Working },
+		{ id: 'lifeboard.skill-tree.maze-guides', Component: MazeGuides },
 	],
 	// A tree's header is its view, not something to look at (docs/skill-tree-layout-plan.md, "Views"):
 	// hidden unless Settings asks for headers.

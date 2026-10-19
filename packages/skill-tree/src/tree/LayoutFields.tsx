@@ -2,8 +2,9 @@ import { DEFAULT_LAYOUT, LAYOUT_FIELDS, type LayoutConfig } from './layoutDefaul
 
 /**
  * Every setting of the maze (layoutDefaults.ts, `LAYOUT_FIELDS`), grouped: a slider and a number for
- * each number, a menu for each choice. Shared by Settings (under Advanced) and the layout tuner, so
- * the two show the same settings. A setting off its default is marked.
+ * each number (the slider has ends; the number typed doesn't), a menu for each choice. Shared by
+ * Settings (under Advanced) and the layout tuner, so the two show the same settings. A setting off
+ * its default is marked.
  */
 export function LayoutFields({ config, onChange }: { config: LayoutConfig; onChange: (patch: Partial<LayoutConfig>) => void }) {
 	const groups = [...new Set(LAYOUT_FIELDS.map((f) => f.group))]
@@ -23,11 +24,10 @@ export function LayoutFields({ config, onChange }: { config: LayoutConfig; onCha
 									<input type="range" min={field.min} max={field.max} step={field.step} value={value} onChange={(e) => onChange({ [field.key]: Number(e.target.value) })} />
 									<input
 										type="number"
-										min={field.min}
-										max={field.max}
-										step={field.step}
 										value={value}
-										onChange={(e) => e.target.value !== '' && onChange({ [field.key]: Math.min(field.max, Math.max(field.min, Number(e.target.value))) })}
+										// Typed, any number goes, past the slider's ends too.
+										step="any"
+										onChange={(e) => e.target.value !== '' && Number.isFinite(Number(e.target.value)) && onChange({ [field.key]: Number(e.target.value) })}
 									/>
 								</label>
 							)

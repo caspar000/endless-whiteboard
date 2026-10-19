@@ -15,7 +15,8 @@ import { wholeLayout } from './wholeLayout'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
 import { curveArrows } from './curveArrows'
-import { forgetMazeRoutes, takeMazeRoutes } from './maze'
+import { forgetMazeRoutes, takeMazeGrid, takeMazeRoutes } from './maze'
+import { lastMazeGrid } from './MazeGuides'
 
 /**
  * Turning each tree view's contents (views.ts) into the board (docs/skill-tree-plan.md, "Rebuild").
@@ -283,6 +284,8 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	forgetMazeRoutes()
 	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: getLayoutConfig() })
 	const routes = takeMazeRoutes()
+	const grid = takeMazeGrid()
+	lastMazeGrid.set(grid ? { ...grid, start: startShape.id } : null)
 	const keys = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])]
 	const movesTo = (at: ReadonlyMap<string, { x: number; y: number }>, from: { x: number; y: number }) =>
 		keys.flatMap(([key, s]) => {

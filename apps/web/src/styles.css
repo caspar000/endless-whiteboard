@@ -14745,6 +14745,18 @@ button.lb-props__eye:hover {
 
 /* The band guides (dev): each level's border round You, drawn over the board, to drag in or out
    (tree/BandGuides.tsx). Only the rings take the pointer. */
+/* The hexagon view (skill-tree tree/MazeGuides.tsx): the maze's cells, the ones the tree took brighter. */
+.lb-maze-guides__cell {
+	fill: none;
+	stroke: var(--lb-accent, #6f86ff);
+	stroke-width: 1;
+	opacity: 0.25;
+}
+.lb-maze-guides__cell--used {
+	fill: var(--lb-accent, #6f86ff);
+	fill-opacity: 0.08;
+	opacity: 0.6;
+}
 .lb-band-guides {
 	position: absolute;
 	inset: 0;

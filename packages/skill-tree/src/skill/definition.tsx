@@ -18,7 +18,7 @@ export const SKILL_SIZE = 150
  */
 export function sizeOfKind(kind: string): number {
 	const c = getLayoutConfig()
-	return kind === 'mastery' ? c.masterySize : kind === 'pillar' ? c.pillarSize : c.skillSize
+	return Math.max(1, kind === 'mastery' ? c.masterySize : kind === 'pillar' ? c.pillarSize : c.skillSize)
 }
 
 const versions = createShapePropsMigrationIds(SKILL_TYPE, { AddIcon: 1, AddPicture: 2 })

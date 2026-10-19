@@ -66,7 +66,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
 type ChoiceKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends string ? K : never }[keyof LayoutConfig]
 
-/** What Settings (under Advanced) and the layout tuner show for each setting, in order. */
+/** What Settings (under Advanced) and the layout tuner show for each setting, in order. `min`/`max`/`step` are the slider's; a typed number may go past them. */
 export type LayoutField =
 	| { key: NumberKey; label: string; hint: string; group: string; min: number; max: number; step: number }
 	| { key: ChoiceKey; label: string; hint: string; group: string; options: readonly { value: string; label: string }[] }
@@ -108,13 +108,17 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Arrows', key: 'arrowCurve', label: 'How much arrows curve to spread evenly', hint: 'For arrows not along a corridor. 0 curves them only round what they cross.', min: 0, max: 1, step: 0.05 },
 ]
 
-/** Only the known settings, each of the right type and in range. */
+/**
+ * Only the known settings, each of the right type. A number may be anything finite, past its slider's
+ * ends too (the tuner is for trying things); the layout itself guards against the few values that
+ * would stall it (a hexagon of no size, an orbit that never grows).
+ */
 export function clean(raw: Partial<Record<keyof LayoutConfig, unknown>>): LayoutConfig {
 	const out: LayoutConfig = { ...DEFAULT_LAYOUT }
 	for (const field of LAYOUT_FIELDS) {
 		const v = raw[field.key]
 		if ('min' in field) {
-			if (typeof v === 'number' && Number.isFinite(v)) out[field.key] = Math.min(field.max, Math.max(field.min, v))
+			if (typeof v === 'number' && Number.isFinite(v)) out[field.key] = v
 		} else if (typeof v === 'string' && field.options.some((o) => o.value === v)) {
 			;(out as unknown as Record<string, string>)[field.key] = v
 		}

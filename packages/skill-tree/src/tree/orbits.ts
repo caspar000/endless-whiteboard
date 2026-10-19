@@ -36,7 +36,8 @@ const TURN = (2 / 180) * Math.PI
 
 /** The settings of the call in progress: helpers below read them (orbitCluster sets them for its call). */
 let C: LayoutConfig = DEFAULT_LAYOUT
-const worksArc = () => (C.worksArc / 180) * Math.PI
+// Any setting goes (the layout tuner), so a negative arc is none.
+const worksArc = () => (Math.max(0, C.worksArc) / 180) * Math.PI
 
 export function orbitCluster(centre: GraphNode, families: readonly Family[], gates: readonly number[], config: LayoutConfig = DEFAULT_LAYOUT): Orbits {
 	const outer = C
@@ -68,7 +69,7 @@ function orbitClusterNow(centre: GraphNode, families: readonly Family[], gates: 
 		inner = fill(families.filter((f) => chosen.has(f)), first, gates, C.spokeRoom, middle)
 		open = gapsOf(inner.placed, gates)
 		if (families.length - inner.placed.length <= open.length) break
-		first *= C.orbitGrowth
+		first *= Math.max(1.01, C.orbitGrowth)
 	}
 	const onFirst = new Set(inner.placed.map((u) => u.family))
 	const rest = families.filter((f) => !onFirst.has(f))
@@ -87,7 +88,7 @@ function orbitClusterNow(centre: GraphNode, families: readonly Family[], gates: 
 			let best: { i: number; unit: Unit; r: number } | null = null
 			for (const [i, angle] of open.entries()) {
 				if (used.has(i)) continue
-				for (let r = nearest; r <= farthest + 4 * C.memberPad && (!best || r < best.r); r += 2 * C.memberPad) {
+				for (let r = nearest; r <= farthest + 4 * Math.max(0, C.memberPad) && (!best || r < best.r); r += Math.max(1, 2 * C.memberPad)) {
 					const unit = unitAt(family, r, angle)
 					const span = spanOf(unit)
 					const spoke = { ax: 0, ay: 0, bx: unit.boxes[0]!.x, by: unit.boxes[0]!.y }
@@ -200,7 +201,8 @@ function unitAt(family: Family, radius: number, angle: number): Unit {
 			if (a > worksArc()) {
 				// The arc is full: back along the next one out.
 				row++
-				edge = rowOuter + C.memberPad
+				// Always further out, whatever the space between members is set to.
+				edge = Math.max(edge + 1, rowOuter + C.memberPad)
 				a = -worksArc()
 			}
 		}

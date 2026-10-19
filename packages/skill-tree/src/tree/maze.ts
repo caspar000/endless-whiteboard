@@ -37,7 +37,9 @@ export function mazeLayout({ start, order, kids, radius, config: C }: MazeInput)
 	const pillars = new Set(kids(start))
 	const widest = Math.max(0, ...order.filter((id) => id !== start && !pillars.has(id)).map(radius))
 	const cell = Math.max(C.mazeCell, 2 * widest > C.skillSize + 1 ? 2 * widest + C.clusterGap : 0)
-	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: C.mazeSpacing, cell, hub: C.mazeHub })
+	// Any setting goes (the layout tuner): a cell has some size, a chain at least one step.
+	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: Math.max(1, Math.round(C.mazeSpacing)), cell: Math.max(1, cell), hub: C.mazeHub })
+	grid = { cell: Math.max(1, cell), shape: C.mazeGrid, cells: m.cells, used: [...m.used] }
 	// Each node's whole way from its parent: through any shared corridor cells (`~n`) on the way.
 	const into = new Map(m.corridors.map((c) => [c.to, c]))
 	routes = new Map()
@@ -56,6 +58,17 @@ export function mazeLayout({ start, order, kids, radius, config: C }: MazeInput)
 
 let routes: Map<string, Point[]> | null = null
 
+/** The cells of a maze, for the hexagon view (tree/MazeGuides.tsx): centres round the start, and which ones the tree took. */
+export interface MazeGrid {
+	cell: number
+	shape: 'hex' | 'square'
+	cells: readonly Point[]
+	used: readonly number[]
+}
+let grid: MazeGrid | null = null
+/** The grid of the last maze laid out here (`forgetMazeRoutes` before laying out clears it too). */
+export const takeMazeGrid = (): MazeGrid | null => grid
+
 /**
  * The corridors of the last maze laid out here, `parent child` → the way from the parent's centre to
  * the child's (the start at the origin); `null` when the last layout wasn't a maze (`forgetMazeRoutes`
@@ -64,6 +77,7 @@ let routes: Map<string, Point[]> | null = null
 export const takeMazeRoutes = (): ReadonlyMap<string, Point[]> | null => routes
 export const forgetMazeRoutes = (): void => {
 	routes = null
+	grid = null
 }
 
 export interface MazeOptions {

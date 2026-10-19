@@ -1145,11 +1145,14 @@ function getArrowheadSvgPath(
 	}
 }
 
-/** The line an arrow draws: an elbow's route with rounded corners, or its straight or curved body. */
+/**
+ * The line an arrow draws: an elbow's route with rounded corners, a route through waypoints with each
+ * turn rounded as far as it goes, or its straight or curved body.
+ */
 function getArrowBodyPath(info: TLArrowInfo, shape: TLArrowShape) {
 	if (info.isStraight && info.route) {
-		// Corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
-		return getElbowArrowPath(info.route, STROKE_SIZES[shape.props.size] * shape.props.scale * 2)
+		// An elbow's corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
+		return getElbowArrowPath(info.route, info.smooth ? Infinity : STROKE_SIZES[shape.props.size] * shape.props.scale * 2)
 	}
 	return info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
 }

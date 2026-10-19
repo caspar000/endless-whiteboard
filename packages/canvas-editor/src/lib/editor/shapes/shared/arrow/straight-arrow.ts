@@ -208,7 +208,7 @@ export function getStraightArrowInfo(editor: Editor, shape: TLArrowShape): TLArr
 }
 
 /** Get an intersection point from A -> B with bound shape (target) from shape (arrow). */
-function updateArrowheadPointWithBoundShape(
+export function updateArrowheadPointWithBoundShape(
 	point: Vec2d,
 	opposite: Vec2d,
 	arrowPageTransform: Matrix2dModel,

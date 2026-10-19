@@ -269,6 +269,7 @@ export {
 	type ElbowEnd,
 	type ElbowRoute,
 } from './lib/editor/shapes/shared/arrow/elbow-arrow'
+export { WAYPOINTS_META, getArrowWaypoints } from './lib/editor/shapes/shared/arrow/routed-arrow'
 export {
 	getSolidStraightArrowPath,
 	getStraightArrowHandlePath,

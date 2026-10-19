@@ -18,6 +18,11 @@ export interface LayoutConfig {
 	placement: 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
+	/**
+	 * Each level's border round You, set by hand from the band guides (tree/BandGuides.tsx), the first
+	 * the pillars'; 0 or missing leaves a border to the layout (in bands).
+	 */
+	bandBorders: number[]
 	/** How wide a family may fan on its ring before it splits into staggered rows, in degrees (in bands). */
 	bandFan: number
 	/** The most rows a family splits into within its band (in bands). */
@@ -72,9 +77,10 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	skillSize: 150,
 	pillarSize: 210,
 	masterySize: 380,
-	placement: 'fromParent',
+	placement: 'bands',
 	fanSpread: 240,
 	keepWayBack: false,
+	bandBorders: [],
 	bandFan: 90,
 	bandRows: 3,
 	hubRoom: 150,
@@ -174,6 +180,8 @@ function read(): LayoutConfig {
 /** Only the known settings, each of the right type and in range. */
 export function clean(raw: Partial<Record<keyof LayoutConfig, unknown>>): LayoutConfig {
 	const out = { ...DEFAULT_LAYOUT }
+	const borders = raw.bandBorders
+	if (Array.isArray(borders)) out.bandBorders = borders.map((b) => (typeof b === 'number' && Number.isFinite(b) && b > 0 ? Math.min(200000, b) : 0))
 	for (const field of LAYOUT_FIELDS) {
 		const v = raw[field.key]
 		if ('min' in field) {

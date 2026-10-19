@@ -151,7 +151,9 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 		}
 	const arrows = (options.arrows ?? []).map((e) => [e.from, e.to] as const)
 	const repack = (skill: string, gates: number[]) => orbitCluster(size.get(skill)!, families.get(skill)!, gates, C).at
-	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, C, { arrows, lines }, repack)
+	// In bands, nothing slides a branch or draws it in: it would leave its band.
+	const compaction = C.placement === 'bands' ? { ...C, slideToParent: false, gravity: false, shrinkTree: false } : C
+	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, compaction, { arrows, lines }, repack)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - C.clusterGap * 4
 	for (const n of nodes) {
 		if (out.has(n.id)) continue

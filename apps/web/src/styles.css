@@ -14701,6 +14701,50 @@ button.lb-props__eye:hover {
 	cursor: pointer;
 }
 
+/* The band guides (dev): each level's border round You, drawn over the board, to drag in or out
+   (tree/BandGuides.tsx). Only the rings take the pointer. */
+.lb-band-guides {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+	z-index: 200;
+}
+.lb-band-guides__ring {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	opacity: 0.9;
+}
+.lb-band-guides__hit {
+	fill: none;
+	stroke: transparent;
+	stroke-width: 16;
+	pointer-events: stroke;
+	cursor: grab;
+}
+.lb-band-guides__hit:active {
+	cursor: grabbing;
+}
+.lb-band-guides__label {
+	fill: currentColor;
+	font-family: var(--lb-font);
+	font-size: 13px;
+	font-weight: 600;
+	paint-order: stroke;
+	stroke: var(--lb-canvas, var(--lb-bg));
+	stroke-width: 4px;
+	stroke-linejoin: round;
+}
+.lb-band-guides__overlap {
+	fill: none;
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 3;
+	stroke-dasharray: 6 4;
+}
+
 /* What the board is busy with: an import, a layout (tree/Working.tsx). The spinner and the bar's
    shimmer animate transforms only, which run on the compositor, so they keep moving while a step
    holds the main thread. */

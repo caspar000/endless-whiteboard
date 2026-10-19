@@ -290,3 +290,15 @@ them near the middle, where there is least room round.
 
 For comparison, the balloon with `fanSpread` 150° and no gravity or ShrinkTree: 23,200 × 21,800,
 fill 4%, mean arrow 975, crossings 2/0/1/2; with them on: 14,900 × 16,100, fill 8.5%, mean 824.
+
+**Shared bands and the band guides (2026-10-19).** At the user's ask, bands are back to the sketch:
+one border per level for the whole board (`tree/bands.ts`), and bands are the default placement;
+with them, sliding to the parent, gravity and ShrinkTree stay off, as they would pull nodes out of
+their bands. Borders can be set by hand (`bandBorders`): a set border stays where it is, however
+crowded its band, and what doesn't fit overlaps; a border left to the layout sits one row of its
+band's biggest cluster out from the one inside it, and while the wedges don't fit round, the
+innermost band they overrun moves out a row. "Show or hide the band guides (dev)", or the switch in
+the layout tuner, draws every border on the board in its own colour with its level, radius and how
+full it is (red when over 100% or thinner than its biggest cluster), rings in red the skill nodes
+whose clusters overlap, and lets a border be dragged in or out; the board is laid out again as it
+moves. "Reset band borders" in the tuner hands them back to the layout.

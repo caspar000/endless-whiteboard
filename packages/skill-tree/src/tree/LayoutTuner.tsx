@@ -2,31 +2,14 @@ import { createShapePropsMigrationSequence, type NodeComponentProps, type NodeDe
 import { useValue, type Editor } from '@lifeboard/canvas'
 import { SlidersHorizontal } from 'lucide-react'
 import { memo, useState, type SyntheticEvent } from 'react'
-import { isTree } from '../board'
-import { syncBoard } from '../treeSync'
 import { clean, DEFAULT_LAYOUT, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig, type LayoutConfig } from './layoutConfig'
 import { lastLayoutStats } from './layoutStats'
-import { recalculate } from './viewSync'
+import { bandGuidesShown, showBandGuides } from './BandGuides'
+import { relayout, relayoutSoon } from './relayout'
 
 export const TUNER_TYPE = 'node.skillLayoutTuner'
 
 const swallow = (e: SyntheticEvent) => e.stopPropagation()
-
-/** One layout run per pause in the changes: the whole board takes a second or so to lay out. */
-const timers = new WeakMap<Editor, ReturnType<typeof setTimeout>>()
-function relayoutSoon(editor: Editor): void {
-	clearTimeout(timers.get(editor))
-	timers.set(
-		editor,
-		setTimeout(() => relayout(editor), 450)
-	)
-}
-
-/** Nodes take their new sizes, then every tree view on the board is laid out again with the settings. */
-export function relayout(editor: Editor): void {
-	syncBoard(editor)
-	for (const header of editor.getCurrentPageShapes().filter(isTree)) recalculate(editor, header)
-}
 
 /**
  * The layout tuner (dev builds): every setting of the whole-life layout (tree/layoutConfig.ts) on a
@@ -37,6 +20,8 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 	const config = useValue('lifeboard:skill-tree-layout-config', getLayoutConfig, [])
 	const stats = useValue('lifeboard:skill-tree-layout-stats-now', () => lastLayoutStats.get(), [])
 	const [copied, setCopied] = useState(false)
+	const guides = useValue('lifeboard:skill-tree-band-guides-tuner', bandGuidesShown, [])
+	const setByHand = config.bandBorders.filter((b) => b > 0).length
 	const set = (patch: Partial<LayoutConfig>) => {
 		setLayoutConfig(patch)
 		relayoutSoon(editor)
@@ -124,6 +109,26 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 				) : (
 					<p className="lb-tuner__hint">Change a setting, or Re-run, to lay the board out and see how it comes out.</p>
 				)}
+			</section>
+			<section className="lb-tuner__group">
+				<h4>Bands</h4>
+				<label className="lb-tuner__row lb-tuner__row--check">
+					<input type="checkbox" checked={guides} onChange={(e) => showBandGuides(e.target.checked)} />
+					<span>Show band guides (drag a border to move it)</span>
+				</label>
+				<p className="lb-tuner__hint">
+					{setByHand ? `${setByHand} border${setByHand === 1 ? '' : 's'} set by hand.` : 'Every border is the layout’s own.'}{' '}
+					<button
+						type="button"
+						disabled={!setByHand}
+						onClick={() => {
+							setLayoutConfig({ bandBorders: [] })
+							relayoutSoon(editor)
+						}}
+					>
+						Reset band borders
+					</button>
+				</p>
 			</section>
 			<div className="lb-tuner__buttons">
 				<button type="button" onClick={() => relayout(editor)}>

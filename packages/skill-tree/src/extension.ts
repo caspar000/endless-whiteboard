@@ -14,6 +14,7 @@ import type { TLShapeId } from '@lifeboard/canvas'
 import { TreeSettings } from './TreeSettings'
 import { StaleLayout } from './tree/StaleLayout'
 import { Working } from './tree/Working'
+import { BandGuides } from './tree/BandGuides'
 import { tunerNodeDefinition } from './tree/LayoutTuner'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
@@ -100,6 +101,7 @@ export const skillTreeExtension: Extension = {
 	overlays: [
 		{ id: 'lifeboard.skill-tree.stale-layout', Component: StaleLayout },
 		{ id: 'lifeboard.skill-tree.working', Component: Working },
+		{ id: 'lifeboard.skill-tree.band-guides', Component: BandGuides },
 	],
 	// A tree's header is its view, not something to look at (docs/skill-tree-layout-plan.md, "Views"):
 	// hidden unless Settings asks for headers.

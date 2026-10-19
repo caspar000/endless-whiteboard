@@ -10,6 +10,7 @@ import { toggleAllNodes } from './tree/view'
 import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
 import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
+import { bandGuidesShown, showBandGuides } from './tree/BandGuides'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -121,6 +122,14 @@ export const skillTreeCommands: readonly Command[] = [
 			const bounds = editor.getCurrentPageBounds()
 			await insertWholeLifeTest(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center)
 		},
+	},
+	{
+		id: 'skill-tree.band-guides',
+		title: 'Show or hide the band guides (dev)',
+		group: GROUP,
+		// For working on the bands: every level's border on the board, to drag in or out.
+		when: (ctx) => ctx.editor !== null && isDevBuild,
+		run: () => showBandGuides(!bandGuidesShown()),
 	},
 	{
 		id: 'skill-tree.layout-tuner',

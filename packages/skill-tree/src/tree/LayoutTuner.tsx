@@ -111,7 +111,7 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 				)}
 			</section>
 			<section className="lb-tuner__group">
-				<h4>Bands</h4>
+				<h4>Band guides</h4>
 				<label className="lb-tuner__row lb-tuner__row--check">
 					<input type="checkbox" checked={guides} onChange={(e) => showBandGuides(e.target.checked)} />
 					<span>Show band guides (drag a border to move it)</span>

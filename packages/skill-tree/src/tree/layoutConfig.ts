@@ -23,9 +23,15 @@ export interface LayoutConfig {
 	 * the pillars'; 0 or missing leaves a border to the layout (in bands).
 	 */
 	bandBorders: number[]
-	/** How wide a family may fan on its ring before it splits into staggered rows, in degrees (in bands). */
-	bandFan: number
-	/** The most rows a family splits into within its band (in bands). */
+	/** The pillars' border round You, unless set by hand (in bands). */
+	bandFirst: number
+	/** The tree roots' border. */
+	bandSecond: number
+	/** The third level's border. */
+	bandThird: number
+	/** How much further out each border past the third is than the one inside it. */
+	bandStep: number
+	/** The most rows a band staggers its nodes across when it is too full for one (in bands). */
 	bandRows: number
 	/** Keep every branch off the arrow into its own node, at the cost of longer arrows (placed from the parent). */
 	keepWayBack: boolean
@@ -81,7 +87,10 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	fanSpread: 240,
 	keepWayBack: false,
 	bandBorders: [],
-	bandFan: 90,
+	bandFirst: 750,
+	bandSecond: 1000,
+	bandThird: 2500,
+	bandStep: 1500,
 	bandRows: 3,
 	hubRoom: 150,
 	clusterGap: 60,
@@ -131,8 +140,11 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
-	{ group: 'Skeleton', key: 'bandFan', label: 'Widest fan before rows (°, bands)', min: 20, max: 360, step: 5 },
-	{ group: 'Skeleton', key: 'bandRows', label: 'Most rows in a band (bands)', min: 1, max: 6, step: 1 },
+	{ group: 'Bands', key: 'bandFirst', label: 'Pillars’ border', min: 200, max: 20000, step: 50 },
+	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 30000, step: 50 },
+	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 40000, step: 50 },
+	{ group: 'Bands', key: 'bandStep', label: 'Each border after, further out by', min: 100, max: 10000, step: 50 },
+	{ group: 'Bands', key: 'bandRows', label: 'Most rows in a band', min: 1, max: 6, step: 1 },
 	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
 	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },

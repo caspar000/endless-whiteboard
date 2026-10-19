@@ -302,3 +302,16 @@ the layout tuner, draws every border on the board in its own colour with its lev
 full it is (red when over 100% or thinner than its biggest cluster), rings in red the skill nodes
 whose clusters overlap, and lets a border be dragged in or out; the board is laid out again as it
 moves. "Reset band borders" in the tuner hands them back to the layout.
+
+**Fixed borders (2026-10-19).** The user: the circles are the constraint, they must not grow; nodes
+move round inside them. Borders now default to 750, 1000 and 2500 px, then 1500 px more each
+(`bandFirst`, `bandSecond`, `bandThird`, `bandStep`), and never move by themselves. Placement
+changed with it: each node gets a slice (the pillars' in proportion to what grows from each, every
+node's shared among its children the same way) and would like to sit in its middle; band by band
+from the middle out, the band's nodes keep their order and move round as little as they can until
+none touches the next (least squares, pool-adjacent-violators), each child following its parent's
+move. A band too full for one row staggers its nodes over as many rows as its thickness holds
+(`bandRows`); what still doesn't fit overlaps, and the guides ring it. In bands nothing turns or
+pushes a branch afterwards (it would leave its band); clusters still turn about their own node.
+Four-tree board: 19,074 × 13,832 px, fill 7.8%; bands 3, 4 and 5 are 124%, 199% and 123% full,
+so 89 skill nodes overlap.

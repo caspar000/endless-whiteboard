@@ -12,6 +12,8 @@ import { siblingOrder, type BalloonInput } from './balloon'
  *   short and the bubble opens out behind it. A fan too wide for its spread moves out, all together,
  *   until it fits. The node's own bubble is the smallest circle round its cluster and theirs.
  * - Top-down, each subtree is turned to face away from its parent.
+ * - With `balanceSiblings`, each family goes round its parent in organ-pipe order (Lin and Yen): the
+ *   biggest bubble in the middle of the fan, the smallest at its ends.
  *
  * Each bubble lies inside its own angle seen from its parent, and siblings' angles don't overlap, so
  * no arrow crosses another and no branch reaches another, by construction.
@@ -38,7 +40,8 @@ export function bubbles({ start, order, kids: given, radius, arrows = [], config
 	const made = new Map<string, Bubble>()
 
 	for (const id of [...order].reverse()) {
-		const children = kids(id)
+		// The pillars keep their order round You; a family, balanced, has its biggest in the middle.
+		const children = C.balanceSiblings && id !== start ? organPipe(kids(id), (k) => made.get(k)!.r) : kids(id)
 		const r = own(id)
 		if (!children.length) {
 			made.set(id, { cx: 0, cy: 0, r, at: new Map() })
@@ -138,4 +141,17 @@ function enclose(circles: readonly { x: number; y: number; r: number }[]): { cx:
 		cy += (ty - cy) / (k + 1)
 	}
 	return { cx, cy, r: far().reach }
+}
+
+/**
+ * `items` in organ-pipe order by `size` (after Lin and Yen's balloon drawings): the biggest in the
+ * middle, the rest either side of it by turns, smallest at the ends, so a fan round its parent comes
+ * out balanced and its bubble round. Ties keep their order.
+ */
+export function organPipe<T>(items: readonly T[], size: (item: T) => number): T[] {
+	const sorted = items.map((item, i) => ({ item, i, s: size(item) })).sort((a, b) => b.s - a.s || a.i - b.i)
+	const left: T[] = []
+	const right: T[] = []
+	sorted.forEach(({ item }, k) => (k % 2 === 0 ? right : left).push(item))
+	return [...left.reverse(), ...right]
 }

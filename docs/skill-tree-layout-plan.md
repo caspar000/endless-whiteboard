@@ -424,3 +424,11 @@ nodes don't move, so it is evenness as far as bends allow, not a true Lombardi d
 about 0.6 s on the four-tree board, so a drag coming to rest bends again only the arrows touching what
 it moved. Four-tree board: about 100 of 132 arrows gently curved, crossings as with dodging alone
 (0 arrow over arrow, 0 through skill nodes, 4 over items, 5 over light lines).
+
+**Sibling ordering (2026-10-19).** After Lin and Yen's balloon drawings: `balanceSiblings` puts each
+family round its parent in organ-pipe order, biggest bubble in the middle of the fan, smallest at its
+ends (the pillars keep their order). It helps plain bubbles (75,254 × 44,179 → 61,747 × 37,976 px;
+arrows over items 11 → 4, over light lines 12 → 3) but not the compacted ones, which do best from the
+YAML's order: organ pipe 25,358 × 19,431, fill 4.2%, 1 crossing; the reverse (biggest at the ends)
+22,843 × 17,183 with 3 crossings and 4 through skill nodes; biggest first 23,149 × 17,354 with 2
+crossings; the YAML's order 25,215 × 15,423, fill 5.3%, 0 crossings. So it is a tuner setting, off.

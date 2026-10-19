@@ -22,6 +22,8 @@ export interface LayoutConfig {
 	placement: 'compactCones' | 'compactBubbles' | 'bubbles' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
+	/** In bubbles: each family round its parent with its biggest branch in the middle and smallest at the ends. */
+	balanceSiblings: boolean
 	/**
 	 * Each level's border round You, set by hand from the band guides (tree/BandGuides.tsx), the first
 	 * the pillars'; 0 or missing leaves a border to the layout (in bands).
@@ -98,6 +100,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	masterySize: 380,
 	placement: 'compactBubbles',
 	fanSpread: 240,
+	balanceSiblings: false,
 	keepWayBack: false,
 	bandBorders: [],
 	bandFirst: 750,
@@ -161,6 +164,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
+	{ group: 'Skeleton', key: 'balanceSiblings', label: 'Balance each fan (biggest in the middle)' },
 	{ group: 'Bands', key: 'bandFirst', label: 'Pillars’ border', min: 200, max: 5000, step: 50 },
 	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 8000, step: 50 },
 	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 12000, step: 50 },

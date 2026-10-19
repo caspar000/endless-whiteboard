@@ -267,7 +267,7 @@ export function balloon({ start, order, kids: given, radius, arrows = [], config
  * branches between them. Every order is tried for a family of up to seven, the nearest to the YAML's
  * winning a tie; a larger family moves a linked child next to its partner, one at a time.
  */
-function siblingOrder(
+export function siblingOrder(
 	start: string,
 	order: readonly string[],
 	kids: (id: string) => readonly string[],

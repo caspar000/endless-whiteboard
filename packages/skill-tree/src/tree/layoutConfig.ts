@@ -11,10 +11,17 @@ export interface LayoutConfig {
 	pillarSize: number
 	masterySize: number
 	// Skeleton
-	/** How skill nodes are placed: each from its parent (a balloon layout, balloon.ts), or on rings round the middle. */
-	placement: 'fromParent' | 'rings'
+	/**
+	 * How skill nodes are placed: in bands, one ring per level, each branch a wedge (bands.ts); each
+	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
+	 */
+	placement: 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
+	/** How wide a family may fan on its ring before it splits into staggered rows, in degrees (in bands). */
+	bandFan: number
+	/** The most rows a family splits into within its band (in bands). */
+	bandRows: number
 	/** Keep every branch off the arrow into its own node, at the cost of longer arrows (placed from the parent). */
 	keepWayBack: boolean
 	/** Open ground between the middle and the pillars, for the arrows out to them. */
@@ -68,6 +75,8 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	placement: 'fromParent',
 	fanSpread: 240,
 	keepWayBack: false,
+	bandFan: 90,
+	bandRows: 3,
 	hubRoom: 150,
 	clusterGap: 60,
 	minSlice: 40,
@@ -110,11 +119,14 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		key: 'placement',
 		label: 'Place skill nodes',
 		options: [
+			{ value: 'bands', label: 'In bands, one ring per level' },
 			{ value: 'fromParent', label: 'From their parent' },
 			{ value: 'rings', label: 'On rings round the middle' },
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
+	{ group: 'Skeleton', key: 'bandFan', label: 'Widest fan before rows (°, bands)', min: 20, max: 360, step: 5 },
+	{ group: 'Skeleton', key: 'bandRows', label: 'Most rows in a band (bands)', min: 1, max: 6, step: 1 },
 	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
 	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },

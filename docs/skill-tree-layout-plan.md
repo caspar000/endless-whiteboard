@@ -265,3 +265,28 @@ fill 5.3% → 8.4%. The skill-node view: 5/1/0/0 → 5/1/0/0.
 Left: the two arrow crossings are a branch curling back over the arrow into its own tree (Film's
 weeks over You → Practical; Games' close reading over Practical → Games). The repair can't turn them
 clear without covering a neighbour, and keeping the way back clear costs more than it saves.
+
+## Bands (2026-10-19, the user's sketch)
+
+The user found the balloon reads as random: families fan up to 240° round their node, so further out
+no longer means deeper, and Practical's three trees don't read as three branches. Their sketch:
+concentric borders, one per level, clusters filling a band sideways before anything goes outward.
+
+Built as `placement: 'bands'` (`tree/bands.ts`), a radial tidy tree: pillars on a ring round You,
+each family on an arc of its own one step further out than its parent, every branch one unbroken
+wedge in YAML order, the parent centred over its children (Reingold–Tilford in angles). Outlines are
+the angle a branch covers in each 100 px strip round You, nodes and arrows, so neighbours tuck in as
+close as the real geometry allows. A family fanning wider than `bandFan` (90°) splits into staggered
+rows (`bandRows`, 3). Where a strip is too full, the families on its innermost arcs move out a step.
+
+First tried with one ring per level across the whole board, as sketched: 31,000 × 39,500 px, fill
+1.7%, mean arrow 3750 px. One ring per level has to hold every cluster on that level all the way
+round, and Adler is about 17 levels deep, so the outer bands reach far for one tree.
+
+Per-family arcs, four-tree board: no crossings at all (0/0/0/0), but 29,500 × 32,800 px, fill 2.1%,
+mean arrow 2315 px, and the pillars pushed out to 6700 px. The trees are bushy close to their roots
+(the Play List's 10 schools, World Canon's 9, Adler's 8), each a big cluster, and a wedge has to fit
+them near the middle, where there is least room round.
+
+For comparison, the balloon with `fanSpread` 150° and no gravity or ShrinkTree: 23,200 × 21,800,
+fill 4%, mean arrow 975, crossings 2/0/1/2; with them on: 14,900 × 16,100, fill 8.5%, mean 824.

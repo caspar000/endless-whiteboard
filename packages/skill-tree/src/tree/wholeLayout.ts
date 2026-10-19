@@ -1,6 +1,7 @@
 import type { GraphEdge, GraphNode } from './layout'
 import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
 import { balloon } from './balloon'
+import { bands } from './bands'
 import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
 
@@ -161,7 +162,8 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
 	function skeleton(radius: (id: string) => number): Map<string, Point> {
-		const out = C.placement === 'rings' ? rings(radius) : balloon({ start, order, kids: skillKids, radius, arrows: options.arrows, config: C })
+		const input = { start, order, kids: skillKids, radius, arrows: options.arrows, config: C }
+		const out = C.placement === 'rings' ? rings(radius) : C.placement === 'bands' ? bands(input) : balloon(input)
 		shareBetween(out, radius)
 		return out
 	}

@@ -487,3 +487,10 @@ Two causes, both fixed:
   arrow it doesn't lay out. Its rules now count every drawn arrow; only the tree's pull. Four-tree
   board, skill-node view: 1 crossing → 0; the whole-life board: 9 → 2 (through skill nodes 4 → 0),
   its skill-node view 15 → 8; the four-tree board with everything about the same.
+
+Then (same day) **arrows out of one node**: the curving never counted two arrows that share a node as
+crossing, true for straight ones, but bent apart for evenness they crossed outside it (the user's
+screenshots: Stagecraft, Russian Theatre, Literature, Film Craft). They now count when they cross
+outside the node they share. Four-tree test board in the app, skill-node view: 8 such crossings → 0
+(0 after Re-calculate too, 0 between separate arrows). With everything shown: 1 such crossing left and
+7 skill arrows over a cluster's light lines, the cost of the curving trading one against another.

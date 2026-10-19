@@ -66,6 +66,7 @@ export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvabl
 		return { ends: l.ends, p, box: boxOf(p) }
 	})
 	for (const a of arrows) path.set(a.id, arc(a.from, a.to, bend.get(a.id)!))
+	const discOf = new Map(discs.map((d) => [d.id, d]))
 
 	// The light lines' pieces and the discs in a grid, so each piece of an arrow is checked only against
 	// what is near it: a board has thousands of light lines, each an arc in sixteen pieces.
@@ -98,9 +99,12 @@ export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvabl
 		const near = (b: { x0: number; y0: number; x1: number; y1: number }) => b.x0 <= box.x1 && b.x1 >= box.x0 && b.y0 <= box.y1 && b.y1 >= box.y0
 		let n = 0
 		for (const o of arrows) {
-			if (o.id === a.id || o.ends.some((e) => a.ends.includes(e))) continue
+			if (o.id === a.id) continue
+			// Two arrows out of one node may cross too once curved, outside the node (inside, it covers them).
+			const shared = o.ends.filter((e) => a.ends.includes(e))
+			if (shared.length > 1) continue
 			const q = path.get(o.id)!
-			if (near(boxOf(q)) && polylinesCross(p, q)) n++
+			if (near(boxOf(q)) && polylinesCross(p, q, shared.length ? discOf.get(shared[0]!) : undefined)) n++
 		}
 		const crossedLines = new Set<number>()
 		const crossedDiscs = new Set<number>()
@@ -214,11 +218,19 @@ export function arc(from: Point, to: Point, bend: number): Point[] {
 	})
 }
 
-function polylinesCross(p: readonly Point[], q: readonly Point[]): boolean {
-	for (let i = 1; i < p.length; i++) for (let j = 1; j < q.length; j++) if (cross(p[i - 1]!, p[i]!, q[j - 1]!, q[j]!)) return true
+/** Do the polylines cross? Not counting where they do inside `under`, the node they share. */
+function polylinesCross(p: readonly Point[], q: readonly Point[], under?: Disc): boolean {
+	for (let i = 1; i < p.length; i++)
+		for (let j = 1; j < q.length; j++) {
+			const [a, b, c, d] = [p[i - 1]!, p[i]!, q[j - 1]!, q[j]!]
+			if (!cross(a, b, c, d)) continue
+			if (!under) return true
+			// Where they cross: along a→b by the share t.
+			const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / ((b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x))
+			if (Math.hypot(a.x + t * (b.x - a.x) - under.x, a.y + t * (b.y - a.y) - under.y) > under.r) return true
+		}
 	return false
 }
-
 
 /** Do the segments a→b and c→d cross (not merely touch at an end)? */
 function cross(a: Point, b: Point, c: Point, d: Point): boolean {

@@ -1,9 +1,8 @@
 import { atom } from '@lifeboard/canvas'
 
 /**
- * How skill trees behave by default (docs/skill-tree-plan.md, "Rebuild"): what an import shows,
- * whether physics runs live, whether tree headers are drawn. A tree overrides live physics in its
- * header's editor; these are the defaults it falls back to.
+ * How skill trees behave by default (docs/skill-tree-plan.md, "Rebuild"): what an import shows and
+ * whether tree headers are drawn.
  *
  * localStorage with a try/catch on both sides, as the dice prefs do it: private-mode Safari throws on
  * write, and losing a default across reloads is not worth a failure. Per device, like the canvas prefs.
@@ -16,12 +15,10 @@ export interface TreePrefs {
 	 * the header is still the view, switched from ⌘K; drawn, it can be selected and edited.
 	 */
 	showHeaders: boolean
-	/** Whether trees keep simulating, Obsidian-style, instead of settling after a drag. */
-	live: boolean
 }
 
 const KEY = 'lifeboard:skill-tree-prefs'
-export const DEFAULT_TREE_PREFS: TreePrefs = { importShows: 'all', showHeaders: false, live: false }
+export const DEFAULT_TREE_PREFS: TreePrefs = { importShows: 'all', showHeaders: false }
 
 // An atom, so what reads it in a render or a shape's visibility follows a change at once.
 const current = atom<TreePrefs>('lifeboard:skill-tree-prefs', read())
@@ -33,7 +30,6 @@ function read(): TreePrefs {
 		return {
 			importShows: raw.importShows === 'overview' ? 'overview' : 'all',
 			showHeaders: raw.showHeaders === true,
-			live: raw.live === true,
 		}
 	} catch {
 		return { ...DEFAULT_TREE_PREFS }

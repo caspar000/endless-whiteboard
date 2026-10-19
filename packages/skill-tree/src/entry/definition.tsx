@@ -43,6 +43,8 @@ export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 	// Not something to make by hand: the view puts entries in. Kept out of the dock and the create
 	// menu the way a retired type is.
 	deprecated: true,
+	// Part of the maze's locked structure, with its skill node.
+	pinned: true,
 	component: EntryComponent,
 	// An entry is a disc; a work a smaller disc with its title below, which still takes a click.
 	outline: (shape) =>

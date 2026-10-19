@@ -115,16 +115,6 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 						<span>Rings</span>
 						<input value={shape.props.rings} placeholder="inner to outer" onKeyDown={keepKeys} onChange={(e) => set({ rings: e.target.value })} />
 					</label>
-					<div className="lb-skill-editor__pair">
-						<label>
-							<span>Live physics</span>
-							<select value={shape.props.live} onChange={(e) => set({ live: e.target.value })}>
-								<option value="">Default</option>
-								<option value="on">On</option>
-								<option value="off">Off</option>
-							</select>
-						</label>
-					</div>
 					<p className="lb-skill-editor__hint">This board shows the tree from that node: it and everything that grows from it, trees mounted on it included. Re-calculate lays the view out again.</p>
 					<p className="lb-skill-editor__id">{shape.props.treeId}</p>
 				</div>

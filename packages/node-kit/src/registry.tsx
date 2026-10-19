@@ -224,6 +224,11 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	deprecated?: boolean
 	/**
+	 * Stays where it is when dragged: a drag leaves it in place (the skill tree's maze is a locked
+	 * structure). Code can still move it.
+	 */
+	pinned?: boolean
+	/**
 	 * What to call an instance of this node in rollup groups, table rows and pickers.
 	 *
 	 * The first rung of the `shapeLabel` ladder. Only needed when a node's name lives somewhere
@@ -327,6 +332,12 @@ export function createNodeShapeUtil<Props extends object>(
 		/** Nodes are arrows' natural targets on a diagram board, so binding stays enabled. */
 		override canBind(_opts: TLShapeUtilCanBindOpts): boolean {
 			return true
+		}
+
+		/** A pinned node dragged goes straight back to where the drag started. */
+		override onTranslate(initial: TLBaseBoxShape, current: TLBaseBoxShape) {
+			if (!def.pinned || (initial.x === current.x && initial.y === current.y)) return
+			return { id: current.id, type: current.type, x: initial.x, y: initial.y }
 		}
 
 		override onResize(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {

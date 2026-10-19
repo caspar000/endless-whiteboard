@@ -245,7 +245,7 @@ function viewGraph(editor: Editor, view: ViewContents) {
 	return { drawn, loose, lines }
 }
 
-/** A view's edges, each pointing away from its start: what a branch is, for dragging (physics.ts). */
+/** A view's edges, each pointing away from its start: what a branch is. */
 export function viewEdges(editor: Editor, view: ViewContents): GraphEdge[] {
 	const startKey = view.items.has(view.start) ? itemKey(view.start) : view.start
 	const { drawn, loose, lines } = viewGraph(editor, view)

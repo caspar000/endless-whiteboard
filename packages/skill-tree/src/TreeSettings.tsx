@@ -32,9 +32,6 @@ export function TreeSettings() {
 					Back to the defaults
 				</button>
 			</details>
-			<Row title="Live physics" hint="Trees keep moving like Obsidian's graph instead of settling after a drag.">
-				<input type="checkbox" checked={prefs.live} onChange={(e) => setTreePrefs({ live: e.target.checked })} />
-			</Row>
 		</div>
 	)
 }

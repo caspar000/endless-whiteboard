@@ -77,7 +77,7 @@ export interface SkillTreeProps {
 	root: string
 	/** What this board shows of the tree: skill nodes only (`overview`) or everything (`all`). */
 	mode: string
-	/** Live physics for this tree: '' takes the default, 'on' or 'off' overrides it. */
+	/** Live physics for this tree, from before the maze: kept so saved trees still load, no longer read. */
 	live: string
 	/** Where nodes were in each view of this tree on this board, as JSON: `{ context: { id: [x, y] } }`. */
 	places: string

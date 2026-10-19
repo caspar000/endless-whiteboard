@@ -72,6 +72,8 @@ export const skillNodeDefinition: NodeDefinition<SkillNodeProps> = {
 	aspectRatioLocked: true,
 	// A disc: arrows end on its circle, the same distance from its middle whichever way they come in.
 	outline: (shape) => ({ cx: shape.props.w / 2, cy: shape.props.h / 2, r: Math.min(shape.props.w, shape.props.h) / 2 }),
+	// The maze is a locked structure: dragging a skill node leaves it where the layout put it.
+	pinned: true,
 	component: SkillComponent,
 	canEdit: true,
 	// Double-click, Enter, or right-click › Edit opens its editor.

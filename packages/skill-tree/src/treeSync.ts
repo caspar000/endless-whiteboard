@@ -7,7 +7,6 @@ import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type 
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews, refreshStale, curveSkillArrows } from './tree/viewSync'
 import { boardTrees, treeGraph, type ViewContents } from './views'
-import { watchPhysics } from './tree/physics'
 import { sizeOfKind } from './skill/definition'
 import {
 	getTreeDef,
@@ -124,12 +123,9 @@ export function watchTrees(editor: Editor): void {
 			if (!disposed.has(editor)) styleArrows(editor)
 		})
 	})
-	// Dragging a tree node pulls its branch and eases the board to rest (tree/physics.ts).
-	const stopPhysics = watchPhysics(editor)
 	editor.disposables.add(() => {
 		stop()
 		stopStyle()
-		stopPhysics()
 		disposed.add(editor)
 	})
 }

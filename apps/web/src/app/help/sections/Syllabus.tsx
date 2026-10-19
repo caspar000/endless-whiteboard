@@ -181,10 +181,8 @@ export function Syllabus(_props: SectionProps) {
 					fills it with a picture of you; any skill node can have one.
 				</p>
 				<p>
-					Drag a node and its branch follows on springs, and whatever it runs into makes room; let go and
-					the board eases to rest, nothing covering anything. One ⌘Z puts it all back. With{' '}
-					<strong>live physics</strong> on, the whole view takes part, like Obsidian's graph: every node
-					pushes the others away and every line pulls its two ends together.
+					The tree is a locked structure: dragging a skill node, an entry or a work leaves it where the
+					maze put it. Re-calculate lays the whole view out again.
 				</p>
 				<p>
 					Nothing moves on its own. A new entry or work goes into its skill node's cluster, and only that
@@ -198,7 +196,7 @@ export function Syllabus(_props: SectionProps) {
 				<p className="lb-help__aside">
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill
 					trees can draw it again (to change where its view starts, or lay it out again with Re-calculate),
-					and sets what an import opens on and whether physics is live. The whole-life board grows from You
+					and sets what an import opens on. The whole-life board grows from You
 					through a maze of hexagons, branch by branch, each arrow running along its corridor, the maze only
 					as big as the tree needs; under Advanced are its settings (the hexagons' size, cells to an only
 					child, the room to start from and more). Re-calculate a board to see a change.

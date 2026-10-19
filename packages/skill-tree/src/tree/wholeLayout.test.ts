@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ADLER_LIFE_SKILLS, measure, WHOLE_LIFE, type ShowAll } from './showAll.fixture'
+import { ADLER_LIFE, ADLER_LIFE_SKILLS, measure, SHOW_ALL, WHOLE_LIFE, type ShowAll } from './showAll.fixture'
 import { wholeLayout } from './wholeLayout'
 import { maze } from './maze'
 import { DEFAULT_LAYOUT } from './layoutConfig'
@@ -7,9 +7,9 @@ import { DEFAULT_LAYOUT } from './layoutConfig'
 const lay = (view: ShowAll) => wholeLayout(view.nodes, view.edges, { isSkill: (id) => view.skills.has(id), start: view.start, arrows: view.arrows, config: DEFAULT_LAYOUT })
 
 describe('wholeLayout', () => {
-	// The skill-node view of the four-tree board. The view with everything (clusters round the nodes)
-	// and the older whole-life board (two of Director's nodes find no cell) aren't there yet.
-	for (const view of [ADLER_LIFE_SKILLS]) {
+	// The four-tree board both ways, and single trees with everything. The older whole-life board (two
+	// of Director's nodes find no cell) isn't there yet.
+	for (const view of [ADLER_LIFE_SKILLS, ADLER_LIFE, ...SHOW_ALL]) {
 		it(`places all of ${view.name} with nothing covering anything`, () => {
 			const at = lay(view)
 			expect(at.size).toBe(view.nodes.length)

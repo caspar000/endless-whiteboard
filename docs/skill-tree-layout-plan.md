@@ -557,3 +557,15 @@ being wrapped round by big ones); a child left without a cell branches off its p
 trunk into the roomiest free cell (repair); and the search tries both fork starts, a wider ring round
 You and the pillars started a little further round, coarse then fine. The four-tree board's skill-node
 view fits at 3.25; the older whole-life board leaves two of Director's nodes without a cell.
+
+## The view with everything in the maze (2026-10-20, in progress)
+
+For now each cluster takes one cell, the cells as wide as the biggest cluster past the pillars and a
+gap (`mazeLayout`): every node placed and nothing overlapping on the four-tree board and the single
+trees, but big (four-tree board 56k × 50k px, against 22.7k × 14.9k with compact bubbles).
+
+Tried and set aside: footprints, a cell per middling cluster with a bigger cluster taking every cell
+within some rings of its own (its children seeded where their footprints touch its). The idea holds
+(the four-tree board's clusters are 73 one-cell and 57 seven-cell), but each run took 46 s and left
+29 clusters without room (Theatre's Georgian branch), and the rewrite slowed the skill-node view. It
+needs the fork's split to think in footprints, not cells, before it comes back.

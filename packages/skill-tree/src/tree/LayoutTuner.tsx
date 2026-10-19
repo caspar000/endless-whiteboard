@@ -1,6 +1,6 @@
 import { createShapePropsMigrationSequence, type NodeComponentProps, type NodeDefinition } from '@lifeboard/node-kit'
 import { useValue, type Editor } from '@lifeboard/canvas'
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 import { memo, useState, type SyntheticEvent } from 'react'
 import { clean, DEFAULT_LAYOUT, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig, type LayoutConfig } from './layoutConfig'
 import { lastLayoutStats } from './layoutStats'
@@ -9,14 +9,18 @@ import { relayout, relayoutSoon } from './relayout'
 
 export const TUNER_TYPE = 'node.skillLayoutTuner'
 
-const swallow = (e: SyntheticEvent) => e.stopPropagation()
+/** The card's controls keep their presses from the canvas; its header doesn't, so it drags the card. */
+const swallow = (e: SyntheticEvent) => {
+	const target = e.target as HTMLElement
+	if (!target.closest('.lb-tuner__head') || target.closest('button')) e.stopPropagation()
+}
 
 /**
  * The layout tuner (dev builds): every setting of the whole-life layout (tree/layoutConfig.ts) on a
  * card on the board. A change lays every tree view on the board out again; the card shows how that
  * came out. The settings are per device, shared by every board.
  */
-function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
+function TunerImpl({ editor, shape }: NodeComponentProps<Record<string, never>>) {
 	const config = useValue('lifeboard:skill-tree-layout-config', getLayoutConfig, [])
 	const stats = useValue('lifeboard:skill-tree-layout-stats-now', () => lastLayoutStats.get(), [])
 	const [copied, setCopied] = useState(false)
@@ -34,6 +38,9 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 			<div className="lb-tuner__head">
 				<SlidersHorizontal size={15} />
 				<span>Layout tuner</span>
+				<button type="button" className="lb-tuner__close" title="Remove the tuner" aria-label="Remove the tuner" onClick={() => editor.deleteShape(shape.id)}>
+					<X size={14} />
+				</button>
 			</div>
 			{groups.map((group) => (
 				<section key={group} className="lb-tuner__group">

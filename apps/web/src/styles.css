@@ -14597,6 +14597,23 @@ button.lb-props__eye:hover {
 	gap: 6px;
 	font-weight: 700;
 	font-size: 13px;
+	cursor: grab;
+}
+.lb-tuner__close {
+	margin-left: auto;
+	display: grid;
+	place-items: center;
+	padding: 2px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: inherit;
+	opacity: 0.6;
+	cursor: pointer;
+}
+.lb-tuner__close:hover {
+	opacity: 1;
+	background: color-mix(in srgb, currentColor 12%, transparent);
 }
 .lb-tuner__group h4 {
 	margin: 0 0 4px;

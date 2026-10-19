@@ -494,3 +494,20 @@ screenshots: Stagecraft, Russian Theatre, Literature, Film Craft). They now coun
 outside the node they share. Four-tree test board in the app, skill-node view: 8 such crossings → 0
 (0 after Re-calculate too, 0 between separate arrows). With everything shown: 1 such crossing left and
 7 skill arrows over a cluster's light lines, the cost of the curving trading one against another.
+
+## The view with everything grows out of the skill-node view (2026-10-19)
+
+The two views ran the same compaction; the difference was its input. With everything shown, each
+node is its whole cluster (median radius 468 px, the largest 1,264, against 75 for a node alone),
+and the rules (no cluster on another, no arrow through a cluster) jam rigid branches behind each
+other: Practical → Theatre rested at 7,424 px against the 232 it needs, the whole Theatre tree unable
+to come in past Film's clusters, and the jumps, sized for small nodes, couldn't move a 31-cluster
+branch.
+
+Now compact bubbles with clusters (`grownBubbles`, tree/compact.ts) is laid out and compacted first
+with every node alone, as in the skill-node view, then grown: the clusters to half their size, the
+board spread evenly about You just as far as stops anything overlapping (spreading evenly keeps every
+angle, so nothing new crosses), compacted again, then the same to full size. Four-tree board (test
+copy): 25.3k × 15.2k → 22.7k × 14.9k px, longest arrow 7,244 → 4,354, arrows through cards 23 → 15,
+crossings 0 → 0. In the app: 0 crossings, laid out about 25 s after the insert (was about 15 s), in the
+worker. The whole-life (Director) board: 2 crossings → 4, inherited from its skill-node view.

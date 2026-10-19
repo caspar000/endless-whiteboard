@@ -52,8 +52,63 @@ const ROUNDS = 14
 
 /** `from`: the layout it starts from, which must not cross or overlap: strict cones, or bubbles. */
 export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'cones'): Map<string, Point> {
+	return compactFrom(input, from === 'bubbles' ? bubbles(input, true) : cones(input, true))
+}
+
+/** How far the clusters grow at each step, from their nodes alone to their whole size. */
+const GROW = [0.5, 1]
+
+/**
+ * Compacted bubbles for clusters bigger than their nodes (the view with everything): laid out and
+ * compacted first with every node alone, `own`, as in the skill-node view, then the clusters grown
+ * to their whole size a step at a time, each step spread out evenly just as far as stops anything
+ * overlapping and compacted again. Spread evenly, nothing new crosses, and each step starts from
+ * the last one's shape, so the board keeps the skill-node view's shape, opened up only where the
+ * clusters need room.
+ */
+export function grownBubbles(input: BalloonInput, own: (id: string) => number): Map<string, Point> {
+	const alone = { ...input, radius: own }
+	let at = compactFrom(alone, bubbles(alone, true))
+	for (const t of GROW) {
+		const radius = (id: string) => own(id) + (input.radius(id) - own(id)) * t
+		const step = { ...input, radius }
+		at = compactFrom(step, spreadToFit(step, at))
+	}
+	return at
+}
+
+/**
+ * `at` spread evenly about the start, as little as stops any two clusters overlapping and any tree
+ * arrow running through a cluster. Spreading evenly keeps every angle, so nothing crosses that didn't.
+ */
+function spreadToFit({ start, order, kids, radius, config: C }: BalloonInput, at: ReadonlyMap<string, Point>): Map<string, Point> {
+	const ids = order.filter((id) => at.has(id))
+	const r = (id: string) => (id === start ? radius(start) + C.hubRoom : radius(id))
+	const gap = C.compactGap
+	let s = 1
+	for (let i = 0; i < ids.length; i++)
+		for (let j = i + 1; j < ids.length; j++) {
+			const [a, b] = [at.get(ids[i]!)!, at.get(ids[j]!)!]
+			const d = Math.hypot(a.x - b.x, a.y - b.y)
+			if (d > 1e-6) s = Math.max(s, (r(ids[i]!) + r(ids[j]!) + gap) / d)
+		}
+	for (const p of ids)
+		for (const k of kids(p)) {
+			if (!at.has(k)) continue
+			const [a, b] = [at.get(p)!, at.get(k)!]
+			for (const j of ids) {
+				if (j === p || j === k) continue
+				const d = nearSegment(at.get(j)!.x, at.get(j)!.y, a.x, a.y, b.x, b.y)
+				if (d > 1e-6) s = Math.max(s, r(j) / d)
+			}
+		}
+	const o = at.get(start)!
+	return new Map(ids.map((id) => [id, { x: o.x + (at.get(id)!.x - o.x) * s, y: o.y + (at.get(id)!.y - o.y) * s }]))
+}
+
+/** Compaction from `at`, which must not cross or overlap. */
+function compactFrom(input: BalloonInput, at: ReadonlyMap<string, Point>): Map<string, Point> {
 	const { start, order, kids, radius, config: C } = input
-	const at = from === 'bubbles' ? bubbles(input, true) : cones(input, true)
 	const parentOf = new Map<string, string>()
 	for (const id of order) for (const k of kids(id)) parentOf.set(k, id)
 	const ids = order.filter((id) => at.has(id))

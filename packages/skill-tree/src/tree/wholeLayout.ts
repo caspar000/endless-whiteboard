@@ -3,7 +3,7 @@ import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutDefaults'
 import { balloon } from './balloon'
 import { bands } from './bands'
 import { cones } from './cones'
-import { compactCones } from './compact'
+import { compactCones, grownBubbles } from './compact'
 import { wedges } from './wedges'
 import { bubbles } from './bubbles'
 import { orbitCluster } from './orbits'
@@ -24,6 +24,8 @@ import { pullIn } from './pullIn'
  * - **Clusters.** A skill node's entries go on orbits round it and their works along arcs beyond
  *   them (`orbitCluster`), and the cluster is a disc as big as they need. In the skill-node view a cluster is the node alone, so the same
  *   skeleton comes out tighter.
+ * - **Compact bubbles with clusters.** Laid out first with every node alone, as in the skill-node
+ *   view, then the clusters grown into place (`grownBubbles`), so the two views share a shape.
  * - **Shared nodes.** A node required from two trees moves to the border between its two parents.
  * - **Closing in.** Last, each branch slides toward its parent as far as it fits (`pullIn`).
  *
@@ -171,6 +173,11 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	}
 	return out
 
+	/** A skill node's cluster with nothing round it: the node alone, as in the skill-node view. */
+	function alone(id: string): number {
+		return orbitCluster(size.get(id)!, [], [], C).radius
+	}
+
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
 	function skeleton(radius: (id: string) => number, rough = false): Map<string, Point> {
 		const input = { start, order, kids: skillKids, radius, arrows: options.arrows, config: C }
@@ -181,7 +188,9 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 				: C.placement === 'compactCones'
 					? compactCones(input)
 					: C.placement === 'compactBubbles'
-						? compactCones(input, 'bubbles')
+						? order.some((id) => radius(id) > alone(id) + 0.5)
+							? grownBubbles(input, alone)
+							: compactCones(input, 'bubbles')
 					: C.placement === 'wedges'
 						? wedges(input)
 						: C.placement === 'bubbles'

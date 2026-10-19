@@ -1,5 +1,4 @@
 import type { GraphNode } from './layout'
-import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutDefaults'
 
 /**
  * Closes the gaps a layout leaves: each branch, nearest the start first, slides whole toward the
@@ -33,8 +32,56 @@ const ARROW_MARGIN = 7
 const STEP = 10
 /** Turns tried for a cluster when facing its gaps toward its arrows, in degrees. */
 const REORIENT_STEP = 15
-/** The settings of the call in progress (`pullIn` sets them): the gap, rounds, passes and arrow rule. */
-let C: LayoutConfig = DEFAULT_LAYOUT
+/** What `pullIn` runs on: which passes, their rounds and room, and what a move may not make worse. */
+export interface PullSettings {
+	/** Slide each branch toward the node it hangs from. */
+	slideToParent: boolean
+	/** Draw each branch, whole, toward the middle. */
+	gravity: boolean
+	/** Draw each cluster toward its nearest neighbour (ShrinkTree). */
+	shrinkTree: boolean
+	/** The least free space between two nodes while compacting. */
+	compactGap: number
+	gravityRounds: number
+	shrinkRounds: number
+	/** How far from straight in gravity may move a branch, in degrees. */
+	gravityFan: number
+	/** The longest an arrow between skill nodes may get, edge to edge: compaction never stretches one past it. */
+	maxArrow: number
+	/** What a move may not make worse: every crossing (of nodes, light lines and arrows), of skill nodes and arrows, or nothing. */
+	arrowRule: 'skills' | 'all' | 'none'
+	/** Last, turn each cluster so its gaps face where its arrows come in. */
+	reorientClusters: boolean
+	/** Then push every node an arrow runs through off it, sideways, as if the arrow were solid. */
+	pushOffArrows: boolean
+	/** Last, turn branches and clusters a little where that leaves fewer crossings. */
+	repairCrossings: boolean
+	/** Free space between two members of a cluster. */
+	memberPad: number
+}
+
+/**
+ * For the maze (wholeLayout.ts): nothing slides, draws in, pushes or turns a branch, which would
+ * undo the maze; each cluster only turns about its own skill node to face its arrows.
+ */
+export const MAZE_PULL: PullSettings = {
+	slideToParent: false,
+	gravity: false,
+	shrinkTree: false,
+	compactGap: 12,
+	gravityRounds: 4,
+	shrinkRounds: 4,
+	gravityFan: 60,
+	maxArrow: 600,
+	arrowRule: 'all',
+	reorientClusters: true,
+	pushOffArrows: false,
+	repairCrossings: false,
+	memberPad: 12,
+}
+
+/** The settings of the call in progress (`pullIn` sets them). */
+let C: PullSettings = MAZE_PULL
 
 export function pullIn(
 	at: Map<string, Point>,
@@ -49,7 +96,7 @@ export function pullIn(
 	units: ReadonlyMap<string, readonly string[]> = new Map(),
 	/** No node but the start comes nearer the start than this, centre to edge: the open ring its arrows cross. */
 	hub = 0,
-	config: LayoutConfig = DEFAULT_LAYOUT,
+	config: PullSettings = MAZE_PULL,
 	/** What a move is judged by: the arrows between skill nodes (cross-links too) and the light lines, as pairs of ids. */
 	segments: Segments = { arrows: [], lines: [] },
 	/** A skill node's cluster laid out again with its gaps toward these angles: members' centres relative to it. */

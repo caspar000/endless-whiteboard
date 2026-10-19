@@ -539,3 +539,21 @@ view: 87.7k × 81.6k px (Bubbles 12.7k × 7.6k, Compact bubbles 4.5k × 2.8k); w
 moving a ring out narrows the cut, squeezing whole trees into thin cones, 450k × 263k with everything),
 and compacting from the even radial (4.5k × 3.9k skill-node view, 21k × 23k with everything in 43 s,
 and the empty pillars left far out, since compaction doesn't move pillars).
+
+## The maze is the layout (2026-10-20)
+
+The user chose the maze (variant D: nodes side by side) and asked for everything else to go. Removed:
+compact cones and bubbles, bubbles, radial (Eades), wedges, cones, bands, fans from the parent and
+rings, with what only they used: the band and bubble guides, the background worker (the maze takes
+under a second), the layout stats, `balloon.ts`. The settings are now the maze's (`layoutDefaults.ts`:
+hexagon size, cells to an only child, room to start from, how chains wind, cell shape, room round You),
+the node sizes, the clusters' and how arrows curve; Settings shows them all under Advanced and the
+layout tuner the same ones (`LayoutFields.tsx`). `pullIn` keeps only turning clusters to face their
+arrows (`MAZE_PULL`).
+
+Making the maze place every node: a fork's seeds are taken the moment they're chosen (two nodes had
+landed in one cell); round You each pillar's piece grows toward its own direction (small pillars were
+being wrapped round by big ones); a child left without a cell branches off its parent or its parent's
+trunk into the roomiest free cell (repair); and the search tries both fork starts, a wider ring round
+You and the pillars started a little further round, coarse then fine. The four-tree board's skill-node
+view fits at 3.25; the older whole-life board leaves two of Director's nodes without a cell.

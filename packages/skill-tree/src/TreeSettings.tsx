@@ -1,10 +1,8 @@
 import { useSyncExternalStore, type ReactNode } from 'react'
 import { useValue } from '@lifeboard/canvas'
 import { getTreePrefs, setTreePrefs, subscribeToTreePrefs } from './treePrefs'
-import { clean, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig } from './tree/layoutConfig'
-
-/** The layout algorithms to choose from, as the layout tuner lists them. */
-const PLACEMENTS = LAYOUT_FIELDS.flatMap((f) => (f.key === 'placement' && 'options' in f ? f.options : []))
+import { DEFAULT_LAYOUT, getLayoutConfig, setLayoutConfig } from './tree/layoutConfig'
+import { LayoutFields } from './tree/LayoutFields'
 
 /** The skill-tree defaults, on the extension's page in Settings. Each tree can override them. */
 export function TreeSettings() {
@@ -23,16 +21,17 @@ export function TreeSettings() {
 			</Row>
 			<Row
 				title="Layout"
-				hint={`${PLACEMENTS.find((o) => o.value === layout.placement)?.hint ?? ''} Re-calculate a board's layout (⌘K) to see it change.`}
+				hint="The whole-life board grows from You through a maze of hexagons, branch by branch, the maze only as big as the tree needs. Re-calculate a board's layout (⌘K) to see a change."
 			>
-				<select value={layout.placement} onChange={(e) => setLayoutConfig(clean({ ...layout, placement: e.target.value }))}>
-					{PLACEMENTS.map((o) => (
-						<option key={o.value} value={o.value}>
-							{o.label}
-						</option>
-					))}
-				</select>
+				<span className="lb-tree-setting__value">Maze</span>
 			</Row>
+			<details className="lb-tree-advanced">
+				<summary>Advanced</summary>
+				<LayoutFields config={layout} onChange={setLayoutConfig} />
+				<button type="button" className="lb-tree-advanced__reset" onClick={() => setLayoutConfig(DEFAULT_LAYOUT)}>
+					Back to the defaults
+				</button>
+			</details>
 			<Row title="Live physics" hint="Trees keep moving like Obsidian's graph instead of settling after a drag.">
 				<input type="checkbox" checked={prefs.live} onChange={(e) => setTreePrefs({ live: e.target.checked })} />
 			</Row>

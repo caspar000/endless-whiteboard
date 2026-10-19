@@ -14451,6 +14451,31 @@ button.lb-props__eye:hover {
 	font-size: 12px;
 	color: var(--lb-text-faint);
 }
+.lb-tree-setting__value {
+	font-size: 13px;
+	color: var(--lb-text);
+}
+/* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
+.lb-tree-advanced {
+	padding: 10px 0 4px;
+	font-size: 12px;
+	color: var(--lb-text);
+}
+.lb-tree-advanced > summary {
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 4px 0;
+}
+.lb-tree-advanced[open] > summary {
+	margin-bottom: 8px;
+}
+.lb-tree-advanced .lb-tuner__group {
+	margin-bottom: 12px;
+}
+.lb-tree-advanced__reset {
+	margin-top: 4px;
+}
 
 /* Entries and works in a tree view (entry/EntryComponent.tsx): an entry is a disc with its name
    inside and a ring for its works; a work is a smaller disc with its medium's icon, its title below. */

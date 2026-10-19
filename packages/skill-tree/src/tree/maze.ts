@@ -11,10 +11,9 @@
  * - **Chains.** A node with one child walks to it cell by cell through its piece: hugging the walls
  *   (`snake`, Warnsdorff's rule: the cell with fewest free neighbours) or heading outward
  *   (`straight`), always keeping the rest of the piece in reach, so it never walls itself in.
- * - With `wedges`, the start's children get slices of the circle by size instead of grown pieces.
  */
 
-import type { BalloonInput } from './balloon'
+import type { LayoutConfig } from './layoutDefaults'
 
 type Point = { x: number; y: number }
 
@@ -22,10 +21,23 @@ type Point = { x: number; y: number }
  * The maze as a placement (wholeLayout.ts): hexagon cells as wide as the biggest skill node past
  * the pillars and a gap, nodes side by side or `mazeSpacing` apart along a chain.
  */
-export function mazeLayout({ start, order, kids, radius, config: C }: BalloonInput): Map<string, Point> {
+export interface MazeInput {
+	start: string
+	/** Skill nodes breadth first from the start. */
+	order: readonly string[]
+	/** A skill node's skill-node children, in order. */
+	kids: (id: string) => readonly string[]
+	/** How far a skill node's cluster reaches from its centre. */
+	radius: (id: string) => number
+	config: LayoutConfig
+}
+
+export function mazeLayout({ start, order, kids, radius, config: C }: MazeInput): Map<string, Point> {
+	// The cells as set; with clusters round the nodes (the view with everything), as big as the biggest needs.
 	const pillars = new Set(kids(start))
 	const widest = Math.max(0, ...order.filter((id) => id !== start && !pillars.has(id)).map(radius))
-	const m = maze(start, order, kids, radius, { grid: 'hex', region: 'disc', walk: 'snake', fill: 1.5, spacing: C.mazeSpacing, cell: 2 * widest + C.clusterGap })
+	const cell = Math.max(C.mazeCell, 2 * widest > C.skillSize + 1 ? 2 * widest + C.clusterGap : 0)
+	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: C.mazeSpacing, cell, hub: C.mazeHub })
 	// Each node's whole way from its parent: through any shared corridor cells (`~n`) on the way.
 	const into = new Map(m.corridors.map((c) => [c.to, c]))
 	routes = new Map()
@@ -56,10 +68,11 @@ export const forgetMazeRoutes = (): void => {
 
 export interface MazeOptions {
 	grid: 'hex' | 'square'
-	region: 'disc' | 'wedges'
 	walk: 'snake' | 'straight'
-	/** Cells per node. */
+	/** Cells per cell the tree takes to start from; the region grows from it until everything fits. */
 	fill: number
+	/** Open ground between the start and the first cells. */
+	hub: number
 	/** Cells from a node to its child: 1 next door, 2 with a corridor cell between. */
 	spacing: number
 	/** Distance between neighbouring cells' centres. */
@@ -84,21 +97,37 @@ export interface MazeResult {
  */
 export function maze(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions): MazeResult & { fill: number } {
 	let best: (MazeResult & { fill: number }) | null = null
-	for (let fill = o.fill; fill <= o.fill + 4; fill += 0.05) {
-		const m = { ...mazeOnce(start, order, kids, radius, { ...o, fill }), fill }
-		if (!best || m.overflow.length < best.overflow.length) best = m
-		if (!m.overflow.length) break
+	const tries = (fill: number, ring: number, turn: number) => {
+		// Two ways to start each family's pieces, as their shapes suit different trees: seeds growing at
+		// once, or each seed first taking its own free sides.
+		for (const claim of [false, true]) {
+			const m = { ...mazeOnce(start, order, kids, radius, { ...o, fill, hub: o.hub + ring * o.cell }, claim, turn), fill }
+			if (!best || m.overflow.length < best.overflow.length || (m.overflow.length === best.overflow.length && m.fill < best.fill)) best = m
+			if (!m.overflow.length) return m
+		}
+		return null
 	}
+	// Roomier and roomier in big steps until everything fits, then back in small ones to the tightest
+	// that still does. Failing at every size: the first cells a cell further out from the start (every
+	// branch leaves through the ring round it, and a wider ring has more ways out), and the pillars
+	// started a little further round either way.
+	for (const ring of [0, 1, 2])
+		for (const turn of [0, 0.25, -0.25])
+			for (let fill = o.fill; fill <= o.fill + 3; fill += 0.25) {
+				if (!tries(fill, ring, turn)) continue
+				for (let back = fill - 0.05; back > fill - 0.249 && back >= o.fill; back -= 0.05) if (!tries(back, ring, turn)) break
+				return best!
+			}
 	return best!
 }
 
-function mazeOnce(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions): MazeResult {
+function mazeOnce(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions, claim: boolean, turn = 0): MazeResult {
 	const size = new Map<string, number>()
 	for (const id of [...order].reverse()) size.set(id, 1 + kids(id).reduce((n, k) => n + size.get(k)!, 0))
 	const nodes = size.get(start)! - 1
 
 	// The grid: cells clear of the start, out to as far as holds the tree's nodes times `fill`.
-	const clear = radius(start) + o.cell * 0.5 + 20
+	const clear = radius(start) + o.cell * 0.5 + o.hub
 	const hex = o.grid === 'hex'
 	const s = o.cell / Math.sqrt(3)
 	const centre = (q: number, r: number): Point => (hex ? { x: s * 1.5 * q, y: o.cell * (r + q / 2) } : { x: q * o.cell, y: r * o.cell })
@@ -167,13 +196,15 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 		while (queue.length) for (const n of nbr[queue.shift()!]!) if (set.has(n) && !seen.has(n)) seen.add(n), queue.push(n)
 		return seen
 	}
-	const lost = (id: string, beside: Point) => {
-		const walk = (k: string, p: Point) => {
-			overflow.push(k)
-			at.set(k, { x: p.x + 40, y: p.y + 40 })
-			for (const g of kids(k)) walk(g, at.get(k)!)
-		}
-		walk(id, beside)
+	// Where each node is, and each node's trunk: the shared corridor cells (`~n`) its family runs through.
+	const cellOf = new Map<string, number>([[start, ORIGIN]])
+	const ownerOf = new Map<string, string>()
+	const trunks = new Map<string, { id: string; cell: number }[]>()
+	const owner = (v: string) => ownerOf.get(v) ?? v
+	/** A child that found no cell where it was meant to: tried again once the tree is grown (`repair`). */
+	const pending: { k: string; v: string }[] = []
+	const lost = (k: string, v: string) => {
+		pending.push({ k, v: owner(v) })
 	}
 
 	const grow = (v: string, cv: number, region: Set<number>, from?: Point) => {
@@ -192,7 +223,7 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 			let cands = nbrsIn(cur, region)
 			if (!cands.length) cands = borrow(cur, region)
 			if (!cands.length) {
-				if (cur === cv) return lost(k, pt(cv))
+				if (cur === cv) return lost(k, v)
 				break
 			}
 			// Keep the most of the piece in reach, then walk as asked.
@@ -222,6 +253,7 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 			cur = pick
 		}
 		at.set(k, pt(cur))
+		cellOf.set(k, cur)
 		corridors.push({ from: v, to: k, path })
 		const next = nbrsIn(cur, region)
 		const piece = next.length ? next.map((n) => component(n, region)).sort((a, b) => b.size - a.size)[0]! : new Set<number>()
@@ -238,7 +270,7 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 		let free = nbrsIn(cv, region)
 		if (!free.length) free = borrow(cv, region)
 		if (!free.length) {
-			for (const k of children) lost(k, here)
+			for (const k of children) lost(k, v)
 			return
 		}
 		const out = from ? Math.atan2(here.y - from.y, here.x - from.x) : -Math.PI / 2
@@ -254,7 +286,7 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 		if (cv === ORIGIN) {
 			// Round the start: each child's seed at the middle of its share of the circle, the first at the top.
 			const sum = groups.reduce((n, g) => n + g.size, 0)
-			let at = -Math.PI / 2 - (Math.PI * groups[0]!.size) / sum
+			let at = -Math.PI / 2 + turn - (Math.PI * groups[0]!.size) / sum
 			const taken = new Set<number>()
 			seeds = groups.map((g) => {
 				const mid = at + (Math.PI * g.size) / sum
@@ -267,9 +299,26 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 			// The free cells most nearly straight on, then swept round in order.
 			seeds = [...free].sort((a, b) => Math.abs(off(a)) - Math.abs(off(b))).slice(0, groups.length).sort((a, b) => off(a) - off(b))
 		}
-		for (const c of seeds) region.delete(c)
+		// Every seed taken at once: an earlier sibling's branch, borrowing room, mustn't land on a later one's.
+		for (const c of seeds) {
+			region.delete(c)
+			used.add(c)
+		}
 		const pieces = seeds.map((c) => new Set<number>([c]))
-		const queues = seeds.map((c) => [...nbrsIn(c, region)])
+		if (claim) {
+			// Each seed first takes its own free sides, one per child it forks to (at least one), biggest
+			// branch first, so it isn't walled in by its siblings' pieces before it gets to grow.
+			const sides = o.grid === 'hex' ? 5 : 3
+			for (const i of groups.map((_, i) => i).sort((a, b) => groups[b]!.size - groups[a]!.size)) {
+				const g = groups[i]!
+				const forks = Math.max(1, Math.min(sides, g.ids.length > 1 ? g.ids.length : kids(g.ids[0]!).length))
+				for (const n of nbrsIn(seeds[i]!, region).slice(0, forks)) {
+					region.delete(n)
+					pieces[i]!.add(n)
+				}
+			}
+		}
+		const queues = pieces.map((piece) => [...piece].flatMap((c) => nbrsIn(c, region)))
 		const total = region.size
 		const want = groups.map((g) => (total * g.size) / groups.reduce((n, x) => n + x.size, 0))
 		// Grow the piece furthest behind its share, a cell at a time, nearest first.
@@ -281,7 +330,18 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 				if (best < 0 || pieces[i]!.size / want[i]! < pieces[best]!.size / want[best]!) best = i
 			}
 			if (best < 0) break
-			const c = queues[best]!.shift()!
+			// Round the start, each piece takes the cell nearest its own direction, so it grows outward as
+			// a wedge instead of wrapping round a smaller neighbour; elsewhere, the nearest cell.
+			let c: number
+			if (cv === ORIGIN) {
+				const dir = Math.atan2(pt(seeds[best]!).y, pt(seeds[best]!).x)
+				const off = (x: number) => Math.abs(Math.atan2(Math.sin(Math.atan2(pt(x).y, pt(x).x) - dir), Math.cos(Math.atan2(pt(x).y, pt(x).x) - dir)))
+				const q = queues[best]!.filter((x) => region.has(x))
+				let at = 0
+				for (let k = 1; k < q.length; k++) if (off(q[k]!) < off(q[at]!)) at = k
+				c = q[at]!
+				queues[best] = q.filter((_, k) => k !== at)
+			} else c = queues[best]!.shift()!
 			region.delete(c)
 			pieces[best]!.add(c)
 			for (const n of nbrsIn(c, region)) queues[best]!.push(n)
@@ -294,11 +354,14 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 			if (g.ids.length === 1) {
 				const k = g.ids[0]!
 				at.set(k, pt(u))
+				cellOf.set(k, u)
 				corridors.push({ from: v, to: k, path: [here, pt(u)] })
 				grow(k, u, piece, here)
 			} else {
 				// A corridor cell, no node: its children fork from it.
 				const corridor = `~${++virtuals}`
+				ownerOf.set(corridor, owner(v))
+				trunks.set(owner(v), [...(trunks.get(owner(v)) ?? []), { id: corridor, cell: u }])
 				corridors.push({ from: v, to: corridor, path: [here, pt(u)] })
 				fork(corridor, g.ids, u, piece, here)
 			}
@@ -306,35 +369,43 @@ function mazeOnce(start: string, order: readonly string[], kids: (id: string) =>
 	}
 
 	const all = new Set(cells.map((_, i) => i))
-	if (o.region === 'wedges') {
-		// The start's children: slices of the circle by size, the first centred at the top.
-		const pillars = kids(start)
-		const sum = pillars.reduce((n, k) => n + size.get(k)!, 0)
-		let from = -Math.PI / 2 - (Math.PI * size.get(pillars[0]!)!) / sum
-		const angleOf = (c: number) => Math.atan2(cells[c]!.y, cells[c]!.x)
-		for (const p of pillars) {
-			const width = (2 * Math.PI * size.get(p)!) / sum
-			const mid = from + width / 2
-			const inside = (c: number) => {
-				const a = ((((angleOf(c) - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI))
-				return a < width
-			}
-			const slice = new Set([...all].filter(inside))
-			const entry = ring.filter((c) => slice.has(c)).sort((a, b) => Math.abs(Math.atan2(Math.sin(angleOf(a) - mid), Math.cos(angleOf(a) - mid))) - Math.abs(Math.atan2(Math.sin(angleOf(b) - mid), Math.cos(angleOf(b) - mid))))[0]
-			from += width
-			if (entry === undefined) {
-				lost(p, { x: 0, y: 0 })
-				continue
-			}
-			const piece = component(entry, slice)
-			piece.delete(entry)
-			used.add(entry)
-			at.set(p, pt(entry))
-			corridors.push({ from: start, to: p, path: [{ x: 0, y: 0 }, pt(entry)] })
-			grow(p, entry, piece, { x: 0, y: 0 })
-		}
-	} else grow(start, ORIGIN, all)
+	grow(start, ORIGIN, all)
 
-	for (const id of order) if (!at.has(id)) lost(id, { x: 0, y: 0 })
+	// Repair: a child left without a cell branches off its parent, or off anywhere along its parent's
+	// trunk, into the roomiest free cell beside it, and its branch grows into whatever is free from
+	// there. Taken cells stay taken, so nothing crosses.
+	const freeFrom = (c: number) => {
+		const seen = new Set<number>([c])
+		const queue = [c]
+		while (queue.length) for (const n of nbr[queue.shift()!]!) if (!used.has(n) && !seen.has(n)) seen.add(n), queue.push(n)
+		return seen
+	}
+	for (let i = 0; i < pending.length; i++) {
+		const { k, v } = pending[i]!
+		if (at.has(k) || !cellOf.has(v)) continue
+		const doors = [{ id: v, cell: cellOf.get(v)! }, ...(trunks.get(v) ?? [])]
+		let best: { id: string; from: number; c: number; room: Set<number> } | null = null
+		for (const d of doors)
+			for (const c of (d.cell === ORIGIN ? ring : nbr[d.cell]!).filter((x) => !used.has(x))) {
+				const room = freeFrom(c)
+				if (!best || room.size > best.room.size) best = { id: d.id, from: d.cell, c, room }
+			}
+		if (!best) continue
+		used.add(best.c)
+		best.room.delete(best.c)
+		at.set(k, pt(best.c))
+		cellOf.set(k, best.c)
+		corridors.push({ from: best.id, to: k, path: [pt(best.from), pt(best.c)] })
+		grow(k, best.c, best.room, pt(best.from))
+	}
+	// Whatever is still without a cell sits beside its parent.
+	const parentOf = new Map<string, string>()
+	for (const id of order) for (const k of kids(id)) parentOf.set(k, id)
+	for (const id of order) {
+		if (at.has(id)) continue
+		const p = at.get(parentOf.get(id) ?? start) ?? { x: 0, y: 0 }
+		overflow.push(id)
+		at.set(id, { x: p.x + 40, y: p.y + 40 })
+	}
 	return { at, cells, used, corridors, overflow }
 }

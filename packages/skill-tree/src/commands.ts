@@ -11,6 +11,8 @@ import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
 import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
 import { bandGuidesShown, showBandGuides } from './tree/BandGuides'
+import { DEFAULT_LAYOUT, setLayoutConfig } from './tree/layoutConfig'
+import { relayout } from './tree/relayout'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -130,6 +132,19 @@ export const skillTreeCommands: readonly Command[] = [
 		// For working on the bands: every level's border on the board, to drag in or out.
 		when: (ctx) => ctx.editor !== null && isDevBuild,
 		run: () => showBandGuides(!bandGuidesShown()),
+	},
+	{
+		id: 'skill-tree.reset-band-borders',
+		title: 'Reset band borders (dev)',
+		group: GROUP,
+		// Every border back to the defaults: none set by hand, the default sequence as it ships.
+		when: (ctx) => ctx.editor !== null && isDevBuild,
+		run: ({ editor }) => {
+			if (!editor) return
+			const { bandFirst, bandSecond, bandThird, bandStep } = DEFAULT_LAYOUT
+			setLayoutConfig({ bandBorders: [], bandFirst, bandSecond, bandThird, bandStep })
+			relayout(editor)
+		},
 	},
 	{
 		id: 'skill-tree.layout-tuner',

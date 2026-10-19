@@ -120,9 +120,10 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 					{setByHand ? `${setByHand} border${setByHand === 1 ? '' : 's'} set by hand.` : 'Every border is the layout’s own.'}{' '}
 					<button
 						type="button"
-						disabled={!setByHand}
+						disabled={!setByHand && (['bandFirst', 'bandSecond', 'bandThird', 'bandStep'] as const).every((k) => config[k] === DEFAULT_LAYOUT[k])}
 						onClick={() => {
-							setLayoutConfig({ bandBorders: [] })
+							const { bandFirst, bandSecond, bandThird, bandStep } = DEFAULT_LAYOUT
+							setLayoutConfig({ bandBorders: [], bandFirst, bandSecond, bandThird, bandStep })
 							relayoutSoon(editor)
 						}}
 					>

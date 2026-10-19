@@ -2,7 +2,7 @@ import { atom, useEditor, useValue } from '@lifeboard/canvas'
 import { useState, type PointerEvent } from 'react'
 import { isSkill, MASTERY } from '../board'
 import { lastBands } from './bands'
-import { getLayoutConfig, setLayoutConfig } from './layoutConfig'
+import { getLayoutConfig, MAX_BORDER, setLayoutConfig } from './layoutConfig'
 import { relayout, relayoutSoon } from './relayout'
 
 /**
@@ -65,8 +65,11 @@ export function BandGuides() {
 	const z = camera.z
 	const c = editor.pageToViewport(you)
 	const radiusAt = (e: PointerEvent) => {
-		const p = editor.screenToPage({ x: e.clientX, y: e.clientY })
-		return Math.max(1, Math.round(Math.hypot(p.x - you.x, p.y - you.y)))
+		// Past the window's edge the pointer still reports, far out: the drag stops at the edge.
+		const x = Math.min(window.innerWidth, Math.max(0, e.clientX))
+		const y = Math.min(window.innerHeight, Math.max(0, e.clientY))
+		const p = editor.screenToPage({ x, y })
+		return Math.min(MAX_BORDER, Math.max(1, Math.round(Math.hypot(p.x - you.x, p.y - you.y))))
 	}
 	const setBorder = (level: number, radius: number) => {
 		const borders = [...getLayoutConfig().bandBorders]

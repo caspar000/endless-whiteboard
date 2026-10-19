@@ -140,10 +140,10 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		],
 	},
 	{ group: 'Skeleton', key: 'fanSpread', label: 'Fan of children round a node (°)', min: 60, max: 330, step: 10 },
-	{ group: 'Bands', key: 'bandFirst', label: 'Pillars’ border', min: 200, max: 20000, step: 50 },
-	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 30000, step: 50 },
-	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 40000, step: 50 },
-	{ group: 'Bands', key: 'bandStep', label: 'Each border after, further out by', min: 100, max: 10000, step: 50 },
+	{ group: 'Bands', key: 'bandFirst', label: 'Pillars’ border', min: 200, max: 5000, step: 50 },
+	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 8000, step: 50 },
+	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 12000, step: 50 },
+	{ group: 'Bands', key: 'bandStep', label: 'Each border after, further out by', min: 100, max: 4000, step: 50 },
 	{ group: 'Bands', key: 'bandRows', label: 'Most rows in a band', min: 1, max: 6, step: 1 },
 	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
@@ -178,6 +178,9 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Arrows', key: 'repairCrossings', label: 'Turn branches to repair crossings' },
 ]
 
+/** The furthest a border can be set by hand, so a drag that runs off the window can't fling it away. */
+export const MAX_BORDER = 30000
+
 const KEY = 'lifeboard:skill-tree-layout'
 
 function read(): LayoutConfig {
@@ -193,7 +196,7 @@ function read(): LayoutConfig {
 export function clean(raw: Partial<Record<keyof LayoutConfig, unknown>>): LayoutConfig {
 	const out = { ...DEFAULT_LAYOUT }
 	const borders = raw.bandBorders
-	if (Array.isArray(borders)) out.bandBorders = borders.map((b) => (typeof b === 'number' && Number.isFinite(b) && b > 0 ? Math.min(200000, b) : 0))
+	if (Array.isArray(borders)) out.bandBorders = borders.map((b) => (typeof b === 'number' && Number.isFinite(b) && b > 0 ? Math.min(MAX_BORDER, b) : 0))
 	for (const field of LAYOUT_FIELDS) {
 		const v = raw[field.key]
 		if ('min' in field) {

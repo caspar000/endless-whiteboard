@@ -511,3 +511,14 @@ angle, so nothing new crosses), compacted again, then the same to full size. Fou
 copy): 25.3k × 15.2k → 22.7k × 14.9k px, longest arrow 7,244 → 4,354, arrows through cards 23 → 15,
 crossings 0 → 0. In the app: 0 crossings, laid out about 25 s after the insert (was about 15 s), in the
 worker. The whole-life (Director) board: 2 crossings → 4, inherited from its skill-node view.
+
+## Bubble guides (2026-10-19)
+
+A dev toggle (layout tuner, or ⌘K "Show or hide the bubble guides (dev)") draws every bubble the
+plain Bubbles layout reserved: the circle round each node's subtree, a colour per level, with a thin
+line from the node to the circle's centre. `bubbles.ts` leaves them behind (`takeBubbleReport`, each
+relative to its node, so a circle follows its node when dragged), and `viewSync` publishes them
+(`lastBubbles`) when the board's layout is plain Bubbles. With any other layout the guides say so:
+compacted bubbles move everything after the bubbles are placed, so the circles would mean nothing.
+They show the waste plainly: a chain of single children reserves a circle as wide as the chain is
+long, in every direction.

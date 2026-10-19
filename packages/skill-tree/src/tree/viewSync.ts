@@ -18,7 +18,8 @@ import { nodeShapes, SKILL_EDGE_META } from './ops'
 import { curveArrows } from './curveArrows'
 import { canLayOutInWorker, layoutInWorker } from './layoutAsync'
 import { takeBandReport } from './bands'
-import { lastBands } from './bandReport'
+import { lastBands, lastBubbles } from './bandReport'
+import { takeBubbleReport } from './bubbles'
 import { working } from '../progress'
 
 /**
@@ -290,6 +291,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 	const later = SLOW.has(config.placement) && canLayOutInWorker()
 	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: later ? { ...config, placement: 'bubbles' } : config })
 	if (config.placement === 'bands') lastBands.set(takeBandReport())
+	lastBubbles.set(config.placement === 'bubbles' ? (takeBubbleReport() ?? []).flatMap((g) => (shapes.has(g.id) ? [{ ...g, shape: shapes.get(g.id)!.id }] : [])) : null)
 	lastLayoutStats.set(measureLayout(nodes, at, drawn, lineEnds(view.items), isSkill, performance.now() - began))
 	const keys = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])]
 	const movesTo = (at: ReadonlyMap<string, { x: number; y: number }>, from: { x: number; y: number }) =>

@@ -11,6 +11,7 @@ import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
 import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
 import { bandGuidesShown, showBandGuides } from './tree/BandGuides'
+import { bubbleGuidesShown, showBubbleGuides } from './tree/BubbleGuides'
 import { DEFAULT_LAYOUT, setLayoutConfig } from './tree/layoutConfig'
 import { relayout } from './tree/relayout'
 import { insertAdlerTree } from './tree/sample'
@@ -132,6 +133,14 @@ export const skillTreeCommands: readonly Command[] = [
 		// For working on the bands: every level's border on the board, to drag in or out.
 		when: (ctx) => ctx.editor !== null && isDevBuild,
 		run: () => showBandGuides(!bandGuidesShown()),
+	},
+	{
+		id: 'skill-tree.bubble-guides',
+		title: 'Show or hide the bubble guides (dev)',
+		group: GROUP,
+		// For working on the Bubbles layout: the circle it reserves round every subtree, on the board.
+		when: (ctx) => ctx.editor !== null && isDevBuild,
+		run: () => showBubbleGuides(!bubbleGuidesShown()),
 	},
 	{
 		id: 'skill-tree.reset-band-borders',

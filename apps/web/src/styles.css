@@ -14755,6 +14755,22 @@ button.lb-props__eye:hover {
 	stroke-width: 4px;
 	stroke-linejoin: round;
 }
+.lb-bubble-guides__bubble {
+	fill: currentColor;
+	fill-opacity: 0.05;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-dasharray: 8 5;
+	opacity: 0.85;
+}
+.lb-bubble-guides__spoke {
+	stroke: currentColor;
+	stroke-width: 1;
+	opacity: 0.5;
+}
+.lb-bubble-guides__note {
+	color: var(--lb-text, #ccc);
+}
 .lb-band-guides__region {
 	stroke: var(--lb-danger, #e5484d);
 	stroke-width: 1.5;

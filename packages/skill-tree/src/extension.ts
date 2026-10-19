@@ -15,6 +15,7 @@ import { TreeSettings } from './TreeSettings'
 import { StaleLayout } from './tree/StaleLayout'
 import { Working } from './tree/Working'
 import { BandGuides } from './tree/BandGuides'
+import { BubbleGuides } from './tree/BubbleGuides'
 import { tunerNodeDefinition } from './tree/LayoutTuner'
 import { getTreePrefs } from './treePrefs'
 import { skillNodeDefinition } from './skill/definition'
@@ -102,6 +103,7 @@ export const skillTreeExtension: Extension = {
 		{ id: 'lifeboard.skill-tree.stale-layout', Component: StaleLayout },
 		{ id: 'lifeboard.skill-tree.working', Component: Working },
 		{ id: 'lifeboard.skill-tree.band-guides', Component: BandGuides },
+		{ id: 'lifeboard.skill-tree.bubble-guides', Component: BubbleGuides },
 	],
 	// A tree's header is its view, not something to look at (docs/skill-tree-layout-plan.md, "Views"):
 	// hidden unless Settings asks for headers.

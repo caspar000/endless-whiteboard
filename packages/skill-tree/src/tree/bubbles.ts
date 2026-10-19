@@ -23,6 +23,24 @@ import { siblingOrder, type BalloonInput } from './balloon'
  */
 
 type Point = { x: number; y: number }
+
+/** A subtree's bubble as the last plain bubble layout reserved it, for the guides (tree/BubbleGuides.tsx). */
+export interface BubbleGuide {
+	/** The node it holds the subtree of. */
+	id: string
+	/** Its centre, from the node's centre. */
+	dx: number
+	dy: number
+	r: number
+	/** How many levels out from the start the node is. */
+	depth: number
+}
+
+let report: BubbleGuide[] | null = null
+
+/** The bubbles the last plain bubble layout run here reserved (not the start compacted bubbles use). */
+export const takeBubbleReport = (): BubbleGuide[] | null => report
+
 /** A subtree laid out on its own: its node at the origin, its bubble's centre and radius. */
 interface Bubble {
 	cx: number
@@ -111,6 +129,8 @@ export function bubbles({ start, order, kids: given, radius, arrows = [], config
 	// Top-down: each subtree turned and placed in its parent's frame.
 	const out = new Map<string, Point>([[start, { x: 0, y: 0 }]])
 	const facing = new Map<string, number>([[start, 0]])
+	const depth = new Map<string, number>([[start, 0]])
+	const guides: BubbleGuide[] = []
 	for (const id of order) {
 		const b = made.get(id)!
 		const from = out.get(id)!
@@ -119,8 +139,11 @@ export function bubbles({ start, order, kids: given, radius, arrows = [], config
 		for (const [k, p] of b.at) {
 			out.set(k, { x: from.x + p.x * c - p.y * s, y: from.y + p.x * s + p.y * c })
 			facing.set(k, f + p.turn)
+			depth.set(k, depth.get(id)! + 1)
 		}
+		if (b.at.size) guides.push({ id, dx: b.cx * c - b.cy * s, dy: b.cx * s + b.cy * c, r: b.r, depth: depth.get(id)! })
 	}
+	if (!centred) report = guides
 	return out
 }
 

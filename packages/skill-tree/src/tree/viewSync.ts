@@ -548,10 +548,11 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
  * Sets the light lines to how a cluster is drawn: each to a work meeting its disc's middle, each
  * between two neighbouring works bent along the arc round their entry (lines.ts, `arcBend`), and all
  * of them under the nodes, so where one can't miss a node it passes under it; then bends the arrows
- * between skill nodes round what they would cross straight. After a layout, a sync that drew lines,
- * and a drag coming to rest.
+ * between skill nodes round what they would cross straight, and so they leave each node evenly
+ * spaced (`arrowCurve`). After a layout, a sync that drew lines, and a drag coming to rest (`moved`:
+ * then only the arrows touching what the drag moved bend again).
  */
-export function tidyLines(editor: Editor): void {
+export function tidyLines(editor: Editor, moved?: ReadonlySet<TLShapeId>): void {
 	const lines = lineArrows(editor)
 	if (!lines.length) return
 	const entries = entryShapes(editor)
@@ -573,7 +574,7 @@ export function tidyLines(editor: Editor): void {
 		if (Math.abs(((line.props as { bend?: number }).bend ?? 0) - bend) > 0.5) bends.push({ id: line.id, type: 'arrow', props: { bend } })
 	}
 	if (bends.length) editor.updateShapes(bends as never)
-	curveSkillArrows(editor)
+	curveSkillArrows(editor, moved)
 	// Each end runs right to the middle of its disc, a work's disc above its title: under the node,
 	// where the disc covers it, rather than stopping at the edge of the node's box.
 	const anchored: TLArrowBinding[] = []
@@ -601,7 +602,7 @@ export function tidyLines(editor: Editor): void {
  * a node it doesn't join) as little as clears it (curveArrows.ts). Nothing moves; only bends change.
  * After the light lines are tidied, and again once the tree's arrows are drawn (treeSync.ts).
  */
-export function curveSkillArrows(editor: Editor): void {
+export function curveSkillArrows(editor: Editor, moved?: ReadonlySet<TLShapeId>): void {
 	const discCentre = (s: EntryShape) => {
 		const b = editor.getShapePageBounds(s.id)!
 		return s.props.variant === 'work' ? { x: b.center.x, y: b.minY + WORK_DISC / 2 } : b.center
@@ -626,7 +627,9 @@ export function curveSkillArrows(editor: Editor): void {
 		if (isEntry(s)) return [{ id: s.id as string, ...centre(s), r: s.props.variant === 'work' ? WORK_DISC / 2 : s.props.w / 2 }]
 		return []
 	})
-	const bends = curveArrows(arrows, lines, discs)
+	// After a drag, only the arrows touching what moved.
+	const only = moved && new Set(arrows.filter((a) => a.ends.some((e) => moved.has(e as TLShapeId))).map((a) => a.id))
+	const bends = curveArrows(arrows, lines, discs, getLayoutConfig().arrowCurve, only)
 	const changes = arrows.flatMap((a) => (Math.abs(a.bend - bends.get(a.id)!) > 0.5 ? [{ id: a.id as TLShapeId, type: 'arrow' as const, props: { bend: bends.get(a.id)! } }] : []))
 	if (changes.length) editor.updateShapes(changes as never)
 }

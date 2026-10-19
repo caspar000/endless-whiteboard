@@ -21,6 +21,9 @@ interface Body {
 	key: string
 	x: number
 	y: number
+	/** Where it was when the drag began. */
+	x0: number
+	y0: number
 	w: number
 	h: number
 	vx: number
@@ -75,7 +78,7 @@ function begin(editor: Editor): Run | null {
 		const shape = shapes.get(key)
 		const b = shape && editor.getShapePageBounds(shape.id)
 		if (!shape || !b || bodies.has(key)) return
-		bodies.set(key, { id: shape.id, key, x: b.x, y: b.y, w: b.w, h: b.h, vx: 0, vy: 0, held: heldIds.has(shape.id), follows })
+		bodies.set(key, { id: shape.id, key, x: b.x, y: b.y, x0: b.x, y0: b.y, w: b.w, h: b.h, vx: 0, vy: 0, held: heldIds.has(shape.id), follows })
 	}
 	// What is held, then each held node's branch, following it at the offset it has now.
 	for (const [key, shape] of shapes) if (heldIds.has(shape.id)) add(key)
@@ -145,7 +148,9 @@ function tick(editor: Editor, elapsed: number): void {
 		// Coming to rest, nothing is left covering anything: the springs ease, this guarantees.
 		const rest = separate(run)
 		if (rest.length) editor.updateShapes(rest as never)
-		tidyLines(editor)
+		// Only the arrows touching what moved bend again: bending every arrow on the board takes a while.
+		const moved = [...run.bodies.values()].filter((b) => Math.abs(b.x - b.x0) > 1 || Math.abs(b.y - b.y0) > 1 || b.held)
+		tidyLines(editor, new Set(moved.map((b) => b.id)))
 	}
 }
 

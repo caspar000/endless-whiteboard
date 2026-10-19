@@ -414,3 +414,13 @@ rounds, as bending one arrow can clear or block another. Nothing moves; only the
 (tree/curveArrows.ts, called from `tidyLines` and again once `syncBoard` has drawn the tree's arrows,
 which happens after the views lay out). On the four-tree board with Bubbles, compacted: arrows over
 entries and works 15 → 4, over light lines 17 → 6, in 41 ms; 17 of 132 arrows curved on the board.
+
+**Evenly spaced curves (2026-10-19).** After the research's Lombardi drawings (Duncan, Eppstein,
+Goodrich, Kobourov and Nöllenburg: arrows as arcs leaving each node at evenly spaced angles), the
+curving also bends arrows so that at each skill node they leave as evenly spaced round it as bends
+allow, traded against bending (`arrowCurve`, 0.5; 0 is dodging only). Crossings always count first;
+evenness alone may bend an arrow to 30% of its length at most, deeper only to clear a crossing. The
+nodes don't move, so it is evenness as far as bends allow, not a true Lombardi drawing. Four rounds;
+about 0.6 s on the four-tree board, so a drag coming to rest bends again only the arrows touching what
+it moved. Four-tree board: about 100 of 132 arrows gently curved, crossings as with dodging alone
+(0 arrow over arrow, 0 through skill nodes, 4 over items, 5 over light lines).

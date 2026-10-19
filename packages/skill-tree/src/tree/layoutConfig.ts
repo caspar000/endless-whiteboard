@@ -85,6 +85,11 @@ export interface LayoutConfig {
 	pushOffArrows: boolean
 	/** Last, turn branches and clusters a little where that leaves fewer crossings (phase B, step 3). */
 	repairCrossings: boolean
+	/**
+	 * How much the arrows between skill nodes curve so that, at each node, they leave at evenly spaced
+	 * angles (Lombardi style), against staying straight: 0 curves them only round what they cross.
+	 */
+	arrowCurve: number
 }
 
 export const DEFAULT_LAYOUT: LayoutConfig = {
@@ -123,6 +128,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	reorientClusters: true,
 	pushOffArrows: true,
 	repairCrossings: true,
+	arrowCurve: 0.5,
 }
 
 type NumberKey = { [K in keyof LayoutConfig]: LayoutConfig[K] extends number ? K : never }[keyof LayoutConfig]
@@ -193,6 +199,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Arrows', key: 'reorientClusters', label: "Turn clusters' gaps toward their arrows" },
 	{ group: 'Arrows', key: 'pushOffArrows', label: 'Push nodes off arrows, as if solid' },
 	{ group: 'Arrows', key: 'repairCrossings', label: 'Turn branches to repair crossings' },
+	{ group: 'Arrows', key: 'arrowCurve', label: 'How much arrows curve to spread evenly', min: 0, max: 1, step: 0.05 },
 ]
 
 /** The furthest a border can be set by hand, so a drag that runs off the window can't fling it away. */

@@ -32,14 +32,27 @@ const TRIES = [0.08, 0.15, 0.25, 0.35, 0.5]
 const PIECES = 16
 /** Rounds over every arrow: bending one can clear, or block, another. */
 const ROUNDS = 2
+/** With `even`: the bends tried (fractions of the length, either way), and the rounds, as each arrow's best depends on its neighbours'. */
+const EVEN_TRIES = [0.04, 0.08, 0.12, 0.17, 0.23, 0.3, 0.4, 0.5]
+const EVEN_ROUNDS = 4
+/** The deepest bend evenness alone may ask for, as a fraction of the length; deeper only clears crossings. */
+const EVEN_DEEPEST = 0.3
+/** What one crossing costs against evenness and bending: always more than any amount of either. */
+const CROSSING = 1000
+/** How much bending counts against evenness when `even` is low. */
+const BENDING = 4
 
 /**
  * The bend for each arrow in `arrows` that crosses least: other arrows (as they end up), `lines`
- * (light lines, as they are) and `discs` it doesn't end at. Arrows that cross nothing straight stay
- * straight.
+ * (light lines, as they are) and `discs` it doesn't end at. With `even` 0, arrows that cross nothing
+ * straight stay straight. With `even` above 0 (up to 1), arrows also bend so that at each node they
+ * leave at angles as evenly spaced round it as they can (Lombardi drawings, after Duncan, Eppstein,
+ * Goodrich, Kobourov and Nöllenburg), traded against bending: crossings always count first.
+ * `only`: the arrows to bend; the rest keep the bends they have (after a drag, only those it moved).
  */
-export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvable[], discs: readonly Disc[]): Map<string, number> {
-	const bend = new Map(arrows.map((a) => [a.id, 0]))
+export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvable[], discs: readonly Disc[], even = 0, only?: ReadonlySet<string>): Map<string, number> {
+	// Arrows left alone (not in `only`) keep their bend and count as they are.
+	const bend = new Map(arrows.map((a) => [a.id, only && !only.has(a.id) ? a.bend : 0]))
 	const path = new Map<string, Point[]>()
 	const boxOf = (p: readonly Point[]) => {
 		let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
@@ -50,7 +63,7 @@ export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvabl
 		const p = arc(l.from, l.to, l.bend)
 		return { ends: l.ends, p, box: boxOf(p) }
 	})
-	for (const a of arrows) path.set(a.id, arc(a.from, a.to, 0))
+	for (const a of arrows) path.set(a.id, arc(a.from, a.to, bend.get(a.id)!))
 
 	/** How many things the arrow `a`, drawn along `p`, crosses. */
 	const crossings = (a: Curvable, p: readonly Point[]) => {
@@ -73,20 +86,60 @@ export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvabl
 		return n
 	}
 
-	for (let round = 0; round < ROUNDS; round++) {
+	// Where each arrow leaves each of its ends: the direction of its first piece from that end.
+	const leaving = (p: readonly Point[], atStart: boolean) => {
+		const [a, b] = atStart ? [p[0]!, p[1]!] : [p[p.length - 1]!, p[p.length - 2]!]
+		return Math.atan2(b.y - a.y, b.x - a.x)
+	}
+	const at = new Map<string, Curvable[]>()
+	for (const a of arrows) for (const e of a.ends) at.set(e, [...(at.get(e) ?? []), a])
+	/**
+	 * How unevenly the arrows leave node `node`, with arrow `a` along `p`: the squared differences of
+	 * the gaps between neighbouring arrows from an even share of the turn.
+	 */
+	const uneven = (node: string, a: Curvable, p: readonly Point[]) => {
+		const all = at.get(node) ?? []
+		if (all.length < 2) return 0
+		const angles = all
+			.map((o) => {
+				const q = o.id === a.id ? p : path.get(o.id)!
+				return leaving(q, o.ends[0] === node)
+			})
+			.sort((x, y) => x - y)
+		const share = (2 * Math.PI) / angles.length
+		let cost = 0
+		angles.forEach((x, i) => {
+			const next = i + 1 < angles.length ? angles[i + 1]! : angles[0]! + 2 * Math.PI
+			cost += (next - x - share) ** 2
+		})
+		return cost
+	}
+	/** What a bend costs: crossings first by far, then, as much as `even` asks, unevenness and the bend itself. */
+	const cost = (a: Curvable, b: number, p: readonly Point[], length: number) => {
+		const n = crossings(a, p)
+		if (!even) return { n, score: n * CROSSING + Math.abs(b) / length }
+		const spread = a.ends.reduce((s, e) => s + uneven(e, a, p), 0)
+		return { n, score: n * CROSSING + even * spread + (1 - even) * (b / length) ** 2 * BENDING + (b / length) ** 2 }
+	}
+
+	for (let round = 0; round < (even ? EVEN_ROUNDS : ROUNDS); round++) {
 		for (const a of arrows) {
+			if (only && !only.has(a.id)) continue
+			const length = Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) || 1
 			const straight = arc(a.from, a.to, 0)
-			let best = { bend: 0, n: crossings(a, straight), p: straight }
-			if (best.n) {
-				const length = Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y)
-				for (const f of TRIES) {
+			let best = { bend: 0, p: straight, ...cost(a, 0, straight, length) }
+			// Only dodging: an arrow that crosses nothing straight stays straight.
+			if (best.n || even) {
+				for (const f of even ? EVEN_TRIES : TRIES) {
 					for (const sign of [1, -1]) {
 						const b = sign * f * length
 						const p = arc(a.from, a.to, b)
-						const n = crossings(a, p)
-						if (n < best.n) best = { bend: b, n, p }
+						const c = cost(a, b, p, length)
+						// A deep bend only to clear a crossing, never for evenness alone.
+						if (f > EVEN_DEEPEST && c.n >= crossings(a, straight)) continue
+						if (c.score < best.score) best = { bend: b, p, ...c }
 					}
-					if (!best.n) break
+					if (!even && !best.n) break
 				}
 			}
 			bend.set(a.id, best.bend)

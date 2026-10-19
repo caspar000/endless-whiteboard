@@ -91,7 +91,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	skillSize: 150,
 	pillarSize: 210,
 	masterySize: 380,
-	placement: 'bands',
+	placement: 'compactBubbles',
 	fanSpread: 240,
 	keepWayBack: false,
 	bandBorders: [],

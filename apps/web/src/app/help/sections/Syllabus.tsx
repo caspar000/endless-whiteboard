@@ -199,7 +199,9 @@ export function Syllabus(_props: SectionProps) {
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill
 					trees can draw it again (to change where its view starts, or lay it out again with Re-calculate),
 					and sets what an import opens on, whether physics is live, and the layout: the algorithm the
-					whole-life board is arranged by (bands round You, cones inside cones, radial wedges and more).
+					whole-life board is arranged by. The default, bubbles compacted, packs every subtree round its
+					parent and then draws it in without letting an arrow cross another or a cluster cover one; the
+					others (bands round You, cones inside cones, radial wedges and more) are there to compare.
 					Re-calculate a board to see a new one.
 				</p>
 			</Section>

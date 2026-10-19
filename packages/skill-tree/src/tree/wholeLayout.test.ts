@@ -36,9 +36,9 @@ describe('wholeLayout', () => {
 		expect(off(dir('director/root'), dir('mastery/practical'))).toBeLessThan(0.8)
 	})
 
-	it('never puts a skill node in a band further in than its level, and always further out than its parent', () => {
+	it('in bands, never puts a skill node in a band further in than its level, and always further out than its parent', () => {
 		for (const view of [WHOLE_LIFE, WHOLE_LIFE_SKILLS]) {
-			const at = lay(view, DEFAULT_LAYOUT)
+			const at = lay(view, { ...DEFAULT_LAYOUT, placement: 'bands' })
 			const depth = new Map([[view.start, 0]])
 			const parent = new Map<string, string>()
 			for (let grew = true; grew; ) {

@@ -400,3 +400,7 @@ by construction, balanced, but loose: 56,328 × 30,889 px at a 330° fan (75,254
 strict cones, a far better start: 25,215 × 15,423 px, fill 5.3%, mean arrow 1126, longest 7244,
 0 arrow crossings, 0 through skill nodes, 20 over items, 15 over light lines, 0 overlaps, 5.4 s —
 the best on nearly every count so far.
+
+**Default (2026-10-19).** At the user's word, "Bubbles, compacted" is the default placement. The
+test board inserts in about 7.7 s in the app, the progress note showing; bands and the rest stay in
+Settings and the tuner to compare.

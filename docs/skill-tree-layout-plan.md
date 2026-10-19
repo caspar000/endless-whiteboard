@@ -404,3 +404,13 @@ the best on nearly every count so far.
 **Default (2026-10-19).** At the user's word, "Bubbles, compacted" is the default placement. The
 test board inserts in about 7.7 s in the app, the progress note showing; bands and the rest stay in
 Settings and the tuner to compare.
+
+## Curved arrows (2026-10-19, the user's idea)
+
+Once a view is laid out and its arrows drawn, every arrow between skill nodes that crosses something
+straight (another arrow, a light line, a skill node, entry or work it doesn't join) is tried bent,
+8% to 50% of its length either way, and keeps the gentlest bend that leaves it crossing least; two
+rounds, as bending one arrow can clear or block another. Nothing moves; only the arrows' `bend`
+(tree/curveArrows.ts, called from `tidyLines` and again once `syncBoard` has drawn the tree's arrows,
+which happens after the views lay out). On the four-tree board with Bubbles, compacted: arrows over
+entries and works 15 → 4, over light lines 17 → 6, in 41 ms; 17 of 132 arrows curved on the board.

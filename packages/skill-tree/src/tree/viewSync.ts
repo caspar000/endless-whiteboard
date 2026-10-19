@@ -15,6 +15,7 @@ import { contentsOf } from './view'
 import { wholeLayout } from './wholeLayout'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
+import { curveArrows } from './curveArrows'
 
 /**
  * Turning each tree view's contents (views.ts) into the board (docs/skill-tree-plan.md, "Rebuild").
@@ -546,8 +547,9 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 /**
  * Sets the light lines to how a cluster is drawn: each to a work meeting its disc's middle, each
  * between two neighbouring works bent along the arc round their entry (lines.ts, `arcBend`), and all
- * of them under the nodes, so where one can't miss a node it passes under it. After a layout, a sync
- * that drew lines, and a drag coming to rest.
+ * of them under the nodes, so where one can't miss a node it passes under it; then bends the arrows
+ * between skill nodes round what they would cross straight. After a layout, a sync that drew lines,
+ * and a drag coming to rest.
  */
 export function tidyLines(editor: Editor): void {
 	const lines = lineArrows(editor)
@@ -571,6 +573,7 @@ export function tidyLines(editor: Editor): void {
 		if (Math.abs(((line.props as { bend?: number }).bend ?? 0) - bend) > 0.5) bends.push({ id: line.id, type: 'arrow', props: { bend } })
 	}
 	if (bends.length) editor.updateShapes(bends as never)
+	curveSkillArrows(editor)
 	// Each end runs right to the middle of its disc, a work's disc above its title: under the node,
 	// where the disc covers it, rather than stopping at the edge of the node's box.
 	const anchored: TLArrowBinding[] = []
@@ -591,6 +594,41 @@ export function tidyLines(editor: Editor): void {
 	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
 	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
 	editor.sendToBack(all.map((a) => a.id))
+}
+
+/**
+ * Bends each arrow between skill nodes that crosses something straight (another arrow, a light line,
+ * a node it doesn't join) as little as clears it (curveArrows.ts). Nothing moves; only bends change.
+ * After the light lines are tidied, and again once the tree's arrows are drawn (treeSync.ts).
+ */
+export function curveSkillArrows(editor: Editor): void {
+	const discCentre = (s: EntryShape) => {
+		const b = editor.getShapePageBounds(s.id)!
+		return s.props.variant === 'work' ? { x: b.center.x, y: b.minY + WORK_DISC / 2 } : b.center
+	}
+	const centre = (s: TLShape) => (isEntry(s) ? discCentre(s) : editor.getShapePageBounds(s.id)!.center)
+	const ends = (a: TLShape) => {
+		const bound = editor.getBindingsFromShape<TLArrowBinding>(a, 'arrow')
+		const from = editor.getShape(bound.find((b) => b.props.terminal === 'start')?.toId as never)
+		const to = editor.getShape(bound.find((b) => b.props.terminal === 'end')?.toId as never)
+		return from && to ? { from, to } : null
+	}
+	const shapes = editor.getCurrentPageShapes()
+	const toCurvable = (a: TLShape) => {
+		const e = ends(a)
+		return e ? { id: a.id as string, from: centre(e.from), to: centre(e.to), bend: (a.props as { bend?: number }).bend ?? 0, ends: [e.from.id as string, e.to.id as string] } : null
+	}
+	const arrows = shapes.filter((s) => s.type === 'arrow' && !!s.meta[SKILL_EDGE_META] && s.meta[SKILL_EDGE_META] !== LINE).flatMap((a) => toCurvable(a) ?? [])
+	if (!arrows.length) return
+	const lines = shapes.filter((s) => s.type === 'arrow' && s.meta[SKILL_EDGE_META] === LINE).flatMap((a) => toCurvable(a) ?? [])
+	const discs = shapes.flatMap((s) => {
+		if (isSkill(s)) return [{ id: s.id as string, ...centre(s), r: s.props.w / 2 }]
+		if (isEntry(s)) return [{ id: s.id as string, ...centre(s), r: s.props.variant === 'work' ? WORK_DISC / 2 : s.props.w / 2 }]
+		return []
+	})
+	const bends = curveArrows(arrows, lines, discs)
+	const changes = arrows.flatMap((a) => (Math.abs(a.bend - bends.get(a.id)!) > 0.5 ? [{ id: a.id as TLShapeId, type: 'arrow' as const, props: { bend: bends.get(a.id)! } }] : []))
+	if (changes.length) editor.updateShapes(changes as never)
 }
 
 /** Brings the camera to what a view shows. */

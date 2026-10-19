@@ -335,3 +335,16 @@ widest family there staggers, every other child moving out a band with its arrow
 siblings that stay. (Moving out the nodes with least below them first, tried before, put 380 of 402
 crossings on arrows that skip a band.) Four-tree board: arrow over arrow 56, through a skill node 12,
 over items 44, over light lines 181; 23,339 × 21,534 px; the empty pillars' regions stay empty.
+
+**Cones from every node (2026-10-19, the user's idea).** `placement: 'cones'` (`tree/cones.ts`):
+the pillars' regions are the first cones; each node's cone is shared among its children (each its
+own cluster's angle at the family's distance, the rest by how much grows below it), the family as
+close as fits every child in its slice, and each child's cone starting at the child, looking the way
+its slice does. Strictly nested, it can't cross or overlap, but on the four-tree board it came out
+396,864 × 790,435 px: deep families got slices of 0.4–10° and had to sit up to 477,000 px out. So a
+cone may widen past its slice to what its own family needs at `expandRadius` (up to 150°): 15,524 ×
+20,008 px, fill 6.6%, mean arrow 1863 (the most compact yet), but 267 node boxes overlap and 89
+arrows cross, as widened cones reach into their neighbours. `coneGrow` then moves the family of
+each two colliding skill nodes out until none collide: 24,137 × 33,627 px, 38 overlaps, 102
+crossings. Adler, alone in its region, reads as a clean tree; Practical's three trees, close to their
+pillar, pile into each other. The default stays bands with region cones.

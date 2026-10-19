@@ -12,10 +12,11 @@ export interface LayoutConfig {
 	masterySize: number
 	// Skeleton
 	/**
-	 * How skill nodes are placed: in bands, one ring per level, each branch a wedge (bands.ts); each
+	 * How skill nodes are placed: in cones, every node's children in slices of its cone (cones.ts); in
+	 * bands, one ring per level, each branch a wedge (bands.ts); each
 	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
 	 */
-	placement: 'bands' | 'fromParent' | 'rings'
+	placement: 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
 	/**
@@ -33,6 +34,8 @@ export interface LayoutConfig {
 	bandStep: number
 	/** The most bands a family splits over when one band's arc is too short for it (in bands). */
 	bandRows: number
+	/** In cones: move the family of each of two colliding skill nodes out until none collide. */
+	coneGrow: boolean
 	/** How far out from a node its expand circle reaches to start with: its children go inside it (in bands). */
 	expandRadius: number
 	/** Keep every branch off the arrow into its own node, at the cost of longer arrows (placed from the parent). */
@@ -95,6 +98,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	bandStep: 1500,
 	bandRows: 2,
 	expandRadius: 1200,
+	coneGrow: true,
 	hubRoom: 150,
 	clusterGap: 60,
 	minSlice: 40,
@@ -137,6 +141,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		key: 'placement',
 		label: 'Place skill nodes',
 		options: [
+			{ value: 'cones', label: 'In cones, each inside its parent’s' },
 			{ value: 'bands', label: 'In bands, one ring per level' },
 			{ value: 'fromParent', label: 'From their parent' },
 			{ value: 'rings', label: 'On rings round the middle' },
@@ -148,6 +153,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 12000, step: 50 },
 	{ group: 'Bands', key: 'bandStep', label: 'Each border after, further out by', min: 100, max: 4000, step: 50 },
 	{ group: 'Bands', key: 'bandRows', label: 'Most bands a family splits over', min: 1, max: 6, step: 1 },
+	{ group: 'Bands', key: 'coneGrow', label: 'Cones: move colliding families out' },
 	{ group: 'Bands', key: 'expandRadius', label: 'Expand circle to start with (radius)', min: 200, max: 6000, step: 50 },
 	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },

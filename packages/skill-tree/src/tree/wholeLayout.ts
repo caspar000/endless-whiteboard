@@ -2,6 +2,7 @@ import type { GraphEdge, GraphNode } from './layout'
 import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
 import { balloon } from './balloon'
 import { bands } from './bands'
+import { cones } from './cones'
 import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
 
@@ -151,9 +152,9 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 		}
 	const arrows = (options.arrows ?? []).map((e) => [e.from, e.to] as const)
 	const repack = (skill: string, gates: number[]) => orbitCluster(size.get(skill)!, families.get(skill)!, gates, C).at
-	// In bands, nothing slides, draws in, pushes or turns a branch: it would leave its band. Clusters
-	// still turn about their own skill node to face their arrows.
-	const compaction = C.placement === 'bands' ? { ...C, slideToParent: false, gravity: false, shrinkTree: false, pushOffArrows: false, repairCrossings: false } : C
+	// In bands or cones, nothing slides, draws in, pushes or turns a branch: it would leave its band or
+	// cone. Clusters still turn about their own skill node to face their arrows.
+	const compaction = C.placement === 'bands' || C.placement === 'cones' ? { ...C, slideToParent: false, gravity: false, shrinkTree: false, pushOffArrows: false, repairCrossings: false } : C
 	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, compaction, { arrows, lines }, repack)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - C.clusterGap * 4
 	for (const n of nodes) {
@@ -166,7 +167,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	/** Steps 2 to 4: where the skill nodes go, for clusters of these sizes. */
 	function skeleton(radius: (id: string) => number): Map<string, Point> {
 		const input = { start, order, kids: skillKids, radius, arrows: options.arrows, config: C }
-		const out = C.placement === 'rings' ? rings(radius) : C.placement === 'bands' ? bands(input) : balloon(input)
+		const out = C.placement === 'rings' ? rings(radius) : C.placement === 'cones' ? cones(input) : C.placement === 'bands' ? bands(input) : balloon(input)
 		shareBetween(out, radius)
 		return out
 	}

@@ -13,12 +13,13 @@ export interface LayoutConfig {
 	// Skeleton
 	/**
 	 * How skill nodes are placed: in strictly nested cones, then compacted with no move allowed to
-	 * cross or overlap (compact.ts); in radial wedges compacted wedge by wedge (wedges.ts); in cones,
+	 * cross or overlap (compact.ts); in bubbles, each subtree in a circle packed round its parent
+	 * (bubbles.ts); in radial wedges compacted wedge by wedge (wedges.ts); in cones,
 	 * every node's children in slices of its cone (cones.ts); in
 	 * bands, one ring per level, each branch a wedge (bands.ts); each
 	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
 	 */
-	placement: 'compactCones' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
+	placement: 'compactCones' | 'compactBubbles' | 'bubbles' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
 	/**
@@ -144,6 +145,8 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		label: 'Place skill nodes',
 		options: [
 			{ value: 'compactCones', label: 'Cones, compacted without crossing' },
+			{ value: 'compactBubbles', label: 'Bubbles, compacted without crossing' },
+			{ value: 'bubbles', label: 'Bubbles, each subtree in a circle' },
 			{ value: 'wedges', label: 'Radial wedges, compacted per wedge' },
 			{ value: 'cones', label: 'In cones, each inside its parent’s' },
 			{ value: 'bands', label: 'In bands, one ring per level' },

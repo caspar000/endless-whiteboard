@@ -5,6 +5,7 @@ import { bands } from './bands'
 import { cones } from './cones'
 import { compactCones } from './compact'
 import { wedges } from './wedges'
+import { bubbles } from './bubbles'
 import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
 
@@ -117,7 +118,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	const first = pack(evenly)
 	// The first skeleton only places the clusters' gaps; compacted cones take seconds, so the strict
 	// cones they start from do for it.
-	const firstSkeleton = skeleton((id) => first.get(id)!.radius, C.placement === 'compactCones')
+	const firstSkeleton = skeleton((id) => first.get(id)!.radius, C.placement === 'compactCones' || C.placement === 'compactBubbles')
 	const second = pack(towards(firstSkeleton))
 	let room = new Map(order.map((id) => [id, second.get(id)!.radius]))
 	let placed = skeleton((id) => room.get(id)!)
@@ -130,7 +131,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 		const next = pack(towards(placed))
 		clusters = new Map(order.map((id) => [id, next.get(id)!.radius <= room.get(id)! + 0.5 ? next.get(id)! : clusters.get(id)!]))
 		const grew = order.some((id) => next.get(id)!.radius > room.get(id)! + 0.5)
-		if (!grew || C.placement === 'rings' || C.placement === 'compactCones' || round >= 4) break
+		if (!grew || C.placement === 'rings' || C.placement === 'compactCones' || C.placement === 'compactBubbles' || round >= 4) break
 		room = new Map(order.map((id) => [id, Math.max(room.get(id)!, next.get(id)!.radius)]))
 		placed = skeleton((id) => room.get(id)!)
 	}
@@ -159,7 +160,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	// In the placements that build their own structure (bands, cones, wedges), nothing slides, draws
 	// in, pushes or turns a branch afterwards: it would undo it. Clusters still turn about their own
 	// skill node to face their arrows.
-	const structured = ['bands', 'cones', 'compactCones', 'wedges'].includes(C.placement)
+	const structured = ['bands', 'cones', 'compactCones', 'compactBubbles', 'wedges', 'bubbles'].includes(C.placement)
 	const compaction = structured ? { ...C, slideToParent: false, gravity: false, shrinkTree: false, pushOffArrows: false, repairCrossings: false } : C
 	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, compaction, { arrows, lines }, repack)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - C.clusterGap * 4
@@ -179,8 +180,12 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 				? rings(radius)
 				: C.placement === 'compactCones'
 					? compactCones(input)
+					: C.placement === 'compactBubbles'
+						? compactCones(input, 'bubbles')
 					: C.placement === 'wedges'
 						? wedges(input)
+						: C.placement === 'bubbles'
+							? bubbles(input)
 						: C.placement === 'cones'
 							? cones(input)
 							: C.placement === 'bands'

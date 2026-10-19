@@ -389,3 +389,14 @@ more than where it is; it may run one more arrow over a cluster if the jump at l
 arrow (the Play List's Systems and Horror found no spot that broke nothing). A short force pass then
 settles the rest. Four-tree board: 16,004 × 22,812 px, fill 5.6%, mean arrow 1317, longest 6579,
 1 arrow crossing, 1 through a skill node, 7 overlapping boxes, 5.8 s; no stragglers left.
+
+**Bubbles (2026-10-19).** Two more placements. `bubbles` (`tree/bubbles.ts`), after Grivet, Auber,
+Domenger and Melançon's Bubble Tree (2004), built from its published idea (the paper itself wouldn't
+load): every subtree in a circle; a node's children's bubbles packed round it in a fan centred straight
+out, each child at the near edge of its own bubble, on the line from the parent to the bubble's
+centre; the node's bubble the smallest circle round its cluster and theirs. Planar and overlap-free
+by construction, balanced, but loose: 56,328 × 30,889 px at a 330° fan (75,254 × 44,179 at 240°).
+`compactBubbles` starts the cones' compaction (tree/compact.ts) from the bubbles instead of the
+strict cones, a far better start: 25,215 × 15,423 px, fill 5.3%, mean arrow 1126, longest 7244,
+0 arrow crossings, 0 through skill nodes, 20 over items, 15 over light lines, 0 overlaps, 5.4 s —
+the best on nearly every count so far.

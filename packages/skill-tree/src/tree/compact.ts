@@ -1,4 +1,5 @@
 import type { BalloonInput } from './balloon'
+import { bubbles } from './bubbles'
 import { cones } from './cones'
 
 /**
@@ -49,9 +50,10 @@ const PUSH = 0.5
 /** Rounds of pulling everything in. */
 const ROUNDS = 14
 
-export function compactCones(input: BalloonInput): Map<string, Point> {
+/** `from`: the layout it starts from, which must not cross or overlap: strict cones, or bubbles. */
+export function compactCones(input: BalloonInput, from: 'cones' | 'bubbles' = 'cones'): Map<string, Point> {
 	const { start, order, kids, radius, config: C } = input
-	const at = cones(input, true)
+	const at = from === 'bubbles' ? bubbles(input) : cones(input, true)
 	const parentOf = new Map<string, string>()
 	for (const id of order) for (const k of kids(id)) parentOf.set(k, id)
 	const ids = order.filter((id) => at.has(id))

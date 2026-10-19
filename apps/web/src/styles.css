@@ -14738,6 +14738,17 @@ button.lb-props__eye:hover {
 	stroke-width: 4px;
 	stroke-linejoin: round;
 }
+.lb-band-guides__region {
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 1.5;
+	opacity: 0.8;
+}
+.lb-band-guides__expand {
+	fill: none;
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 1;
+	opacity: 0.45;
+}
 .lb-band-guides__overlap {
 	fill: none;
 	stroke: var(--lb-danger, #e5484d);

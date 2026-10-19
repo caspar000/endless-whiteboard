@@ -31,8 +31,10 @@ export interface LayoutConfig {
 	bandThird: number
 	/** How much further out each border past the third is than the one inside it. */
 	bandStep: number
-	/** The most rows a band staggers its nodes across when it is too full for one (in bands). */
+	/** The most bands a family splits over when one band's arc is too short for it (in bands). */
 	bandRows: number
+	/** How far out from a node its expand circle reaches to start with: its children go inside it (in bands). */
+	expandRadius: number
 	/** Keep every branch off the arrow into its own node, at the cost of longer arrows (placed from the parent). */
 	keepWayBack: boolean
 	/** Open ground between the middle and the pillars, for the arrows out to them. */
@@ -91,7 +93,8 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	bandSecond: 1000,
 	bandThird: 2500,
 	bandStep: 1500,
-	bandRows: 3,
+	bandRows: 2,
+	expandRadius: 1200,
 	hubRoom: 150,
 	clusterGap: 60,
 	minSlice: 40,
@@ -144,7 +147,8 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 	{ group: 'Bands', key: 'bandSecond', label: 'Tree roots’ border', min: 200, max: 8000, step: 50 },
 	{ group: 'Bands', key: 'bandThird', label: 'Third border', min: 200, max: 12000, step: 50 },
 	{ group: 'Bands', key: 'bandStep', label: 'Each border after, further out by', min: 100, max: 4000, step: 50 },
-	{ group: 'Bands', key: 'bandRows', label: 'Most rows in a band', min: 1, max: 6, step: 1 },
+	{ group: 'Bands', key: 'bandRows', label: 'Most bands a family splits over', min: 1, max: 6, step: 1 },
+	{ group: 'Bands', key: 'expandRadius', label: 'Expand circle to start with (radius)', min: 200, max: 6000, step: 50 },
 	{ group: 'Skeleton', key: 'keepWayBack', label: 'Keep branches off the arrow into them' },
 	{ group: 'Skeleton', key: 'hubRoom', label: 'Room round the middle', min: 0, max: 600, step: 10 },
 	{ group: 'Skeleton', key: 'clusterGap', label: 'Gap between clusters', min: 0, max: 400, step: 5 },

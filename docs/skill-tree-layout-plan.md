@@ -315,3 +315,15 @@ move. A band too full for one row staggers its nodes over as many rows as its th
 pushes a branch afterwards (it would leave its band); clusters still turn about their own node.
 Four-tree board: 19,074 × 13,832 px, fill 7.8%; bands 3, 4 and 5 are 124%, 199% and 123% full,
 so 89 skill nodes overlap.
+
+**Regions and expand circles (2026-10-19, the user's second sketch).** Spilling crowded nodes out a
+band, tried first, made arrows cross more (447–736 crossings against 250): spilled nodes landed far
+round from their parents. Replaced by the sketch: each pillar has a region round You in proportion
+to what grows from it; each node's children go inside an expand circle that starts at the node and
+reaches straight out from You (`expandRadius`, 1200), on the next band's arc inside it, side by side
+and centred on the parent; a family too wide for that arc alternates between it and the next band's
+(`bandRows`, 2), never a band further in, and only then does the circle grow, to twice its radius
+at most. Band by band, families meeting in a band are then packed round in the tree's order. The
+guides draw the region lines and, if asked, every expand circle. Four-tree board at the default
+borders: arrow over arrow 248 → 42, through a skill node 26 → 12, over items 59 → 45, over light
+lines 309 → 111, no two skill nodes covering each other; 15,241 × 23,155 px.

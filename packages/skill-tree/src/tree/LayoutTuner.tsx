@@ -4,7 +4,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { memo, useState, type SyntheticEvent } from 'react'
 import { clean, DEFAULT_LAYOUT, getLayoutConfig, LAYOUT_FIELDS, setLayoutConfig, type LayoutConfig } from './layoutConfig'
 import { lastLayoutStats } from './layoutStats'
-import { bandGuidesShown, showBandGuides } from './BandGuides'
+import { bandGuidesShown, expandCirclesShown, showBandGuides, showExpandCircles } from './BandGuides'
 import { relayout, relayoutSoon } from './relayout'
 
 export const TUNER_TYPE = 'node.skillLayoutTuner'
@@ -21,6 +21,7 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 	const stats = useValue('lifeboard:skill-tree-layout-stats-now', () => lastLayoutStats.get(), [])
 	const [copied, setCopied] = useState(false)
 	const guides = useValue('lifeboard:skill-tree-band-guides-tuner', bandGuidesShown, [])
+	const circles = useValue('lifeboard:skill-tree-expand-circles-tuner', expandCirclesShown, [])
 	const setByHand = config.bandBorders.filter((b) => b > 0).length
 	const set = (patch: Partial<LayoutConfig>) => {
 		setLayoutConfig(patch)
@@ -115,6 +116,10 @@ function TunerImpl({ editor }: NodeComponentProps<Record<string, never>>) {
 				<label className="lb-tuner__row lb-tuner__row--check">
 					<input type="checkbox" checked={guides} onChange={(e) => showBandGuides(e.target.checked)} />
 					<span>Show band guides (drag a border to move it)</span>
+				</label>
+				<label className="lb-tuner__row lb-tuner__row--check">
+					<input type="checkbox" checked={circles} onChange={(e) => showExpandCircles(e.target.checked)} />
+					<span>With every node's expand circle</span>
 				</label>
 				<p className="lb-tuner__hint">
 					{setByHand ? `${setByHand} border${setByHand === 1 ? '' : 's'} set by hand.` : 'Every border is the layout’s own.'}{' '}

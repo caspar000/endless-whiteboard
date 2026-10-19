@@ -7,7 +7,8 @@ import { relayout, relayoutSoon } from './relayout'
 
 /**
  * The band guides (dev builds; docs/skill-tree-layout-plan.md, "Bands"): every level's border round
- * You drawn on the board, each its own colour, with what the last layout made of it: how far round
+ * You drawn on the board, each its own colour, the lines between the pillars' regions, and if asked
+ * every node's expand circle, with what the last layout made of each border: how far round
  * its band is taken at its busiest, and whether the band is thinner than its biggest cluster. Drag a
  * border in or out and the board is laid out again with it there; a dragged border stays where it is
  * put, however crowded its band gets, and the skill nodes whose clusters then overlap are ringed in
@@ -18,6 +19,21 @@ const KEY = 'lifeboard:skill-tree-band-guides'
 const shown = atom<boolean>(KEY, typeof localStorage !== 'undefined' && localStorage.getItem(KEY) === 'true')
 
 export const bandGuidesShown = (): boolean => shown.get()
+
+const CIRCLES_KEY = 'lifeboard:skill-tree-expand-circles'
+const circlesShown = atom<boolean>(CIRCLES_KEY, typeof localStorage !== 'undefined' && localStorage.getItem(CIRCLES_KEY) === 'true')
+
+/** Whether the guides also draw every node's expand circle. */
+export const expandCirclesShown = (): boolean => circlesShown.get()
+
+export function showExpandCircles(on: boolean): void {
+	circlesShown.set(on)
+	try {
+		localStorage.setItem(CIRCLES_KEY, String(on))
+	} catch {
+		// Kept for this session only.
+	}
+}
 
 export function showBandGuides(on: boolean): void {
 	shown.set(on)
@@ -36,6 +52,7 @@ const labelAngle = (level: number) => -Math.PI / 2 + (((level - 1) % 10) * Math.
 export function BandGuides() {
 	const editor = useEditor()
 	const on = useValue('lifeboard:skill-tree-band-guides-shown', () => shown.get(), [])
+	const withCircles = useValue('lifeboard:skill-tree-band-guides-circles', () => circlesShown.get(), [])
 	const report = useValue('lifeboard:skill-tree-band-report', () => lastBands.get(), [])
 	const camera = useValue('lifeboard:skill-tree-band-camera', () => editor.getCamera(), [editor])
 	const you = useValue(
@@ -80,6 +97,13 @@ export function BandGuides() {
 
 	return (
 		<svg className="lb-band-guides" aria-hidden>
+			{withCircles &&
+				report.circles.map((g, i) => <circle key={`c${i}`} className="lb-band-guides__expand" cx={c.x + g.x * z} cy={c.y + g.y * z} r={g.r * z} />)}
+			{report.regions.map((a, i) => {
+				// Each line from You's edge out past the outermost border.
+				const far = (report.borders.at(-1) ?? 0) * 1.08 * z
+				return <line key={`r${i}`} className="lb-band-guides__region" x1={c.x} y1={c.y} x2={c.x + far * Math.cos(a)} y2={c.y + far * Math.sin(a)} />
+			})}
 			{overlapping.map((n) => {
 				const p = editor.pageToViewport(n)
 				return <circle key={n.id} className="lb-band-guides__overlap" cx={p.x} cy={p.y} r={(n.r + 40) * z} />

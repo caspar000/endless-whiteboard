@@ -522,3 +522,20 @@ relative to its node, so a circle follows its node when dragged), and `viewSync`
 compacted bubbles move everything after the bubbles are placed, so the circles would mean nothing.
 They show the waste plainly: a chain of single children reserves a circle as wide as the chain is
 long, in every direction.
+
+## Radial (Eades) (2026-10-19)
+
+The "tree radial" the Bubble Tree paper compares with: Eades, "Drawing free trees" (1992), as the
+Würzburg graph-visualisation lecture gives it (RadialTreeLayout). One ring per level, evenly spaced
+(ring t at t·d); each node's wedge shared among its children by how many nodes each subtree holds;
+past the start, a node's wedge cut to `arccos(ρ_t / ρ_t+1)` either side of it so no tree arrow
+dips inside its ring, so none cross. `tree/radial.ts`, placement `radial`, "Radial (Eades)" in
+Settings.
+
+It is big, as the lecture's theorem says (area grows with most children times height): one tight
+spot (a fan of 13 siblings on a deep ring) sets the spacing for every ring. Four-tree board, skill-node
+view: 87.7k × 81.6k px (Bubbles 12.7k × 7.6k, Compact bubbles 4.5k × 2.8k); with everything 202k ×
+188k. 0 crossings. Tried and dropped: each ring as close in as it goes (49k × 29k but feeds back:
+moving a ring out narrows the cut, squeezing whole trees into thin cones, 450k × 263k with everything),
+and compacting from the even radial (4.5k × 3.9k skill-node view, 21k × 23k with everything in 43 s,
+and the empty pillars left far out, since compaction doesn't move pillars).

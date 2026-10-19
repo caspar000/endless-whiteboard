@@ -5,6 +5,7 @@ import { bands } from './bands'
 import { cones } from './cones'
 import { compactCones, grownBubbles } from './compact'
 import { wedges } from './wedges'
+import { radial } from './radial'
 import { bubbles } from './bubbles'
 import { orbitCluster } from './orbits'
 import { pullIn } from './pullIn'
@@ -162,7 +163,7 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 	// In the placements that build their own structure (bands, cones, wedges), nothing slides, draws
 	// in, pushes or turns a branch afterwards: it would undo it. Clusters still turn about their own
 	// skill node to face their arrows.
-	const structured = ['bands', 'cones', 'compactCones', 'compactBubbles', 'wedges', 'bubbles'].includes(C.placement)
+	const structured = ['bands', 'cones', 'compactCones', 'compactBubbles', 'wedges', 'bubbles', 'radial'].includes(C.placement)
 	const compaction = structured ? { ...C, slideToParent: false, gravity: false, shrinkTree: false, pushOffArrows: false, repairCrossings: false } : C
 	pullIn(out, size, children, parentOf, isSkill, start, clumps, units, reach(size.get(start)!) + C.hubRoom, compaction, { arrows, lines }, repack)
 	let top = Math.min(0, ...[...out.values()].map((p) => p.y)) - C.clusterGap * 4
@@ -193,6 +194,8 @@ function wholeLayoutNow(nodes: readonly GraphNode[], edges: readonly GraphEdge[]
 							: compactCones(input, 'bubbles')
 					: C.placement === 'wedges'
 						? wedges(input)
+					: C.placement === 'radial'
+						? radial(input)
 						: C.placement === 'bubbles'
 							? bubbles(input)
 						: C.placement === 'cones'

@@ -21,7 +21,7 @@ export interface LayoutConfig {
 	 * bands, one ring per level, each branch a wedge (bands.ts); each
 	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
 	 */
-	placement: 'compactCones' | 'compactBubbles' | 'bubbles' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
+	placement: 'compactCones' | 'compactBubbles' | 'bubbles' | 'radial' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
 	/** In bubbles: each family round its parent with its biggest branch in the middle and smallest at the ends. */
@@ -159,6 +159,7 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 			{ value: 'compactCones', label: 'Compact cones', hint: 'Strict cones, then drawn in the same way as compact bubbles.' },
 			{ value: 'bubbles', label: 'Bubbles', hint: 'Every subtree in a circle, its children’s circles round it. Loose but clean; wider with a wider fan (layout tuner).' },
 			{ value: 'cones', label: 'Cones', hint: 'Every node looks outward through a cone; its children share it.' },
+			{ value: 'radial', label: 'Radial (Eades)', hint: 'One ring per level; each subtree a wedge as big as how many nodes it holds, cut so no arrows cross.' },
 			{ value: 'wedges', label: 'Wedges', hint: 'A slice of the circle per subtree, one ring per level, each tree’s rings pulled in.' },
 			{ value: 'bands', label: 'Bands', hint: 'One ring per level round You, at the borders the band guides show.' },
 			{ value: 'fromParent', label: 'Fans (older)', hint: 'Children fanned out from their parent, then pulled in. An earlier layout.' },

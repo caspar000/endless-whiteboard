@@ -432,3 +432,20 @@ arrows over items 11 → 4, over light lines 12 → 3) but not the compacted one
 YAML's order: organ pipe 25,358 × 19,431, fill 4.2%, 1 crossing; the reverse (biggest at the ends)
 22,843 × 17,183 with 3 crossings and 4 through skill nodes; biggest first 23,149 × 17,354 with 2
 crossings; the YAML's order 25,215 × 15,423, fill 5.3%, 0 crossings. So it is a tuner setting, off.
+
+## The layout in a worker (2026-10-19)
+
+The slow placements (compacted cones and bubbles) run in a worker (`tree/layoutWorker.ts`, through
+`tree/layoutAsync.ts`): the view is laid out at once with plain bubbles (about 0.2 s, the same
+structure), and the compacted layout is applied when the worker answers, with a progress note
+("Laying out the board · Drawing the trees in") while the board stays usable; a layout of the view
+started meanwhile makes the answer stale. The final move isn't an undo step of its own. Where there
+are no workers (tests), the layout runs in place as before. For this the layout's modules no longer
+import the canvas: the settings' types and defaults are in `layoutDefaults.ts` (`layoutConfig.ts`
+keeps them per device), and the band report is a plain value the board publishes (`bandReport.ts`).
+
+Also: the arrow curving checked every arrow tried against every light line's sixteen pieces, 9.8 s
+a call on the test board in the browser (the lines between works are arcs there); light-line pieces
+and discs now sit in a grid, 0.3 s. Inserting the four-tree test board: the board in about 5.4 s
+(mostly creating its 3,490 shapes), usable from then, the compacted layout landing at about 15 s.
+Not yet tried in a production build.

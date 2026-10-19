@@ -1,5 +1,5 @@
 import type { GraphNode } from './layout'
-import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
+import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutDefaults'
 
 /**
  * Closes the gaps a layout leaves: each branch, nearest the start first, slides whole toward the

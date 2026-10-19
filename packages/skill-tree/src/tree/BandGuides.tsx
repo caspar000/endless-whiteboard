@@ -1,7 +1,7 @@
 import { atom, useEditor, useValue } from '@lifeboard/canvas'
 import { useState, type PointerEvent } from 'react'
 import { isSkill, MASTERY } from '../board'
-import { lastBands } from './bands'
+import { lastBands } from './bandReport'
 import { getLayoutConfig, MAX_BORDER, setLayoutConfig } from './layoutConfig'
 import { relayout, relayoutSoon } from './relayout'
 

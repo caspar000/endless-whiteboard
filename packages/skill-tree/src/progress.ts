@@ -41,14 +41,17 @@ const paint = () =>
 /** Runs `fn`, which calls `step` before each of its `total` steps, with the note showing. */
 export async function working<T>(editor: Editor, title: string, total: number, fn: (step: (label: string) => Promise<void>) => Promise<T>): Promise<T> {
 	let done = -1
+	let mine: Work | null = null
 	const step = async (label: string) => {
 		done = Math.min(done + 1, total - 1)
-		current.set({ editor, title, step: label, done, total })
+		mine = { editor, title, step: label, done, total }
+		current.set(mine)
 		await paint()
 	}
 	try {
 		return await fn(step)
 	} finally {
-		current.set(null)
+		// Another job may have put up its own note since: that one stays.
+		if (current.get() === mine) current.set(null)
 	}
 }

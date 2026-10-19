@@ -1,5 +1,5 @@
 import type { GraphEdge, GraphNode } from './layout'
-import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
+import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutDefaults'
 import { balloon } from './balloon'
 import { bands } from './bands'
 import { cones } from './cones'

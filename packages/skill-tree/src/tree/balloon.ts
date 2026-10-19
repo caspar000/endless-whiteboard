@@ -1,4 +1,4 @@
-import type { LayoutConfig } from './layoutConfig'
+import type { LayoutConfig } from './layoutDefaults'
 
 /**
  * Placing each skill node from its parent (docs/skill-tree-layout-plan.md, phase B): a balloon

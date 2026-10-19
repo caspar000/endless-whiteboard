@@ -1,5 +1,5 @@
 import type { GraphNode } from './layout'
-import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutConfig'
+import { DEFAULT_LAYOUT, type LayoutConfig } from './layoutDefaults'
 
 /**
  * A skill node's cluster, like a group on Path of Exile's passive tree (docs/skill-tree-layout-plan.md,

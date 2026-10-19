@@ -1,4 +1,3 @@
-import { atom } from '@lifeboard/canvas'
 import { siblingOrder, type BalloonInput } from './balloon'
 
 /**
@@ -43,7 +42,10 @@ export interface ConeReport {
 	extent: number
 }
 
-export const lastCones = atom<ConeReport | null>('lifeboard:skill-tree-cones', null)
+let coneReport: ConeReport | null = null
+
+/** How the last cone layout run here came out. */
+export const takeConeReport = (): ConeReport | null => coneReport
 
 const TURN = 2 * Math.PI
 /** The narrowest a cone may be, so a cluster's angle never comes out of an impossible slice. */
@@ -176,13 +178,13 @@ export function cones({ start, order, kids: given, radius, arrows = [], config: 
 		for (const k of kids(id)) walk(k)
 		reach.set(id, far)
 	}
-	lastCones.set({
+	coneReport = {
 		regions,
 		cones: order
 			.filter((id) => id !== start && kids(id).length)
 			.map((id) => ({ ...at.get(id)!, ...cone.get(id)!, family: family.get(id)!, reach: reach.get(id)! })),
 		extent: Math.max(0, ...[...at].map(([id, q]) => Math.hypot(q.x, q.y) + (id === start ? 0 : radius(id)))),
-	})
+	}
 	return at
 }
 

@@ -28,6 +28,8 @@ export interface Disc {
 
 /** Fractions of an arrow's length tried as its bend, either way. */
 const TRIES = [0.08, 0.15, 0.25, 0.35, 0.5]
+/** The grid's cells, about a cluster across. */
+const CELL = 400
 /** Pieces an arc is followed in. */
 const PIECES = 16
 /** Rounds over every arrow: bending one can clear, or block, another. */
@@ -65,25 +67,61 @@ export function curveArrows(arrows: readonly Curvable[], lines: readonly Curvabl
 	})
 	for (const a of arrows) path.set(a.id, arc(a.from, a.to, bend.get(a.id)!))
 
+	// The light lines' pieces and the discs in a grid, so each piece of an arrow is checked only against
+	// what is near it: a board has thousands of light lines, each an arc in sixteen pieces.
+	const grid = new Map<string, { lines: number[]; discs: number[] }>()
+	const cellsOf = (x0: number, y0: number, x1: number, y1: number) => {
+		const out: string[] = []
+		for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) for (let j = Math.floor(y0 / CELL); j <= Math.floor(y1 / CELL); j++) out.push(`${i},${j}`)
+		return out
+	}
+	const cell = (key: string) => {
+		let c = grid.get(key)
+		if (!c) grid.set(key, (c = { lines: [], discs: [] }))
+		return c
+	}
+	const pieces: { line: number; a: Point; b: Point }[] = []
+	lineShapes.forEach((l, li) => {
+		for (let k = 1; k < l.p.length; k++) {
+			const [a, b] = [l.p[k - 1]!, l.p[k]!]
+			const index = pieces.push({ line: li, a, b }) - 1
+			for (const key of cellsOf(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.max(a.x, b.x), Math.max(a.y, b.y))) cell(key).lines.push(index)
+		}
+	})
+	discs.forEach((d, di) => {
+		for (const key of cellsOf(d.x - d.r, d.y - d.r, d.x + d.r, d.y + d.r)) cell(key).discs.push(di)
+	})
+
 	/** How many things the arrow `a`, drawn along `p`, crosses. */
 	const crossings = (a: Curvable, p: readonly Point[]) => {
 		const box = boxOf(p)
-		const near = (b: { x0: number; y0: number; x1: number; y1: number }, pad = 0) => b.x0 <= box.x1 + pad && b.x1 >= box.x0 - pad && b.y0 <= box.y1 + pad && b.y1 >= box.y0 - pad
+		const near = (b: { x0: number; y0: number; x1: number; y1: number }) => b.x0 <= box.x1 && b.x1 >= box.x0 && b.y0 <= box.y1 && b.y1 >= box.y0
 		let n = 0
 		for (const o of arrows) {
 			if (o.id === a.id || o.ends.some((e) => a.ends.includes(e))) continue
 			const q = path.get(o.id)!
 			if (near(boxOf(q)) && polylinesCross(p, q)) n++
 		}
-		for (const l of lineShapes) {
-			if (l.ends.some((e) => a.ends.includes(e)) || !near(l.box)) continue
-			if (polylinesCross(p, l.p)) n++
+		const crossedLines = new Set<number>()
+		const crossedDiscs = new Set<number>()
+		for (let k = 1; k < p.length; k++) {
+			const [s, t] = [p[k - 1]!, p[k]!]
+			for (const key of cellsOf(Math.min(s.x, t.x), Math.min(s.y, t.y), Math.max(s.x, t.x), Math.max(s.y, t.y))) {
+				const c = grid.get(key)
+				if (!c) continue
+				for (const pi of c.lines) {
+					const piece = pieces[pi]!
+					if (crossedLines.has(piece.line) || lineShapes[piece.line]!.ends.some((e) => a.ends.includes(e))) continue
+					if (cross(s, t, piece.a, piece.b)) crossedLines.add(piece.line)
+				}
+				for (const di of c.discs) {
+					const d = discs[di]!
+					if (crossedDiscs.has(di) || a.ends.includes(d.id)) continue
+					if (nearSegment(d, s, t) < d.r) crossedDiscs.add(di)
+				}
+			}
 		}
-		for (const d of discs) {
-			if (a.ends.includes(d.id) || !near({ x0: d.x - d.r, y0: d.y - d.r, x1: d.x + d.r, y1: d.y + d.r })) continue
-			if (polylineNear(p, d) < d.r) n++
-		}
-		return n
+		return n + crossedLines.size + crossedDiscs.size
 	}
 
 	// Where each arrow leaves each of its ends: the direction of its first piece from that end.
@@ -181,11 +219,6 @@ function polylinesCross(p: readonly Point[], q: readonly Point[]): boolean {
 	return false
 }
 
-function polylineNear(p: readonly Point[], d: Point): number {
-	let best = Infinity
-	for (let i = 1; i < p.length; i++) best = Math.min(best, nearSegment(d, p[i - 1]!, p[i]!))
-	return best
-}
 
 /** Do the segments a→b and c→d cross (not merely touch at an end)? */
 function cross(a: Point, b: Point, c: Point, d: Point): boolean {

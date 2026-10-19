@@ -1,6 +1,5 @@
-import { atom } from '@lifeboard/canvas'
 import { siblingOrder, type BalloonInput } from './balloon'
-import type { LayoutConfig } from './layoutConfig'
+import type { LayoutConfig } from './layoutDefaults'
 
 /**
  * Placing skill nodes in bands (docs/skill-tree-layout-plan.md, "Bands"), as the user sketched them:
@@ -46,7 +45,10 @@ export interface BandReport {
 	circles: { x: number; y: number; r: number }[]
 }
 
-export const lastBands = atom<BandReport | null>('lifeboard:skill-tree-bands', null)
+let report: BandReport | null = null
+
+/** How the last band layout run here came out; the board shows it (bandReport.ts publishes it). */
+export const takeBandReport = (): BandReport | null => report
 
 const TURN = 2 * Math.PI
 /** The most bands a layout uses, however much moves out. */
@@ -233,7 +235,7 @@ export function bands({ start, order, kids: given, radius, arrows = [], config: 
 			const [a, b] = [out.get(placed[i]!)!, out.get(placed[j]!)!]
 			if (Math.hypot(a.x - b.x, a.y - b.y) < radius(placed[i]!) + radius(placed[j]!)) overlapping.add(placed[i]!).add(placed[j]!)
 		}
-	lastBands.set({
+	report = {
 		borders: borders.slice(0, deepest),
 		set: set.slice(0, deepest),
 		full,
@@ -244,7 +246,7 @@ export function bands({ start, order, kids: given, radius, arrows = [], config: 
 			const a = angle.get(id)!
 			return { x: (reach + r) * Math.cos(a), y: (reach + r) * Math.sin(a), r }
 		}),
-	})
+	}
 	return out
 }
 

@@ -16,6 +16,10 @@ import { wholeLayout } from './wholeLayout'
 import { layoutGraph, orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { nodeShapes, SKILL_EDGE_META } from './ops'
 import { curveArrows } from './curveArrows'
+import { canLayOutInWorker, layoutInWorker } from './layoutAsync'
+import { takeBandReport } from './bands'
+import { lastBands } from './bandReport'
+import { working } from '../progress'
 
 /**
  * Turning each tree view's contents (views.ts) into the board (docs/skill-tree-plan.md, "Rebuild").
@@ -278,23 +282,56 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		edges.push({ from: startKey, to: HEADER })
 	}
 	// Both views, everything and the skill nodes alone, are the whole-life layout from the view's start.
+	// The slow placements (compacted cones and bubbles) run in a worker: the board gets plain bubbles at
+	// once, and the real layout when the worker is done, the board usable meanwhile.
 	const began = performance.now()
 	const isSkill = (id: string) => view.skills.has(id)
-	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: getLayoutConfig() })
+	const config = getLayoutConfig()
+	const later = SLOW.has(config.placement) && canLayOutInWorker()
+	const at = wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config: later ? { ...config, placement: 'bubbles' } : config })
+	if (config.placement === 'bands') lastBands.set(takeBandReport())
 	lastLayoutStats.set(measureLayout(nodes, at, drawn, lineEnds(view.items), isSkill, performance.now() - began))
-	const moves = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])].flatMap(([key, s]) => {
-		const p = at.get(key)
-		const b = editor.getShapePageBounds(s.id)
-		return p && b ? [{ id: s.id, type: s.type, x: anchor.x + p.x - b.w / 2, y: anchor.y + p.y - b.h / 2 }] : []
-	})
+	const keys = [...shapes, ...(hb ? ([[HEADER, header]] as const) : [])]
+	const movesTo = (at: ReadonlyMap<string, { x: number; y: number }>, from: { x: number; y: number }) =>
+		keys.flatMap(([key, s]) => {
+			const p = at.get(key)
+			const b = editor.getShape(s.id) && editor.getShapePageBounds(s.id)
+			return p && b ? [{ id: s.id, type: s.type, x: from.x + p.x - b.w / 2, y: from.y + p.y - b.h / 2 }] : []
+		})
+	const moves = movesTo(at, anchor)
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)
 		editor.updateShapes(moves as never)
 		tidyLines(editor)
 		editor.updateShape({ id: header.id, type: TREE_TYPE, meta: { [LAYOUT_OF]: structureOf(editor, view), [LAYOUT_STALE]: false } } as never)
 	})
+	if (later) {
+		// The newest layout of a view wins: one started after this one makes this one's answer stale.
+		const job = (latest.get(header.id) ?? 0) + 1
+		latest.set(header.id, job)
+		void working(editor, 'Laying out the board', 1, async (step) => {
+			await step('Drawing the trees in')
+			const done = await layoutInWorker(nodes, edges, view.skills, startKey, drawn, config)
+			if (latest.get(header.id) !== job || !editor.getShape(header.id)) return
+			const result = done?.at ?? wholeLayout(nodes, edges, { isSkill, start: startKey, arrows: drawn, config })
+			const from = editor.getShape(startShape.id) ? (editor.getShapePageBounds(startShape.id)?.center ?? anchor) : anchor
+			lastLayoutStats.set(measureLayout(nodes, result, drawn, lineEnds(view.items), isSkill, done?.ms ?? performance.now() - began))
+			editor.run(
+				() => {
+					editor.updateShapes(movesTo(result, from) as never)
+					tidyLines(editor)
+				},
+				{ history: 'ignore' }
+			)
+		})
+	}
 	return moves.length
 }
+
+/** The placements slow enough to run in a worker. */
+const SLOW = new Set(['compactCones', 'compactBubbles'])
+/** For each view (by its header), the last layout started: an older one's answer is dropped. */
+const latest = new Map<TLShapeId, number>()
 
 /**
  * Places nodes new to an arrangement beside their nearest placed neighbour: laid out as their own

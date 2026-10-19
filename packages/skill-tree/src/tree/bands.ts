@@ -17,8 +17,10 @@ import type { LayoutConfig } from './layoutConfig'
  *   still doesn't fit does the circle grow, to twice its radius at most.
  * - **Packing.** Band by band from the middle out, each node where its parent's circle puts it,
  *   turned with its parent; then families meeting in a band clear each other, every node keeping the
- *   tree's order round the circle and moving as little as it can (least squares, by
- *   pool-adjacent-violators).
+ *   tree's order and moving as little as it can (least squares, by pool-adjacent-violators), inside
+ *   its pillar's region and never past its edges. Where a region's arc of a band can't hold its
+ *   nodes, its widest family staggers, every other child moving out a band with its arrow between
+ *   the siblings that stay, until the arc can: each region fills out as a widening cone.
  *
  * The borders never move to make room: what doesn't fit overlaps, and the band guides
  * (tree/BandGuides.tsx) show it, with the regions and, if asked, the expand circles.
@@ -47,6 +49,8 @@ export interface BandReport {
 export const lastBands = atom<BandReport | null>('lifeboard:skill-tree-bands', null)
 
 const TURN = 2 * Math.PI
+/** The most bands a layout uses, however much moves out. */
+const MOST_BANDS = 40
 /** The most an expand circle grows, as a multiple of `expandRadius`. */
 const GROW = 2
 
@@ -154,21 +158,69 @@ export function bands({ start, order, kids: given, radius, arrows = [], config: 
 	const regionMid = new Map(regions.map((g) => [g.id, (g.from + g.to) / 2]))
 	const angle = new Map<string, number>([[start, 0]])
 	const dist = new Map<string, number>([[start, 0]])
-	const deepest = Math.max(0, ...band.values())
 	const full: number[] = []
 	const thin: boolean[] = []
-	for (let k = 1; k <= deepest; k++) {
-		const level = order.filter((id) => band.get(id) === k).sort((a, b) => treeOrder.get(a)! - treeOrder.get(b)!)
+	// Which pillar's region each node is in, and how much hangs below it.
+	const regionOf = new Map<string, number>()
+	const below = new Map<string, number>()
+	for (const id of [...order].reverse()) below.set(id, kids(id).reduce((n, k) => n + 1 + below.get(k)!, 0))
+	pillars.forEach((p, i) => {
+		const mark = (id: string) => {
+			regionOf.set(id, i)
+			for (const k of kids(id)) mark(k)
+		}
+		mark(p)
+	})
+	/** Moves a node out to band `to`, and what hangs below it out with it as far as it has to go. */
+	const moveOut = (id: string, to: number) => {
+		band.set(id, to)
+		for (const k of kids(id)) if (band.get(k)! <= to) moveOut(k, to + 1)
+	}
+	let deepest = Math.max(0, ...band.values())
+	for (let k = 1; k <= deepest && k <= MOST_BANDS; k++) {
 		const s = middle(k)
-		const want = level.map((id) => (k === 1 ? regionMid.get(id)! : angle.get(parentOf.get(id)!)! + offset.get(id)!))
-		const half = level.map((id) => halfAt(id, s))
-		const placed = packRound(want, half)
-		level.forEach((id, i) => {
-			angle.set(id, placed[i]!)
-			dist.set(id, s)
-		})
-		full.push(half.reduce((n, h) => n + 2 * h, 0) / TURN)
-		thin.push(border(k) - inner(k) < 2 * Math.max(0, ...level.map(radius)))
+		const level = order.filter((id) => band.get(id) === k)
+		const wantOf = (id: string) => (k === 1 ? regionMid.get(id)! : angle.get(parentOf.get(id)!)! + offset.get(id)!)
+		if (k === 1) {
+			const placed = packRound(level.map(wantOf), level.map((id) => halfAt(id, s)))
+			level.forEach((id, i) => {
+				angle.set(id, placed[i]!)
+				dist.set(id, s)
+			})
+		} else {
+			// Each region's nodes packed inside its arc of this band; those that don't fit move out a
+			// band, the ones with least below them first, so the region grows outward as a cone.
+			regions.forEach((g, r) => {
+				let mine = level.filter((id) => regionOf.get(id) === r).sort((a, b) => treeOrder.get(a)! - treeOrder.get(b)!)
+				const room = (ids: readonly string[]) => ids.reduce((n, id) => n + 2 * halfAt(id, s), 0) <= g.to - g.from
+				while (mine.length > 1 && !room(mine)) {
+					// The widest family here staggers: every other child moves out a band, its arrow
+					// passing between the siblings either side, which stay.
+					const families = new Map<string, string[]>()
+					for (const id of mine) families.set(parentOf.get(id)!, [...(families.get(parentOf.get(id)!) ?? []), id])
+					const widest = [...families.values()]
+						.filter((f) => f.length > 1)
+						.sort((a, b) => b.reduce((n, id) => n + halfAt(id, s), 0) - a.reduce((n, id) => n + halfAt(id, s), 0))[0]
+					const out = widest ? widest.filter((_, i) => i % 2 === 1) : [[...mine].sort((a, b) => below.get(a)! - below.get(b)!)[0]!]
+					for (const id of out) moveOut(id, k + 1)
+					mine = mine.filter((id) => !out.includes(id))
+				}
+				const placed = packWithin(
+					mine.map((id) => nearest(wantOf(id), (g.from + g.to) / 2)),
+					mine.map((id) => halfAt(id, s)),
+					g.from,
+					g.to
+				)
+				mine.forEach((id, i) => {
+					angle.set(id, placed[i]!)
+					dist.set(id, s)
+				})
+			})
+		}
+		const here = order.filter((id) => band.get(id) === k)
+		full.push(here.reduce((n, id) => n + 2 * halfAt(id, s), 0) / TURN)
+		thin.push(border(k) - inner(k) < 2 * Math.max(0, ...here.map(radius)))
+		deepest = Math.max(0, ...band.values())
 	}
 	border(deepest)
 
@@ -261,6 +313,30 @@ function packRound(want: readonly number[], half: readonly number[], weight: rea
 	const out = new Array<number>(n)
 	idx.forEach((i, k) => (out[i] = x[k]!))
 	return out
+}
+
+/** The turn of angle `a` nearest `to`. */
+const nearest = (a: number, to: number) => a + TURN * Math.round((to - a) / TURN)
+
+/**
+ * Angles inside the arc `from`..`to`, in order, each as near the one wanted as it can be with
+ * neighbours `half` each side apart and none past either end: least squares under order and
+ * spacing, by pool-adjacent-violators, clipped to the arc. Where they can't all fit, spaced evenly
+ * across it, overlapping.
+ */
+function packWithin(want: readonly number[], half: readonly number[], from: number, to: number): number[] {
+	const n = want.length
+	if (!n) return []
+	const c = [0]
+	for (let k = 1; k < n; k++) c.push(c[k - 1]! + half[k - 1]! + half[k]!)
+	const lo = from + half[0]!
+	const hi = to - half[n - 1]! - c[n - 1]!
+	if (hi < lo) return c.map((v) => (from + to) / 2 + (v - c[n - 1]! / 2) * ((to - from) / Math.max(c[n - 1]! + half[0]! + half[n - 1]!, 1e-9)))
+	const y = isotonic(
+		want.map((a, k) => a - c[k]!),
+		want.map(() => 1)
+	)
+	return y.map((v, k) => Math.min(hi, Math.max(lo, v)) + c[k]!)
 }
 
 /** The non-decreasing sequence nearest `v` in weighted least squares (pool-adjacent-violators). */

@@ -327,3 +327,11 @@ at most. Band by band, families meeting in a band are then packed round in the t
 guides draw the region lines and, if asked, every expand circle. Four-tree board at the default
 borders: arrow over arrow 248 → 42, through a skill node 26 → 12, over items 59 → 45, over light
 lines 309 → 111, no two skill nodes covering each other; 15,241 × 23,155 px.
+
+**Cones (2026-10-19).** The user: Mental and Practical spread round into the empty pillars' regions;
+each should stay in its region and widen outward as a cone. Each region's nodes in a band are now
+packed only inside its arc (least squares, clipped to the arc); where the arc can't hold them, the
+widest family there staggers, every other child moving out a band with its arrow between the
+siblings that stay. (Moving out the nodes with least below them first, tried before, put 380 of 402
+crossings on arrows that skip a band.) Four-tree board: arrow over arrow 56, through a skill node 12,
+over items 44, over light lines 181; 23,339 × 21,534 px; the empty pillars' regions stay empty.

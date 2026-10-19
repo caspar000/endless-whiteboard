@@ -53,7 +53,11 @@ const WIDEST = (150 / 180) * Math.PI
 /** The most rounds of moving colliding families out. */
 const MOVES = 60
 
-export function cones({ start, order, kids: given, radius, arrows = [], config: C }: BalloonInput): Map<string, Point> {
+/**
+ * `strict`: every cone exactly its slice and no family moved out, so nothing can cross or overlap:
+ * the start that `compactCones` (tree/compact.ts) pulls in.
+ */
+export function cones({ start, order, kids: given, radius, arrows = [], config: C }: BalloonInput, strict = false): Map<string, Point> {
 	const gap = C.clusterGap
 	const parentOf = new Map<string, string>()
 	for (const id of order) for (const kid of given(id)) parentOf.set(kid, id)
@@ -123,7 +127,7 @@ export function cones({ start, order, kids: given, radius, arrows = [], config: 
 				// family deep in a narrow cone isn't flung far out; it may then reach into its neighbours'.
 				const grand = kids(k)
 				const wants = grand.reduce((n, g) => n + 2 * Math.asin(Math.min(1, (radius(g) + gap / 2) / Math.max(C.expandRadius, radius(k) + gap + radius(g)))), 0)
-				cone.set(k, { axis: a, width: Math.min(WIDEST, Math.max(slice, wants)) })
+				cone.set(k, { axis: a, width: strict ? slice : Math.min(WIDEST, Math.max(slice, wants)) })
 				from += slice
 			})
 	}
@@ -136,9 +140,10 @@ export function cones({ start, order, kids: given, radius, arrows = [], config: 
 	for (const id of order) for (const k of kids(id)) depth.set(k, depth.get(id)! + 1)
 	const extra = new Map<string, number>()
 	const placed = order.filter((id) => id !== start)
-	for (let round = 0; round <= (C.coneGrow ? MOVES : 0); round++) {
+	const grow = C.coneGrow && !strict
+	for (let round = 0; round <= (grow ? MOVES : 0); round++) {
 		place(extra)
-		if (!C.coneGrow) break
+		if (!grow) break
 		let moved = false
 		const grew = new Set<string>()
 		for (let i = 0; i < placed.length; i++)

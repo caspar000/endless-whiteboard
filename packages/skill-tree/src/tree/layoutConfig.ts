@@ -12,11 +12,13 @@ export interface LayoutConfig {
 	masterySize: number
 	// Skeleton
 	/**
-	 * How skill nodes are placed: in cones, every node's children in slices of its cone (cones.ts); in
+	 * How skill nodes are placed: in strictly nested cones, then compacted with no move allowed to
+	 * cross or overlap (compact.ts); in radial wedges compacted wedge by wedge (wedges.ts); in cones,
+	 * every node's children in slices of its cone (cones.ts); in
 	 * bands, one ring per level, each branch a wedge (bands.ts); each
 	 * from its parent (a balloon layout, balloon.ts); or on rings round the middle, in slices.
 	 */
-	placement: 'cones' | 'bands' | 'fromParent' | 'rings'
+	placement: 'compactCones' | 'wedges' | 'cones' | 'bands' | 'fromParent' | 'rings'
 	/** How far round its node a family of children may fan, in degrees (placed from the parent). */
 	fanSpread: number
 	/**
@@ -141,6 +143,8 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		key: 'placement',
 		label: 'Place skill nodes',
 		options: [
+			{ value: 'compactCones', label: 'Cones, compacted without crossing' },
+			{ value: 'wedges', label: 'Radial wedges, compacted per wedge' },
 			{ value: 'cones', label: 'In cones, each inside its parent’s' },
 			{ value: 'bands', label: 'In bands, one ring per level' },
 			{ value: 'fromParent', label: 'From their parent' },

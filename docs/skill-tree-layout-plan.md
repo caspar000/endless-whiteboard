@@ -348,3 +348,25 @@ arrows cross, as widened cones reach into their neighbours. `coneGrow` then move
 each two colliding skill nodes out until none collide: 24,137 × 33,627 px, 38 overlaps, 102
 crossings. Adler, alone in its region, reads as a clean tree; Practical's three trees, close to their
 pillar, pile into each other. The default stays bands with region cones.
+
+## Layout algorithms (2026-10-19, after the research pass)
+
+Two new placements, picked in Settings › Syllabus & skill trees › Layout (and the tuner):
+
+- **Cones, compacted** (`compactCones`, `tree/compact.ts`), after Gray et al., "A Scalable Method
+  for Readable Tree Layouts" (VIS 2023): start from the strictly nested cones, which can't cross or
+  overlap, then compact with every move checked against everything (no cluster on another, no tree
+  arrow across another, no arrow through a cluster it doesn't end at, the open ground round You
+  kept): each branch pulled in along its arrow, tried turned about its parent, and each family tried
+  fanned wider round its parent and brought in together. Four-tree board: 0 overlaps, 1 arrow
+  crossing, median arrow 1479 px, but three wide families stay far out (Stagecraft at 91,000 px;
+  World Canon and the Play List at 25,000–27,000), so the board is 35,497 × 110,837.
+- **Radial wedges** (`wedges`, `tree/wedges.ts`), in the manner of ELK Radial as its documentation
+  describes it (written from that, not its code): Eades' wedges by size from You, one ring per level,
+  rings moved out until nothing overlaps, then each tree's wedge pulls its own rings in, level by
+  level. Four-tree board: 0 overlaps, 0 arrow crossings, but 47,752 × 45,056 px, the Play List's ten
+  schools 26,000 px out on long spokes, median arrow 3340.
+
+Bands with region cones stays the default. Both new ones keep their promises (no overlaps, next to no
+crossings) but leave the widest families far out; what each needs next is a way for a wide family to
+spread sideways instead of out.

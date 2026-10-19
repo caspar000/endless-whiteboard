@@ -198,7 +198,9 @@ export function Syllabus(_props: SectionProps) {
 				<p className="lb-help__aside">
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill
 					trees can draw it again (to change where its view starts, or lay it out again with Re-calculate),
-					and sets what an import opens on and whether physics is live.
+					and sets what an import opens on, whether physics is live, and the layout: the algorithm the
+					whole-life board is arranged by (bands round You, cones inside cones, radial wedges and more).
+					Re-calculate a board to see a new one.
 				</p>
 			</Section>
 

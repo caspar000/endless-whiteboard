@@ -39,7 +39,22 @@ export interface MazeResult {
 	overflow: string[]
 }
 
-export function maze(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions): MazeResult {
+/**
+ * The tightest region that holds the whole tree: `fill` first, then a little roomier each time until
+ * no node is left without a cell (the outcome jumps about with the region's exact shape, so the
+ * tightest that works is found by trying). `fill` in the result is the one used.
+ */
+export function maze(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions): MazeResult & { fill: number } {
+	let best: (MazeResult & { fill: number }) | null = null
+	for (let fill = o.fill; fill <= o.fill + 4; fill += 0.05) {
+		const m = { ...mazeOnce(start, order, kids, radius, { ...o, fill }), fill }
+		if (!best || m.overflow.length < best.overflow.length) best = m
+		if (!m.overflow.length) break
+	}
+	return best!
+}
+
+function mazeOnce(start: string, order: readonly string[], kids: (id: string) => readonly string[], radius: (id: string) => number, o: MazeOptions): MazeResult {
 	const size = new Map<string, number>()
 	for (const id of [...order].reverse()) size.set(id, 1 + kids(id).reduce((n, k) => n + size.get(k)!, 0))
 	const nodes = size.get(start)! - 1

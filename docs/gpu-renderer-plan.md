@@ -76,8 +76,11 @@ chrome hidden, and compares the two screenshots with pixelmatch.
 - **Because both pictures come from the same machine in the same run, there are no stored golden
   images**, so fonts and platforms can't make it flaky, and it runs the same locally and in CI.
 - Scenes: the **gallery board** (below), the four-tree board, a dense synthetic board.
-- Grid: zoom 10%, 25%, 50%, 100%, 200%, 400%; light and dark; pixel ratio 1 and 2; Chromium and
-  WebKit (iPhone project). That's 24 screenshots per scene per browser.
+- Grid: zoom 10%, 25%, 50%, 100%, 200%, 400%; light and dark; pixel ratio 1 and 2, in Chromium on
+  every run. WebKit (`LB_PARITY_WEBKIT=1`, Desktop Safari) only on purpose, once at the end of a
+  phase that gives the GPU something new to draw: at pixel ratio 2 (what real Safari runs the GPU
+  layer at), without the four-tree board (which crashes Playwright's WebKit, not Safari). Agreed
+  2026-10-20: every run in WebKit cost ~20 minutes for little.
 - Pass: pixelmatch threshold 0.1 and at most 0.05% of pixels differing per screenshot (a
   starting value; set in phase 0 from two page renders of the same scene, so it sits just above
   the page's own run-to-run noise). On failure the diff image is attached to the report.
@@ -242,8 +245,11 @@ with `?renderer=gpu` and a test-only shape type that draws a rect, parity passes
 - The budget: shapes on screen counted from the index; above the budget (with hysteresis so it
   doesn't flicker at the edge) shapes with a `toGpu` go to the GPU and their elements get
   `visibility: hidden`; below it, everything is the page's.
-- First: does real Safari crash with a WebGL canvas under the four-tree board at 10%, as
-  Playwright's WebKit does? That decides whether the GPU layer can run on Macs and iPhones.
+- Real Safari doesn't crash (checked by hand 2026-10-20: the four-tree board with an empty WebGL
+  canvas under it, panned zoomed out, kept working, no slower). The crash is Playwright's WebKit
+  build. So: the GPU layer back on in WebKit at pixel ratio 2 and up (ratio 1 keeps the page, for the
+  border snapping); WebKit parity runs every scene but the four-tree board with the GPU on, and the
+  four-tree board on the page, with that noted.
 - Hidden boards (open tabs) give their WebGL context back; a board keeps one only while shown.
 - Switching on and off needs hysteresis: each switch makes and frees a WebGL context.
 - Live shapes stay in the page. Z-order across the two: when a GPU shape lies above a live shape

@@ -644,3 +644,8 @@ under the discs like the cards' lines (sent behind the nodes when styled, `sendL
 tinted discs are now solid underneath). Cards' lines thin out with distance from their skill node
 (`lineScale`): an entry's 3px, then each work down its chain 2.1, 1.5, and 1.2 from there. A
 finished branch is told by its colour alone now, not a thicker line.
+
+Ahead is grey now, not dotted: where lines leave a shared corridor cell, dotted ones fell apart into
+a cluster of dots out of step; solid ones part cleanly, as the cards' lines always did.
+With every connection a solid line, the lane beside a card's line (`laneArrows`) went too: two lines
+side by side in one corridor looked like a fault, one on top of the other looks like one line.

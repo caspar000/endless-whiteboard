@@ -53,43 +53,7 @@ export function mazeLayout({ start, order, kids, radius, isSkill, config: C }: M
 		}
 		routes.set(`${c.from} ${id}`, path)
 	}
-	if (isSkill) laneArrows(routes, isSkill, cell)
 	return new Map(order.map((id) => [id, m.at.get(id)!]))
-}
-
-/**
- * Where a node had only one way out (a pocket in the maze), its arrows and its cards' lines leave
- * through the same cells until they part. Along that stretch the arrow keeps a lane of its own beside
- * the lines, on the side it turns off to, instead of running on top of them.
- */
-function laneArrows(routes: Map<string, Point[]>, isSkill: (id: string) => boolean, cell: number) {
-	const lane = cell * 0.12
-	const same = (p: Point, q: Point | undefined) => !!q && Math.abs(p.x - q.x) < 0.5 && Math.abs(p.y - q.y) < 0.5
-	for (const [key, path] of routes) {
-		const [from, to] = key.split(' ') as [string, string]
-		if (!isSkill(to)) continue
-		// The longest stretch it shares with a card's line from the same node, and that line.
-		let k = 1
-		let line: Point[] | undefined
-		for (const [other, p] of routes) {
-			if (!other.startsWith(`${from} `) || isSkill(other.slice(from.length + 1))) continue
-			let n = 0
-			while (n < path.length - 1 && same(path[n]!, p[n])) n++
-			if (n > k) [k, line] = [n, p]
-		}
-		if (!line) continue
-		const split = path[k - 1]!
-		const d = { x: split.x - path[k - 2]!.x, y: split.y - path[k - 2]!.y }
-		const ahead = { x: path[k]!.x - (line[k] ?? split).x, y: path[k]!.y - (line[k] ?? split).y }
-		const side = -d.y * ahead.x + d.x * ahead.y < 0 ? -1 : 1
-		const out = path.map((p) => ({ ...p }))
-		for (let i = 1; i < k; i++) {
-			const [a, b] = [path[i - 1]!, path[i + 1]!]
-			const len = Math.hypot(b.x - a.x, b.y - a.y) || 1
-			out[i] = { x: path[i]!.x + (side * -(b.y - a.y) * lane) / len, y: path[i]!.y + (side * (b.x - a.x) * lane) / len }
-		}
-		routes.set(key, out)
-	}
 }
 
 let routes: Map<string, Point[]> | null = null

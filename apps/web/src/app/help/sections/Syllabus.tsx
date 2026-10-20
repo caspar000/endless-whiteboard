@@ -192,7 +192,7 @@ export function Syllabus(_props: SectionProps) {
 					out again. An entry tagged to more than one skill node is drawn once, under the first, with a
 					faint dotted line to each of the others. Every connection is a line, thickest between skill
 					nodes and thinner the further a card is from its skill node. A line between skill nodes is
-					dotted until the node it leads to is unlocked, then solid in the accent colour. An unlocked node glows blue. Once a
+					grey until the node it leads to is unlocked, then in the accent colour. An unlocked node glows blue. Once a
 					node and everything below it is unlocked, the whole branch turns gold: its nodes glow gold and
 					the lines between them turn gold. A skill with nothing below it stays blue until
 					the rest of its parent's branch is unlocked too.

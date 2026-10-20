@@ -10,7 +10,8 @@ import { LINE, sendLinesBack } from './viewSync'
  * How a line between skill nodes (an arrow on the canvas, drawn without heads, from centre to centre
  * under the discs) shows the way travelled:
  *
- * - **Ahead** (the node it leads to still locked or only in reach): dotted, in the ordinary colour.
+ * - **Ahead** (the node it leads to still locked or only in reach): grey, like the cards' lines. Not
+ *   dotted: lines leaving a shared corridor cell part cleanly only when solid (their dots fall apart).
  * - **Unlocked** (that node unlocked): solid, in the accent colour, like the node's own ring.
  * - **A whole branch unlocked** (the node it leaves and everything below that node, tree/branch.ts):
  *   solid gold, like the branch's nodes, so a finished part of the tree stands out.
@@ -69,6 +70,6 @@ export function styleArrows(editor: Editor): void {
 /** A line between skill nodes: the thickest on the tree, with no arrowheads (cards' lines thin out below it, viewSync.ts). */
 type Look = { dash: string; color: string; size: string; arrowheadStart: string; arrowheadEnd: string }
 const LINE_LOOK = { size: 'l', arrowheadStart: 'none', arrowheadEnd: 'none' }
-const AHEAD: Look = { ...LINE_LOOK, dash: 'dotted', color: 'black' }
+const AHEAD: Look = { ...LINE_LOOK, dash: 'solid', color: 'grey' }
 const ACCENT: Look = { ...LINE_LOOK, dash: 'solid', color: 'blue' }
 const GOLD: Look = { ...LINE_LOOK, dash: 'solid', color: 'yellow' }

@@ -195,11 +195,57 @@ Chromium and WebKit; the before numbers are in this file.
 Done when: the suite passes (nothing visible changed); unit tests cover the scene sync and index;
 with `?renderer=gpu` and a test-only shape type that draws a rect, parity passes for it.
 
+#### Phase 1, as built (2026-10-20)
+
+- `canvas-editor/src/lib/gpu/`: `primitives.ts` (the contract: `GpuPrimitive`, so far `rect`, and
+  `gpuColor`), `gpuScene.ts` (per editor: which shapes are the GPU's and their instance data, as
+  per-shape computed caches), `GpuRenderer.ts` (WebGL2, instanced rounded rects by signed distance),
+  `GpuLayer.tsx` (the canvas at `--layer-gpu: 250`, between the grid and the shapes, in the page only
+  while the renderer asks for it, made fresh with its context on each mount and removed with it; a
+  lost context hands everything back).
+  `ShapeUtil.toGpu` declared; `Shape.tsx` gives a GPU-drawn shape's element `visibility: hidden`.
+- **Simpler than planned, on purpose:** no R-tree yet. The instance buffer holds every GPU shape in
+  z-order, so a camera move only changes uniforms and nothing walks the shapes per frame; a change
+  rebuilds the buffer from cached per-shape arrays (cheap up to tens of thousands). The index comes
+  back with chunked buffers in phase 8, where the size needs it.
+- `compare` renderer mode: the page draws everything and the GPU draws on top with
+  `mix-blend-mode: difference`; where the two agree the screen is black.
+- `gpu-test-rect` (`apps/web/src/canvas/gpuTestShape.tsx`), registered only under automation, and
+  a `gpu-rects` parity scene: 8 looks × rotated, half-transparent, both.
+- **What matching the page took**, all measured with probes against the page:
+  - The page-to-screen mapping is the shape layer's own: `z·(p + camera + offset) + 0.5·(1 − z)`.
+  - Chrome doesn't snap anything to device pixels: an edge's coverage follows the camera in
+    fractions of a pixel. Snapping made it worse.
+  - The background runs under a see-through border to the outer edge, and stops at an opaque
+    border's inner edge (Blink's background bleed avoidance).
+  - WebKit at pixel ratio 2 anti-aliases exactly like Chrome (0.033% on `gpu-rects`). At pixel
+    ratio 1 and exactly 100% it snaps bordered boxes to whole pixels by a rule not yet reproduced.
+- **Playwright's WebKit crashes with a WebGL canvas under a large board.** The four-tree board
+  panned at 10% crashes the page with an empty WebGL canvas added by hand (our code not involved),
+  and pans fine without one. Until that's understood the GPU layer is off in WebKit
+  (`GPU_LAYER_SUPPORTED`): no canvas, the page draws everything, and WebKit parity compares the page
+  with itself. Phase 2 starts by checking real Safari.
+- **A WebGL layer under the shapes changes the page's own pixels.** The browser then composites
+  the shape layer apart, and its antialiasing shifts a little: measured 0.046% of pixels on the
+  synthetic board zoomed out with an empty WebGL canvas, none with an empty 2D one or none at all.
+  So the canvas only exists while the GPU renderer is on (with it off, the page is exactly Phase 0's,
+  checked against the baselines), and the parity checks compare `idle` (GPU layer there, drawing
+  nothing) against `gpu`, so the GPU's drawing is held to 0.05% on its own. What the compositing does
+  to shapes the page still draws is reported per scene (`COMPOSITING` lines): up to 0.25% on the
+  synthetic board (all page-drawn) zoomed out, 0.08% on the four-tree board. It shrinks as shape
+  types move to the GPU, and is gone in `auto` below the budget, where there is no GPU layer.
+- Parity, GPU against `idle`: `gpu-rects` worst view 0.0446% (ratio 1) and 0.0347% (ratio 2) in
+  Chromium, 0.0328% at ratio 2 in WebKit; every other scene 0%.
+
 ### Phase 2: the switch. M
 
 - The budget: shapes on screen counted from the index; above the budget (with hysteresis so it
   doesn't flicker at the edge) shapes with a `toGpu` go to the GPU and their elements get
   `visibility: hidden`; below it, everything is the page's.
+- First: does real Safari crash with a WebGL canvas under the four-tree board at 10%, as
+  Playwright's WebKit does? That decides whether the GPU layer can run on Macs and iPhones.
+- Hidden boards (open tabs) give their WebGL context back; a board keeps one only while shown.
+- Switching on and off needs hysteresis: each switch makes and frees a WebGL context.
 - Live shapes stay in the page. Z-order across the two: when a GPU shape lies above a live shape
   and overlaps it, it's drawn on a second GPU canvas above the shape layer (usually none).
 - The switch happens in one frame: the GPU frame is drawn before the elements are hidden, and the
@@ -328,7 +374,14 @@ suite passes; memory and open time recorded here.
   at that size stays in the page (the node can still be GPU-drawn under it).
 - **WebKit.** WebGL2 is there (Safari 15+); HTML-in-Canvas isn't; a `foreignObject` picture may be
   refused as a texture. Rich nodes may stay in the page on iPhone, which is fine on a phone-sized
-  screen.
+  screen. At pixel ratio 1 (a Mac on a non-retina screen) WebKit snaps bordered boxes to whole pixels
+  at exactly 100%, inconsistently (a 6 px border comes out 7). And Playwright's WebKit crashes with
+  any WebGL canvas under the four-tree board panned at 10% (phase 1). The GPU layer is off in WebKit
+  until both are understood; checking real Safari comes first.
+- **The page beside the GPU layer.** Shapes the page still draws while the GPU layer is on are
+  composited apart, and differ from the page alone by up to 0.25% of pixels zoomed out (phase 1).
+  Fewer of them each phase; to remove it entirely, everything on screen above the budget has to be
+  the GPU's, or the page would have to be composited like that always.
 - **Effects the GPU path must match:** `box-shadow`, CSS filters, blend modes, `backdrop-filter`.
   Any type using one that can't pass parity stays in the page.
 - **Memory at 1M shapes**: unproven until phase 8.

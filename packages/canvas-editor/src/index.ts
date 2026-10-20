@@ -449,6 +449,14 @@ export {
 	setRendererMode,
 	type RendererMode,
 } from './lib/editor/rendererMode'
+export {
+	gpuColor,
+	type GpuColor,
+	type GpuContext,
+	type GpuPrimitive,
+	type GpuRect,
+} from './lib/gpu/primitives'
+export { getGpuScene, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {

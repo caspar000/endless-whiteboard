@@ -653,3 +653,6 @@ side by side in one corridor looked like a fault, one on top of the other looks 
 The lines are stacked by thickness (`sendLinesBack`): the thickest on top, so where a skill line
 shares a corridor with cards' lines it covers them; at one thickness gold over accent over grey.
 Restacked whenever a line is new or changes look.
+The order is checked on every sync and put right when it isn't so (a board styled before a change
+kept its old order). Lines kept behind the nodes draw no halo (canvas `ArrowShapeUtil`): a thin line
+over a thick one cut dark seams into it, and where lines meet nothing needs one.

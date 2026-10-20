@@ -1,4 +1,4 @@
-import { ARROW_STAYS_BEHIND_META, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
+import type { Editor, TLArrowBinding, TLShape, TLShapeId } from '@lifeboard/canvas'
 import { AGGREGATE_KINDS, isSkill, type SkillShape } from '../board'
 import type { NodeStatus } from '../requirements'
 import { SKILL_EDGE_META } from './ops'
@@ -55,17 +55,15 @@ export function styleArrows(editor: Editor): void {
 			if (!b.props.isExact || !b.props.isPrecise || now.x !== 0.5 || now.y !== 0.5) anchored.push({ ...b, props: { ...b.props, normalizedAnchor: { x: 0.5, y: 0.5 }, isPrecise: true, isExact: true } })
 		}
 	}
-	const behind = edges.some(({ arrow }) => !arrow.meta[ARROW_STAYS_BEHIND_META])
-	if (updates.length || anchored.length || behind)
-		editor.run(
-			() => {
-				if (updates.length) editor.updateShapes(updates as never)
-				if (anchored.length) editor.updateBindings(anchored)
-				// Restacked when one is new or changed look: thickest, then the way travelled, on top.
-				if (behind || updates.length) sendLinesBack(editor)
-			},
-			{ history: 'ignore' }
-		)
+	editor.run(
+		() => {
+			if (updates.length) editor.updateShapes(updates as never)
+			if (anchored.length) editor.updateBindings(anchored)
+			// Thickest, then the way travelled, on top; only restacked when that isn't so already.
+			sendLinesBack(editor)
+		},
+		{ history: 'ignore' }
+	)
 }
 
 /** A line between skill nodes: the thickest on the tree, with no arrowheads (cards' lines thin out below it, viewSync.ts). */

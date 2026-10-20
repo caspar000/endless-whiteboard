@@ -674,17 +674,21 @@ export function tidyLines(editor: Editor, moved?: ReadonlySet<TLShapeId>): void 
  * skill nodes are styled (arrowStyle.ts).
  */
 export function sendLinesBack(editor: Editor): void {
-	const all = editor.getCurrentPageShapes().filter((a) => a.type === 'arrow' && !!a.meta[SKILL_EDGE_META])
-	// Marked first: otherwise the canvas lifts each back above the two shapes it joins.
-	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
-	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
+	const sorted = editor.getCurrentPageShapesSorted()
+	const all = sorted.filter((a) => a.type === 'arrow' && !!a.meta[SKILL_EDGE_META])
 	// Among themselves the thickest on top, so where lines share a corridor the skill line covers the
-	// cards' lines; at one thickness the way travelled (accent, then gold) over the way ahead. Each
-	// group sent back goes under the ones before it, so the top one goes first.
+	// cards' lines; at one thickness the way travelled (accent, then gold) over the way ahead.
 	const rank = (a: TLShape) => {
 		const { size = 'm', scale = 1, color } = a.props as { size?: keyof typeof STROKE; scale?: number; color?: string }
 		return STROKE[size] * scale * 10 + (color === 'yellow' ? 2 : color === 'blue' ? 1 : 0)
 	}
+	// Nothing to do when they're marked, at the very bottom, and in order: checked on every sync, as a
+	// line's thickness or look can change without a layout.
+	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
+	if (!unmarked.length && all.every((a, i) => sorted[i] === a && (i === 0 || rank(all[i - 1]!) <= rank(a)))) return
+	// Marked first: otherwise the canvas lifts each back above the two shapes it joins.
+	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
+	// Each group sent back goes under the ones before it, so the top one goes first.
 	const groups = new Map<number, TLShapeId[]>()
 	for (const a of all) groups.set(rank(a), [...(groups.get(rank(a)) ?? []), a.id])
 	for (const r of [...groups.keys()].sort((x, y) => y - x)) editor.sendToBack(groups.get(r)!)

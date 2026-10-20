@@ -1,4 +1,5 @@
 import {
+	ARROW_STAYS_BEHIND_META,
 	renderHtmlFromRichText,
 	richTextToPlainText,
 	IndexKey,
@@ -700,7 +701,10 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 						</defs>
 					)}
 					{/* The halo: the arrow again in the paper's colour and a little wider, under all of it, so
-					    it reads over a picture or a dark shape the way a text label does. */}
+					    it reads over a picture or a dark shape the way a text label does. None for an arrow
+					    kept behind the shapes it joins: it never passes over them, and where several such
+					    lines meet (a tree's), a halo would cut a dark seam into the line under it. */}
+					{!shape.meta[ARROW_STAYS_BEHIND_META] && (
 					<g
 						className="tl-arrow-halo"
 						fill="none"
@@ -715,6 +719,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 						{as && <path d={as} />}
 						{ae && <path d={ae} />}
 					</g>
+					)}
 					<g
 						fill="none"
 						stroke={theme[shape.props.color].solid}
@@ -986,7 +991,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				haloBody.appendChild(haloPath)
 			} else halo.appendChild(haloPath)
 		}
-		g.appendChild(halo)
+		if (!shape.meta[ARROW_STAYS_BEHIND_META]) g.appendChild(halo)
 
 		const g2 = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		g2.setAttribute('mask', `url(#${maskId})`)

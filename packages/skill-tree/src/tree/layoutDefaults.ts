@@ -20,6 +20,8 @@ export interface LayoutConfig {
 	mazeWalk: 'snake' | 'straight'
 	/** The cells' shape. */
 	mazeGrid: 'hex' | 'square'
+	/** A family with more children than free sides round its node: spread out along its corridor, or wrapped round the node. */
+	mazeFamilies: 'spread' | 'wrap'
 	/** Open ground between You and the first cells. */
 	mazeHub: number
 	// Cards placed round their skill node when added, until the next layout (orbits.ts)
@@ -53,6 +55,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
 	mazeRoom: 2.5,
 	mazeWalk: 'snake',
 	mazeGrid: 'hex',
+	mazeFamilies: 'spread',
 	mazeHub: 20,
 	clusterGap: 60,
 	memberPad: 12,
@@ -93,6 +96,16 @@ export const LAYOUT_FIELDS: readonly LayoutField[] = [
 		options: [
 			{ value: 'hex', label: 'Hexagons' },
 			{ value: 'square', label: 'Squares' },
+		],
+	},
+	{
+		group: 'Maze',
+		key: 'mazeFamilies',
+		label: 'Big families',
+		hint: 'A node with more children than free cells round it sends the rest down a shared corridor. Spread: it forks in turn and spreads out. Wrap: it forks at once and keeps close, the family wrapped round its node.',
+		options: [
+			{ value: 'spread', label: 'Spread from their node' },
+			{ value: 'wrap', label: 'Wrap round their node' },
 		],
 	},
 	{ group: 'Maze', key: 'mazeHub', label: 'Room round You', hint: 'Open ground between You and the first cells.', min: 0, max: 600, step: 10 },

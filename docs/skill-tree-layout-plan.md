@@ -594,3 +594,19 @@ And no node may be cut off, by construction (`grow` in tree/maze.ts):
 Four-tree board: skill-node view 132 nodes in 13 ms, 3.5k × 3.3k px; everything 1,745 nodes in 1.7 s,
 11.5k × 13.4k px; nothing left out, nothing overlapping. Still long skill corridors where a skill
 node's own cards took the room before its child skill nodes got theirs.
+
+## Big families: spread or wrap (2026-10-20)
+
+The long skill corridors with everything shown all come from big families (Games' Canon, 11 skill
+children) sitting in the knot breadth-first growth makes round You: their shared corridor forks in
+turn with everything else, and the cards of the first children placed fill the room it needed.
+Tried and dropped: cards waiting for child skill nodes, trunks first on their own, open cells for big
+branches, soft wedges per branch. What helped: the shared corridor forking on at once and keeping
+close to the family's node. The user liked both, so it's a setting, Settings › Advanced › Maze ›
+Big families (`mazeFamilies`):
+
+| Four-tree board | Spread (default) | Wrap |
+|---|---|---|
+| Everything, longest / 90% / median skill corridor | 52 / 27 / 4 cells | 28 / 17 / 8 |
+| Everything, size | 11.5k × 13.4k px | 16.6k × 12.2k |
+| Skill-node view, longest / size | 6 cells, 3.5k × 3.3k | 11, 3.8k × 4.0k |

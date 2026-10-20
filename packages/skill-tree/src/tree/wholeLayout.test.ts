@@ -7,11 +7,19 @@ import { DEFAULT_LAYOUT } from './layoutConfig'
 const lay = (view: ShowAll) => wholeLayout(view.nodes, view.edges, { isSkill: (id) => view.skills.has(id), start: view.start, arrows: view.arrows, config: DEFAULT_LAYOUT })
 
 describe('wholeLayout', () => {
-	// The four-tree board both ways, and single trees with everything. The older whole-life board (two
-	// of Director's nodes find no cell) isn't there yet.
+	// The four-tree board both ways, and single trees with everything.
 	for (const view of [ADLER_LIFE_SKILLS, ADLER_LIFE, ...SHOW_ALL]) {
 		it(`places all of ${view.name} with nothing covering anything`, () => {
 			const at = lay(view)
+			expect(at.size).toBe(view.nodes.length)
+			expect(measure({ ...view, nodes: view.nodes.filter((n) => n.id !== 'header') }, at).overlaps).toEqual([])
+		}, 30000)
+	}
+
+	// Big families wrapped round their node: the same, nothing left out or covered.
+	for (const view of [ADLER_LIFE_SKILLS, ADLER_LIFE]) {
+		it(`places all of ${view.name}, big families wrapped, with nothing covering anything`, () => {
+			const at = wholeLayout(view.nodes, view.edges, { isSkill: (id) => view.skills.has(id), start: view.start, arrows: view.arrows, config: { ...DEFAULT_LAYOUT, mazeFamilies: 'wrap' } })
 			expect(at.size).toBe(view.nodes.length)
 			expect(measure({ ...view, nodes: view.nodes.filter((n) => n.id !== 'header') }, at).overlaps).toEqual([])
 		}, 30000)

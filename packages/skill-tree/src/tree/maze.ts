@@ -38,7 +38,7 @@ export interface MazeInput {
 export function mazeLayout({ start, order, kids, radius, isSkill, config: C }: MazeInput): Map<string, Point> {
 	const cell = C.mazeCell
 	// Any setting goes (the layout tuner): a cell has some size, a chain at least one step.
-	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: Math.max(1, Math.round(C.mazeSpacing)), cell: Math.max(1, cell), hub: C.mazeHub, local: isSkill && ((id) => !isSkill(id)) })
+	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: Math.max(1, Math.round(C.mazeSpacing)), cell: Math.max(1, cell), hub: C.mazeHub, local: isSkill && ((id) => !isSkill(id)), wrap: C.mazeFamilies === 'wrap' })
 	grid = { cell: Math.max(1, cell), shape: C.mazeGrid, cells: m.cells, used: [...m.used] }
 	// Each node's whole way from its parent: through any shared corridor cells (`~n`) on the way.
 	const into = new Map(m.corridors.map((c) => [c.to, c]))
@@ -93,6 +93,11 @@ export interface MazeOptions {
 	cell: number
 	/** Nodes grown depth first as soon as their parent is placed (cards round their skill node), the rest breadth first. */
 	local?: (id: string) => boolean
+	/**
+	 * Big families (more children than free sides) wrap round their node: their shared corridor forks
+	 * on first and keeps close to it. Otherwise it forks in turn with everything else and spreads out.
+	 */
+	wrap?: boolean
 }
 
 export interface MazeResult {
@@ -285,8 +290,11 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 	/** Doors waiting: skill nodes' in a queue (breadth first), cards' on a stack (depth first, before any skill node's). */
 	const skills: Door[] = []
 	const cards: Door[] = []
+	const trunks: Door[] = []
 	const isLocal = (g: Group) => !!o.local && g.ids.every((id) => o.local!(id))
 	let virtuals = 0
+	/** For a shared corridor cell, the cell of the node whose family runs through it. */
+	const homeOf = new Map<string, number>()
 	// Free sides: the outside of the grid counts as free (it isn't a wall to hug), the start's hole doesn't.
 	const freeSides = (c: number) => nbr[c]!.filter((x) => !used[x] && !doorAt.has(x)).length + outside[c]!
 	const groupsOf = (id: string): Group[] => {
@@ -318,8 +326,12 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 		for (let i = 0; i < groups.length; i++) {
 			const g = groups[i]!
 			const chain = groups.length === 1 && cv !== ORIGIN
+			// Wrapping (`wrap`): a shared corridor cell's doors keep close to the node the family belongs
+			// to, so a big family wraps round its parent instead of trailing off along its trunk.
+			const home = o.wrap ? homeOf.get(v) : undefined
 			const score = (c: number) => {
 				const direction = cv === ORIGIN ? Math.atan2(pt(c).y, pt(c).x) : angleFrom(cv, c)
+				if (home !== undefined) return (Math.hypot(pt(c).x - pt(home).x, pt(c).y - pt(home).y) / o.cell) * 4 + off(direction, wants[i]!)
 				if (chain) return o.walk === 'snake' ? freeSides(c) * 10 + off(direction, out) : -Math.hypot(pt(c).x, pt(c).y) / o.cell + off(direction, out)
 				return off(direction, wants[i]!) * 4 + Math.hypot(pt(c).x, pt(c).y) / o.cell / 4
 			}
@@ -341,8 +353,12 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 		// Skill nodes breadth first, in order, so every node's family gets its doors before anything
 		// deeper takes the room round it; cards (`local`) depth first, at once, so a skill node's cards
 		// settle round it before the next skill nodes take the space.
-		for (const d of placed.filter((d) => !isLocal(d.group))) skills.push(d)
-		for (const d of placed.filter((d) => isLocal(d.group)).reverse()) cards.push(d)
+		// Wrapping (`wrap`): a family's shared corridor forks on before anything else grows, so the
+		// whole family gets its doors round its parent before cards fill the room there.
+		const isTrunk = (d: Door) => !!o.wrap && d.group.ids.length > 1
+		for (const d of placed.filter(isTrunk).reverse()) trunks.push(d)
+		for (const d of placed.filter((d) => !isTrunk(d) && !isLocal(d.group))) skills.push(d)
+		for (const d of placed.filter((d) => !isTrunk(d) && isLocal(d.group)).reverse()) cards.push(d)
 	}
 
 	// How much hangs below each node, for the shares round the start.
@@ -351,8 +367,8 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 	const lost: string[] = []
 
 	fork(start, ORIGIN, groupsOf(start), null)
-	while (cards.length || skills.length) {
-		const d = cards.length ? cards.pop()! : skills.shift()!
+	while (trunks.length || cards.length || skills.length) {
+		const d = trunks.length ? trunks.pop()! : cards.length ? cards.pop()! : skills.shift()!
 		if (!doorAt.has(d.cell)) continue
 		// The door taken: its way out given up (its first cell is free beside it for what comes next).
 		forget(d.cell)
@@ -368,6 +384,7 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 		} else {
 			// A corridor cell: a step along an only child's way, or where a bundle forks again.
 			const corridor = `~${++virtuals}`
+			if (group.ids.length > 1) homeOf.set(corridor, homeOf.get(d.parent) ?? d.parentCell)
 			corridors.push({ from: d.parent, to: corridor, path: [pt(d.parentCell), pt(d.cell)] })
 			const groups = group.ids.length === 1 ? [{ ids: group.ids, steps: group.steps - 1 }] : group.ids.map((id) => ({ ids: [id], steps: 0 }))
 			fork(corridor, d.cell, groups, d.parentCell)

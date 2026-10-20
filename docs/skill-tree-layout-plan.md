@@ -635,3 +635,12 @@ The nodes follow (tree/branch.ts, `lb-skillnode--done`): unlocked ones glow blue
 branch is finished glows gold, the same look in `--lb-star`. A skill with nothing below it would be
 a finished branch as soon as it's unlocked, so it stays blue until its parent's branch is finished
 too. Arrows and nodes read the same rule, from the vault's trees (whatever this board shows).
+
+## Lines only (2026-10-20)
+
+The arrowheads made artefacts where a route bent into a node, and tracing relations works as well on
+lines. So every connection is a line: between skill nodes `l` (5px), no heads, from centre to centre
+under the discs like the cards' lines (sent behind the nodes when styled, `sendLinesBack`; the
+tinted discs are now solid underneath). Cards' lines thin out with distance from their skill node
+(`lineScale`): an entry's 3px, then each work down its chain 2.1, 1.5, and 1.2 from there. A
+finished branch is told by its colour alone now, not a thicker line.

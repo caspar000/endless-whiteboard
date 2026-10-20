@@ -600,7 +600,25 @@ function drawLines(editor: Editor, plan: ViewPlan): void {
 			} as never)
 		}
 	}
+	// Thinner the further from the skill node: an entry's line, then each work down its chain. The
+	// lines between skill nodes are the thickest (arrowStyle.ts).
+	const parentOf = new Map(lineEnds(items).map((e) => [e.to, e.from]))
+	const depth = (key: string) => {
+		let d = 0
+		for (let k = key; parentOf.has(k) && d < 64; k = parentOf.get(k)!) d++
+		return d
+	}
+	const scales: { id: TLShapeId; type: 'arrow'; props: { scale: number } }[] = []
+	for (const arrow of lineArrows(editor)) {
+		const key = endsOf(editor, arrow)
+		const scale = second.has(key) ? 1 : lineScale(depth(key.split('>')[1]!))
+		if (Math.abs(((arrow.props as { scale?: number }).scale ?? 1) - scale) > 0.01) scales.push({ id: arrow.id, type: 'arrow', props: { scale } })
+	}
+	if (scales.length) editor.updateShapes(scales as never)
 }
+
+/** A light line's thickness (times the smallest stroke, 2px), by how far below its skill node it ends: 3px, 2.1, 1.5, then 1.2. */
+const lineScale = (depth: number) => Math.max(0.6, 1.5 * 0.7 ** Math.max(0, depth - 1))
 
 /**
  * Sets the light lines to how a cluster is drawn: each to a work meeting its disc's middle, each
@@ -647,8 +665,15 @@ export function tidyLines(editor: Editor, moved?: ReadonlySet<TLShapeId>): void 
 		}
 	}
 	if (anchored.length) editor.updateBindings(anchored)
-	// The arrows between skill nodes go under the nodes too: the layout lets one pass under a cluster's
-	// entries and works, never through a skill node (pullIn.ts), and under them nothing is hidden.
+	sendLinesBack(editor)
+}
+
+/**
+ * Every line of the tree under the nodes, the ones between skill nodes too: each runs to the middle
+ * of its nodes, under their discs. After a layout tidies the lines, and when new lines between
+ * skill nodes are styled (arrowStyle.ts).
+ */
+export function sendLinesBack(editor: Editor): void {
 	const all = editor.getCurrentPageShapes().filter((a) => a.type === 'arrow' && !!a.meta[SKILL_EDGE_META])
 	// Marked first: otherwise the canvas lifts each back above the two shapes it joins.
 	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])

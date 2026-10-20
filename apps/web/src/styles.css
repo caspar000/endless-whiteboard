@@ -13995,7 +13995,8 @@ button.lb-props__eye:hover {
 	border-style: dashed;
 }
 .lb-skillnode--unlocked .lb-skillnode__disc {
-	background: var(--lb-accent-tint);
+	/* Tinted, but solid underneath: the lines run to the middle of the node, under its disc. */
+	background: linear-gradient(var(--lb-accent-tint), var(--lb-accent-tint)), var(--lb-surface);
 	border-color: var(--lb-accent);
 	box-shadow: 0 0 22px var(--lb-accent-tint);
 }
@@ -14004,7 +14005,7 @@ button.lb-props__eye:hover {
 }
 /* A finished branch (it and everything below it unlocked, tree/branch.ts): the same look in gold. */
 .lb-skillnode--done .lb-skillnode__disc {
-	background: color-mix(in srgb, var(--lb-star) 16%, transparent);
+	background: linear-gradient(color-mix(in srgb, var(--lb-star) 16%, transparent), color-mix(in srgb, var(--lb-star) 16%, transparent)), var(--lb-surface);
 	border-color: var(--lb-star);
 	box-shadow: 0 0 26px color-mix(in srgb, var(--lb-star) 30%, transparent);
 }

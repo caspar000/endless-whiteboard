@@ -1,18 +1,19 @@
-import type { Editor, TLArrowBinding, TLShape, TLShapeId } from '@lifeboard/canvas'
+import { ARROW_STAYS_BEHIND_META, type Editor, type TLArrowBinding, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { AGGREGATE_KINDS, isSkill, type SkillShape } from '../board'
 import type { NodeStatus } from '../requirements'
 import { SKILL_EDGE_META } from './ops'
 import { branchProgress } from './branch'
 import { treeStatus } from './status'
-import { LINE } from './viewSync'
+import { LINE, sendLinesBack } from './viewSync'
 
 /**
- * How an arrow between skill nodes shows the way travelled:
+ * How a line between skill nodes (an arrow on the canvas, drawn without heads, from centre to centre
+ * under the discs) shows the way travelled:
  *
- * - **Ahead** (the node it points at still locked or only in reach): dotted, in the ordinary colour.
+ * - **Ahead** (the node it leads to still locked or only in reach): dotted, in the ordinary colour.
  * - **Unlocked** (that node unlocked): solid, in the accent colour, like the node's own ring.
  * - **A whole branch unlocked** (the node it leaves and everything below that node, tree/branch.ts):
- *   solid gold, and thicker, like the branch's nodes, so a finished part of the tree stands out.
+ *   solid gold, like the branch's nodes, so a finished part of the tree stands out.
  *
  * Mastery and the pillars are only their rings: one counts as unlocked once anything below it is,
  * and its branch as whole once everything below it is.
@@ -41,15 +42,33 @@ export function styleArrows(editor: Editor): void {
 		return b
 	}
 	const unlocked = (s: SkillShape) => (aggregate(s) ? branch(s).unlocked > 0 : stateOf(s.props.treeId, s.props.nodeId) === 'unlocked')
-	const updates: { id: TLShapeId; type: 'arrow'; props: { dash: string; color: string; size: string } }[] = []
+	const updates: { id: TLShapeId; type: 'arrow'; props: Look }[] = []
+	const anchored: TLArrowBinding[] = []
 	for (const { arrow, from, to } of edges) {
 		const look = branch(from).done ? GOLD : unlocked(to) ? ACCENT : AHEAD
-		const props = arrow.props as { dash?: string; color?: string; size?: string }
-		if (props.dash !== look.dash || props.color !== look.color || props.size !== look.size) updates.push({ id: arrow.id, type: 'arrow', props: look })
+		const props = arrow.props as Partial<Look>
+		if ((Object.keys(look) as (keyof Look)[]).some((k) => props[k] !== look[k])) updates.push({ id: arrow.id, type: 'arrow', props: look })
+		// Each end runs to the middle of its node, under the disc, as a card's line does.
+		for (const b of editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow')) {
+			const now = b.props.normalizedAnchor
+			if (!b.props.isExact || !b.props.isPrecise || now.x !== 0.5 || now.y !== 0.5) anchored.push({ ...b, props: { ...b.props, normalizedAnchor: { x: 0.5, y: 0.5 }, isPrecise: true, isExact: true } })
+		}
 	}
-	if (updates.length) editor.run(() => editor.updateShapes(updates as never), { history: 'ignore' })
+	const behind = edges.some(({ arrow }) => !arrow.meta[ARROW_STAYS_BEHIND_META])
+	if (updates.length || anchored.length || behind)
+		editor.run(
+			() => {
+				if (updates.length) editor.updateShapes(updates as never)
+				if (anchored.length) editor.updateBindings(anchored)
+				if (behind) sendLinesBack(editor)
+			},
+			{ history: 'ignore' }
+		)
 }
 
-const AHEAD = { dash: 'dotted', color: 'black', size: 'm' }
-const ACCENT = { dash: 'solid', color: 'blue', size: 'm' }
-const GOLD = { dash: 'solid', color: 'yellow', size: 'l' }
+/** A line between skill nodes: the thickest on the tree, with no arrowheads (cards' lines thin out below it, viewSync.ts). */
+type Look = { dash: string; color: string; size: string; arrowheadStart: string; arrowheadEnd: string }
+const LINE_LOOK = { size: 'l', arrowheadStart: 'none', arrowheadEnd: 'none' }
+const AHEAD: Look = { ...LINE_LOOK, dash: 'dotted', color: 'black' }
+const ACCENT: Look = { ...LINE_LOOK, dash: 'solid', color: 'blue' }
+const GOLD: Look = { ...LINE_LOOK, dash: 'solid', color: 'yellow' }

@@ -262,6 +262,33 @@ with `?renderer=gpu` and a test-only shape type that draws a rect, parity passes
 Done when: the frame-by-frame switch check passes with the test shape type; the suite passes;
 nothing else changed (no real type has `toGpu` yet).
 
+#### Phase 2, as built (2026-10-20)
+
+- `GpuScene.wanted` decides whether the layer is in the page: the board shown (`shown`, set by the
+  app from the active tab, so a board open behind it holds no WebGL context), the browser able
+  (`gpuLayerSupported`: WebKit only at pixel ratio 2 and up, after the hand check in real Safari),
+  and the renderer `gpu`, `compare`, `idle`, or `auto` with its count over the budget.
+- `auto`: the GPU's shapes on screen (eligible and not culled) over `DEFAULT_GPU_BUDGET` (64,
+  `localStorage['lifeboard:gpu-budget']` overrides) turn it on; under 70% of it turn it off. Not
+  counted at all on a board none of whose types have `toGpu`, which is every real board until phase 3.
+- **The budget, measured** (production build, GPU, pan per frame): the page holds the 120 fps floor
+  up to ~70–85 shapes on screen (four-tree board 72 → 8.4 ms, 85 → 9.1, 147 → 10.4, 479 → 16.9,
+  3,446 → 44; synthetic 87 → 9.6, 309 → 13.2, 816 → 22.5, 3,664 → 76.5). 64 is a margin under it.
+- **Z-order:** a shape the GPU could draw that lies above a page-drawn shape it overlaps is left to
+  the page (one pass in drawing order over a grid of page-drawn bounds). Simpler than the second GPU
+  canvas the plan had, and it can't stack anything wrong.
+- **A Phase 1 bug found:** the scene drew in the order of `getRenderingShapeList`, which is sorted by
+  id on purpose (page elements never move in the DOM; z-order is each entry's `index`). Overlapping
+  GPU shapes would have stacked by id. Now sorted by `index`; a unit test and the `gpu-rects` scene's
+  new stacking cases cover it.
+- `e2e/switch.spec.ts`: 300 half-transparent rects, budget 40, zoomed out across it and back in, five
+  shots per step while it settles, each against the page alone (≤ 0.4%: a lost or doubled shape
+  differs by percents): passes; and a count wobbling about the budget switches once.
+- **Left for phase 3:** borders far thinner than a device pixel (a 1 px border at 25% zoom) are
+  spread across pixels a little differently from Skia's: one `gpu-rects` view at pixel ratio 1
+  differs by 0.058% (limit 0.05%). Phase 3 is thin strokes zoomed out, so that's where it gets solved.
+- A settings control for the renderer waits for phase 3, when `auto` first switches on real boards.
+
 ### Phase 3: arrows and lines. L
 
 The biggest single cost (lines hidden took the zoomed-out pan from 40 to 25 ms on the four-tree

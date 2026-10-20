@@ -4,23 +4,25 @@ import { modulate } from '@tldraw/utils'
 import React from 'react'
 import { useEditor } from '../hooks/useEditor'
 import { getRendererMode } from '../editor/rendererMode'
-import { GPU_LAYER_SUPPORTED, getGpuScene } from './gpuScene'
+import { getGpuScene } from './gpuScene'
 import { GpuRenderer, type GpuView } from './GpuRenderer'
 
 /**
  * The GPU layer (docs/gpu-renderer-plan.md): a WebGL2 canvas between the grid and the shapes, drawing
  * the shapes the scene gives it.
  *
- * In the page only while the renderer asks for it. A WebGL canvas under the shapes makes the browser
+ * In the page only while the scene wants it (`GpuScene.wanted`: the board shown, the browser able, the
+ * renderer asking, or `auto` over its budget). A WebGL canvas under the shapes makes the browser
  * composite the shape layer on its own, which changes how the page anti-aliases (measured: 0.05% of
  * pixels on a board zoomed out), so with the GPU off there is no canvas at all and the page is exactly
  * what it was. Leaving also frees the context: a browser allows a handful.
  */
 export function GpuLayer() {
-	const mode = useValue('gpu layer mode', () => getRendererMode(), [])
-	if (!GPU_LAYER_SUPPORTED) return null
-	if (mode !== 'gpu' && mode !== 'compare' && mode !== 'idle') return null
-	return <GpuCanvas compare={mode === 'compare'} />
+	const editor = useEditor()
+	const wanted = useValue('gpu layer wanted', () => getGpuScene(editor).wanted.get(), [editor])
+	const compare = useValue('gpu layer compare', () => getRendererMode() === 'compare', [])
+	if (!wanted) return null
+	return <GpuCanvas compare={compare} />
 }
 
 /**
@@ -58,6 +60,7 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 				renderer = null
 				return
 			}
+			scene.starts++
 			scene.layerUp.set(true)
 		}
 

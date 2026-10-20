@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>GPU canvas prototype</title>
+		<style>
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+				overflow: hidden;
+				background: #111;
+			}
+			canvas {
+				display: block;
+				width: 100vw;
+				height: 100vh;
+				touch-action: none;
+			}
+			#hud {
+				position: fixed;
+				left: 12px;
+				bottom: 12px;
+				font: 12px/1.4 ui-monospace, monospace;
+				color: #9aa;
+				background: rgb(0 0 0 / 0.55);
+				padding: 6px 9px;
+				border-radius: 6px;
+				pointer-events: none;
+				white-space: pre;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="c"></canvas>
+		<div id="hud"></div>
+		<script type="module" src="./main.js"></script>
+	</body>
+</html>

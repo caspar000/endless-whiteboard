@@ -18,6 +18,7 @@ import { useScreenBounds } from '../hooks/useScreenBounds'
 import { Matrix2d } from '../primitives/Matrix2d'
 import { toDomPrecision } from '../primitives/utils'
 import { debugFlags } from '../utils/debug-flags'
+import { GpuLayer } from '../gpu/GpuLayer'
 import { GeometryDebuggingView } from './GeometryDebuggingView'
 import { LiveCollaborators } from './LiveCollaborators'
 import { Shape } from './Shape'
@@ -106,6 +107,7 @@ export function Canvas({ className }: { className?: string }) {
 		>
 			{Background && <Background />}
 			<GridWrapper />
+			<GpuLayer />
 			<UiLogger />
 			<svg className="tl-svg-context">
 				<defs>

@@ -10,6 +10,7 @@ import { nearestMultiple } from '../hooks/useDPRMultiple'
 import { useEditor } from '../hooks/useEditor'
 import { useEditorComponents } from '../hooks/useEditorComponents'
 import { Matrix2d } from '../primitives/Matrix2d'
+import { getGpuScene } from '../gpu/gpuScene'
 import { OptionalErrorBoundary } from './ErrorBoundary'
 
 /*
@@ -111,6 +112,20 @@ export const Shape = track(function Shape({
 			if (rDisplay.current === display) return
 			rDisplay.current = display
 			setProperty('display', display)
+		},
+		[editor, setProperty]
+	)
+
+	// Drawn by the GPU layer (docs/gpu-renderer-plan.md): the element stays, laid out and in the
+	// page for editing, events, exports and tests, but isn't painted.
+	const rVisibility = React.useRef<string | null>(null)
+	useQuickReactor(
+		'set shape container visibility',
+		() => {
+			const visibility = getGpuScene(editor).hidesElement(id) ? 'hidden' : ''
+			if (rVisibility.current === visibility) return
+			rVisibility.current = visibility
+			setProperty('visibility', visibility)
 		},
 		[editor, setProperty]
 	)

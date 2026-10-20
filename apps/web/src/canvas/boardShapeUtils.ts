@@ -5,6 +5,7 @@ import {
 	type TLAnyShapeUtilConstructor,
 } from '@lifeboard/canvas'
 import { expressionShapeUtils } from './expressionShapeUtils'
+import { GpuTestRectShapeUtil } from './gpuTestShape'
 
 /**
  * The frame, made a container rather than a card: no fill, a colourable border.
@@ -49,6 +50,8 @@ export function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
 		frameShapeUtil,
 		// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
 		...expressionShapeUtils,
+		// The GPU renderer's test rectangle, only in a browser a test drives (gpuTestShape.tsx).
+		...(typeof navigator !== 'undefined' && navigator.webdriver ? [GpuTestRectShapeUtil] : []),
 	]
 }
 

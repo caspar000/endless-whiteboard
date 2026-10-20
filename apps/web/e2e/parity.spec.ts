@@ -13,18 +13,23 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  * pixel by pixel. Both come from the same machine in the same run, so there are no stored images
  * for fonts or platforms to break.
  *
- * - `LB_PARITY_A`, `LB_PARITY_B`: the renderers (`dom`, `gpu`, `auto`); `dom` against `dom` until the
- *   GPU renderer exists, which measures the page's own run-to-run noise.
+ * - `LB_PARITY_A`, `LB_PARITY_B`: the renderers compared, `idle` against `gpu` by default: the GPU
+ *   layer present in both (a WebGL layer under the shapes makes the browser composite the page's own
+ *   shapes apart, which changes their antialiasing a little), drawing nothing in one and its shapes in
+ *   the other, so the difference is the GPU's drawing alone. `dom` against `dom` measures the page's
+ *   own run-to-run noise (none, in phase 0).
+ * - Each view is also rendered with `dom`: for the baseline, and to report what the GPU layer's
+ *   compositing does to the page's own shapes (`COMPOSITING` lines; recorded, not asserted).
  * - `LB_PARITY_MAX`: the share of pixels allowed to differ per screenshot (0.0005, 0.05%).
- * - `LB_PARITY_BASELINE=save|compare`: keeps renderer A's screenshots in `.parity-baseline/`, or
+ * - `LB_PARITY_BASELINE=save|compare`: keeps the `dom` screenshots in `.parity-baseline/`, or
  *   compares against them: the page path unchanged by a phase.
- * - `LB_PARITY=0` skips the spec (it takes a few minutes).
+ * - `LB_PARITY=0` skips the spec (it takes a few minutes); `LB_PARITY_TRACE=1` prints each view as it goes.
  */
 test.skip(process.env.LB_PARITY === '0', 'LB_PARITY=0')
 
-type Mode = 'dom' | 'gpu' | 'auto'
-const A = (process.env.LB_PARITY_A ?? 'dom') as Mode
-const B = (process.env.LB_PARITY_B ?? 'dom') as Mode
+type Mode = 'dom' | 'gpu' | 'auto' | 'idle'
+const A = (process.env.LB_PARITY_A ?? 'idle') as Mode
+const B = (process.env.LB_PARITY_B ?? 'gpu') as Mode
 const MAX_RATIO = Number(process.env.LB_PARITY_MAX ?? 0.0005)
 const BASELINE = process.env.LB_PARITY_BASELINE as 'save' | 'compare' | undefined
 const BASELINE_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '.parity-baseline')
@@ -48,6 +53,7 @@ const SCENES: Scene[] = [
 			expect(r.failed, 'every shape type takes its defaults').toEqual({})
 		},
 	},
+	{ name: 'gpu-rects', insert: insertGpuRects },
 	{ name: 'four-trees', insert: insertFourTrees },
 	{
 		name: 'synthetic',
@@ -56,6 +62,29 @@ const SCENES: Scene[] = [
 		},
 	},
 ]
+
+/** The GPU renderer's test rectangles (`gpu-test-rect`, registered under automation): their looks. */
+async function insertGpuRects(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const editor = (window as unknown as { editor: { createShapes(s: unknown[]): void; selectNone(): void } }).editor
+		const looks = [
+			{},
+			{ radius: 0, strokeWidth: 1, fill: '#ffffff', stroke: '#000000' },
+			{ radius: 0, strokeWidth: 0 },
+			{ radius: 60, strokeWidth: 0, w: 220, h: 120 },
+			{ radius: 4, strokeWidth: 12, fill: '#2f9e44', stroke: '#e03131' },
+			{ strokeWidth: 3, fill: 'rgba(76, 110, 245, 0.4)', stroke: 'rgba(0, 0, 0, 0.6)' },
+			{ w: 24, h: 18, radius: 3, strokeWidth: 2 },
+			{ w: 420, h: 30, radius: 15, strokeWidth: 0, fill: '#f08c00' },
+		]
+		const shapes = []
+		for (const [i, props] of looks.entries())
+			for (const [j, extra] of [{}, { rotation: 0.35 }, { opacity: 0.5 }, { rotation: -1.1, opacity: 0.8 }].entries())
+				shapes.push({ id: `shape:gpu-rect-${i}-${j}`, type: 'gpu-test-rect', x: j * 520, y: i * 300, ...extra, props })
+		editor.createShapes(shapes)
+		editor.selectNone()
+	})
+}
 
 async function insertFourTrees(page: Page): Promise<void> {
 	await page.keyboard.press('ControlOrMeta+k')
@@ -127,8 +156,10 @@ for (const dpr of [1, 2]) {
 	test.describe(`parity at pixel ratio ${dpr}`, () => {
 		test.use({ deviceScaleFactor: dpr })
 
-		for (const scene of SCENES) {
-			test(`${scene.name}: ${A} and ${B} draw the same`, async ({ page, browserName }, info) => {
+		// A test per scene and theme: one page through hundreds of large screenshots wore WebKit out
+		// (its page crashed partway through the four-tree board in both themes).
+		for (const scene of SCENES) for (const theme of THEMES) {
+			test(`${scene.name}, ${theme}: ${A} and ${B} draw the same`, async ({ page, browserName }, info) => {
 				test.setTimeout(30 * 60_000)
 				if (browserName === 'chromium') await gotoFresh(page)
 				else {
@@ -151,23 +182,39 @@ for (const dpr of [1, 2]) {
 				const failures: string[] = []
 				let worst = 0
 				let compared = 0
+				let compositing = 0
 
-				for (const theme of THEMES) {
+				{
 					await page.emulateMedia({ colorScheme: theme })
 					await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
 					for (const z of ZOOMS) {
 						const list = views(bounds, z, viewport.width, viewport.height)
-						for (const [i, centre] of list.entries()) {
-							await page.evaluate(
+						const look = (centre: { x: number; y: number }) =>
+							page.evaluate(
 								({ centre, z }) => {
 									const e = (window as unknown as { editor: { setCamera(c: { x: number; y: number; z: number }): void } }).editor
 									e.setCamera({ x: innerWidth / 2 / z - centre.x, y: innerHeight / 2 / z - centre.y, z })
 								},
 								{ centre, z }
 							)
+						// Each renderer through every view of this zoom in turn, not each view through the
+						// renderers: leaving the GPU renderer removes its canvas and context, and making one
+						// for every view wore WebKit out (its page closed partway through the four-tree board).
+						const shots: Record<string, Buffer[]> = {}
+						for (const mode of [...new Set<Mode>(['dom', A, B])]) {
+							shots[mode] = []
+							for (const [i, centre] of list.entries()) {
+								if (process.env.LB_PARITY_TRACE) console.log(`TRACE z${z} ${mode} v${i}`)
+								await look(centre)
+								shots[mode]!.push(await render(page, mode))
+							}
+						}
+						for (const i of list.keys()) {
 							const name = `${scene.name}-dpr${dpr}-${theme}-z${z}-v${i}`
-							const a = await render(page, A)
-							const b = await render(page, B)
+							const page0 = shots.dom![i]!
+							const a = shots[A]![i]!
+							const b = shots[B]![i]!
+							if (A !== 'dom') compositing = Math.max(compositing, compare(page0, a).ratio)
 							const { ratio, diff } = compare(a, b)
 							compared++
 							worst = Math.max(worst, ratio)
@@ -179,22 +226,24 @@ for (const dpr of [1, 2]) {
 								const file = path.join(BASELINE_DIR, browserName, scene.name, `dpr${dpr}`, theme, `z${z}-v${i}.png`)
 								if (BASELINE === 'save') {
 									fs.mkdirSync(path.dirname(file), { recursive: true })
-									fs.writeFileSync(file, a)
+									fs.writeFileSync(file, page0)
 								} else if (fs.existsSync(file)) {
 									const base = fs.readFileSync(file)
-									const r = compare(base, a)
+									const r = compare(base, page0)
 									if (r.ratio > MAX_RATIO) {
 										failures.push(`${name}: ${(r.ratio * 100).toFixed(3)}% differ from the baseline`)
-										await attach(info, `${name}-baseline`, { baseline: base, now: a, diff: PNG.sync.write(r.diff) })
+										await attach(info, `${name}-baseline`, { baseline: base, now: page0, diff: PNG.sync.write(r.diff) })
 									}
-								} else failures.push(`${name}: no baseline saved`)
+								} else if (fs.existsSync(path.join(BASELINE_DIR, browserName, scene.name))) failures.push(`${name}: no baseline saved`)
+								// A scene newer than the baseline has none to compare with: nothing to check yet.
 							}
 						}
 					}
 				}
 				await page.emulateMedia({ colorScheme: null })
 				info.annotations.push({ type: 'parity', description: `${compared} views, worst ${(worst * 100).toFixed(4)}% differing` })
-				console.log(`PARITY ${scene.name} dpr${dpr}: ${compared} views, worst ${(worst * 100).toFixed(4)}%`)
+				console.log(`PARITY ${scene.name} ${theme} dpr${dpr}: ${compared} views, worst ${(worst * 100).toFixed(4)}%`)
+				if (A !== 'dom') console.log(`COMPOSITING ${scene.name} ${theme} dpr${dpr}: the page beside the GPU layer differs from the page alone by at most ${(compositing * 100).toFixed(4)}%`)
 				expect(failures).toEqual([])
 			})
 		}

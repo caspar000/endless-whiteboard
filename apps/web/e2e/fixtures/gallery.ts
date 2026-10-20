@@ -79,6 +79,8 @@ function buildGallery(): GalleryResult {
 		// Every registered type, with its defaults (arrows and groups need ends or children: below).
 		for (const type of Object.keys(editor.shapeUtils).sort()) {
 			if (type === 'arrow' || type === 'group' || type === 'draw' || type === 'highlight') continue
+			// The GPU renderer's test shape has a scene of its own (parity.spec.ts).
+			if (type.startsWith('gpu-test')) continue
 			const at = next()
 			add('defaults', { id: id(), type, x: at.x + 20, y: at.y + 20 })
 		}

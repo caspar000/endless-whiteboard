@@ -24,6 +24,7 @@
 	--layer-background: 100;
 	--layer-grid: 150;
 	--layer-canvas: 200;
+	--layer-gpu: 250;
 	--layer-shapes: 300;
 	--layer-overlays: 400;
 	--layer-following-indicator: 1000;
@@ -245,6 +246,23 @@ input,
 .tl-shapes {
 	position: relative;
 	z-index: var(--layer-shapes);
+}
+
+/* The GPU layer (docs/gpu-renderer-plan.md): under the shapes, over the grid. In the compare view it
+   lies over the shapes with difference blending, so where the two renderers agree it's black. */
+.tl-gpu-layer {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: var(--layer-gpu);
+}
+
+.tl-gpu-layer--compare {
+	z-index: calc(var(--layer-shapes) + 1);
+	mix-blend-mode: difference;
 }
 
 .tl-overlays {

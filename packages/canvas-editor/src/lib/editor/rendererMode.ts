@@ -4,15 +4,18 @@ import { atom } from '@tldraw/state'
  * Which renderer draws the shapes (docs/gpu-renderer-plan.md): `dom`, the page, as it always has;
  * `gpu`, the WebGL layer for every shape it can draw; `auto`, the page until there are too many
  * shapes on screen, then the GPU. The parity checks force one or the other to compare them.
+ * `compare` is for looking: the page draws everything and the GPU draws its shapes on top with
+ * difference blending, so where the two agree the screen is black. `idle` is the parity checks'
+ * reference: the GPU layer is there (so the page is composited as it is beside it) but draws nothing.
  *
  * Read from `?renderer=` first, then `localStorage` (`lifeboard:renderer`); `auto` otherwise. It can
  * be changed at runtime, which is how a test renders one board both ways without reloading.
  */
-export type RendererMode = 'dom' | 'gpu' | 'auto'
+export type RendererMode = 'dom' | 'gpu' | 'auto' | 'compare' | 'idle'
 
 export const RENDERER_STORAGE_KEY = 'lifeboard:renderer'
 
-const isMode = (v: unknown): v is RendererMode => v === 'dom' || v === 'gpu' || v === 'auto'
+const isMode = (v: unknown): v is RendererMode => v === 'dom' || v === 'gpu' || v === 'auto' || v === 'compare' || v === 'idle'
 
 function initialMode(): RendererMode {
 	try {

@@ -11,6 +11,7 @@ import { Vec2d } from '../../primitives/Vec2d'
 import { Geometry2d } from '../../primitives/geometry/Geometry2d'
 import type { Editor } from '../Editor'
 import { SvgExportContext } from '../types/SvgExportContext'
+import type { GpuContext, GpuPrimitive } from '../../gpu/primitives'
 import { TLResizeHandle } from '../types/selection-types'
 
 /** @public */
@@ -361,6 +362,15 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	 * @public
 	 */
 	toSvg?(shape: Shape, ctx: SvgExportContext): SVGElement | Promise<SVGElement>
+
+	/**
+	 * What the shape draws on the GPU layer, in its own space, or `null` when the page draws it
+	 * (docs/gpu-renderer-plan.md). Without this method the page always draws the shape. Whatever it
+	 * returns must look exactly like `component`: `parity.spec.ts` checks it.
+	 *
+	 * @public
+	 */
+	toGpu?(shape: Shape, ctx: GpuContext): GpuPrimitive[] | null
 
 	/**
 	 * Get the shape's background layer as an SVG object.

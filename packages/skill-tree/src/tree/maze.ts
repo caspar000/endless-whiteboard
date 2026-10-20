@@ -53,7 +53,43 @@ export function mazeLayout({ start, order, kids, radius, isSkill, config: C }: M
 		}
 		routes.set(`${c.from} ${id}`, path)
 	}
+	if (isSkill) laneArrows(routes, isSkill, cell)
 	return new Map(order.map((id) => [id, m.at.get(id)!]))
+}
+
+/**
+ * Where a node had only one way out (a pocket in the maze), its arrows and its cards' lines leave
+ * through the same cells until they part. Along that stretch the arrow keeps a lane of its own beside
+ * the lines, on the side it turns off to, instead of running on top of them.
+ */
+function laneArrows(routes: Map<string, Point[]>, isSkill: (id: string) => boolean, cell: number) {
+	const lane = cell * 0.12
+	const same = (p: Point, q: Point | undefined) => !!q && Math.abs(p.x - q.x) < 0.5 && Math.abs(p.y - q.y) < 0.5
+	for (const [key, path] of routes) {
+		const [from, to] = key.split(' ') as [string, string]
+		if (!isSkill(to)) continue
+		// The longest stretch it shares with a card's line from the same node, and that line.
+		let k = 1
+		let line: Point[] | undefined
+		for (const [other, p] of routes) {
+			if (!other.startsWith(`${from} `) || isSkill(other.slice(from.length + 1))) continue
+			let n = 0
+			while (n < path.length - 1 && same(path[n]!, p[n])) n++
+			if (n > k) [k, line] = [n, p]
+		}
+		if (!line) continue
+		const split = path[k - 1]!
+		const d = { x: split.x - path[k - 2]!.x, y: split.y - path[k - 2]!.y }
+		const ahead = { x: path[k]!.x - (line[k] ?? split).x, y: path[k]!.y - (line[k] ?? split).y }
+		const side = -d.y * ahead.x + d.x * ahead.y < 0 ? -1 : 1
+		const out = path.map((p) => ({ ...p }))
+		for (let i = 1; i < k; i++) {
+			const [a, b] = [path[i - 1]!, path[i + 1]!]
+			const len = Math.hypot(b.x - a.x, b.y - a.y) || 1
+			out[i] = { x: path[i]!.x + (side * -(b.y - a.y) * lane) / len, y: path[i]!.y + (side * (b.x - a.x) * lane) / len }
+		}
+		routes.set(key, out)
+	}
 }
 
 let routes: Map<string, Point[]> | null = null
@@ -279,11 +315,35 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 			retrace()
 		}
 		doorAt.set(c, { cell: c, group, parent, parentCell })
-		if (augment(c) && (displaced < 0 || augment(displaced))) return true
+		if (augment(c) && (displaced < 0 || augment(displaced))) {
+			// A node with both skill nodes and cards below it keeps a second cell beside it, with a way out
+			// of its own, so the two kinds leave it by separate doors and an arrow never runs along a line.
+			if (mixed(group)) {
+				const spare = nbr[c]!.find((x) => x !== parentCell && open(x, NONE, '', -1))
+				if (spare !== undefined) spareOf.set(c, spare)
+			}
+			return true
+		}
 		doorAt.delete(c)
 		;({ next, owner, prev } = saved)
 		return false
 	}
+	const mixed = (g: Group) => {
+		const k = g.ids.length === 1 && g.steps === 0 ? kids(g.ids[0]!) : []
+		return !!o.local && k.some(o.local) && !k.every(o.local)
+	}
+	/** `open`, only where a node with both kinds below it also gets its second cell. */
+	const openWithSpare = (c: number, group: Group, parent: string, parentCell: number): boolean => {
+		const saved = { next: next.slice(), owner: owner.slice(), prev: prev.slice() }
+		if (!open(c, group, parent, parentCell)) return false
+		if (spareOf.has(c)) return true
+		doorAt.delete(c)
+		;({ next, owner, prev } = saved)
+		return false
+	}
+	const NONE: Group = { ids: [], steps: 0 }
+	/** The second cell kept beside a door (see `open`), given up when the door is taken. */
+	const spareOf = new Map<number, number>()
 
 	const at = new Map<string, Point>([[start, { x: 0, y: 0 }]])
 	const corridors: MazeResult['corridors'] = []
@@ -302,6 +362,23 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 		return k.map((c) => ({ ids: [c], steps: k.length === 1 ? spacing - 1 : 0 }))
 	}
 
+	const join = (d: Door, more: readonly Group[]) => {
+		d.group = { ids: [...d.group.ids, ...more.flatMap((h) => h.ids)], steps: 0 }
+	}
+	/**
+	 * `rest` (all of one kind) onto the last door of their kind. With none, the last door of the other
+	 * kind is handed over when that kind has another to move onto; only when it hasn't does a bundle
+	 * carry both kinds (and they part at its next fork).
+	 */
+	const bundle = (placed: Door[], rest: readonly Group[], local: boolean) => {
+		const same = placed.filter((d) => isLocal(d.group) === local)
+		if (same.length) return join(same[same.length - 1]!, rest)
+		const other = placed.filter((d) => isLocal(d.group) !== local)
+		if (other.length < 2) return join(placed[placed.length - 1]!, rest)
+		const [taken, onto] = [other[other.length - 1]!, other[other.length - 2]!]
+		join(onto, [taken.group])
+		taken.group = { ids: rest.flatMap((h) => h.ids), steps: 0 }
+	}
 	/**
 	 * Doors for `groups` round the node `v` at `cv` (reached from `from`): each where it suits best of
 	 * the cells that still leave everyone a way out; when a group finds none, it and the rest share
@@ -323,6 +400,15 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 			return mid
 		})
 		const placed: Door[] = []
+		// The second cell kept for a node with both kinds below it (see `open`): held while the doors
+		// are found, for the kind that would otherwise find none, and given up when it isn't needed.
+		let spare = spareOf.get(cv)
+		const release = () => {
+			forget(spare!)
+			doorAt.delete(spare!)
+			retrace()
+			spare = undefined
+		}
 		for (let i = 0; i < groups.length; i++) {
 			const g = groups[i]!
 			const chain = groups.length === 1 && cv !== ORIGIN
@@ -336,20 +422,38 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 				return off(direction, wants[i]!) * 4 + Math.hypot(pt(c).x, pt(c).y) / o.cell / 4
 			}
 			const candidates = around.filter((c) => !used[c] && !doorAt.has(c)).sort((x, y) => score(x) - score(y))
-			const door = candidates.find((c) => open(c, g, v, cv))
+			const door = (mixed(g) ? candidates.find((c) => openWithSpare(c, g, v, cv)) : undefined) ?? candidates.find((c) => open(c, g, v, cv))
 			if (door !== undefined) {
 				placed.push(doorAt.get(door)!)
 				continue
 			}
-			// No room for this one: it and the rest share the last door found.
-			const last = placed[placed.length - 1]
-			if (!last) {
-				for (const h of groups.slice(i)) for (const id of h.ids) lost.push(id)
+			let rest = groups.slice(i)
+			if (spare !== undefined) {
+				const missing = [false, true].filter((l) => rest.some((h) => isLocal(h) === l) && !placed.some((d) => isLocal(d.group) === l))
+				if (missing.length !== 1) {
+					release()
+					i--
+					continue
+				}
+				const s = doorAt.get(spare)!
+				Object.assign(s, { group: { ids: rest.filter((h) => isLocal(h) === missing[0]).flatMap((h) => h.ids), steps: 0 }, parent: v, parentCell: cv })
+				placed.push(s)
+				spare = undefined
+				rest = rest.filter((h) => isLocal(h) !== missing[0])
+			}
+			// No room for this one: it and the rest share a door found, as bundles of their own kind
+			// (skill nodes with skill nodes, cards with cards), so an arrow never runs along a card's line.
+			if (!placed.length) {
+				for (const h of rest) for (const id of h.ids) lost.push(id)
 				break
 			}
-			last.group = { ids: groups.slice(placed.length - 1).flatMap((h) => h.ids), steps: 0 }
+			for (const local of [false, true]) {
+				const kind = rest.filter((h) => isLocal(h) === local)
+				if (kind.length) bundle(placed, kind, local)
+			}
 			break
 		}
+		if (spare !== undefined) release()
 		// Skill nodes breadth first, in order, so every node's family gets its doors before anything
 		// deeper takes the room round it; cards (`local`) depth first, at once, so a skill node's cards
 		// settle round it before the next skill nodes take the space.
@@ -370,6 +474,11 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 	while (trunks.length || cards.length || skills.length) {
 		const d = trunks.length ? trunks.pop()! : cards.length ? cards.pop()! : skills.shift()!
 		if (!doorAt.has(d.cell)) continue
+		// A node with both kinds below it that found no second cell when its door opened tries again now.
+		if (mixed(d.group) && !spareOf.has(d.cell)) {
+			const spare = nbr[d.cell]!.find((x) => x !== d.parentCell && open(x, NONE, '', -1))
+			if (spare !== undefined) spareOf.set(d.cell, spare)
+		}
 		// The door taken: its way out given up (its first cell is free beside it for what comes next).
 		forget(d.cell)
 		doorAt.delete(d.cell)

@@ -191,7 +191,8 @@ export function Syllabus(_props: SectionProps) {
 					out of date</em>; its Re-calculate button, or <code>Re-calculate the tree layout</code>, lays it
 					out again. An entry tagged to more than one skill node is drawn once, under the first, with a
 					faint dotted line to each of the others. An arrow between skill nodes is dotted until the node
-					it points at is unlocked, then solid.
+					it points at is unlocked, then solid in the accent colour. Once a node and everything below it
+					is unlocked, the arrows out of it turn gold and thicker: a finished branch.
 				</p>
 				<p className="lb-help__aside">
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Syllabus & skill

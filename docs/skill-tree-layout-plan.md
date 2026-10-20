@@ -610,3 +610,23 @@ Big families (`mazeFamilies`):
 | Everything, longest / 90% / median skill corridor | 52 / 27 / 4 cells | 28 / 17 / 8 |
 | Everything, size | 11.5k × 13.4k px | 16.6k × 12.2k |
 | Skill-node view, longest / size | 6 cells, 3.5k × 3.3k | 11, 3.8k × 4.0k |
+
+## Arrows and lines apart; unlocked paths (2026-10-20)
+
+An arrow ran along a card's light line wherever a node had more children than free sides: the rest
+shared one corridor cell, skill nodes and cards together, so the arrows and lines went the same way
+until it forked. 126 lines on the four-tree board ran along an arrow. Now:
+
+- the overflow is bundled by kind: skill nodes onto a skill node's door, cards onto a card's (a door
+  of the other kind is handed over when that kind has two);
+- a node with both kinds below it keeps a second cell beside it (a spare door, with its own way out),
+  held while its doors are found, for the kind that would otherwise find none;
+- where a node sits in a pocket with a single way out (about 20 on the board, nothing can split them
+  there), the arrow takes a lane of its own beside the lines (`laneArrows`, 12% of a cell), on the
+  side it turns off to.
+
+0 lines now run on top of an arrow.
+
+Arrows show the way travelled (tree/arrowStyle.ts): dotted while the node they point at is ahead;
+solid accent once it's unlocked; gold and thicker once the node they leave and everything below it
+is unlocked. A pillar or Mastery counts as unlocked once anything below it is.

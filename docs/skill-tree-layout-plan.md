@@ -649,3 +649,7 @@ Ahead is grey now, not dotted: where lines leave a shared corridor cell, dotted 
 a cluster of dots out of step; solid ones part cleanly, as the cards' lines always did.
 With every connection a solid line, the lane beside a card's line (`laneArrows`) went too: two lines
 side by side in one corridor looked like a fault, one on top of the other looks like one line.
+
+The lines are stacked by thickness (`sendLinesBack`): the thickest on top, so where a skill line
+shares a corridor with cards' lines it covers them; at one thickness gold over accent over grey.
+Restacked whenever a line is new or changes look.

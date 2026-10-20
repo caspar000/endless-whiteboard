@@ -678,8 +678,20 @@ export function sendLinesBack(editor: Editor): void {
 	// Marked first: otherwise the canvas lifts each back above the two shapes it joins.
 	const unmarked = all.filter((a) => !a.meta[ARROW_STAYS_BEHIND_META])
 	if (unmarked.length) editor.updateShapes(unmarked.map((a) => ({ id: a.id, type: 'arrow', meta: { ...a.meta, [ARROW_STAYS_BEHIND_META]: true } })) as never)
-	editor.sendToBack(all.map((a) => a.id))
+	// Among themselves the thickest on top, so where lines share a corridor the skill line covers the
+	// cards' lines; at one thickness the way travelled (accent, then gold) over the way ahead. Each
+	// group sent back goes under the ones before it, so the top one goes first.
+	const rank = (a: TLShape) => {
+		const { size = 'm', scale = 1, color } = a.props as { size?: keyof typeof STROKE; scale?: number; color?: string }
+		return STROKE[size] * scale * 10 + (color === 'yellow' ? 2 : color === 'blue' ? 1 : 0)
+	}
+	const groups = new Map<number, TLShapeId[]>()
+	for (const a of all) groups.set(rank(a), [...(groups.get(rank(a)) ?? []), a.id])
+	for (const r of [...groups.keys()].sort((x, y) => y - x)) editor.sendToBack(groups.get(r)!)
 }
+
+/** The canvas's stroke widths (its `STROKE_SIZES`). */
+const STROKE = { s: 2, m: 3.5, l: 5, xl: 10 }
 
 /**
  * Bends each arrow between skill nodes that crosses something straight (another arrow, a light line,

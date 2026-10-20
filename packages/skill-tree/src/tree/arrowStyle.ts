@@ -61,7 +61,8 @@ export function styleArrows(editor: Editor): void {
 			() => {
 				if (updates.length) editor.updateShapes(updates as never)
 				if (anchored.length) editor.updateBindings(anchored)
-				if (behind) sendLinesBack(editor)
+				// Restacked when one is new or changed look: thickest, then the way travelled, on top.
+				if (behind || updates.length) sendLinesBack(editor)
 			},
 			{ history: 'ignore' }
 		)

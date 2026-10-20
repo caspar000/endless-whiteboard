@@ -6,16 +6,17 @@ import { useEditor } from '../hooks/useEditor'
 import { getRendererMode } from '../editor/rendererMode'
 import { getGpuScene } from './gpuScene'
 import { GpuRenderer, type GpuView } from './GpuRenderer'
+import { gpuColor } from './primitives'
 
 /**
- * The GPU layer (docs/gpu-renderer-plan.md): a WebGL2 canvas between the grid and the shapes, drawing
- * the shapes the scene gives it.
+ * The GPU layer (docs/gpu-renderer-plan.md): a WebGL2 canvas over the shapes the page draws and under
+ * the overlays (selection, handles), drawing the shapes the scene gives it.
  *
  * In the page only while the scene wants it (`GpuScene.wanted`: the board shown, the browser able, the
- * renderer asking, or `auto` over its budget). A WebGL canvas under the shapes makes the browser
- * composite the shape layer on its own, which changes how the page anti-aliases (measured: 0.05% of
- * pixels on a board zoomed out), so with the GPU off there is no canvas at all and the page is exactly
- * what it was. Leaving also frees the context: a browser allows a handful.
+ * renderer asking, or `auto` over its budget). Over the shapes, not under: a WebGL canvas under them
+ * made the browser composite the shape layer apart and rasterise it at another scale, which blurred
+ * the page's thin lines zoomed out (phase 3). Over them, the page draws exactly as without it. With
+ * the GPU off there is no canvas at all; leaving frees the context (a browser allows a handful).
  */
 export function GpuLayer() {
 	const editor = useEditor()
@@ -76,9 +77,10 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			const height = Math.max(1, Math.round(bounds.h * dpr))
 			if (canvas.width !== width) canvas.width = width
 			if (canvas.height !== height) canvas.height = height
-			const rects = scene.rects.get()
-			renderer.setRects(rects.data, rects.count)
-			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr }
+			renderer.setFrame(scene.frame.get())
+			// What the page's halos read: the zoom it was last told (debounced on big boards) and the paper's colour.
+			const haloZoom = Number(container.style.getPropertyValue('--tl-zoom')) || z
+			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background }
 			renderer.draw(view)
 		}
 
@@ -87,6 +89,21 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			queued = true
 			queueMicrotask(draw)
 		}
+
+		// The paper's colour, read when the theme changes (once its new value is in: a frame later),
+		// not on every frame, which would make the browser work out the styles each time.
+		const container = editor.getContainer()
+		let background = gpuColor(getComputedStyle(container).getPropertyValue('--color-background'))
+		const stopTheme = react('gpu layer theme', () => {
+			editor.user.getIsDarkMode()
+			requestAnimationFrame(() => {
+				background = gpuColor(getComputedStyle(container).getPropertyValue('--color-background'))
+				schedule()
+			})
+		})
+		// `--tl-zoom` follows the camera late on big boards (useZoomCss): a halo redraws when it lands.
+		const zoomWatch = new MutationObserver(schedule)
+		zoomWatch.observe(container, { attributes: true, attributeFilter: ['style'] })
 
 		const onLost = (e: Event) => {
 			e.preventDefault()
@@ -106,12 +123,14 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			editor.getCamera()
 			editor.getViewportScreenBounds()
 			editor.getDevicePixelRatio()
-			scene.rects.get()
+			scene.frame.get()
 			schedule()
 		})
 
 		return () => {
 			stop()
+			stopTheme()
+			zoomWatch.disconnect()
 			canvas.removeEventListener('webglcontextlost', onLost)
 			canvas.removeEventListener('webglcontextrestored', onRestored)
 			scene.layerUp.set(false)
@@ -127,6 +146,6 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 		rCanvas.current?.classList.toggle('tl-gpu-layer--compare', compare)
 	}, [compare])
 
-	// `display: contents`: the canvas sits in the canvas's own stacking order, between the grid and the shapes.
+	// `display: contents`: the canvas sits in the canvas's own stacking order, over the shapes, under the overlays.
 	return <div ref={rHost} style={{ display: 'contents' }} />
 }

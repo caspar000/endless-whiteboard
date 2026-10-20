@@ -9,7 +9,7 @@ import { insertMasteryDemo } from './tree/masteryDemo'
 import { toggleAllNodes } from './tree/view'
 import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
-import { insertWholeLifeTest, isDevBuild } from './tree/wholeLifeTest'
+import { insertWholeLifeTest, isAutomated, isDevBuild } from './tree/wholeLifeTest'
 import { insertAdlerTree } from './tree/sample'
 
 /**
@@ -114,8 +114,9 @@ export const skillTreeCommands: readonly Command[] = [
 		id: 'skill-tree.whole-life-test',
 		title: 'Insert the whole-life test board (dev)',
 		group: GROUP,
-		// For working on the layout; not something to ship to anyone.
-		when: (ctx) => ctx.editor !== null && isDevBuild,
+		// For working on the layout, and for the e2e checks of the renderer (a browser under automation
+		// runs the production build); not something to ship to anyone.
+		when: (ctx) => ctx.editor !== null && (isDevBuild || isAutomated()),
 		run: async ({ editor }) => {
 			if (!editor) return
 			const bounds = editor.getCurrentPageBounds()

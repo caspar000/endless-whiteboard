@@ -36,6 +36,9 @@ export default defineConfig({
 		{ name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /webkit\.spec\.ts/ },
 		// Safari's engine, for what only Safari gets wrong (webkit.spec.ts): an iPhone is a Safari.
 		{ name: 'webkit', use: { ...devices['iPhone 15 Pro'] }, testMatch: /webkit\.spec\.ts/ },
+		// Desktop Safari for the parity checks (parity.spec.ts, docs/gpu-renderer-plan.md): the page and
+		// the GPU renderer compared in Safari's engine too.
+		{ name: 'webkit-parity', use: { ...devices['Desktop Safari'] }, testMatch: /parity\.spec\.ts/ },
 	],
 	webServer: {
 		command: `pnpm build && pnpm preview --port ${PORT} --strictPort`,

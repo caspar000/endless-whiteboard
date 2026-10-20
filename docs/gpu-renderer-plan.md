@@ -149,6 +149,35 @@ rough: S a few days, M a week or two, L several weeks.
 Done when: the whole suite passes; parity of the page against itself passes 10 runs in a row on
 Chromium and WebKit; the before numbers are in this file.
 
+#### Phase 0, as built (2026-10-20)
+
+- `?renderer=dom|gpu|auto` and `localStorage['lifeboard:renderer']`, read by `getRendererMode()`
+  (`canvas-editor/src/lib/editor/rendererMode.ts`); `window.lifeboardRenderer.set()` switches it at
+  runtime. Nothing reads it yet. A settings control waits for phase 2, when it does something.
+- Fixtures in `apps/web/e2e/fixtures/`: `gallery.ts` (every registered shape type with its
+  defaults, then geo × geo type, fill × dash, colours, size × font, text, notes, lines, frames,
+  images, arrows with every head, dash, bend, label, elbow, scale, waypoints and kept-behind; strokes
+  drawn with the mouse) and `synthetic.ts` (N distinct shapes, seeded). The four-tree board comes from
+  the whole-life test command, which now also shows under automation (`navigator.webdriver`) so the
+  production build used by e2e has it.
+- `e2e/parity.spec.ts`: the three scenes × pixel ratio 1 and 2 × dark and light × zoom 10–400%,
+  up to 6 views per zoom; renderer A against B, pixelmatch threshold 0.1, at most 0.05% differing;
+  the app's chrome hidden. `LB_PARITY_BASELINE=save|compare` keeps or checks renderer A's shots in
+  `apps/web/.parity-baseline/<browser>/` (ignored by git). A `webkit-parity` project (Desktop Safari)
+  runs it in WebKit too.
+- **Noise: the page against itself differs by 0.0000%** on every view (gallery 58 views, four-trees
+  68, synthetic 72, at both pixel ratios, Chromium and WebKit). Two page renders are identical, so any
+  difference the GPU path makes shows.
+- `e2e/bench.spec.ts`: GPU flags unless `LB_BENCH_GPU=0`, and a `large boards benchmark` test
+  (`LB_BENCH=1 pnpm exec playwright test e2e/bench.spec.ts -g large`).
+
+**Before**, production build, GPU, 1280×720, mean / p95 ms per frame (8.3 is the floor):
+
+| | Pan, all on screen | Pan 25% | Pan 50% | Pan 100% | Hover, all | Brush, all | Drag a node, all |
+|---|---|---|---|---|---|---|---|
+| Four-tree board (3,490) | 27 / 42 | 14.2 / 25.1 | 8.4 / 9.7 | 8.3 / 9.5 | 15.6 / 33.6 | 31.9 / 58.3 | (nodes are pinned) |
+| Synthetic (10,000) | 36.3 / 58.3 | 8.8 / 10.3 | 8.4 / 9.8 | 8.4 / 10.1 | 11.6 / 17.3 | 24.9 / 42.2 | 69.3 / 116.6 |
+
 ### Phase 1: the GPU layer, drawing nothing yet. M
 
 - `packages/canvas/src/lib/gpu/`: a WebGL2 canvas between the grid and the shape layer; pixel ratio,

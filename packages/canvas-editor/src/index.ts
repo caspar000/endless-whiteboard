@@ -443,6 +443,12 @@ export {
 	getRegisteredFontFaceRules,
 	registerFontSource,
 } from './lib/utils/exportShapeFromDom'
+export {
+	getRendererMode,
+	RENDERER_STORAGE_KEY,
+	setRendererMode,
+	type RendererMode,
+} from './lib/editor/rendererMode'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {

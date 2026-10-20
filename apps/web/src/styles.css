@@ -14002,6 +14002,19 @@ button.lb-props__eye:hover {
 .lb-skillnode--unlocked .lb-skillnode__caption {
 	color: var(--lb-accent);
 }
+/* A finished branch (it and everything below it unlocked, tree/branch.ts): the same look in gold. */
+.lb-skillnode--done .lb-skillnode__disc {
+	background: color-mix(in srgb, var(--lb-star) 16%, transparent);
+	border-color: var(--lb-star);
+	box-shadow: 0 0 26px color-mix(in srgb, var(--lb-star) 30%, transparent);
+}
+.lb-skillnode--done .lb-skillnode__caption,
+.lb-skillnode--unlocked.lb-skillnode--done .lb-skillnode__icon {
+	color: var(--lb-star);
+}
+.lb-skillnode--done .lb-skillnode__fill {
+	stroke: var(--lb-star);
+}
 .lb-skillnode--tier1 .lb-skillnode__fill {
 	stroke: #c08a5a;
 }

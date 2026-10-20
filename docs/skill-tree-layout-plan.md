@@ -630,3 +630,8 @@ until it forked. 126 lines on the four-tree board ran along an arrow. Now:
 Arrows show the way travelled (tree/arrowStyle.ts): dotted while the node they point at is ahead;
 solid accent once it's unlocked; gold and thicker once the node they leave and everything below it
 is unlocked. A pillar or Mastery counts as unlocked once anything below it is.
+
+The nodes follow (tree/branch.ts, `lb-skillnode--done`): unlocked ones glow blue; a node whose
+branch is finished glows gold, the same look in `--lb-star`. A skill with nothing below it would be
+a finished branch as soon as it's unlocked, so it stays blue until its parent's branch is finished
+too. Arrows and nodes read the same rule, from the vault's trees (whatever this board shows).

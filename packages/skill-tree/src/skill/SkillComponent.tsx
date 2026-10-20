@@ -2,9 +2,9 @@ import { getIconBridge, NodeEditorPopover, useAssetUrl, type NodeComponentProps 
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo } from 'react'
 import { AGGREGATE_KINDS, draftClass, type SkillNodeProps, type SkillShape } from '../board'
-import { boardTrees, reachFrom, treeGraph } from '../views'
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
+import { branchProgress, inFinishedBranch } from '../tree/branch'
 import { isDraftNode } from '../treeDefs'
 import { SkillEditor } from './SkillEditor'
 
@@ -29,13 +29,15 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	// Dashed while the import that added it is unconfirmed: the vault holds the mark, not the shape.
 	const draft = useValue('lifeboard:skill-draft', () => isDraftNode(shape.props.treeId, shape.props.nodeId), [shape.props.treeId, shape.props.nodeId])
 	const state = mastery ? 'unlocked' : (status?.state ?? 'locked')
+	// Gold once it and everything below it is unlocked, blue while only it is.
+	const done = useValue('lifeboard:skill-branch-done', () => state === 'unlocked' && inFinishedBranch(editor, shape.props.nodeId), [editor, state, shape.props.nodeId])
 	const { fraction, caption } = mastery ?? ringFor(status)
 	const tier = status?.mastery.tier ?? 0
 	const { Icon } = getIconBridge()
 	const picture = useAssetUrl(shape.props.picture ?? '')
 
 	const body = (
-		<div className={`lb-skillnode lb-skillnode--${state} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never) || (draft ? ' lb-draft' : '')}`}>
+		<div className={`lb-skillnode lb-skillnode--${state}${done ? ' lb-skillnode--done' : ''} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never) || (draft ? ' lb-draft' : '')}`}>
 			<svg className="lb-skillnode__ring" viewBox="0 0 100 100" aria-hidden>
 				<circle className="lb-skillnode__track" cx="50" cy="50" r="44" />
 				<circle
@@ -74,18 +76,11 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	)
 }
 
-/**
- * For Mastery and a pillar: how much of everything below it is unlocked, across every tree mounted
- * under it, whether or not this board shows them.
- */
+/** For Mastery and a pillar: how much of everything below it is unlocked (tree/branch.ts). */
 function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { fraction: number; caption: string } {
-	const graph = treeGraph(boardTrees(editor))
-	const below = [...reachFrom(graph, nodeId)].filter((id) => !AGGREGATE_KINDS.includes(graph.nodes.get(id)!.def.kind))
-	const trees = new Set(below.map((id) => graph.nodes.get(id)!.treeId))
-	const statuses = new Map([...trees].flatMap((treeId) => [...treeStatus(editor, treeId)]))
-	const unlocked = below.filter((id) => statuses.get(id)?.state === 'unlocked').length
-	const count = `${trees.size} ${trees.size === 1 ? 'tree' : 'trees'}`
-	return { fraction: below.length ? unlocked / below.length : 0, caption: `${count} · ${unlocked}/${below.length}` }
+	const { trees, total, unlocked } = branchProgress(editor, nodeId)
+	const count = `${trees} ${trees === 1 ? 'tree' : 'trees'}`
+	return { fraction: total ? unlocked / total : 0, caption: `${count} · ${unlocked}/${total}` }
 }
 
 function ringFor(status: NodeStatus | null): { fraction: number; caption: string } {

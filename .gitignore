@@ -16,3 +16,7 @@ packages/canvas-editor/types/
 packages/canvas/types/
 playwright-report-server/
 __pycache__/
+# The parity checks' page-path screenshots (docs/gpu-renderer-plan.md), kept per machine.
+.parity-baseline/
+# Scratch Playwright config for running specs against a dev server.
+apps/web/playwright.dev.config.ts

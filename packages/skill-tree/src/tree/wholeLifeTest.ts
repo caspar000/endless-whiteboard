@@ -10,6 +10,9 @@ import { working } from '../progress'
 /** Vite's dev flag, read without the `vite/client` types this package doesn't load. */
 export const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 
+/** A browser driven by a test (Playwright sets `navigator.webdriver`). */
+export const isAutomated = (): boolean => typeof navigator !== 'undefined' && navigator.webdriver === true
+
 /**
  * The board the whole-life layout is tested on (docs/skill-tree-layout-plan.md, "Test board"): you at
  * the centre, the five pillars, Adler on Mental and Film, Theatre and Games on Practical, nothing else. One

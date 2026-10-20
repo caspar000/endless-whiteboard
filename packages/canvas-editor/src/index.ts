@@ -456,7 +456,7 @@ export {
 	type GpuPrimitive,
 	type GpuRect,
 } from './lib/gpu/primitives'
-export { getGpuScene, type GpuScene } from './lib/gpu/gpuScene'
+export { DEFAULT_GPU_BUDGET, getGpuScene, GPU_BUDGET_STORAGE_KEY, gpuLayerSupported, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {

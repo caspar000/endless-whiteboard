@@ -68,6 +68,15 @@ describe('the GPU scene', () => {
 		expect(data[2 * FLOATS - 1]).toBe(0.5)
 	})
 
+	it('draws in z-order, not in the order of ids', () => {
+		setRendererMode('gpu')
+		up()
+		editor.sendToBack([b])
+		// b (x 300) is now under a (x 10): its rect comes first.
+		expect(rects().data[4]).toBe(300)
+		expect(rects().data[FLOATS + 4]).toBe(10)
+	})
+
 	it('follows a shape that moves, and recomputes only when something changes', () => {
 		setRendererMode('gpu')
 		up()
@@ -100,3 +109,58 @@ describe('the GPU scene', () => {
 		expect(getGpuScene(editor).hidesElement(a)).toBe(false)
 	})
 })
+
+describe('the GPU scene, switching', () => {
+	const many = (n: number, at = 0) =>
+		editor.createShapes(Array.from({ length: n }, (_, i) => ({ id: createShapeId(`m${at + i}`), type: 'gpu-box' as const, x: (i % 10) * 20, y: Math.floor(i / 10) * 20, props: { w: 10, h: 10 } })))
+
+	it('in auto, comes on above the budget of its shapes on screen and goes off only well below it', () => {
+		setRendererMode('auto')
+		const scene = getGpuScene(editor)
+		scene.setBudget(10)
+		expect(scene.onScreen.get()).toBe(2)
+		expect(scene.wanted.get()).toBe(false)
+		many(9)
+		expect(scene.onScreen.get()).toBe(11)
+		expect(scene.autoOn.get()).toBe(true)
+		expect(scene.wanted.get()).toBe(true)
+		// Back to 9: under the budget, but not under 70% of it, so it stays on.
+		editor.deleteShapes([createShapeId('m0'), createShapeId('m1')])
+		expect(scene.autoOn.get()).toBe(true)
+		// Down to 6: off.
+		editor.deleteShapes([createShapeId('m2'), createShapeId('m3'), createShapeId('m4')])
+		expect(scene.autoOn.get()).toBe(false)
+	})
+
+	it('wants no layer for a board that is not on screen', () => {
+		setRendererMode('gpu')
+		const scene = getGpuScene(editor)
+		expect(scene.wanted.get()).toBe(true)
+		scene.shown.set(false)
+		expect(scene.wanted.get()).toBe(false)
+	})
+
+	it('leaves to the page a shape above one the page draws that it overlaps, and only that', () => {
+		setRendererMode('gpu')
+		up()
+		// The geo shape (page-drawn) sits at (0, 200)–(100, 300); one box over it, one beside it, one under it.
+		const over = createShapeId('over')
+		const beside = createShapeId('beside')
+		editor.createShapes([
+			{ id: over, type: 'gpu-box', x: 50, y: 250 },
+			{ id: beside, type: 'gpu-box', x: 600, y: 250 },
+		])
+		const under = createShapeId('under')
+		editor.createShapes([{ id: under, type: 'gpu-box', x: 20, y: 220 }])
+		editor.sendToBack([under])
+		const scene = getGpuScene(editor)
+		expect(scene.isDrawn(over)).toBe(false)
+		expect(scene.isDrawn(beside)).toBe(true)
+		expect(scene.isDrawn(under)).toBe(true)
+		// And a shape above *that* page-drawn box goes to the page as well.
+		const above = createShapeId('above')
+		editor.createShapes([{ id: above, type: 'gpu-box', x: 120, y: 260 }])
+		expect(scene.isDrawn(above)).toBe(false)
+	})
+})
+

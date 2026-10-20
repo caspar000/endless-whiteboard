@@ -81,6 +81,16 @@ async function insertGpuRects(page: Page): Promise<void> {
 		for (const [i, props] of looks.entries())
 			for (const [j, extra] of [{}, { rotation: 0.35 }, { opacity: 0.5 }, { rotation: -1.1, opacity: 0.8 }].entries())
 				shapes.push({ id: `shape:gpu-rect-${i}-${j}`, type: 'gpu-test-rect', x: j * 520, y: i * 300, ...extra, props })
+		// Stacking: three overlapping rects (drawn in z-order, not id order), and a page-drawn shape with
+		// one rect under it and one over it (the one over it is left to the page).
+		shapes.push(
+			{ id: 'shape:gpu-rect-stack-c', type: 'gpu-test-rect', x: 0, y: 2500, props: { fill: '#e03131', strokeWidth: 0 } },
+			{ id: 'shape:gpu-rect-stack-a', type: 'gpu-test-rect', x: 60, y: 2540, opacity: 0.7, props: { fill: '#2f9e44', strokeWidth: 0 } },
+			{ id: 'shape:gpu-rect-stack-b', type: 'gpu-test-rect', x: 120, y: 2580, props: { fill: '#4c6ef5', stroke: '#000000', strokeWidth: 2 } },
+			{ id: 'shape:gpu-rect-under', type: 'gpu-test-rect', x: 600, y: 2500, props: { fill: '#f08c00', strokeWidth: 0 } },
+			{ id: 'shape:gpu-rect-page', type: 'geo', x: 640, y: 2530, props: { geo: 'ellipse', w: 180, h: 140, fill: 'solid', color: 'violet' } },
+			{ id: 'shape:gpu-rect-over', type: 'gpu-test-rect', x: 720, y: 2580, opacity: 0.6, props: { fill: '#1098ad', strokeWidth: 3 } }
+		)
 		editor.createShapes(shapes)
 		editor.selectNone()
 	})

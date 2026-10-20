@@ -451,11 +451,14 @@ export {
 } from './lib/editor/rendererMode'
 export {
 	gpuColor,
+	gpuDash,
+	type GpuStroke,
 	type GpuColor,
 	type GpuContext,
 	type GpuPrimitive,
 	type GpuRect,
 } from './lib/gpu/primitives'
+export { dashPolylines, flattenPath, strokeTriangles, type Polyline } from './lib/gpu/stroke'
 export { DEFAULT_GPU_BUDGET, getGpuScene, GPU_BUDGET_STORAGE_KEY, gpuLayerSupported, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'

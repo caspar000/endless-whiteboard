@@ -1,5 +1,9 @@
 import {
 	ARROW_STAYS_BEHIND_META,
+	type GpuContext,
+	type GpuPrimitive,
+	gpuColor,
+	gpuDash,
 	renderHtmlFromRichText,
 	richTextToPlainText,
 	IndexKey,
@@ -526,6 +530,42 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				}
 			}
 		}
+	}
+
+	/**
+	 * What the GPU layer draws for an arrow (docs/gpu-renderer-plan.md, phase 3): the paths the page
+	 * strokes, in its order and colours (the halo under all of it unless kept behind, the body with its
+	 * dash, the heads). The page keeps the arrows it draws in a way the GPU can't match yet: a label
+	 * (text), heads that cut the line (the page masks the line under them), and the selection hint.
+	 */
+	override toGpu(shape: TLArrowShape, ctx: GpuContext): GpuPrimitive[] | null {
+		const editor = this.editor
+		if (arrowLabelText(shape).trim()) return null
+		const info = editor.getArrowInfo(shape)
+		if (!info?.isValid) return []
+		const cuts = (head: string) => !(head === 'none' || head === 'arrow')
+		if (cuts(info.start.arrowhead) || cuts(info.end.arrowhead)) return null
+		if (
+			editor.isOnlySelectedShape(shape.id) &&
+			editor.isInAny('select.idle', 'select.pointing_handle', 'select.dragging_handle', 'arrow.dragging') &&
+			!editor.getInstanceState().isReadonly
+		)
+			return null
+		const theme = getDefaultColorTheme({ isDarkMode: ctx.isDarkMode })
+		const width = STROKE_SIZES[shape.props.size] * shape.props.scale
+		const body = getArrowBodyPath(info, shape)
+		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', width)
+		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', width)
+		const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(info.isStraight ? info.length : Math.abs(info.bodyArc.length), width, {
+			style: shape.props.dash,
+		})
+		const dash = gpuDash(strokeDasharray, strokeDashoffset)
+		const color = gpuColor(theme[shape.props.color].solid)
+		const paths = (halo: boolean): GpuPrimitive[] => [
+			{ kind: 'stroke', d: body, width, color, dash, halo },
+			...[as, ae].filter((d): d is string => !!d).map((d): GpuPrimitive => ({ kind: 'stroke', d, width, color, halo })),
+		]
+		return [...(shape.meta[ARROW_STAYS_BEHIND_META] ? [] : paths(true)), ...paths(false)]
 	}
 
 	component(shape: TLArrowShape) {

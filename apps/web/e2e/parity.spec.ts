@@ -13,14 +13,11 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  * pixel by pixel. Both come from the same machine in the same run, so there are no stored images
  * for fonts or platforms to break.
  *
- * - `LB_PARITY_A`, `LB_PARITY_B`: the renderers compared, `idle` against `gpu` by default: the GPU
- *   layer present in both (a WebGL layer under the shapes makes the browser composite the page's own
- *   shapes apart, which changes their antialiasing a little), drawing nothing in one and its shapes in
- *   the other, so the difference is the GPU's drawing alone. `dom` against `dom` measures the page's
- *   own run-to-run noise (none, in phase 0).
- * - Each view is also rendered with `dom`: for the baseline, and to report what the GPU layer's
- *   compositing does to the page's own shapes (`COMPOSITING` lines; recorded, not asserted).
- * - `LB_PARITY_MAX`: the share of pixels allowed to differ per screenshot (0.0005, 0.05%).
+ * - `LB_PARITY_A`, `LB_PARITY_B`: the renderers compared, `dom` (the page alone) against `gpu` by
+ *   default. `dom` against `dom` measures the page's own run-to-run noise (none, in phase 0).
+ *   `LB_PARITY_A=idle` (the GPU layer there, drawing nothing) also reports what the layer does to the
+ *   page's own shapes (`COMPOSITING` lines): nothing, since phase 3 put the layer over them.
+ * - `LB_PARITY_MAX`: the share of pixels allowed to differ per screenshot (0.0007, 0.07%).
  * - `LB_PARITY_BASELINE=save|compare`: keeps the `dom` screenshots in `.parity-baseline/`, or
  *   compares against them: the page path unchanged by a phase.
  * - `LB_PARITY=0` skips the spec (it takes a few minutes); `LB_PARITY_TRACE=1` prints each view as it goes.
@@ -28,9 +25,15 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
 test.skip(process.env.LB_PARITY === '0', 'LB_PARITY=0')
 
 type Mode = 'dom' | 'gpu' | 'auto' | 'idle'
-const A = (process.env.LB_PARITY_A ?? 'idle') as Mode
+const A = (process.env.LB_PARITY_A ?? 'dom') as Mode
 const B = (process.env.LB_PARITY_B ?? 'gpu') as Mode
-const MAX_RATIO = Number(process.env.LB_PARITY_MAX ?? 0.0005)
+/**
+ * The share of pixels allowed to differ per view: 0.07%. Agreed at 0.05%, raised on 2026-10-21 for
+ * sub-pixel differences in where Skia's rasteriser puts an edge (thin borders, haloed lines; they show
+ * in dark mode, where a near-white halo meets dark paper), which the user accepted as invisible
+ * (docs/gpu-renderer-plan.md, phases 2 and 3). A lost, doubled or moved shape differs by percents.
+ */
+const MAX_RATIO = Number(process.env.LB_PARITY_MAX ?? 0.0007)
 const BASELINE = process.env.LB_PARITY_BASELINE as 'save' | 'compare' | undefined
 const BASELINE_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '.parity-baseline')
 
@@ -54,6 +57,7 @@ const SCENES: Scene[] = [
 		},
 	},
 	{ name: 'gpu-rects', insert: insertGpuRects },
+	{ name: 'gpu-strokes', insert: insertStrokes },
 	{ name: 'four-trees', insert: insertFourTrees },
 	{
 		name: 'synthetic',
@@ -91,6 +95,46 @@ async function insertGpuRects(page: Page): Promise<void> {
 			{ id: 'shape:gpu-rect-page', type: 'geo', x: 640, y: 2530, props: { geo: 'ellipse', w: 180, h: 140, fill: 'solid', color: 'violet' } },
 			{ id: 'shape:gpu-rect-over', type: 'gpu-test-rect', x: 720, y: 2580, opacity: 0.6, props: { fill: '#1098ad', strokeWidth: 3 } }
 		)
+		editor.createShapes(shapes)
+		editor.selectNone()
+	})
+}
+
+/** Arrows and lines in every form the GPU draws (phase 3), crossing, kept behind and not. */
+async function insertStrokes(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const editor = (window as unknown as { editor: { createShapes(s: unknown[]): void; selectNone(): void } }).editor
+		const shapes: unknown[] = []
+		let n = 0
+		const arrow = (props: Record<string, unknown>, meta: Record<string, unknown> = {}, opacity = 1) => {
+			const i = n++
+			shapes.push({ id: `shape:st-${i}`, type: 'arrow', x: (i % 5) * 300, y: Math.floor(i / 5) * 260, opacity, props: { start: { x: 0, y: 0 }, end: { x: 220, y: 160 }, ...props }, meta })
+		}
+		for (const arrowheadEnd of ['none', 'arrow']) for (const dash of ['draw', 'solid', 'dashed', 'dotted']) arrow({ arrowheadEnd, dash })
+		for (const size of ['s', 'm', 'l', 'xl']) arrow({ size, bend: 60, color: 'blue' })
+		for (const bend of [-120, -30, 30, 120]) arrow({ bend, dash: 'dashed', color: 'red' })
+		arrow({ kind: 'elbow' })
+		arrow({ kind: 'elbow', dash: 'dotted', size: 'l' })
+		arrow({ scale: 2.5, arrowheadStart: 'arrow' })
+		arrow({ color: 'blue', arrowheadEnd: 'none', size: 'l' }, { 'lifeboard:waypoints': [{ x: 220, y: 0 }, { x: 0, y: 160 }] })
+		arrow({ color: 'grey', arrowheadEnd: 'none', size: 's' }, { 'lifeboard:arrowStaysBehind': true })
+		arrow({ color: 'violet', size: 'l' }, {}, 0.5)
+		// Crossing pairs: the upper one's halo cuts the lower one; kept behind, no halo.
+		for (const [y, meta] of [[1600, {}], [1800, { 'lifeboard:arrowStaysBehind': true }]] as const) {
+			shapes.push({ id: `shape:st-x${y}a`, type: 'arrow', x: 0, y, props: { start: { x: 0, y: 0 }, end: { x: 600, y: 140 }, color: 'violet', size: 'l', arrowheadEnd: 'none' }, meta })
+			shapes.push({ id: `shape:st-x${y}b`, type: 'arrow', x: 0, y, props: { start: { x: 0, y: 140 }, end: { x: 600, y: 0 }, color: 'orange', size: 'l', arrowheadEnd: 'none' }, meta })
+		}
+		// Lines: both splines, three dashes.
+		let l = 0
+		for (const spline of ['line', 'cubic'])
+			for (const dash of ['solid', 'dashed', 'dotted'])
+				shapes.push({
+					id: `shape:st-line${l}`,
+					type: 'line',
+					x: 800 + (l % 3) * 300,
+					y: 1600 + Math.floor(l++ / 3) * 260,
+					props: { spline, dash, size: 'm', points: { a1: { id: 'a1', index: 'a1', x: 0, y: 0 }, a2: { id: 'a2', index: 'a2', x: 120, y: 180 }, a3: { id: 'a3', index: 'a3', x: 240, y: 40 } } },
+				})
 		editor.createShapes(shapes)
 		editor.selectNone()
 	})

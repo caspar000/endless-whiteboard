@@ -27,11 +27,33 @@ export interface GpuRect {
 	strokeWidth?: number
 }
 
-export type GpuPrimitive = GpuRect
+/**
+ * A stroked SVG path (absolute M L H V Q C A Z) with round caps and joins, as the page strokes an
+ * arrow or a line: `width` across, the dash pattern of `stroke-dasharray`/`stroke-dashoffset`.
+ * `halo`: the arrow's halo instead, in the background colour and wider by `--tl-arrow-halo` each side.
+ */
+export interface GpuStroke {
+	kind: 'stroke'
+	d: string
+	width: number
+	color: GpuColor
+	dash?: { array: readonly number[]; offset: number }
+	halo?: boolean
+}
+
+export type GpuPrimitive = GpuRect | GpuStroke
 
 /** What `toGpu` may need besides the shape. */
 export interface GpuContext {
 	isDarkMode: boolean
+}
+
+/** A CSS `stroke-dasharray`/`stroke-dashoffset` pair (as `getPerfectDashProps` gives them) as a `GpuStroke` dash, or none. */
+export function gpuDash(array: string, offset: string): GpuStroke['dash'] {
+	if (!array || array === 'none') return undefined
+	const parts = array.split(/[\s,]+/).filter(Boolean).map(Number)
+	if (!parts.length || parts.some((n) => !Number.isFinite(n) || n < 0) || parts.every((n) => n === 0)) return undefined
+	return { array: parts, offset: Number(offset) || 0 }
 }
 
 /** A CSS colour (`#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`) as a `GpuColor`; transparent if it can't be read. */

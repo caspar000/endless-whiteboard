@@ -24,7 +24,7 @@
 	--layer-background: 100;
 	--layer-grid: 150;
 	--layer-canvas: 200;
-	--layer-gpu: 250;
+	--layer-gpu: 350;
 	--layer-shapes: 300;
 	--layer-overlays: 400;
 	--layer-following-indicator: 1000;
@@ -248,8 +248,9 @@ input,
 	z-index: var(--layer-shapes);
 }
 
-/* The GPU layer (docs/gpu-renderer-plan.md): under the shapes, over the grid. In the compare view it
-   lies over the shapes with difference blending, so where the two renderers agree it's black. */
+/* The GPU layer (docs/gpu-renderer-plan.md): over the shapes the page draws (under them, the browser
+   composited them apart and blurred their thin lines), under the overlays. In the compare view it
+   blends by difference, so where the two renderers agree it's black. */
 .tl-gpu-layer {
 	position: absolute;
 	top: 0px;

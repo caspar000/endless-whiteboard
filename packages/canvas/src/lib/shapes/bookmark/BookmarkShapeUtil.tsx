@@ -15,6 +15,8 @@ import {
 	isValidUrl,
 	stopEventPropagation,
 	toDomPrecision,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { truncateStringWithEllipsis } from '../../utils/text/text'
@@ -90,6 +92,11 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 				</div>
 			</HTMLContainer>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 5). */
+	override toGpu(shape: TLBookmarkShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	override indicator(shape: TLBookmarkShape) {

@@ -201,10 +201,10 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	canScroll?: boolean
 	/**
-	 * Drawn by the GPU layer, zoomed out among many (docs/gpu-renderer-plan.md, phase 4), from what its
-	 * element shows: boxes, text and SVG, read back from the page. Only for a node whose look is those
-	 * alone; the reader leaves to the page anything it can't copy exactly, so getting this wrong costs
-	 * speed, not looks.
+	 * `false` keeps this node in the page always. Otherwise the GPU layer draws it, zoomed out among
+	 * many (docs/gpu-renderer-plan.md, phases 4–5), from what its element shows, read back from the
+	 * page; the reader leaves to the page anything it can't copy exactly (a form control, a running
+	 * animation, an iframe), so a node that's wrongly left on costs speed, not looks.
 	 */
 	gpu?: boolean
 	/**
@@ -481,7 +481,7 @@ export function createNodeShapeUtil<Props extends object>(
 			return getGpuSnapshots(this.editor).get(shape as unknown as TLShape) ?? null
 		}
 	}
-	const Base = def.gpu ? GpuNodeShapeUtil : NodeShapeUtil
+	const Base = def.gpu === false ? NodeShapeUtil : GpuNodeShapeUtil
 
 	// `TLAnyShapeUtilConstructor` is tldraw's own type for this — it's what `<Tldraw shapeUtils>`
 	// accepts — so no cast is needed here.

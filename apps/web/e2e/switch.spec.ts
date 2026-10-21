@@ -95,3 +95,29 @@ test('auto switches to the GPU and back with nothing lost, doubled or moved on t
 	}
 	expect((await state(page)).switches - before, 'one switch on, at most, for a count wobbling about the budget').toBeLessThanOrEqual(1)
 })
+
+test('a node the GPU draws still exports as it shows', async ({ page }) => {
+	// Its element is hidden (`visibility: hidden`), which the export's style copy would carry into
+	// every child: board previews and the agent's look at the board came out blank.
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Export')
+	await openBoard(page, 'Export')
+	const id = await page.evaluate(() => {
+		const w = window as unknown as { lifeboardRenderer: { set(m: string): void }; editor: { createShapes(s: unknown[]): void; getCurrentPageShapes(): { id: string; type: string }[] } }
+		w.editor.createShapes([{ type: 'node.markdown', x: 100, y: 100, props: { w: 220, h: 120, md: '# Exported heading', autoHeight: false } }])
+		w.lifeboardRenderer.set('gpu')
+		return w.editor.getCurrentPageShapes().find((s) => s.type === 'node.markdown')!.id
+	})
+	const element = page.locator(`.tl-shape:not(.tl-shape-background)[data-shape-id="${id}"]`)
+	await expect.poll(() => element.evaluate((el) => (el as HTMLElement).style.visibility), { timeout: 10_000 }).toBe('hidden')
+	const svg = await page.evaluate(async (id) => {
+		const e = (window as unknown as { editor: { getSvg(ids: string[], o: unknown): Promise<SVGSVGElement | undefined> } }).editor
+		const out = await e.getSvg([id], { padding: 0, background: false })
+		return out ? new XMLSerializer().serializeToString(out) : ''
+	}, id)
+	expect(svg).toContain('Exported heading')
+	expect(svg).not.toMatch(/visibility:\s*hidden/)
+	// And the element is hidden again afterwards: the GPU still draws it.
+	await expect(element).toHaveCSS('visibility', 'hidden')
+})

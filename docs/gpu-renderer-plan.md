@@ -537,6 +537,45 @@ Done when: parity passes for every rich node at the zooms above the budget; text
 under its budget on the dense synthetic board; `books`, `dice`, `propertyCard`, `views`, `ui` and
 `smoke` specs pass.
 
+#### Phase 5, as built (2026-10-21)
+
+**The spike** settled how a rich node's picture is taken:
+
+- Chrome's HTML-in-Canvas is in Playwright's Chromium 151 behind a flag (people would need an origin
+  trial token, to Chrome 160), and draws only elements that are children of a `<canvas layoutsubtree>`:
+  our shapes' elements live in the page. Not used.
+- The export path (`exportShapeFromDom`, a `foreignObject` with styles and fonts inlined) doesn't taint
+  a canvas in Chromium or WebKit, so its pictures could go to WebGL. But per node, 0.03–2.4% of its
+  pixels differed from the page (a skill item's checkbox and title 7px to the right: styles the copy
+  missed). Not used.
+- The element reader from phase 4 already read half the rich nodes exactly. It was extended instead.
+
+**The reader, extended** (and every node definition is read by default now; `gpu: false` opts out):
+
+- Borders that differ by side (a quote's or up-next's accent side, a table row's rule): a picture of the
+  ring between the outer and inner outlines, each side its own colour up to the corner diagonals.
+- Gradients at any angle, laid along CSS's gradient line.
+- `text-transform: uppercase` and `lowercase` (when the length stays the same).
+- Pieces reaching into a rounded overflow cut's corners (a cover filling a rounded card) are cut to
+  them, each corner its own radius.
+- Form controls (inputs, selects, text areas, buttons the browser draws) and running animations (waited
+  for when they end; a spinner never does) leave a node to the page.
+
+In the gallery every rich node is the GPU's but those with a native control (habit, skill item, the
+layout tuner) and the bookmark (generated `::after` content). The atlas is one fixed 4096² texture that
+starts again empty when full, so texture memory is bounded by construction.
+
+**A bug found on the way, fixed ahead of phase 7:** an export of a shape read from its element
+(`exportShapeFromDom`: board previews, the agent's look at the board, copy as image) copies inherited
+styles, `visibility` among them, so a node the GPU drew (its element `visibility: hidden`) exported
+blank. With rich nodes on the GPU under `auto`, the board-preview test failed about one run in three. The
+export now shows the element for the moment it reads it; `switch.spec.ts` checks it.
+
+Numbers (page / GPU, mean ms): 10,000-shape board (markdown and text now the GPU's) pan at fit 33.1 /
+23.1, hover 11.6 / 8.4, brush 20.9 / 13.9, drag 18.4 / 14.8; four-tree board pan at fit 20.1 / 9.6.
+Parity 20/20 (17 min on the production build with the kept four-tree board, ~22 before). Suite 220
+passed; the board-preview test 8/8 alone after the fix.
+
 ### Phase 6: everything above and around the shapes. M
 
 - Check every layer against the GPU path: selection and hover indicators (already a 2D canvas),

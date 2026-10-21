@@ -76,7 +76,6 @@ export const skillNodeDefinition: NodeDefinition<SkillNodeProps> = {
 	pinned: true,
 	component: SkillComponent,
 	canEdit: true,
-	gpu: true,
 	// Double-click, Enter, or right-click › Edit opens its editor.
 	getLabel: (shape) => shape.props.name || undefined,
 }

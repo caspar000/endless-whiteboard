@@ -23,6 +23,8 @@ import {
 	textShapeProps,
 	toDomPrecision,
 	useEditor,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { createTextSvgElementFromSpans } from '../shared/createTextSvgElementFromSpans'
 import { FONT_FAMILIES, FONT_SIZES, TEXT_PROPS } from '../shared/default-shape-constants'
@@ -103,6 +105,11 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 				</div>
 			</HTMLContainer>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4d). */
+	override toGpu(shape: TLTextShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLTextShape) {

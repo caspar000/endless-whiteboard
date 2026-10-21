@@ -81,14 +81,20 @@ describe('arrows and lines on the GPU', () => {
 
 	it('draws an arrow as its halo, its body and its heads', () => {
 		const id = createShapeId('a')
-		editor.createShapes<TLArrowShape>([{ id, type: 'arrow', x: 0, y: 0, props: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, arrowheadEnd: 'arrow', dash: 'dashed' } }])
+		editor.createShapes<TLArrowShape>([{ id, type: 'arrow', x: 0, y: 0, props: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, arrowheadEnd: 'arrow', dash: 'solid' } }])
 		const prims = gpu(id)! as GpuStroke[]
 		expect(prims.map((p) => [p.halo ?? false, !!p.dash])).toEqual([
-			[true, true],
 			[true, false],
-			[false, true],
+			[true, false],
+			[false, false],
 			[false, false],
 		])
+	})
+
+	it('leaves a dashed or dotted arrow to the picture of its element, which a test has no page to read', () => {
+		const id = createShapeId('a')
+		editor.createShapes<TLArrowShape>([{ id, type: 'arrow', x: 0, y: 0, props: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, dash: 'dashed' } }])
+		expect(gpu(id)).toBeNull()
 	})
 
 	it('draws no halo for an arrow kept behind', () => {
@@ -108,7 +114,7 @@ describe('arrows and lines on the GPU', () => {
 		expect(gpu(b)).toBeNull()
 	})
 
-	it('draws a line, each dashed segment with its own dash, and leaves the hand-drawn one to the page', () => {
+	it('draws a solid line as one stroke, and leaves dashed, dotted and hand-drawn ones to the picture of the element', () => {
 		const id = createShapeId('l')
 		editor.createShapes<TLLineShape>([
 			{
@@ -117,7 +123,7 @@ describe('arrows and lines on the GPU', () => {
 				x: 0,
 				y: 0,
 				props: {
-					dash: 'dashed',
+					dash: 'solid',
 					points: {
 						a1: { id: 'a1', index: 'a1' as never, x: 0, y: 0 },
 						a2: { id: 'a2', index: 'a2' as never, x: 100, y: 0 },
@@ -126,10 +132,10 @@ describe('arrows and lines on the GPU', () => {
 				},
 			},
 		])
-		const prims = gpu(id) as GpuStroke[]
-		expect(prims).toHaveLength(2)
-		expect(prims.every((p) => !!p.dash)).toBe(true)
-		editor.updateShape<TLLineShape>({ id, type: 'line', props: { dash: 'draw' } })
-		expect(gpu(id)).toBeNull()
+		expect(gpu(id) as GpuStroke[]).toHaveLength(1)
+		for (const dash of ['dashed', 'dotted', 'draw'] as const) {
+			editor.updateShape<TLLineShape>({ id, type: 'line', props: { dash } })
+			expect(gpu(id)).toBeNull()
+		}
 	})
 })

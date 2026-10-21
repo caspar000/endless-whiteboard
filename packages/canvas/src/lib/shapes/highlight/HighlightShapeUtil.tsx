@@ -15,6 +15,8 @@ import {
 	highlightShapeProps,
 	last,
 	rng,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { getHighlightFreehandSettings, getPointsFromSegments } from '../draw/getPath'
 import { useDefaultColorTheme } from '../shared/ShapeFill'
@@ -91,6 +93,11 @@ export class HighlightShapeUtil extends ShapeUtil<TLHighlightShape> {
 				opacity={UNDERLAY_OPACITY}
 			/>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4d). */
+	override toGpu(shape: TLHighlightShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLHighlightShape) {

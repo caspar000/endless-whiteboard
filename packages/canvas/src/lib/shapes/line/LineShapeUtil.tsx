@@ -20,6 +20,7 @@ import {
 	lineShapeMigrations,
 	lineShapeProps,
 	sortByIndex,
+	getGpuSnapshots,
 } from '@lifeboard/canvas-editor'
 
 import { ShapeFill, useDefaultColorTheme } from '../shared/ShapeFill'
@@ -142,7 +143,9 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	 */
 	override toGpu(shape: TLLineShape, ctx: GpuContext): GpuPrimitive[] | null {
 		const { dash, color, spline: kind } = shape.props
-		if (dash === 'draw') return null
+		// Hand-drawn, dashed and dotted lines as their elements show them (phase 4d): Chromium draws a
+		// dash's ends its own way. Solid ones stay strokes, which don't add up laid over each other.
+		if (dash !== 'solid') return getGpuSnapshots(this.editor).get(shape) ?? null
 		const spline = getGeometryForLineShape(shape)
 		const width = STROKE_SIZES[shape.props.size] * shape.props.scale
 		const c = gpuColor(getDefaultColorTheme({ isDarkMode: ctx.isDarkMode })[color].solid)

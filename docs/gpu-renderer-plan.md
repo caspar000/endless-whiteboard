@@ -499,6 +499,26 @@ Numbers (page / GPU, mean ms): 10,000-shape board (its 247 notes now the GPU's) 
 (14–16 ms at 25%) and didn't repeat in four runs after, alone or after the page: a benchmark worth
 running twice before believing. Parity 19/20 (the dotted dark arrow); suite 224 passed.
 
+#### Phase 4d, as built (2026-10-21): hand-drawn styles, dashes, text, video
+
+- Draw and highlight shapes, text shapes and video posters go through the element reader; so do
+  hand-drawn lines. Nearly all of the gallery's are the GPU's (a text with generated `::before` content
+  isn't).
+- **Dashed and dotted arrows and lines are pictures of their own SVG now**, not GPU strokes. On the
+  GPU rasteriser Chromium draws a dash's ends and a dot a pixel or two wide its own way, and the GPU's
+  exact coverage didn't match: the dark arrow view at 50%, pixel ratio 1, that had failed since 4a went
+  from 0.174% to 0.050% (the arrows and lines scene at ratio 2: 0.004–0.015%). Solid lines stay
+  strokes, since they mustn't add up laid over each other (the four-tree board's), and pictures would.
+  An arrow's halo is as wide as `--tl-zoom` says past 200%, so such an arrow is read again when it
+  changes, as text with the outline is.
+- The SVG picture's margin is how far its contents reach past its box (`getBBox`), not only its widest
+  stroke: a freehand line's filled outline reaches well past the shape's bounds.
+
+Parity 20/20 for the first time on GPU rasterisation. Numbers (page / GPU, mean ms): four-tree board
+pan at fit 19.4 / 9.1, 25% 11.4 / 8.9, 100% 8.3 / 8.5; 10,000-shape board pan at fit 36 / 22.5, hover
+11.9 / 9.1, brush 25.9 / 17.3. Suite 223 passed; the two failures were a probe of mine left in `e2e/`
+and the board-preview test that fails about one run in three on its own.
+
 ### Phase 5: rich nodes as cached pictures. L
 
 Markdown notes, items, tables, rollups, books, quotes, dice cards, habits, tracks, up next, embeds,

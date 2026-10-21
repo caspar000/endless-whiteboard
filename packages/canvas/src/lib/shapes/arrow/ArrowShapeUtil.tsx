@@ -51,6 +51,7 @@ import {
 	toDomPrecision,
 	useIsEditing,
 	useValue,
+	getGpuSnapshots,
 } from '@lifeboard/canvas-editor'
 import React, { type JSX } from 'react'
 import { ShapeFill, getShapeFillSvg, useDefaultColorTheme } from '../shared/ShapeFill'
@@ -545,6 +546,10 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		if (!info?.isValid) return []
 		const cuts = (head: string) => !(head === 'none' || head === 'arrow')
 		if (cuts(info.start.arrowhead) || cuts(info.end.arrowhead)) return null
+		// Dots and dashes, by a picture of the arrow's own SVG: Chromium draws a dash's ends and a dot a
+		// pixel or two wide its own way, which the GPU's exact coverage didn't match (phase 4d). Solid
+		// lines stay strokes: laid over each other they mustn't add up, and pictures would.
+		if (shape.props.dash === 'dashed' || shape.props.dash === 'dotted') return getGpuSnapshots(editor).get(shape) ?? null
 		if (
 			editor.isOnlySelectedShape(shape.id) &&
 			editor.isInAny('select.idle', 'select.pointing_handle', 'select.dragging_handle', 'arrow.dragging') &&

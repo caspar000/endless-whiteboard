@@ -20,4 +20,4 @@ __pycache__/
 .parity-baseline/
 # Scratch Playwright config for running specs against a dev server.
 apps/web/playwright.dev.config.ts
-apps/web/e2e/*.scratch.spec.ts
+apps/web/e2e-scratch/

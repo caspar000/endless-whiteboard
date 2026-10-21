@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import { openFourTrees } from './fixtures/fourTrees'
 import { insertGallery } from './fixtures/gallery'
 import { insertSynthetic } from './fixtures/synthetic'
 import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
@@ -77,7 +78,8 @@ const SCENES: Scene[] = [
 	},
 	{ name: 'gpu-rects', insert: insertGpuRects },
 	{ name: 'gpu-strokes', insert: insertStrokes },
-	{ name: 'four-trees', insert: insertFourTrees },
+	// Built once a run and opened from the kept storage (fixtures/fourTrees.ts), so nothing to insert.
+	{ name: 'four-trees', insert: async () => undefined },
 	{
 		name: 'synthetic',
 		insert: async (page) => {
@@ -159,28 +161,6 @@ async function insertStrokes(page: Page): Promise<void> {
 	})
 }
 
-async function insertFourTrees(page: Page): Promise<void> {
-	await page.keyboard.press('ControlOrMeta+k')
-	await page.locator('.lb-palette__input').fill('>whole-life test')
-	await expect(page.locator('.lb-palette__row--on')).toContainText('whole-life test')
-	await page.keyboard.press('Enter')
-	// Inserted, laid out and settled: thousands of shapes, then nothing more for a moment.
-	await expect.poll(() => shapeCount(page), { timeout: 120_000 }).toBeGreaterThan(3000)
-	let last = -1
-	await expect
-		.poll(
-			async () => {
-				const now = await shapeCount(page)
-				const settled = now === last
-				last = now
-				return settled
-			},
-			{ timeout: 60_000, intervals: [2000] }
-		)
-		.toBe(true)
-}
-
-const shapeCount = (page: Page) => page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)
 
 /** The cameras to look through at zoom `z`: a grid over the scene, thinned to `MAX_VIEWS`. */
 function views(bounds: Bounds, z: number, vw: number, vh: number): { x: number; y: number }[] {
@@ -235,19 +215,23 @@ for (const dpr of [1, 2]) {
 		// A test per scene and theme: one page through hundreds of large screenshots wore WebKit out
 		// (its page crashed partway through the four-tree board in both themes).
 		for (const scene of SCENES) for (const theme of THEMES) {
-			test(`${scene.name}, ${theme}: ${A} and ${B} draw the same`, async ({ page, browserName }, info) => {
+			test(`${scene.name}, ${theme}: ${A} and ${B} draw the same`, async ({ page: fixturePage, browser, browserName, baseURL }, info) => {
 				test.skip(browserName === 'webkit' && scene.name === 'four-trees', "the four-tree board crashes Playwright's WebKit with a WebGL canvas under it")
 				test.setTimeout(30 * 60_000)
-				if (browserName === 'chromium') await gotoFresh(page)
+				let page = fixturePage
+				if (scene.name === 'four-trees') page = await openFourTrees(browser, { baseURL: baseURL!, deviceScaleFactor: dpr, viewport: fixturePage.viewportSize() })
 				else {
-					// WebKit has no CDP to wipe storage with; a fresh context starts empty anyway.
-					await page.addInitScript(() => localStorage.setItem('lifeboard:sidebar:collapsed', 'true'))
-					await page.goto('/')
+					if (browserName === 'chromium') await gotoFresh(page)
+					else {
+						// WebKit has no CDP to wipe storage with; a fresh context starts empty anyway.
+						await page.addInitScript(() => localStorage.setItem('lifeboard:sidebar:collapsed', 'true'))
+						await page.goto('/')
+					}
+					await skipFirstRunDemo(page)
+					await createBoard(page, 'Parity')
+					await openBoard(page, 'Parity')
+					await scene.insert(page)
 				}
-				await skipFirstRunDemo(page)
-				await createBoard(page, 'Parity')
-				await openBoard(page, 'Parity')
-				await scene.insert(page)
 				// Only the board is compared: the app's chrome over it (tabs, sidebar, toolbars, the
 				// debug badge) changes on its own and isn't the renderer's.
 				await page.addStyleTag({ content: CHROME.map((c) => `${c} { visibility: hidden !important }`).join('\n') })
@@ -321,6 +305,7 @@ for (const dpr of [1, 2]) {
 				info.annotations.push({ type: 'parity', description: `${compared} views, worst ${(worst * 100).toFixed(4)}% differing` })
 				console.log(`PARITY ${scene.name} ${theme} dpr${dpr}: ${compared} views, worst ${(worst * 100).toFixed(4)}%`)
 				if (A !== 'dom') console.log(`COMPOSITING ${scene.name} ${theme} dpr${dpr}: the page beside the GPU layer differs from the page alone by at most ${(compositing * 100).toFixed(4)}%`)
+				if (page !== fixturePage) await page.context().close()
 				expect(failures).toEqual([])
 			})
 		}

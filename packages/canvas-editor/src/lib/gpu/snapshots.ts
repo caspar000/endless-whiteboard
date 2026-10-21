@@ -1,5 +1,6 @@
 import { atom, react, transact, type Atom } from '@tldraw/state'
 import type { TLShape, TLShapeId } from '@tldraw/tlschema'
+import { getShapeElement } from '../components/shapeElements'
 import type { Editor } from '../editor/Editor'
 import { rasterCanvas } from './atlas'
 import { getGpuScene } from './gpuScene'
@@ -167,7 +168,7 @@ export class GpuSnapshots {
 			const shape = this.editor.getShape(id)
 			const a = this.atoms.get(id)
 			if (!shape || !a) continue
-			const el = this.editor.getContainer().querySelector<HTMLElement>(`.tl-shape:not(.tl-shape-background)[data-shape-id="${id}"]`)
+			const el = getShapeElement(this.editor, id)
 			// Off screen it has no layout: read when it comes back.
 			if (!el || el.style.display === 'none') continue
 			this.readFor.set(id, { props: shape.props, meta: shape.meta })

@@ -674,6 +674,40 @@ limit raised for the run only (`MAX_SHAPES_PER_PAGE` is 20,000):
   (27.9 → 26.6 at 10k on this measure): the page's per-element work outside painting is what's left.
 - 100,000 and 1,000,000 weren't tried: 50,000 doesn't open.
 
+#### Phase 8, step 1: opening, as built (2026-10-21)
+
+A CPU profile of the open (`e2e-scratch/open.scratch.spec.ts`, dev server, function names) found three
+things, none of them the data layer:
+
+- **Measuring text laid out the whole page.** `TextManager` found its measuring element with
+  `document.querySelector`, removed it and appended a new one to the editor's container for every
+  measurement, so each `getBoundingClientRect` laid out every shape mounted so far: quadratic. 29 of
+  the 40 s a 20k board took to open in dev. The element now lives in a box of its own with
+  `contain: strict` (`.tl-text-measure-box`), so a measurement lays out only itself. The `'w'` a geo
+  label measures for its narrowest width is measured once a font and size, not once a shape, and again
+  when fonts finish loading.
+- **Finding a shape's element walked the page.** The GPU reader, the hide reactor and exports each
+  used `querySelector` per shape. `Shape` now keeps a map of mounted containers
+  (`getShapeElement(editor, id)`, exported).
+- **50k never opened because it was empty.** The data was lost, not slow: closing a board's tab while a
+  write was still running cancelled that write (`didCancel` turned true once the client was disposed),
+  its transaction rolled back to the last finished write, and what came in during it was never written.
+  A 50k board's first write takes seconds, so closing it 5 s after building it put back the empty board,
+  which then "opened" with no shapes, idle, forever. Any board could lose the edits of a write in flight
+  when its tab closed; on a small one the window is short. `close()` now lets the running write finish
+  and writes what queued behind it; a unit test covers it. (The stray `AbortError`s were those cancels'
+  unhandled `tx.done`.)
+
+| Shapes | Open again, before | After |
+|---|---|---|
+| 20,000 (dev) | 40.5 s | 11.7 s |
+| 50,000 (dev) | never (empty) | 36 s |
+| 50,000 (production) | never (empty) | 34.6 s (31.9 s before the canvas shows), heap 3.2 GB |
+
+Still to do, from the same profile and runs: opening mounts every shape (React and the page: most of
+the 35 s), ~44 KB a shape in memory, and at 50k the GPU pan at fit averages 700 ms a frame while the
+reader is still reading (each hand-over rebuilds the whole frame). Steps 2 and 3.
+
 ### Phase 9: default on, and tidy. S
 
 - `auto` on for everyone; the page-only path stays as the fallback (no WebGL2, lost context).

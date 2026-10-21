@@ -27,10 +27,15 @@ export interface AtlasEntry {
 export class ImageAtlas {
 	readonly size: number
 	readonly texture: WebGLTexture
-	/** Each raster, by picture, scale and phase: shapes sharing a picture at different sub-pixel positions each get theirs. */
-	private readonly entries = new Map<string, AtlasEntry>()
-	/** The last raster of each picture, at whatever scale and phase: what's drawn, stretched, until an exact one is made. */
-	private readonly latestOf = new Map<string, AtlasEntry>()
+	/**
+	 * Each picture's rasters, by a number for its key, the last made last: shapes sharing a picture at
+	 * different sub-pixel positions each get theirs, and the last is what's drawn, stretched, until an
+	 * exact one is made. Numbers, not the keys: every picture on screen is looked up every frame, and
+	 * a text line's key is the whole line.
+	 */
+	private readonly entries = new Map<number, { latest: AtlasEntry; byPhase: Map<string, AtlasEntry> }>()
+	private readonly ids = new Map<string, number>()
+	private readonly idOfImage = new WeakMap<GpuImage, number>()
 	private shelfY = 0
 	private shelfH = 0
 	private cursorX = 0
@@ -50,24 +55,35 @@ export class ImageAtlas {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	}
 
+	/** The number standing for a picture's key. */
+	private id(image: GpuImage): number {
+		let id = this.idOfImage.get(image)
+		if (id === undefined) {
+			id = this.ids.get(image.key)
+			if (id === undefined) this.ids.set(image.key, (id = this.ids.size))
+			this.idOfImage.set(image, id)
+		}
+		return id
+	}
+
 	/** The picture rastered at exactly this scale and phase. */
-	get(key: string, scale: number, fx: number, fy: number): AtlasEntry | undefined {
-		return this.entries.get(at(key, scale, fx, fy))
+	get(image: GpuImage, scale: number, fx: number, fy: number): AtlasEntry | undefined {
+		return this.entries.get(this.id(image))?.byPhase.get(phase(scale, fx, fy))
 	}
 
 	/** The picture as last rastered, at whatever scale and phase. */
-	latest(key: string): AtlasEntry | undefined {
-		return this.latestOf.get(key)
+	latest(image: GpuImage): AtlasEntry | undefined {
+		return this.entries.get(this.id(image))?.latest
 	}
 
 	/**
 	 * Rasters `image` at `scale` device pixels per unit with its origin `fx`, `fy` into a device pixel,
-	 * and keeps it under `key`. Undefined when it doesn't fit even in an empty atlas. It's in the texture
+	 * and keeps it. Undefined when it doesn't fit even in an empty atlas. It's in the texture
 	 * once `upload` has run: the pictures of a shelf are drawn side by side in one canvas and sent in one
 	 * go, since thousands of uploads in a frame (a board zoomed out, every picture new) ran the GPU out
 	 * of memory.
 	 */
-	raster(key: string, image: GpuImage, scale: number, fx: number, fy: number): AtlasEntry | undefined {
+	raster(image: GpuImage, scale: number, fx: number, fy: number): AtlasEntry | undefined {
 		const w = Math.ceil(image.w * scale + fx) + ATLAS_PAD * 2
 		const h = Math.ceil(image.h * scale + fy) + ATLAS_PAD * 2
 		if (w > this.size || h > this.size) return undefined
@@ -101,8 +117,12 @@ export class ImageAtlas {
 			canvas.height = STAGE_HEIGHT
 		}
 		const entry = { x: slot.x, y: slot.y, w, h, scale, fx, fy }
-		this.entries.set(at(key, scale, fx, fy), entry)
-		this.latestOf.set(key, entry)
+		const id = this.id(image)
+		const rasters = this.entries.get(id)
+		if (rasters) {
+			rasters.latest = entry
+			rasters.byPhase.set(phase(scale, fx, fy), entry)
+		} else this.entries.set(id, { latest: entry, byPhase: new Map([[phase(scale, fx, fy), entry]]) })
 		return entry
 	}
 
@@ -140,7 +160,6 @@ export class ImageAtlas {
 		// What's staged belongs to the atlas being thrown away.
 		this.staged = null
 		this.entries.clear()
-		this.latestOf.clear()
 		this.shelfY = 0
 		this.shelfH = 0
 		this.cursorX = 0
@@ -148,7 +167,7 @@ export class ImageAtlas {
 	}
 }
 
-const at = (key: string, scale: number, fx: number, fy: number) => `${key}|${scale}|${fx}|${fy}`
+const phase = (scale: number, fx: number, fy: number) => `${scale}|${fx}|${fy}`
 
 let raster: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null = null
 /**

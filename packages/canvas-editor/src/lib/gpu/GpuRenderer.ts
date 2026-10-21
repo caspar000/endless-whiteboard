@@ -430,11 +430,11 @@ export class GpuRenderer {
 					if (devX + w + ATLAS_PAD < 0 || devY + h + ATLAS_PAD < 0 || devX - ATLAS_PAD > bw || devY - ATLAS_PAD > bh) continue
 					const fx = q(devX - Math.floor(devX))
 					const fy = q(devY - Math.floor(devY))
-					let entry = this.atlas.get(image.key, scale, fx, fy)
+					let entry = this.atlas.get(image, scale, fx, fy)
 					if (!entry) {
-						const latest = this.atlas.latest(image.key)
+						const latest = this.atlas.latest(image)
 						// New, or the camera has stopped and there's time this frame: raster it as it's seen.
-						if (!latest || (view.settled && performance.now() - started < RASTER_BUDGET_MS)) entry = this.atlas.raster(image.key, image, scale, fx, fy)
+						if (!latest || (view.settled && performance.now() - started < RASTER_BUDGET_MS)) entry = this.atlas.raster(image, scale, fx, fy)
 						if (!entry) {
 							entry = latest
 							pending = true

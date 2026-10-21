@@ -253,7 +253,10 @@ export function strokeTriangles(lines: Polyline[], pad = 1): number[] {
 	const v: number[] = []
 	const tri = (ax: number, ay: number, aox: number, aoy: number, bx: number, by: number, box: number, boy: number, cx: number, cy: number, cox: number, coy: number) =>
 		v.push(ax, ay, aox, aoy, bx, by, box, boy, cx, cy, cox, coy)
-	const FAN = 12
+	// Wedges a half turn: the shader works out a round piece's coverage from the distance to its middle,
+	// so the triangles only have to enclose it. A dotted line zoomed out is thousands of dots: four
+	// wedges where twelve did no better took its triangles from 24 a dot to 8.
+	const FAN = 4
 	/** A wedge of a round piece at (x, y), from angle a0 through da. */
 	const fan = (x: number, y: number, a0: number, da: number) => {
 		const steps = Math.max(1, Math.ceil((Math.abs(da) / Math.PI) * FAN))

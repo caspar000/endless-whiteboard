@@ -55,17 +55,17 @@ describe('dashing', () => {
 })
 
 describe('strip building', () => {
-	it('makes a straight stroke a strip with two round caps, offsets at most 1 across', () => {
+	it('makes a straight stroke a strip with two round caps, its round pieces just enclosing the circle', () => {
 		const v = strokeTriangles([{ points: [0, 0, 100, 0], closed: false }])
 		expect(v.length % 12).toBe(0)
-		for (let i = 0; i < v.length; i += 4) expect(Math.hypot(v[i + 2]!, v[i + 3]!)).toBeLessThan(1.05)
+		for (let i = 0; i < v.length; i += 4) expect(Math.hypot(v[i + 2]!, v[i + 3]!)).toBeLessThanOrEqual(1 / Math.cos(Math.PI / 8) + 1e-9)
 		// The strip's two triangles plus two half-circle fans.
-		expect(v.length / 12).toBe(2 + 2 * 12)
+		expect(v.length / 12).toBe(2 + 2 * 4)
 	})
 
 	it('makes a dot of a dash with no length', () => {
 		const v = strokeTriangles([{ points: [5, 5, 5, 5], closed: false }])
-		expect(v.length / 12).toBe(24)
+		expect(v.length / 12).toBe(8)
 	})
 })
 

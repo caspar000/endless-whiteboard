@@ -32,6 +32,10 @@ export class GpuSnapshots {
 	/** The props and meta each snapshot was read for: others (a resize, new text) mean reading again. Moving it doesn't. */
 	private readonly readFor = new Map<TLShapeId, Pick<TLShape, 'props' | 'meta'>>()
 	private readonly queue = new Set<TLShapeId>()
+	/** Shapes whose text has the outline that `--tl-zoom` sizes: read again when it changes. */
+	private readonly outlined = new Set<TLShapeId>()
+	/** The outline's offset at the `--tl-zoom` last seen. */
+	private outline = ''
 	/** Why each shape the reader left to the page was left there: for finding what to teach it next. */
 	readonly reasons = new Map<TLShapeId, string>()
 	private frame: number | null = null
@@ -63,16 +67,30 @@ export class GpuSnapshots {
 		const page = typeof MutationObserver === 'undefined' ? null : new MutationObserver(again)
 		page?.observe(document.documentElement, { attributes: true })
 		page?.observe(document.body, { attributes: true })
+		// The canvas sets `--tl-zoom` on its container (late, on big boards); the text outline is
+		// `min(0.5, 1 / --tl-zoom) * 2px` each way, so it changes only past 200%.
+		const zoomWatch =
+			typeof MutationObserver === 'undefined'
+				? null
+				: new MutationObserver(() => {
+						const z = Number(editor.getContainer().style.getPropertyValue('--tl-zoom')) || 1
+						const outline = String(Math.min(0.5, 1 / z))
+						if (outline === this.outline) return
+						this.outline = outline
+						for (const id of this.outlined) this.invalidate(id)
+					})
+		zoomWatch?.observe(editor.getContainer(), { attributes: true, attributeFilter: ['style'] })
 		const stopTheme = react('gpu snapshots theme', () => {
 			editor.user.getIsDarkMode()
 			again()
 		})
-		document.fonts?.addEventListener('loadingdone', again)
+		document.fonts?.addEventListener?.('loadingdone', again)
 		editor.disposables.add(() => {
 			stop()
 			stopTheme()
 			page?.disconnect()
-			document.fonts?.removeEventListener('loadingdone', again)
+			zoomWatch?.disconnect()
+			document.fonts?.removeEventListener?.('loadingdone', again)
 			this.observer?.disconnect()
 			if (this.frame !== null) cancelAnimationFrame(this.frame)
 		})
@@ -129,8 +147,13 @@ export class GpuSnapshots {
 	private flush() {
 		this.frame = null
 		this.watch()
+		// Not while the camera moves: the page draws what isn't read yet, and reading takes frames from the move.
+		if (this.editor.getCameraState() !== 'idle') {
+			this.frame = requestAnimationFrame(() => this.flush())
+			return
+		}
 		const started = performance.now()
-		const results: [Atom<Snapshot>, Snapshot][] = []
+		const results = this.results
 		for (const id of [...this.queue]) {
 			if (performance.now() - started > READ_BUDGET_MS) break
 			this.queue.delete(id)
@@ -143,29 +166,46 @@ export class GpuSnapshots {
 			this.readFor.set(id, { props: shape.props, meta: shape.meta })
 			let read: Snapshot
 			this.reasons.delete(id)
+			let pending: Promise<unknown>[] = []
 			try {
-				read = readElement(this.editor, shape, el)
+				const result = readElement(this.editor, shape, el)
+				read = result.out
+				pending = result.pending
+				if (result.outlined) this.outlined.add(id)
+				else this.outlined.delete(id)
 			} catch (error) {
 				this.reasons.set(id, error instanceof Unsupported ? error.message : `error: ${String(error)}`)
 				if (!(error instanceof Unsupported)) this.editor.annotateError(error, { origin: 'gpu.snapshot', willCrashApp: false })
 				read = null
 			}
-			if (read && read.some((p) => p.kind === 'image' && !ready(p))) {
+			if (read && pending.length) {
 				// Pictures of its SVG still decoding: read again when they're in.
-				Promise.all(pendingDecodes(read)).then(() => this.invalidate(id))
+				Promise.all(pending).then(() => this.invalidate(id))
 				continue
 			}
 			results.push([a, read])
 		}
-		transact(() => {
-			for (const [a, read] of results) a.set(read)
-		})
-		if (this.queue.size && this.frame === null) this.frame = requestAnimationFrame(() => this.flush())
+		// Handed over a few times a second, not every frame: each hand-over makes the frame again, and
+		// that's the whole board's worth of work.
+		if (!this.queue.size || started - this.handedAt > HAND_OVER_MS) {
+			this.handedAt = started
+			this.results = []
+			transact(() => {
+				for (const [a, read] of results) a.set(read)
+			})
+		}
+		if ((this.queue.size || this.results.length) && this.frame === null) this.frame = requestAnimationFrame(() => this.flush())
 	}
+
+	/** Read and not handed over yet. */
+	private results: [Atom<Snapshot>, Snapshot][] = []
+	private handedAt = 0
 }
 
 /** Milliseconds a frame spent reading elements. */
 const READ_BUDGET_MS = 4
+/** How often what's been read is handed over while there's more to read. */
+const HAND_OVER_MS = 250
 
 const all = new WeakMap<Editor, GpuSnapshots>()
 /** The editor's snapshots, made on first use. */
@@ -185,6 +225,10 @@ interface Reader {
 	hiddenByCanvas: boolean
 	/** What an `overflow` other than visible cuts to, in the shape's units: anything reaching past it is the page's. */
 	clip: Box | null
+	/** Its text has tldraw's outline, whose width follows `--tl-zoom` past 200%. */
+	outlined: boolean
+	/** What has to arrive (an SVG decoded, a pattern's tile inlined) before what was read can be drawn. */
+	pending: Promise<unknown>[]
 }
 
 type Box = { x: number; y: number; w: number; h: number }
@@ -194,12 +238,12 @@ function inside(r: Reader, b: Box) {
 	if (c && (b.x < c.x - 0.5 || b.y < c.y - 0.5 || b.x + b.w > c.x + c.w + 0.5 || b.y + b.h > c.y + c.h + 0.5)) throw new Unsupported('cut by overflow')
 }
 
-function readElement(editor: Editor, shape: TLShape, container: HTMLElement): GpuPrimitive[] {
+function readElement(editor: Editor, shape: TLShape, container: HTMLElement): Pick<Reader, 'out' | 'outlined' | 'pending'> {
 	const m = editor.getShapePageTransform(shape.id)
 	if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) throw new Unsupported('turned or scaled')
-	const r: Reader = { z: editor.getZoomLevel(), origin: container.getBoundingClientRect(), out: [], hiddenByCanvas: container.style.visibility === 'hidden', clip: null }
+	const r: Reader = { z: editor.getZoomLevel(), origin: container.getBoundingClientRect(), out: [], hiddenByCanvas: container.style.visibility === 'hidden', clip: null, outlined: false, pending: [] }
 	for (const child of Array.from(container.children)) visit(r, child, 1)
-	return r.out
+	return r
 }
 
 /**
@@ -229,11 +273,17 @@ function visit(r: Reader, el: Element, opacity: number) {
 	if (el instanceof SVGElement) throw new Unsupported('loose svg')
 	if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el instanceof HTMLIFrameElement) throw new Unsupported('picture')
 	if (cs.transform !== 'none' && cs.transform !== 'matrix(1, 0, 0, 1, 0, 0)') throw new Unsupported('transform')
+	// What CSS generates (a list's bullet, `content`) has no node to read.
+	if (cs.display === 'list-item' && cs.listStyleType !== 'none') throw new Unsupported('list marker')
+	for (const pseudo of ['::before', '::after'] as const) {
+		const content = getComputedStyle(el, pseudo).content
+		if (content !== 'none' && content !== 'normal') throw new Unsupported(`${pseudo} content`)
+	}
 	const first = r.out.length
 	box(r, el as HTMLElement, cs, o)
 	const outer = r.clip
 	if (cs.overflow !== 'visible') r.clip = local(r, el.getBoundingClientRect())
-	const positioned: Element[] = []
+	const positioned: { el: Element; z: number }[] = []
 	for (const node of Array.from(el.childNodes)) {
 		if (node.nodeType === Node.TEXT_NODE) {
 			text(r, el as HTMLElement, node as Text, cs, o)
@@ -243,15 +293,26 @@ function visit(r: Reader, el: Element, opacity: number) {
 		const ncs = getComputedStyle(node)
 		const p = ncs.position
 		if (p === 'absolute' || p === 'relative' || p === 'fixed' || p === 'sticky') {
-			// Painted in z-index order otherwise: only the order they're in is copied here.
-			if (ncs.zIndex !== 'auto' && ncs.zIndex !== '0') throw new Unsupported('z-index')
-			positioned.push(node)
+			// Painted after what flows, by z-index, then in order. Below the flow (negative) isn't copied;
+			// nor is a z-index lifting something over what comes after its parent, which no shape does.
+			const z = ncs.zIndex === 'auto' ? 0 : Number(ncs.zIndex)
+			if (!(z >= 0)) throw new Unsupported('z-index')
+			positioned.push({ el: node, z })
 		} else visit(r, node, o)
 	}
-	for (const node of positioned) visit(r, node, o)
+	positioned.sort((a, b) => a.z - b.z)
+	for (const { el: node } of positioned) visit(r, node, o)
 	r.clip = outer
 	// The page fades an element as one; here each piece is faded, the same only where none overlaps another.
 	if (Number(cs.opacity) < 1 && overlapping(r.out.slice(first))) throw new Unsupported('faded overlapping pieces')
+}
+
+/** One computed `text-shadow` (`<colour> <x> <y> <blur>`), sharp ones only. */
+function textShadow(css: string): { color: string; x: number; y: number } {
+	const m = css.match(/^((?:rgba?|color)\([^)]*\)) (-?[\d.]+)px (-?[\d.]+)px ([\d.]+)px$/)
+	if (!m || Number(m[4]) !== 0) throw new Unsupported('text shadow')
+	color(m[1]!)
+	return { color: m[1]!, x: Number(m[2]), y: Number(m[3]) }
 }
 
 /** A text line's own box, without the room its picture leaves round it for overhangs. */
@@ -546,10 +607,14 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 	const clamp = overflows && el.firstChild === node && el.lastChild === node ? parseInt(cs.webkitLineClamp) : NaN
 	if (overflows && !(clamp > 0) && (cs.overflow !== 'visible' || cs.textOverflow !== 'clip' || cs.webkitLineClamp !== 'none')) throw new Unsupported('text cut short')
 	// Canvas fonts take stretch keywords only, and decorations and transforms aren't drawn here.
-	if (cs.fontStretch !== '100%' || cs.textDecorationLine !== 'none' || cs.textShadow !== 'none' || cs.textTransform !== 'none' || cs.webkitTextStrokeWidth !== '0px') throw new Unsupported('text style')
+	if (cs.fontStretch !== '100%' || cs.textDecorationLine !== 'none' || cs.textTransform !== 'none' || cs.webkitTextStrokeWidth !== '0px') throw new Unsupported('text style')
 	const ink = cs.color
 	const fill = color(ink)
 	if (fill[3] <= 0) return
+	// Sharp text shadows (tldraw's text outline: the glyphs again in the paper's colour, a pixel each
+	// way), drawn under the text in reverse order, as CSS paints them.
+	const shadows = cs.textShadow === 'none' ? [] : splitTop(cs.textShadow).map(textShadow).reverse()
+	if (shadows.length) r.outlined = true
 	const t: TextStyle = {
 		font: `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
 		props: FONT_PROPS.map((p) => cs.getPropertyValue(p)),
@@ -613,13 +678,18 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 			y,
 			w: right - left + pad * 2,
 			h: line.bottom - line.top + pad * 2,
-			key: `text|${t.font}|${t.props.join('|')}|${t.letterSpacing}|${t.wordSpacing}|${ink}|${baseline}|${runs.map((g) => `${g.x.toFixed(4)}:${g.text}`).join('\u0000')}`,
+			key: `text|${t.font}|${t.props.join('|')}|${t.letterSpacing}|${t.wordSpacing}|${ink}|${cs.textShadow}|${baseline}|${runs.map((g) => `${g.x.toFixed(4)}:${g.text}`).join('\u0000')}`,
 			opacity: o,
 			draw: (ctx) => {
 				textContext(t)
 				ctx.fillStyle = ink
 				ctx.textBaseline = 'alphabetic'
 				ctx.textAlign = 'left'
+				for (const sh of shadows) {
+					ctx.fillStyle = sh.color
+					for (const g of runs) ctx.fillText(g.text, g.x + sh.x, baseline + sh.y)
+				}
+				ctx.fillStyle = ink
 				for (const g of runs) ctx.fillText(g.text, g.x, baseline)
 			},
 		}
@@ -645,9 +715,11 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 	const copy = svg.cloneNode(true) as SVGSVGElement
 	const from = [svg, ...Array.from(svg.querySelectorAll('*'))]
 	const to = [copy, ...Array.from(copy.querySelectorAll('*'))]
+	let widest = 0
 	from.forEach((src, i) => {
 		const dst = to[i] as SVGElement
 		const s = getComputedStyle(src)
+		if (s.stroke !== 'none') widest = Math.max(widest, parseFloat(s.strokeWidth) || 0)
 		for (const prop of SVG_PROPS) {
 			if (src === svg && prop === 'opacity') continue
 			const v = s.getPropertyValue(prop)
@@ -656,14 +728,44 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 		dst.removeAttribute('class')
 		dst.removeAttribute('style')
 	})
-	copy.setAttribute('width', String(b.w))
-	copy.setAttribute('height', String(b.h))
+	// What it fills or strokes with from elsewhere in the page (a hatching pattern), brought in, its
+	// tile inlined: a picture can't reach the page's definitions or load a blob.
+	const refs = new Set<string>()
+	for (const src of from) {
+		const cs = getComputedStyle(src)
+		for (const v of [cs.fill, cs.stroke]) for (const m of v.matchAll(/url\("?#([^")]+)"?\)/g)) refs.add(m[1]!)
+	}
+	if (refs.size) {
+		const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+		for (const ref of refs) {
+			const def = document.getElementById(ref)
+			if (!def) throw new Unsupported(`missing ${ref}`)
+			const clone = def.cloneNode(true) as Element
+			for (const image of [clone, ...Array.from(clone.querySelectorAll('*'))].filter((e) => e.localName === 'image')) {
+				const href = image.getAttribute('href') ?? image.getAttribute('xlink:href') ?? ''
+				if (href.startsWith('data:')) continue
+				const data = inlined.get(href)
+				if (data === '') throw new Unsupported('pattern tile')
+				if (data) image.setAttribute('href', data)
+				else r.pending.push(inline(href))
+			}
+			defs.appendChild(clone)
+		}
+		copy.prepend(defs)
+	}
+	// The page draws the svg's overflow; a picture is clipped to its box. Without a viewBox (a shape's own
+	// SVG, in its units) the picture takes in the widest stroke's reach past the edge; rings and icons,
+	// scaled by theirs, sit inside their boxes.
+	const m = svg.hasAttribute('viewBox') ? 0 : Math.ceil(widest / 2) + 2
+	if (m) copy.setAttribute('viewBox', `${-m} ${-m} ${b.w + 2 * m} ${b.h + 2 * m}`)
+	copy.setAttribute('width', String(b.w + 2 * m))
+	copy.setAttribute('height', String(b.h + 2 * m))
 	copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
 	copy.removeAttribute('opacity')
-	// The page draws the svg's overflow; a picture is clipped to its box. Rings and icons sit inside theirs.
 	const markup = new XMLSerializer().serializeToString(copy)
 	const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`
 	if (failed.has(url)) throw new Unsupported('svg the browser cannot picture')
+	if (r.pending.length) return
 	if (!decoded.has(url) && !decoding.has(url)) {
 		const img = new Image()
 		img.src = url
@@ -682,34 +784,49 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 	}
 	const picture: GpuImage = {
 		kind: 'image',
-		x: b.x,
-		y: b.y,
-		w: b.w,
-		h: b.h,
+		x: b.x - m,
+		y: b.y - m,
+		w: b.w + 2 * m,
+		h: b.h + 2 * m,
 		key: `svg|${url.length}|${hash(url)}`,
 		opacity: o,
 		draw: (ctx) => {
 			const img = decoded.get(url)
-			if (img) ctx.drawImage(img, 0, 0, b.w, b.h)
+			if (img) ctx.drawImage(img, 0, 0, b.w + 2 * m, b.h + 2 * m)
 		},
 	}
-	waitsOn.set(picture, url)
+	const waiting = decoding.get(url)
+	if (waiting) r.pending.push(waiting)
 	r.out.push(picture)
 }
 
-/** The decoded SVG each picture of one draws. */
-const waitsOn = new WeakMap<GpuImage, string>()
-
-function ready(p: GpuImage): boolean {
-	const url = waitsOn.get(p)
-	return !url || decoded.has(url)
-}
-
-function pendingDecodes(prims: GpuPrimitive[]): Promise<void>[] {
-	return prims.flatMap((p) => {
-		const d = p.kind === 'image' && decoding.get(waitsOn.get(p) ?? '')
-		return d ? [d] : []
-	})
+const inlined = new Map<string, string>()
+const inlining = new Map<string, Promise<void>>()
+/** A blob (or other) URL's contents as a data URL, kept: a picture of an SVG loads nothing from outside. */
+function inline(href: string): Promise<void> {
+	let p = inlining.get(href)
+	if (!p) {
+		p = fetch(href)
+			.then((res) => res.blob())
+			.then(
+				(blob) =>
+					new Promise<void>((resolve, reject) => {
+						const reader = new FileReader()
+						reader.onload = () => {
+							inlined.set(href, String(reader.result))
+							resolve()
+						}
+						reader.onerror = () => reject(reader.error)
+						reader.readAsDataURL(blob)
+					})
+			)
+			.catch(() => {
+				// Read again, and found missing again: the page's then.
+				inlined.set(href, '')
+			})
+		inlining.set(href, p)
+	}
+	return p
 }
 
 function hash(s: string): string {

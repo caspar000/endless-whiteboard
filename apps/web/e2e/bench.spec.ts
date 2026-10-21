@@ -430,7 +430,13 @@ test('large boards benchmark', async ({ page }) => {
 		const buildMs = Date.now() - started
 		const shapes = await page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)
 		for (const renderer of (process.env.LB_BENCH_RENDERER ?? 'dom').split(',')) {
-			await page.evaluate((m) => (window as unknown as { lifeboardRenderer: { set(m: string): void } }).lifeboardRenderer.set(m), renderer)
+			await page.evaluate((m) => {
+				const w = window as unknown as { lifeboardRenderer: { set(m: string): void }; editor: { options: { edgeScrollSpeed: number } } }
+				w.lifeboardRenderer.set(m)
+				// A brush or drag starting at the screen's edge scrolls the camera by time, so a slower
+				// renderer would scroll further and brush or drag more: the gestures do the same work only without.
+				w.editor.options.edgeScrollSpeed = 0
+			}, renderer)
 			// Time for the GPU to read every node on screen, a few milliseconds a frame, before it's timed.
 			await zoomTo(page, 'fit')
 			await page.waitForTimeout(renderer === 'dom' ? 800 : 6000)

@@ -16,6 +16,8 @@ import {
 	type TLShapePartial,
 	type TLShapeUtilCanBindOpts,
 	resizeBox,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas'
 import type { ComponentType } from 'react'
 import type { PropertyValue } from './properties/types'
@@ -198,6 +200,13 @@ export interface NodeDefinition<Props extends object = object> {
 	 * stops behaving like a shape.
 	 */
 	canScroll?: boolean
+	/**
+	 * Drawn by the GPU layer, zoomed out among many (docs/gpu-renderer-plan.md, phase 4), from what its
+	 * element shows: boxes, text and SVG, read back from the page. Only for a node whose look is those
+	 * alone; the reader leaves to the page anything it can't copy exactly, so getting this wrong costs
+	 * speed, not looks.
+	 */
+	gpu?: boolean
 	/**
 	 * Opt in to factory-derived height: the node's `h` tracks its rendered content. The node's props
 	 * must include a boolean `autoHeight` that the user can pin off by dragging a vertical handle.
@@ -463,9 +472,20 @@ export function createNodeShapeUtil<Props extends object>(
 		}
 	}
 
+	/*
+	 * `toGpu` lives on a subclass too, for the definitions that opted in: the GPU layer counts shapes
+	 * on screen only while some util has the method at all.
+	 */
+	class GpuNodeShapeUtil extends NodeShapeUtil {
+		override toGpu(shape: TLBaseBoxShape): GpuPrimitive[] | null {
+			return getGpuSnapshots(this.editor).get(shape as unknown as TLShape) ?? null
+		}
+	}
+	const Base = def.gpu ? GpuNodeShapeUtil : NodeShapeUtil
+
 	// `TLAnyShapeUtilConstructor` is tldraw's own type for this — it's what `<Tldraw shapeUtils>`
 	// accepts — so no cast is needed here.
-	if (!def.drop) return NodeShapeUtil
+	if (!def.drop) return Base
 
 	/*
 	 * The drop hooks live on a *subclass*, present only for a definition that asked for them.
@@ -477,7 +497,7 @@ export function createNodeShapeUtil<Props extends object>(
 	 * `docs/tldraw-api-notes.md`.
 	 */
 	const drop = def.drop
-	class DroppableNodeShapeUtil extends NodeShapeUtil {
+	class DroppableNodeShapeUtil extends Base {
 		/**
 		 * tldraw's gate: with the default `false` the drop callback below is never called at all. It also
 		 * decides whether a pasted shape can be reparented into this one, which is why it is asked per

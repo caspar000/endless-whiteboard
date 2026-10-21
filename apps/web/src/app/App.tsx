@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { CommandContext } from '@lifeboard/node-kit'
-import { getGpuScene, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
+import { getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
@@ -40,7 +40,7 @@ import { useKeyboardInset, usePhone } from './usePhone'
 
 // The console/e2e handle on the renderer (docs/gpu-renderer-plan.md): the parity checks draw one
 // board both ways by switching it.
-;(window as unknown as { lifeboardRenderer?: unknown }).lifeboardRenderer = { get: getRendererMode, set: setRendererMode, scene: getGpuScene }
+;(window as unknown as { lifeboardRenderer?: unknown }).lifeboardRenderer = { get: getRendererMode, set: setRendererMode, scene: getGpuScene, snapshots: getGpuSnapshots }
 
 /**
  * How long a closed tab's editor stays mounted after the tab goes away.

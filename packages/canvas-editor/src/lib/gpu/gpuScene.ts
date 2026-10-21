@@ -3,7 +3,7 @@ import type { ComputedCache } from '@tldraw/store'
 import type { TLShape, TLShapeId } from '@tldraw/tlschema'
 import type { Editor } from '../editor/Editor'
 import { getRendererMode } from '../editor/rendererMode'
-import type { GpuPrimitive } from './primitives'
+import type { GpuImage, GpuPrimitive, GpuStroke } from './primitives'
 import { dashPolylines, flattenPath, STROKE_VERTEX_FLOATS, strokeTriangles } from './stroke'
 
 /** Floats per rect instance: page transform (6), rect (4), radius, stroke width, fill (4), stroke (4), opacity. */
@@ -11,21 +11,30 @@ export const RECT_FLOATS = 21
 /** Floats per stroke vertex: page position (2), offset (2), half width, colour (4), halo, opacity. */
 export const STROKE_FLOATS = 11
 
-/** A run of one kind of thing to draw, in drawing order: rect instances, or stroke vertices. */
+/** A run of one kind of thing to draw, in drawing order: rect instances, stroke vertices, or images. */
 export interface GpuRun {
-	kind: 'rect' | 'stroke'
+	kind: 'rect' | 'stroke' | 'image'
 	first: number
 	count: number
 }
 
-/** What the layer draws in a frame: every rect instance and stroke vertex, and the runs to draw them in. */
+/** An image where it lands on the page: the shape's page transform and opacity with it. */
+export interface PlacedImage {
+	image: GpuImage
+	/** The shape's page transform [a b c d e f]. */
+	m: readonly [number, number, number, number, number, number]
+	opacity: number
+}
+
+/** What the layer draws in a frame: every rect instance, stroke vertex and image, and the runs to draw them in. */
 export interface GpuFrame {
 	rects: Float32Array
 	strokes: Float32Array
+	images: PlacedImage[]
 	runs: GpuRun[]
 }
 
-type Chunk = { kind: 'rect' | 'stroke'; data: Float32Array }
+type Chunk = { kind: 'rect' | 'stroke'; data: Float32Array } | { kind: 'image'; items: PlacedImage[] }
 
 /**
  * Shapes the GPU could draw on screen above which `auto` turns the GPU layer on, unless
@@ -73,16 +82,33 @@ export class GpuScene {
 	private readonly chunks: ComputedCache<Chunk[], TLShape>
 	/** Each shape's opacity, as the page applies it (its own, its ancestors', erasing). */
 	private readonly opacities: Computed<ReadonlyMap<TLShapeId, number>>
+	private readonly opacity: ComputedCache<number, TLShape>
 	/** The shapes in drawing order. (`getRenderingShapeList` is sorted by id, so page elements never move in the DOM, with each one's place in z-order as its `index`.) */
 	private readonly zOrder: Computed<ReturnType<Editor['getRenderingShapeList']>>
 	/** The GPU's shapes on screen, for `auto`. */
 	readonly onScreen: Computed<number>
+	/** Where a shape paints in page space: boxes along its strokes when it's only strokes, else its bounds. */
+	private readonly footprint: ComputedCache<Box[], TLShape>
+	/**
+	 * How far a curve's chords may stray from it, in page units: a sixth of a device pixel at the top of
+	 * the zoom's power of two, so zoomed out a line is a few chords, not the hundreds it needs close up
+	 * (thousands of lines cut for 400% ran the GPU out of memory at 10%). Crossing a power of two cuts
+	 * them again.
+	 */
+	private readonly tolerance: Computed<number>
+	/** Device pixels a unit at the top of the zoom's power of two: how big pictures could be rastered at it. */
+	private readonly pictureScale: Computed<number>
+	/** A page pixel's size in page units, rounded up to a power of two: what anti-aliasing adds round a footprint. */
+	private readonly pixel: Computed<number>
 	/** Shapes the GPU could draw that lie under an overlapping page-drawn one, so the page draws them. */
 	private readonly underPage: Computed<ReadonlySet<TLShapeId>>
 	/** Whether the layer should be in the page. */
 	readonly wanted: Computed<boolean>
 	/** Whether the layer draws its shapes (up, and not `idle`). */
 	private readonly active: Computed<boolean>
+	/** The last frame's rect and stroke arrays and the pieces they were joined from. */
+	private readonly lastRects: Joined = { parts: [], data: new Float32Array(0) }
+	private readonly lastStrokes: Joined = { parts: [], data: new Float32Array(0) }
 	/** Everything the layer draws, in drawing order, ready to upload. */
 	readonly frame: Computed<GpuFrame>
 
@@ -93,7 +119,10 @@ export class GpuScene {
 			if (!util.toGpu) return null
 			return util.toGpu(shape, { isDarkMode: editor.user.getIsDarkMode() })
 		})
+		this.pictureScale = computed('gpu picture scale', () => 2 ** Math.ceil(Math.log2(editor.getZoomLevel() * editor.getInstanceState().devicePixelRatio)))
 		this.opacities = computed('gpu opacities', () => new Map(editor.getRenderingShapeList().map((e) => [e.id, e.opacity])))
+		// One number per shape, so a shape's pieces are made again only when its own opacity changes.
+		this.opacity = editor.store.createComputedCache('gpu opacity', (shape: TLShape) => this.opacities.get().get(shape.id) ?? 1)
 		// What the GPU could draw, before the z-order rule: it has primitives and the page doesn't need it.
 		this.eligible = editor.store.createComputedCache('gpu eligible', (shape: TLShape) => {
 			const prims = this.primitives.get(shape.id)
@@ -104,7 +133,10 @@ export class GpuScene {
 			// each piece, so a halo would show through its line. One rect is the same either way; anything
 			// more is the page's while see-through.
 			const single = prims.length === 1 && prims[0]!.kind === 'rect'
-			if (!single && (this.opacities.get().get(shape.id) ?? 1) < 1) return false
+			if (!single && (this.opacity.get(shape.id) ?? 1) < 1) return false
+			// Its pictures too big for the atlas at this zoom (zoomed far in on few shapes): the page's.
+			const largest = prims.reduce((n, p) => (p.kind === 'image' ? Math.max(n, p.w, p.h) : n), 0)
+			if (largest * this.pictureScale.get() > PICTURE_LIMIT) return false
 			return true
 		})
 		this.zOrder = computed('gpu z order', () => [...editor.getRenderingShapeList()].sort((a, b) => a.index - b.index))
@@ -121,34 +153,90 @@ export class GpuScene {
 			return mode === 'auto' && this.autoOn.get()
 		})
 		this.active = computed('gpu active', () => this.wanted.get() && this.layerUp.get() && getRendererMode() !== 'idle')
+		this.footprint = editor.store.createComputedCache('gpu footprint', (shape: TLShape) => {
+			const b = editor.getShapePageBounds(shape.id)
+			if (!b) return []
+			const bounds = [{ x: b.x, y: b.y, maxX: b.maxX, maxY: b.maxY }]
+			const prims = this.primitives.get(shape.id)
+			if (!prims?.length || prims.some((p) => p.kind !== 'stroke')) return bounds
+			// A curved or bent line's bounds cover far more than it does: boxes along it instead.
+			const m = editor.getShapePageTransform(shape.id)
+			const scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1
+			const out: Box[] = []
+			for (const p of prims as GpuStroke[]) {
+				const reach = (p.width / 2 + (p.halo ? HALO_REACH : 0)) * scale
+				for (const { points } of flattenPath(p.d, 0.5)) {
+					if (!points.length) continue
+					// In page space, cut into pieces at most FOOTPRINT_STEP long, a box round each.
+					const page: number[] = []
+					for (let j = 0; j < points.length; j += 2) page.push(m.a * points[j]! + m.c * points[j + 1]! + m.e, m.b * points[j]! + m.d * points[j + 1]! + m.f)
+					let box = { x: page[0]!, y: page[1]!, maxX: page[0]!, maxY: page[1]! }
+					let run = 0
+					const add = (x: number, y: number) => {
+						box.x = Math.min(box.x, x)
+						box.y = Math.min(box.y, y)
+						box.maxX = Math.max(box.maxX, x)
+						box.maxY = Math.max(box.maxY, y)
+					}
+					const close = () => out.push({ x: box.x - reach, y: box.y - reach, maxX: box.maxX + reach, maxY: box.maxY + reach })
+					for (let j = 2; j + 1 < page.length; j += 2) {
+						const [x0, y0, x1, y1] = [page[j - 2]!, page[j - 1]!, page[j]!, page[j + 1]!]
+						const len = Math.hypot(x1 - x0, y1 - y0)
+						const cuts = Math.max(1, Math.ceil(len / FOOTPRINT_STEP))
+						for (let c = 1; c <= cuts; c++) {
+							const x = x0 + ((x1 - x0) * c) / cuts
+							const y = y0 + ((y1 - y0) * c) / cuts
+							add(x, y)
+							run += len / cuts
+							if (run >= FOOTPRINT_STEP) {
+								close()
+								box = { x, y, maxX: x, maxY: y }
+								run = 0
+							}
+						}
+					}
+					close()
+				}
+			}
+			return out.length ? out : bounds
+		})
+		this.tolerance = computed('gpu curve tolerance', () => {
+			const scale = editor.getZoomLevel() * editor.getInstanceState().devicePixelRatio
+			return 1 / 6 / 2 ** Math.ceil(Math.log2(scale))
+		})
+		this.pixel = computed('gpu pixel size', () => 2 ** Math.ceil(Math.log2(1 / editor.getZoomLevel())))
 		this.underPage = computed('gpu under page', () => {
 			if (!this.active.get()) return EMPTY
-			// From the top down: every shape the page draws marks the cells of its bounds; a shape the GPU
-			// could draw that lands on a marked cell (and really overlaps what's there) goes to the page too.
+			// From the top down: every shape the page draws marks the cells of its footprint; a shape the GPU
+			// could draw whose footprint lands on a marked cell (and really overlaps what's there) goes to the
+			// page too. Footprints grow by a pixel either side, for anti-aliasing.
+			const grow = this.pixel.get()
 			const out = new Set<TLShapeId>()
-			const cells = new Map<number, { x: number; y: number; maxX: number; maxY: number }[]>()
-			const keys = (b: { x: number; y: number; maxX: number; maxY: number }) => {
+			const cells = new Map<number, Box[]>()
+			const keys = (b: Box) => {
 				const k: number[] = []
 				for (let gx = Math.floor(b.x / CELL); gx <= Math.floor(b.maxX / CELL); gx++)
 					for (let gy = Math.floor(b.y / CELL); gy <= Math.floor(b.maxY / CELL); gy++) k.push(gx * 73856093 + gy)
 				return k
 			}
+			const hits = (box: Box) => keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
 			const order = this.zOrder.get()
+			// A culled shape is off screen, and so is wherever it overlaps another: nothing to keep in order.
+			const culled = editor.getCulledShapeIds()
 			for (let i = order.length - 1; i >= 0; i--) {
 				const { id } = order[i]!
-				const b = editor.getShapePageBounds(id)
-				if (!b) continue
-				const box = { x: b.x, y: b.y, maxX: b.maxX, maxY: b.maxY }
-				let page = !this.eligible.get(id)
-				if (!page)
-					page = keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
-				if (!page) continue
-				if (this.eligible.get(id)) out.add(id)
-				for (const k of keys(box)) {
-					const list = cells.get(k)
-					if (list) list.push(box)
-					else cells.set(k, [box])
-				}
+				if (culled.has(id)) continue
+				const boxes = (this.footprint.get(id) ?? []).map((b) => ({ x: b.x - grow, y: b.y - grow, maxX: b.maxX + grow, maxY: b.maxY + grow }))
+				if (!boxes.length) continue
+				const eligible = this.eligible.get(id)
+				if (eligible && !boxes.some(hits)) continue
+				if (eligible) out.add(id)
+				for (const box of boxes)
+					for (const k of keys(box)) {
+						const list = cells.get(k)
+						if (list) list.push(box)
+						else cells.set(k, [box])
+					}
 			}
 			return out
 		})
@@ -160,7 +248,7 @@ export class GpuScene {
 			const out: Float32Array[] = []
 			for (const p of this.primitives.get(shape.id) ?? []) {
 				if (p.kind !== 'stroke') continue
-				let lines = flattenPath(p.d)
+				let lines = flattenPath(p.d, this.tolerance.get())
 				if (p.dash) lines = dashPolylines(lines, p.dash.array, p.dash.offset)
 				out.push(new Float32Array(strokeTriangles(lines)))
 			}
@@ -169,22 +257,30 @@ export class GpuScene {
 		this.chunks = editor.store.createComputedCache('gpu chunks', (shape: TLShape) => {
 			const prims = this.primitives.get(shape.id) ?? []
 			const m = editor.getShapePageTransform(shape.id)
-			const opacity = this.opacities.get().get(shape.id) ?? 1
+			const opacity = this.opacity.get(shape.id) ?? 1
 			// The transform's scale, for widths; offsets keep their length of 1 at the edge.
 			const scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1
 			const geometry = this.strokeGeometry.get(shape.id) ?? []
 			const out: Chunk[] = []
-			const push = (kind: Chunk['kind'], data: Float32Array) => {
+			const push = (kind: 'rect' | 'stroke', data: Float32Array) => {
 				const last = out[out.length - 1]
-				if (last?.kind === kind) {
+				if (last && last.kind === kind) {
 					const merged = new Float32Array(last.data.length + data.length)
 					merged.set(last.data)
 					merged.set(data, last.data.length)
 					last.data = merged
 				} else out.push({ kind, data })
 			}
+			const at = [m.a, m.b, m.c, m.d, m.e, m.f] as const
 			let g = 0
 			for (const p of prims) {
+				if (p.kind === 'image') {
+					const placed: PlacedImage = { image: p, m: at, opacity: opacity * (p.opacity ?? 1) }
+					const last = out[out.length - 1]
+					if (last && last.kind === 'image') last.items.push(placed)
+					else out.push({ kind: 'image', items: [placed] })
+					continue
+				}
 				if (p.kind === 'rect') {
 					const fill = p.fill ?? TRANSPARENT
 					const stroke = p.stroke ?? TRANSPARENT
@@ -194,6 +290,7 @@ export class GpuScene {
 				const tris = geometry[g++]
 				if (!tris?.length) continue
 				const verts = tris.length / STROKE_VERTEX_FLOATS
+				const sampled = SAMPLED_CURVES && /[QqCcAaSsTt]/.test(p.d)
 				const data = new Float32Array(verts * STROKE_FLOATS)
 				const hw = (p.width / 2) * scale
 				const [r, gr, b, a] = p.color
@@ -211,7 +308,8 @@ export class GpuScene {
 					data[o + 6] = gr
 					data[o + 7] = b
 					data[o + 8] = a
-					data[o + 9] = p.halo ? 1 : 0
+					// 1: the halo. 2: a curve, which Chromium multisamples (see GpuRenderer).
+					data[o + 9] = (p.halo ? 1 : 0) + (sampled ? 2 : 0)
 					data[o + 10] = opacity
 				}
 				push('stroke', data)
@@ -219,7 +317,7 @@ export class GpuScene {
 			return out
 		})
 		this.frame = computed('gpu frame', () => {
-			if (!this.active.get()) return { rects: new Float32Array(0), strokes: new Float32Array(0), runs: [] }
+			if (!this.active.get()) return { rects: new Float32Array(0), strokes: new Float32Array(0), images: [], runs: [] }
 			const parts: Chunk[] = []
 			let rectFloats = 0
 			let strokeFloats = 0
@@ -228,30 +326,41 @@ export class GpuScene {
 				for (const chunk of this.chunks.get(id) ?? []) {
 					parts.push(chunk)
 					if (chunk.kind === 'rect') rectFloats += chunk.data.length
-					else strokeFloats += chunk.data.length
+					else if (chunk.kind === 'stroke') strokeFloats += chunk.data.length
 				}
 			}
-			const rects = new Float32Array(rectFloats)
-			const strokes = new Float32Array(strokeFloats)
+			const rectParts: Float32Array[] = []
+			const strokeParts: Float32Array[] = []
+			for (const part of parts) {
+				if (part.kind === 'rect') rectParts.push(part.data)
+				else if (part.kind === 'stroke') strokeParts.push(part.data)
+			}
+			// The same pieces as last time, the same array: the renderer uploads only what's new, and a node's
+			// picture arriving doesn't send every line again.
+			const rects = joined(this.lastRects, rectParts, rectFloats)
+			const strokes = joined(this.lastStrokes, strokeParts, strokeFloats)
+			const images: PlacedImage[] = []
 			const runs: GpuRun[] = []
 			let ro = 0
 			let so = 0
+			const run = (kind: GpuRun['kind'], first: number, count: number) => {
+				const last = runs[runs.length - 1]
+				if (last?.kind === kind && last.first + last.count === first) last.count += count
+				else runs.push({ kind, first, count })
+			}
 			for (const part of parts) {
-				const per = part.kind === 'rect' ? RECT_FLOATS : STROKE_FLOATS
-				const first = (part.kind === 'rect' ? ro : so) / per
-				const count = part.data.length / per
-				if (part.kind === 'rect') {
-					rects.set(part.data, ro)
+				if (part.kind === 'image') {
+					run('image', images.length, part.items.length)
+					images.push(...part.items)
+				} else if (part.kind === 'rect') {
+					run('rect', ro / RECT_FLOATS, part.data.length / RECT_FLOATS)
 					ro += part.data.length
 				} else {
-					strokes.set(part.data, so)
+					run('stroke', so / STROKE_FLOATS, part.data.length / STROKE_FLOATS)
 					so += part.data.length
 				}
-				const last = runs[runs.length - 1]
-				if (last?.kind === part.kind && last.first + last.count === first) last.count += count
-				else runs.push({ kind: part.kind, first, count })
 			}
-			return { rects, strokes, runs }
+			return { rects, strokes, images, runs }
 		})
 
 		// `auto`: on above the budget, off below `BUDGET_OFF` of it. Only while `auto` is asked for and
@@ -296,6 +405,32 @@ const TRANSPARENT = [0, 0, 0, 0] as const
 const EMPTY: ReadonlySet<TLShapeId> = new Set()
 /** The z-order rule's grid, in page units. */
 const CELL = 512
+/**
+ * Device pixels across that a shape's pictures may be: past it, a few of them (a node's glow and ring
+ * at 400% on a retina screen) no longer fit in the atlas together.
+ */
+const PICTURE_LIMIT = 1024
+/** How much of a stroke's length each box of its footprint covers, in page units. */
+const FOOTPRINT_STEP = 64
+/** How far an arrow's halo reaches past its line, at most (`--tl-arrow-halo`, in page units). */
+const HALO_REACH = 1.5
+
+type Box = { x: number; y: number; maxX: number; maxY: number }
+
+type Joined = { parts: Float32Array[]; data: Float32Array }
+/** `parts` end to end, or the last array joined if it was joined from the very same pieces. */
+function joined(last: Joined, parts: Float32Array[], floats: number): Float32Array {
+	if (parts.length === last.parts.length && parts.every((p, i) => p === last.parts[i])) return last.data
+	const data = new Float32Array(floats)
+	let at = 0
+	for (const p of parts) {
+		data.set(p, at)
+		at += p.length
+	}
+	last.parts = parts
+	last.data = data
+	return data
+}
 
 function readBudget(): number {
 	try {
@@ -315,6 +450,15 @@ const IS_WEBKIT = typeof navigator !== 'undefined' && /AppleWebKit/.test(navigat
  * Risks): at 1 it snaps bordered boxes to whole pixels at 100% by a rule not yet reproduced. (Playwright's
  * WebKit also crashes with a WebGL canvas under a large board; real Safari doesn't, checked by hand.)
  */
+/**
+ * Chromium rasterises a curved path's stroke multisampled (four samples a pixel) and a straight one
+ * analytically: a hairline curve covers a sample or none, and curves laid exactly over each other
+ * cover the same samples, so they come out as one line, where straight ones add up. Measured on its
+ * GPU rasteriser (docs/gpu-renderer-plan.md, phase 4). WebKit draws pages with CoreGraphics, which
+ * doesn't.
+ */
+export const SAMPLED_CURVES = !IS_WEBKIT
+
 export function gpuLayerSupported(editor: Editor): boolean {
 	return !IS_WEBKIT || editor.getDevicePixelRatio() >= 2
 }

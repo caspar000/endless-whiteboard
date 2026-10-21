@@ -1,4 +1,4 @@
-import { BaseBoxShapeUtil, T, createShapeId, getGpuScene, gpuColor, setRendererMode, type GpuPrimitive, type RecordProps, type TLBaseShape } from '@lifeboard/canvas-editor'
+import { BaseBoxShapeUtil, T, createShapeId, getGpuScene, gpuColor, readGpuColor, setRendererMode, type GpuPrimitive, type RecordProps, type TLBaseShape, type TLLineShape } from '@lifeboard/canvas-editor'
 import { TestEditor } from './TestEditor'
 
 // The GPU scene (docs/gpu-renderer-plan.md, phase 1): which shapes the GPU layer draws, and their
@@ -166,5 +166,29 @@ describe('the GPU scene, switching', () => {
 		editor.sendToBack([lower])
 		expect(scene.isDrawn(lower)).toBe(false)
 	})
+	it('goes by where a line runs, not its bounds: a page shape inside the bend of an L leaves it to the GPU', () => {
+		setRendererMode('gpu')
+		up()
+		// Along y = 150 and then down x = 300: its bounds take in the geo shape at (0, 200)–(100, 300), its line doesn't.
+		const ell = createShapeId('ell')
+		const pt = (id: string, index: string, x: number, y: number) => ({ id, index: index as never, x, y })
+		editor.createShapes<TLLineShape>([{ id: ell, type: 'line', x: 0, y: 0, props: { dash: 'solid', points: { a1: pt('a1', 'a1', -200, 150), a2: pt('a2', 'a2', 300, 150), a3: pt('a3', 'a3', 300, 400) } } }])
+		editor.sendToBack([ell])
+		const scene = getGpuScene(editor)
+		expect(scene.isDrawn(ell)).toBe(true)
+		// Moved so its line runs through the geo shape, under it: the page's.
+		editor.updateShape<TLLineShape>({ id: ell, type: 'line', y: 100 })
+		expect(scene.isDrawn(ell)).toBe(false)
+	})
 })
 
+describe('reading computed colours', () => {
+	it('reads what getComputedStyle gives, and says when it cannot', () => {
+		expect(readGpuColor('rgb(255, 0, 0)')).toEqual([1, 0, 0, 1])
+		expect(readGpuColor('rgba(0, 0, 255, 0.5)')).toEqual([0, 0, 1, 0.5])
+		expect(readGpuColor('color(srgb 1 0.5 0 / 0.25)')).toEqual([1, 0.5, 0, 0.25])
+		expect(readGpuColor('transparent')).toEqual([0, 0, 0, 0])
+		expect(readGpuColor('#ff000080')![3]).toBeCloseTo(0.5, 2)
+		expect(readGpuColor('oklch(0.7 0.1 200)')).toBeNull()
+	})
+})

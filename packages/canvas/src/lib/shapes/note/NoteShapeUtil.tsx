@@ -20,6 +20,8 @@ import {
 	noteShapeMigrations,
 	noteShapeProps,
 	toDomPrecision,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
 import { resizeScaled } from '../shared/resizeScaled'
@@ -154,6 +156,11 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 				)}
 			</>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4c). */
+	override toGpu(shape: S): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: S) {

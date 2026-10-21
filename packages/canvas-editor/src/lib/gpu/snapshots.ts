@@ -31,7 +31,7 @@ class Unsupported extends Error {}
 export class GpuSnapshots {
 	private readonly atoms = new Map<TLShapeId, Atom<Snapshot>>()
 	/** The props and meta each snapshot was read for: others (a resize, new text) mean reading again. Moving it doesn't. */
-	private readonly readFor = new Map<TLShapeId, Pick<TLShape, 'props' | 'meta'>>()
+	private readonly readFor = new Map<TLShapeId, { props: unknown; meta: unknown }>()
 	private readonly queue = new Set<TLShapeId>()
 	/** Shapes whose text has the outline that `--tl-zoom` sizes: read again when it changes. */
 	private readonly outlined = new Set<TLShapeId>()
@@ -107,7 +107,7 @@ export class GpuSnapshots {
 	 * been for these props, and until then it's the page's. Turned or scaled, it's the page's: the
 	 * pictures are drawn upright, at the shape's own size.
 	 */
-	get(shape: TLShape): Snapshot {
+	get(shape: { id: TLShapeId; props: unknown; meta: unknown }): Snapshot {
 		let a = this.atoms.get(shape.id)
 		if (!a) {
 			this.atoms.set(shape.id, (a = atom(`gpu snapshot ${shape.id}`, undefined as Snapshot)))
@@ -117,7 +117,7 @@ export class GpuSnapshots {
 		const m = this.editor.getShapePageTransform(shape.id)
 		if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) return null
 		const was = this.readFor.get(shape.id)
-		if (was?.props !== shape.props || was.meta !== shape.meta) {
+		if (!was || was.props !== shape.props || was.meta !== shape.meta) {
 			this.enqueue(shape.id)
 			return undefined
 		}
@@ -235,7 +235,7 @@ interface Reader {
 	/** The canvas hides the shape's container itself while the GPU draws it: not the element's own `visibility`. */
 	hiddenByCanvas: boolean
 	/** What an `overflow` other than visible cuts to, in the shape's units: anything reaching past it is the page's. */
-	clip: Box | null
+	clip: Clip | null
 	/** Its text has tldraw's outline, whose width follows `--tl-zoom` past 200%. */
 	outlined: boolean
 	/** What has to arrive (an SVG decoded, a pattern's tile inlined) before what was read can be drawn. */
@@ -244,9 +244,34 @@ interface Reader {
 
 type Box = { x: number; y: number; w: number; h: number }
 
+/** An `overflow` cut: its box and its corners. */
+type Clip = Box & { rx: number; ry: number }
+
 function inside(r: Reader, b: Box) {
 	const c = r.clip
-	if (c && (b.x < c.x - 0.5 || b.y < c.y - 0.5 || b.x + b.w > c.x + c.w + 0.5 || b.y + b.h > c.y + c.h + 0.5)) throw new Unsupported('cut by overflow')
+	if (!c) return
+	if (b.x < c.x - 0.5 || b.y < c.y - 0.5 || b.x + b.w > c.x + c.w + 0.5 || b.y + b.h > c.y + c.h + 0.5) throw new Unsupported('cut by overflow')
+	// Rounded, the cut takes the corners off: a piece reaching into one would lose them on the page.
+	if (c.rx > 0 && c.ry > 0) {
+		const inX = (x0: number, x1: number) => b.x < x1 && b.x + b.w > x0
+		const inY = (y0: number, y1: number) => b.y < y1 && b.y + b.h > y0
+		const left = inX(c.x, c.x + c.rx)
+		const right = inX(c.x + c.w - c.rx, c.x + c.w)
+		const top = inY(c.y, c.y + c.ry)
+		const bottom = inY(c.y + c.h - c.ry, c.y + c.h)
+		if ((left || right) && (top || bottom)) throw new Unsupported('cut by rounded corners')
+	}
+}
+
+/** The corners an element rounds its overflow to, in the shape's units (one radius, or the ellipse of a percentage). */
+function clipCorners(cs: CSSStyleDeclaration, b: Box): { rx: number; ry: number } {
+	const radii = ['top-left', 'top-right', 'bottom-right', 'bottom-left'].map((c) => cs.getPropertyValue(`border-${c}-radius`))
+	if (radii.every((x) => !parseFloat(x))) return { rx: 0, ry: 0 }
+	if (radii.some((x) => x !== radii[0]) || radii[0]!.includes(' ')) throw new Unsupported('clip corners')
+	const raw = radii[0]!
+	if (raw.endsWith('%')) return { rx: (b.w * parseFloat(raw)) / 100, ry: (b.h * parseFloat(raw)) / 100 }
+	const n = Math.min(parseFloat(raw), b.w / 2, b.h / 2)
+	return { rx: n, ry: n }
 }
 
 function readElement(editor: Editor, shape: TLShape, container: HTMLElement): Pick<Reader, 'out' | 'outlined' | 'pending'> {
@@ -279,11 +304,15 @@ function visit(r: Reader, el: Element, opacity: number) {
 	if (cs.visibility === 'hidden' && !r.hiddenByCanvas) return
 	const o = opacity * Number(cs.opacity)
 	if (o <= 0) return
-	if (cs.filter !== 'none' || cs.backdropFilter !== 'none' || cs.mixBlendMode !== 'normal' || cs.clipPath !== 'none' || (cs.maskImage ?? 'none') !== 'none') throw new Unsupported('effect')
+	// A path cut (a note's crease) is drawn, on an element with nothing in it; any other cut isn't.
+	const leafPath = cs.clipPath.startsWith('path(') && !el.childNodes.length
+	if (cs.filter !== 'none' || cs.backdropFilter !== 'none' || cs.mixBlendMode !== 'normal' || (cs.clipPath !== 'none' && !leafPath) || (cs.maskImage ?? 'none') !== 'none') throw new Unsupported('effect')
 	if (el instanceof SVGSVGElement) return svgPicture(r, el, o)
 	if (el instanceof SVGElement) throw new Unsupported('loose svg')
-	if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el instanceof HTMLIFrameElement) throw new Unsupported('picture')
-	if (cs.transform !== 'none' && cs.transform !== 'matrix(1, 0, 0, 1, 0, 0)') throw new Unsupported('transform')
+	if (el instanceof HTMLImageElement) return imagePicture(r, el, cs, o)
+	if (el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el instanceof HTMLIFrameElement) throw new Unsupported('picture')
+	// Moved, not turned or scaled (a cropped image's container): where it lands is read from its box.
+	if (cs.transform !== 'none' && !/^matrix\(1, 0, 0, 1, -?[\d.e-]+, -?[\d.e-]+\)$/.test(cs.transform)) throw new Unsupported('transform')
 	// What CSS generates (a list's bullet, `content`) has no node to read.
 	if (cs.display === 'list-item' && cs.listStyleType !== 'none') throw new Unsupported('list marker')
 	for (const pseudo of ['::before', '::after'] as const) {
@@ -293,7 +322,10 @@ function visit(r: Reader, el: Element, opacity: number) {
 	const first = r.out.length
 	box(r, el as HTMLElement, cs, o)
 	const outer = r.clip
-	if (cs.overflow !== 'visible') r.clip = local(r, el.getBoundingClientRect())
+	if (cs.overflow !== 'visible') {
+		const at = snapped(local(r, el.getBoundingClientRect()))
+		r.clip = { ...at, ...clipCorners(cs, at) }
+	}
 	const positioned: { el: Element; z: number }[] = []
 	for (const node of Array.from(el.childNodes)) {
 		if (node.nodeType === Node.TEXT_NODE) {
@@ -378,16 +410,25 @@ function splitTop(list: string): string[] {
 	return out
 }
 
+type Radius = number | { x: number; y: number }
+
 function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	let fill = color(cs.backgroundColor)
+	// A gradient that isn't flat: drawn as a picture, by a canvas gradient. Flat tints, `linear-gradient(c, c)`,
+	// are laid over each other and over the background colour.
+	let gradient: { at: number; color: string }[] | null = null
 	if (cs.backgroundImage !== 'none') {
-		// Only flat tints, `linear-gradient(c, c)`, each laid over the next and all over the background colour.
 		const layers = splitTop(cs.backgroundImage).filter((x) => x !== 'none')
 		for (const layer of layers.reverse()) {
 			const inner = layer.match(/^linear-gradient\((.+)\)$/)?.[1]
 			const stops = inner && splitTop(inner)
-			if (!stops || stops.length !== 2 || stops[0] !== stops[1]) throw new Unsupported('background image')
-			fill = over(color(stops[0]!), fill)
+			if (!stops) throw new Unsupported('background image')
+			if (stops.length === 2 && stops[0] === stops[1]) {
+				fill = over(color(stops[0]!), fill)
+				continue
+			}
+			if (gradient || layers.length > 1) throw new Unsupported('background image')
+			gradient = verticalStops(stops)
 		}
 	}
 	const sides = ['Top', 'Right', 'Bottom', 'Left'] as const
@@ -399,26 +440,82 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	const style = styles[0]
 	if (hasBorder && (widths.some((w) => w !== bw) || styles.some((s) => s !== style) || (style !== 'solid' && style !== 'dashed') || colors.some((c) => c !== colors[0]))) throw new Unsupported('border')
 	const stroke = hasBorder ? color(colors[0]!) : TRANSPARENT
-	if (fill[3] <= 0 && stroke[3] <= 0 && cs.boxShadow === 'none') return
+	if (fill[3] <= 0 && stroke[3] <= 0 && !gradient && cs.boxShadow === 'none') return
 	// Laid out at fractions of a pixel, painted snapped; the corners are the layout's, as big as the painted box allows.
 	const laid = local(r, el.getBoundingClientRect())
 	const b = snapped(laid)
 	const radii = ['top-left', 'top-right', 'bottom-right', 'bottom-left'].map((c) => cs.getPropertyValue(`border-${c}-radius`))
 	if (radii.some((x) => x !== radii[0])) throw new Unsupported('corners')
 	const raw = radii[0]!
-	let radius = 0
+	let radius: Radius = 0
+	const paints = fill[3] > 0 || hasBorder || !!gradient
 	if (raw.endsWith('%')) {
-		// A percentage rounds into an ellipse unless the box is square.
-		if (Math.abs(laid.w - laid.h) > 0.01) throw new Unsupported('elliptical corners')
-		radius = (laid.w * parseFloat(raw)) / 100
+		const share = parseFloat(raw) / 100
+		// A percentage rounds into an ellipse unless the box is square: drawn only when nothing but the
+		// box's shadow is (a note's shadow is an ellipse's).
+		if (Math.abs(laid.w - laid.h) > 0.01) {
+			if (paints) throw new Unsupported('elliptical corners')
+			radius = { x: Math.min(laid.w * share, b.w / 2), y: Math.min(laid.h * share, b.h / 2) }
+		} else radius = Math.min(laid.w * share, b.w / 2, b.h / 2)
 	} else if (raw.includes(' ')) throw new Unsupported('elliptical corners')
-	else radius = parseFloat(raw) || 0
-	radius = Math.min(radius, b.w / 2, b.h / 2)
+	else radius = Math.min(parseFloat(raw) || 0, b.w / 2, b.h / 2)
 	inside(r, b)
-	if (cs.boxShadow !== 'none') shadow(r, cs.boxShadow, b, radius, o)
+	if (cs.boxShadow !== 'none') for (const one of splitTop(cs.boxShadow).reverse()) shadow(r, one, b, radius, o)
+	const cut = cs.clipPath.startsWith('path(') ? cs.clipPath.match(/^path\((?:[a-z-]+, )?"([^"]+)"\)$/)?.[1] : undefined
+	if (cs.clipPath.startsWith('path(') && !cut) throw new Unsupported('clip path')
+	if (gradient || cut) {
+		if (hasBorder) throw new Unsupported('border on a picture')
+		paintedBox(r, b, typeof radius === 'number' ? radius : 0, fill, gradient, cut, o)
+		return
+	}
+	const corner = radius as number
 	const solid = hasBorder && style === 'solid'
-	if (fill[3] > 0 || solid) r.out.push({ kind: 'rect', x: b.x, y: b.y, w: b.w, h: b.h, radius, fill: withAlpha(fill, o), stroke: solid ? withAlpha(stroke, o) : undefined, strokeWidth: solid ? bw : 0 })
-	if (hasBorder && style === 'dashed' && stroke[3] > 0) dashedBorder(r, b, radius, bw, colors[0]!, o)
+	if (fill[3] > 0 || solid) r.out.push({ kind: 'rect', x: b.x, y: b.y, w: b.w, h: b.h, radius: corner, fill: withAlpha(fill, o), stroke: solid ? withAlpha(stroke, o) : undefined, strokeWidth: solid ? bw : 0 })
+	if (hasBorder && style === 'dashed' && stroke[3] > 0) dashedBorder(r, b, corner, bw, colors[0]!, o)
+}
+
+/** A gradient's stops, top to bottom (`linear-gradient(c1, c2…)`, `to bottom` or `180deg`), each at its share of the height. */
+function verticalStops(parts: string[]): { at: number; color: string }[] {
+	let list = parts
+	if (/^(to bottom|180deg)$/.test(list[0]!)) list = list.slice(1)
+	else if (!/^(rgba?|color)\(/.test(list[0]!)) throw new Unsupported('gradient direction')
+	const stops = list.map((part, i) => {
+		const m = part.match(/^((?:rgba?|color)\([^)]*\))(?: (-?[\d.]+)%)?$/)
+		if (!m) throw new Unsupported('gradient stop')
+		color(m[1]!)
+		return { at: m[2] !== undefined ? Number(m[2]) / 100 : i / (list.length - 1), color: m[1]! }
+	})
+	if (stops.length < 2) throw new Unsupported('gradient stop')
+	return stops
+}
+
+/** A box painted as a picture: its colour or gradient, cut to its corners or its clip path. */
+function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient: { at: number; color: string }[] | null, cut: string | undefined, o: number) {
+	const css = (c: GpuColor) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${c[3]})`
+	r.out.push({
+		kind: 'image',
+		x: b.x,
+		y: b.y,
+		w: b.w,
+		h: b.h,
+		key: `box|${b.w}|${b.h}|${radius}|${fill.join(',')}|${JSON.stringify(gradient)}|${cut ?? ''}`,
+		opacity: o,
+		draw: (ctx) => {
+			if (cut) ctx.clip(new Path2D(cut))
+			ctx.beginPath()
+			ctx.roundRect(0, 0, b.w, b.h, radius)
+			if (fill[3] > 0) {
+				ctx.fillStyle = css(fill)
+				ctx.fill()
+			}
+			if (gradient) {
+				const g = ctx.createLinearGradient(0, 0, 0, b.h)
+				for (const stop of gradient) g.addColorStop(Math.max(0, Math.min(1, stop.at)), stop.color)
+				ctx.fillStyle = g
+				ctx.fill()
+			}
+		},
+	})
 }
 
 /**
@@ -498,7 +595,7 @@ function quarterLength(radius: number): number {
  * whose `shadowBlur` blurs as CSS does (a Gaussian of half the blur radius), and only outside the box,
  * as the page paints it.
  */
-function shadow(r: Reader, css: string, b: Box, radius: number, o: number) {
+function shadow(r: Reader, css: string, b: Box, radius: Radius, o: number) {
 	// Computed: `<colour> <x> <y> <blur> <spread>`, the colour first.
 	const m = css.match(/^((?:rgba?|color)\([^)]*\)) (-?[\d.]+)px (-?[\d.]+)px ([\d.]+)px (-?[\d.]+)px$/)
 	if (!m) throw new Unsupported('shadow')
@@ -521,7 +618,7 @@ function shadow(r: Reader, css: string, b: Box, radius: number, o: number) {
 		y,
 		w,
 		h,
-		key: `shadow|${b.w}|${b.h}|${radius}|${css}`,
+		key: `shadow|${b.w}|${b.h}|${JSON.stringify(radius)}|${css}`,
 		opacity: o,
 		draw: (ctx) => {
 			const s = ctx.getTransform().a
@@ -537,7 +634,8 @@ function shadow(r: Reader, css: string, b: Box, radius: number, o: number) {
 			ctx.shadowOffsetY = dy * s
 			ctx.fillStyle = '#000'
 			ctx.beginPath()
-			ctx.roundRect(bx - spread - far, by - spread, b.w + spread * 2, b.h + spread * 2, Math.max(0, radius + spread))
+			const grown = typeof radius === 'number' ? Math.max(0, radius + spread) : { x: Math.max(0, radius.x + spread), y: Math.max(0, radius.y + spread) }
+			ctx.roundRect(bx - spread - far, by - spread, b.w + spread * 2, b.h + spread * 2, grown)
 			ctx.fill()
 			ctx.restore()
 		},
@@ -707,6 +805,71 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 		tight.set(picture, { x: left, y: line.top, w: right - left, h: line.bottom - line.top })
 		r.out.push(picture)
 	}
+}
+
+/**
+ * An image as a picture, drawn by the canvas from the decoded element itself, where the page shows it:
+ * its box snapped (a replaced element's), `object-fit`, a flip (`scale(±1, ±1)`), and cut to what its
+ * shape's overflow leaves, rounded corners and all (a cropped or round image). An animated one, or
+ * one that hasn't loaded, is the page's.
+ */
+function imagePicture(r: Reader, img: HTMLImageElement, cs: CSSStyleDeclaration, o: number) {
+	if (!img.complete) {
+		r.pending.push(img.decode().catch(() => undefined))
+		return
+	}
+	if (!img.naturalWidth || !img.naturalHeight) throw new Unsupported('image not loaded')
+	if (/\.gif(\?|$)|^data:image\/gif/i.test(img.currentSrc || img.src)) throw new Unsupported('animated image')
+	const fit = cs.objectFit
+	if (fit !== 'fill' && fit !== 'cover' && fit !== 'contain') throw new Unsupported('object-fit')
+	if (cs.objectPosition !== '50% 50%') throw new Unsupported('object-position')
+	const flip = cs.transform === 'none' ? [1, 1] : cs.transform.match(/^matrix\((-?1), 0, 0, (-?1), 0, 0\)$/)?.slice(1).map(Number)
+	if (!flip) throw new Unsupported('image transform')
+	const b = snapped(local(r, img.getBoundingClientRect()))
+	if (b.w <= 0 || b.h <= 0) return
+	const c = r.clip
+	const view = c ? { x: Math.max(b.x, c.x), y: Math.max(b.y, c.y), maxX: Math.min(b.x + b.w, c.x + c.w), maxY: Math.min(b.y + b.h, c.y + c.h) } : { x: b.x, y: b.y, maxX: b.x + b.w, maxY: b.y + b.h }
+	if (view.maxX <= view.x || view.maxY <= view.y) return
+	// The part of the image `object-fit` shows, in its own pixels.
+	const iw = img.naturalWidth
+	const ih = img.naturalHeight
+	let src = { x: 0, y: 0, w: iw, h: ih }
+	let dst = { x: 0, y: 0, w: b.w, h: b.h }
+	if (fit === 'cover') {
+		const k = Math.max(b.w / iw, b.h / ih)
+		src = { w: b.w / k, h: b.h / k, x: (iw - b.w / k) / 2, y: (ih - b.h / k) / 2 }
+	} else if (fit === 'contain') {
+		const k = Math.min(b.w / iw, b.h / ih)
+		dst = { w: iw * k, h: ih * k, x: (b.w - iw * k) / 2, y: (b.h - ih * k) / 2 }
+	}
+	const x = view.x
+	const y = view.y
+	const url = img.currentSrc || img.src
+	r.out.push({
+		kind: 'image',
+		x,
+		y,
+		w: view.maxX - view.x,
+		h: view.maxY - view.y,
+		key: `img|${hash(url)}|${url.length}|${JSON.stringify([b, c, flip, fit])}`,
+		opacity: o,
+		draw: (ctx) => {
+			// Cut to the part shown, and to the cut's corners: two clips, which meet.
+			ctx.beginPath()
+			ctx.rect(0, 0, view.maxX - view.x, view.maxY - view.y)
+			ctx.clip()
+			if (c && (c.rx > 0 || c.ry > 0)) {
+				ctx.beginPath()
+				ctx.roundRect(c.x - x, c.y - y, c.w, c.h, { x: c.rx, y: c.ry })
+				ctx.clip()
+			}
+			ctx.translate(b.x - x + b.w / 2, b.y - y + b.h / 2)
+			ctx.scale(flip[0]!, flip[1]!)
+			ctx.translate(-b.w / 2, -b.h / 2)
+			ctx.imageSmoothingQuality = 'high'
+			ctx.drawImage(img, src.x, src.y, src.w, src.h, dst.x, dst.y, dst.w, dst.h)
+		},
+	})
 }
 
 // ---- SVG as pictures

@@ -472,6 +472,33 @@ Parity: 19 of 20 (the miss above); the suite: 222 passed.
 - Parity 19/20 (the dotted dark arrow); one run's dark view at 200% failed on Chromium drawing a label
   in garbage glyphs on the page itself, and passed again. Suite 224 passed.
 
+#### Phase 4c, as built (2026-10-21): notes, frames, images
+
+The same reader again (`toGpu` on `NoteShapeUtil`, `FrameShapeUtil`, `ImageShapeUtil`), taught what
+these draw with:
+
+- **Notes:** the soft shadow is a `box-shadow` on an ellipse (`border-radius: 50%` on a box that isn't
+  square), drawn when the box itself paints nothing; several shadows on one box, last first, as CSS
+  paints them; the crease is a picture of its `clip-path: path(…)` filled with a canvas gradient
+  (vertical `linear-gradient`s, any stops). A note drawn at another scale (`transform: scale`) stays the
+  page's.
+- **Images:** a picture the canvas draws from the decoded `<img>` itself: its box snapped,
+  `object-fit` (`fill`, `cover`, `contain`, centred), a flip, and cut to what the shape's overflow
+  leaves, its rounded corners or a round crop's ellipse included. A cropped image's container is moved
+  by a `translate`, which the reader now allows (a translation only; where things land is read from
+  their boxes). Not yet loaded, the read waits; an animated GIF stays the page's.
+- A rounded overflow cut now takes the corners off: anything but an image reaching into one leaves the
+  shape to the page.
+- **Frames:** an empty frame with no name is the GPU's. A frame's heading is scaled by `1 / zoom` to
+  keep its size on screen (`scale(var(--tl-scale))`), which a picture can't follow, so a named frame
+  stays the page's; so does one with shapes in it, which are clipped (the page's) and lie over it.
+
+Numbers (page / GPU, mean ms): 10,000-shape board (its 247 notes now the GPU's) pan at fit 33 / 23.2,
+25% 8.8 / 8.9, 50% 8.4 / 8.7, 100% 8.4 / 8.5; four-tree board pan at fit 21.3 / 10.9, 25% 12.6 /
+10.4, 100% 8.3 / 8.5. Two runs in a row while the machine was busy came out far slower on the GPU
+(14–16 ms at 25%) and didn't repeat in four runs after, alone or after the page: a benchmark worth
+running twice before believing. Parity 19/20 (the dotted dark arrow); suite 224 passed.
+
 ### Phase 5: rich nodes as cached pictures. L
 
 Markdown notes, items, tables, rollups, books, quotes, dice cards, habits, tracks, up next, embeds,

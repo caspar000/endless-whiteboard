@@ -24,6 +24,8 @@ import {
 	resizeBox,
 	toDomPrecision,
 	useValue,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import classNames from 'classnames'
 import { useDefaultColorTheme } from '../shared/ShapeFill'
@@ -148,6 +150,14 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 				)}
 			</>
 		)
+	}
+
+	/**
+	 * Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4c). A frame
+	 * with shapes in it stays the page's: they're clipped (so the page's) and lie over it.
+	 */
+	override toGpu(shape: TLFrameShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	override toSvg(shape: TLFrameShape): SVGElement | Promise<SVGElement> {

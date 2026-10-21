@@ -12,6 +12,8 @@ import {
 	toDomPrecision,
 	useIsCropping,
 	useValue,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
@@ -177,6 +179,11 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 				</HTMLContainer>
 			</>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4c). */
+	override toGpu(shape: TLImageShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLImageShape) {

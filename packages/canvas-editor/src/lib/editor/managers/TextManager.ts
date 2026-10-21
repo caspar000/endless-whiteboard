@@ -40,12 +40,23 @@ const spaceCharacterRegex = /\s/
 export class TextManager {
 	constructor(public editor: Editor) {}
 
+	/**
+	 * Where the measuring element lives: a box of its own that contains its layout, so putting text in
+	 * the element lays out only the element. Appended straight to the editor's container, every
+	 * measurement laid out every shape on the page, and opening a big board measures every label.
+	 */
+	private measureBox: HTMLElement | null = null
+
 	private getTextElement() {
-		const oldElm = document.querySelector('.tl-text-measure')
-		oldElm?.remove()
+		const container = this.editor.getContainer()
+		if (this.measureBox?.parentElement !== container) {
+			this.measureBox = document.createElement('div')
+			this.measureBox.className = 'tl-text-measure-box'
+			container.appendChild(this.measureBox)
+		}
 
 		const elm = document.createElement('div')
-		this.editor.getContainer().appendChild(elm)
+		this.measureBox.replaceChildren(elm)
 
 		elm.id = `__textMeasure_${uniqueId()}`
 		elm.classList.add('tl-text')

@@ -1175,6 +1175,34 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 }
 
+/**
+ * A 'w' at each font and size, the narrowest a label gets. The same for every label in them, so
+ * measured once rather than once a shape (a big board opening measured it 25,000 times), and again
+ * once fonts finish loading, which changes it.
+ */
+const minLabelSizes = new WeakMap<Editor, Map<string, { w: number; h: number }>>()
+
+function minLabelSize(editor: Editor, font: TLGeoShape['props']['font'], size: TLGeoShape['props']['size']) {
+	let sizes = minLabelSizes.get(editor)
+	if (!sizes) {
+		const fresh = new Map<string, { w: number; h: number }>()
+		minLabelSizes.set(editor, (sizes = fresh))
+		document.fonts?.addEventListener?.('loadingdone', () => fresh.clear())
+	}
+	const key = `${font}:${size}`
+	let measured = sizes.get(key)
+	if (!measured) {
+		measured = editor.textMeasure.measureText('w', {
+			...TEXT_PROPS,
+			fontFamily: FONT_FAMILIES[font],
+			fontSize: LABEL_FONT_SIZES[size],
+			maxWidth: 100,
+		})
+		sizes.set(key, measured)
+	}
+	return measured
+}
+
 function getLabelSize(editor: Editor, shape: TLGeoShape) {
 	const text = richTextToPlainText(shape.props.richText)
 
@@ -1182,12 +1210,7 @@ function getLabelSize(editor: Editor, shape: TLGeoShape) {
 		return { w: 0, h: 0 }
 	}
 
-	const minSize = editor.textMeasure.measureText('w', {
-		...TEXT_PROPS,
-		fontFamily: FONT_FAMILIES[shape.props.font],
-		fontSize: LABEL_FONT_SIZES[shape.props.size],
-		maxWidth: 100,
-	})
+	const minSize = minLabelSize(editor, shape.props.font, shape.props.size)
 
 	// TODO: Can I get these from somewhere?
 	const sizes = {

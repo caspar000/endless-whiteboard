@@ -185,6 +185,25 @@ describe('pending writes are not lost', () => {
 		expect(didCancel()).toBe(false)
 	})
 
+	test('closing mid-write lets that write finish, then writes what came in during it', async () => {
+		const client = await clientWithPendingChange()
+		const running = promiseWithResolve<void>()
+		;(idb.storeChangesInIndexedDb as jest.Mock).mockImplementationOnce(() => running)
+		await tick()
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
+		client.store.put([PageRecordType.create({ name: 'test3', index: 'a2' as IndexKey })])
+		client.close()
+		const [{ didCancel }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[0]
+		expect(didCancel()).toBe(false)
+		running.resolve()
+		await tick()
+		await tick()
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(2)
+		const [{ changes, didCancel: didCancelNext }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[1]
+		expect(JSON.stringify(changes)).toContain('test3')
+		expect(didCancelNext()).toBe(false)
+	})
+
 	test('a page that goes mid-write leaves them in localStorage, and the next load has them', async () => {
 		const client = await clientWithPendingChange()
 		// The write the page starts as it goes never lands.

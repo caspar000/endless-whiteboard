@@ -1,6 +1,7 @@
 import { atom, computed, react, type Atom, type Computed } from '@tldraw/state'
 import type { ComputedCache } from '@tldraw/store'
 import type { TLShape, TLShapeId } from '@tldraw/tlschema'
+import { getShapeElement } from '../components/shapeElements'
 import type { Editor } from '../editor/Editor'
 import { getRendererMode } from '../editor/rendererMode'
 import type { GpuImage, GpuPrimitive, GpuStroke } from './primitives'
@@ -420,11 +421,7 @@ export class GpuScene {
 			const next = this.hidden.get()
 			const prev = shownHidden
 			shownHidden = next
-			const container = editor.getContainer()
-			const set = (id: TLShapeId, hide: boolean) => {
-				const el = container.querySelector<HTMLElement>(`.tl-shape:not(.tl-shape-background)[data-shape-id="${id}"]`)
-				el?.style.setProperty('visibility', hide ? 'hidden' : '')
-			}
+			const set = (id: TLShapeId, hide: boolean) => getShapeElement(editor, id)?.style.setProperty('visibility', hide ? 'hidden' : '')
 			for (const id of prev) if (!next.has(id)) set(id, false)
 			for (const id of next) if (!prev.has(id)) set(id, true)
 		})

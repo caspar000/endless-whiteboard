@@ -61,6 +61,12 @@ type SessionStateSnapshotRow = {
 	updatedAt: number
 }
 
+/** Rolls a write back on purpose; `tx.done` rejecting then is expected, not an error to report. */
+function cancel(tx: { abort(): void; done: Promise<void> }) {
+	tx.abort()
+	return tx.done.catch(() => undefined)
+}
+
 /** @internal */
 export async function loadDataFromStore({
 	persistenceKey,
@@ -152,7 +158,7 @@ export async function storeChangesInIndexedDb({
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx)
 
 		await tx.done
 	})
@@ -203,7 +209,7 @@ export async function storeSnapshotInIndexedDb({
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx)
 
 		await tx.done
 	})
@@ -228,7 +234,7 @@ async function pruneSessionState({
 		for (const { id } of toDelete) {
 			await sessionStateStore.delete(id)
 		}
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx)
 		await tx.done
 	})
 }

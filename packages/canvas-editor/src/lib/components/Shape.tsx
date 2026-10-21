@@ -12,6 +12,7 @@ import { useEditorComponents } from '../hooks/useEditorComponents'
 import { Matrix2d } from '../primitives/Matrix2d'
 import { getGpuScene } from '../gpu/gpuScene'
 import { OptionalErrorBoundary } from './ErrorBoundary'
+import { getShapeElement, setShapeElement } from './shapeElements'
 
 /*
 This component renders shapes on the canvas. There are two stages: positioning
@@ -120,8 +121,13 @@ export const Shape = track(function Shape({
 	// page for editing, events, exports and tests, but isn't painted. The scene hides and shows
 	// elements as that changes; a shape mounting finds out for itself.
 	React.useLayoutEffect(() => {
+		const el = containerRef.current
+		setShapeElement(editor, id, el)
 		const hidden = getGpuScene(editor).hidden.__unsafe__getWithoutCapture().has(id)
-		containerRef.current?.style.setProperty('visibility', hidden ? 'hidden' : '')
+		el?.style.setProperty('visibility', hidden ? 'hidden' : '')
+		return () => {
+			if (getShapeElement(editor, id) === el) setShapeElement(editor, id, null)
+		}
 	}, [editor, id])
 
 	// Set the opacity of the container when the opacity changes

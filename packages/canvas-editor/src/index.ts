@@ -461,6 +461,7 @@ export {
 	type GpuRect,
 } from './lib/gpu/primitives'
 export { dashPolylines, flattenPath, strokeTriangles, type Polyline } from './lib/gpu/stroke'
+export { getShapeElement } from './lib/components/shapeElements'
 export { getGpuSnapshots, type GpuSnapshots } from './lib/gpu/snapshots'
 export { DEFAULT_GPU_BUDGET, getGpuScene, GPU_BUDGET_STORAGE_KEY, gpuLayerSupported, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'

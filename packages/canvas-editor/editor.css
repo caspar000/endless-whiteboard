@@ -860,6 +860,18 @@ input,
 	word-spacing: 0px;
 }
 
+/* Holds the measuring element; its layout stays inside (see TextManager). */
+.tl-text-measure-box {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	contain: strict;
+	pointer-events: none;
+}
+
 .tl-text-measure {
 	position: absolute;
 	z-index: 999999;

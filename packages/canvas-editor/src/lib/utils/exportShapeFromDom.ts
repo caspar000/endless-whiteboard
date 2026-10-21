@@ -1,3 +1,4 @@
+import { getShapeElement } from '../components/shapeElements'
 import type { Box2d } from '../primitives/Box2d'
 import type { Editor } from '../editor/Editor'
 import type { SvgExportContext } from '../editor/types/SvgExportContext'
@@ -99,9 +100,7 @@ export async function exportLabelFromDom(
 }
 
 function shapeElement(editor: Editor, shape: { id: TLShapeId }): HTMLElement | null {
-	return editor
-		.getContainer()
-		.querySelector<HTMLElement>(`.tl-shape[data-shape-id="${CSS.escape(shape.id)}"]:not(.tl-shape-background)`)
+	return getShapeElement(editor, shape.id) ?? null
 }
 
 /**

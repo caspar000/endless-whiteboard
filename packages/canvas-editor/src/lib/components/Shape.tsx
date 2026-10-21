@@ -117,18 +117,12 @@ export const Shape = track(function Shape({
 	)
 
 	// Drawn by the GPU layer (docs/gpu-renderer-plan.md): the element stays, laid out and in the
-	// page for editing, events, exports and tests, but isn't painted.
-	const rVisibility = React.useRef<string | null>(null)
-	useQuickReactor(
-		'set shape container visibility',
-		() => {
-			const visibility = getGpuScene(editor).hidesElement(id) ? 'hidden' : ''
-			if (rVisibility.current === visibility) return
-			rVisibility.current = visibility
-			setProperty('visibility', visibility)
-		},
-		[editor, setProperty]
-	)
+	// page for editing, events, exports and tests, but isn't painted. The scene hides and shows
+	// elements as that changes; a shape mounting finds out for itself.
+	React.useLayoutEffect(() => {
+		const hidden = getGpuScene(editor).hidden.__unsafe__getWithoutCapture().has(id)
+		containerRef.current?.style.setProperty('visibility', hidden ? 'hidden' : '')
+	}, [editor, id])
 
 	// Set the opacity of the container when the opacity changes
 	React.useLayoutEffect(() => {

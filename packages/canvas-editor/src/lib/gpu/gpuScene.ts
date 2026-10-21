@@ -26,10 +26,14 @@ export interface PlacedImage {
 	opacity: number
 }
 
-/** What the layer draws in a frame: every rect instance, stroke vertex and image, and the runs to draw them in. */
+/**
+ * What the layer draws in a frame: every rect instance and image, each shape's stroke vertices as its
+ * own array (kept on the GPU between frames, by the array), and the runs to draw them in. A stroke run
+ * counts arrays, not vertices.
+ */
 export interface GpuFrame {
 	rects: Float32Array
-	strokes: Float32Array
+	strokes: Float32Array[]
 	images: PlacedImage[]
 	runs: GpuRun[]
 }
@@ -62,6 +66,18 @@ export const GPU_BUDGET_STORAGE_KEY = 'lifeboard:gpu-budget'
  *   it there would put it over one that should cover it). Its element is then hidden (`Shape.tsx`).
  */
 export class GpuScene {
+	/**
+	 * The culled shapes, set only when the set changes: the editor works it out from the viewport on
+	 * every frame of a pan, and read straight from there, every shape the scene keeps was checked on
+	 * every frame (~3,000 reactors on a 10,000-shape board) to find nothing had changed.
+	 */
+	readonly culled: Atom<ReadonlySet<TLShapeId>> = atom('gpu culled', new Set<TLShapeId>())
+	/**
+	 * The editor's rendering list, set only when it's a different list: it's worked out from the store's
+	 * queries, which the camera (a record) wakes on every frame of a pan, and every computed of the scene
+	 * built on it then checked each shape's caches to find nothing had changed.
+	 */
+	private readonly renderingList: Atom<ReturnType<Editor['getRenderingShapeList']>> = atom('gpu rendering list', [])
 	/** Set by the layer: mounted with a live WebGL2 context. */
 	readonly layerUp: Atom<boolean> = atom('gpu layer up', false)
 	/** Set by the app: this board is the one on screen (not a tab open behind it). */
@@ -110,20 +126,27 @@ export class GpuScene {
 	readonly wanted: Computed<boolean>
 	/** Whether the layer draws its shapes (up, and not `idle`). */
 	private readonly active: Computed<boolean>
-	/** The last frame's rect and stroke arrays and the pieces they were joined from. */
+	/** The last frame's rect array and the pieces it was joined from. */
 	private readonly lastRects: Joined = { parts: [], data: new Float32Array(0) }
-	private readonly lastStrokes: Joined = { parts: [], data: new Float32Array(0) }
+	/**
+	 * The shapes whose elements are hidden. One set, applied to the elements by one reactor, instead of
+	 * a reactor in every shape: each of those walked its shape's chain of caches on every frame of a pan
+	 * to find nothing had changed, 3,000 of them on a big board.
+	 */
+	readonly hidden: Computed<ReadonlySet<TLShapeId>>
 	/** Everything the layer draws, in drawing order, ready to upload. */
 	readonly frame: Computed<GpuFrame>
 
 	constructor(readonly editor: Editor) {
+		// Registered first: the reactors below reach shapes' `toGpu`, which can ask for the scene again.
+		scenes.set(editor, this)
 		this.budget = atom('gpu budget', readBudget())
 		this.primitives = editor.store.createComputedCache('gpu primitives', (shape: TLShape) => {
 			const util = editor.getShapeUtil(shape)
 			if (!util.toGpu) return null
 			return util.toGpu(shape, { isDarkMode: editor.user.getIsDarkMode() })
 		})
-		this.opacities = computed('gpu opacities', () => new Map(editor.getRenderingShapeList().map((e) => [e.id, e.opacity])))
+		this.opacities = computed('gpu opacities', () => new Map(this.renderingList.get().map((e) => [e.id, e.opacity])))
 		// One number per shape, so a shape's pieces are made again only when its own opacity changes.
 		this.opacity = editor.store.createComputedCache('gpu opacity', (shape: TLShape) => this.opacities.get().get(shape.id) ?? 1)
 		// What the GPU could draw, before the z-order rule: it has primitives and the page doesn't need it.
@@ -142,11 +165,11 @@ export class GpuScene {
 			if (largest * this.pictureScale.get() > PICTURE_LIMIT) return false
 			return true
 		})
-		this.zOrder = computed('gpu z order', () => [...editor.getRenderingShapeList()].sort((a, b) => a.index - b.index))
+		this.zOrder = computed('gpu z order', () => [...this.renderingList.get()].sort((a, b) => a.index - b.index))
 		this.onScreen = computed('gpu on screen', () => {
-			const culled = editor.getCulledShapeIds()
+			const culled = this.culled.get()
 			let n = 0
-			for (const { id } of editor.getRenderingShapeList()) if (!culled.has(id) && this.eligible.get(id)) n++
+			for (const { id } of this.renderingList.get()) if (!culled.has(id) && this.eligible.get(id)) n++
 			return n
 		})
 		this.wanted = computed('gpu wanted', () => {
@@ -221,7 +244,7 @@ export class GpuScene {
 			const hits = (box: Box) => keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
 			const order = this.zOrder.get()
 			// A culled shape is off screen, and so is wherever it overlaps another: nothing to keep in order.
-			const culled = editor.getCulledShapeIds()
+			const culled = this.culled.get()
 			for (let i = order.length - 1; i >= 0; i--) {
 				const { id } = order[i]!
 				if (culled.has(id)) continue
@@ -243,6 +266,17 @@ export class GpuScene {
 			if (!this.active.get()) return false
 			return this.eligible.get(shape.id) === true && !this.underPage.get().has(shape.id)
 		})
+		this.hidden = computed(
+			'gpu hidden elements',
+			() => {
+				const mode = getRendererMode()
+				if ((mode !== 'gpu' && mode !== 'auto') || !this.active.get()) return EMPTY
+				const out = new Set<TLShapeId>()
+				for (const { id } of this.zOrder.get()) if (this.drawn.get(id)) out.add(id)
+				return out
+			},
+			{ isEqual: sameSet }
+		)
 		this.strokeGeometry = editor.store.createComputedCache('gpu stroke geometry', (shape: TLShape) => {
 			const out: Float32Array[] = []
 			for (const p of this.primitives.get(shape.id) ?? []) {
@@ -316,32 +350,24 @@ export class GpuScene {
 			return out
 		})
 		this.frame = computed('gpu frame', () => {
-			if (!this.active.get()) return { rects: new Float32Array(0), strokes: new Float32Array(0), images: [], runs: [] }
+			if (!this.active.get()) return { rects: new Float32Array(0), strokes: [], images: [], runs: [] }
 			const parts: Chunk[] = []
 			let rectFloats = 0
-			let strokeFloats = 0
 			for (const { id } of this.zOrder.get()) {
 				if (!this.drawn.get(id)) continue
 				for (const chunk of this.chunks.get(id) ?? []) {
 					parts.push(chunk)
 					if (chunk.kind === 'rect') rectFloats += chunk.data.length
-					else if (chunk.kind === 'stroke') strokeFloats += chunk.data.length
 				}
 			}
 			const rectParts: Float32Array[] = []
-			const strokeParts: Float32Array[] = []
-			for (const part of parts) {
-				if (part.kind === 'rect') rectParts.push(part.data)
-				else if (part.kind === 'stroke') strokeParts.push(part.data)
-			}
-			// The same pieces as last time, the same array: the renderer uploads only what's new, and a node's
-			// picture arriving doesn't send every line again.
+			for (const part of parts) if (part.kind === 'rect') rectParts.push(part.data)
+			// The same pieces as last time, the same array: the renderer uploads only what's new.
 			const rects = joined(this.lastRects, rectParts, rectFloats)
-			const strokes = joined(this.lastStrokes, strokeParts, strokeFloats)
+			const strokes: Float32Array[] = []
 			const images: PlacedImage[] = []
 			const runs: GpuRun[] = []
 			let ro = 0
-			let so = 0
 			const run = (kind: GpuRun['kind'], first: number, count: number) => {
 				const last = runs[runs.length - 1]
 				if (last?.kind === kind && last.first + last.count === first) last.count += count
@@ -355,8 +381,8 @@ export class GpuScene {
 					run('rect', ro / RECT_FLOATS, part.data.length / RECT_FLOATS)
 					ro += part.data.length
 				} else {
-					run('stroke', so / STROKE_FLOATS, part.data.length / STROKE_FLOATS)
-					so += part.data.length
+					run('stroke', strokes.length, 1)
+					strokes.push(part.data)
 				}
 			}
 			return { rects, strokes, images, runs }
@@ -380,6 +406,42 @@ export class GpuScene {
 			else if (this.autoOn.get() && n < budget * BUDGET_OFF) this.autoOn.set(false)
 		})
 		editor.disposables.add(stop)
+		// The elements: hidden or shown as they leave or join the set (a shape mounting reads it itself).
+		let shownHidden: ReadonlySet<TLShapeId> = EMPTY
+		const stopHiding = react('gpu hide elements', () => {
+			const next = this.hidden.get()
+			const prev = shownHidden
+			shownHidden = next
+			const container = editor.getContainer()
+			const set = (id: TLShapeId, hide: boolean) => {
+				const el = container.querySelector<HTMLElement>(`.tl-shape:not(.tl-shape-background)[data-shape-id="${id}"]`)
+				el?.style.setProperty('visibility', hide ? 'hidden' : '')
+			}
+			for (const id of prev) if (!next.has(id)) set(id, false)
+			for (const id of next) if (!prev.has(id)) set(id, true)
+		})
+		editor.disposables.add(stopHiding)
+		const stopList = react('gpu rendering list', () => {
+			const next = editor.getRenderingShapeList()
+			if (next !== this.renderingList.__unsafe__getWithoutCapture()) this.renderingList.set(next)
+		})
+		editor.disposables.add(stopList)
+		const stopCulled = react('gpu culled', () => {
+			const next = editor.getCulledShapeIds()
+			const prev = this.culled.__unsafe__getWithoutCapture()
+			if (next === prev) return
+			if (next.size === prev.size) {
+				let same = true
+				for (const id of next)
+					if (!prev.has(id)) {
+						same = false
+						break
+					}
+				if (same) return
+			}
+			this.culled.set(next)
+		})
+		editor.disposables.add(stopCulled)
 		const stopBuckets = react('gpu zoom buckets', () => {
 			const z = editor.getZoomLevel()
 			const scale = 2 ** Math.ceil(Math.log2(z * editor.getInstanceState().devicePixelRatio))
@@ -397,9 +459,7 @@ export class GpuScene {
 
 	/** Whether this shape's element is hidden: the GPU draws it, and isn't only being compared with the page. */
 	hidesElement(id: TLShapeId): boolean {
-		const mode = getRendererMode()
-		if (mode !== 'gpu' && mode !== 'auto') return false
-		return this.isDrawn(id)
+		return this.hidden.get().has(id)
 	}
 
 	/** For the checks: a different budget, as `localStorage` would give at load. */
@@ -423,6 +483,13 @@ const FOOTPRINT_STEP = 64
 const HALO_REACH = 1.5
 
 type Box = { x: number; y: number; maxX: number; maxY: number }
+
+const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => {
+	if (a === b) return true
+	if (a.size !== b.size) return false
+	for (const x of a) if (!b.has(x)) return false
+	return true
+}
 
 type Joined = { parts: Float32Array[]; data: Float32Array }
 /** `parts` end to end, or the last array joined if it was joined from the very same pieces. */
@@ -474,7 +541,5 @@ const scenes = new WeakMap<Editor, GpuScene>()
 
 /** The editor's GPU scene, made on first use. */
 export function getGpuScene(editor: Editor): GpuScene {
-	let scene = scenes.get(editor)
-	if (!scene) scenes.set(editor, (scene = new GpuScene(editor)))
-	return scene
+	return scenes.get(editor) ?? new GpuScene(editor)
 }

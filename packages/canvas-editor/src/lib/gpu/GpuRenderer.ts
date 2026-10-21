@@ -295,12 +295,48 @@ export class GpuRenderer {
 			gl.bindBuffer(gl.ARRAY_BUFFER, this.rectBuffer)
 			gl.bufferData(gl.ARRAY_BUFFER, frame.rects, gl.DYNAMIC_DRAW)
 		}
-		if (frame.strokes !== this.frame?.strokes) {
-			gl.bindBuffer(gl.ARRAY_BUFFER, this.strokeBuffer)
-			gl.bufferData(gl.ARRAY_BUFFER, frame.strokes, gl.DYNAMIC_DRAW)
-		}
+		if (frame.strokes !== this.frame?.strokes) this.keepStrokes(frame.strokes)
 		this.frame = frame
 	}
+
+	/**
+	 * Each shape's stroke vertices, kept in one buffer between frames, at a place of their own: a frame
+	 * sends only the arrays it hasn't seen (a shape that changed, one that came in). Sending them all
+	 * again on every change was 17 MB on a board of dotted arrows, each time culling moved a shape.
+	 * Once more than half of the buffer is arrays no longer drawn, it's packed again.
+	 */
+	private keepStrokes(parts: Float32Array[]) {
+		const { gl } = this
+		const pool = this.strokePool
+		let live = 0
+		for (const p of parts) live += p.length
+		const fresh = parts.filter((p) => !pool.at.has(p))
+		let more = 0
+		for (const p of fresh) more += p.length
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.strokeBuffer)
+		if (pool.used + more > pool.capacity || pool.used - (live - more) > Math.max(live, 1 << 20)) {
+			// Packed again, with room to grow.
+			pool.capacity = Math.max(1 << 20, live * 2)
+			pool.at = new WeakMap()
+			pool.used = 0
+			gl.bufferData(gl.ARRAY_BUFFER, pool.capacity * 4, gl.DYNAMIC_DRAW)
+			for (const p of parts) {
+				if (pool.at.has(p)) continue
+				gl.bufferSubData(gl.ARRAY_BUFFER, pool.used * 4, p)
+				pool.at.set(p, pool.used / STROKE_FLOATS)
+				pool.used += p.length
+			}
+			return
+		}
+		for (const p of fresh) {
+			gl.bufferSubData(gl.ARRAY_BUFFER, pool.used * 4, p)
+			pool.at.set(p, pool.used / STROKE_FLOATS)
+			pool.used += p.length
+		}
+	}
+
+	/** Where each stroke array is in the stroke buffer, in vertices; how much of it is used, and its size, in floats. */
+	private readonly strokePool = { at: new WeakMap<Float32Array, number>(), used: 0, capacity: 0 }
 
 	draw(view: GpuView): GpuDrawResult {
 		const { gl } = this
@@ -360,7 +396,22 @@ export class GpuRenderer {
 			} else if (run.kind === 'stroke') {
 				if (program !== this.strokeProgram) gl.useProgram((program = this.strokeProgram))
 				gl.bindVertexArray(this.strokeVao)
-				gl.drawArrays(gl.TRIANGLES, run.first, run.count)
+				// Each array where the buffer keeps it; neighbours in the buffer in one call.
+				let start = -1
+				let count = 0
+				for (let i = run.first; i < run.first + run.count; i++) {
+					const part = this.frame!.strokes[i]!
+					const at = this.strokePool.at.get(part)
+					if (at === undefined) continue
+					const n = part.length / STROKE_FLOATS
+					if (start >= 0 && at === start + count) count += n
+					else {
+						if (count) gl.drawArrays(gl.TRIANGLES, start, count)
+						start = at
+						count = n
+					}
+				}
+				if (count) gl.drawArrays(gl.TRIANGLES, start, count)
 			} else {
 				const placed = imageRuns.get(run)
 				if (!placed || !placed.count) continue

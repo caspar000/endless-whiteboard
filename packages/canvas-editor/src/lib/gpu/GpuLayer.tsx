@@ -23,7 +23,55 @@ export function GpuLayer() {
 	const wanted = useValue('gpu layer wanted', () => getGpuScene(editor).wanted.get(), [editor])
 	const compare = useValue('gpu layer compare', () => getRendererMode() === 'compare', [])
 	if (!wanted) return null
-	return <GpuCanvas compare={compare} />
+	return (
+		<>
+			<GpuCanvas compare={compare} />
+			<GpuShapeList />
+		</>
+	)
+}
+
+/** How many of the shapes the GPU draws on screen the list names: zoomed out, a board shows thousands. */
+const LISTED = 200
+
+/**
+ * The shapes on screen the GPU layer draws, named in a list only assistive technology sees: their
+ * elements are hidden (`visibility: hidden`), which takes them out of the accessibility tree.
+ */
+function GpuShapeList() {
+	const editor = useEditor()
+	const shapes = useValue(
+		'gpu shape list',
+		() => {
+			const scene = getGpuScene(editor)
+			const hidden = scene.hidden.get()
+			const culled = scene.culled.get()
+			const out: { id: string; name: string }[] = []
+			let more = 0
+			for (const id of hidden) {
+				if (culled.has(id)) continue
+				if (out.length >= LISTED) {
+					more++
+					continue
+				}
+				const shape = editor.getShape(id)
+				if (!shape) continue
+				const text = editor.getShapeUtil(shape).getText(shape)?.trim()
+				out.push({ id, name: text || `${shape.type.replace(/^node\./, '')} shape` })
+			}
+			return { out, more }
+		},
+		[editor]
+	)
+	if (!shapes.out.length) return null
+	return (
+		<ul className="tl-gpu-shape-list" aria-label="Shapes on the canvas">
+			{shapes.out.map((s) => (
+				<li key={s.id}>{s.name}</li>
+			))}
+			{shapes.more > 0 && <li>{`and ${shapes.more} more`}</li>}
+		</ul>
+	)
 }
 
 /**

@@ -361,7 +361,9 @@ test.describe('phone gaps', () => {
 		await panel.getByLabel('Title of Docs').fill('Lifeboard docs')
 		await panel.getByLabel('URL of Docs').fill('lifeboard.app/docs')
 		await page.keyboard.press('Escape')
-		await page.evaluate(() => (window as unknown as { editor: { selectNone(): void } }).editor.selectNone())
+		await page.evaluate(() => {
+			;(window as unknown as { editor: { selectNone(): void } }).editor.selectNone()
+		})
 		expect(await tool(page)).toBe('hand')
 
 		const link = page.locator('.lb-board-host:not([data-hidden]) a.lb-strip__link').first()

@@ -182,6 +182,21 @@ describe('the GPU scene, switching', () => {
 	})
 })
 
+describe('the GPU scene, under what the page draws over every shape', () => {
+	it('leaves to the page a shape a property card covers, and only that', () => {
+		setRendererMode('gpu')
+		up()
+		const scene = getGpuScene(editor)
+		// Box a is at (10, 20)–(110, 70); a card hangs over part of it.
+		expect(scene.isDrawn(a)).toBe(true)
+		scene.above.set([{ x: 60, y: 50, w: 140, h: 80 }])
+		expect(scene.isDrawn(a)).toBe(false)
+		expect(scene.isDrawn(b)).toBe(true)
+		scene.above.set([])
+		expect(scene.isDrawn(a)).toBe(true)
+	})
+})
+
 describe('reading computed colours', () => {
 	it('reads what getComputedStyle gives, and says when it cannot', () => {
 		expect(readGpuColor('rgb(255, 0, 0)')).toEqual([1, 0, 0, 1])

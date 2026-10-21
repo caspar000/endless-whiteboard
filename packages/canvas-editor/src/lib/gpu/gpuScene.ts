@@ -73,6 +73,11 @@ export class GpuScene {
 	 */
 	readonly culled: Atom<ReadonlySet<TLShapeId>> = atom('gpu culled', new Set<TLShapeId>())
 	/**
+	 * Set by the app: what the page draws over every shape, in page space (a node's property card).
+	 * The GPU layer lies over the page, so a shape it could draw that a card covers stays the page's.
+	 */
+	readonly above: Atom<readonly { x: number; y: number; w: number; h: number }[]> = atom('gpu above', [])
+	/**
 	 * The editor's rendering list, set only when it's a different list: it's worked out from the store's
 	 * queries, which the camera (a record) wakes on every frame of a pan, and every computed of the scene
 	 * built on it then checked each shape's caches to find nothing had changed.
@@ -242,6 +247,14 @@ export class GpuScene {
 				return k
 			}
 			const hits = (box: Box) => keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
+			const mark = (box: Box) => {
+				for (const k of keys(box)) {
+					const list = cells.get(k)
+					if (list) list.push(box)
+					else cells.set(k, [box])
+				}
+			}
+			for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
 			const order = this.zOrder.get()
 			// A culled shape is off screen, and so is wherever it overlaps another: nothing to keep in order.
 			const culled = this.culled.get()
@@ -253,12 +266,7 @@ export class GpuScene {
 				const eligible = this.eligible.get(id)
 				if (eligible && !boxes.some(hits)) continue
 				if (eligible) out.add(id)
-				for (const box of boxes)
-					for (const k of keys(box)) {
-						const list = cells.get(k)
-						if (list) list.push(box)
-						else cells.set(k, [box])
-					}
+				for (const box of boxes) mark(box)
 			}
 			return out
 		})
@@ -508,8 +516,10 @@ function joined(last: Joined, parts: Float32Array[], floats: number): Float32Arr
 
 function readBudget(): number {
 	try {
-		const n = Number(globalThis.localStorage?.getItem(GPU_BUDGET_STORAGE_KEY))
-		if (Number.isFinite(n) && n > 0) return n
+		// 0 is a budget too: the GPU's whenever it has a shape on screen (the suite run that way).
+		const raw = globalThis.localStorage?.getItem(GPU_BUDGET_STORAGE_KEY)
+		const n = raw == null || raw === '' ? NaN : Number(raw)
+		if (Number.isFinite(n) && n >= 0) return n
 	} catch {
 		// No storage: the default.
 	}

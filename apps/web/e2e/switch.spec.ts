@@ -45,6 +45,7 @@ function ratio(a: Buffer, b: Buffer): number {
 }
 
 test('auto switches to the GPU and back with nothing lost, doubled or moved on the way', async ({ page }) => {
+	test.skip(!!process.env.LB_GPU_BUDGET, 'sets a budget of its own: LB_GPU_BUDGET overrides it')
 	test.setTimeout(10 * 60_000)
 	await page.addInitScript((budget) => localStorage.setItem('lifeboard:gpu-budget', String(budget)), BUDGET)
 	await gotoFresh(page)
@@ -120,4 +121,24 @@ test('a node the GPU draws still exports as it shows', async ({ page }) => {
 	expect(svg).not.toMatch(/visibility:\s*hidden/)
 	// And the element is hidden again afterwards: the GPU still draws it.
 	await expect(element).toHaveCSS('visibility', 'hidden')
+})
+
+test('the shapes the GPU draws stay in the accessibility tree, named in a list', async ({ page }) => {
+	// Their elements are hidden (`visibility: hidden`), which takes them out of it (phase 6).
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Named')
+	await openBoard(page, 'Named')
+	await page.evaluate(() => {
+		const w = window as unknown as { lifeboardRenderer: { set(m: string): void }; editor: { createShapes(s: unknown[]): void } }
+		const text = (v: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: v }] }] })
+		w.editor.createShapes([{ type: 'geo', x: 100, y: 100, props: { w: 200, h: 120, richText: text('A box the GPU draws') } }])
+		w.lifeboardRenderer.set('gpu')
+	})
+	const list = page.getByRole('list', { name: 'Shapes on the canvas' })
+	await expect(list.getByRole('listitem').filter({ hasText: 'A box the GPU draws' })).toHaveCount(1)
+	// Back on the page, the shape's own element is there to read, and the list goes.
+	await page.evaluate(() => (window as unknown as { lifeboardRenderer: { set(m: string): void } }).lifeboardRenderer.set('dom'))
+	await expect(list).toHaveCount(0)
+	await expect(page.locator('.tl-shape').getByText('A box the GPU draws').first()).toBeVisible()
 })

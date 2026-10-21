@@ -6,6 +6,11 @@ import { expect } from '@playwright/test'
  * the tests would inherit whichever boards a previous test left behind.
  */
 export async function gotoFresh(page: Page): Promise<void> {
+	// `LB_GPU_BUDGET`: the shapes on screen above which `auto` turns the GPU layer on, for running the
+	// suite with it on everywhere (`0`) as well as as it comes (docs/gpu-renderer-plan.md, phase 6).
+	if (process.env.LB_GPU_BUDGET) {
+		await page.addInitScript((n) => localStorage.setItem('lifeboard:gpu-budget', n), process.env.LB_GPU_BUDGET)
+	}
 	// The board runs under the floating sidebar, and most tests put shapes near the page origin with
 	// the camera at 0,0 — where an open sidebar would cover them. Every test starts with it collapsed
 	// (as a fresh install would choose for itself), and the ones about the sidebar open it.

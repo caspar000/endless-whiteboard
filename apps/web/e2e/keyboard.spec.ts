@@ -378,7 +378,9 @@ test.describe('pictures at the size they are shown (P6)', () => {
 		await expect(img).toHaveCount(1)
 		const natural = () => img.evaluate((el: HTMLImageElement) => el.naturalWidth)
 		const zoom = (z: number) =>
-			page.evaluate((z) => (window as unknown as { editor: { setCamera(c: unknown): void } }).editor.setCamera({ x: 0, y: 0, z }), z)
+			page.evaluate((z) => {
+				;(window as unknown as { editor: { setCamera(c: unknown): void } }).editor.setCamera({ x: 0, y: 0, z })
+			}, z)
 
 		await zoom(1)
 		await expect.poll(natural).toBe(1600)

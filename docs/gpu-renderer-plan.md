@@ -592,6 +592,31 @@ passed; the board-preview test 8/8 alone after the fix.
 Done when: `ui`, `keyboard`, `keymap`, `touch`, `phone`, `comments`, `agent`, `controls`, `dice`
 and `webkit` specs pass with `?renderer=auto` on boards above the budget as well as below it.
 
+#### Phase 6, as built (2026-10-21)
+
+- **The layers, checked:** selection and hover indicators, handles, the brush, snap lines and
+  collaborators' cursors are in the overlay layer (400), over the GPU's (350). So are comment pins, the
+  agent's cursor, quick look, the maze's hexagon view and the dice tray, which come in through
+  `InFrontOfTheCanvas` (the app's overlays and extensions'). The tracing aura is in the shapes' layer,
+  under the GPU, where it belongs: behind shapes.
+- **Property cards** are in the shapes' layer too but drawn over every shape, so a GPU-drawn shape
+  under one would have come out over it. Cards now tell the scene where they are
+  (`GpuScene.above`), and the z-order rule leaves a shape under one to the page.
+- **Accessibility:** the shapes the GPU draws on screen are named in a list only assistive technology
+  sees ("Shapes on the canvas", up to 200 and "and N more"): `visibility: hidden` takes their elements
+  out of the accessibility tree. `switch.spec.ts` checks it with `getByRole`.
+- **Clicks** on a GPU-drawn shape's element go to the canvas, whose own hit testing selects the shape
+  (the plan's "first click selects"); editing hands it back to the page. A node's property card stays
+  the page's, so its links work as before.
+- **The suite with the GPU on everywhere:** `LB_GPU_BUDGET=0` makes `auto` turn the GPU on whenever a
+  shape it could draw is on screen (`readBudget` takes 0 now). The listed specs passed but one, which
+  was a test returning the editor from `page.evaluate` (too big to send back once the GPU scene hangs
+  off it); that and the same in `dice.spec.ts` and `keyboard.spec.ts` are fixed. The switching test
+  sets a budget of its own and skips under `LB_GPU_BUDGET`.
+
+Done: the listed specs and `switch.spec.ts` pass with the GPU on everywhere (`LB_GPU_BUDGET=0`) and as
+they come; the whole suite 224 passed; gallery and synthetic parity 8/8.
+
 ### Phase 7: exports, thumbnails and the agent's view. S
 
 Exports still copy the hidden elements, which are laid out, so they should be unchanged; this phase

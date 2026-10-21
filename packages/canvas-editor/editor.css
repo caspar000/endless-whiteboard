@@ -261,6 +261,20 @@ input,
 	z-index: var(--layer-gpu);
 }
 
+/* The shapes the GPU layer draws, named for assistive technology only (their elements are hidden). */
+.tl-gpu-shape-list {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+	pointer-events: none;
+}
+
 .tl-gpu-layer--compare {
 	z-index: calc(var(--layer-shapes) + 1);
 	mix-blend-mode: difference;

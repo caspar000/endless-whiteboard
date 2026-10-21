@@ -625,6 +625,18 @@ proves it and fixes what isn't.
 Done when: thumbnails, SVG/PNG export and the agent's board image are pixel-identical before and
 after (`svg`, `assets`, `pwa`, `agent` specs, plus a direct image comparison).
 
+#### Phase 7, as built (2026-10-21)
+
+- Every picture of the board goes through the editor's export: thumbnails (`persistence/thumbnails.ts`),
+  the agent's look at the board (`node-kit/src/ops/view.ts`) and copy or export as an image all call
+  `editor.toImage`, which copies the shapes' elements.
+- What broke it was fixed in phase 5: the copy carried a GPU-drawn shape's `visibility: hidden` into
+  its children, so those shapes exported blank.
+- `gpuExport.spec.ts` exports the gallery board as a PNG with the page drawing it and again with the
+  GPU drawing it (100-odd shapes' elements hidden), and finds no pixel different (pixelmatch at
+  threshold 0). With the phase-5 fix taken out it fails on 729,557 pixels.
+- `svg`, `assets`, `pwa`, `agent` and `gpuExport` pass with the GPU on everywhere (`LB_GPU_BUDGET=0`).
+
 ### Phase 8: the data layer, for 100,000 to 1,000,000 shapes. L, in three parts
 
 With drawing solved, the next limits are memory and loading. Measured first on synthetic boards of

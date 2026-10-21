@@ -880,6 +880,8 @@ const failed = new Set<string>()
 const SVG_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-opacity', 'stroke-miterlimit', 'opacity', 'color', 'display', 'visibility'] as const
 
 function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
+	// An arrow's halo is as wide as `--tl-zoom` says past 200%, like the text outline: read again when it changes.
+	if (svg.querySelector('.tl-arrow-halo')) r.outlined = true
 	// Placed where the page paints it, at a whole pixel of the shape's space, at its own size.
 	const at = local(r, svg.getBoundingClientRect())
 	const b = { ...at, x: snapped(at).x, y: snapped(at).y }
@@ -928,9 +930,15 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 		copy.prepend(defs)
 	}
 	// The page draws the svg's overflow; a picture is clipped to its box. Without a viewBox (a shape's own
-	// SVG, in its units) the picture takes in the widest stroke's reach past the edge; rings and icons,
-	// scaled by theirs, sit inside their boxes.
-	const m = svg.hasAttribute('viewBox') ? 0 : Math.ceil(widest / 2) + 2
+	// SVG, in its units) the picture takes in how far its contents and the widest stroke reach past the
+	// edge; rings and icons, scaled by theirs, sit inside their boxes.
+	let m = 0
+	if (!svg.hasAttribute('viewBox')) {
+		// What it draws can reach well past its box (a freehand line's filled outline): its contents' box, too.
+		const bb = svg.getBBox()
+		const past = Math.max(0, -bb.x, -bb.y, bb.x + bb.width - b.w, bb.y + bb.height - b.h)
+		m = Math.ceil(past + widest / 2) + 2
+	}
 	if (m) copy.setAttribute('viewBox', `${-m} ${-m} ${b.w + 2 * m} ${b.h + 2 * m}`)
 	copy.setAttribute('width', String(b.w + 2 * m))
 	copy.setAttribute('height', String(b.h + 2 * m))

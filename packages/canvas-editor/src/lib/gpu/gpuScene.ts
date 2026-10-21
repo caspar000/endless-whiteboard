@@ -96,10 +96,14 @@ export class GpuScene {
 	 * them again.
 	 */
 	private readonly tolerance: Computed<number>
+	/*
+	 * The zoom's powers of two, as atoms set only when one changes: computeds reading the camera would
+	 * be checked by every shape on every frame of a pan, though nothing came of it.
+	 */
 	/** Device pixels a unit at the top of the zoom's power of two: how big pictures could be rastered at it. */
-	private readonly pictureScale: Computed<number>
+	private readonly pictureScale: Atom<number> = atom('gpu picture scale', 1)
 	/** A page pixel's size in page units, rounded up to a power of two: what anti-aliasing adds round a footprint. */
-	private readonly pixel: Computed<number>
+	private readonly pixel: Atom<number> = atom('gpu pixel size', 1)
 	/** Shapes the GPU could draw that lie under an overlapping page-drawn one, so the page draws them. */
 	private readonly underPage: Computed<ReadonlySet<TLShapeId>>
 	/** Whether the layer should be in the page. */
@@ -119,7 +123,6 @@ export class GpuScene {
 			if (!util.toGpu) return null
 			return util.toGpu(shape, { isDarkMode: editor.user.getIsDarkMode() })
 		})
-		this.pictureScale = computed('gpu picture scale', () => 2 ** Math.ceil(Math.log2(editor.getZoomLevel() * editor.getInstanceState().devicePixelRatio)))
 		this.opacities = computed('gpu opacities', () => new Map(editor.getRenderingShapeList().map((e) => [e.id, e.opacity])))
 		// One number per shape, so a shape's pieces are made again only when its own opacity changes.
 		this.opacity = editor.store.createComputedCache('gpu opacity', (shape: TLShape) => this.opacities.get().get(shape.id) ?? 1)
@@ -200,11 +203,7 @@ export class GpuScene {
 			}
 			return out.length ? out : bounds
 		})
-		this.tolerance = computed('gpu curve tolerance', () => {
-			const scale = editor.getZoomLevel() * editor.getInstanceState().devicePixelRatio
-			return 1 / 6 / 2 ** Math.ceil(Math.log2(scale))
-		})
-		this.pixel = computed('gpu pixel size', () => 2 ** Math.ceil(Math.log2(1 / editor.getZoomLevel())))
+		this.tolerance = computed('gpu curve tolerance', () => 1 / 6 / this.pictureScale.get())
 		this.underPage = computed('gpu under page', () => {
 			if (!this.active.get()) return EMPTY
 			// From the top down: every shape the page draws marks the cells of its footprint; a shape the GPU
@@ -381,6 +380,14 @@ export class GpuScene {
 			else if (this.autoOn.get() && n < budget * BUDGET_OFF) this.autoOn.set(false)
 		})
 		editor.disposables.add(stop)
+		const stopBuckets = react('gpu zoom buckets', () => {
+			const z = editor.getZoomLevel()
+			const scale = 2 ** Math.ceil(Math.log2(z * editor.getInstanceState().devicePixelRatio))
+			const pixel = 2 ** Math.ceil(Math.log2(1 / z))
+			if (scale !== this.pictureScale.__unsafe__getWithoutCapture()) this.pictureScale.set(scale)
+			if (pixel !== this.pixel.__unsafe__getWithoutCapture()) this.pixel.set(pixel)
+		})
+		editor.disposables.add(stopBuckets)
 	}
 
 	/** Whether the GPU layer draws this shape. */

@@ -32,6 +32,8 @@ import {
 	geoShapeProps,
 	getDefaultColorTheme,
 	getPolygonVertices,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { ShapeFillOverride, ShapeFillOverrideContext } from '../shared/ShapeFill'
 
@@ -607,6 +609,14 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 				</HTMLContainer>
 			</>
 		)
+	}
+
+	/**
+	 * Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4b): the body a
+	 * picture of its own SVG, the label its text, read back from the page.
+	 */
+	override toGpu(shape: TLGeoShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLGeoShape) {

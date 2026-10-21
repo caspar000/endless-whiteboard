@@ -428,6 +428,36 @@ passes; the four-tree board pans zoomed out at ≤ 10 ms (the `visibility: hidde
 
 Parity: 19 of 20 (the miss above); the suite: 222 passed.
 
+#### Phase 4b, as built (2026-10-21): geo
+
+- `GeoShapeUtil.toGpu` is the same reader as the nodes': the body a picture of its own SVG, the label
+  its text. Every geo type, fill, dash (the hand-drawn one too: it's SVG all the same), size, colour
+  and label.
+- The SVG picture takes in its widest stroke's reach past the box (a shape's SVG has no viewBox, and a
+  picture is clipped to its size). What it fills from elsewhere in the page, the hatching pattern, is
+  copied in with its tile inlined as a data URL: a picture of an SVG can't see the page's
+  definitions or load a blob. The pattern's id follows the zoom, so the element changes and is read
+  again.
+- Labels have tldraw's text outline: six sharp `text-shadow`s in the paper's colour, a pixel each way
+  up to 200% and `2px / --tl-zoom` past it. They're drawn under the text in the same picture; a shape
+  with one is read again when `--tl-zoom` changes the outline.
+- Positioned children paint after what flows, by z-index, then in order (the label is `z-index: 10`);
+  a negative z-index, and generated content (`::before`, `::after`, list bullets), leave the shape to
+  the page.
+- Speed work found on the way: elements are read only while the camera is still and handed over a few
+  times a second; the frame is kept by a reactor of its own instead of being asked on every camera
+  move; the atlas finds pictures by a number, not their key; a round piece is four wedges a half turn,
+  not twelve (a dotted arrow zoomed out is thousands of dots); the zoom's powers of two are atoms.
+- The benchmark now records each measurement's zoom and turns edge scrolling off: brush and drag start
+  at the screen's edge, where the camera scrolls by time, so the slower renderer brushed and dragged
+  further. Before, page and GPU weren't measured at the same zoom on the 10,000-shape board.
+- **Open:** on the 10,000-shape board (geo, text, notes, markdown, dotted arrows), panning at 10% is
+  slower on the GPU than on the page: 31 → 82 ms in the benchmark, 39 → 49 ms in a traced run. Drawing
+  itself isn't it (skipping every draw call still costs ~44 ms); what's left is spread over signal
+  reads, whole-frame rebuilds when culling changes (17 MB of strokes sent again, four times a pan) and
+  the compositor waiting on the WebGL canvas. Most of that board's shapes stay on the page until 4c
+  and 5. `auto` would switch to the GPU on it.
+
 ### Phase 5: rich nodes as cached pictures. L
 
 Markdown notes, items, tables, rollups, books, quotes, dice cards, habits, tracks, up next, embeds,

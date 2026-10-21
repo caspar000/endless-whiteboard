@@ -4,7 +4,7 @@ import { modulate } from '@tldraw/utils'
 import React from 'react'
 import { useEditor } from '../hooks/useEditor'
 import { getRendererMode } from '../editor/rendererMode'
-import { getGpuScene } from './gpuScene'
+import { getGpuScene, type GpuFrame } from './gpuScene'
 import { GpuRenderer, type GpuView } from './GpuRenderer'
 import { gpuColor } from './primitives'
 
@@ -88,7 +88,7 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			const height = Math.max(1, Math.round(bounds.h * dpr))
 			if (canvas.width !== width) canvas.width = width
 			if (canvas.height !== height) canvas.height = height
-			renderer.setFrame(scene.frame.get())
+			if (frame) renderer.setFrame(frame)
 			// What the page's halos read: the zoom it was last told (debounced on big boards) and the paper's colour.
 			const haloZoom = Number(container.style.getPropertyValue('--tl-zoom')) || z
 			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background, settled }
@@ -138,18 +138,25 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 		canvas.addEventListener('webglcontextrestored', onRestored)
 		start()
 
-		// Anything drawn depends on these; reading them here wakes `schedule` when one changes.
+		// What's drawn, kept by its own reactor, which runs only when the scene changes: read on every
+		// camera move instead, the frame checks each of the board's shapes for a change, every frame.
+		let frame: GpuFrame | null = null
+		const stopFrame = react('gpu layer frame', () => {
+			frame = scene.frame.get()
+			schedule()
+		})
+		// Where it's drawn: a draw for each change of these.
 		const stop = react('gpu layer draw', () => {
 			editor.getCamera()
 			editor.getViewportScreenBounds()
 			editor.getDevicePixelRatio()
-			scene.frame.get()
 			schedule()
 		})
 
 		return () => {
 			if (later) clearTimeout(later)
 			stop()
+			stopFrame()
 			stopTheme()
 			zoomWatch.disconnect()
 			canvas.removeEventListener('webglcontextlost', onLost)

@@ -451,12 +451,26 @@ Parity: 19 of 20 (the miss above); the suite: 222 passed.
 - The benchmark now records each measurement's zoom and turns edge scrolling off: brush and drag start
   at the screen's edge, where the camera scrolls by time, so the slower renderer brushed and dragged
   further. Before, page and GPU weren't measured at the same zoom on the 10,000-shape board.
-- **Open:** on the 10,000-shape board (geo, text, notes, markdown, dotted arrows), panning at 10% is
-  slower on the GPU than on the page: 31 → 82 ms in the benchmark, 39 → 49 ms in a traced run. Drawing
-  itself isn't it (skipping every draw call still costs ~44 ms); what's left is spread over signal
-  reads, whole-frame rebuilds when culling changes (17 MB of strokes sent again, four times a pan) and
-  the compositor waiting on the WebGL canvas. Most of that board's shapes stay on the page until 4c
-  and 5. `auto` would switch to the GPU on it.
+- **The 10,000-shape board was slower on the GPU zoomed out** (31 → 82 ms panning at 10%), found when
+  the benchmark was made fair, and fixed (25.9 against the page's 32.5). Drawing wasn't it; signals and
+  reads were:
+  - The scene read the camera, the culled set and the editor's rendering list straight from the editor.
+    All three are woken by every frame of a pan (the camera is a record, and the queries see it), and
+    every computed built on them then checked each shape's caches to find nothing had changed. The zoom's
+    powers of two, the culled set and the rendering list are now atoms, set only when they change.
+  - Each shape had a reactor for its element's visibility; one set of hidden shapes and one reactor
+    now apply it, showing and hiding only what changed.
+  - Each shape's stroke vertices stay on the GPU in a slot of their own; a frame sends only new ones.
+  - Elements are read only after the camera has been still for 150 ms: between the wheel steps of a
+    gesture the editor already counts the camera idle, and reading (and handing over) in a pan cost it
+    frames.
+
+  10,000-shape board at 10% (page / GPU, ms): pan 32.5 / 25.9, hover 10.8 / 8.6, brush 19.6 / 16.2,
+  drag 16.6 / 16.9. Most of it (notes, text, markdown) is still the page's until 4c and 5. The
+  four-tree board: pan at fit 19.6 / 9.6, 25% 12.4 / 8.9, 100% 8.3 / 9.9; at 100%, where `auto` turns
+  the GPU on (some 110 shapes on screen), it's 1.5 ms slower: for the budget in phase 9.
+- Parity 19/20 (the dotted dark arrow); one run's dark view at 200% failed on Chromium drawing a label
+  in garbage glyphs on the page itself, and passed again. Suite 224 passed.
 
 ### Phase 5: rich nodes as cached pictures. L
 

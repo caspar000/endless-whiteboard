@@ -439,7 +439,7 @@ test('large boards benchmark', async ({ page }) => {
 			}, renderer)
 			// Time for the GPU to read every node on screen, a few milliseconds a frame, before it's timed.
 			await zoomTo(page, 'fit')
-			await page.waitForTimeout(renderer === 'dom' ? 800 : 6000)
+			await page.waitForTimeout(renderer === 'dom' ? 800 : Number(process.env.LB_BENCH_GPU_WAIT ?? 6000))
 			const results: Record<string, FrameStats> = {}
 			// The zoom each was measured at: what `fit` comes to depends on the board's bounds by then.
 			const zooms: Record<string, number> = {}

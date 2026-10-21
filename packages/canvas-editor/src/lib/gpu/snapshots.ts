@@ -2,6 +2,7 @@ import { atom, react, transact, type Atom } from '@tldraw/state'
 import type { TLShape, TLShapeId } from '@tldraw/tlschema'
 import type { Editor } from '../editor/Editor'
 import { rasterCanvas } from './atlas'
+import { getGpuScene } from './gpuScene'
 import { readGpuColor, type GpuColor, type GpuImage, type GpuPrimitive } from './primitives'
 
 /**
@@ -55,9 +56,13 @@ export class GpuSnapshots {
 							if (this.atoms.has(id)) this.invalidate(id)
 						}
 					})
+		const stopCamera = react('gpu snapshots camera', () => {
+			editor.getCamera()
+			this.cameraMovedAt = performance.now()
+		})
 		// A shape coming back on screen (culled shapes have no layout) is read once it has some.
 		const stop = react('gpu snapshots culling', () => {
-			const culled = editor.getCulledShapeIds()
+			const culled = getGpuScene(editor).culled.get()
 			for (const id of this.atoms.keys()) if (!culled.has(id) && this.atoms.get(id)!.__unsafe__getWithoutCapture() === undefined) this.enqueue(id)
 		})
 		// What every element inherits changing (the theme, the accent, a font arriving): read everything again.
@@ -87,6 +92,7 @@ export class GpuSnapshots {
 		document.fonts?.addEventListener?.('loadingdone', again)
 		editor.disposables.add(() => {
 			stop()
+			stopCamera()
 			stopTheme()
 			page?.disconnect()
 			zoomWatch?.disconnect()
@@ -147,8 +153,9 @@ export class GpuSnapshots {
 	private flush() {
 		this.frame = null
 		this.watch()
-		// Not while the camera moves: the page draws what isn't read yet, and reading takes frames from the move.
-		if (this.editor.getCameraState() !== 'idle') {
+		// Not while the camera moves, nor between the steps of a gesture: the page draws what isn't read
+		// yet, and reading (and handing over) takes frames from the move.
+		if (performance.now() - this.cameraMovedAt < STILL_MS) {
 			this.frame = requestAnimationFrame(() => this.flush())
 			return
 		}
@@ -197,11 +204,15 @@ export class GpuSnapshots {
 		if ((this.queue.size || this.results.length) && this.frame === null) this.frame = requestAnimationFrame(() => this.flush())
 	}
 
+	/** When the camera last moved. */
+	private cameraMovedAt = 0
 	/** Read and not handed over yet. */
 	private results: [Atom<Snapshot>, Snapshot][] = []
 	private handedAt = 0
 }
 
+/** How long the camera has to have been still before elements are read. */
+const STILL_MS = 150
 /** Milliseconds a frame spent reading elements. */
 const READ_BUDGET_MS = 4
 /** How often what's been read is handed over while there's more to read. */

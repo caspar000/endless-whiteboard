@@ -245,39 +245,102 @@ interface Reader {
 type Box = { x: number; y: number; w: number; h: number }
 
 /** An `overflow` cut: its box and its corners. */
-type Clip = Box & { rx: number; ry: number }
+type Corner = { x: number; y: number }
+/** Its corners top left, top right, bottom right, bottom left, as `roundRect` takes them. */
+type Clip = Box & { corners: Corner[] }
 
 function inside(r: Reader, b: Box) {
 	const c = r.clip
 	if (!c) return
 	if (b.x < c.x - 0.5 || b.y < c.y - 0.5 || b.x + b.w > c.x + c.w + 0.5 || b.y + b.h > c.y + c.h + 0.5) throw new Unsupported('cut by overflow')
-	// Rounded, the cut takes the corners off: a piece reaching into one would lose them on the page.
-	if (c.rx > 0 && c.ry > 0) {
-		const inX = (x0: number, x1: number) => b.x < x1 && b.x + b.w > x0
-		const inY = (y0: number, y1: number) => b.y < y1 && b.y + b.h > y0
-		const left = inX(c.x, c.x + c.rx)
-		const right = inX(c.x + c.w - c.rx, c.x + c.w)
-		const top = inY(c.y, c.y + c.ry)
-		const bottom = inY(c.y + c.h - c.ry, c.y + c.h)
-		if ((left || right) && (top || bottom)) throw new Unsupported('cut by rounded corners')
-	}
 }
 
-/** The corners an element rounds its overflow to, in the shape's units (one radius, or the ellipse of a percentage). */
-function clipCorners(cs: CSSStyleDeclaration, b: Box): { rx: number; ry: number } {
-	const radii = ['top-left', 'top-right', 'bottom-right', 'bottom-left'].map((c) => cs.getPropertyValue(`border-${c}-radius`))
-	if (radii.every((x) => !parseFloat(x))) return { rx: 0, ry: 0 }
-	if (radii.some((x) => x !== radii[0]) || radii[0]!.includes(' ')) throw new Unsupported('clip corners')
-	const raw = radii[0]!
-	if (raw.endsWith('%')) return { rx: (b.w * parseFloat(raw)) / 100, ry: (b.h * parseFloat(raw)) / 100 }
-	const n = Math.min(parseFloat(raw), b.w / 2, b.h / 2)
-	return { rx: n, ry: n }
+/** Whether a piece reaches into one of a rounded cut's corners, where the page takes its corner off. */
+function inCorners(c: Clip, b: Box): boolean {
+	const [tl, tr, br, bl] = c.corners as [Corner, Corner, Corner, Corner]
+	const overlaps = (x0: number, y0: number, x1: number, y1: number) => x1 > x0 && y1 > y0 && b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0
+	return (
+		overlaps(c.x, c.y, c.x + tl.x, c.y + tl.y) ||
+		overlaps(c.x + c.w - tr.x, c.y, c.x + c.w, c.y + tr.y) ||
+		overlaps(c.x + c.w - br.x, c.y + c.h - br.y, c.x + c.w, c.y + c.h) ||
+		overlaps(c.x, c.y + c.h - bl.y, c.x + bl.x, c.y + c.h)
+	)
+}
+
+const rounded = (c: Clip) => c.corners.some((k) => k.x > 0 && k.y > 0)
+
+/**
+ * The pieces read inside an element whose overflow is cut to rounded corners, each that reaches into
+ * a corner made a picture cut the same way (a card's header colour, a cover filling a rounded card).
+ */
+function cutToCorners(pieces: GpuPrimitive[], c: Clip): GpuPrimitive[] {
+	const css = (k: GpuColor) => `rgba(${Math.round(k[0] * 255)}, ${Math.round(k[1] * 255)}, ${Math.round(k[2] * 255)}, ${k[3]})`
+	return pieces.map((p) => {
+		if (p.kind === 'stroke' || !inCorners(c, p)) return p
+		const at = { x: p.x, y: p.y }
+		const clip = (ctx: CanvasRenderingContext2D) => {
+			ctx.beginPath()
+			ctx.roundRect(c.x - at.x, c.y - at.y, c.w, c.h, c.corners)
+			ctx.clip()
+		}
+		const key = `|cut ${c.x},${c.y},${c.w},${c.h},${JSON.stringify(c.corners)}`
+		if (p.kind === 'image') {
+			const draw = p.draw
+			return { ...p, key: p.key + key, draw: (ctx) => (clip(ctx), draw(ctx)) }
+		}
+		const rect = p
+		const picture: GpuImage = {
+			kind: 'image',
+			x: rect.x,
+			y: rect.y,
+			w: rect.w,
+			h: rect.h,
+			key: `rect|${JSON.stringify(rect)}${key}`,
+			draw: (ctx) => {
+				clip(ctx)
+				const sw = rect.stroke && rect.strokeWidth ? rect.strokeWidth : 0
+				ctx.beginPath()
+				ctx.roundRect(0, 0, rect.w, rect.h, rect.radius ?? 0)
+				if (rect.fill && rect.fill[3] > 0) {
+					ctx.fillStyle = css(rect.fill)
+					ctx.fill()
+				}
+				if (sw) {
+					const ring = new Path2D()
+					ring.roundRect(0, 0, rect.w, rect.h, rect.radius ?? 0)
+					ring.roundRect(sw, sw, rect.w - 2 * sw, rect.h - 2 * sw, Math.max(0, (rect.radius ?? 0) - sw))
+					ctx.fillStyle = css(rect.stroke!)
+					ctx.fill(ring, 'evenodd')
+				}
+			},
+		}
+		return picture
+	})
+}
+
+/** The corners an element rounds its overflow to, in the shape's units, each its own (a percentage an ellipse's). */
+function clipCorners(cs: CSSStyleDeclaration, b: Box): { corners: Corner[] } {
+	const corners = ['top-left', 'top-right', 'bottom-right', 'bottom-left'].map((name) => {
+		const raw = cs.getPropertyValue(`border-${name}-radius`)
+		const [h, v = h] = raw.split(' ')
+		const size = (part: string | undefined, of: number) => (part?.endsWith('%') ? (of * parseFloat(part)) / 100 : parseFloat(part ?? '0') || 0)
+		return { x: Math.min(size(h, b.w), b.w / 2), y: Math.min(size(v, b.h), b.h / 2) }
+	})
+	return { corners }
 }
 
 function readElement(editor: Editor, shape: TLShape, container: HTMLElement): Pick<Reader, 'out' | 'outlined' | 'pending'> {
 	const m = editor.getShapePageTransform(shape.id)
 	if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) throw new Unsupported('turned or scaled')
 	const r: Reader = { z: editor.getZoomLevel(), origin: container.getBoundingClientRect(), out: [], hiddenByCanvas: container.style.visibility === 'hidden', clip: null, outlined: false, pending: [] }
+	// Moving: a picture now would be of a moment of it. Finite animations are waited for; one that
+	// never ends (a spinner) leaves the shape to the page.
+	const running = container.getAnimations({ subtree: true }).filter((a) => a.playState === 'running')
+	if (running.some((a) => a.effect?.getComputedTiming().endTime === Infinity)) throw new Unsupported('animated')
+	if (running.length) {
+		r.pending.push(...running.map((a) => a.finished.catch(() => undefined)))
+		return r
+	}
 	for (const child of Array.from(container.children)) visit(r, child, 1)
 	return r
 }
@@ -311,6 +374,10 @@ function visit(r: Reader, el: Element, opacity: number) {
 	if (el instanceof SVGElement) throw new Unsupported('loose svg')
 	if (el instanceof HTMLImageElement) return imagePicture(r, el, cs, o)
 	if (el instanceof HTMLVideoElement || el instanceof HTMLCanvasElement || el instanceof HTMLIFrameElement) throw new Unsupported('picture')
+	// A form control the browser draws itself (a slider, a select, a checkbox): nothing in it to read.
+	// (`appearance` alone says nothing: tldraw sets `auto` on its text's divs, which have no look of their own.)
+	const widget = el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement || el instanceof HTMLMeterElement || el instanceof HTMLProgressElement
+	if (widget || (el instanceof HTMLButtonElement && cs.appearance !== 'none')) throw new Unsupported(`form control (${el.localName})`)
 	// Moved, not turned or scaled (a cropped image's container): where it lands is read from its box.
 	if (cs.transform !== 'none' && !/^matrix\(1, 0, 0, 1, -?[\d.e-]+, -?[\d.e-]+\)$/.test(cs.transform)) throw new Unsupported('transform')
 	// What CSS generates (a list's bullet, `content`) has no node to read.
@@ -321,6 +388,7 @@ function visit(r: Reader, el: Element, opacity: number) {
 	}
 	const first = r.out.length
 	box(r, el as HTMLElement, cs, o)
+	const ownEnd = r.out.length
 	const outer = r.clip
 	if (cs.overflow !== 'visible') {
 		const at = snapped(local(r, el.getBoundingClientRect()))
@@ -345,6 +413,8 @@ function visit(r: Reader, el: Element, opacity: number) {
 	}
 	positioned.sort((a, b) => a.z - b.z)
 	for (const { el: node } of positioned) visit(r, node, o)
+	// What's inside an element cut to rounded corners, cut to them too (its own box has its own corners).
+	if (r.clip && r.clip !== outer) r.out.splice(ownEnd, r.out.length - ownEnd, ...cutToCorners(r.out.slice(ownEnd), r.clip))
 	r.clip = outer
 	// The page fades an element as one; here each piece is faded, the same only where none overlaps another.
 	if (Number(cs.opacity) < 1 && overlapping(r.out.slice(first))) throw new Unsupported('faded overlapping pieces')
@@ -416,7 +486,7 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	let fill = color(cs.backgroundColor)
 	// A gradient that isn't flat: drawn as a picture, by a canvas gradient. Flat tints, `linear-gradient(c, c)`,
 	// are laid over each other and over the background colour.
-	let gradient: { at: number; color: string }[] | null = null
+	let gradient: Gradient | null = null
 	if (cs.backgroundImage !== 'none') {
 		const layers = splitTop(cs.backgroundImage).filter((x) => x !== 'none')
 		for (const layer of layers.reverse()) {
@@ -428,7 +498,7 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 				continue
 			}
 			if (gradient || layers.length > 1) throw new Unsupported('background image')
-			gradient = verticalStops(stops)
+			gradient = gradientOf(stops)
 		}
 	}
 	const sides = ['Top', 'Right', 'Bottom', 'Left'] as const
@@ -438,9 +508,14 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	const bw = widths[0]!
 	const hasBorder = widths.some((w) => w > 0) && styles.some((s) => s !== 'none' && s !== 'hidden')
 	const style = styles[0]
-	if (hasBorder && (widths.some((w) => w !== bw) || styles.some((s) => s !== style) || (style !== 'solid' && style !== 'dashed') || colors.some((c) => c !== colors[0]))) throw new Unsupported('border')
-	const stroke = hasBorder ? color(colors[0]!) : TRANSPARENT
-	if (fill[3] <= 0 && stroke[3] <= 0 && !gradient && cs.boxShadow === 'none') return
+	const uniform = widths.every((w) => w === bw) && styles.every((s) => s === style) && colors.every((c) => c === colors[0])
+	// Uneven (a side of its own colour or width): each side that's there solid, drawn as a picture.
+	const uneven = hasBorder && !uniform
+	if (uneven && widths.some((w, i) => w > 0 && styles[i] !== 'solid')) throw new Unsupported(`border (${el.className}: ${widths.join('/')} ${styles.join('/')} ${colors.join('/')})`)
+	if (hasBorder && !uneven && style !== 'solid' && style !== 'dashed') throw new Unsupported(`border (${el.className}: ${style})`)
+	const stroke = hasBorder && !uneven ? color(colors[0]!) : TRANSPARENT
+	if (uneven) colors.forEach((c, i) => widths[i]! > 0 && color(c))
+	if (fill[3] <= 0 && stroke[3] <= 0 && !uneven && !gradient && cs.boxShadow === 'none') return
 	// Laid out at fractions of a pixel, painted snapped; the corners are the layout's, as big as the painted box allows.
 	const laid = local(r, el.getBoundingClientRect())
 	const b = snapped(laid)
@@ -463,9 +538,9 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	if (cs.boxShadow !== 'none') for (const one of splitTop(cs.boxShadow).reverse()) shadow(r, one, b, radius, o)
 	const cut = cs.clipPath.startsWith('path(') ? cs.clipPath.match(/^path\((?:[a-z-]+, )?"([^"]+)"\)$/)?.[1] : undefined
 	if (cs.clipPath.startsWith('path(') && !cut) throw new Unsupported('clip path')
-	if (gradient || cut) {
-		if (hasBorder) throw new Unsupported('border on a picture')
-		paintedBox(r, b, typeof radius === 'number' ? radius : 0, fill, gradient, cut, o)
+	if (gradient || cut || uneven) {
+		if (hasBorder && !uneven) throw new Unsupported('border on a picture')
+		paintedBox(r, b, typeof radius === 'number' ? radius : 0, fill, gradient, cut, o, uneven ? { widths, colors } : undefined)
 		return
 	}
 	const corner = radius as number
@@ -474,11 +549,25 @@ function box(r: Reader, el: HTMLElement, cs: CSSStyleDeclaration, o: number) {
 	if (hasBorder && style === 'dashed' && stroke[3] > 0) dashedBorder(r, b, corner, bw, colors[0]!, o)
 }
 
-/** A gradient's stops, top to bottom (`linear-gradient(c1, c2…)`, `to bottom` or `180deg`), each at its share of the height. */
-function verticalStops(parts: string[]): { at: number; color: string }[] {
+type Gradient = { angle: number; stops: { at: number; color: string }[] }
+
+/**
+ * A `linear-gradient`: its angle (CSS's: 0 up, 90 right, 180 down, the default) and its stops, each
+ * at its share of the gradient line.
+ */
+function gradientOf(parts: string[]): Gradient {
 	let list = parts
-	if (/^(to bottom|180deg)$/.test(list[0]!)) list = list.slice(1)
-	else if (!/^(rgba?|color)\(/.test(list[0]!)) throw new Unsupported('gradient direction')
+	let angle = 180
+	const sides: Record<string, number> = { 'to top': 0, 'to right': 90, 'to bottom': 180, 'to left': 270 }
+	const first = list[0]!
+	if (first in sides) {
+		angle = sides[first]!
+		list = list.slice(1)
+	} else if (/^-?[\d.]+(deg|turn|rad)$/.test(first)) {
+		const n = parseFloat(first)
+		angle = first.endsWith('turn') ? n * 360 : first.endsWith('rad') ? (n * 180) / Math.PI : n
+		list = list.slice(1)
+	} else if (!/^(rgba?|color)\(/.test(first)) throw new Unsupported(`gradient direction (${first})`)
 	const stops = list.map((part, i) => {
 		const m = part.match(/^((?:rgba?|color)\([^)]*\))(?: (-?[\d.]+)%)?$/)
 		if (!m) throw new Unsupported('gradient stop')
@@ -486,11 +575,28 @@ function verticalStops(parts: string[]): { at: number; color: string }[] {
 		return { at: m[2] !== undefined ? Number(m[2]) / 100 : i / (list.length - 1), color: m[1]! }
 	})
 	if (stops.length < 2) throw new Unsupported('gradient stop')
-	return stops
+	return { angle, stops }
 }
 
-/** A box painted as a picture: its colour or gradient, cut to its corners or its clip path. */
-function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient: { at: number; color: string }[] | null, cut: string | undefined, o: number) {
+/** The ends of a gradient's line across a box `w` by `h`, as CSS lays it: through the middle, long enough that its ends' perpendiculars touch the far corners. */
+function gradientLine(g: Gradient, w: number, h: number): [number, number, number, number] {
+	const a = (g.angle * Math.PI) / 180
+	const dx = Math.sin(a)
+	const dy = -Math.cos(a)
+	const half = (Math.abs(w * dx) + Math.abs(h * dy)) / 2
+	return [w / 2 - dx * half, h / 2 - dy * half, w / 2 + dx * half, h / 2 + dy * half]
+}
+
+/** A border that isn't one colour and width all round (a card's accent side, a table row's rule), each side solid. */
+type Sides = { widths: number[]; colors: string[] }
+
+/**
+ * A box painted as a picture: its colour or gradient, cut to its corners or its clip path, and a
+ * border that differs side to side: the ring between the outer and inner outlines (the inner corners
+ * the outer ones less the sides' widths), each side its own colour up to the diagonals from the outer
+ * corners to the inner ones, where Blink splits them.
+ */
+function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient: Gradient | null, cut: string | undefined, o: number, sides?: Sides) {
 	const css = (c: GpuColor) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${c[3]})`
 	r.out.push({
 		kind: 'image',
@@ -498,7 +604,7 @@ function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient:
 		y: b.y,
 		w: b.w,
 		h: b.h,
-		key: `box|${b.w}|${b.h}|${radius}|${fill.join(',')}|${JSON.stringify(gradient)}|${cut ?? ''}`,
+		key: `box|${b.w}|${b.h}|${radius}|${fill.join(',')}|${JSON.stringify(gradient)}|${cut ?? ''}|${JSON.stringify(sides ?? null)}`,
 		opacity: o,
 		draw: (ctx) => {
 			if (cut) ctx.clip(new Path2D(cut))
@@ -509,11 +615,41 @@ function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient:
 				ctx.fill()
 			}
 			if (gradient) {
-				const g = ctx.createLinearGradient(0, 0, 0, b.h)
-				for (const stop of gradient) g.addColorStop(Math.max(0, Math.min(1, stop.at)), stop.color)
+				const g = ctx.createLinearGradient(...gradientLine(gradient, b.w, b.h))
+				for (const stop of gradient.stops) g.addColorStop(Math.max(0, Math.min(1, stop.at)), stop.color)
 				ctx.fillStyle = g
 				ctx.fill()
 			}
+			if (!sides) return
+			const [T, R, B, L] = sides.widths as [number, number, number, number]
+			const w = b.w
+			const h = b.h
+			const ring = new Path2D()
+			ring.roundRect(0, 0, w, h, radius)
+			const corner = (x: number, y: number) => ({ x: Math.max(0, radius - x), y: Math.max(0, radius - y) })
+			ring.roundRect(L, T, Math.max(0, w - L - R), Math.max(0, h - T - B), [corner(L, T), corner(R, T), corner(R, B), corner(L, B)])
+			const polygons = [
+				[0, 0, w, 0, w - R, T, L, T],
+				[w, 0, w, h, w - R, h - B, w - R, T],
+				[w, h, 0, h, L, h - B, w - R, h - B],
+				[0, h, 0, 0, L, T, L, h - B],
+			]
+			const one = sides.colors.every((c, i) => !sides.widths[i] || c === sides.colors.find((_, j) => sides.widths[j]))
+			sides.colors.forEach((c, i) => {
+				if (!sides.widths[i]) return
+				ctx.save()
+				if (!one) {
+					const p = polygons[i]!
+					ctx.beginPath()
+					ctx.moveTo(p[0]!, p[1]!)
+					for (let k = 2; k < p.length; k += 2) ctx.lineTo(p[k]!, p[k + 1]!)
+					ctx.closePath()
+					ctx.clip()
+				}
+				ctx.fillStyle = c
+				ctx.fill(ring, 'evenodd')
+				ctx.restore()
+			})
 		},
 	})
 }
@@ -716,7 +852,11 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 	const clamp = overflows && el.firstChild === node && el.lastChild === node ? parseInt(cs.webkitLineClamp) : NaN
 	if (overflows && !(clamp > 0) && (cs.overflow !== 'visible' || cs.textOverflow !== 'clip' || cs.webkitLineClamp !== 'none')) throw new Unsupported('text cut short')
 	// Canvas fonts take stretch keywords only, and decorations and transforms aren't drawn here.
-	if (cs.fontStretch !== '100%' || cs.textDecorationLine !== 'none' || cs.textTransform !== 'none' || cs.webkitTextStrokeWidth !== '0px') throw new Unsupported('text style')
+	// Upper or lower case: the page draws the text transformed, laid out as it reads; one for one, so a glyph's place is its own.
+	const cased = cs.textTransform === 'uppercase' ? (t: string) => t.toUpperCase() : cs.textTransform === 'lowercase' ? (t: string) => t.toLowerCase() : null
+	if (cased && cased(str).length !== str.length) throw new Unsupported('text transform changes its length')
+	if (cs.fontStretch !== '100%' || cs.textDecorationLine !== 'none' || (cs.textTransform !== 'none' && !cased) || cs.webkitTextStrokeWidth !== '0px')
+		throw new Unsupported(`text style (${el.className}: ${cs.textDecorationLine} ${cs.textTransform} ${cs.fontStretch})`)
 	const ink = cs.color
 	const fill = color(ink)
 	if (fill[3] <= 0) return
@@ -776,9 +916,10 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 		const baseline = Math.round(Math.round((line.top + ascent) * 64) / 64) - y
 		const runs: { text: string; x: number }[] = []
 		if (first && last) {
-			const whole = str.slice(first.i, last.end)
+			const shown = (a: number, z: number) => (cased ? cased(str.slice(a, z)) : str.slice(a, z))
+			const whole = shown(first.i, last.end)
 			if (Math.abs(measure(t, whole) - (last.x + last.w - first.x)) < 0.05) runs.push({ text: whole, x: first.x - x })
-			else for (const g of line.glyphs) runs.push({ text: str.slice(g.i, g.end), x: g.x - x })
+			else for (const g of line.glyphs) runs.push({ text: shown(g.i, g.end), x: g.x - x })
 		}
 		if (line.ellipsis !== undefined) runs.push({ text: '…', x: line.ellipsis - x })
 		const picture: GpuImage = {
@@ -858,9 +999,9 @@ function imagePicture(r: Reader, img: HTMLImageElement, cs: CSSStyleDeclaration,
 			ctx.beginPath()
 			ctx.rect(0, 0, view.maxX - view.x, view.maxY - view.y)
 			ctx.clip()
-			if (c && (c.rx > 0 || c.ry > 0)) {
+			if (c && rounded(c)) {
 				ctx.beginPath()
-				ctx.roundRect(c.x - x, c.y - y, c.w, c.h, { x: c.rx, y: c.ry })
+				ctx.roundRect(c.x - x, c.y - y, c.w, c.h, c.corners)
 				ctx.clip()
 			}
 			ctx.translate(b.x - x + b.w / 2, b.y - y + b.h / 2)

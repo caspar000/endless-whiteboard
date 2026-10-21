@@ -110,12 +110,17 @@ function shapeElement(editor: Editor, shape: { id: TLShapeId }): HTMLElement | n
  */
 function shown<T>(source: HTMLElement, read: () => T): T {
 	const display = source.style.display
-	if (display !== 'none') return read()
-	source.style.display = 'block'
+	// Culled (display: none) or drawn by the GPU layer (visibility: hidden, which its children inherit
+	// and the copy would carry): shown for the moment it's read.
+	const visibility = source.style.visibility
+	if (display !== 'none' && visibility !== 'hidden') return read()
+	if (display === 'none') source.style.display = 'block'
+	if (visibility === 'hidden') source.style.visibility = ''
 	try {
 		return read()
 	} finally {
 		source.style.display = display
+		source.style.visibility = visibility
 	}
 }
 

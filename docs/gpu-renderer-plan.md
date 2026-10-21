@@ -655,6 +655,25 @@ With drawing solved, the next limits are memory and loading. Measured first on s
 Done when, for each part: its board size opens and pans, zooms, hovers and drags at the floor; the
 suite passes; memory and open time recorded here.
 
+#### Phase 8, measured first (2026-10-21)
+
+Synthetic boards (geo, text, notes, markdown, a relation in four), production build, GPU, the shape
+limit raised for the run only (`MAX_SHAPES_PER_PAGE` is 20,000):
+
+| Shapes | Build | JS heap | Elements | Pan at fit, page / GPU | Stored | Open again |
+|---|---|---|---|---|---|---|
+| 10,000 | 6 s | 388 MB (37 KB a shape) | 78,600 (7.9 a shape) | 27.9 / 26.6 ms | 12 MB | 11 s, heap 725 MB |
+| 20,000 | 20 s | 819 MB (40 KB a shape) | 156,600 (7.8 a shape) | 34.9 / 31.0 ms | 15 MB | 29 s (28 s before the canvas shows), heap 1.5 GB |
+| 50,000 | — | — | — | — | all 50,000 written within 5 s | no shape after 10 minutes |
+
+- **Opening is the wall.** It grows faster than the board (11 s, 29 s, then nothing in 10 minutes at
+  50k), and the heap after opening is about twice the heap after building. Nothing is lost at 50k: the
+  board is in IndexedDB whole; loading it is what doesn't finish.
+- **Memory:** ~40 KB a shape. 100,000 would be ~4 GB, at a tab's limit; 1,000,000 can't fit.
+- **Elements:** ~8 a shape, so 160,000 at 20k. Zoomed out, the GPU's gain shrinks as the board grows
+  (27.9 → 26.6 at 10k on this measure): the page's per-element work outside painting is what's left.
+- 100,000 and 1,000,000 weren't tried: 50,000 doesn't open.
+
 ### Phase 9: default on, and tidy. S
 
 - `auto` on for everyone; the page-only path stays as the fallback (no WebGL2, lost context).

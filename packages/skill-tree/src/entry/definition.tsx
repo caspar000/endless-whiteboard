@@ -46,6 +46,7 @@ export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 	// Part of the maze's locked structure, with its skill node.
 	pinned: true,
 	component: EntryComponent,
+	gpu: true,
 	// An entry is a disc; a work a smaller disc with its title below, which still takes a click.
 	outline: (shape) =>
 		shape.props.variant === 'work'

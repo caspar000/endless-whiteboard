@@ -382,7 +382,8 @@ test('canvas benchmark', async ({ page }) => {
  * The GPU renderer's benches (docs/gpu-renderer-plan.md): the four-tree board and a generated board
  * of `LB_BENCH_SYNTH` distinct shapes (10,000 by default; the page holds up to 20,000), panned at
  * each zoom and hovered, brushed and dragged with everything on screen. Prints one `BENCH_LARGE`
- * line per board.
+ * line per board and renderer: `LB_BENCH_RENDERER`, a comma list of `dom`, `gpu` and `auto` (`dom`
+ * by default); `LB_BENCH_ONLY` for one board.
  */
 test('large boards benchmark', async ({ page }) => {
 	test.setTimeout(1_800_000)
@@ -416,7 +417,8 @@ test('large boards benchmark', async ({ page }) => {
 			}
 		}, z)
 
-	for (const board of boards) {
+	// `LB_BENCH_ONLY`: one board by name prefix (`four-trees`, `synthetic`).
+	for (const board of boards.filter((b) => !process.env.LB_BENCH_ONLY || b.name.startsWith(process.env.LB_BENCH_ONLY))) {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
 		await createBoard(page, board.name)
@@ -427,27 +429,40 @@ test('large boards benchmark', async ({ page }) => {
 		await board.build(page)
 		const buildMs = Date.now() - started
 		const shapes = await page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)
-		const results: Record<string, FrameStats> = {}
-		for (const z of ['fit', 0.25, 0.5, 1] as const) {
-			await zoomTo(page, z)
+		for (const renderer of (process.env.LB_BENCH_RENDERER ?? 'dom').split(',')) {
+			await page.evaluate((m) => (window as unknown as { lifeboardRenderer: { set(m: string): void } }).lifeboardRenderer.set(m), renderer)
+			// Time for the GPU to read every node on screen, a few milliseconds a frame, before it's timed.
+			await zoomTo(page, 'fit')
+			await page.waitForTimeout(renderer === 'dom' ? 800 : 6000)
+			const results: Record<string, FrameStats> = {}
+			// The zoom each was measured at: what `fit` comes to depends on the board's bounds by then.
+			const zooms: Record<string, number> = {}
+			const zoomNow = () => page.evaluate(() => (window as unknown as { editor: { getZoomLevel(): number } }).editor.getZoomLevel())
+			for (const z of ['fit', 0.25, 0.5, 1] as const) {
+				await zoomTo(page, z)
+				await page.waitForTimeout(800)
+				zooms[`pan@${z}`] = Math.round((await zoomNow()) * 1000) / 1000
+				results[`pan@${z}`] = await measure(pan, page, cdp)
+			}
+			await zoomTo(page, 'fit')
 			await page.waitForTimeout(800)
-			results[`pan@${z}`] = await measure(pan, page, cdp)
+			zooms.fit = Math.round((await zoomNow()) * 1000) / 1000
+			results['hover@fit'] = await measure(hover, page, cdp)
+			results['brush@fit'] = await measure(brush, page, cdp)
+			if (board.name.startsWith('synthetic')) results['drag@fit'] = await measure(drag, page, cdp)
+			const round = (value: number) => Math.round(value * 10) / 10
+			console.log(
+				'BENCH_LARGE',
+				board.name,
+				renderer,
+				JSON.stringify({
+					shapes,
+					buildMs,
+					zooms,
+					...Object.fromEntries(Object.entries(results).map(([k, v]) => [k, { meanMs: round(v.meanMs), p95Ms: round(v.p95Ms), taskMs: round(v.taskMs), moved: v.moved }])),
+				})
+			)
 		}
-		await zoomTo(page, 'fit')
-		await page.waitForTimeout(800)
-		results['hover@fit'] = await measure(hover, page, cdp)
-		results['brush@fit'] = await measure(brush, page, cdp)
-		if (board.name.startsWith('synthetic')) results['drag@fit'] = await measure(drag, page, cdp)
-		const round = (value: number) => Math.round(value * 10) / 10
-		console.log(
-			'BENCH_LARGE',
-			board.name,
-			JSON.stringify({
-				shapes,
-				buildMs,
-				...Object.fromEntries(Object.entries(results).map(([k, v]) => [k, { meanMs: round(v.meanMs), p95Ms: round(v.p95Ms), taskMs: round(v.taskMs), moved: v.moved }])),
-			})
-		)
 		await cdp.detach()
 	}
 })

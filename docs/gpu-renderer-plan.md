@@ -360,6 +360,74 @@ share (expected ~40 → ~25 ms before nodes move).
 Done when: parity passes for all of these at the whole grid, on Chromium and WebKit; the suite
 passes; the four-tree board pans zoomed out at ≤ 10 ms (the `visibility: hidden` measurement).
 
+#### Phase 4a, as built (2026-10-21): text, pictures and the skill tree's nodes
+
+- **Pictures** (`GpuImage`, `gpu/atlas.ts`): anything the browser's 2D canvas draws as the page does,
+  kept in one 4096² texture at the exact scale and sub-pixel phase it's seen at (1/4096 of a pixel,
+  fine enough that a glyph lands in the same quarter pixel as the page's), drawn stretched while the
+  camera moves and rastered again once it has been still for 120 ms, 6 ms a frame. A shelf of
+  pictures is drawn side by side in one canvas and sent in one upload: thousands of uploads in a
+  frame (the board zoomed out, every picture new) ran WebGL out of memory. The canvas is in the
+  document, out of sight, because a canvas takes `-webkit-font-smoothing`, tabular figures and the
+  other font settings from its own element's style; detached, its text came out 10–20% heavier.
+- **Nodes read from their elements** (`gpu/snapshots.ts`; `NodeDefinition.gpu`, on for skills,
+  entries and works). What the browser laid out is read back after it renders and redrawn:
+  - boxes: background, flat tints (`linear-gradient(c, c)` layers), one radius, snapped to whole
+    pixels in the shape's own space as Blink paints them (found by probing: an edge is at the shape's
+    translation plus the rounded layout position);
+  - solid borders, and dashed round ones drawn as Blink draws them (`DrawCurvedDashedDottedBoxSide`:
+    the outline brought in by half the width rounded down, stroked 2.2× wide, dash 3w gap 2w, the gap
+    fitted to the outline's length as Skia measures it, rounded down, cut to the ring); exact at
+    pixel ratio 2, within a few pixels at 1;
+  - glows (`box-shadow`): a picture by canvas `shadowBlur`, which blurs as CSS does, clipped to outside
+    the box;
+  - text: each line one `fillText`, so the browser shapes and spaces it, placed where its glyphs were
+    laid out (glyph by glyph if the widths disagree), the baseline snapped to a whole pixel in the
+    shape's space as Blink does; `-webkit-line-clamp` cut to its lines with the ellipsis after the
+    last glyph that leaves room;
+  - SVG (rings, icons): a picture of its own markup with the computed styles written in.
+
+  Anything else (transforms, filters, pictures, text cut short another way, square dashed borders)
+  leaves the node to the page, and why is kept in `lifeboardRenderer.snapshots(editor).reasons`.
+  A node is the page's until it's read, and again from the moment its element, the theme or a font
+  changes until it's read again, so nothing out of date shows. Moving it doesn't need a new read.
+- **The z-order rule** goes by where a stroke runs (boxes along it, 64 units each, padded by its width,
+  halo and a pixel), not its bounds, and skips culled shapes, whose overlaps are off screen. Before,
+  one page-drawn node on screen sent nearly every line on the four-tree board to the page.
+- **Strokes:** curves are cut only as finely as the zoom needs (a sixth of a device pixel at the top
+  of the zoom's power of two; at 10% the four-tree board's lines were 83 MB cut for 400%), and the
+  frame reuses the rect and stroke arrays when their pieces haven't changed.
+- **Chromium multisamples curves.** It rasterises a curved path 4× multisampled and a straight one
+  analytically (measured: a 0.3 px curve covers one sample of four, and four curves laid over each
+  other still one; straight ones add up). The four-tree board's lines lie over each other, so drawn
+  analytically they came out darker zoomed out (0.49% at 10%). The layer now draws into a 4×
+  multisampled target, and a curve thinner than a device pixel is covered by samples; everything
+  else keeps its exact shader edges, on quads a pixel wider, so it resolves unchanged. Not in WebKit,
+  which paints pages with CoreGraphics.
+- **Parity runs on Chromium's GPU rasteriser** on macOS (`LB_PARITY_SOFTWARE=1` for the software one),
+  because that's what people see: the software rasteriser antialiases round edges and dash ends
+  differently (4× vertical supersampling) and the two disagree by up to 0.15 px on a circle's edge.
+  CI has no GPU, so the spec skips there (agreed 2026-10-21; `LB_PARITY=1` forces it).
+- A shape whose pictures would be more than 1,024 device pixels across at the zoom's power of two is
+  the page's: zoomed far in (400% on a retina screen) a node's glow and ring didn't fit in the atlas
+  together, and its text went missing. `auto` keeps so few shapes on the page anyway.
+- **Accepted (2026-10-21):** at 25% and below, thin lines differ by a quarter of a pixel's coverage
+  here and there (the GPU's curves aren't cut where Skia cuts them, and multisampling turns that into
+  whole samples), up to 0.59% of pixels on the four-tree board in dark mode; the limit there is 0.6%.
+- **Known miss:** in dark mode at pixel ratio 1, a dotted elbow arrow at 50% and 100% differs by
+  0.17%/0.12% (0.065% under the software rasteriser): Chromium's GPU rasteriser draws dots on a
+  curved path differently from the GPU layer's exact ones, with or without multisampling. Left for
+  phase 4d (dash styles).
+
+**Numbers** (production build, GPU, mean / p95 ms a frame):
+
+| Four-tree board (3,490) | Pan at fit (10%) | Pan 25% | Pan 50% | Pan 100% | Hover, fit | Brush, fit |
+|---|---|---|---|---|---|---|
+| Page | 19.2 / 33.5 | 11.6 / 16.9 | 8.4 / 9.9 | 8.3 / 9.5 | 13.2 / 25.1 | 22.1 / 42.8 |
+| GPU | 9.8 / 16.9 | 8.8 / 10.0 | 8.5 / 10.0 | 8.5 / 10.3 | 8.8 / 16.3 | 13.8 / 33.4 |
+
+Parity: 19 of 20 (the miss above); the suite: 222 passed.
+
 ### Phase 5: rich nodes as cached pictures. L
 
 Markdown notes, items, tables, rollups, books, quotes, dice cards, habits, tracks, up next, embeds,

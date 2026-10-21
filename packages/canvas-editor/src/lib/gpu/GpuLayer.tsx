@@ -65,10 +65,21 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			scene.layerUp.set(true)
 		}
 
+		// When the camera last moved, for pictures: rastered again only once it's been still a moment.
+		const SETTLE_MS = 120
+		let cameraKey = ''
+		let movedAt = 0
+		let later: ReturnType<typeof setTimeout> | null = null
 		const draw = () => {
 			queued = false
 			if (!renderer) return
 			const { x, y, z } = editor.getCamera()
+			const key = `${x},${y},${z}`
+			if (key !== cameraKey) {
+				cameraKey = key
+				movedAt = performance.now()
+			}
+			const settled = performance.now() - movedAt >= SETTLE_MS
 			// The same offset the shape layer is moved by ("position layers" in Canvas.tsx).
 			const offset = z >= 1 ? modulate(z, [1, 8], [0.125, 0.5], true) : modulate(z, [0.1, 1], [-2, 0.125], true)
 			const bounds = editor.getViewportScreenBounds()
@@ -80,8 +91,17 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			renderer.setFrame(scene.frame.get())
 			// What the page's halos read: the zoom it was last told (debounced on big boards) and the paper's colour.
 			const haloZoom = Number(container.style.getPropertyValue('--tl-zoom')) || z
-			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background }
-			renderer.draw(view)
+			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background, settled }
+			const { pending } = renderer.draw(view)
+			// Pictures drawn from a raster at another scale or position: again when the camera has been
+			// still long enough, or next frame if there wasn't time for all of them.
+			if (pending && !later) {
+				const wait = settled ? 16 : SETTLE_MS - (performance.now() - movedAt) + 1
+				later = setTimeout(() => {
+					later = null
+					schedule()
+				}, Math.max(0, wait))
+			}
 		}
 
 		const schedule = () => {
@@ -128,6 +148,7 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 		})
 
 		return () => {
+			if (later) clearTimeout(later)
 			stop()
 			stopTheme()
 			zoomWatch.disconnect()

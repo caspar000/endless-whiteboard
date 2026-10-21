@@ -17,12 +17,28 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  *   default. `dom` against `dom` measures the page's own run-to-run noise (none, in phase 0).
  *   `LB_PARITY_A=idle` (the GPU layer there, drawing nothing) also reports what the layer does to the
  *   page's own shapes (`COMPOSITING` lines): nothing, since phase 3 put the layer over them.
- * - `LB_PARITY_MAX`: the share of pixels allowed to differ per screenshot (0.0007, 0.07%).
+ * - `LB_PARITY_MAX`: the share of pixels allowed to differ per screenshot (0.0007, 0.07%); at 25% and
+ *   below, `LB_PARITY_MAX_OUT` (0.006, 0.6%: thin lines there differ by a quarter of a pixel's
+ *   coverage here and there, where Chromium's multisampling and the GPU's cut curves differently;
+ *   accepted 2026-10-21).
  * - `LB_PARITY_BASELINE=save|compare`: keeps the `dom` screenshots in `.parity-baseline/`, or
  *   compares against them: the page path unchanged by a phase.
  * - `LB_PARITY=0` skips the spec (it takes a few minutes); `LB_PARITY_TRACE=1` prints each view as it goes.
+ * - Chromium rasterises on the GPU, as it does for people, on macOS (`LB_PARITY_SOFTWARE=1` for its
+ *   software rasteriser): the two antialias round edges and dash ends differently, and the GPU layer
+ *   is matched to what people see. CI has no GPU, so the spec runs locally only (`LB_PARITY=1` in CI
+ *   runs it anyway).
  */
 test.skip(process.env.LB_PARITY === '0', 'LB_PARITY=0')
+test.skip(!!process.env.CI && process.env.LB_PARITY !== '1', 'parity is checked on a GPU, locally')
+
+const GPU_FLAGS = ['--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--enable-gpu']
+test.use({
+	launchOptions: [
+		async ({ browserName }, use) => use(browserName === 'chromium' && process.platform === 'darwin' && !process.env.LB_PARITY_SOFTWARE ? { args: GPU_FLAGS } : {}),
+		{ scope: 'worker' },
+	],
+})
 
 type Mode = 'dom' | 'gpu' | 'auto' | 'idle'
 const A = (process.env.LB_PARITY_A ?? 'dom') as Mode
@@ -34,6 +50,9 @@ const B = (process.env.LB_PARITY_B ?? 'gpu') as Mode
  * (docs/gpu-renderer-plan.md, phases 2 and 3). A lost, doubled or moved shape differs by percents.
  */
 const MAX_RATIO = Number(process.env.LB_PARITY_MAX ?? 0.0007)
+const MAX_RATIO_OUT = Number(process.env.LB_PARITY_MAX_OUT ?? 0.006)
+/** The limit at zoom `z`. */
+const limit = (z: number) => (z <= 0.25 ? MAX_RATIO_OUT : MAX_RATIO)
 const BASELINE = process.env.LB_PARITY_BASELINE as 'save' | 'compare' | undefined
 const BASELINE_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '.parity-baseline')
 
@@ -276,7 +295,7 @@ for (const dpr of [1, 2]) {
 							const { ratio, diff } = compare(a, b)
 							compared++
 							worst = Math.max(worst, ratio)
-							if (ratio > MAX_RATIO) {
+							if (ratio > limit(z)) {
 								failures.push(`${name}: ${(ratio * 100).toFixed(3)}% of pixels differ`)
 								await attach(info, name, { a, b, diff: PNG.sync.write(diff) })
 							}

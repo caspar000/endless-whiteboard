@@ -1,4 +1,5 @@
-import { RECT_FLOATS, STROKE_FLOATS, type GpuFrame } from './gpuScene'
+import { ATLAS_PAD, ImageAtlas } from './atlas'
+import { RECT_FLOATS, SAMPLED_CURVES, STROKE_FLOATS, type GpuFrame } from './gpuScene'
 import type { GpuColor } from './primitives'
 
 /**
@@ -20,6 +21,13 @@ export interface GpuView {
 	haloZoom: number
 	/** The paper's colour (`--color-background`), a halo's colour. */
 	background: GpuColor
+	/** The camera has been still a moment: pictures seen at another scale or position are rastered again. */
+	settled: boolean
+}
+
+/** What a draw left undone: pictures still drawn from a raster at another scale or position. */
+export interface GpuDrawResult {
+	pending: boolean
 }
 
 const RECT_VS = `#version 300 es
@@ -109,11 +117,18 @@ flat out vec2 v_across;
 flat out float v_hw;
 flat out float v_px;
 flat out vec4 v_color;
+flat out float v_sampled;
 void main() {
-	// A halo is the stroke again in the paper's colour, wider by --tl-arrow-halo each side.
-	float hw = a_hw + (a_halo > 0.5 ? 2.0 * min(0.75, 1.5 / u_haloZoom) : 0.0);
+	// a_halo: 1 for a halo, plus 2 for a curve, which Chromium covers by samples. Only a line thinner
+	// than a device pixel is drawn that way here: that's where it shows (laid over each other, curves
+	// don't add up), while wider, a sample's worth of difference in where an edge falls would.
 	float px = 1.0 / (u_z * u_dpr);
-	vec2 off = a_off * (hw + px);
+	bool halo = mod(a_halo, 2.0) > 0.5;
+	bool sampled = a_halo > 1.5 && 2.0 * a_hw < px;
+	// A halo is the stroke again in the paper's colour, wider by --tl-arrow-halo each side.
+	float hw = a_hw + (halo ? 2.0 * min(0.75, 1.5 / u_haloZoom) : 0.0);
+	// Sampled, the triangles are the stroke's own outline; otherwise a pixel wider, for the shader's edge.
+	vec2 off = a_off * (sampled ? hw : hw + px);
 	vec2 page = a_pos + off;
 	vec2 screen = u_z * page + u_shift;
 	vec2 clip = screen / u_view * 2.0 - 1.0;
@@ -125,8 +140,9 @@ void main() {
 	v_across = ol > 1e-6 ? a_off / ol : vec2(1.0, 0.0);
 	v_hw = hw;
 	v_px = px;
-	vec4 c = a_halo > 0.5 ? u_background : a_color;
+	vec4 c = halo ? u_background : a_color;
 	v_color = vec4(c.rgb * c.a, c.a) * a_opacity;
+	v_sampled = sampled ? 1.0 : 0.0;
 }`
 
 const STROKE_FS = `#version 300 es
@@ -136,6 +152,7 @@ flat in vec2 v_across;
 flat in float v_hw;
 flat in float v_px;
 flat in vec4 v_color;
+flat in float v_sampled;
 out vec4 o;
 // The share of a pixel (a unit square) on the near side of a straight edge \`u\` pixels from its centre,
 // the edge's normal leaning \`a\` (the larger of its |x| and |y|) and \`b\` (the smaller): exact, as the
@@ -152,6 +169,11 @@ float coverage(float u, float a, float b) {
 	return 1.0 - t * t / (2.0 * a * b);
 }
 void main() {
+	// Covered by the multisampled target's samples: the triangles are the edge.
+	if (v_sampled > 0.5) {
+		o = v_color;
+		return;
+	}
 	// How far across the stroke this pixel lies, in pixels, and which way across is on screen.
 	float r = length(v_off) / v_px;
 	vec2 n = abs(v_across);
@@ -163,6 +185,39 @@ void main() {
 	o = v_color * clamp(cov, 0.0, 1.0);
 }`
 
+const IMAGE_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_corner;
+layout(location=1) in vec4 a_rect;
+layout(location=2) in vec4 a_uv;
+layout(location=3) in float a_opacity;
+uniform vec2 u_buffer;
+out vec2 v_uv;
+flat out float v_opacity;
+void main() {
+	vec2 c = (a_corner + 1.0) * 0.5;
+	vec2 p = a_rect.xy + a_rect.zw * c;
+	vec2 clip = p / u_buffer * 2.0 - 1.0;
+	gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+	v_uv = mix(a_uv.xy, a_uv.zw, c);
+	v_opacity = a_opacity;
+}`
+
+const IMAGE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D u_atlas;
+in vec2 v_uv;
+flat in float v_opacity;
+out vec4 o;
+void main() {
+	o = texture(u_atlas, v_uv) * v_opacity;
+}`
+
+/** Floats per image instance: device rect (4), texture rect (4), opacity. */
+const IMAGE_FLOATS = 9
+/** Milliseconds of rastering pictures again per frame, once the camera is still. */
+const RASTER_BUDGET_MS = 6
+
 /** Draws the scene's frame; owns every WebGL object, and is thrown away with the context. */
 export class GpuRenderer {
 	private readonly rectProgram: WebGLProgram
@@ -173,9 +228,19 @@ export class GpuRenderer {
 	private readonly strokeUniforms: Record<string, WebGLUniformLocation | null>
 	private readonly strokeVao: WebGLVertexArrayObject
 	private readonly strokeBuffer: WebGLBuffer
+	private readonly imageProgram: WebGLProgram
+	private readonly imageUniforms: Record<string, WebGLUniformLocation | null>
+	private readonly imageVao: WebGLVertexArrayObject
+	private readonly imageBuffer: WebGLBuffer
+	private readonly atlas: ImageAtlas
 	private frame: GpuFrame | null = null
 
+	/** The multisampled target everything is drawn in and resolved from, when curves are sampled. */
+	private readonly target: { framebuffer: WebGLFramebuffer; color: WebGLRenderbuffer; w: number; h: number } | null
+
 	constructor(readonly gl: WebGL2RenderingContext) {
+		const samples = Math.min(4, gl.getParameter(gl.MAX_SAMPLES) as number)
+		this.target = SAMPLED_CURVES && samples === 4 ? { framebuffer: gl.createFramebuffer()!, color: gl.createRenderbuffer()!, w: 0, h: 0 } : null
 		this.rectProgram = link(gl, RECT_VS, RECT_FS)
 		this.rectUniforms = uniforms(gl, this.rectProgram, ['u_shift', 'u_z', 'u_view', 'u_dpr'])
 		this.rectVao = gl.createVertexArray()!
@@ -191,6 +256,21 @@ export class GpuRenderer {
 			gl.vertexAttribDivisor(i, 1)
 		}
 		gl.bindVertexArray(null)
+
+		this.imageProgram = link(gl, IMAGE_VS, IMAGE_FS)
+		this.imageUniforms = uniforms(gl, this.imageProgram, ['u_buffer', 'u_atlas'])
+		this.imageVao = gl.createVertexArray()!
+		gl.bindVertexArray(this.imageVao)
+		gl.bindBuffer(gl.ARRAY_BUFFER, corners)
+		gl.enableVertexAttribArray(0)
+		gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+		this.imageBuffer = gl.createBuffer()!
+		for (let i = 1; i <= 3; i++) {
+			gl.enableVertexAttribArray(i)
+			gl.vertexAttribDivisor(i, 1)
+		}
+		gl.bindVertexArray(null)
+		this.atlas = new ImageAtlas(gl)
 
 		this.strokeProgram = link(gl, STROKE_VS, STROKE_FS)
 		this.strokeUniforms = uniforms(gl, this.strokeProgram, ['u_shift', 'u_z', 'u_view', 'u_dpr', 'u_haloZoom', 'u_background'])
@@ -222,13 +302,32 @@ export class GpuRenderer {
 		this.frame = frame
 	}
 
-	draw(view: GpuView): void {
+	draw(view: GpuView): GpuDrawResult {
 		const { gl } = this
-		gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
+		const w = gl.drawingBufferWidth
+		const h = gl.drawingBufferHeight
+		gl.viewport(0, 0, w, h)
 		gl.clearColor(0, 0, 0, 0)
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 		gl.clear(gl.COLOR_BUFFER_BIT)
 		const runs = this.frame?.runs ?? []
-		if (!runs.length) return
+		if (!runs.length) return { pending: false }
+		const target = this.target
+		if (target) {
+			// Four samples a pixel, as Chromium rasterises a curve; everything else's edges are the shaders',
+			// on quads a pixel wider, so they resolve to what they'd be drawn straight to the canvas.
+			if (target.w !== w || target.h !== h) {
+				gl.bindRenderbuffer(gl.RENDERBUFFER, target.color)
+				gl.renderbufferStorageMultisample(gl.RENDERBUFFER, 4, gl.RGBA8, w, h)
+				gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer)
+				gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, target.color)
+				target.w = w
+				target.h = h
+			}
+			gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer)
+			gl.clear(gl.COLOR_BUFFER_BIT)
+		}
+		const { images: imageRuns, pending } = this.placeImages(view)
 		gl.enable(gl.BLEND)
 		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		// The layer's translation on screen.
@@ -258,13 +357,113 @@ export class GpuRenderer {
 					offset += size * 4
 				})
 				gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, run.count)
-			} else {
+			} else if (run.kind === 'stroke') {
 				if (program !== this.strokeProgram) gl.useProgram((program = this.strokeProgram))
 				gl.bindVertexArray(this.strokeVao)
 				gl.drawArrays(gl.TRIANGLES, run.first, run.count)
+			} else {
+				const placed = imageRuns.get(run)
+				if (!placed || !placed.count) continue
+				if (program !== this.imageProgram) gl.useProgram((program = this.imageProgram))
+				gl.uniform2f(this.imageUniforms.u_buffer!, gl.drawingBufferWidth, gl.drawingBufferHeight)
+				gl.uniform1i(this.imageUniforms.u_atlas!, 0)
+				gl.activeTexture(gl.TEXTURE0)
+				gl.bindTexture(gl.TEXTURE_2D, this.atlas.texture)
+				gl.bindVertexArray(this.imageVao)
+				gl.bindBuffer(gl.ARRAY_BUFFER, this.imageBuffer)
+				let offset = placed.first * IMAGE_FLOATS * 4
+				;[4, 4, 1].forEach((size, i) => {
+					gl.vertexAttribPointer(i + 1, size, gl.FLOAT, false, IMAGE_FLOATS * 4, offset)
+					offset += size * 4
+				})
+				gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, placed.count)
 			}
 		}
 		gl.bindVertexArray(null)
+		if (target) {
+			gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.framebuffer)
+			gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null)
+			gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST)
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+		}
+		return { pending }
+	}
+
+	/**
+	 * Where each picture on screen lands this frame, in device pixels, and the part of the atlas it
+	 * shows: rastered at this scale and sub-pixel position when it is (or is new, or the camera is
+	 * still and there's time), else the last raster stretched to fit.
+	 */
+	private placeImages(view: GpuView): { images: Map<GpuFrame['runs'][number], { first: number; count: number }>; pending: boolean } {
+		const out = new Map<GpuFrame['runs'][number], { first: number; count: number }>()
+		const frame = this.frame
+		if (!frame?.images.length) return { images: out, pending: false }
+		const { z, dpr } = view
+		const shiftX = z * view.tx + 0.5 * (1 - z)
+		const shiftY = z * view.ty + 0.5 * (1 - z)
+		const bw = this.gl.drawingBufferWidth
+		const bh = this.gl.drawingBufferHeight
+		const started = performance.now()
+		// Fine enough that a glyph lands in the same quarter pixel as the page's, coarse enough that float noise is the same phase.
+		const q = (f: number) => Math.round(f * 4096) / 4096
+		const size = this.atlas.size
+		let data: number[] = []
+		let pending = false
+		// Twice at most: the atlas filling up partway starts it again empty, and what was placed before that points at nothing.
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const generation = this.atlas.generation
+			data = []
+			pending = false
+			out.clear()
+			for (const run of frame.runs) {
+				if (run.kind !== 'image') continue
+				const first = data.length / IMAGE_FLOATS
+				for (let i = run.first; i < run.first + run.count; i++) {
+					const { image, m, opacity } = frame.images[i]!
+					// Pictures of unrotated shapes only (the snapshot that makes them asks for that).
+					if (m[1] !== 0 || m[2] !== 0) continue
+					const scale = z * dpr * m[0]
+					const devX = (z * (m[0] * image.x + m[4]) + shiftX) * dpr
+					const devY = (z * (m[3] * image.y + m[5]) + shiftY) * dpr
+					const w = image.w * scale
+					const h = image.h * scale
+					if (devX + w + ATLAS_PAD < 0 || devY + h + ATLAS_PAD < 0 || devX - ATLAS_PAD > bw || devY - ATLAS_PAD > bh) continue
+					const fx = q(devX - Math.floor(devX))
+					const fy = q(devY - Math.floor(devY))
+					let entry = this.atlas.get(image.key, scale, fx, fy)
+					if (!entry) {
+						const latest = this.atlas.latest(image.key)
+						// New, or the camera has stopped and there's time this frame: raster it as it's seen.
+						if (!latest || (view.settled && performance.now() - started < RASTER_BUDGET_MS)) entry = this.atlas.raster(image.key, image, scale, fx, fy)
+						if (!entry) {
+							entry = latest
+							pending = true
+						}
+					}
+					if (!entry) continue
+					// Texel u of the raster is the shape's (u - pad - fx) / scale; on screen, devX + that × scale now.
+					const k = scale / entry.scale
+					data.push(
+						devX - (ATLAS_PAD + entry.fx) * k,
+						devY - (ATLAS_PAD + entry.fy) * k,
+						entry.w * k,
+						entry.h * k,
+						entry.x / size,
+						entry.y / size,
+						(entry.x + entry.w) / size,
+						(entry.y + entry.h) / size,
+						opacity
+					)
+				}
+				out.set(run, { first, count: data.length / IMAGE_FLOATS - first })
+			}
+			if (this.atlas.generation === generation) break
+		}
+		this.atlas.upload()
+		const { gl } = this
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.imageBuffer)
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW)
+		return { images: out, pending }
 	}
 }
 

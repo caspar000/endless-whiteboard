@@ -2568,6 +2568,27 @@ div.lb-sidebar__moves {
 	color: var(--lb-text-dim);
 	pointer-events: none;
 }
+/* The dev-only performance readout (canvas/PerfMonitor.tsx, `?perf=1`). */
+.lb-perf {
+	position: absolute;
+	top: 64px;
+	left: 12px;
+	z-index: 300;
+	display: grid;
+	gap: 2px;
+	padding: 6px 9px;
+	border-radius: 6px;
+	background: var(--lb-overlay);
+	color: var(--lb-text-dim);
+	font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
+	white-space: nowrap;
+}
+.lb-perf b {
+	color: var(--lb-text);
+	font-weight: 600;
+}
 .lb-debug-badge__ok {
 	color: var(--lb-money);
 }

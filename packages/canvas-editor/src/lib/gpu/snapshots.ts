@@ -1,4 +1,4 @@
-import { atom, react, transact, type Atom } from '@tldraw/state'
+import { atom, computed, react, transact, type Atom, type Computed } from '@tldraw/state'
 import type { TLShape, TLShapeId, TLUnknownShape } from '@tldraw/tlschema'
 import { getShapeElement, onShapeMounted, pinShapeElement } from '../components/shapeElements'
 import type { Editor } from '../editor/Editor'
@@ -53,8 +53,35 @@ export class GpuSnapshots {
 	readonly reasons = new Map<TLShapeId, string>()
 	private frame: number | null = null
 	private readonly observer: MutationObserver | null
+	/**
+	 * How far the shapes around the screen (the GPU scene's `near`) are read, while the GPU layer draws:
+	 * how many are drawn from their element, and how many of those the page still draws because they
+	 * aren't read yet. Null while the layer is off. For the app to say the board is still being prepared.
+	 */
+	readonly readiness: Computed<{ total: number; waiting: number } | null>
 
 	constructor(readonly editor: Editor) {
+		this.readiness = computed(
+			'gpu snapshots readiness',
+			() => {
+				const scene = getGpuScene(editor)
+				if (!scene.active.get()) return null
+				let total = 0
+				let waiting = 0
+				for (const { id } of scene.near.get()) {
+					const a = this.atoms.get(id)
+					if (!a) continue
+					total++
+					if (a.get() !== undefined || this.reasons.has(id)) continue
+					// Turned or scaled, it's never read: the page's for good (see `get`).
+					const m = editor.getShapePageTransform(id)
+					if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) continue
+					waiting++
+				}
+				return { total, waiting }
+			},
+			{ isEqual: (a, b) => a?.total === b?.total && a?.waiting === b?.waiting }
+		)
 		this.observer =
 			typeof MutationObserver === 'undefined'
 				? null

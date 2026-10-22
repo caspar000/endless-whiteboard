@@ -1001,14 +1001,31 @@ showed the first two problems below. Real input through Chrome's input pipeline,
 Under real input both have pans whose frames wait on the GPU with the page's thread nearly idle
 (about 100 ms of long tasks in the whole pan); that is the GPU's share of a frame at fit, left below.
 
+Added with it, so the slow states can be seen while they last:
+
+- **Opening a board** shows "Opening board…" with a spinner from the start (`OpeningBoard` in
+  `canvas/Board.tsx`, also the editor's `LoadingScreen`). Before, a big board showed an empty canvas
+  for seconds: tldraw's loading screen fades in after 0.2 s, and with the page busy loading the board
+  the fade never ran. The spinner is a transform animation, which the compositor keeps turning while
+  the page is busy.
+- **"Preparing board"** in the board's corner, beside the sync status, while the GPU layer is on and
+  the shapes around the screen aren't all read ("2,485 / 8,180 shapes"), then while pictures around
+  it aren't rastered ("340 pictures left"), then "Board ready" for a moment. Only after a second of
+  it, so a board that's ready never flashes it. `e2e/boardPreparing.spec.ts`.
+
 Left:
 
-- **A cold pan**: until the board is read the page draws what's on screen, about 3,900 shapes here,
+The first three are issues #50, #51 and #52. The board's "Preparing board" pill
+(`canvas/BoardPreparingPill.tsx`) shows the first two as they happen: the shapes around the screen not
+read yet, then the pictures not rastered.
+
+- **A cold pan** (#50): until the board is read the page draws what's on screen, about 3,900 shapes here,
   and reading 8,000 at fit takes 60–90 s. 27–33 ms a frame with wheel events from a timer, 130–190 ms
   with real input, which the browser also hit-tests against every one of those elements.
-- **The first seconds of a reopen**: the shapes the cache gives back come on screen with pictures the
+- **The first seconds of a reopen** (#51): about 5,000 shapes mount and the page stops answering for
+  about 4 s, then the shapes the cache gives back come on screen with pictures the
   new atlas doesn't have (2,200 rastered in a pan 4 s in, 390 of them still decoding).
-- **Frames waiting on the GPU** now and then at fit, before and after 10a, unmeasured on the GPU's
+- **Frames waiting on the GPU** (#52) now and then at fit, before and after 10a, unmeasured on the GPU's
   side so far.
 - The hover hit test once a pan stops, which a profile made look like 100 ms, is 4–6 ms measured
   directly.

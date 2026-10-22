@@ -323,6 +323,16 @@ export function Overview({ go }: SectionProps) {
 						</p>
 					</div>
 					<div className="lb-help__fact">
+						<h3>Big boards get ready as you look</h3>
+						<p>
+							Zoomed out over thousands of shapes, the board hands them to the graphics card to draw,
+							a batch at a time, starting with what is around the screen. Until that’s done, “Preparing
+							board” in the corner counts the shapes, then the pictures, and panning is a little slower;
+							everything works meanwhile. “Board ready” means it pans at full speed. Jump somewhere
+							new and it may count again for that part of the board.
+						</p>
+					</div>
+					<div className="lb-help__fact">
 						<h3>Undo has no button</h3>
 						<p>
 							<kbd className="lb-kbd">⌘Z</kbd> and <kbd className="lb-kbd">⇧⌘Z</kbd>, deliberately.

@@ -442,6 +442,8 @@ theme, the render key and the shape's record. A deploy starts over, but a change
 dev server doesn't: bump `READER_VERSION` in `gpu/snapshots.ts`, or turn the cache off with
 `localStorage['lifeboard:gpu-cache'] = 'off'`. Pictures are kept as recipes (`gpu/recipes.ts`), plain
 data drawn by `drawRecipe`, so a new kind of picture needs a recipe or it's read again every time.
+Whatever changes many shapes' snapshots at once does it in one `transact`: the scene goes through every
+shape near the screen when one changes, so 20,000 sets one at a time took half a minute.
 
 **⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
 case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,

@@ -27,6 +27,12 @@ interface EditorElements {
 	readonly pinCounts: Map<TLShapeId, number>
 	readonly pinned: Atom<ReadonlySet<TLShapeId>>
 	mounted?: Computed<MountedShapes>
+	/**
+	 * Each shape's `canLeavePage`, until its record changes. Asked of every shape off screen or drawn
+	 * whenever what has left the page is worked out again, which is every turn of the GPU's reading on
+	 * a big board: looking 20,000 records up each time cost more than the rest of it.
+	 */
+	canLeave?: Map<TLShapeId, boolean>
 }
 
 type TLRenderingShape = ReturnType<Editor['getRenderingShapeList']>[number]
@@ -170,6 +176,15 @@ export function getMountedShapeList(editor: Editor): TLRenderingShape[] {
 	return mountedShapes(editor).list
 }
 
+function canLeaveAnswers(editor: Editor, e: EditorElements): Map<TLShapeId, boolean> {
+	if (e.canLeave) return e.canLeave
+	const answers = (e.canLeave = new Map())
+	const forget = (shape: { id: TLShapeId }) => void answers.delete(shape.id)
+	editor.disposables.add(editor.sideEffects.registerAfterChangeHandler('shape', (_prev, next) => forget(next)))
+	editor.disposables.add(editor.sideEffects.registerAfterDeleteHandler('shape', forget))
+	return answers
+}
+
 const sameList = (a: TLRenderingShape[], b: TLRenderingShape[]) => a.length === b.length && a.every((x, i) => x === b[i])
 
 function mountedShapes(editor: Editor) {
@@ -186,13 +201,19 @@ function mountedShapes(editor: Editor) {
 			const culled = scene.culled.get()
 			const drawn = scene.hiddenNow.get()
 			const pinned = e.pinned.get()
+			const canLeave = canLeaveAnswers(editor, e)
 			const out: TLRenderingShape[] = []
 			for (const entry of list) {
 				if ((culled.has(entry.id) || drawn.has(entry.id)) && !pinned.has(entry.id)) {
 					// Untracked: a change that could make it stay (new text with an expression) changes its
 					// props, which the GPU layer reads it again for, or brings it back on screen.
-					const shape = editor.store.unsafeGetWithoutCapture(entry.id)
-					if (shape && entry.util.canLeavePage(shape)) {
+					let can = canLeave.get(entry.id)
+					if (can === undefined) {
+						const shape = editor.store.unsafeGetWithoutCapture(entry.id)
+						can = !!shape && entry.util.canLeavePage(shape)
+						if (shape) canLeave.set(entry.id, can)
+					}
+					if (can) {
 						left.add(entry.id)
 						continue
 					}

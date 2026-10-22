@@ -914,6 +914,46 @@ Three parts: **10a**, a steady pan at 20k and up; **10b**, reading a board once,
   kept pictures match a fresh read in the same session pixel for pixel. Comparing two sessions doesn't
   work: a reload alone moves a few pixels of a note's crease.
 
+#### Phase 10c, as built (2026-10-22): a cheaper warm-up
+
+Measured with a scratch probe on the production build: a 20,000-shape board in `auto`, fitted,
+watched for long tasks while it's read the first time, then closed and opened again from the list.
+The profiles found four places where one change went through every shape near the screen:
+
+- **Shapes taken from the cache were handed over one at a time.** Each set its snapshot in a
+  microtask of its own, outside a transaction, and each set woke the scene's whole pass. Reopening the
+  board stopped answering for over 20 s. They now go in one `transact`.
+- **Whether the GPU draws a shape was a computed per shape.** All 20,000 were worked out again
+  whenever the z-order rule's answer changed, which is every hand-over, and hooking up their chains of
+  parents (`attach` in `@tldraw/state`) cost most of it. Now one pass over `near` works out both which
+  shapes go to the page under a page-drawn one and which the GPU draws (`GpuScene.drawn`, a set).
+  `isDrawn` reads the set, and `onScreen` counts over `near`, not the whole board.
+- **What has left the page looked every shape up in the store**, on every turn of reading (a
+  read-ahead pin let go is a change). Immutable's string-hash cache holds 255 ids, so 20,000 lookups
+  hashed again each time. Each shape's `canLeavePage` answer is now kept until its record changes or
+  it's deleted (`shapeElements.ts`). The leave-page spec moves an expression from one shape to
+  another to check the answer follows.
+- **Elements changing under shapes were invalidated one at a time.** Shapes mounting in a pan change
+  dozens at once, each set re-ran the pass, and a pan during warm-up left about 5 s of long tasks
+  behind it. The MutationObserver's ids, decoded pictures arriving, a theme or font change and
+  `readAgain` now each go in one `transact`.
+
+Before and after, two runs each (load average 4–7):
+
+| | Before | After |
+|---|---|---|
+| First open, long tasks in the first ~37 s | 11.3 s, 10.2 s | 3.7 s, 3.8 s |
+| First open, worst task | 4.3 s, 3.0 s | 1.7 s, 1.8 s |
+| Shapes read in ~37 s | 7.4k, 8.0k | 8.8k, 9.3k |
+| Reopen from the cache | stops answering from 6–7 s, for the rest of the 24 s | answers at 3–7 s |
+| A pan 10–12 s into the reopen, mean/p95 | 67–72 / 126–225 ms | 24–30 / 83–142 ms |
+
+Still slow, and left for 10a: that pan, and the first seconds of a reopen (the worst task is ~2.4 s,
+the board opening with ~1,400 shapes mounted before the cache is in). Profiles taken at this heap
+size with the sampling profiler on show most time as "(program)", the profiler's own overhead; a
+Chrome trace without it shows reading and its microtasks taking 60–80% of the main thread while the
+camera is still.
+
 ## Working rules
 
 - A branch `gpu-renderer` off `develop`; a PR per phase into `develop`. Nothing reaches `main`

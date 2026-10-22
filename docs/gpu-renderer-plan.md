@@ -772,6 +772,35 @@ Production build, GPU flags, synthetic boards (`e2e-scratch/scale.scratch.spec.t
 - Open time at 50k is now the store's load, not mounting: the canvas shows only once all records are
   in. That's step 4's.
 
+#### Phase 8, step 2 (8b): per-shape memory, measured (2026-10-22)
+
+Heap snapshots of fresh boards of 3,000 and 9,000 shapes (both past `LEAVE_PAGE_ABOVE`, at 100%, so
+nearly all have left the page), the difference divided by 6,000 (`e2e-scratch/heap.scratch.spec.ts`,
+`heapdiff.mjs`, and the computeds counted by name):
+
+- **7.4 KB a shape off the page** (dev build), from ~45 KB mounted before step 3.
+- What's left is the record and its derivations: one atom (the record) and seven computeds a shape
+  (`isShapeHidden`, `shapeRenderInfo`, `pageTransformCache`, `pageBoundsCache`, `pageMaskCache`, the
+  geometry cache and its `:isEqual` wrapper), with their parent arrays and child sets (~3 KB), the
+  geometry itself (~1.5 KB: `Vec2d`s and the `Geometry2d`), and the record's strings and numbers.
+- They all exist because culling asks every shape for its masked page bounds, through a computed per
+  shape. Merging three of them would save about 1 KB. The plan's target, 2 KB a shape off screen,
+  needs culling from a spatial index kept from the store's changes, so a shape off screen has no
+  computeds at all, only its record. That's a change to how the editor culls (`_getOffScreenShapeIds`
+  and everything per shape it reaches), and it isn't made yet.
+
+At 9.5 KB a shape built (production), 100,000 shapes would be ~1 GB of heap: possible, where ~4 GB
+before wasn't. 1,000,000 still isn't, without both the culling change and step 4.
+
+#### Phase 8, step 4 (8c): loading and syncing by region — not started
+
+What it needs, from the runs above: opening a 50k board is now the store's load (18–20 s before the
+canvas shows; all 75,000 records read, migrated, validated and put before anything draws). By region:
+the board stored in spatial chunks (IndexedDB and the server), the store holding the chunks near the
+screen and loading the rest as the camera moves, sync subscribed by region, and everything that reads
+the whole store (relations, rollups, search, the agent's board queries) asked to work from an index
+instead. Server and IndexedDB migrations: a server backup before deploying (AGENTS.md).
+
 ### Phase 9: default on, and tidy. S
 
 - `auto` on for everyone; the page-only path stays as the fallback (no WebGL2, lost context).

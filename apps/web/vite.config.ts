@@ -12,6 +12,9 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
+		// Changes with every build: what the GPU layer keeps of each shape between sessions is kept for
+		// one build, as styles (and so what a shape looks like) can change from one to the next.
+		__BUILD_ID__: JSON.stringify(Date.now().toString(36)),
 	},
 	plugins: [
 		react(),

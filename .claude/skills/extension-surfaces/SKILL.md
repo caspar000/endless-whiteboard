@@ -31,7 +31,9 @@ felt optional.
   shapes, while off screen or drawn by the GPU. Only for a component that keeps no state (no scroll
   position, nothing playing, no editor open) and shows nothing but its own props; a function of the
   shape is allowed (the markdown note says no when its text has a `{…}`). Leave it out when unsure:
-  the node then stays mounted, as every node did before.
+  the node then stays mounted, as every node did before. A node that can leave the page also has what
+  the GPU read of it kept between sessions (README, *What the GPU read is kept*), so the same rule
+  protects that cache: a node showing anything besides its own record would come back stale.
 
 ## 2. Register it — `apps/web/src/extensions.ts`
 

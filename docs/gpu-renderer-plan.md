@@ -889,6 +889,31 @@ Found in phase 8 and left for later:
 - **Opening is the store's load.** At 50k, 18–20 s before the canvas shows, all 75,000 records read,
   migrated, validated and put first. Step 4 of phase 8 (loading by region) is the real answer.
 
+Three parts: **10a**, a steady pan at 20k and up; **10b**, reading a board once, not on every open;
+**10c**, a cheaper warm-up after opening.
+
+#### Phase 10b, as built (2026-10-22): what was read is kept
+
+- Every picture the element reader makes is now plain data, a **recipe** (`gpu/recipes.ts`): a rect cut
+  to corners, a box with its borders, a dashed border, a shadow, text runs, an image, an SVG. One
+  function, `drawRecipe`, draws them all, so a picture read from the page and one kept from an earlier
+  session go through the same code. Parity on the gallery didn't move.
+- `gpu/snapshotCache.ts` keeps each shape's primitives in their own IndexedDB database
+  (`lifeboard-gpu-snapshots`), by shape id, with a key: a hash of the app's build, the reader's version
+  (`READER_VERSION` in `snapshots.ts`), the theme, the render key at the settled zoom, and the shape's
+  type, props and meta. A key that doesn't match is read again. Past 200,000 entries the oldest go.
+- Only shapes whose util says `canLeavePage` are kept: they draw from their own record. A picture of
+  an object URL (`blob:`) isn't kept; the URL dies with the page.
+- Kept in batches, two seconds after the last read. On open, reading waits up to 5 s for the cache to
+  load, so a shape isn't read and then found kept. A shape whose element changes after it's drawn
+  (a font arriving, an image loading) is marked and not kept until it's read again.
+- The app turns it on with its version and a build id (`configureGpuSnapshotCache` in `App.tsx`), so a
+  new deploy reads everything once. `localStorage['lifeboard:gpu-cache'] = 'off'` turns it off.
+- Tests: `snapshotCache.test.ts` (what is and isn't storable, and restored pictures draw);
+  `e2e/gpuCache.spec.ts` builds 60 shapes, reads them, reloads, and checks none is read again and the
+  kept pictures match a fresh read in the same session pixel for pixel. Comparing two sessions doesn't
+  work: a reload alone moves a few pixels of a note's crease.
+
 ## Working rules
 
 - A branch `gpu-renderer` off `develop`; a PR per phase into `develop`. Nothing reaches `main`

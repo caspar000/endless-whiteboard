@@ -467,6 +467,7 @@ export {
 	LEAVE_PAGE_ABOVE,
 	requestShapeElement,
 } from './lib/components/shapeElements'
+export { configureGpuSnapshotCache } from './lib/gpu/snapshotCache'
 export { getGpuSnapshots, type GpuSnapshots } from './lib/gpu/snapshots'
 export { DEFAULT_GPU_BUDGET, getGpuScene, GPU_BUDGET_STORAGE_KEY, gpuLayerSupported, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'

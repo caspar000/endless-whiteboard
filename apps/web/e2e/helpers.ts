@@ -11,6 +11,9 @@ export async function gotoFresh(page: Page): Promise<void> {
 	if (process.env.LB_GPU_BUDGET) {
 		await page.addInitScript((n) => localStorage.setItem('lifeboard:gpu-budget', n), process.env.LB_GPU_BUDGET)
 	}
+	// The GPU renderer's test rectangle in the board schema (canvas/boardShapeUtils.ts): the server
+	// suite leaves it out, as a server's schema doesn't have it.
+	await page.addInitScript(() => localStorage.setItem('lifeboard:gpu-test-shape', '1'))
 	// The board runs under the floating sidebar, and most tests put shapes near the page origin with
 	// the camera at 0,0 — where an open sidebar would cover them. Every test starts with it collapsed
 	// (as a fresh install would choose for itself), and the ones about the sidebar open it.

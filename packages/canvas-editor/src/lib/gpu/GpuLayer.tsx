@@ -140,7 +140,9 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			// What the page's halos read: the zoom it was last told (debounced on big boards) and the paper's colour.
 			const haloZoom = Number(container.style.getPropertyValue('--tl-zoom')) || z
 			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background, settled }
-			const { pending } = renderer.draw(view)
+			const { pending, left } = renderer.draw(view)
+			// Only counted with the camera still: moving, pictures aren't rastered ahead.
+			if (settled && left !== scene.picturesLeft.__unsafe__getWithoutCapture()) scene.picturesLeft.set(left)
 			// Pictures drawn from a raster at another scale or position: again when the camera has been
 			// still long enough, or next frame if there wasn't time for all of them. Once still, a draw in
 			// any case: it rasters what's around the screen for the next pan (`GpuRenderer.placeImages`).
@@ -227,6 +229,7 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			canvas.removeEventListener('webglcontextlost', onLost)
 			canvas.removeEventListener('webglcontextrestored', onRestored)
 			scene.layerUp.set(false)
+			scene.picturesLeft.set(0)
 			// Given back now rather than whenever the canvas is collected.
 			renderer?.gl.getExtension('WEBGL_lose_context')?.loseContext()
 			renderer = null

@@ -445,6 +445,15 @@ data drawn by `drawRecipe`, so a new kind of picture needs a recipe or it's read
 Whatever changes many shapes' snapshots at once does it in one `transact`: the scene goes through every
 shape near the screen when one changes, so 20,000 sets one at a time took half a minute.
 
+**The GPU layer draws once a frame**, from a `ResizeObserver` (`gpu/GpuLayer.tsx`): after the frame's
+animation callbacks and layout, before it paints. Drawing on every change queued a frame on the GPU
+per input event once it fell behind, and putting a draw off to the next animation frame left the layer
+a frame behind changes made in one (the reader hands shapes over from one). How far the shapes around
+the screen are from being drawn by it is `getGpuSnapshots(editor).readiness` and
+`getGpuScene(editor).picturesLeft`; the board's "Preparing board" pill (`canvas/BoardPreparingPill.tsx`)
+shows them, and is the quickest way to tell a slow pan on an unprepared board from a slow one on a
+ready board.
+
 **⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
 case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,
 which is what lets the second key switch an already-open palette into command mode instead of closing

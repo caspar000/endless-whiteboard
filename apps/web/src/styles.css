@@ -2473,6 +2473,23 @@ div.lb-sidebar__moves {
 .lb-board__loading > div {
 	text-align: center;
 }
+.lb-board__spinner {
+	display: block;
+	width: 20px;
+	height: 20px;
+	margin: 0 auto 10px;
+	border-radius: 50%;
+	border: 2px solid var(--lb-border);
+	border-top-color: var(--lb-text-dim);
+	/* A transform animation on a layer of its own: the compositor runs it while the page is busy. */
+	will-change: transform;
+	animation: lb-spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-board__spinner {
+		animation-duration: 2.4s;
+	}
+}
 .lb-board__loading-hint {
 	max-width: 320px;
 	margin: 8px auto 0;
@@ -2481,15 +2498,23 @@ div.lb-sidebar__moves {
 }
 
 /*
- * Where a server board stands with the server (canvas/SyncStatusPill.tsx): quiet unless it matters.
- * Beside the round agent button, level with it, or beside the agent panel while that is open.
+ * The board's quiet statuses (Board.tsx): where a server board stands with the server
+ * (canvas/SyncStatusPill.tsx) and how far a big board is from panning at full speed
+ * (canvas/BoardPreparingPill.tsx). Beside the round agent button, level with it, or beside the agent
+ * panel while that is open; the sync status nearest it.
  */
-.lb-sync-pill {
+.lb-board-pills {
 	position: absolute;
 	top: calc(var(--fl-edge) + 11px);
 	right: calc(var(--fl-edge) + 58px);
 	z-index: 300;
 	transition: right var(--mo-in);
+	display: flex;
+	flex-direction: row-reverse;
+	gap: 8px;
+	pointer-events: none;
+}
+.lb-sync-pill {
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -2501,13 +2526,21 @@ div.lb-sidebar__moves {
 	font-size: 12px;
 	pointer-events: none;
 }
-.lb-shell--agent-open .lb-sync-pill {
+.lb-shell--agent-open .lb-board-pills {
 	right: calc(var(--fl-right) + var(--fl-edge));
 }
 @media (max-width: 1023px) {
-	.lb-shell--agent-open .lb-sync-pill {
+	.lb-shell--agent-open .lb-board-pills {
 		right: calc(var(--fl-edge) + 58px);
 	}
+}
+.lb-board-pill--explained {
+	pointer-events: auto;
+	cursor: default;
+}
+.lb-board-pill__detail {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.8;
 }
 .lb-sync-pill--saving svg {
 	animation: lb-spin 1.2s linear infinite;

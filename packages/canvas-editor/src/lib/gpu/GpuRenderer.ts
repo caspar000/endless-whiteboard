@@ -26,9 +26,12 @@ export interface GpuView {
 	settled: boolean
 }
 
-/** What a draw left undone: pictures still drawn from a raster at another scale or position. */
+/** What a draw left undone. */
 export interface GpuDrawResult {
+	/** Pictures still drawn from a raster at another scale or position, or rastered ahead. */
 	pending: boolean
+	/** With the camera still: pictures around the screen never rastered at this zoom, with room for them. */
+	left: number
 }
 
 const RECT_VS = `#version 300 es
@@ -352,7 +355,7 @@ export class GpuRenderer {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 		gl.clear(gl.COLOR_BUFFER_BIT)
 		const runs = this.frame?.runs ?? []
-		if (!runs.length) return { pending: false }
+		if (!runs.length) return { pending: false, left: 0 }
 		const target = this.target
 		if (target) {
 			// Four samples a pixel, as Chromium rasterises a curve; everything else's edges are the shaders',
@@ -368,7 +371,7 @@ export class GpuRenderer {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer)
 			gl.clear(gl.COLOR_BUFFER_BIT)
 		}
-		const { images: imageRuns, pending } = this.placeImages(view)
+		const { images: imageRuns, pending, left } = this.placeImages(view)
 		gl.enable(gl.BLEND)
 		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		// The layer's translation on screen.
@@ -442,7 +445,7 @@ export class GpuRenderer {
 			gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST)
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 		}
-		return { pending }
+		return { pending, left }
 	}
 
 	/**
@@ -450,10 +453,10 @@ export class GpuRenderer {
 	 * shows: rastered at this scale and sub-pixel position when it is (or is new, or the camera is
 	 * still and there's time), else the last raster stretched to fit.
 	 */
-	private placeImages(view: GpuView): { images: Map<GpuFrame['runs'][number], { first: number; count: number }>; pending: boolean } {
+	private placeImages(view: GpuView): { images: Map<GpuFrame['runs'][number], { first: number; count: number }>; pending: boolean; left: number } {
 		const out = new Map<GpuFrame['runs'][number], { first: number; count: number }>()
 		const frame = this.frame
-		if (!frame?.images.length) return { images: out, pending: false }
+		if (!frame?.images.length) return { images: out, pending: false, left: 0 }
 		const { z, dpr } = view
 		const shiftX = z * view.tx + 0.5 * (1 - z)
 		const shiftY = z * view.ty + 0.5 * (1 - z)
@@ -465,6 +468,7 @@ export class GpuRenderer {
 		const size = this.atlas.size
 		let data: number[] = []
 		let pending = false
+		let left = 0
 		// Twice at most: the atlas filling up partway starts it again empty, and what was placed before that points at nothing.
 		for (let attempt = 0; attempt < 2; attempt++) {
 			const generation = this.atlas.generation
@@ -532,20 +536,24 @@ export class GpuRenderer {
 			// never been rastered, at this zoom, so the pan that brings them in has them. New on screen, a
 			// picture is rastered at once, whatever it costs: the first pan across a big board rastered
 			// thousands. Only while the atlas has room, so they never push out what's on screen.
+			let done = 0
 			for (const { image, scale, fx, fy } of ahead) {
 				if (performance.now() - started >= RASTER_BUDGET_MS || !this.atlas.hasRoom()) break
 				// Once, and only if it's decoded: one that isn't waits until it's on screen.
 				this.triedAhead.add(image)
 				withoutDecoding(() => this.atlas.raster(image, scale, fx, fy, false))
 				pending = true
+				done++
 			}
+			// Without room, none of the rest will be: nothing left that's coming.
+			left = this.atlas.hasRoom() ? ahead.length - done : 0
 			break
 		}
 		this.atlas.upload()
 		const { gl } = this
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.imageBuffer)
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW)
-		return { images: out, pending }
+		return { images: out, pending, left }
 	}
 }
 

@@ -91,6 +91,11 @@ export class GpuScene {
 	 * have it ask each one again.
 	 */
 	readonly hiddenNow: Atom<ReadonlySet<TLShapeId>> = atom('gpu hidden now', EMPTY)
+	/**
+	 * Set by the layer once the camera is still: pictures around the screen it hasn't rastered at this
+	 * zoom yet (and has room for). A pan that brings them in rasters them on the way.
+	 */
+	readonly picturesLeft: Atom<number> = atom('gpu pictures left', 0)
 	/** Set by the layer: mounted with a live WebGL2 context. */
 	readonly layerUp: Atom<boolean> = atom('gpu layer up', false)
 	/** Set by the app: this board is the one on screen (not a tab open behind it). */
@@ -119,7 +124,7 @@ export class GpuScene {
 	 * draws, where, whether it's drawn) and the editor's (its page box) made for it and kept, near the
 	 * screen or not. From the editor's bounds index, which makes nothing per shape.
 	 */
-	private readonly near: Computed<ReturnType<Editor['getRenderingShapeList']>>
+	readonly near: Computed<ReturnType<Editor['getRenderingShapeList']>>
 	/** The GPU's shapes on screen, for `auto`. */
 	readonly onScreen: Computed<number>
 	/** Where a shape paints in page space: boxes along its strokes when it's only strokes, else its bounds. */

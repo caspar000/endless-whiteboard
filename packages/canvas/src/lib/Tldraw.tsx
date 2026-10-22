@@ -94,7 +94,10 @@ export function Tldraw(props: TldrawProps) {
 	}
 
 	if (!preloadingComplete) {
-		return <LoadingScreen>Loading assets...</LoadingScreen>
+		// The app's own loading screen, if it gives one, for this as for the store loading after it: one
+		// screen from start to finish rather than two texts in turn.
+		const Loading = withDefaults.components.LoadingScreen
+		return Loading ? <Loading /> : <LoadingScreen>Loading assets...</LoadingScreen>
 	}
 
 	return (

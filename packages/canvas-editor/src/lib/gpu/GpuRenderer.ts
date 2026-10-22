@@ -1,6 +1,7 @@
-import { ATLAS_PAD, ImageAtlas } from './atlas'
-import { RECT_FLOATS, SAMPLED_CURVES, STROKE_FLOATS, type GpuFrame } from './gpuScene'
-import type { GpuColor } from './primitives'
+import { ATLAS_PAD, ImageAtlas, type AtlasEntry } from './atlas'
+import { RECT_FLOATS, SAMPLED_CURVES, STROKE_FLOATS, type GpuFrame, type PlacedImage } from './gpuScene'
+import type { GpuColor, GpuImage } from './primitives'
+import { withoutDecoding } from './recipes'
 
 /**
  * The page-to-screen mapping of the shape layer (`Canvas.tsx`, "position layers"): a 1px element
@@ -337,6 +338,10 @@ export class GpuRenderer {
 
 	/** Where each stroke array is in the stroke buffer, in vertices; how much of it is used, and its size, in floats. */
 	private readonly strokePool = { at: new WeakMap<Float32Array, number>(), used: 0, capacity: 0 }
+	/** Pictures rastered ahead of being on screen, or tried. */
+	private readonly triedAhead = new WeakSet<GpuImage>()
+	/** Each placed picture's raster as last found, with the scale and phase it was found for. */
+	private readonly seen = new WeakMap<PlacedImage, { scale: number; fx: number; fy: number; generation: number; entry: AtlasEntry }>()
 
 	draw(view: GpuView): GpuDrawResult {
 		const { gl } = this
@@ -466,11 +471,14 @@ export class GpuRenderer {
 			data = []
 			pending = false
 			out.clear()
+			// Pictures near the screen never rastered yet, for when the camera is still (see below).
+			const ahead: { image: GpuImage; scale: number; fx: number; fy: number }[] = []
 			for (const run of frame.runs) {
 				if (run.kind !== 'image') continue
 				const first = data.length / IMAGE_FLOATS
 				for (let i = run.first; i < run.first + run.count; i++) {
-					const { image, m, opacity } = frame.images[i]!
+					const placed = frame.images[i]!
+					const { image, m, opacity } = placed
 					// Pictures of unrotated shapes only (the snapshot that makes them asks for that).
 					if (m[1] !== 0 || m[2] !== 0) continue
 					const scale = z * dpr * m[0]
@@ -478,18 +486,29 @@ export class GpuRenderer {
 					const devY = (z * (m[3] * image.y + m[5]) + shiftY) * dpr
 					const w = image.w * scale
 					const h = image.h * scale
-					if (devX + w + ATLAS_PAD < 0 || devY + h + ATLAS_PAD < 0 || devX - ATLAS_PAD > bw || devY - ATLAS_PAD > bh) continue
 					const fx = q(devX - Math.floor(devX))
 					const fy = q(devY - Math.floor(devY))
-					let entry = this.atlas.get(image, scale, fx, fy)
-					if (!entry) {
-						const latest = this.atlas.latest(image)
-						// New, or the camera has stopped and there's time this frame: raster it as it's seen.
-						if (!latest || (view.settled && performance.now() - started < RASTER_BUDGET_MS)) entry = this.atlas.raster(image, scale, fx, fy)
+					if (devX + w + ATLAS_PAD < 0 || devY + h + ATLAS_PAD < 0 || devX - ATLAS_PAD > bw || devY - ATLAS_PAD > bh) {
+						if (view.settled && !this.triedAhead.has(image) && !this.atlas.latest(image)) ahead.push({ image, scale, fx, fy })
+						continue
+					}
+					// Where it was found last frame, if it's still at that scale and phase: a pan by whole device
+					// pixels keeps every picture's, and looking each up by its phase was most of a frame's work.
+					const seen = this.seen.get(placed)
+					let entry: AtlasEntry | undefined
+					if (seen && seen.scale === scale && seen.fx === fx && seen.fy === fy && seen.generation === this.atlas.generation) entry = seen.entry
+					else {
+						entry = this.atlas.get(image, scale, fx, fy)
 						if (!entry) {
-							entry = latest
-							pending = true
+							const latest = this.atlas.latest(image)
+							// New, or the camera has stopped and there's time this frame: raster it as it's seen.
+							if (!latest || (view.settled && performance.now() - started < RASTER_BUDGET_MS)) entry = this.atlas.raster(image, scale, fx, fy)
+							if (!entry) {
+								entry = latest
+								pending = true
+							}
 						}
+						if (entry && entry.scale === scale && entry.fx === fx && entry.fy === fy) this.seen.set(placed, { scale, fx, fy, generation: this.atlas.generation, entry })
 					}
 					if (!entry) continue
 					// Texel u of the raster is the shape's (u - pad - fx) / scale; on screen, devX + that × scale now.
@@ -508,7 +527,19 @@ export class GpuRenderer {
 				}
 				out.set(run, { first, count: data.length / IMAGE_FLOATS - first })
 			}
-			if (this.atlas.generation === generation) break
+			if (this.atlas.generation !== generation) continue
+			// The camera still, the pictures on screen done and time left: those around the screen that have
+			// never been rastered, at this zoom, so the pan that brings them in has them. New on screen, a
+			// picture is rastered at once, whatever it costs: the first pan across a big board rastered
+			// thousands. Only while the atlas has room, so they never push out what's on screen.
+			for (const { image, scale, fx, fy } of ahead) {
+				if (performance.now() - started >= RASTER_BUDGET_MS || !this.atlas.hasRoom()) break
+				// Once, and only if it's decoded: one that isn't waits until it's on screen.
+				this.triedAhead.add(image)
+				withoutDecoding(() => this.atlas.raster(image, scale, fx, fy, false))
+				pending = true
+			}
+			break
 		}
 		this.atlas.upload()
 		const { gl } = this

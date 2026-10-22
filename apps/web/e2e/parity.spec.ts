@@ -224,7 +224,10 @@ for (const dpr of [1, 2]) {
 					if (browserName === 'chromium') await gotoFresh(page)
 					else {
 						// WebKit has no CDP to wipe storage with; a fresh context starts empty anyway.
-						await page.addInitScript(() => localStorage.setItem('lifeboard:sidebar:collapsed', 'true'))
+						await page.addInitScript(() => {
+							localStorage.setItem('lifeboard:sidebar:collapsed', 'true')
+							localStorage.setItem('lifeboard:gpu-test-shape', '1')
+						})
 						await page.goto('/')
 					}
 					await skipFirstRunDemo(page)

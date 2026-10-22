@@ -120,6 +120,7 @@ import {
 	bindingMap,
 	type TLArrowEnds,
 } from './derivations/arrowBindingsIndex'
+import { ShapeBoundsIndex } from './derivations/shapeBoundsIndex'
 import { IdFlags, IdValues } from './derivations/idFlags'
 import {
 	getArrowTerminal,
@@ -500,7 +501,26 @@ export class Editor extends EventEmitter<TLEventMap> {
 			this.store.remove([cameraId, instance_PageStateId])
 		})
 
+		// The bounds index hears of every shape change (see `ShapeBoundsIndex`).
+		this.sideEffects.registerAfterCreateHandler('shape', (shape) => {
+			this._invalidateBounds(shape)
+			this._bumpRenderVersion()
+		})
+		this.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
+			this._boundsIndex.remove(shape.id)
+			this._invalidateBoundsAround(shape)
+			this._bumpRenderVersion()
+		})
 		this.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
+			this._invalidateBounds(next, prev)
+			if (
+				prev.type !== next.type ||
+				prev.opacity !== next.opacity ||
+				prev.meta !== next.meta ||
+				prev.parentId !== next.parentId ||
+				prev.index !== next.index
+			)
+				this._bumpRenderVersion()
 			this._notifyBindingsOfShapeChange(prev, next)
 
 			// A shape that moves to a new parent takes its descendants along; their bindings hear about
@@ -583,15 +603,21 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// Binding records tell their utils. For arrows this is also what drops a binding that redo
 		// puts back to a shape that has since been deleted.
 		this.sideEffects.registerAfterCreateHandler('binding', (binding) => {
+			this._boundsIndex.invalidate(binding.fromId)
+			this._bumpRenderVersion()
 			this.getBindingUtil(binding).onAfterCreate?.({ binding })
 		})
 		this.sideEffects.registerAfterChangeHandler('binding', (bindingBefore, bindingAfter) => {
+			this._boundsIndex.invalidate(bindingAfter.fromId)
+			this._bumpRenderVersion()
 			this.getBindingUtil(bindingAfter).onAfterChange?.({ bindingBefore, bindingAfter })
 		})
 		this.sideEffects.registerBeforeDeleteHandler('binding', (binding) => {
 			this.getBindingUtil(binding).onBeforeDelete?.({ binding })
 		})
 		this.sideEffects.registerAfterDeleteHandler('binding', (binding) => {
+			this._boundsIndex.invalidate(binding.fromId)
+			this._bumpRenderVersion()
 			this.getBindingUtil(binding).onAfterDelete?.({ binding })
 		})
 
@@ -675,6 +701,43 @@ export class Editor extends EventEmitter<TLEventMap> {
 		requestAnimationFrame(() => {
 			this._tickManager.start()
 		})
+	}
+
+	/** Changes with what the rendering list is made from (see `getUnorderedRenderingShapes`). */
+	private readonly _renderVersion = atom('render version', 0)
+	private _bumpRenderVersion() {
+		this._renderVersion.set(this._renderVersion.__unsafe__getWithoutCapture() + 1)
+	}
+
+	/** Every shape's box in page space, without a computed per shape (see `ShapeBoundsIndex`). @internal */
+	readonly _boundsIndex: ShapeBoundsIndex = new ShapeBoundsIndex(this)
+
+	/** A shape changed, or came: its box, and its descendants', and what depends on it. */
+	private _invalidateBounds(next: TLShape, prev?: TLShape) {
+		this._boundsIndex.invalidate(next.id)
+		if (
+			prev &&
+			prev.x === next.x &&
+			prev.y === next.y &&
+			prev.rotation === next.rotation &&
+			prev.parentId === next.parentId &&
+			prev.props === next.props
+		)
+			return
+		if (prev) this.visitDescendants(next.id, (id) => void this._boundsIndex.invalidate(id))
+		this._invalidateBoundsAround(next)
+		if (prev && prev.parentId !== next.parentId) this._invalidateBoundsAround(prev)
+	}
+
+	/** The arrows bound to a shape and the groups it's in, whose boxes follow it. */
+	private _invalidateBoundsAround(shape: TLShape) {
+		for (const binding of this.getBindingsToShape(shape.id, 'arrow')) this._boundsIndex.invalidate(binding.fromId)
+		for (let id = shape.parentId; isShapeId(id); ) {
+			const parent = this.store.unsafeGetWithoutCapture(id)
+			if (!parent) break
+			if (parent.type === 'group') this._boundsIndex.invalidate(parent.id)
+			id = parent.parentId
+		}
 	}
 
 	private readonly _culledFlags: IdFlags<TLShapeId>
@@ -3998,14 +4061,35 @@ export class Editor extends EventEmitter<TLEventMap> {
 		// the whole list, and re-rendered it in React, on every frame of a pan.
 		const erasingShapeIds = new Set(useEditorState ? this.getErasingShapeIds() : [])
 
-		// Nothing here reads a shape's record or position: only `_getShapeRenderInfoCache`, which
-		// does not change when a shape moves. Reading the records made every drag frame rebuild, sort
-		// and re-render this whole list for one shape's x and y.
-		const renderInfo = this._getShapeRenderInfoCache()
+		// The records read without tracking them, and `_renderVersion` instead, which changes only with
+		// what this list is made from (a shape's type, opacity, meta, parent or order; bindings): a drag
+		// doesn't rebuild, sort and re-render it for one shape's x and y. Not a computed per shape for
+		// that either, as one was before: two of them for every shape on the board, kept on screen or off.
+		this._renderVersion.get()
+		const hidden = new Map<TLShapeId, boolean>()
+		const isHidden = (shape: TLShape): boolean => {
+			if (!this._getShapeVisibility) return false
+			let answer = hidden.get(shape.id)
+			if (answer !== undefined) return answer
+			const own = this._getShapeVisibility(shape, this)
+			if (own === 'hidden') answer = true
+			else if (own === 'visible' || !isShapeId(shape.parentId)) answer = false
+			else {
+				const parent = this.store.unsafeGetWithoutCapture(shape.parentId)
+				answer = parent ? isHidden(parent) : false
+			}
+			hidden.set(shape.id, answer)
+			return answer
+		}
 
 		const addShapeById = (id: TLShapeId, opacity: number, isAncestorErasing: boolean) => {
-			const info = renderInfo.get(id)
-			if (!info || info.hidden) return
+			const shape = this.store.unsafeGetWithoutCapture(id)
+			if (!shape || isHidden(shape)) return
+			const info = {
+				type: shape.type,
+				opacity: shape.opacity,
+				providesBackground: this.getShapeUtil(shape).providesBackgroundForChildren(shape),
+			}
 
 			opacity *= info.opacity
 			const util = this.getShapeUtil(info.type)
@@ -4068,29 +4152,6 @@ export class Editor extends EventEmitter<TLEventMap> {
 	}
 
 	/**
-	 * What the list of shapes to render needs from each shape, none of which changes when it moves.
-	 * Compared by value, so a drag recomputes the dragged shape's entry and stops there.
-	 */
-	@computed private _getShapeRenderInfoCache() {
-		return this.store.createComputedCache<ShapeRenderInfo, TLShape>(
-			'shapeRenderInfo',
-			(shape) => ({
-				type: shape.type,
-				opacity: shape.opacity,
-				hidden: this.isShapeHidden(shape),
-				providesBackground: this.getShapeUtil(shape).providesBackgroundForChildren(shape),
-			}),
-			{
-				areResultsEqual: (a, b) =>
-					a.type === b.type &&
-					a.opacity === b.opacity &&
-					a.hidden === b.hidden &&
-					a.providesBackground === b.providesBackground,
-			}
-		)
-	}
-
-	/**
 	 * The shapes to mount, in the order to mount them, without whether each is on screen. The canvas
 	 * renders this list, so it changes when the document does and not when the camera moves; each
 	 * shape reads `isShapeCulled` for itself.
@@ -4148,19 +4209,20 @@ export class Editor extends EventEmitter<TLEventMap> {
 		const renderingBoundsExpanded = this.getRenderingBoundsExpanded()
 		const renderingBoundsAhead = this._renderingBoundsAhead.get()
 
+		// From the bounds index, not each shape's computeds: asking every shape for its masked page
+		// bounds made seven of them for every shape on the board, kept on screen or off. A shape a frame
+		// hides altogether is no longer culled for it; it's culled once it's off screen.
+		const index = this._boundsIndex
+		index.version.get()
 		for (const { id, util } of this.getRenderingShapeList()) {
-			const shape = this.getShape(id)
+			const shape = this.store.unsafeGetWithoutCapture(id)
 			if (!shape) continue
-			const maskedPageBounds = this.getShapeMaskedPageBounds(id)
+			const bounds = index.get(id)
 			const isCulled =
 				// only cull shapes that allow unmounting, i.e. not stateful components
 				util.canUnmount(shape) &&
-				// if the shape is fully outside of its parent's clipping bounds...
-				(maskedPageBounds === undefined ||
-					// ...or if the shape is outside of the expanded viewport bounds
-					!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(
-						maskedPageBounds
-					))
+				(bounds === undefined ||
+					!(util.rendersAhead(shape) ? renderingBoundsAhead : renderingBoundsExpanded).includes(bounds))
 			if (isCulled) culled.add(id)
 		}
 		return culled
@@ -5435,18 +5497,45 @@ export class Editor extends EventEmitter<TLEventMap> {
 	 *
 	 * @public
 	 */
+	/**
+	 * Whether any shape on the current page is (at least partly) within `bounds`, by the bounds index:
+	 * asked of a whole board, it makes nothing per shape.
+	 *
+	 * @public
+	 */
+	hasShapesInBounds(bounds: Box2d): boolean {
+		for (const id of this.getCurrentPageShapeIds()) {
+			const box = this._boundsIndex.get(id)
+			if (box && bounds.includes(box)) return true
+		}
+		return false
+	}
+
 	@computed getCurrentPageBounds(): Box2d | undefined {
 		let commonBounds: Box2d | undefined
 
+		const add = (bounds: Box2d) => {
+			commonBounds = commonBounds ? commonBounds.expand(bounds) : bounds.clone()
+		}
+
+		// From the bounds index (see `_getOffScreenShapeIds`), which is exact for every shape but an
+		// arrow: an arrow's box there is what it joins, generously. An arrow whose generous box reaches
+		// past the rest is measured exactly, which on most boards is a few at the edges.
+		this._boundsIndex.version.get()
+		const arrows: TLShapeId[] = []
 		this.getCurrentPageShapeIds().forEach((shapeId) => {
-			const bounds = this.getShapeMaskedPageBounds(shapeId)
-			if (!bounds) return
-			if (!commonBounds) {
-				commonBounds = bounds.clone()
-			} else {
-				commonBounds = commonBounds.expand(bounds)
+			if (this.store.unsafeGetWithoutCapture(shapeId)?.type === 'arrow') arrows.push(shapeId)
+			else {
+				const bounds = this._boundsIndex.get(shapeId)
+				if (bounds) add(bounds)
 			}
 		})
+		for (const id of arrows) {
+			const loose = this._boundsIndex.get(id)
+			if (!loose || (commonBounds && commonBounds.contains(loose))) continue
+			const exact = this.getShapeMaskedPageBounds(id)
+			if (exact) add(exact)
+		}
 
 		return commonBounds
 	}
@@ -10547,10 +10636,3 @@ function areSetsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
 	return true
 }
 
-/** See `Editor._getShapeRenderInfoCache`. */
-interface ShapeRenderInfo {
-	type: string
-	opacity: number
-	hidden: boolean
-	providesBackground: boolean
-}

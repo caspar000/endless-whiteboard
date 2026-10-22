@@ -92,6 +92,7 @@ import { createNodeTools } from './nodeTools'
 import { setTldrawUi } from './tldrawUi'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
+import { PerfMonitor } from './PerfMonitor'
 
 /**
  * The canvas. `persistenceKey` gives us tldraw's built-in IndexedDB persistence — throttled writes,
@@ -658,6 +659,8 @@ function BoardCanvas({
 				    "useEditor must be used inside of <Tldraw />" and took the whole app down in
 				    dev, where the badge is the only thing that renders it. */}
 				{import.meta.env.DEV && <RollupDebugBadge />}
+				{/* `?perf=1`: frame times, long tasks and the GPU layer's state (PerfMonitor.tsx). */}
+				{import.meta.env.DEV && <PerfMonitor />}
 				{/* Rendered inside <Tldraw> so it can portal into the editor's own container and track
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />

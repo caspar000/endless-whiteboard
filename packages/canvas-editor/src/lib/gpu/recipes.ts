@@ -184,7 +184,7 @@ export function drawRecipe(ctx: CanvasRenderingContext2D, r: Recipe): void | fal
 		case 'img': {
 			const img = decodedPicture(r.url)
 			if (!img) {
-				decodePicture(r.url)
+				if (mayDecode) decodePicture(r.url)
 				return false
 			}
 			// Cut to the part shown, and to the cut's corners: two clips, which meet.
@@ -206,12 +206,30 @@ export function drawRecipe(ctx: CanvasRenderingContext2D, r: Recipe): void | fal
 		case 'svg': {
 			const img = decodedPicture(r.url)
 			if (!img) {
-				decodePicture(r.url)
+				if (mayDecode) decodePicture(r.url)
 				return false
 			}
 			ctx.drawImage(img, 0, 0, r.w, r.h)
 			return
 		}
+	}
+}
+
+/** Whether drawing a picture that isn't decoded starts decoding it (see `withoutDecoding`). */
+let mayDecode = true
+
+/**
+ * Runs `draw` with pictures that aren't decoded left undrawn, not decoded: for rastering pictures
+ * ahead of being on screen. Thousands of them decoding at once pushed the ones on screen out of
+ * `decoded` before they were drawn, and those shapes came out blank.
+ */
+export function withoutDecoding<T>(draw: () => T): T {
+	const was = mayDecode
+	mayDecode = false
+	try {
+		return draw()
+	} finally {
+		mayDecode = was
 	}
 }
 

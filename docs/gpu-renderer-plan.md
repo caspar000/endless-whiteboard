@@ -954,6 +954,65 @@ size with the sampling profiler on show most time as "(program)", the profiler's
 Chrome trace without it shows reading and its microtasks taking 60–80% of the main thread while the
 camera is still.
 
+#### Phase 10a, as built (2026-10-22): a pan across a big board
+
+Measured with a scratch probe (`e2e-scratch/pan10a.scratch.spec.ts`) on the production build: a
+20,000-shape board in `auto`, fitted (10%), panned there and back cold, several times once it's read,
+and after a reopen from the cache. The probe first panned with wheel events sent from a timer; that
+showed the first two problems below. Real input through Chrome's input pipeline, sent as fast as a
+120 Hz trackpad (`page.mouse.wheel` every 8 ms), showed the last.
+
+- **The first pan after reading rastered thousands of pictures.** A picture is rastered the moment
+  it first comes on screen, whatever that costs, and the first pan across the board brought in about
+  2,000. Now, once the camera is still, the renderer also rasters the pictures in the frame that are
+  off screen and were never rastered, at this zoom, within the same 6 ms a frame
+  (`GpuRenderer.placeImages`). Only while the atlas is under three quarters full (`hasRoom`), so they
+  never push out what's on screen; each is tried once; and a picture that isn't decoded isn't decoded
+  for it (`withoutDecoding`), so thousands of decodes never push the pictures on screen out of the
+  decoded ones. The layer draws once more after the camera stops, so this happens after every pan.
+  The first pan now rasters none, against 1,750–2,200.
+- **A picture still decoding took an atlas slot each frame it was asked for**, left empty. The slot
+  now goes back (`ImageAtlas.unplace`); `atlas.test.ts` checks it.
+- **Every picture on screen was looked up by its phase each frame**, about 2,700 at fit, a string
+  built for each. Each placed picture now keeps what it found, with the scale and phase it was for; a
+  pan by whole device pixels keeps them all.
+- **The selection outlines' canvas cleared itself on every frame of a pan**, with nothing selected.
+  A 2D canvas waits for the GPU when it's busy: up to 230 ms in one pan. It now clears once when the
+  selection empties and doesn't follow the camera.
+- **Draws could pile up on the GPU.** The layer drew in a microtask after every change, so input
+  faster than the frames went out queued a whole frame on the GPU for each event, and once it was
+  behind it fell further behind: with that canvas's waits gone, 850–1,300 ms a frame under
+  trackpad-rate input. Those waits had been the only thing holding the draws back. The layer now
+  draws once a frame, from a `ResizeObserver` watching an empty element it flips the width of: the
+  browser calls it after the frame's animation callbacks and layout, before it paints, so the layer is
+  never a frame behind a change made there. A first fix, putting a draw off to the next animation
+  frame while the GPU was behind, broke exactly that: the reader hands shapes over from an animation
+  callback, and a frame went out with their elements hidden and the layer not yet drawing them (whole
+  rows of shapes blank in two parity runs).
+
+20,000 shapes at fit, mean / p95 a frame:
+
+| Pan | Before 10a | After |
+|---|---|---|
+| First after reading, wheel from a timer | 21–35 / 66–150 ms, four runs | 11.7–11.9 / 25 ms, two runs |
+| Later ones after reading, wheel from a timer | 9.5–10.1 / 16.6 ms | 9.5–9.6 / 9.3–16.5 ms, one of four 13.3 / 42 |
+| After reading, real input at 120 Hz, in turn | 24.6, 94.8, 41.8, 10.4, 10.6 ms | 9.7, 9.1, 16.4, 42.7 ms |
+
+Under real input both have pans whose frames wait on the GPU with the page's thread nearly idle
+(about 100 ms of long tasks in the whole pan); that is the GPU's share of a frame at fit, left below.
+
+Left:
+
+- **A cold pan**: until the board is read the page draws what's on screen, about 3,900 shapes here,
+  and reading 8,000 at fit takes 60–90 s. 27–33 ms a frame with wheel events from a timer, 130–190 ms
+  with real input, which the browser also hit-tests against every one of those elements.
+- **The first seconds of a reopen**: the shapes the cache gives back come on screen with pictures the
+  new atlas doesn't have (2,200 rastered in a pan 4 s in, 390 of them still decoding).
+- **Frames waiting on the GPU** now and then at fit, before and after 10a, unmeasured on the GPU's
+  side so far.
+- The hover hit test once a pan stops, which a profile made look like 100 ms, is 4–6 ms measured
+  directly.
+
 ## Working rules
 
 - A branch `gpu-renderer` off `develop`; a PR per phase into `develop`. Nothing reaches `main`

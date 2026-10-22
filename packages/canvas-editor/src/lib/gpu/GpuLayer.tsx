@@ -75,8 +75,8 @@ function GpuShapeList() {
 }
 
 /**
- * Drawn in a microtask after anything it shows changes, which is still before the browser paints
- * that frame, so it moves with the page's camera transform, never a frame behind. A lost context
+ * Drawn once a frame, after everything that changes it in that frame and before the frame is painted
+ * (see `schedule`), so it moves with the page's camera transform, never a frame behind. A lost context
  * hands every shape back to the page until it's restored.
  *
  * The canvas is made here and removed on the way out, so each run of the effect (React runs them
@@ -142,8 +142,9 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background, settled }
 			const { pending } = renderer.draw(view)
 			// Pictures drawn from a raster at another scale or position: again when the camera has been
-			// still long enough, or next frame if there wasn't time for all of them.
-			if (pending && !later) {
+			// still long enough, or next frame if there wasn't time for all of them. Once still, a draw in
+			// any case: it rasters what's around the screen for the next pan (`GpuRenderer.placeImages`).
+			if ((pending || !settled) && !later) {
 				const wait = settled ? 16 : SETTLE_MS - (performance.now() - movedAt) + 1
 				later = setTimeout(() => {
 					later = null
@@ -152,10 +153,24 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 			}
 		}
 
+		// A draw is asked for by flipping the width of an empty element a ResizeObserver watches: the browser
+		// calls the observer once a frame, after the frame's animation callbacks (camera animations, the
+		// reader handing shapes over) and layout, and before it paints. Drawn in a microtask after each
+		// change instead, a pan whose input came faster than the frames went out had a whole frame queued
+		// on the GPU for every wheel event, and once the GPU was behind it fell further behind: a second
+		// a frame on a big board. Put off to the next animation frame instead, a change made in an
+		// animation callback was painted with the layer a frame behind it.
+		const pulse = document.createElement('div')
+		pulse.setAttribute('aria-hidden', 'true')
+		pulse.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;contain:strict'
+		host.appendChild(pulse)
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => queued && draw())
+		observer?.observe(pulse)
 		const schedule = () => {
 			if (queued) return
 			queued = true
-			queueMicrotask(draw)
+			if (!observer) return queueMicrotask(draw)
+			pulse.style.width = pulse.style.width === '1px' ? '0px' : '1px'
 		}
 
 		// The paper's colour, read when the theme changes (once its new value is in: a frame later),
@@ -203,6 +218,8 @@ function GpuCanvas({ compare }: { compare: boolean }) {
 
 		return () => {
 			if (later) clearTimeout(later)
+			observer?.disconnect()
+			pulse.remove()
 			stop()
 			stopFrame()
 			stopTheme()

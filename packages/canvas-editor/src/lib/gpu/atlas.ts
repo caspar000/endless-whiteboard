@@ -11,6 +11,8 @@ import type { GpuImage } from './primitives'
 export const ATLAS_PAD = 3
 /** Device pixels of a shelf drawn at once before it's sent to the texture; a taller picture goes on its own. */
 const STAGE_HEIGHT = 512
+/** How full the atlas may get with pictures rastered ahead of being on screen. */
+const AHEAD_FILL = 0.75
 
 export interface AtlasEntry {
 	/** Where it is in the texture, in texels. */
@@ -81,15 +83,21 @@ export class ImageAtlas {
 	 * and keeps it. Undefined when it doesn't fit even in an empty atlas. It's in the texture
 	 * once `upload` has run: the pictures of a shelf are drawn side by side in one canvas and sent in one
 	 * go, since thousands of uploads in a frame (a board zoomed out, every picture new) ran the GPU out
-	 * of memory.
+	 * of memory. Unless `mayClear`, a full atlas isn't started again: undefined instead.
 	 */
-	raster(image: GpuImage, scale: number, fx: number, fy: number): AtlasEntry | undefined {
+	raster(image: GpuImage, scale: number, fx: number, fy: number, mayClear = true): AtlasEntry | undefined {
 		const w = Math.ceil(image.w * scale + fx) + ATLAS_PAD * 2
 		const h = Math.ceil(image.h * scale + fy) + ATLAS_PAD * 2
 		if (w > this.size || h > this.size) return undefined
+		let mark = this.mark()
 		let slot = this.place(w, h)
 		if (!slot) {
+			if (!mayClear) {
+				this.unplace(mark)
+				return undefined
+			}
 			this.clear()
+			mark = this.mark()
 			slot = this.place(w, h)
 			if (!slot) return undefined
 		}
@@ -116,8 +124,12 @@ export class ImageAtlas {
 			this.upload()
 			canvas.height = STAGE_HEIGHT
 		}
-		// Not ready: its slot stays empty, and it's rastered again later.
-		if (ready === false) return undefined
+		// Not ready: its slot is given back, and it's rastered again later. Kept empty, a picture still
+		// decoding took a slot on every frame it was asked for.
+		if (ready === false) {
+			this.unplace(mark)
+			return undefined
+		}
 		const entry = { x: slot.x, y: slot.y, w, h, scale, fx, fy }
 		const id = this.id(image)
 		const rasters = this.entries.get(id)
@@ -126,6 +138,11 @@ export class ImageAtlas {
 			rasters.byPhase.set(phase(scale, fx, fy), entry)
 		} else this.entries.set(id, { latest: entry, byPhase: new Map([[phase(scale, fx, fy), entry]]) })
 		return entry
+	}
+
+	/** Whether less than `AHEAD_FILL` of it is taken: room for pictures not on screen yet. */
+	hasRoom(): boolean {
+		return this.shelfY + this.shelfH < this.size * AHEAD_FILL
 	}
 
 	/** Sends what's been rastered since the last time to the texture. */
@@ -143,6 +160,25 @@ export class ImageAtlas {
 		gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0)
 		gl.texSubImage2D(gl.TEXTURE_2D, 0, staged.x0, staged.y, staged.x1 - staged.x0, staged.h, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
 		gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0)
+	}
+
+	/** Where the shelves are, to go back to. */
+	private mark() {
+		const staged = this.staged
+		return { shelfY: this.shelfY, shelfH: this.shelfH, cursorX: this.cursorX, staged, x1: staged?.x1 ?? 0, h: staged?.h ?? 0 }
+	}
+
+	/** Back to `mark`: what was placed since is let go. */
+	private unplace(m: ReturnType<ImageAtlas['mark']>) {
+		this.shelfY = m.shelfY
+		this.shelfH = m.shelfH
+		this.cursorX = m.cursorX
+		// A row begun since holds nothing worth sending; the one before it, if any, was sent already.
+		if (this.staged !== m.staged) this.staged = null
+		else if (this.staged) {
+			this.staged.x1 = m.x1
+			this.staged.h = m.h
+		}
 	}
 
 	private place(w: number, h: number): { x: number; y: number } | null {

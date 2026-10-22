@@ -29,6 +29,15 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 	static override props = bookmarkShapeProps
 	static override migrations = bookmarkShapeMigrations
 
+	override canLeavePage(_shape: TLBookmarkShape) {
+		return true
+	}
+
+	override getRenderKey(_shape: TLBookmarkShape, zoom: number) {
+		// The link button hides under 32%.
+		return zoom < 0.32 ? 'h' : ''
+	}
+
 	// Any size: a narrow card drops its description and keeps the picture (see the CSS).
 	override canResize = () => true
 

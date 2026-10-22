@@ -39,7 +39,8 @@ export interface GpuFrame {
 	runs: GpuRun[]
 }
 
-type Chunk = { kind: 'rect' | 'stroke'; data: Float32Array } | { kind: 'image'; items: PlacedImage[] }
+/** A shape's pieces of one kind in a row, with the page-space box they cover. */
+type Chunk = ({ kind: 'rect' | 'stroke'; data: Float32Array } | { kind: 'image'; items: PlacedImage[] }) & { box: Box }
 
 /**
  * Shapes the GPU could draw on screen above which `auto` turns the GPU layer on, unless
@@ -83,7 +84,13 @@ export class GpuScene {
 	 * queries, which the camera (a record) wakes on every frame of a pan, and every computed of the scene
 	 * built on it then checked each shape's caches to find nothing had changed.
 	 */
-	private readonly renderingList: Atom<ReturnType<Editor['getRenderingShapeList']>> = atom('gpu rendering list', [])
+	readonly renderingList: Atom<ReturnType<Editor['getRenderingShapeList']>> = atom('gpu rendering list', [])
+	/**
+	 * `hidden`, latched: set by the reactor that hides the elements, once it has. What reads it (the
+	 * list of mounted shapes) doesn't depend on every shape's answer, so a change elsewhere doesn't
+	 * have it ask each one again.
+	 */
+	readonly hiddenNow: Atom<ReadonlySet<TLShapeId>> = atom('gpu hidden now', EMPTY)
 	/** Set by the layer: mounted with a live WebGL2 context. */
 	readonly layerUp: Atom<boolean> = atom('gpu layer up', false)
 	/** Set by the app: this board is the one on screen (not a tab open behind it). */
@@ -126,12 +133,19 @@ export class GpuScene {
 	private readonly pictureScale: Atom<number> = atom('gpu picture scale', 1)
 	/** A page pixel's size in page units, rounded up to a power of two: what anti-aliasing adds round a footprint. */
 	private readonly pixel: Atom<number> = atom('gpu pixel size', 1)
+	/**
+	 * The part of the page the frame holds: the viewport and a viewport's width and height round it,
+	 * moved only when the viewport nears its edge or the zoom changes by half or double. The whole of a
+	 * big board in the frame was more than the GPU could draw in one, and following culling instead
+	 * rebuilt the frame every half screen of a pan.
+	 */
+	private readonly region: Atom<{ box: Box; z: number } | null> = atom('gpu region', null)
 	/** Shapes the GPU could draw that lie under an overlapping page-drawn one, so the page draws them. */
 	private readonly underPage: Computed<ReadonlySet<TLShapeId>>
 	/** Whether the layer should be in the page. */
 	readonly wanted: Computed<boolean>
 	/** Whether the layer draws its shapes (up, and not `idle`). */
-	private readonly active: Computed<boolean>
+	readonly active: Computed<boolean>
 	/** The last frame's rect array and the pieces it was joined from. */
 	private readonly lastRects: Joined = { parts: [], data: new Float32Array(0) }
 	/**
@@ -257,11 +271,10 @@ export class GpuScene {
 			}
 			for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
 			const order = this.zOrder.get()
-			// A culled shape is off screen, and so is wherever it overlaps another: nothing to keep in order.
-			const culled = this.culled.get()
+			// Off screen shapes too: following culling made a pan redo this, and with it every shape's
+			// answer, each time culling moved. It's redone when what's drawn changes.
 			for (let i = order.length - 1; i >= 0; i--) {
 				const { id } = order[i]!
-				if (culled.has(id)) continue
 				const boxes = (this.footprint.get(id) ?? []).map((b) => ({ x: b.x - grow, y: b.y - grow, maxX: b.maxX + grow, maxY: b.maxY + grow }))
 				if (!boxes.length) continue
 				const eligible = this.eligible.get(id)
@@ -304,6 +317,7 @@ export class GpuScene {
 			const scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) || 1
 			const geometry = this.strokeGeometry.get(shape.id) ?? []
 			const out: Chunk[] = []
+			const box = (): Box => ({ x: Infinity, y: Infinity, maxX: -Infinity, maxY: -Infinity })
 			const push = (kind: 'rect' | 'stroke', data: Float32Array) => {
 				const last = out[out.length - 1]
 				if (last && last.kind === kind) {
@@ -311,7 +325,7 @@ export class GpuScene {
 					merged.set(last.data)
 					merged.set(data, last.data.length)
 					last.data = merged
-				} else out.push({ kind, data })
+				} else out.push({ kind, data, box: box() })
 			}
 			const at = [m.a, m.b, m.c, m.d, m.e, m.f] as const
 			let g = 0
@@ -320,7 +334,7 @@ export class GpuScene {
 					const placed: PlacedImage = { image: p, m: at, opacity: opacity * (p.opacity ?? 1) }
 					const last = out[out.length - 1]
 					if (last && last.kind === 'image') last.items.push(placed)
-					else out.push({ kind: 'image', items: [placed] })
+					else out.push({ kind: 'image', items: [placed], box: box() })
 					continue
 				}
 				if (p.kind === 'rect') {
@@ -356,44 +370,62 @@ export class GpuScene {
 				}
 				push('stroke', data)
 			}
+			for (const chunk of out) chunk.box = chunkBox(chunk)
 			return out
 		})
 		this.frame = computed('gpu frame', () => {
 			if (!this.active.get()) return { rects: new Float32Array(0), strokes: [], images: [], runs: [] }
-			const parts: Chunk[] = []
+			// The shapes in `region`: around the screen, and moved only now and then.
+			// Drawn in levels rather than strictly in z-order: a piece has only to come after the pieces
+			// below it that it overlaps, so each goes in the lowest level that keeps it after those, and a
+			// level draws all its rects, then its strokes, then its pictures, a call each. Strictly in
+			// order, each shape's rect, stroke and picture were runs of their own: thousands of draw calls
+			// a frame on a big board, and that was the frame.
+			const levels = new Levels(this.pixel.get() * 2)
+			const region = this.region.get()?.box
+			const byLevel: { rects: Float32Array[]; strokes: Float32Array[]; images: PlacedImage[] }[] = []
 			let rectFloats = 0
 			for (const { id } of this.zOrder.get()) {
 				if (!this.drawn.get(id)) continue
+				const b = region && editor.getShapePageBounds(id)
+				if (region && (!b || b.maxX < region.x || b.x > region.maxX || b.maxY < region.y || b.y > region.maxY)) continue
 				for (const chunk of this.chunks.get(id) ?? []) {
-					parts.push(chunk)
-					if (chunk.kind === 'rect') rectFloats += chunk.data.length
+					const level = levels.place(chunk.box, KIND_ORDER[chunk.kind])
+					const at = (byLevel[level] ??= { rects: [], strokes: [], images: [] })
+					if (chunk.kind === 'image') for (const item of chunk.items) at.images.push(item)
+					else if (chunk.kind === 'rect') {
+						at.rects.push(chunk.data)
+						rectFloats += chunk.data.length
+					} else at.strokes.push(chunk.data)
 				}
 			}
 			const rectParts: Float32Array[] = []
-			for (const part of parts) if (part.kind === 'rect') rectParts.push(part.data)
-			// The same pieces as last time, the same array: the renderer uploads only what's new.
-			const rects = joined(this.lastRects, rectParts, rectFloats)
 			const strokes: Float32Array[] = []
 			const images: PlacedImage[] = []
 			const runs: GpuRun[] = []
 			let ro = 0
-			const run = (kind: GpuRun['kind'], first: number, count: number) => {
-				const last = runs[runs.length - 1]
-				if (last?.kind === kind && last.first + last.count === first) last.count += count
-				else runs.push({ kind, first, count })
-			}
-			for (const part of parts) {
-				if (part.kind === 'image') {
-					run('image', images.length, part.items.length)
-					images.push(...part.items)
-				} else if (part.kind === 'rect') {
-					run('rect', ro / RECT_FLOATS, part.data.length / RECT_FLOATS)
-					ro += part.data.length
-				} else {
-					run('stroke', strokes.length, 1)
-					strokes.push(part.data)
+			for (const at of byLevel) {
+				if (!at) continue
+				if (at.rects.length) {
+					let n = 0
+					for (const part of at.rects) {
+						rectParts.push(part)
+						n += part.length
+					}
+					runs.push({ kind: 'rect', first: ro / RECT_FLOATS, count: n / RECT_FLOATS })
+					ro += n
+				}
+				if (at.strokes.length) {
+					runs.push({ kind: 'stroke', first: strokes.length, count: at.strokes.length })
+					strokes.push(...at.strokes)
+				}
+				if (at.images.length) {
+					runs.push({ kind: 'image', first: images.length, count: at.images.length })
+					images.push(...at.images)
 				}
 			}
+			// The same pieces as last time, the same array: the renderer uploads only what's new.
+			const rects = joined(this.lastRects, rectParts, rectFloats)
 			return { rects, strokes, images, runs }
 		})
 
@@ -424,6 +456,7 @@ export class GpuScene {
 			const set = (id: TLShapeId, hide: boolean) => getShapeElement(editor, id)?.style.setProperty('visibility', hide ? 'hidden' : '')
 			for (const id of prev) if (!next.has(id)) set(id, false)
 			for (const id of next) if (!prev.has(id)) set(id, true)
+			if (next !== prev) this.hiddenNow.set(next)
 		})
 		editor.disposables.add(stopHiding)
 		const stopList = react('gpu rendering list', () => {
@@ -447,6 +480,15 @@ export class GpuScene {
 			this.culled.set(next)
 		})
 		editor.disposables.add(stopCulled)
+		const stopRegion = react('gpu region', () => {
+			const view = editor.getViewportPageBounds()
+			const z = editor.getZoomLevel()
+			const now = this.region.__unsafe__getWithoutCapture()
+			const inside = now && view.x >= now.box.x + view.w / 2 && view.y >= now.box.y + view.h / 2 && view.maxX <= now.box.maxX - view.w / 2 && view.maxY <= now.box.maxY - view.h / 2
+			if (now && inside && z <= now.z * 2 && z >= now.z / 2) return
+			this.region.set({ box: { x: view.x - view.w, y: view.y - view.h, maxX: view.maxX + view.w, maxY: view.maxY + view.h }, z })
+		})
+		editor.disposables.add(stopRegion)
 		const stopBuckets = react('gpu zoom buckets', () => {
 			const z = editor.getZoomLevel()
 			const scale = 2 ** Math.ceil(Math.log2(z * editor.getInstanceState().devicePixelRatio))
@@ -488,6 +530,88 @@ const FOOTPRINT_STEP = 64
 const HALO_REACH = 1.5
 
 type Box = { x: number; y: number; maxX: number; maxY: number }
+
+/** Within a level, rects are drawn first, then strokes, then pictures. */
+const KIND_ORDER = { rect: 0, stroke: 1, image: 2 } as const
+/** The level grid's cells, in page units; a box over more cells than `WIDE` is checked by everything. */
+const LEVEL_CELL = 512
+const WIDE = 64
+
+/**
+ * The drawing levels of a frame (see `GpuScene.frame`): each piece placed, in z-order, at the lowest
+ * level that draws it after every piece already placed that it overlaps.
+ */
+class Levels {
+	private readonly cells = new Map<number, { box: Box; level: number; kind: number }[]>()
+	private readonly wide: { box: Box; level: number; kind: number }[] = []
+	constructor(private readonly grow: number) {}
+
+	place(b: Box, kind: number): number {
+		if (!(b.maxX >= b.x)) return 0
+		const box = { x: b.x - this.grow, y: b.y - this.grow, maxX: b.maxX + this.grow, maxY: b.maxY + this.grow }
+		const x0 = Math.floor(box.x / LEVEL_CELL)
+		const x1 = Math.floor(box.maxX / LEVEL_CELL)
+		const y0 = Math.floor(box.y / LEVEL_CELL)
+		const y1 = Math.floor(box.maxY / LEVEL_CELL)
+		let level = 0
+		const over = (o: { box: Box; level: number; kind: number }) => {
+			if (o.box.x < box.maxX && box.x < o.box.maxX && o.box.y < box.maxY && box.y < o.box.maxY) {
+				level = Math.max(level, o.kind < kind ? o.level : o.level + 1)
+			}
+		}
+		for (const o of this.wide) over(o)
+		const wide = (x1 - x0 + 1) * (y1 - y0 + 1) > WIDE
+		if (wide) for (const list of this.cells.values()) for (const o of list) over(o)
+		else for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) for (const o of this.cells.get(gx * 73856093 + gy) ?? []) over(o)
+		const placed = { box, level, kind }
+		if (wide) this.wide.push(placed)
+		else
+			for (let gx = x0; gx <= x1; gx++)
+				for (let gy = y0; gy <= y1; gy++) {
+					const k = gx * 73856093 + gy
+					const list = this.cells.get(k)
+					if (list) list.push(placed)
+					else this.cells.set(k, [placed])
+				}
+		return level
+	}
+}
+
+/** The page-space box a chunk's pieces cover, before anti-aliasing. */
+function chunkBox(chunk: Chunk): Box {
+	let x = Infinity
+	let y = Infinity
+	let maxX = -Infinity
+	let maxY = -Infinity
+	const add = (px: number, py: number, r: number) => {
+		if (px - r < x) x = px - r
+		if (py - r < y) y = py - r
+		if (px + r > maxX) maxX = px + r
+		if (py + r > maxY) maxY = py + r
+	}
+	const corners = (m: ArrayLike<number>, o: number, rx: number, ry: number, rw: number, rh: number, r: number) => {
+		for (const [cx, cy] of [
+			[rx, ry],
+			[rx + rw, ry],
+			[rx, ry + rh],
+			[rx + rw, ry + rh],
+		] as const)
+			add(m[o]! * cx + m[o + 2]! * cy + m[o + 4]!, m[o + 1]! * cx + m[o + 3]! * cy + m[o + 5]!, r)
+	}
+	if (chunk.kind === 'image') for (const { image, m } of chunk.items) corners(m, 0, image.x, image.y, image.w, image.h, 0)
+	else if (chunk.kind === 'rect') {
+		const d = chunk.data
+		for (let o = 0; o < d.length; o += RECT_FLOATS) {
+			const scale = Math.sqrt(Math.abs(d[o]! * d[o + 3]! - d[o + 1]! * d[o + 2]!)) || 1
+			corners(d, o, d[o + 6]!, d[o + 7]!, d[o + 8]!, d[o + 9]!, d[o + 11]! * scale)
+		}
+	} else {
+		const d = chunk.data
+		// Its centre line, out to its half width and a halo either side.
+		for (let o = 0; o < d.length; o += STROKE_FLOATS) add(d[o]!, d[o + 1]!, d[o + 4]! + HALO_REACH)
+	}
+	return { x, y, maxX, maxY }
+}
 
 const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) => {
 	if (a === b) return true

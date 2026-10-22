@@ -31,6 +31,27 @@ export interface ShapeWithRichText {
 	props: { richText: unknown }
 }
 
+const braces = new WeakMap<object, boolean>()
+
+/**
+ * Whether a shape's text has a `{…}` in it, so what it shows depends on other shapes: such a shape
+ * stays on the page on a big board (`canLeavePage`). Remembered by the text's identity, as it's asked
+ * of every shape whenever the shapes that have left the page change.
+ */
+export function hasExpression(richText: unknown): boolean {
+	if (typeof richText !== 'object' || richText === null) return false
+	let has = braces.get(richText)
+	if (has === undefined) braces.set(richText, (has = textHasBrace(richText)))
+	return has
+}
+
+function textHasBrace(node: unknown): boolean {
+	if (typeof node !== 'object' || node === null) return false
+	const { text, content } = node as { text?: unknown; content?: unknown }
+	if (typeof text === 'string' && text.includes('{')) return true
+	return Array.isArray(content) && content.some(textHasBrace)
+}
+
 export function useExpressionShape<S extends ShapeWithRichText>(editor: Editor, shape: S): S {
 	const richText = useValue(
 		'lifeboard:shape-expressions',

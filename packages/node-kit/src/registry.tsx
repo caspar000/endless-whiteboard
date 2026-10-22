@@ -208,6 +208,13 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	gpu?: boolean
 	/**
+	 * `true` lets this node leave the page on a big board: unmounted, not just hidden, while off
+	 * screen or drawn by the GPU layer (docs/gpu-renderer-plan.md, phase 8). Only for a component
+	 * that keeps no state of its own and shows nothing but its own props, so mounting it again later
+	 * shows the same; a node that shows other shapes' data, plays, or scrolls must stay.
+	 */
+	canLeavePage?: boolean | ((shape: NodeShape<Props>) => boolean)
+	/**
 	 * Opt in to factory-derived height: the node's `h` tracks its rendered content. The node's props
 	 * must include a boolean `autoHeight` that the user can pin off by dragging a vertical handle.
 	 * See `useAutoHeight` for the mechanism and its guards.
@@ -328,6 +335,11 @@ export function createNodeShapeUtil<Props extends object>(
 
 		override canResize(): boolean {
 			return true
+		}
+
+		override canLeavePage(shape: TLBaseBoxShape): boolean {
+			const can = def.canLeavePage
+			return typeof can === 'function' ? can(shape as unknown as Shape) : can === true
 		}
 
 		override canScroll(): boolean {

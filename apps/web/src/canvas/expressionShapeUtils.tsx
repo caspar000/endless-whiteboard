@@ -1,4 +1,4 @@
-import { HIDDEN_RELATION_META, isHiddenRelation, useExpressionShape } from '@lifeboard/node-kit'
+import { HIDDEN_RELATION_META, hasExpression, isHiddenRelation, useExpressionShape } from '@lifeboard/node-kit'
 import {
 	ArrowShapeUtil,
 	GeoShapeUtil,
@@ -33,18 +33,33 @@ import { FILL_COLOR_META, getNextFillColor, readFillColor } from './shapeFill'
  */
 
 class ExpressionNoteShapeUtil extends NoteShapeUtil {
+	// A `{…}` shows other shapes' values, which change without this one's record.
+	override canLeavePage(shape: TLNoteShape) {
+		return !hasExpression(shape.props.richText)
+	}
+
 	override component(shape: TLNoteShape) {
 		return super.component(useExpressionShape(this.editor, shape))
 	}
 }
 
 class ExpressionPinnedNoteShapeUtil extends PinnedNoteShapeUtil {
+	// A `{…}` shows other shapes' values, which change without this one's record.
+	override canLeavePage(shape: TLPinnedNoteShape) {
+		return !hasExpression(shape.props.richText)
+	}
+
 	override component(shape: TLPinnedNoteShape) {
 		return super.component(useExpressionShape(this.editor, shape))
 	}
 }
 
 class ExpressionTextShapeUtil extends TextShapeUtil {
+	// A `{…}` shows other shapes' values, which change without this one's record.
+	override canLeavePage(shape: TLTextShape) {
+		return !hasExpression(shape.props.richText)
+	}
+
 	override component(shape: TLTextShape) {
 		return super.component(useExpressionShape(this.editor, shape))
 	}
@@ -76,6 +91,11 @@ const geoWithFillColor = GeoShapeUtil.configure({
 
 /** Covers the label on a rectangle, ellipse, cloud and the rest — they are all one shape type. */
 class ExpressionGeoShapeUtil extends geoWithFillColor {
+	// A `{…}` shows other shapes' values, which change without this one's record.
+	override canLeavePage(shape: TLGeoShape) {
+		return !hasExpression(shape.props.richText)
+	}
+
 	override component(shape: TLGeoShape) {
 		return super.component(useExpressionShape(this.editor, shape))
 	}
@@ -132,6 +152,10 @@ function oppositeTerminal(handleId: string): 'start' | 'end' | null {
 }
 
 class ExpressionArrowShapeUtil extends ArrowShapeUtil {
+	override canLeavePage(shape: TLArrowShape) {
+		return !hasExpression(shape.props.richText)
+	}
+
 	override component(shape: TLArrowShape) {
 		return super.component(useExpressionShape(this.editor, withRelationDash(shape)))
 	}

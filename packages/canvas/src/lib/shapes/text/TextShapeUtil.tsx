@@ -40,6 +40,10 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 	static override props = textShapeProps
 	static override migrations = textShapeMigrations
 
+	override canLeavePage(_shape: TLTextShape) {
+		return true
+	}
+
 	getDefaultProps(): TLTextShape['props'] {
 		return {
 			color: 'black',

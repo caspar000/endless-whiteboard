@@ -55,7 +55,11 @@ export interface GpuImage {
 	w: number
 	h: number
 	key: string
-	draw: (ctx: CanvasRenderingContext2D) => void
+	/**
+	 * Draws it in its own units. `false`: not ready (what it's drawn from is loading again), so nothing
+	 * is kept and it's drawn again later.
+	 */
+	draw: (ctx: CanvasRenderingContext2D) => void | false
 	opacity?: number
 }
 

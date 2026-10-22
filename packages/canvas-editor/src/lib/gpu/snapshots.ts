@@ -1,6 +1,6 @@
 import { atom, react, transact, type Atom } from '@tldraw/state'
-import type { TLShape, TLShapeId } from '@tldraw/tlschema'
-import { getShapeElement } from '../components/shapeElements'
+import type { TLShape, TLShapeId, TLUnknownShape } from '@tldraw/tlschema'
+import { getShapeElement, onShapeMounted, pinShapeElement } from '../components/shapeElements'
 import type { Editor } from '../editor/Editor'
 import { rasterCanvas } from './atlas'
 import { getGpuScene } from './gpuScene'
@@ -31,8 +31,16 @@ class Unsupported extends Error {}
 
 export class GpuSnapshots {
 	private readonly atoms = new Map<TLShapeId, Atom<Snapshot>>()
-	/** The props and meta each snapshot was read for: others (a resize, new text) mean reading again. Moving it doesn't. */
-	private readonly readFor = new Map<TLShapeId, { props: unknown; meta: unknown }>()
+	/**
+	 * What each snapshot was read for: other props or meta (a resize, new text), geometry (an arrow's
+	 * bound shape moving) or render key (`ShapeUtil.getRenderKey`) mean reading again. Moving it doesn't.
+	 */
+	private readonly readFor = new Map<TLShapeId, ReadFor>()
+	/**
+	 * The zoom render keys are worked out at: the camera's, once it has been still for `STILL_MS`. Read
+	 * straight from the camera, every snapshot would be a dependent of it, and a pan would wake them all.
+	 */
+	private readonly zoom = atom('gpu snapshots zoom', 1)
 	private readonly queue = new Set<TLShapeId>()
 	/** Shapes whose text has the outline that `--tl-zoom` sizes: read again when it changes. */
 	private readonly outlined = new Set<TLShapeId>()
@@ -57,9 +65,20 @@ export class GpuSnapshots {
 							if (this.atoms.has(id)) this.invalidate(id)
 						}
 					})
+		let zoomTimer: ReturnType<typeof setTimeout> | null = null
+		const settleZoom = () => {
+			zoomTimer = null
+			if (performance.now() - this.cameraMovedAt < STILL_MS) zoomTimer = setTimeout(settleZoom, STILL_MS)
+			else if (this.zoom.__unsafe__getWithoutCapture() !== editor.getZoomLevel()) this.zoom.set(editor.getZoomLevel())
+		}
 		const stopCamera = react('gpu snapshots camera', () => {
 			editor.getCamera()
 			this.cameraMovedAt = performance.now()
+			zoomTimer ??= setTimeout(settleZoom, STILL_MS)
+		})
+		// A shape mounting again: read it if it isn't, for what it is now.
+		const stopMounts = onShapeMounted(editor, (id) => {
+			if (this.atoms.has(id) && !this.readFor.has(id)) this.enqueue(id)
 		})
 		// A shape coming back on screen (culled shapes have no layout) is read once it has some.
 		const stop = react('gpu snapshots culling', () => {
@@ -92,8 +111,13 @@ export class GpuSnapshots {
 		})
 		document.fonts?.addEventListener?.('loadingdone', again)
 		editor.disposables.add(() => {
+			this.disposed = true
+			if (this.aheadTimer) clearTimeout(this.aheadTimer)
+			for (const release of this.ahead.values()) release()
 			stop()
 			stopCamera()
+			stopMounts()
+			if (zoomTimer) clearTimeout(zoomTimer)
 			stopTheme()
 			page?.disconnect()
 			zoomWatch?.disconnect()
@@ -108,7 +132,7 @@ export class GpuSnapshots {
 	 * been for these props, and until then it's the page's. Turned or scaled, it's the page's: the
 	 * pictures are drawn upright, at the shape's own size.
 	 */
-	get(shape: { id: TLShapeId; props: unknown; meta: unknown }): Snapshot {
+	get<S extends TLUnknownShape>(shape: S): Snapshot {
 		let a = this.atoms.get(shape.id)
 		if (!a) {
 			this.atoms.set(shape.id, (a = atom(`gpu snapshot ${shape.id}`, undefined as Snapshot)))
@@ -118,7 +142,13 @@ export class GpuSnapshots {
 		const m = this.editor.getShapePageTransform(shape.id)
 		if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) return null
 		const was = this.readFor.get(shape.id)
-		if (!was || was.props !== shape.props || was.meta !== shape.meta) {
+		if (
+			!was ||
+			was.props !== shape.props ||
+			was.meta !== shape.meta ||
+			was.geometry !== this.editor.getShapeGeometry(shape.id) ||
+			was.key !== this.editor.getShapeUtil(shape).getRenderKey(shape, this.zoom.get())
+		) {
 			this.enqueue(shape.id)
 			return undefined
 		}
@@ -156,22 +186,47 @@ export class GpuSnapshots {
 		this.watch()
 		// Not while the camera moves, nor between the steps of a gesture: the page draws what isn't read
 		// yet, and reading (and handing over) takes frames from the move.
-		if (performance.now() - this.cameraMovedAt < STILL_MS) {
+		// Still for a whole frame too: a frame slower than `STILL_MS` in the middle of a pan isn't a stop.
+		const camera = this.editor.getCamera()
+		const moved = camera !== this.cameraAtFlush
+		this.cameraAtFlush = camera
+		if (moved || performance.now() - this.cameraMovedAt < STILL_MS) {
 			this.frame = requestAnimationFrame(() => this.flush())
 			return
 		}
 		const started = performance.now()
 		const results = this.results
-		for (const id of [...this.queue]) {
+		// Let go together at the end: each one changes the list of mounted shapes.
+		const released: (() => void)[] = []
+		const ids = [...this.queue]
+		// Off screen (`display: none`) a shape has no layout, and drawn by the GPU (`visibility: hidden`)
+		// what it inherits says hidden, which an SVG's picture would copy and come out blank. The next
+		// few are shown for the read, all together, and put back together after it: in the same task,
+		// so the page never paints them so, and laid out once for all of them rather than once each.
+		const shown: [HTMLElement, string, string][] = []
+		for (const id of ids.slice(0, SHOW_AT_ONCE)) {
+			const el = getShapeElement(this.editor, id)
+			if (!el || (el.style.display !== 'none' && el.style.visibility !== 'hidden')) continue
+			shown.push([el, el.style.display, el.style.visibility])
+			if (el.style.display === 'none') el.style.display = 'block'
+			el.style.visibility = ''
+		}
+		try {
+		for (const id of ids) {
 			if (performance.now() - started > READ_BUDGET_MS) break
+			const el = getShapeElement(this.editor, id)
+			// One for a later turn.
+			if (el && (el.style.display === 'none' || el.style.visibility === 'hidden')) continue
 			this.queue.delete(id)
 			const shape = this.editor.getShape(id)
 			const a = this.atoms.get(id)
-			if (!shape || !a) continue
-			const el = getShapeElement(this.editor, id)
-			// Off screen it has no layout: read when it comes back.
-			if (!el || el.style.display === 'none') continue
-			this.readFor.set(id, { props: shape.props, meta: shape.meta })
+			if (!shape || !a || !el) continue
+			this.readFor.set(id, {
+				props: shape.props,
+				meta: shape.meta,
+				geometry: this.editor.getShapeGeometry(id),
+				key: this.editor.getShapeUtil(shape).getRenderKey(shape, this.zoom.__unsafe__getWithoutCapture()),
+			})
 			let read: Snapshot
 			this.reasons.delete(id)
 			let pending: Promise<unknown>[] = []
@@ -187,24 +242,101 @@ export class GpuSnapshots {
 				read = null
 			}
 			if (read && pending.length) {
-				// Pictures of its SVG still decoding: read again when they're in.
+				// Pictures of its SVG still decoding: read again when they're in, still mounted if it was
+				// mounted to be read ahead (let go, it had to be mounted all over again).
 				Promise.all(pending).then(() => this.invalidate(id))
 				continue
 			}
+			const release = this.ahead.get(id)
+			if (release) {
+				released.push(release)
+				this.ahead.delete(id)
+			}
 			results.push([a, read])
 		}
+		} finally {
+			for (const [el, display, visibility] of shown) {
+				el.style.display = display
+				el.style.visibility = visibility
+			}
+		}
 		// Handed over a few times a second, not every frame: each hand-over makes the frame again, and
-		// that's the whole board's worth of work.
-		if (!this.queue.size || started - this.handedAt > HAND_OVER_MS) {
+		// that's the whole board's worth of work. The bigger the board, the longer that takes, so the
+		// longer between hand-overs: at most an eighth of the time goes on them.
+		const every = Math.max(HAND_OVER_MS, this.handOverCost * 8)
+		const cheap = this.handOverCost < HAND_OVER_CHEAP_MS
+		if (results.length && ((!this.queue.size && cheap) || started - this.handedAt > every)) {
 			this.handedAt = started
 			this.results = []
+			const t = performance.now()
 			transact(() => {
 				for (const [a, read] of results) a.set(read)
 			})
+			this.handOverCost = performance.now() - t
 		}
+		if (released.length) transact(() => released.forEach((release) => release()))
 		if ((this.queue.size || this.results.length) && this.frame === null) this.frame = requestAnimationFrame(() => this.flush())
+		else if (!this.queue.size) this.readAheadSoon()
 	}
 
+	/**
+	 * Shapes being read ahead, each with what lets it leave the page again. While the GPU layer is on
+	 * and nothing else is waiting, the shapes never read yet (off screen, mostly, on a big board that
+	 * has unmounted them) are mounted a batch at a time, read and let go, so a pan or zoom later finds
+	 * them read and has nothing to mount. Mounting them as they came on screen made a pan across a big
+	 * board mount hundreds of shapes a frame.
+	 */
+	private readonly ahead = new Map<TLShapeId, () => void>()
+	private aheadTimer: ReturnType<typeof setTimeout> | null = null
+	private aheadAt = 0
+
+	private readAheadSoon() {
+		if (this.aheadTimer || typeof setTimeout === 'undefined') return
+		this.aheadTimer = setTimeout(() => {
+			this.aheadTimer = null
+			this.readAhead()
+		}, READ_AHEAD_MS)
+	}
+
+	private readAhead() {
+		if (this.disposed) return
+		// One batch at a time. Shapes of one that haven't mounted in a while (deleted meanwhile, or the
+		// board hidden) are let go.
+		if (this.ahead.size) {
+			if (performance.now() - this.aheadAt < READ_AHEAD_GIVE_UP_MS) return this.readAheadSoon()
+			transact(() => {
+				for (const release of this.ahead.values()) release()
+			})
+			this.ahead.clear()
+		}
+		if (!getGpuScene(this.editor).active.__unsafe__getWithoutCapture()) return
+		// Reading ahead is for later: only once the camera has been still a while.
+		if (this.queue.size || performance.now() - this.cameraMovedAt < READ_AHEAD_STILL_MS) return this.readAheadSoon()
+		// Around the screen only, a screen each way: what the next pan or zoom out shows. Reading the
+		// whole of a big board put all of it in the GPU's frame, which on 20,000 shapes was more than a
+		// frame could draw.
+		const near = this.editor.getViewportPageBounds().clone()
+		near.expandBy(Math.max(near.w, near.h))
+		let n = 0
+		transact(() => {
+			for (const id of this.atoms.keys()) {
+				if (this.readFor.has(id) || this.reasons.has(id)) continue
+				const bounds = this.editor.getShapePageBounds(id)
+				if (!bounds || !near.collides(bounds)) continue
+				if (getShapeElement(this.editor, id)) this.enqueue(id)
+				else this.ahead.set(id, pinShapeElement(this.editor, id))
+				if (++n >= READ_AHEAD_BATCH) break
+			}
+		})
+		this.aheadAt = performance.now()
+		if (n) this.readAheadSoon()
+	}
+
+	private disposed = false
+	/** How long the last hand-over took, with all it set off. */
+	private handOverCost = 0
+	/** The camera at the last turn of reading. */
+	private cameraAtFlush: unknown = null
 	/** When the camera last moved. */
 	private cameraMovedAt = 0
 	/** Read and not handed over yet. */
@@ -212,12 +344,29 @@ export class GpuSnapshots {
 	private handedAt = 0
 }
 
+interface ReadFor {
+	props: unknown
+	meta: unknown
+	geometry: unknown
+	key: string
+}
+
+/** How many shapes a batch of reading ahead mounts, and how long it waits before the next. */
+const READ_AHEAD_BATCH = 200
+const READ_AHEAD_MS = 50
+const READ_AHEAD_GIVE_UP_MS = 2000
+const READ_AHEAD_STILL_MS = 1000
+/** How many shapes off screen a turn of reading shows at once. */
+const SHOW_AT_ONCE = 64
+
 /** How long the camera has to have been still before elements are read. */
 const STILL_MS = 150
 /** Milliseconds a frame spent reading elements. */
 const READ_BUDGET_MS = 4
 /** How often what's been read is handed over while there's more to read. */
 const HAND_OVER_MS = 250
+/** A hand-over quicker than this is made as soon as there's nothing left to read. */
+const HAND_OVER_CHEAP_MS = 16
 
 const all = new WeakMap<Editor, GpuSnapshots>()
 /** The editor's snapshots, made on first use. */
@@ -1016,8 +1165,42 @@ function imagePicture(r: Reader, img: HTMLImageElement, cs: CSSStyleDeclaration,
 
 // ---- SVG as pictures
 
+/**
+ * SVG pictures decoded, the most recently used last, up to `DECODED_MAX`: each is a document of its
+ * own, and keeping one for every shape ever read held gigabytes on a big board. One let go is
+ * decoded again when it's next rastered.
+ */
 const decoded = new Map<string, HTMLImageElement>()
+const DECODED_MAX = 4000
 const decoding = new Map<string, Promise<void>>()
+
+function decodedSvg(url: string): HTMLImageElement | undefined {
+	const img = decoded.get(url)
+	if (img) {
+		decoded.delete(url)
+		decoded.set(url, img)
+	}
+	return img
+}
+
+function decodeSvg(url: string): void {
+	if (decoded.has(url) || decoding.has(url) || failed.has(url)) return
+	const img = new Image()
+	img.src = url
+	decoding.set(
+		url,
+		img
+			.decode()
+			.then(() => {
+				decoded.set(url, img)
+				if (decoded.size > DECODED_MAX) decoded.delete(decoded.keys().next().value!)
+			})
+			.catch(() => {
+				failed.add(url)
+			})
+			.finally(() => decoding.delete(url))
+	)
+}
 const failed = new Set<string>()
 const SVG_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-opacity', 'stroke-miterlimit', 'opacity', 'color', 'display', 'visibility'] as const
 
@@ -1090,22 +1273,7 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 	const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`
 	if (failed.has(url)) throw new Unsupported('svg the browser cannot picture')
 	if (r.pending.length) return
-	if (!decoded.has(url) && !decoding.has(url)) {
-		const img = new Image()
-		img.src = url
-		decoding.set(
-			url,
-			img
-				.decode()
-				.then(() => {
-					decoded.set(url, img)
-				})
-				.catch(() => {
-					failed.add(url)
-				})
-				.finally(() => decoding.delete(url))
-		)
-	}
+	decodeSvg(url)
 	const picture: GpuImage = {
 		kind: 'image',
 		x: b.x - m,
@@ -1115,8 +1283,12 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 		key: `svg|${url.length}|${hash(url)}`,
 		opacity: o,
 		draw: (ctx) => {
-			const img = decoded.get(url)
-			if (img) ctx.drawImage(img, 0, 0, b.w + 2 * m, b.h + 2 * m)
+			const img = decodedSvg(url)
+			if (!img) {
+				decodeSvg(url)
+				return false
+			}
+			ctx.drawImage(img, 0, 0, b.w + 2 * m, b.h + 2 * m)
 		},
 	}
 	const waiting = decoding.get(url)

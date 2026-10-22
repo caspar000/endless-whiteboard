@@ -62,6 +62,15 @@ export class FrameShapeUtil extends BaseBoxShapeUtil<TLFrameShape> {
 	static override props = frameShapeProps
 	static override migrations = frameShapeMigrations
 
+	override canLeavePage(_shape: TLFrameShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLFrameShape) {
+		// Being drawn (see `component`'s `isCreating`).
+		return this.editor.isOnlySelectedShape(shape.id) && this.editor.isIn('select.resizing') ? 'resizing' : ''
+	}
+
 	override options: TLFrameShapeUtilOptions = { showColors: false }
 
 	/**

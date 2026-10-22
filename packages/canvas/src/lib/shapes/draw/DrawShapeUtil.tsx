@@ -40,6 +40,15 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	static override props = drawShapeProps
 	static override migrations = drawShapeMigrations
 
+	override canLeavePage(_shape: TLDrawShape) {
+		return true
+	}
+
+	override getRenderKey(_shape: TLDrawShape, zoom: number) {
+		// Solid under 35% (`useForceSolid`).
+		return zoom < 0.35 ? 's' : ''
+	}
+
 	override hideResizeHandles = (shape: TLDrawShape) => getIsDot(shape)
 	override hideRotateHandle = (shape: TLDrawShape) => getIsDot(shape)
 	override hideSelectionBoundsFg = (shape: TLDrawShape) => getIsDot(shape)

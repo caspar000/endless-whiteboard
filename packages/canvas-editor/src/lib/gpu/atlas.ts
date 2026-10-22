@@ -108,7 +108,7 @@ export class ImageAtlas {
 		}
 		ctx.save()
 		ctx.setTransform(scale, 0, 0, scale, slot.x + ATLAS_PAD + fx, ATLAS_PAD + fy)
-		image.draw(ctx)
+		const ready = image.draw(ctx)
 		ctx.restore()
 		this.staged.x1 = slot.x + w
 		this.staged.h = Math.max(this.staged.h, h)
@@ -116,6 +116,8 @@ export class ImageAtlas {
 			this.upload()
 			canvas.height = STAGE_HEIGHT
 		}
+		// Not ready: its slot stays empty, and it's rastered again later.
+		if (ready === false) return undefined
 		const entry = { x: slot.x, y: slot.y, w, h, scale, fx, fy }
 		const id = this.id(image)
 		const rasters = this.entries.get(id)
@@ -179,7 +181,7 @@ export function rasterCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderin
 	if (raster?.canvas.isConnected) return raster
 	const canvas = raster?.canvas ?? document.createElement('canvas')
 	canvas.setAttribute('aria-hidden', 'true')
-	canvas.style.cssText = 'position:fixed;left:-100000px;top:0;width:1px;height:1px;pointer-events:none;visibility:hidden'
+	canvas.style.cssText = 'position:fixed;left:-100000px;top:0;width:1px;height:1px;pointer-events:none;visibility:hidden;contain:strict'
 	document.body.appendChild(canvas)
 	return (raster = { canvas, ctx: raster?.ctx ?? canvas.getContext('2d')! })
 }

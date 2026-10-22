@@ -82,6 +82,18 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	static override props = arrowShapeProps
 	static override migrations = arrowShapeMigrations
 
+	override canLeavePage(_shape: TLArrowShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLArrowShape) {
+		// The hint the only selected arrow shows (see `component`).
+		return this.editor.isOnlySelectedShape(shape.id) &&
+			this.editor.isInAny('select.idle', 'select.pointing_handle', 'select.dragging_handle', 'arrow.dragging')
+			? 'hint'
+			: ''
+	}
+
 	override canEdit = () => true
 	override canBind() {
 		return false

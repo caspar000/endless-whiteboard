@@ -22,6 +22,7 @@ import { GpuLayer } from '../gpu/GpuLayer'
 import { GeometryDebuggingView } from './GeometryDebuggingView'
 import { LiveCollaborators } from './LiveCollaborators'
 import { Shape } from './Shape'
+import { getMountedShapeList } from './shapeElements'
 import { SelectionIndicatorsCanvas, canDrawOnCanvas } from './SelectionIndicatorsCanvas'
 import { ShapeIndicator } from './ShapeIndicator'
 
@@ -328,7 +329,7 @@ function HandleWrapper({
 function ShapesWithSVGs() {
 	const editor = useEditor()
 
-	const renderingShapes = useValue('rendering shapes', () => editor.getRenderingShapeList(), [editor])
+	const renderingShapes = useValue('rendering shapes', () => getMountedShapeList(editor), [editor])
 
 	return (
 		<>
@@ -345,7 +346,7 @@ function ShapesWithSVGs() {
 function ShapesToDisplay() {
 	const editor = useEditor()
 
-	const renderingShapes = useValue('rendering shapes', () => editor.getRenderingShapeList(), [editor])
+	const renderingShapes = useValue('rendering shapes', () => getMountedShapeList(editor), [editor])
 
 	return (
 		<>

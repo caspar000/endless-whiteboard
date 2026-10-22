@@ -61,6 +61,18 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 	static override props = imageShapeProps
 	static override migrations = imageShapeMigrations
 
+	override canLeavePage(_shape: TLImageShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLImageShape) {
+		// The crop preview (see `component`).
+		return this.editor.isOnlySelectedShape(shape.id) &&
+			this.editor.isInAny('select.crop', 'select.cropping', 'select.pointing_crop_handle')
+			? 'crop'
+			: ''
+	}
+
 	override isAspectRatioLocked = () => true
 	override rendersAhead = () => true
 	override canCrop = () => true

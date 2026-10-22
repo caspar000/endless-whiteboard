@@ -96,6 +96,16 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	static override props = geoShapeProps
 	static override migrations = geoShapeMigrations
 
+	override canLeavePage(_shape: TLGeoShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLGeoShape, zoom: number) {
+		// A pattern fill's tile follows the zoom, and is plain under 18%; the link button hides under 32%.
+		const pattern = shape.props.fill === 'pattern' ? `${Math.ceil(zoom)}${zoom <= 0.18 ? 't' : ''}` : ''
+		return `${pattern}:${shape.props.url && zoom < 0.32 ? 'h' : ''}`
+	}
+
 	override options: TLGeoShapeUtilOptions = {}
 
 	override canEdit = () => true
@@ -600,7 +610,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 						richText={richText}
 						labelColor={labelColor}
 						wrap
-						bounds={props.geo === 'cloud' ? this.getGeometry(shape).bounds : undefined}
+						bounds={props.geo === 'cloud' ? this.editor.getShapeGeometry(shape.id).bounds : undefined}
 						scale={props.scale}
 					/>
 					{shape.props.url && (

@@ -37,6 +37,15 @@ export class HighlightShapeUtil extends ShapeUtil<TLHighlightShape> {
 	static override props = highlightShapeProps
 	static override migrations = highlightShapeMigrations
 
+	override canLeavePage(_shape: TLHighlightShape) {
+		return true
+	}
+
+	override getRenderKey(_shape: TLHighlightShape, zoom: number) {
+		// Solid under 35% (`useForceSolid`).
+		return zoom < 0.35 ? 's' : ''
+	}
+
 	override hideResizeHandles = (shape: TLHighlightShape) => getIsDot(shape)
 	override hideRotateHandle = (shape: TLHighlightShape) => getIsDot(shape)
 	override hideSelectionBoundsFg = (shape: TLHighlightShape) => getIsDot(shape)

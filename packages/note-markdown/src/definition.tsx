@@ -68,6 +68,8 @@ export const noteNodeDefinition: NodeDefinition<NoteNodeProps> = {
 	autoHeight: { minHeight: NOTE_MIN_HEIGHT },
 	component: MarkdownNodeComponent,
 	canEdit: true,
+	// Drawn from its markdown alone, unless that has a `{…}`, which shows other shapes' values.
+	canLeavePage: (shape) => !shape.props.md.includes('{'),
 	// A note's name is its first heading. `ShapeUtil.getText` can't find it — the markdown lives in
 	// our own props — so the definition supplies it as the first rung of the `shapeLabel` ladder.
 	getLabel: (shape) => noteTitle(shape.props.md),

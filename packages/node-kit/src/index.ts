@@ -576,6 +576,7 @@ export {
 } from './collections/suggest'
 export { SuggestMenu, stepSelection } from './collections/suggestMenu'
 export {
+	hasExpression,
 	useExpressionShape,
 	substituteRichText,
 	type ShapeWithRichText,

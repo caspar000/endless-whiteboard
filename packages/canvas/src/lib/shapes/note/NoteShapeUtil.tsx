@@ -53,6 +53,15 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 	override hideSelectionBoundsFg = () => true
 	override isAspectRatioLocked = () => true
 
+	override canLeavePage(_shape: S) {
+		return true
+	}
+
+	override getRenderKey(shape: S, zoom: number) {
+		// The link button hides under 32%.
+		return shape.props.url && zoom < 0.32 ? 'h' : ''
+	}
+
 	getDefaultProps(): S['props'] {
 		return {
 			color: 'yellow',

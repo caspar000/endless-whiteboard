@@ -43,6 +43,10 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	static override props = lineShapeProps
 	static override migrations = lineShapeMigrations
 
+	override canLeavePage(_shape: TLLineShape) {
+		return true
+	}
+
 	override hideResizeHandles = () => true
 	override hideRotateHandle = () => true
 	override hideSelectionBoundsFg = () => true

@@ -177,6 +177,34 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	}
 
 	/**
+	 * Whether shapes of this type can leave the page on a big board: be unmounted, not just hidden,
+	 * while off screen or while the GPU layer draws them (docs/gpu-renderer-plan.md, phase 8). Only for
+	 * a `component` that keeps no state of its own and draws from its own record (and its bindings'
+	 * shapes' geometry), so mounting it again shows the same thing. Anything else it draws from goes
+	 * in {@link ShapeUtil.getRenderKey}. Off by default.
+	 *
+	 * Asked without tracking the record: whatever could change the answer must also change the
+	 * record's props, or the shape's place on or off screen.
+	 *
+	 * @public
+	 */
+	canLeavePage(_shape: Shape): boolean {
+		return false
+	}
+
+	/**
+	 * What the shape's `component` draws from besides its record and geometry, as a string: a zoom
+	 * past which it draws differently, whether it's selected. The GPU layer's copy of a shape it read
+	 * from the page is out of date once this changes, which matters for a shape that has left the
+	 * page, as there's no element left to see it change.
+	 *
+	 * @public
+	 */
+	getRenderKey(_shape: Shape, _zoom: number): string {
+		return ''
+	}
+
+	/**
 	 * Whether to keep the shape shown further from the screen than other shapes: half a screen past
 	 * each edge rather than 100 pixels. For shapes that take a moment to appear, such as pictures,
 	 * which the browser has to decode, so a fast pan doesn't bring them in blank.

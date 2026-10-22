@@ -708,6 +708,70 @@ Still to do, from the same profile and runs: opening mounts every shape (React a
 the 35 s), ~44 KB a shape in memory, and at 50k the GPU pan at fit averages 700 ms a frame while the
 reader is still reading (each hand-over rebuilds the whole frame). Steps 2 and 3.
 
+#### Phase 8, step 3 (8a): shapes leave the page, as built (2026-10-22)
+
+Done before step 2: a heap snapshot (`e2e-scratch/heap.scratch.spec.ts`, `heapdiff.mjs`) put most of
+a shape's ~45 KB in what being mounted costs (33 React fibers, ~15 elements with their styles, 11
+effect schedulers, 17 computeds and their sets a shape), which is this step's to remove.
+
+- **What leaves.** On a board of more than 2,000 shapes (`LEAVE_PAGE_ABOVE`; tests lower it through
+  `localStorage['lifeboard:leave-page-above']`), a shape whose util says `canLeavePage(shape)` is
+  unmounted, not hidden, while it's culled or the GPU layer draws it. `Canvas` renders
+  `getMountedShapeList`. Core shapes say yes (geo, text, notes, frames, images, draw, highlight, line,
+  arrows, bookmarks, groups); a node type opts in with `canLeavePage` on its definition (the markdown
+  note does). A shape whose text has a `{…}` stays (`hasExpression`): what it shows depends on other
+  shapes. Small boards are as before.
+- **What it draws from.** `ShapeUtil.getRenderKey(shape, zoom)` names what a component draws from
+  besides its record: a zoom past which it draws differently (pattern fills, forced-solid strokes, the
+  link button), selection states (an arrow's hint, an image's crop, a frame being drawn). A snapshot
+  is read again when that key, the shape's geometry (an arrow's bound shape moving) or its record
+  changes; nothing is left on the page to see the change. The zoom is the camera's once it has been
+  still, latched.
+- **Asking for an element.** `requestShapeElement` pins a shape mounted until released; the DOM exports
+  use it, and a test checks the board exports the same, pixel for pixel, with its shapes on the page or
+  gone. `getShapeElement` gives the mounted ones.
+- **Reading ahead.** While the GPU layer is on and the camera has been still a second, the reader
+  mounts never-read shapes within a screen of the viewport, 200 at a time, reads them and lets them go,
+  so a pan finds them read instead of mounting them. Shown for the read in batches of 64.
+- **The frame.** In levels: a piece only has to come after the pieces below it that it overlaps, so
+  each level draws its rects, strokes and pictures a call each (2,864 runs on a 20k board became 95).
+  It holds the shapes within a viewport of the screen (`region`), moved when the screen nears its edge
+  or the zoom halves or doubles; the whole of a 20k board in it stalled the GPU, and following culling
+  rebuilt it every half screen.
+- **Smaller fixes on the way.** The mounted list, and the z-order rule, read the scene's latched copies
+  rather than computeds with a parent for every shape (each pin checked 20,000 of them). Reading waits
+  for the camera to be still across a whole frame (a slow frame mid-pan looked like a stop, and reading
+  then slowed the pan more). A hand-over waits eight times as long as the last one took. A shape read
+  ahead stays mounted until its pictures decode. SVG pictures decoded are kept for the 4,000 most
+  recently used (one decoded document a shape held gigabytes). A cloud's label isn't measured again on
+  every mount. An element is read made plainly visible (`display` and `visibility` put back in the same
+  task, so the page never paints it so): read again while the GPU hid it, an SVG's picture copied the
+  `visibility: hidden` it inherited and came out blank, which parity caught as geo shapes without
+  bodies once re-reads became common.
+
+Production build, GPU flags, synthetic boards (`e2e-scratch/scale.scratch.spec.ts`,
+`steady.scratch.spec.ts`; the shape limit raised for the run only):
+
+| | 20,000 before | 20,000 after | 50,000 before | 50,000 after |
+|---|---|---|---|---|
+| JS heap, built | 819 MB | 183–211 MB (8–10 KB a shape) | 2.2 GB | 488–496 MB |
+| Elements in the page | 156,600 | ~650 | 390,800 | ~600 |
+| Build | 20 s | 3 s | 27 s | 12 s |
+| Open again | 29 s | 5–7 s | 34.6 s | 18–20 s |
+
+| Pan at 10% zoom (mean / p95) | 10,000 | 20,000 |
+|---|---|---|
+| Page | 32 / 42 ms | 35–98 ms |
+| GPU, just switched on (nothing read) | 20 / 25 ms | 27–30 / 33 ms |
+| GPU, once read (second pan) | 8.5–9.1 / 10–17 ms | 13.6 / 42.6 ms |
+
+- 10k reaches the 120 fps floor once read (all 7,500 in 51 s). 20k is near it on the second pan; the
+  first pan after reading still pays for rastering what it hasn't drawn at that phase yet.
+- Reading is the slow part: ~150–300 shapes a second, each mounted, read and let go. A 20k board takes
+  ~5 minutes to read whole, which reading ahead limits to the shapes near the screen.
+- Open time at 50k is now the store's load, not mounting: the canvas shows only once all records are
+  in. That's step 4's.
+
 ### Phase 9: default on, and tidy. S
 
 - `auto` on for everyone; the page-only path stays as the fallback (no WebGL2, lost context).

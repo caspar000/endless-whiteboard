@@ -772,25 +772,53 @@ Production build, GPU flags, synthetic boards (`e2e-scratch/scale.scratch.spec.t
 - Open time at 50k is now the store's load, not mounting: the canvas shows only once all records are
   in. That's step 4's.
 
-#### Phase 8, step 2 (8b): per-shape memory, measured (2026-10-22)
+#### Phase 8, step 2 (8b): per-shape memory, as built (2026-10-22)
 
-Heap snapshots of fresh boards of 3,000 and 9,000 shapes (both past `LEAVE_PAGE_ABOVE`, at 100%, so
-nearly all have left the page), the difference divided by 6,000 (`e2e-scratch/heap.scratch.spec.ts`,
-`heapdiff.mjs`, and the computeds counted by name):
+Measured first: heap snapshots of fresh boards of 3,000 and 9,000 shapes (both past
+`LEAVE_PAGE_ABOVE`, at 100%, so nearly all off screen and off the page), the difference divided by
+6,000 (`e2e-scratch/heap.scratch.spec.ts`, `heapdiff.mjs`, the computeds counted by name). After
+step 3 a shape off the page cost 7.4 KB: its record's atom and seven computeds (`isShapeHidden`,
+`shapeRenderInfo`, `pageTransformCache`, `pageBoundsCache`, `pageMaskCache`, the geometry cache and
+its `:isEqual` wrapper), with their geometry. With the GPU on, 9.3 KB: the scene's own four a shape
+(`gpu primitives`, `footprint`, `eligible`, `drawn`) and more.
 
-- **7.4 KB a shape off the page** (dev build), from ~45 KB mounted before step 3.
-- What's left is the record and its derivations: one atom (the record) and seven computeds a shape
-  (`isShapeHidden`, `shapeRenderInfo`, `pageTransformCache`, `pageBoundsCache`, `pageMaskCache`, the
-  geometry cache and its `:isEqual` wrapper), with their parent arrays and child sets (~3 KB), the
-  geometry itself (~1.5 KB: `Vec2d`s and the `Geometry2d`), and the record's strings and numbers.
-- They all exist because culling asks every shape for its masked page bounds, through a computed per
-  shape. Merging three of them would save about 1 KB. The plan's target, 2 KB a shape off screen,
-  needs culling from a spatial index kept from the store's changes, so a shape off screen has no
-  computeds at all, only its record. That's a change to how the editor culls (`_getOffScreenShapeIds`
-  and everything per shape it reaches), and it isn't made yet.
+All of them were made by something asking every shape on the board, not by the shape being on
+screen:
 
-At 9.5 KB a shape built (production), 100,000 shapes would be ~1 GB of heap: possible, where ~4 GB
-before wasn't. 1,000,000 still isn't, without both the culling change and step 4.
+- **Culling, the page's bounds and "back to content"** ask every shape for its box. They now ask
+  `ShapeBoundsIndex` (`editor._boundsIndex`; `editor.hasShapesInBounds` for the button): a box per
+  shape in plain maps, kept from the store's side effects (a shape changing, its parent, the shapes
+  an arrow joins, its bindings) and worked out when asked for, with one `version` atom for what reads
+  it from a computed. Frames cut their children's boxes, as their masks did. An arrow's box is what it
+  joins and its free ends, widened by its bend, so working it out reaches no other shape's caches.
+- **The rendering list** read a computed per shape for its type, opacity and visibility. It now reads
+  the records without tracking them and changes with `_renderVersion`, which a shape's type, opacity,
+  meta, parent or order changing, or a binding, moves; a drag still doesn't rebuild it.
+- **The GPU scene's** frame, z-order rule and hidden set go through `near`, the shapes in its region
+  (the screen and a screen round it), from the index, instead of the whole board.
+
+| A shape off the page (dev build) | Before step 3 | After step 3 | Now |
+|---|---|---|---|
+| GPU off | ~45 KB | 7.4 KB | 2.04 KB |
+| GPU on | | 9.3 KB | 2.02 KB |
+
+What's left is the record: its atom and its contents. At ~2 KB a shape, 100,000 shapes would be
+~200 MB, 1,000,000 ~2 GB, on top of what the shapes near the screen cost.
+
+The page's bounds stay exact: from the index for every shape but arrows, and an arrow measured exactly
+only if its generous box reaches past the rest (a test checks a bent one at the edge). Loose, they
+moved every view parity places by the board's bounds, and one landed past the limit.
+
+Production build (`scale.scratch.spec.ts`), JS heap once built, at 100%:
+
+| | After step 3 | Now |
+|---|---|---|
+| 20,000 shapes | 183–211 MB | 88 MB |
+| 50,000 shapes | 488–496 MB | 195 MB |
+
+Checks: unit tests (a new `boundsIndex.test.ts`: a frame's child, an arrow's ends, a remote change,
+a new size, exact bounds round a bent arrow), the suite with the GPU on everywhere and as is, parity
+20/20, and the four-tree board at the floor on the GPU (8.3–9.2 ms at every zoom, brush 12 ms).
 
 #### Phase 8, step 4 (8c): loading and syncing by region — not started
 
@@ -807,6 +835,19 @@ instead. Server and IndexedDB migrations: a server backup before deploying (AGEN
 - README *Things worth knowing* (the two renderers, the parity rule: a type with `toGpu` must pass
   parity), the extension-surfaces skill (a new node type needs a `toGpu` or stays in the page),
   Help if anything shows.
+- The same for `canLeavePage` and `getRenderKey` (phase 8, step 3): a node type that keeps no state
+  and draws from its own props can leave the page on a big board.
+
+### Phase 10: boards of 20,000 shapes and up, later
+
+Found in phase 8 and left for later:
+
+- **Reading for the GPU is slow.** ~150–300 shapes a second, each mounted, read and let go: a 20k board
+  takes ~5 minutes to read whole, and until a shape is read it has to mount when it comes on screen.
+- **The first pan after reading is slow** (215 ms a frame at 20k in one run, while reading went on):
+  the pictures it shows haven't been rastered at that phase yet.
+- **Opening is the store's load.** At 50k, 18–20 s before the canvas shows, all 75,000 records read,
+  migrated, validated and put first. Step 4 of phase 8 (loading by region) is the real answer.
 
 ## Working rules
 

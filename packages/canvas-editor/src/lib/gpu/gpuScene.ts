@@ -114,6 +114,13 @@ export class GpuScene {
 	private readonly opacity: ComputedCache<number, TLShape>
 	/** The shapes in drawing order. (`getRenderingShapeList` is sorted by id, so page elements never move in the DOM, with each one's place in z-order as its `index`.) */
 	private readonly zOrder: Computed<ReturnType<Editor['getRenderingShapeList']>>
+	/**
+	 * The shapes in `region`, in z-order: what the frame, the z-order rule and the hidden set go
+	 * through. Through all of them, every shape on a big board had the scene's computeds (what it
+	 * draws, where, whether it's drawn) and the editor's (its page box) made for it and kept, near the
+	 * screen or not. From the editor's bounds index, which makes nothing per shape.
+	 */
+	private readonly near: Computed<ReturnType<Editor['getRenderingShapeList']>>
 	/** The GPU's shapes on screen, for `auto`. */
 	readonly onScreen: Computed<number>
 	/** Where a shape paints in page space: boxes along its strokes when it's only strokes, else its bounds. */
@@ -186,6 +193,21 @@ export class GpuScene {
 			return true
 		})
 		this.zOrder = computed('gpu z order', () => [...this.renderingList.get()].sort((a, b) => a.index - b.index))
+		this.near = computed(
+			'gpu near',
+			() => {
+				const order = this.zOrder.get()
+				const region = this.region.get()?.box
+				if (!region) return order
+				const index = editor._boundsIndex
+				index.version.get()
+				return order.filter(({ id }) => {
+					const b = index.get(id)
+					return !!b && b.maxX >= region.x && b.x <= region.maxX && b.maxY >= region.y && b.y <= region.maxY
+				})
+			},
+			{ isEqual: (a: RenderingList, b: RenderingList) => a.length === b.length && a.every((x, i) => x.id === b[i]!.id && x.index === b[i]!.index) }
+		)
 		this.onScreen = computed('gpu on screen', () => {
 			const culled = this.culled.get()
 			let n = 0
@@ -270,7 +292,7 @@ export class GpuScene {
 				}
 			}
 			for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
-			const order = this.zOrder.get()
+			const order = this.near.get()
 			// Off screen shapes too: following culling made a pan redo this, and with it every shape's
 			// answer, each time culling moved. It's redone when what's drawn changes.
 			for (let i = order.length - 1; i >= 0; i--) {
@@ -294,7 +316,7 @@ export class GpuScene {
 				const mode = getRendererMode()
 				if ((mode !== 'gpu' && mode !== 'auto') || !this.active.get()) return EMPTY
 				const out = new Set<TLShapeId>()
-				for (const { id } of this.zOrder.get()) if (this.drawn.get(id)) out.add(id)
+				for (const { id } of this.near.get()) if (this.drawn.get(id)) out.add(id)
 				return out
 			},
 			{ isEqual: sameSet }
@@ -375,20 +397,17 @@ export class GpuScene {
 		})
 		this.frame = computed('gpu frame', () => {
 			if (!this.active.get()) return { rects: new Float32Array(0), strokes: [], images: [], runs: [] }
-			// The shapes in `region`: around the screen, and moved only now and then.
+			// The shapes in `region` (`near`): around the screen, and moved only now and then.
 			// Drawn in levels rather than strictly in z-order: a piece has only to come after the pieces
 			// below it that it overlaps, so each goes in the lowest level that keeps it after those, and a
 			// level draws all its rects, then its strokes, then its pictures, a call each. Strictly in
 			// order, each shape's rect, stroke and picture were runs of their own: thousands of draw calls
 			// a frame on a big board, and that was the frame.
 			const levels = new Levels(this.pixel.get() * 2)
-			const region = this.region.get()?.box
 			const byLevel: { rects: Float32Array[]; strokes: Float32Array[]; images: PlacedImage[] }[] = []
 			let rectFloats = 0
-			for (const { id } of this.zOrder.get()) {
+			for (const { id } of this.near.get()) {
 				if (!this.drawn.get(id)) continue
-				const b = region && editor.getShapePageBounds(id)
-				if (region && (!b || b.maxX < region.x || b.x > region.maxX || b.maxY < region.y || b.y > region.maxY)) continue
 				for (const chunk of this.chunks.get(id) ?? []) {
 					const level = levels.place(chunk.box, KIND_ORDER[chunk.kind])
 					const at = (byLevel[level] ??= { rects: [], strokes: [], images: [] })
@@ -530,6 +549,7 @@ const FOOTPRINT_STEP = 64
 const HALO_REACH = 1.5
 
 type Box = { x: number; y: number; maxX: number; maxY: number }
+type RenderingList = ReturnType<Editor['getRenderingShapeList']>
 
 /** Within a level, rects are drawn first, then strokes, then pictures. */
 const KIND_ORDER = { rect: 0, stroke: 1, image: 2 } as const

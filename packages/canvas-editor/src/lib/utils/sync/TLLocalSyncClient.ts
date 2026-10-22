@@ -247,6 +247,13 @@ export class TLLocalSyncClient {
 				if (sessionStateSnapshot) {
 					loadSessionStateSnapshotIntoStore(this.store, sessionStateSnapshot)
 				}
+
+				// Read from its own database as it is there (no stash laid over it, nothing migrated):
+				// nothing to write until something changes. The full write every open began with put
+				// back every record of a big board, seconds of it, each time it was opened.
+				if (!this.hasStash && data.schema && JSON.stringify(data.schema) === JSON.stringify(this.serializedSchema)) {
+					this.shouldDoFullDBWrite = false
+				}
 			}
 
 			this.channel.onmessage = ({ data }) => {

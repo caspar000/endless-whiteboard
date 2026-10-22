@@ -205,6 +205,17 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	}
 
 	/**
+	 * The shape's box in its own space, for culling, where working out its geometry costs more than
+	 * its props say (a geo shape measures its label): may be bigger than the geometry's box, never
+	 * smaller. Undefined: the geometry's box. Asked of every shape on the board when it opens.
+	 *
+	 * @public
+	 */
+	getCullingBounds(_shape: Shape): Box2d | undefined {
+		return undefined
+	}
+
+	/**
 	 * Whether to keep the shape shown further from the screen than other shapes: half a screen past
 	 * each edge rather than 100 pixels. For shapes that take a moment to appear, such as pictures,
 	 * which the browser has to decode, so a fast pan doesn't bring them in blank.

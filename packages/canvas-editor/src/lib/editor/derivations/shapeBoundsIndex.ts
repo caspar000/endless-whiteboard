@@ -79,7 +79,8 @@ export class ShapeBoundsIndex {
 	/** The shape's geometry's box. A shape whose geometry can't be worked out (yet) is a point. */
 	private localBox(shape: TLShape): Box2d {
 		try {
-			return this.editor.getShapeUtil(shape).getGeometry(shape).bounds.clone()
+			const util = this.editor.getShapeUtil(shape)
+			return util.getCullingBounds(shape)?.clone() ?? util.getGeometry(shape).bounds.clone()
 		} catch {
 			return new Box2d(0, 0, 1, 1)
 		}

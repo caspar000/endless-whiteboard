@@ -6,11 +6,15 @@ import { createTLStore } from '../../config/createTLStore'
 import { TLLocalSyncClient } from './TLLocalSyncClient'
 import * as idb from './indexedDb'
 
-vi.mock('./indexedDb', async () => ({
-	...(await vi.importActual<object>('./indexedDb')),
-	storeSnapshotInIndexedDb: vi.fn(() => Promise.resolve()),
-	storeChangesInIndexedDb: vi.fn(() => Promise.resolve()),
-}))
+vi.mock('./indexedDb', async () => {
+	const actual = await vi.importActual<typeof import('./indexedDb')>('./indexedDb')
+	return {
+		...actual,
+		loadDataFromStore: vi.fn(actual.loadDataFromStore),
+		storeSnapshotInIndexedDb: vi.fn(() => Promise.resolve()),
+		storeChangesInIndexedDb: vi.fn(() => Promise.resolve()),
+	}
+})
 
 class BroadcastChannelMock {
 	onmessage?: (e: MessageEvent) => void
@@ -123,6 +127,25 @@ test('the first db write after a client connects is a full db overwrite, made as
 	await tick()
 	expect(idb.storeSnapshotInIndexedDb).toHaveBeenCalledTimes(1)
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
+})
+
+test('a board read from its own database, as it is there, is not written again until it changes', async () => {
+	const schema = createTLStore({ shapeUtils: [] }).schema.serialize()
+	;(idb.loadDataFromStore as jest.Mock).mockImplementationOnce(() =>
+		Promise.resolve({ records: [PageRecordType.create({ name: 'kept', index: 'a0' as IndexKey })], schema, sessionStateSnapshot: null })
+	)
+	const { client } = testClient()
+	await tick()
+	await tick()
+	expect(client.store.query.records('page').get().map((page) => page.name)).toContain('kept')
+	expect(idb.storeSnapshotInIndexedDb).not.toHaveBeenCalled()
+
+	// A change is written as a change, not the whole board again.
+	client.store.put([PageRecordType.create({ name: 'new', index: 'a1' as IndexKey })])
+	await tick()
+	const calls = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls
+	expect(JSON.stringify(calls[calls.length - 1]![0].changes)).toContain('new')
+	expect(idb.storeSnapshotInIndexedDb).not.toHaveBeenCalled()
 })
 
 test('it clears the diff queue after every write', async () => {

@@ -2,9 +2,10 @@ import { atom, react, transact, type Atom } from '@tldraw/state'
 import type { TLShape, TLShapeId, TLUnknownShape } from '@tldraw/tlschema'
 import { getShapeElement, onShapeMounted, pinShapeElement } from '../components/shapeElements'
 import type { Editor } from '../editor/Editor'
-import { rasterCanvas } from './atlas'
 import { getGpuScene } from './gpuScene'
 import { readGpuColor, type GpuColor, type GpuImage, type GpuPrimitive } from './primitives'
+import { decodePicture, drawRecipe, FONT_PROPS, keepPicture, pictureFailed, textContext, type Recipe, type TextStyle } from './recipes'
+import { gpuSnapshotCacheVersion, loadSnapshots, restored, saveSnapshots, storable, type CachedSnapshot } from './snapshotCache'
 
 /**
  * Shapes drawn from their own page element (docs/gpu-renderer-plan.md, phase 4a): what the browser
@@ -46,6 +47,8 @@ export class GpuSnapshots {
 	private readonly outlined = new Set<TLShapeId>()
 	/** The outline's offset at the `--tl-zoom` last seen. */
 	private outline = ''
+	/** How many elements have been read this session (the rest came from the cache): for the checks. */
+	readCount = 0
 	/** Why each shape the reader left to the page was left there: for finding what to teach it next. */
 	readonly reasons = new Map<TLShapeId, string>()
 	private frame: number | null = null
@@ -87,7 +90,7 @@ export class GpuSnapshots {
 		})
 		// What every element inherits changing (the theme, the accent, a font arriving): read everything again.
 		const again = () => {
-			for (const id of this.atoms.keys()) this.invalidate(id)
+			for (const id of this.atoms.keys()) this.invalidate(id, false)
 		}
 		const page = typeof MutationObserver === 'undefined' ? null : new MutationObserver(again)
 		page?.observe(document.documentElement, { attributes: true })
@@ -110,7 +113,17 @@ export class GpuSnapshots {
 			again()
 		})
 		document.fonts?.addEventListener?.('loadingdone', again)
+		// What the cache has for each page, as it's opened.
+		const stopPage = react('gpu snapshots page', () => {
+			editor.getCurrentPageId()
+			this.loadCache()
+		})
 		editor.disposables.add(() => {
+			stopPage()
+			if (this.keepTimer) {
+				clearTimeout(this.keepTimer)
+				void saveSnapshots([...this.toKeep])
+			}
 			this.disposed = true
 			if (this.aheadTimer) clearTimeout(this.aheadTimer)
 			for (const release of this.ahead.values()) release()
@@ -142,18 +155,95 @@ export class GpuSnapshots {
 		const m = this.editor.getShapePageTransform(shape.id)
 		if (Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - 1) > 1e-9 || Math.abs(m.d - 1) > 1e-9) return null
 		const was = this.readFor.get(shape.id)
-		if (
-			!was ||
-			was.props !== shape.props ||
-			was.meta !== shape.meta ||
-			was.geometry !== this.editor.getShapeGeometry(shape.id) ||
-			was.key !== this.editor.getShapeUtil(shape).getRenderKey(shape, this.zoom.get())
-		) {
+		const key = this.editor.getShapeUtil(shape).getRenderKey(shape, this.zoom.get())
+		if (!was || was.props !== shape.props || was.meta !== shape.meta || was.geometry !== this.editor.getShapeGeometry(shape.id) || was.key !== key) {
+			const kept = this.fromCache(shape as unknown as TLShape, key)
+			if (kept) return kept
 			this.enqueue(shape.id)
 			return undefined
 		}
 		return read
 	}
+
+	/** For the checks: every shape read again from its element, the cache passed over. */
+	readAgain() {
+		for (const id of this.atoms.keys()) {
+			this.uncached.add(id)
+			this.invalidate(id, false)
+		}
+	}
+
+	// ---- Kept between sessions (`snapshotCache.ts`)
+
+	/** What the cache has for this page's shapes, once loaded. */
+	private cached = new Map<TLShapeId, CachedSnapshot>()
+	/** Changes when the cache has loaded, for `get` to look again. */
+	private readonly cacheLoaded = atom('gpu snapshot cache loaded', 0)
+	/** Shapes whose element changed under them this session: read again, not taken from the cache. */
+	private readonly uncached = new Set<TLShapeId>()
+	private readonly toKeep = new Map<TLShapeId, CachedSnapshot>()
+	private keepTimer: ReturnType<typeof setTimeout> | null = null
+
+	/** A shape's snapshot from the cache, if it has one read for what the shape is now. */
+	private fromCache(shape: TLShape, renderKey: string): Snapshot {
+		this.cacheLoaded.get()
+		if (this.uncached.has(shape.id)) return undefined
+		const kept = this.cached.get(shape.id)
+		if (!kept || !this.editor.getShapeUtil(shape).canLeavePage(shape)) return undefined
+		if (kept.key !== this.cacheKey(shape, renderKey)) return undefined
+		const prims = restored(kept.prims)
+		// Asked for before the cache was in: not to be read now.
+		this.queue.delete(shape.id)
+		this.readFor.set(shape.id, { props: shape.props, meta: shape.meta, geometry: this.editor.getShapeGeometry(shape.id), key: renderKey })
+		// Not set from inside this computed: once it has run.
+		const a = this.atoms.get(shape.id)
+		queueMicrotask(() => a?.set(prims))
+		return prims
+	}
+
+	/** What a shape's picture depends on, hashed: change any of it and the kept one isn't used. */
+	private cacheKey(shape: TLShape, renderKey: string): string {
+		// The text outline's width, from the zoom the way the page works it out (see `outline`).
+		const outline = Math.min(0.5, 1 / this.zoom.__unsafe__getWithoutCapture())
+		const text = [gpuSnapshotCacheVersion(), READER_VERSION, this.editor.user.getIsDarkMode(), renderKey, outline, shape.type, JSON.stringify(shape.props), JSON.stringify(shape.meta)].join('\u0001')
+		return hash(text) + hash2(text) + text.length.toString(36)
+	}
+
+	/** Keeps a shape's snapshot, if it can be kept, with the others read about now. */
+	private keep(shape: TLShape, prims: GpuPrimitive[]) {
+		if (!gpuSnapshotCacheVersion() || !this.editor.getShapeUtil(shape).canLeavePage(shape)) return
+		const stored = storable(prims)
+		if (!stored) return
+		const renderKey = this.editor.getShapeUtil(shape).getRenderKey(shape, this.zoom.__unsafe__getWithoutCapture())
+		const entry = { key: this.cacheKey(shape, renderKey), prims: stored, at: Date.now() }
+		this.toKeep.set(shape.id, entry)
+		this.cached.set(shape.id, entry)
+		this.keepTimer ??= setTimeout(() => {
+			this.keepTimer = null
+			const entries = [...this.toKeep]
+			this.toKeep.clear()
+			void saveSnapshots(entries)
+		}, KEEP_MS)
+	}
+
+	/** Loads what the cache has for the current page's shapes, once fonts are in (text was read with them). */
+	private loadCache() {
+		if (!gpuSnapshotCacheVersion() || typeof document === 'undefined') return
+		const page = this.editor.getCurrentPageId()
+		// Reading waits for it (a little): what it reads now, the cache might have had.
+		this.cacheWaitUntil = performance.now() + CACHE_WAIT_MS
+		void (document.fonts?.ready ?? Promise.resolve())
+			.then(() => loadSnapshots(this.editor.getCurrentPageShapeIds()))
+			.then((found) => {
+				this.cacheWaitUntil = 0
+				if (this.disposed || this.editor.getCurrentPageId() !== page) return
+				for (const [id, entry] of found) if (!this.cached.has(id)) this.cached.set(id, entry)
+				this.cacheLoaded.set(this.cacheLoaded.__unsafe__getWithoutCapture() + 1)
+			})
+	}
+
+	/** Until when reading waits for the cache to load. */
+	private cacheWaitUntil = 0
 
 	private watched = false
 	private watch() {
@@ -165,7 +255,10 @@ export class GpuSnapshots {
 	}
 
 	/** Its element changed under it: the page draws it again until it's read again, so nothing out of date shows. */
-	private invalidate(id: TLShapeId) {
+	private invalidate(id: TLShapeId, fromElement = true) {
+		// The element of a shape with a snapshot changed: what the cache kept may be out of date too.
+		// (Before it had one, the changes are the element settling as it mounts.)
+		if (fromElement && this.atoms.get(id)?.__unsafe__getWithoutCapture()) this.uncached.add(id)
 		this.readFor.delete(id)
 		this.atoms.get(id)?.set(undefined)
 		this.enqueue(id)
@@ -190,7 +283,7 @@ export class GpuSnapshots {
 		const camera = this.editor.getCamera()
 		const moved = camera !== this.cameraAtFlush
 		this.cameraAtFlush = camera
-		if (moved || performance.now() - this.cameraMovedAt < STILL_MS) {
+		if (moved || performance.now() - this.cameraMovedAt < STILL_MS || performance.now() < this.cacheWaitUntil) {
 			this.frame = requestAnimationFrame(() => this.flush())
 			return
 		}
@@ -231,6 +324,7 @@ export class GpuSnapshots {
 			this.reasons.delete(id)
 			let pending: Promise<unknown>[] = []
 			try {
+				this.readCount++
 				const result = readElement(this.editor, shape, el)
 				read = result.out
 				pending = result.pending
@@ -252,6 +346,7 @@ export class GpuSnapshots {
 				released.push(release)
 				this.ahead.delete(id)
 			}
+			if (read) this.keep(shape, read)
 			results.push([a, read])
 		}
 		} finally {
@@ -351,6 +446,13 @@ interface ReadFor {
 	key: string
 }
 
+/** The reader's own version: bump it when what it reads from an element changes, and the cache starts again. */
+const READER_VERSION = 1
+/** How long new snapshots wait to be kept, with the others read meanwhile. */
+const KEEP_MS = 2000
+/** How long reading waits for the cache to load, at most. */
+const CACHE_WAIT_MS = 5000
+
 /** How many shapes a batch of reading ahead mounts, and how long it waits before the next. */
 const READ_AHEAD_BATCH = 200
 const READ_AHEAD_MS = 50
@@ -424,48 +526,40 @@ const rounded = (c: Clip) => c.corners.some((k) => k.x > 0 && k.y > 0)
  * a corner made a picture cut the same way (a card's header colour, a cover filling a rounded card).
  */
 function cutToCorners(pieces: GpuPrimitive[], c: Clip): GpuPrimitive[] {
-	const css = (k: GpuColor) => `rgba(${Math.round(k[0] * 255)}, ${Math.round(k[1] * 255)}, ${Math.round(k[2] * 255)}, ${k[3]})`
 	return pieces.map((p) => {
 		if (p.kind === 'stroke' || !inCorners(c, p)) return p
 		const at = { x: p.x, y: p.y }
-		const clip = (ctx: CanvasRenderingContext2D) => {
-			ctx.beginPath()
-			ctx.roundRect(c.x - at.x, c.y - at.y, c.w, c.h, c.corners)
-			ctx.clip()
-		}
+		const cut = { x: c.x, y: c.y, w: c.w, h: c.h, corners: c.corners }
 		const key = `|cut ${c.x},${c.y},${c.w},${c.h},${JSON.stringify(c.corners)}`
 		if (p.kind === 'image') {
-			const draw = p.draw
-			return { ...p, key: p.key + key, draw: (ctx) => (clip(ctx), draw(ctx)) }
+			if (!p.recipe) {
+				// A picture made outside the reader, without a recipe: cut as it draws.
+				const draw = p.draw
+				return {
+					...p,
+					key: p.key + key,
+					draw: (ctx) => {
+						ctx.beginPath()
+						ctx.roundRect(c.x - at.x, c.y - at.y, c.w, c.h, c.corners)
+						ctx.clip()
+						return draw(ctx)
+					},
+				}
+			}
+			return picture({ ...p, key: p.key + key }, { t: 'cut', cut, at, inner: p.recipe })
 		}
 		const rect = p
-		const picture: GpuImage = {
-			kind: 'image',
-			x: rect.x,
-			y: rect.y,
-			w: rect.w,
-			h: rect.h,
-			key: `rect|${JSON.stringify(rect)}${key}`,
-			draw: (ctx) => {
-				clip(ctx)
-				const sw = rect.stroke && rect.strokeWidth ? rect.strokeWidth : 0
-				ctx.beginPath()
-				ctx.roundRect(0, 0, rect.w, rect.h, rect.radius ?? 0)
-				if (rect.fill && rect.fill[3] > 0) {
-					ctx.fillStyle = css(rect.fill)
-					ctx.fill()
-				}
-				if (sw) {
-					const ring = new Path2D()
-					ring.roundRect(0, 0, rect.w, rect.h, rect.radius ?? 0)
-					ring.roundRect(sw, sw, rect.w - 2 * sw, rect.h - 2 * sw, Math.max(0, (rect.radius ?? 0) - sw))
-					ctx.fillStyle = css(rect.stroke!)
-					ctx.fill(ring, 'evenodd')
-				}
-			},
-		}
-		return picture
+		const sw = rect.stroke && rect.strokeWidth ? rect.strokeWidth : 0
+		return picture(
+			{ kind: 'image', x: rect.x, y: rect.y, w: rect.w, h: rect.h, key: `rect|${JSON.stringify(rect)}${key}` },
+			{ t: 'rect', w: rect.w, h: rect.h, radius: rect.radius ?? 0, fill: rect.fill ?? null, stroke: rect.stroke ?? null, strokeWidth: sw, cut, at }
+		)
 	})
+}
+
+/** A picture drawn from its recipe (see `recipes.ts`), so the same one can be kept between sessions. */
+function picture(p: Omit<GpuImage, 'draw' | 'recipe'>, recipe: Recipe): GpuImage {
+	return { ...p, recipe, draw: (ctx) => drawRecipe(ctx, recipe) }
 }
 
 /** The corners an element rounds its overflow to, in the shape's units, each its own (a percentage an ellipse's). */
@@ -747,61 +841,20 @@ type Sides = { widths: number[]; colors: string[] }
  * corners to the inner ones, where Blink splits them.
  */
 function paintedBox(r: Reader, b: Box, radius: number, fill: GpuColor, gradient: Gradient | null, cut: string | undefined, o: number, sides?: Sides) {
-	const css = (c: GpuColor) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${c[3]})`
-	r.out.push({
-		kind: 'image',
-		x: b.x,
-		y: b.y,
-		w: b.w,
-		h: b.h,
-		key: `box|${b.w}|${b.h}|${radius}|${fill.join(',')}|${JSON.stringify(gradient)}|${cut ?? ''}|${JSON.stringify(sides ?? null)}`,
-		opacity: o,
-		draw: (ctx) => {
-			if (cut) ctx.clip(new Path2D(cut))
-			ctx.beginPath()
-			ctx.roundRect(0, 0, b.w, b.h, radius)
-			if (fill[3] > 0) {
-				ctx.fillStyle = css(fill)
-				ctx.fill()
-			}
-			if (gradient) {
-				const g = ctx.createLinearGradient(...gradientLine(gradient, b.w, b.h))
-				for (const stop of gradient.stops) g.addColorStop(Math.max(0, Math.min(1, stop.at)), stop.color)
-				ctx.fillStyle = g
-				ctx.fill()
-			}
-			if (!sides) return
-			const [T, R, B, L] = sides.widths as [number, number, number, number]
-			const w = b.w
-			const h = b.h
-			const ring = new Path2D()
-			ring.roundRect(0, 0, w, h, radius)
-			const corner = (x: number, y: number) => ({ x: Math.max(0, radius - x), y: Math.max(0, radius - y) })
-			ring.roundRect(L, T, Math.max(0, w - L - R), Math.max(0, h - T - B), [corner(L, T), corner(R, T), corner(R, B), corner(L, B)])
-			const polygons = [
-				[0, 0, w, 0, w - R, T, L, T],
-				[w, 0, w, h, w - R, h - B, w - R, T],
-				[w, h, 0, h, L, h - B, w - R, h - B],
-				[0, h, 0, 0, L, T, L, h - B],
-			]
-			const one = sides.colors.every((c, i) => !sides.widths[i] || c === sides.colors.find((_, j) => sides.widths[j]))
-			sides.colors.forEach((c, i) => {
-				if (!sides.widths[i]) return
-				ctx.save()
-				if (!one) {
-					const p = polygons[i]!
-					ctx.beginPath()
-					ctx.moveTo(p[0]!, p[1]!)
-					for (let k = 2; k < p.length; k += 2) ctx.lineTo(p[k]!, p[k + 1]!)
-					ctx.closePath()
-					ctx.clip()
-				}
-				ctx.fillStyle = c
-				ctx.fill(ring, 'evenodd')
-				ctx.restore()
-			})
-		},
-	})
+	r.out.push(
+		picture(
+			{
+				kind: 'image',
+				x: b.x,
+				y: b.y,
+				w: b.w,
+				h: b.h,
+				key: `box|${b.w}|${b.h}|${radius}|${fill.join(',')}|${JSON.stringify(gradient)}|${cut ?? ''}|${JSON.stringify(sides ?? null)}`,
+				opacity: o,
+			},
+			{ t: 'box', w: b.w, h: b.h, radius, fill, gradient, gradientLine: gradient ? gradientLine(gradient, b.w, b.h) : null, path: cut ?? null, sides: sides ?? null }
+		)
+	)
 }
 
 /**
@@ -831,28 +884,12 @@ function dashedBorder(r: Reader, b: Box, radius: number, bw: number, css: string
 	const more = (length - (n + 1) * dash) / (n + 1)
 	gap = more <= 0 || Math.abs(fewer - gap) < Math.abs(more - gap) ? fewer : more
 	const pad = 1
-	r.out.push({
-		kind: 'image',
-		x: b.x - pad,
-		y: b.y - pad,
-		w: b.w + pad * 2,
-		h: b.h + pad * 2,
-		key: `dashed|${b.w}|${b.h}|${radius}|${bw}|${css}`,
-		opacity: o,
-		draw: (ctx) => {
-			const ring = new Path2D()
-			ring.roundRect(pad, pad, b.w, b.h, radius)
-			ring.roundRect(pad + bw, pad + bw, b.w - 2 * bw, b.h - 2 * bw, Math.max(0, radius - bw))
-			ctx.clip(ring, 'evenodd')
-			ctx.setLineDash([dash, gap])
-			ctx.lineWidth = bw * 2.2
-			ctx.lineCap = 'butt'
-			ctx.strokeStyle = css
-			ctx.beginPath()
-			ctx.roundRect(pad + inset, pad + inset, cw, ch, cr)
-			ctx.stroke()
-		},
-	})
+	r.out.push(
+		picture(
+			{ kind: 'image', x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2, key: `dashed|${b.w}|${b.h}|${radius}|${bw}|${css}`, opacity: o },
+			{ t: 'dashed', w: b.w, h: b.h, radius, bw, css, inset, cw, ch, cr, dash, gap, pad }
+		)
+	)
 }
 
 /** A quarter circle's length as Skia measures it: its conic cut into chords until each is within half a pixel. */
@@ -898,70 +935,12 @@ function shadow(r: Reader, css: string, b: Box, radius: Radius, o: number) {
 	const by = b.y - y
 	// Far enough that the shape casting it is outside the picture, and only its shadow lands in it.
 	const far = w + h + blur * 4
-	r.out.push({
-		kind: 'image',
-		x,
-		y,
-		w,
-		h,
-		key: `shadow|${b.w}|${b.h}|${JSON.stringify(radius)}|${css}`,
-		opacity: o,
-		draw: (ctx) => {
-			const s = ctx.getTransform().a
-			ctx.save()
-			const outside = new Path2D()
-			outside.rect(-1, -1, w + 2, h + 2)
-			outside.roundRect(bx, by, b.w, b.h, radius)
-			ctx.clip(outside, 'evenodd')
-			// Shadows ignore the transform: the blur and the offset are in the canvas's own pixels.
-			ctx.shadowColor = shade
-			ctx.shadowBlur = blur * s
-			ctx.shadowOffsetX = (dx + far) * s
-			ctx.shadowOffsetY = dy * s
-			ctx.fillStyle = '#000'
-			ctx.beginPath()
-			const grown = typeof radius === 'number' ? Math.max(0, radius + spread) : { x: Math.max(0, radius.x + spread), y: Math.max(0, radius.y + spread) }
-			ctx.roundRect(bx - spread - far, by - spread, b.w + spread * 2, b.h + spread * 2, grown)
-			ctx.fill()
-			ctx.restore()
-		},
-	})
-}
-
-/**
- * What a canvas draws text with besides `font`: it takes these from its own element's style, so they
- * are copied onto it from the text's element (tabular figures, ligatures, font smoothing...).
- */
-const FONT_PROPS = [
-	'font-variant-numeric',
-	'font-variant-ligatures',
-	'font-variant-caps',
-	'font-variant-east-asian',
-	'font-variant-alternates',
-	'font-feature-settings',
-	'font-variation-settings',
-	'font-kerning',
-	'font-optical-sizing',
-	'-webkit-font-smoothing',
-	'text-rendering',
-] as const
-
-interface TextStyle {
-	font: string
-	/** The `FONT_PROPS` values, in order. */
-	props: string[]
-	letterSpacing: string
-	wordSpacing: string
-}
-
-/** The shared raster canvas set up to draw or measure text in `t`. */
-function textContext(t: TextStyle): CanvasRenderingContext2D {
-	const { canvas, ctx } = rasterCanvas()
-	FONT_PROPS.forEach((prop, i) => canvas.style.setProperty(prop, t.props[i]!))
-	ctx.font = t.font
-	ctx.letterSpacing = t.letterSpacing
-	ctx.wordSpacing = t.wordSpacing
-	return ctx
+	r.out.push(
+		picture(
+			{ kind: 'image', x, y, w, h, key: `shadow|${b.w}|${b.h}|${JSON.stringify(radius)}|${css}`, opacity: o },
+			{ t: 'shadow', w, h, bx, by, bw: b.w, bh: b.h, radius, shade, blur, dx, dy, spread, far }
+		)
+	)
 }
 
 const widths = new Map<string, number>()
@@ -1072,29 +1051,20 @@ function text(r: Reader, el: HTMLElement, node: Text, cs: CSSStyleDeclaration, o
 			else for (const g of line.glyphs) runs.push({ text: shown(g.i, g.end), x: g.x - x })
 		}
 		if (line.ellipsis !== undefined) runs.push({ text: '…', x: line.ellipsis - x })
-		const picture: GpuImage = {
-			kind: 'image',
-			x,
-			y,
-			w: right - left + pad * 2,
-			h: line.bottom - line.top + pad * 2,
-			key: `text|${t.font}|${t.props.join('|')}|${t.letterSpacing}|${t.wordSpacing}|${ink}|${cs.textShadow}|${baseline}|${runs.map((g) => `${g.x.toFixed(4)}:${g.text}`).join('\u0000')}`,
-			opacity: o,
-			draw: (ctx) => {
-				textContext(t)
-				ctx.fillStyle = ink
-				ctx.textBaseline = 'alphabetic'
-				ctx.textAlign = 'left'
-				for (const sh of shadows) {
-					ctx.fillStyle = sh.color
-					for (const g of runs) ctx.fillText(g.text, g.x + sh.x, baseline + sh.y)
-				}
-				ctx.fillStyle = ink
-				for (const g of runs) ctx.fillText(g.text, g.x, baseline)
+		const line_ = picture(
+			{
+				kind: 'image',
+				x,
+				y,
+				w: right - left + pad * 2,
+				h: line.bottom - line.top + pad * 2,
+				key: `text|${t.font}|${t.props.join('|')}|${t.letterSpacing}|${t.wordSpacing}|${ink}|${cs.textShadow}|${baseline}|${runs.map((g) => `${g.x.toFixed(4)}:${g.text}`).join('\u0000')}`,
+				opacity: o,
 			},
-		}
-		tight.set(picture, { x: left, y: line.top, w: right - left, h: line.bottom - line.top })
-		r.out.push(picture)
+			{ t: 'text', style: t, ink, shadows, runs, baseline }
+		)
+		tight.set(line_, { x: left, y: line.top, w: right - left, h: line.bottom - line.top })
+		r.out.push(line_)
 	}
 }
 
@@ -1136,72 +1106,20 @@ function imagePicture(r: Reader, img: HTMLImageElement, cs: CSSStyleDeclaration,
 	const x = view.x
 	const y = view.y
 	const url = img.currentSrc || img.src
-	r.out.push({
-		kind: 'image',
-		x,
-		y,
-		w: view.maxX - view.x,
-		h: view.maxY - view.y,
-		key: `img|${hash(url)}|${url.length}|${JSON.stringify([b, c, flip, fit])}`,
-		opacity: o,
-		draw: (ctx) => {
-			// Cut to the part shown, and to the cut's corners: two clips, which meet.
-			ctx.beginPath()
-			ctx.rect(0, 0, view.maxX - view.x, view.maxY - view.y)
-			ctx.clip()
-			if (c && rounded(c)) {
-				ctx.beginPath()
-				ctx.roundRect(c.x - x, c.y - y, c.w, c.h, c.corners)
-				ctx.clip()
-			}
-			ctx.translate(b.x - x + b.w / 2, b.y - y + b.h / 2)
-			ctx.scale(flip[0]!, flip[1]!)
-			ctx.translate(-b.w / 2, -b.h / 2)
-			ctx.imageSmoothingQuality = 'high'
-			ctx.drawImage(img, src.x, src.y, src.w, src.h, dst.x, dst.y, dst.w, dst.h)
-		},
-	})
+	keepPicture(url, img)
+	const w = view.maxX - view.x
+	const h = view.maxY - view.y
+	const cut = c && rounded(c) ? { x: c.x, y: c.y, w: c.w, h: c.h, corners: c.corners } : null
+	r.out.push(
+		picture(
+			{ kind: 'image', x, y, w, h, key: `img|${hash(url)}|${url.length}|${JSON.stringify([b, c, flip, fit])}`, opacity: o },
+			{ t: 'img', url, w, h, cut, at: { x, y }, b, flip, src, dst }
+		)
+	)
 }
 
 // ---- SVG as pictures
 
-/**
- * SVG pictures decoded, the most recently used last, up to `DECODED_MAX`: each is a document of its
- * own, and keeping one for every shape ever read held gigabytes on a big board. One let go is
- * decoded again when it's next rastered.
- */
-const decoded = new Map<string, HTMLImageElement>()
-const DECODED_MAX = 4000
-const decoding = new Map<string, Promise<void>>()
-
-function decodedSvg(url: string): HTMLImageElement | undefined {
-	const img = decoded.get(url)
-	if (img) {
-		decoded.delete(url)
-		decoded.set(url, img)
-	}
-	return img
-}
-
-function decodeSvg(url: string): void {
-	if (decoded.has(url) || decoding.has(url) || failed.has(url)) return
-	const img = new Image()
-	img.src = url
-	decoding.set(
-		url,
-		img
-			.decode()
-			.then(() => {
-				decoded.set(url, img)
-				if (decoded.size > DECODED_MAX) decoded.delete(decoded.keys().next().value!)
-			})
-			.catch(() => {
-				failed.add(url)
-			})
-			.finally(() => decoding.delete(url))
-	)
-}
-const failed = new Set<string>()
 const SVG_PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-opacity', 'stroke-miterlimit', 'opacity', 'color', 'display', 'visibility'] as const
 
 function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
@@ -1271,29 +1189,16 @@ function svgPicture(r: Reader, svg: SVGSVGElement, o: number) {
 	copy.removeAttribute('opacity')
 	const markup = new XMLSerializer().serializeToString(copy)
 	const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`
-	if (failed.has(url)) throw new Unsupported('svg the browser cannot picture')
+	if (pictureFailed(url)) throw new Unsupported('svg the browser cannot picture')
 	if (r.pending.length) return
-	decodeSvg(url)
-	const picture: GpuImage = {
-		kind: 'image',
-		x: b.x - m,
-		y: b.y - m,
-		w: b.w + 2 * m,
-		h: b.h + 2 * m,
-		key: `svg|${url.length}|${hash(url)}`,
-		opacity: o,
-		draw: (ctx) => {
-			const img = decodedSvg(url)
-			if (!img) {
-				decodeSvg(url)
-				return false
-			}
-			ctx.drawImage(img, 0, 0, b.w + 2 * m, b.h + 2 * m)
-		},
-	}
-	const waiting = decoding.get(url)
+	const waiting = decodePicture(url)
 	if (waiting) r.pending.push(waiting)
-	r.out.push(picture)
+	r.out.push(
+		picture(
+			{ kind: 'image', x: b.x - m, y: b.y - m, w: b.w + 2 * m, h: b.h + 2 * m, key: `svg|${url.length}|${hash(url)}`, opacity: o },
+			{ t: 'svg', url, w: b.w + 2 * m, h: b.h + 2 * m }
+		)
+	)
 }
 
 const inlined = new Map<string, string>()
@@ -1328,5 +1233,12 @@ function inline(href: string): Promise<void> {
 function hash(s: string): string {
 	let h = 2166136261
 	for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
+	return (h >>> 0).toString(36)
+}
+
+/** Another hash of `s` (djb2), for a key two can't share by chance. */
+function hash2(s: string): string {
+	let h = 5381
+	for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) + s.charCodeAt(i)) | 0
 	return (h >>> 0).toString(36)
 }

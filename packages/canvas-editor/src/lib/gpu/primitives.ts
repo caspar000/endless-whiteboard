@@ -1,3 +1,5 @@
+import type { Recipe } from './recipes'
+
 /**
  * What a shape draws on the GPU layer (docs/gpu-renderer-plan.md): a short list of primitives, in
  * the shape's own space (its page transform is applied by the renderer), in the order they're drawn.
@@ -60,6 +62,8 @@ export interface GpuImage {
 	 * is kept and it's drawn again later.
 	 */
 	draw: (ctx: CanvasRenderingContext2D) => void | false
+	/** What `draw` draws, as data (see `recipes.ts`): a picture without one can't be kept between sessions. */
+	recipe?: Recipe
 	opacity?: number
 }
 

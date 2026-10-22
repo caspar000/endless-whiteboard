@@ -436,6 +436,13 @@ changes. Code that needs a shape's element asks for it with `requestShapeElement
 shape off screen cost about 2 KB: anything that asks every shape on the board for its geometry undoes
 that, so go through the index.
 
+**What the GPU read is kept between sessions** (`gpu/snapshotCache.ts`), for shapes that can leave the
+page, so a big board is read once rather than on every open. Each entry is keyed on the build, the
+theme, the render key and the shape's record. A deploy starts over, but a change to the reader in the
+dev server doesn't: bump `READER_VERSION` in `gpu/snapshots.ts`, or turn the cache off with
+`localStorage['lifeboard:gpu-cache'] = 'off'`. Pictures are kept as recipes (`gpu/recipes.ts`), plain
+data drawn by `drawRecipe`, so a new kind of picture needs a recipe or it's read again every time.
+
 **⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
 case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,
 which is what lets the second key switch an already-open palette into command mode instead of closing

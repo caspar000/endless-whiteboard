@@ -142,3 +142,45 @@ test('the shapes the GPU draws stay in the accessibility tree, named in a list',
 	await expect(list).toHaveCount(0)
 	await expect(page.locator('.tl-shape').getByText('A box the GPU draws').first()).toBeVisible()
 })
+
+test('the page takes the board back when the GPU layer loses its context, and gives it back when it returns', async ({ page }) => {
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Lost')
+	await openBoard(page, 'Lost')
+	await page.evaluate(() => {
+		const editor = (window as unknown as { editor: { createShapes(s: unknown[]): void; selectNone(): void } }).editor
+		const shapes = []
+		for (let i = 0; i < 120; i++)
+			shapes.push({ id: `shape:lost-${i}`, type: 'gpu-test-rect', x: (i % 12) * 150, y: Math.floor(i / 12) * 150, props: { w: 110, h: 80, radius: 12, strokeWidth: 3, fill: '#4c6ef5', stroke: '#e03131' } })
+		editor.createShapes(shapes)
+		editor.selectNone()
+	})
+	await page.addStyleTag({ content: CHROME.map((c) => `${c} { visibility: hidden !important }`).join('\n') })
+	await camera(page, 0.5)
+	await setMode(page, 'dom')
+	await page.waitForTimeout(500)
+	const reference = await page.screenshot({ animations: 'disabled' })
+
+	await setMode(page, 'gpu')
+	await expect.poll(async () => (await state(page)).up).toBe(true)
+	const lose = (what: 'loseContext' | 'restoreContext') =>
+		page.evaluate((what) => {
+			const canvas = document.querySelector<HTMLCanvasElement>('.lb-board-host:not([data-hidden]) canvas.tl-gpu-layer')!
+			const ext = canvas.getContext('webgl2')!.getExtension('WEBGL_lose_context')!
+			;(globalThis as unknown as { __lose?: WEBGL_lose_context }).__lose ??= ext
+			;(globalThis as unknown as { __lose: WEBGL_lose_context }).__lose[what]()
+		}, what)
+
+	// Lost: the layer goes down and the page draws every shape again, none missing.
+	await lose('loseContext')
+	await expect.poll(async () => (await state(page)).up).toBe(false)
+	await page.waitForTimeout(300)
+	expect(ratio(reference, await page.screenshot({ animations: 'disabled' }))).toBeLessThan(MAX_RATIO)
+
+	// Back: the GPU draws them again, and still nothing is missing or doubled.
+	await lose('restoreContext')
+	await expect.poll(async () => (await state(page)).up).toBe(true)
+	await page.waitForTimeout(500)
+	expect(ratio(reference, await page.screenshot({ animations: 'disabled' }))).toBeLessThan(MAX_RATIO)
+})

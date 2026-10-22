@@ -22,6 +22,16 @@ felt optional.
   the second, and a missing `details` leaves that page thin.
 - Node types need their `shape-types.ts` side-effect module imported from the package barrel, or
   tldraw's schema never learns the type.
+- **The GPU layer draws a node type by default** (README, *Shapes are drawn two ways*): zoomed out
+  among many, it's drawn from what its element shows, read back from the page. A node the reader
+  can't copy exactly (a form control, an animation, an iframe) is left to the page by itself, so the
+  default costs speed, never looks. Set `gpu: false` on the definition only when reading it is wrong
+  in a way the reader can't see (it shows something that changes without its element changing).
+- **`canLeavePage`** on the definition lets the node be unmounted on a board of more than 2,000
+  shapes, while off screen or drawn by the GPU. Only for a component that keeps no state (no scroll
+  position, nothing playing, no editor open) and shows nothing but its own props; a function of the
+  shape is allowed (the markdown note says no when its text has a `{…}`). Leave it out when unsure:
+  the node then stays mounted, as every node did before.
 
 ## 2. Register it — `apps/web/src/extensions.ts`
 
@@ -107,6 +117,10 @@ pnpm test
 Add unit tests in the package for anything with a parsing or geometry rule. An e2e test
 (`apps/web/e2e/`) is worth it when the contribution adds a user-visible flow that spans app and
 package.
+
+A new node type is on the parity board by itself (the gallery places every registered type with its
+defaults), so run parity locally, where there's a GPU: `LB_PARITY=1 pnpm exec playwright test
+e2e/parity.spec.ts` in `apps/web`. CI skips it.
 
 ## Two rules that are easy to get wrong
 

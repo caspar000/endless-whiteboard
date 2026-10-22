@@ -864,6 +864,20 @@ measuring the shapes they join) and React. That's phase 10's.
 - The same for `canLeavePage` and `getRenderKey` (phase 8, step 3): a node type that keeps no state
   and draws from its own props can leave the page on a big board.
 
+#### Phase 9, as built (2026-10-22)
+
+- `auto` was already the default (`rendererMode.ts`) since phase 2: on for everyone once this branch
+  is merged. The page stays the fallback without WebGL2, on WebKit below pixel ratio 2, and with the
+  context lost; a new test in `e2e/switch.spec.ts` loses a real context (`WEBGL_lose_context`), checks
+  the page draws every shape alone, then restores it and checks the GPU takes them back, with nothing
+  missing or doubled either way.
+- README, *Things worth knowing*: **Shapes are drawn two ways** (the two renderers, how `toGpu` reads
+  the page, `gpu: false`, the parity rule and why it's local) and **On a big board, shapes leave the
+  page** (`canLeavePage`, `getRenderKey`, `requestShapeElement`, the bounds index).
+- The extension-surfaces skill: what a new node type gets from the GPU layer, when to set
+  `canLeavePage`, and running parity locally.
+- Help: nothing. Nothing a user sees changes but speed, and there's no setting to explain.
+
 ### Phase 10: boards of 20,000 shapes and up, later
 
 Found in phase 8 and left for later:

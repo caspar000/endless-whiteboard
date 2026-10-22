@@ -413,6 +413,29 @@ one `registerExtension` line to the composition root — nothing else. Shape uti
 in the dock's node picker, keyboard shortcut, context-menu entry, the Settings card and table
 participation all follow from the registry. There is deliberately no per-node-type branching in the UI.
 
+**Shapes are drawn two ways** (docs/gpu-renderer-plan.md). The page draws them, as elements, until
+more than 64 that the GPU could draw are on screen; then a WebGL2 layer above the shapes takes those
+over (`auto`, the default; `?renderer=dom|gpu|auto` or `localStorage['lifeboard:renderer']` force one).
+The GPU doesn't redraw a shape from its props: `toGpu` reads what its element shows back from the page
+(`gpu/snapshots.ts`), and the reader refuses what it can't copy exactly, leaving that shape to the page.
+So a new node type is GPU-drawn by default and costs nothing in looks if the reader gets it wrong,
+only speed; `gpu: false` on its definition keeps it in the page. The rule that holds it together is
+**parity**: `e2e/parity.spec.ts` screenshots boards both ways and fails past 0.07% of pixels differing
+(0.6% at 25% zoom and below). It needs a real GPU, so it runs locally (`LB_PARITY=1`), not in CI.
+Without WebGL2, on WebKit below pixel ratio 2, or with the context lost, the page draws everything.
+
+**On a big board, shapes leave the page.** Past 2,000 shapes (`LEAVE_PAGE_ABOVE`), a shape whose util
+says `canLeavePage` is unmounted, not just hidden, while it's off screen or the GPU draws it; each
+mounted one costs some fifty kilobytes and eight elements. Only shapes that keep no state and draw from
+their own record may (core shapes do; a node type opts in with `canLeavePage` on its definition, and a
+shape whose text has a `{…}` never does). Whatever else a component draws from (a zoom past which it
+looks different, a selection state) goes in `getRenderKey`, so the GPU's copy is read again when that
+changes. Code that needs a shape's element asks for it with `requestShapeElement` and releases it;
+`getShapeElement` gives the mounted ones without a page-wide query. Culling, the page's bounds and
+"back to content" ask `editor._boundsIndex` rather than each shape's computeds, which is what lets a
+shape off screen cost about 2 KB: anything that asks every shape on the board for its geometry undoes
+that, so go through the index.
+
 **⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
 case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,
 which is what lets the second key switch an already-open palette into command mode instead of closing

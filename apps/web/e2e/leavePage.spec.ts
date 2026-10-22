@@ -57,7 +57,11 @@ const mounted = (page: Page) =>
 
 const setRenderer = (page: Page, mode: string) => page.evaluate((m) => (window as unknown as W).lifeboardRenderer.set(m), mode)
 
-const fit = (page: Page) => page.evaluate(() => (window as unknown as W).editor.zoomToFit({ animation: { duration: 0 } }))
+const fit = (page: Page) =>
+	page.evaluate(() => {
+		// Not returned: the editor doesn't serialise.
+		;(window as unknown as W).editor.zoomToFit({ animation: { duration: 0 } })
+	})
 
 test('shapes the GPU draws leave the page, and one comes back to be edited', async ({ page }) => {
 	await bigBoard(page)
@@ -86,7 +90,7 @@ test('shapes the GPU draws leave the page, and one comes back to be edited', asy
 test('a shape off screen leaves the page, and comes back when it is on screen', async ({ page }) => {
 	await bigBoard(page)
 	await setRenderer(page, 'dom')
-	await page.evaluate(() => (window as unknown as W).editor.setCamera({ x: 0, y: 0, z: 1 }))
+	await page.evaluate(() => void (window as unknown as W).editor.setCamera({ x: 0, y: 0, z: 1 }))
 	await expect.poll(() => mounted(page)).toBeLessThan(COLS * ROWS)
 	const last = `shape:leave-${COLS * ROWS - 1}`
 	await expect(page.locator(`.tl-shape[data-shape-id="${last}"]`)).toHaveCount(0)
@@ -130,4 +134,17 @@ test('a shape whose label shows an expression stays on the page', async ({ page 
 	await fit(page)
 	await expect.poll(() => mounted(page), { timeout: 30_000 }).toBe(1)
 	await expect(page.locator('.tl-shape[data-shape-id="shape:leave-0"]')).toHaveCount(1)
+
+	// The answer follows the text: the expression moved to another shape, that one stays instead.
+	await page.evaluate(() => {
+		const rich = (text: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] })
+		const w = window as unknown as { editor: { updateShapes(s: unknown[]): void } }
+		w.editor.updateShapes([
+			{ id: 'shape:leave-0', type: 'geo', props: { richText: rich('shape 0') } },
+			{ id: 'shape:leave-1', type: 'geo', props: { richText: rich('count {count page}') } },
+		])
+	})
+	await expect(page.locator('.tl-shape[data-shape-id="shape:leave-1"]')).toHaveCount(1, { timeout: 30_000 })
+	await expect.poll(() => mounted(page), { timeout: 30_000 }).toBe(1)
+	await expect(page.locator('.tl-shape[data-shape-id="shape:leave-0"]')).toHaveCount(0)
 })

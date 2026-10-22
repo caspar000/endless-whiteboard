@@ -59,14 +59,18 @@ export class GpuSnapshots {
 			typeof MutationObserver === 'undefined'
 				? null
 				: new MutationObserver((mutations) => {
+						const changed = new Set<TLShapeId>()
 						for (const m of mutations) {
 							const el = (m.target instanceof Element ? m.target : m.target.parentElement)?.closest<HTMLElement>('.tl-shape[data-shape-id]')
 							if (!el) continue
 							// The canvas moving or hiding a shape's container (its transform, display, visibility) changes nothing inside it.
 							if (m.type === 'attributes' && m.target === el && m.attributeName === 'style') continue
 							const id = el.dataset.shapeId as TLShapeId
-							if (this.atoms.has(id)) this.invalidate(id)
+							if (this.atoms.has(id)) changed.add(id)
 						}
+						// Together: each alone had the GPU's scene go through every shape near the screen again,
+						// and shapes mounting in a pan change dozens at a time.
+						if (changed.size) transact(() => changed.forEach((id) => this.invalidate(id)))
 					})
 		let zoomTimer: ReturnType<typeof setTimeout> | null = null
 		const settleZoom = () => {
@@ -90,7 +94,9 @@ export class GpuSnapshots {
 		})
 		// What every element inherits changing (the theme, the accent, a font arriving): read everything again.
 		const again = () => {
-			for (const id of this.atoms.keys()) this.invalidate(id, false)
+			transact(() => {
+				for (const id of this.atoms.keys()) this.invalidate(id, false)
+			})
 		}
 		const page = typeof MutationObserver === 'undefined' ? null : new MutationObserver(again)
 		page?.observe(document.documentElement, { attributes: true })
@@ -105,7 +111,9 @@ export class GpuSnapshots {
 						const outline = String(Math.min(0.5, 1 / z))
 						if (outline === this.outline) return
 						this.outline = outline
-						for (const id of this.outlined) this.invalidate(id)
+						transact(() => {
+							for (const id of this.outlined) this.invalidate(id)
+						})
 					})
 		zoomWatch?.observe(editor.getContainer(), { attributes: true, attributeFilter: ['style'] })
 		const stopTheme = react('gpu snapshots theme', () => {
@@ -167,10 +175,12 @@ export class GpuSnapshots {
 
 	/** For the checks: every shape read again from its element, the cache passed over. */
 	readAgain() {
-		for (const id of this.atoms.keys()) {
-			this.uncached.add(id)
-			this.invalidate(id, false)
-		}
+		transact(() => {
+			for (const id of this.atoms.keys()) {
+				this.uncached.add(id)
+				this.invalidate(id, false)
+			}
+		})
 	}
 
 	// ---- Kept between sessions (`snapshotCache.ts`)
@@ -195,10 +205,23 @@ export class GpuSnapshots {
 		// Asked for before the cache was in: not to be read now.
 		this.queue.delete(shape.id)
 		this.readFor.set(shape.id, { props: shape.props, meta: shape.meta, geometry: this.editor.getShapeGeometry(shape.id), key: renderKey })
-		// Not set from inside this computed: once it has run.
+		// Not set from inside this computed: once it has run, all of them together. Set one at a time, each
+		// woke every shape near the screen again: half a minute on a board of 20,000.
 		const a = this.atoms.get(shape.id)
-		queueMicrotask(() => a?.set(prims))
+		if (a) {
+			if (!this.fromCacheSets.length) queueMicrotask(() => this.setFromCache())
+			this.fromCacheSets.push([a, prims])
+		}
 		return prims
+	}
+
+	private fromCacheSets: [Atom<Snapshot>, Snapshot][] = []
+	private setFromCache() {
+		const sets = this.fromCacheSets
+		this.fromCacheSets = []
+		transact(() => {
+			for (const [a, prims] of sets) a.set(prims)
+		})
 	}
 
 	/** What a shape's picture depends on, hashed: change any of it and the kept one isn't used. */
@@ -263,6 +286,18 @@ export class GpuSnapshots {
 		this.atoms.get(id)?.set(undefined)
 		this.enqueue(id)
 	}
+
+	/** `invalidate`, together with the others asked for in this task. */
+	private invalidateSoon(id: TLShapeId) {
+		if (!this.toInvalidate.size)
+			queueMicrotask(() => {
+				const ids = this.toInvalidate
+				this.toInvalidate = new Set()
+				transact(() => ids.forEach((id) => this.invalidate(id)))
+			})
+		this.toInvalidate.add(id)
+	}
+	private toInvalidate = new Set<TLShapeId>()
 
 	private enqueue(id: TLShapeId) {
 		this.queue.add(id)
@@ -338,7 +373,7 @@ export class GpuSnapshots {
 			if (read && pending.length) {
 				// Pictures of its SVG still decoding: read again when they're in, still mounted if it was
 				// mounted to be read ahead (let go, it had to be mounted all over again).
-				Promise.all(pending).then(() => this.invalidate(id))
+				Promise.all(pending).then(() => this.invalidateSoon(id))
 				continue
 			}
 			const release = this.ahead.get(id)

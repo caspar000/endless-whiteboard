@@ -104,7 +104,6 @@ export class GpuScene {
 	private readonly budget: Atom<number>
 	private readonly primitives: ComputedCache<GpuPrimitive[] | null, TLShape>
 	private readonly eligible: ComputedCache<boolean, TLShape>
-	private readonly drawn: ComputedCache<boolean, TLShape>
 	/** Each stroke's triangles in the shape's own space, made once per change of what it draws. */
 	private readonly strokeGeometry: ComputedCache<Float32Array[], TLShape>
 	/** A shape's instance data in page space, in the order its primitives draw. */
@@ -147,8 +146,13 @@ export class GpuScene {
 	 * rebuilt the frame every half screen of a pan.
 	 */
 	private readonly region: Atom<{ box: Box; z: number } | null> = atom('gpu region', null)
-	/** Shapes the GPU could draw that lie under an overlapping page-drawn one, so the page draws them. */
-	private readonly underPage: Computed<ReadonlySet<TLShapeId>>
+	/**
+	 * The shapes the GPU draws: those near the screen it could draw (`eligible`), but for any that lie
+	 * under an overlapping page-drawn one, which the page draws. One pass over `near`, not a computed per
+	 * shape: those were all made again whenever any shape's answer changed, 20,000 of them on each
+	 * hand-over of a big board's reading.
+	 */
+	private readonly drawn: Computed<ReadonlySet<TLShapeId>>
 	/** Whether the layer should be in the page. */
 	readonly wanted: Computed<boolean>
 	/** Whether the layer draws its shapes (up, and not `idle`). */
@@ -211,7 +215,8 @@ export class GpuScene {
 		this.onScreen = computed('gpu on screen', () => {
 			const culled = this.culled.get()
 			let n = 0
-			for (const { id } of this.renderingList.get()) if (!culled.has(id) && this.eligible.get(id)) n++
+			// What's on screen is near it: the region holds the viewport.
+			for (const { id } of this.near.get()) if (!culled.has(id) && this.eligible.get(id)) n++
 			return n
 		})
 		this.wanted = computed('gpu wanted', () => {
@@ -269,58 +274,54 @@ export class GpuScene {
 			return out.length ? out : bounds
 		})
 		this.tolerance = computed('gpu curve tolerance', () => 1 / 6 / this.pictureScale.get())
-		this.underPage = computed('gpu under page', () => {
-			if (!this.active.get()) return EMPTY
-			// From the top down: every shape the page draws marks the cells of its footprint; a shape the GPU
-			// could draw whose footprint lands on a marked cell (and really overlaps what's there) goes to the
-			// page too. Footprints grow by a pixel either side, for anti-aliasing.
-			const grow = this.pixel.get()
-			const out = new Set<TLShapeId>()
-			const cells = new Map<number, Box[]>()
-			const keys = (b: Box) => {
-				const k: number[] = []
-				for (let gx = Math.floor(b.x / CELL); gx <= Math.floor(b.maxX / CELL); gx++)
-					for (let gy = Math.floor(b.y / CELL); gy <= Math.floor(b.maxY / CELL); gy++) k.push(gx * 73856093 + gy)
-				return k
-			}
-			const hits = (box: Box) => keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
-			const mark = (box: Box) => {
-				for (const k of keys(box)) {
-					const list = cells.get(k)
-					if (list) list.push(box)
-					else cells.set(k, [box])
-				}
-			}
-			for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
-			const order = this.near.get()
-			// Off screen shapes too: following culling made a pan redo this, and with it every shape's
-			// answer, each time culling moved. It's redone when what's drawn changes.
-			for (let i = order.length - 1; i >= 0; i--) {
-				const { id } = order[i]!
-				const boxes = (this.footprint.get(id) ?? []).map((b) => ({ x: b.x - grow, y: b.y - grow, maxX: b.maxX + grow, maxY: b.maxY + grow }))
-				if (!boxes.length) continue
-				const eligible = this.eligible.get(id)
-				if (eligible && !boxes.some(hits)) continue
-				if (eligible) out.add(id)
-				for (const box of boxes) mark(box)
-			}
-			return out
-		})
-		this.drawn = editor.store.createComputedCache('gpu drawn', (shape: TLShape) => {
-			if (!this.active.get()) return false
-			return this.eligible.get(shape.id) === true && !this.underPage.get().has(shape.id)
-		})
-		this.hidden = computed(
-			'gpu hidden elements',
+		this.drawn = computed(
+			'gpu drawn',
 			() => {
-				const mode = getRendererMode()
-				if ((mode !== 'gpu' && mode !== 'auto') || !this.active.get()) return EMPTY
+				if (!this.active.get()) return EMPTY
+				// From the top down: every shape the page draws marks the cells of its footprint; a shape the GPU
+				// could draw whose footprint lands on a marked cell (and really overlaps what's there) goes to the
+				// page too. Footprints grow by a pixel either side, for anti-aliasing.
+				const grow = this.pixel.get()
 				const out = new Set<TLShapeId>()
-				for (const { id } of this.near.get()) if (this.drawn.get(id)) out.add(id)
+				const cells = new Map<number, Box[]>()
+				const keys = (b: Box) => {
+					const k: number[] = []
+					for (let gx = Math.floor(b.x / CELL); gx <= Math.floor(b.maxX / CELL); gx++)
+						for (let gy = Math.floor(b.y / CELL); gy <= Math.floor(b.maxY / CELL); gy++) k.push(gx * 73856093 + gy)
+					return k
+				}
+				const hits = (box: Box) => keys(box).some((k) => cells.get(k)?.some((o) => o.x < box.maxX && box.x < o.maxX && o.y < box.maxY && box.y < o.maxY))
+				const mark = (box: Box) => {
+					for (const k of keys(box)) {
+						const list = cells.get(k)
+						if (list) list.push(box)
+						else cells.set(k, [box])
+					}
+				}
+				for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
+				const order = this.near.get()
+				// Off screen shapes too: following culling made a pan redo this, and with it every shape's
+				// answer, each time culling moved. It's redone when what's drawn changes.
+				for (let i = order.length - 1; i >= 0; i--) {
+					const { id } = order[i]!
+					const boxes = (this.footprint.get(id) ?? []).map((b) => ({ x: b.x - grow, y: b.y - grow, maxX: b.maxX + grow, maxY: b.maxY + grow }))
+					if (!boxes.length) continue
+					const eligible = this.eligible.get(id)
+					if (eligible && !boxes.some(hits)) {
+						out.add(id)
+						continue
+					}
+					for (const box of boxes) mark(box)
+				}
 				return out
 			},
 			{ isEqual: sameSet }
 		)
+		this.hidden = computed('gpu hidden elements', () => {
+			const mode = getRendererMode()
+			if ((mode !== 'gpu' && mode !== 'auto') || !this.active.get()) return EMPTY
+			return this.drawn.get()
+		})
 		this.strokeGeometry = editor.store.createComputedCache('gpu stroke geometry', (shape: TLShape) => {
 			const out: Float32Array[] = []
 			for (const p of this.primitives.get(shape.id) ?? []) {
@@ -406,8 +407,9 @@ export class GpuScene {
 			const levels = new Levels(this.pixel.get() * 2)
 			const byLevel: { rects: Float32Array[]; strokes: Float32Array[]; images: PlacedImage[] }[] = []
 			let rectFloats = 0
+			const drawn = this.drawn.get()
 			for (const { id } of this.near.get()) {
-				if (!this.drawn.get(id)) continue
+				if (!drawn.has(id)) continue
 				for (const chunk of this.chunks.get(id) ?? []) {
 					const level = levels.place(chunk.box, KIND_ORDER[chunk.kind])
 					const at = (byLevel[level] ??= { rects: [], strokes: [], images: [] })
@@ -520,7 +522,7 @@ export class GpuScene {
 
 	/** Whether the GPU layer draws this shape. */
 	isDrawn(id: TLShapeId): boolean {
-		return this.drawn.get(id) ?? false
+		return this.drawn.get().has(id)
 	}
 
 	/** Whether this shape's element is hidden: the GPU draws it, and isn't only being compared with the page. */

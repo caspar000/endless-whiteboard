@@ -820,14 +820,40 @@ Checks: unit tests (a new `boundsIndex.test.ts`: a frame's child, an arrow's end
 a new size, exact bounds round a bent arrow), the suite with the GPU on everywhere and as is, parity
 20/20, and the four-tree board at the floor on the GPU (8.3–9.2 ms at every zoom, brush 12 ms).
 
-#### Phase 8, step 4 (8c): loading and syncing by region — not started
+#### Phase 8, step 4 (8c): a whole board loading fast, chosen over loading by region (2026-10-22)
 
-What it needs, from the runs above: opening a 50k board is now the store's load (18–20 s before the
-canvas shows; all 75,000 records read, migrated, validated and put before anything draws). By region:
-the board stored in spatial chunks (IndexedDB and the server), the store holding the chunks near the
-screen and loading the rest as the camera moves, sync subscribed by region, and everything that reads
-the whole store (relations, rollups, search, the agent's board queries) asked to work from an index
-instead. Server and IndexedDB migrations: a server backup before deploying (AGENTS.md).
+Measured on the production build after step 2: a board of 100,000 shapes builds in 41 s, holds 324 MB
+once built (3 KB a shape) and pans at 10% zoom at 35 ms on the page; reopening it takes 52 s, nearly
+all of it before the canvas shows, and leaves 1.6 GB of heap, five times what building it does.
+
+Loading by region, as planned, is what 1,000,000 shapes would need: the store holding only what's
+near the screen, storage and the server's rooms by region, and about 50 files that read the whole
+board (facts and rollups, relations, collection views, the skill tree, the agent's operations,
+comments, thumbnails) rewritten against an index. Weeks, with migrations. Chosen instead: the board
+stays whole, and its open path is profiled and cut (records read, migrated, validated and put, and
+whatever holds the extra heap), for boards of 100,000–200,000 shapes opening in seconds. No storage
+change, no server backup. Loading by region stays possible later if 1,000,000 shapes is wanted.
+
+As built: a profile of the open (`open.scratch.spec.ts` and `scale.scratch.spec.ts` dumping CPU
+profiles, `e2e-scratch/timeline.mjs` laying them out in half seconds, mapped to the sources) found:
+
+- **Writing a record a round trip.** `storeChangesInIndexedDb` and `storeSnapshotInIndexedDb` awaited
+  each `put`, so writing 75,000 records took seconds, and opening the board waited behind that write.
+  They now ask for every put at once and await them with the transaction.
+- **A full write on every open.** The client began each session by clearing the board's database and
+  putting every record back. It now skips that when the board was read from its own database as it
+  is there (no stash laid over it, the same schema); a new board still gets its first full write.
+- **Measuring every geo label for the bounds index.** `ShapeUtil.getCullingBounds` gives a box from
+  props where geometry costs more; geo's is its body, `w` by `h + growY`.
+
+| Reopen, production build | Before | Now |
+|---|---|---|
+| 50,000 shapes | 20 s | 8.5–9.5 s |
+| 100,000 shapes | 52 s | 7.4–7.9 s |
+
+At 100,000 shapes about 2.5 s of that is reading and putting the records; the rest is the shapes on
+screen at 10% zoom being looked at for the GPU layer (`auto` counting what it could draw, arrows
+measuring the shapes they join) and React. That's phase 10's.
 
 ### Phase 9: default on, and tidy. S
 

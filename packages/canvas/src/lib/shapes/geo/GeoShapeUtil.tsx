@@ -1,5 +1,6 @@
 import {
 	BaseBoxShapeUtil,
+	Box2d,
 	DefaultFontFamilies,
 	Editor,
 	TLColorMode,
@@ -130,6 +131,11 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			flipX: false,
 			flipY: false,
 		}
+	}
+
+	/** Its body's box, without measuring its label as its geometry does (its label sits inside it). */
+	override getCullingBounds(shape: TLGeoShape) {
+		return new Box2d(0, 0, Math.max(1, shape.props.w), Math.max(1, shape.props.h + shape.props.growY))
 	}
 
 	override getGeometry(shape: TLGeoShape): Geometry2d {

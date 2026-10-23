@@ -36,6 +36,7 @@ function fakeCanvas(shapeIds: string[] = ['shape:a', 'shape:b']) {
 			state.stops++
 		},
 		getShape: (id: string) => shapes.get(id),
+		getCurrentPageId: () => 'page:page',
 		createShape: (partial: { id: string; type: string; meta?: Record<string, unknown> }) => {
 			shapes.set(partial.id, {
 				...makeShape(partial.id),

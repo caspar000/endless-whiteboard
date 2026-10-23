@@ -247,6 +247,13 @@ export class TLLocalSyncClient {
 				if (sessionStateSnapshot) {
 					loadSessionStateSnapshotIntoStore(this.store, sessionStateSnapshot)
 				}
+
+				// Read from its own database as it is there (no stash laid over it, nothing migrated):
+				// nothing to write until something changes. The full write every open began with put
+				// back every record of a big board, seconds of it, each time it was opened.
+				if (!this.hasStash && data.schema && JSON.stringify(data.schema) === JSON.stringify(this.serializedSchema)) {
+					this.shouldDoFullDBWrite = false
+				}
 			}
 
 			this.channel.onmessage = ({ data }) => {
@@ -317,12 +324,18 @@ export class TLLocalSyncClient {
 		this.isClosing = true
 		this.flush()
 		this.isClosing = false
+		// A write already running finishes too, and what came in during it is written after it. Cancelled,
+		// its transaction rolls back to the last write that finished: on a big board, whose writes take
+		// seconds, closing it just after a change put back the board as it was before.
+		if (this.isPersisting) this.finishAfterClose = true
 		this.didDispose = true
 		this.disposables.forEach((d) => d())
 	}
 
 	private isPersisting = false
 	private isClosing = false
+	/** `close()` came while a write was running: let it, and what's queued behind it, finish. */
+	private finishAfterClose = false
 	private didLastWriteError = false
 	private scheduledPersistTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -454,7 +467,7 @@ export class TLLocalSyncClient {
 		const stashToken = this.stashToken
 		// A write started by `close()` runs to the end; any other is dropped once the client is closed.
 		const outlivesClose = this.isClosing
-		const didCancel = () => this.didDispose && !outlivesClose
+		const didCancel = () => this.didDispose && !outlivesClose && !this.finishAfterClose
 
 		try {
 			if (this.shouldDoFullDBWrite) {
@@ -508,6 +521,16 @@ export class TLLocalSyncClient {
 		this.inFlight = []
 		this.isPersisting = false
 		this.debug('doPersist end')
+
+		if (this.didDispose) {
+			// Closed while this write ran: what came in during it is written now, and nothing after that.
+			if (this.finishAfterClose && (this.shouldDoFullDBWrite || this.diffQueue.length > 0)) {
+				this.isClosing = true
+				this.persistIfNeeded()
+				this.isClosing = false
+			}
+			return
+		}
 
 		// changes might have come in between when we started the persist and
 		// now. we request another persist so any new changes can get written

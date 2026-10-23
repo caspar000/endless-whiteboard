@@ -1,13 +1,16 @@
 import { NodeStrips, hasCollection, readPropertyLayout, setPropertyCardHeight } from '@lifeboard/node-kit'
 import {
+	atom,
+	getGpuScene,
 	getPointerInfo,
+	react,
 	useEditor,
 	useValue,
 	type Editor,
 	type TLArrowShape,
 	type TLShape,
 } from '@lifeboard/canvas'
-import { useLayoutEffect, useRef, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type PointerEvent } from 'react'
 import { arrowStripAnchor } from './arrowAnchor'
 
 /**
@@ -63,6 +66,16 @@ function boundsTarget(editor: Editor, shape: TLShape): CardTarget | null {
 	return { id: shape.id, x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h, w: bounds.w, arrow: false }
 }
 
+/** Each card's box in page space, as it last laid out. */
+const cardBoxes = atom<ReadonlyMap<string, { x: number; y: number; w: number; h: number }>>('lifeboard:property-card-boxes', new Map())
+
+function setCardBox(id: string, box: { x: number; y: number; w: number; h: number } | null) {
+	const next = new Map(cardBoxes.get())
+	if (box) next.set(id, box)
+	else next.delete(id)
+	cardBoxes.set(next)
+}
+
 export function PropertyCards() {
 	const editor = useEditor()
 
@@ -90,6 +103,9 @@ export function PropertyCards() {
 		[editor]
 	)
 
+	// Where the cards are, for the GPU layer: they're drawn over every shape, by the page.
+	useEffect(() => react('lifeboard:property-card-boxes', () => getGpuScene(editor).above.set([...cardBoxes.get().values()])), [editor])
+
 	if (!targets.length) return null
 
 	return (
@@ -112,18 +128,23 @@ function PropertyCard({ editor, target }: { editor: Editor; target: CardTarget }
 
 	// Lanes stack nodes by their height plus this, so the card reports its own. `offsetHeight` is in
 	// page units: the card sits inside the camera transform, which scales it without changing layout.
+	// Its box goes to the GPU layer too, which mustn't draw a shape over it (cardBoxes below).
 	useLayoutEffect(() => {
 		const el = ref.current
 		if (!el) return
-		const report = () => setPropertyCardHeight(target.id, el.offsetHeight || null)
+		const report = () => {
+			setPropertyCardHeight(target.id, el.offsetHeight || null)
+			setCardBox(target.id, { x: target.x - el.offsetWidth / 2, y: target.y + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight })
+		}
 		report()
 		const observer = new ResizeObserver(report)
 		observer.observe(el)
 		return () => {
 			observer.disconnect()
 			setPropertyCardHeight(target.id, null)
+			setCardBox(target.id, null)
 		}
-	}, [target.id])
+	}, [target.id, target.x, target.y])
 
 	if (!shape) return null
 

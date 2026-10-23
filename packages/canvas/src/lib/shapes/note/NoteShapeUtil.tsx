@@ -20,6 +20,8 @@ import {
 	noteShapeMigrations,
 	noteShapeProps,
 	toDomPrecision,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
 import { resizeScaled } from '../shared/resizeScaled'
@@ -50,6 +52,15 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 	override canEdit = () => true
 	override hideSelectionBoundsFg = () => true
 	override isAspectRatioLocked = () => true
+
+	override canLeavePage(_shape: S) {
+		return true
+	}
+
+	override getRenderKey(shape: S, zoom: number) {
+		// The link button hides under 32%.
+		return shape.props.url && zoom < 0.32 ? 'h' : ''
+	}
 
 	getDefaultProps(): S['props'] {
 		return {
@@ -154,6 +165,11 @@ export abstract class BaseNoteShapeUtil<S extends TLNoteLikeShape> extends Shape
 				)}
 			</>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4c). */
+	override toGpu(shape: S): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: S) {

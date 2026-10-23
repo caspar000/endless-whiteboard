@@ -20,6 +20,8 @@ import {
 	last,
 	rng,
 	toFixed,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { ShapeFill, getShapeFillSvg, useDefaultColorTheme } from '../shared/ShapeFill'
 import { STROKE_SIZES } from '../shared/default-shape-constants'
@@ -37,6 +39,15 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 	static override type = 'draw' as const
 	static override props = drawShapeProps
 	static override migrations = drawShapeMigrations
+
+	override canLeavePage(_shape: TLDrawShape) {
+		return true
+	}
+
+	override getRenderKey(_shape: TLDrawShape, zoom: number) {
+		// Solid under 35% (`useForceSolid`).
+		return zoom < 0.35 ? 's' : ''
+	}
 
 	override hideResizeHandles = (shape: TLDrawShape) => getIsDot(shape)
 	override hideRotateHandle = (shape: TLDrawShape) => getIsDot(shape)
@@ -162,6 +173,11 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 				/>
 			</SVGContainer>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4d). */
+	override toGpu(shape: TLDrawShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLDrawShape) {

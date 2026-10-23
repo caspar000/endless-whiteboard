@@ -378,7 +378,9 @@ test.describe('pictures at the size they are shown (P6)', () => {
 		await expect(img).toHaveCount(1)
 		const natural = () => img.evaluate((el: HTMLImageElement) => el.naturalWidth)
 		const zoom = (z: number) =>
-			page.evaluate((z) => (window as unknown as { editor: { setCamera(c: unknown): void } }).editor.setCamera({ x: 0, y: 0, z }), z)
+			page.evaluate((z) => {
+				;(window as unknown as { editor: { setCamera(c: unknown): void } }).editor.setCamera({ x: 0, y: 0, z })
+			}, z)
 
 		await zoom(1)
 		await expect.poll(natural).toBe(1600)
@@ -417,7 +419,10 @@ test.describe('Quick look', () => {
 
 		const board = page.locator('.lb-board--quick-look')
 		for (const id of ['shape:pinned', 'shape:group', 'shape:box', 'shape:line']) {
-			await page.evaluate((id) => (window as unknown as { editor: { select(id: string): void } }).editor.select(id), id)
+			// Braces: `select` returns the editor, which `page.evaluate` cannot serialize.
+			await page.evaluate((id) => {
+				;(window as unknown as { editor: { select(id: string): void } }).editor.select(id)
+			}, id)
 			await page.keyboard.press('Space')
 			await expect(board, id).toBeVisible()
 			expect(await selected(page)).toEqual([id])

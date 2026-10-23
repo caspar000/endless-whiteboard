@@ -149,6 +149,9 @@ export function connectShapes(
 		editor.createShape({
 			id: arrowId,
 			type: 'arrow',
+			// On the page, named: unnamed, the canvas looks for a frame under (0, 0) on every create,
+			// and binding the ends reparents the arrow to wherever they are anyway.
+			parentId: editor.getCurrentPageId(),
 			x: 0,
 			y: 0,
 			...(options.hidden ? { meta: { [HIDDEN_RELATION_META]: true } } : {}),

@@ -1,6 +1,9 @@
 import {
 	BaseBoxShapeUtil,
+	Circle2d,
+	Group2d,
 	HTMLContainer,
+	Rectangle2d,
 	T,
 	TLBaseShape,
 	TLPropsMigrations,
@@ -13,6 +16,8 @@ import {
 	type TLShapePartial,
 	type TLShapeUtilCanBindOpts,
 	resizeBox,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas'
 import type { ComponentType } from 'react'
 import type { PropertyValue } from './properties/types'
@@ -165,6 +170,11 @@ export interface NodeDefinition<Props extends object = object> {
 	/** `true` → double-click enters tldraw's editing state and the component gets `isEditing`. */
 	canEdit?: boolean
 	/**
+	 * Claims a double-click before editing starts. Return `true` when it was handled (a skill node
+	 * focuses its tree on itself); the node then does not enter editing, though Enter still edits it.
+	 */
+	onDoubleClick?: (ctx: { editor: Editor; shape: TLShape }) => boolean
+	/**
 	 * Every handle scales both axes: the node is a picture, and a picture with the wrong proportions is
 	 * not a smaller picture.
 	 *
@@ -174,6 +184,14 @@ export interface NodeDefinition<Props extends object = object> {
 	 */
 	aspectRatioLocked?: boolean
 	/**
+	 * A round node: the circle inside its box that is its outline, in the box's own units. Arrows end on
+	 * the circle instead of the box's edge, so every arrow to a round node stops the same distance from
+	 * its middle; clicks and the selection outline follow it too. `rest` is any other part of the box
+	 * that still counts as the node for clicking (a caption below the circle). Without it, a node is
+	 * its box.
+	 */
+	outline?: (shape: NodeShape<Props>) => { cx: number; cy: number; r: number; rest?: { x: number; y: number; w: number; h: number } }
+	/**
 	 * Let the wheel scroll the node's own content instead of zooming the canvas.
 	 *
 	 * Applies **only while the node is being edited** — tldraw consults `canScroll` for the editing shape
@@ -182,6 +200,20 @@ export interface NodeDefinition<Props extends object = object> {
 	 * stops behaving like a shape.
 	 */
 	canScroll?: boolean
+	/**
+	 * `false` keeps this node in the page always. Otherwise the GPU layer draws it, zoomed out among
+	 * many (docs/gpu-renderer-plan.md, phases 4–5), from what its element shows, read back from the
+	 * page; the reader leaves to the page anything it can't copy exactly (a form control, a running
+	 * animation, an iframe), so a node that's wrongly left on costs speed, not looks.
+	 */
+	gpu?: boolean
+	/**
+	 * `true` lets this node leave the page on a big board: unmounted, not just hidden, while off
+	 * screen or drawn by the GPU layer (docs/gpu-renderer-plan.md, phase 8). Only for a component
+	 * that keeps no state of its own and shows nothing but its own props, so mounting it again later
+	 * shows the same; a node that shows other shapes' data, plays, or scrolls must stay.
+	 */
+	canLeavePage?: boolean | ((shape: NodeShape<Props>) => boolean)
 	/**
 	 * Opt in to factory-derived height: the node's `h` tracks its rendered content. The node's props
 	 * must include a boolean `autoHeight` that the user can pin off by dragging a vertical handle.
@@ -207,6 +239,11 @@ export interface NodeDefinition<Props extends object = object> {
 	 * tools and the create menu. Use `getVisibleNodeDefinitions()` for anything user-facing.
 	 */
 	deprecated?: boolean
+	/**
+	 * Stays where it is when dragged: a drag leaves it in place (the skill tree's maze is a locked
+	 * structure). Code can still move it.
+	 */
+	pinned?: boolean
 	/**
 	 * What to call an instance of this node in rollup groups, table rows and pickers.
 	 *
@@ -289,8 +326,20 @@ export function createNodeShapeUtil<Props extends object>(
 			return def.canEdit ?? false
 		}
 
+		override onDoubleClick(shape: TLBaseBoxShape) {
+			// A partial that changes nothing is how a double-click handler tells the select tool it was
+			// handled, so it neither edits nor crops.
+			if (def.onDoubleClick?.({ editor: this.editor, shape: shape as unknown as TLShape })) return { id: shape.id, type: shape.type }
+			return undefined
+		}
+
 		override canResize(): boolean {
 			return true
+		}
+
+		override canLeavePage(shape: TLBaseBoxShape): boolean {
+			const can = def.canLeavePage
+			return typeof can === 'function' ? can(shape as unknown as Shape) : can === true
 		}
 
 		override canScroll(): boolean {
@@ -304,6 +353,12 @@ export function createNodeShapeUtil<Props extends object>(
 		/** Nodes are arrows' natural targets on a diagram board, so binding stays enabled. */
 		override canBind(_opts: TLShapeUtilCanBindOpts): boolean {
 			return true
+		}
+
+		/** A pinned node dragged goes straight back to where the drag started. */
+		override onTranslate(initial: TLBaseBoxShape, current: TLBaseBoxShape) {
+			if (!def.pinned || (initial.x === current.x && initial.y === current.y)) return
+			return { id: current.id, type: current.type, x: initial.x, y: initial.y }
 		}
 
 		override onResize(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {
@@ -359,16 +414,27 @@ export function createNodeShapeUtil<Props extends object>(
 			return resizeBox(shape, { ...info, scaleY: height / shape.props.h })
 		}
 
+		override getGeometry(shape: TLBaseBoxShape) {
+			const round = def.outline?.(shape as unknown as Shape)
+			if (!round) return super.getGeometry(shape)
+			const circle = new Circle2d({ x: round.cx - round.r, y: round.cy - round.r, radius: round.r, isFilled: true })
+			if (!round.rest) return circle
+			const { x, y, w, h } = round.rest
+			return new Group2d({ children: [circle, new Rectangle2d({ x, y, width: w, height: h, isFilled: true })] })
+		}
+
 		/** v5 replaced `indicator()` with `getIndicatorPath()`; see docs/tldraw-api-notes.md. */
 		override getIndicatorPath(shape: TLBaseBoxShape): Path2D {
 			const path = new Path2D()
-			path.rect(0, 0, shape.props.w, shape.props.h)
+			const round = def.outline?.(shape as unknown as Shape)
+			if (round) path.arc(round.cx, round.cy, round.r, 0, 2 * Math.PI)
+			else path.rect(0, 0, shape.props.w, shape.props.h)
 			return path
 		}
 
 		override component(rawShape: TLBaseBoxShape) {
 			const shape = rawShape as unknown as Shape
-			const isEditing = this.editor.getEditingShapeId() === shape.id
+			const isEditing = this.editor.isShapeBeingEdited(shape.id)
 			const Component = def.component
 
 			// Called unconditionally — `enabled` gates the behaviour rather than the hook, so hook
@@ -418,9 +484,20 @@ export function createNodeShapeUtil<Props extends object>(
 		}
 	}
 
+	/*
+	 * `toGpu` lives on a subclass too, for the definitions that opted in: the GPU layer counts shapes
+	 * on screen only while some util has the method at all.
+	 */
+	class GpuNodeShapeUtil extends NodeShapeUtil {
+		override toGpu(shape: TLBaseBoxShape): GpuPrimitive[] | null {
+			return getGpuSnapshots(this.editor).get(shape as unknown as TLShape) ?? null
+		}
+	}
+	const Base = def.gpu === false ? NodeShapeUtil : GpuNodeShapeUtil
+
 	// `TLAnyShapeUtilConstructor` is tldraw's own type for this — it's what `<Tldraw shapeUtils>`
 	// accepts — so no cast is needed here.
-	if (!def.drop) return NodeShapeUtil
+	if (!def.drop) return Base
 
 	/*
 	 * The drop hooks live on a *subclass*, present only for a definition that asked for them.
@@ -432,7 +509,7 @@ export function createNodeShapeUtil<Props extends object>(
 	 * `docs/tldraw-api-notes.md`.
 	 */
 	const drop = def.drop
-	class DroppableNodeShapeUtil extends NodeShapeUtil {
+	class DroppableNodeShapeUtil extends Base {
 		/**
 		 * tldraw's gate: with the default `false` the drop callback below is never called at all. It also
 		 * decides whether a pasted shape can be reparented into this one, which is why it is asked per

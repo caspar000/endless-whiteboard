@@ -195,7 +195,7 @@ export async function uploadServerThumbnail(id: string, theme: ResolvedTheme, bl
 }
 
 /** Settings that follow the vault rather than the device. See `app/vaultSettings.ts`. */
-export type VaultSettingKey = 'savedQueries' | 'disabledExtensions' | 'cardLayouts'
+export type VaultSettingKey = 'savedQueries' | 'disabledExtensions' | 'cardLayouts' | 'skillIndex' | 'skillHabits' | 'skillTracks' | 'skillTrees' | 'syllabusItems' | 'syllabusTracks' | 'syllabusEvidence'
 
 export async function getVaultSettings(): Promise<Partial<Record<VaultSettingKey, unknown>>> {
 	return (await (await api('/vault/settings')).json()) as Partial<Record<VaultSettingKey, unknown>>

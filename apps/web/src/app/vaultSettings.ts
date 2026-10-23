@@ -3,9 +3,10 @@ import { persistDisabledExtensions } from '../extensions'
 import { getVaultSettings, pushVaultSetting } from '../server/serverVault'
 import { replaceSavedQueries, savedQueries } from './savedQueries'
 import { applyRemoteCardLayouts } from './cardLayouts'
+import { applyRemoteSkillIndex } from './skillIndex'
 
 /**
- * Saved queries, saved card layouts and switched-off extensions follow the vault, not the device:
+ * Saved queries, saved card layouts, the syllabus index and switched-off extensions follow the vault, not the device:
  * they are part of how you work with your boards, so a new phone should not start from scratch.
  *
  * localStorage stays the cache, which is what lets the first render be right without waiting for the
@@ -30,4 +31,5 @@ export async function syncVaultSettings(): Promise<void> {
 	else replaceSavedQueries(remote.savedQueries)
 
 	applyRemoteCardLayouts(remote.cardLayouts)
+	applyRemoteSkillIndex(remote)
 }

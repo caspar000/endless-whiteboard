@@ -3,6 +3,7 @@ import {
 	BookOpen,
 	Boxes,
 	Dices,
+	ListChecks,
 	Frame,
 	Image as ImageIcon,
 	MousePointer2,
@@ -152,6 +153,7 @@ const NODE_SAMPLE: { label: string; icon: ReactNode }[] = [
 	{ label: 'Book', icon: <BookOpen size={20} /> },
 	{ label: 'Quote', icon: <QuoteIcon size={20} /> },
 	{ label: 'Roll', icon: <Dices size={20} /> },
+	{ label: 'Syllabus item', icon: <ListChecks size={20} /> },
 ]
 
 /** The picker's grid, as a still — the tour explains the button, this shows what opens. */
@@ -318,6 +320,16 @@ export function Overview({ go }: SectionProps) {
 						<p>
 							Snapping and the dotted paper are set once for the app, in Settings → Canvas. Hold{' '}
 							<kbd className="lb-kbd">⌘</kbd> while dragging to ignore the grid for one move.
+						</p>
+					</div>
+					<div className="lb-help__fact">
+						<h3>Big boards get ready as you look</h3>
+						<p>
+							Zoomed out over thousands of shapes, the board hands them to the graphics card to draw,
+							a batch at a time, starting with what is around the screen. Until that’s done, “Preparing
+							board” in the corner counts the shapes, then the pictures, and panning is a little slower;
+							everything works meanwhile. “Board ready” means it pans at full speed. Jump somewhere
+							new and it may count again for that part of the board.
 						</p>
 					</div>
 					<div className="lb-help__fact">

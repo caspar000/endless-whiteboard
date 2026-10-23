@@ -107,6 +107,7 @@ export function fakeBoard(): FakeBoard {
 		getCurrentPageShapes: () => [...shapes.get().values()],
 		getCurrentPageShapeIds: () => new Set(shapes.get().keys()),
 
+		getCurrentPageId: () => 'page:page',
 		createShape: (partial: {
 			id: string
 			type: string

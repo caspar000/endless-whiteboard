@@ -33,7 +33,7 @@ interface RichTextProps {
  */
 export function RichText(props: RichTextProps) {
 	const editor = useEditor()
-	const isEditing = useValue('isEditing', () => editor.getEditingShapeId() === props.shapeId, [
+	const isEditing = useValue('isEditing', () => editor.isShapeBeingEdited(props.shapeId), [
 		editor,
 		props.shapeId,
 	])

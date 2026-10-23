@@ -23,6 +23,8 @@ import {
 	textShapeProps,
 	toDomPrecision,
 	useEditor,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { createTextSvgElementFromSpans } from '../shared/createTextSvgElementFromSpans'
 import { FONT_FAMILIES, FONT_SIZES, TEXT_PROPS } from '../shared/default-shape-constants'
@@ -37,6 +39,10 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 	static override type = 'text' as const
 	static override props = textShapeProps
 	static override migrations = textShapeMigrations
+
+	override canLeavePage(_shape: TLTextShape) {
+		return true
+	}
 
 	getDefaultProps(): TLTextShape['props'] {
 		return {
@@ -78,7 +84,7 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 
 		const theme = getDefaultColorTheme({ isDarkMode: this.editor.user.getIsDarkMode() })
 		const { width, height } = this.getMinDimensions(shape)
-		const isEditing = this.editor.getEditingShapeId() === id
+		const isEditing = this.editor.isShapeBeingEdited(id)
 
 		return (
 			<HTMLContainer id={shape.id}>
@@ -105,10 +111,15 @@ export class TextShapeUtil extends ShapeUtil<TLTextShape> {
 		)
 	}
 
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4d). */
+	override toGpu(shape: TLTextShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
+	}
+
 	indicator(shape: TLTextShape) {
 		const bounds = this.editor.getShapeGeometry(shape).bounds
 		const editor = useEditor()
-		if (shape.props.autoSize && editor.getEditingShapeId() === shape.id) return null
+		if (shape.props.autoSize && editor.isShapeBeingEdited(shape.id)) return null
 		return <rect width={toDomPrecision(bounds.width)} height={toDomPrecision(bounds.height)} />
 	}
 

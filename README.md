@@ -131,6 +131,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
 | **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
+| **Syllabus & skill trees** (`@lifeboard/skill-tree`) | `node.skillItem`, `node.track`, `node.skill`, `node.skillTree`, `node.habit`, `node.upNext` | One syllabus in your vault (entries, their works, and tracks that order them), shown on any board as a skill tree, a list, Up next or a card, so a tick anywhere is a tick everywhere. A tick records the day and files a write-up note from the medium's template beside what you ticked from; a note still holding only the template leaves the tick hollow. The list is the whole outline in reading order, folding each entry to its works. Skill trees live in the vault too and light up from the write-ups; each board shows a view of a tree from a root you pick, and trees hang from pillars and Mastery. A whole syllabus imports from YAML as a dashed draft, and Adler's 137-entry list, the game director curriculum (196 entries in 12 tracks), its film, theatre and games trees on their own (151 entries, directors with their films; 138, playwrights, practitioners and stagecraft; 122, studios and designers with their games; Russian and Georgian people and works under their own names) and /mu/core's 1111 recordings are built in. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -188,6 +189,7 @@ packages/node-kit/        @lifeboard/node-kit — the smart-node system (the SDK
 packages/note-markdown/   @lifeboard/note-markdown — the markdown note, as a default extension
 packages/book-reader/     @lifeboard/book-reader — books & quotes: import, reader, Open Library
 packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (three.js + cannon-es)
+packages/skill-tree/      @lifeboard/skill-tree — syllabus items, tracks, habits, skill trees, YAML import
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
@@ -411,6 +413,47 @@ one `registerExtension` line to the composition root — nothing else. Shape uti
 in the dock's node picker, keyboard shortcut, context-menu entry, the Settings card and table
 participation all follow from the registry. There is deliberately no per-node-type branching in the UI.
 
+**Shapes are drawn two ways** (docs/gpu-renderer-plan.md). The page draws them, as elements, until
+more than 64 that the GPU could draw are on screen; then a WebGL2 layer above the shapes takes those
+over (`auto`, the default; `?renderer=dom|gpu|auto` or `localStorage['lifeboard:renderer']` force one).
+The GPU doesn't redraw a shape from its props: `toGpu` reads what its element shows back from the page
+(`gpu/snapshots.ts`), and the reader refuses what it can't copy exactly, leaving that shape to the page.
+So a new node type is GPU-drawn by default and costs nothing in looks if the reader gets it wrong,
+only speed; `gpu: false` on its definition keeps it in the page. The rule that holds it together is
+**parity**: `e2e/parity.spec.ts` screenshots boards both ways and fails past 0.07% of pixels differing
+(0.6% at 25% zoom and below). It needs a real GPU, so it runs locally (`LB_PARITY=1`), not in CI.
+Without WebGL2, on WebKit below pixel ratio 2, or with the context lost, the page draws everything.
+
+**On a big board, shapes leave the page.** Past 2,000 shapes (`LEAVE_PAGE_ABOVE`), a shape whose util
+says `canLeavePage` is unmounted, not just hidden, while it's off screen or the GPU draws it; each
+mounted one costs some fifty kilobytes and eight elements. Only shapes that keep no state and draw from
+their own record may (core shapes do; a node type opts in with `canLeavePage` on its definition, and a
+shape whose text has a `{…}` never does). Whatever else a component draws from (a zoom past which it
+looks different, a selection state) goes in `getRenderKey`, so the GPU's copy is read again when that
+changes. Code that needs a shape's element asks for it with `requestShapeElement` and releases it;
+`getShapeElement` gives the mounted ones without a page-wide query. Culling, the page's bounds and
+"back to content" ask `editor._boundsIndex` rather than each shape's computeds, which is what lets a
+shape off screen cost about 2 KB: anything that asks every shape on the board for its geometry undoes
+that, so go through the index.
+
+**What the GPU read is kept between sessions** (`gpu/snapshotCache.ts`), for shapes that can leave the
+page, so a big board is read once rather than on every open. Each entry is keyed on the build, the
+theme, the render key and the shape's record. A deploy starts over, but a change to the reader in the
+dev server doesn't: bump `READER_VERSION` in `gpu/snapshots.ts`, or turn the cache off with
+`localStorage['lifeboard:gpu-cache'] = 'off'`. Pictures are kept as recipes (`gpu/recipes.ts`), plain
+data drawn by `drawRecipe`, so a new kind of picture needs a recipe or it's read again every time.
+Whatever changes many shapes' snapshots at once does it in one `transact`: the scene goes through every
+shape near the screen when one changes, so 20,000 sets one at a time took half a minute.
+
+**The GPU layer draws once a frame**, from a `ResizeObserver` (`gpu/GpuLayer.tsx`): after the frame's
+animation callbacks and layout, before it paints. Drawing on every change queued a frame on the GPU
+per input event once it fell behind, and putting a draw off to the next animation frame left the layer
+a frame behind changes made in one (the reader hands shapes over from one). How far the shapes around
+the screen are from being drawn by it is `getGpuSnapshots(editor).readiness` and
+`getGpuScene(editor).picturesLeft`; the board's "Preparing board" pill (`canvas/BoardPreparingPill.tsx`)
+shows them, and is the quickest way to tell a slow pan on an unprepared board from a slow one on a
+ready board.
+
 **⌘⇧K is ⌘K with `>` already typed** — one command (`view.palette.commands`) rather than a special
 case, so it is rebindable like every other key. The palette's open state is its *seed*, not a boolean,
 which is what lets the second key switch an already-open palette into command mode instead of closing
@@ -586,6 +629,18 @@ against tldraw 5. The app compiles against the fork's declarations, not its sour
 upstream's looser compiler settings: `pnpm types:canvas` builds them, and runs on install and before
 `pnpm typecheck`. The local IndexedDB naming in `persistence/tldrawLocalDb.ts` is pinned by a test that
 reads the fork's persistence source.
+
+**`@tldraw/store` carries a patch** (`patches/@tldraw__store@5.5.2.patch`, registered in
+`pnpm-workspace.yaml`). Its diff squash checked a growing diff for keys once per diff, which made a
+transaction with thousands of small writes quadratic; the patch checks once. Upgrading the store means
+re-applying it with `pnpm patch`, or dropping it if upstream has fixed the loop.
+`bulkRelations.bench.test.ts` (`LB_BENCH=1`) shows whether it is still needed.
+
+**Large boards stay fast because per-shape work is kept off shared signals.** A signal visits every
+reactor below it when it changes, so anything each shape reads (am I edited, selected, culled; an
+arrow's bindings) goes through a per-shape atom (`IdFlags`, `IdValues` in
+`canvas-editor/src/lib/editor/derivations/idFlags.ts`) rather than a computed over shared state.
+`docs/performance-plan.md` has the measurements and the tests that guard it.
 
 **Aggregations must not recompute while dragging.** `e2e/perf.spec.ts` asserts exactly zero
 re-aggregations during a drag on a 500-node board. In dev, a badge in the bottom-left shows the

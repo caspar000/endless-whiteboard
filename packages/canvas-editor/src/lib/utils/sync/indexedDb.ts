@@ -61,6 +61,12 @@ type SessionStateSnapshotRow = {
 	updatedAt: number
 }
 
+/** Rolls a write back on purpose; `tx.done` rejecting then is expected, not an error to report. */
+function cancel(tx: { abort(): void; done: Promise<void> }, requests: Promise<unknown>[] = []) {
+	tx.abort()
+	return Promise.allSettled([...requests, tx.done]).then(() => undefined)
+}
+
 /** @internal */
 export async function loadDataFromStore({
 	persistenceKey,
@@ -125,17 +131,12 @@ export async function storeChangesInIndexedDb({
 		const schemaStore = tx.objectStore(Table.Schema)
 		const sessionStateStore = tx.objectStore(Table.SessionState)
 
-		for (const [id, record] of Object.entries(changes.added)) {
-			await recordsStore.put(record, id)
-		}
-
-		for (const [_prev, updated] of Object.values(changes.updated)) {
-			await recordsStore.put(updated, updated.id)
-		}
-
-		for (const id of Object.keys(changes.removed)) {
-			await recordsStore.delete(id)
-		}
+		// All asked for at once: a transaction does them in order. Awaiting each wrote a big board one
+		// record a round trip, seconds long, and anything opening it waited behind that.
+		const requests: Promise<unknown>[] = []
+		for (const [id, record] of Object.entries(changes.added)) requests.push(recordsStore.put(record, id))
+		for (const [_prev, updated] of Object.values(changes.updated)) requests.push(recordsStore.put(updated, updated.id))
+		for (const id of Object.keys(changes.removed)) requests.push(recordsStore.delete(id))
 
 		schemaStore.put(schema.serialize(), Table.Schema)
 		if (sessionStateSnapshot && sessionId) {
@@ -152,9 +153,9 @@ export async function storeChangesInIndexedDb({
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx, requests)
 
-		await tx.done
+		await Promise.all([...requests, tx.done])
 	})
 }
 
@@ -181,11 +182,9 @@ export async function storeSnapshotInIndexedDb({
 		const schemaStore = tx.objectStore(Table.Schema)
 		const sessionStateStore = tx.objectStore(Table.SessionState)
 
-		await recordsStore.clear()
-
-		for (const [id, record] of Object.entries(snapshot)) {
-			await recordsStore.put(record, id)
-		}
+		// All asked for at once (see `storeChangesInIndexedDb`).
+		const requests: Promise<unknown>[] = [recordsStore.clear()]
+		for (const [id, record] of Object.entries(snapshot)) requests.push(recordsStore.put(record, id))
 
 		schemaStore.put(schema.serialize(), Table.Schema)
 
@@ -203,9 +202,9 @@ export async function storeSnapshotInIndexedDb({
 			console.error('sessionStateSnapshot and instanceId must be provided together')
 		}
 
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx, requests)
 
-		await tx.done
+		await Promise.all([...requests, tx.done])
 	})
 }
 
@@ -228,7 +227,7 @@ async function pruneSessionState({
 		for (const { id } of toDelete) {
 			await sessionStateStore.delete(id)
 		}
-		if (didCancel?.()) return tx.abort()
+		if (didCancel?.()) return cancel(tx)
 		await tx.done
 	})
 }

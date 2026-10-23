@@ -15,6 +15,8 @@ import {
 	isValidUrl,
 	stopEventPropagation,
 	toDomPrecision,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { truncateStringWithEllipsis } from '../../utils/text/text'
@@ -26,6 +28,15 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 	static override type = 'bookmark' as const
 	static override props = bookmarkShapeProps
 	static override migrations = bookmarkShapeMigrations
+
+	override canLeavePage(_shape: TLBookmarkShape) {
+		return true
+	}
+
+	override getRenderKey(_shape: TLBookmarkShape, zoom: number) {
+		// The link button hides under 32%.
+		return zoom < 0.32 ? 'h' : ''
+	}
 
 	// Any size: a narrow card drops its description and keeps the picture (see the CSS).
 	override canResize = () => true
@@ -90,6 +101,11 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 				</div>
 			</HTMLContainer>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 5). */
+	override toGpu(shape: TLBookmarkShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	override indicator(shape: TLBookmarkShape) {

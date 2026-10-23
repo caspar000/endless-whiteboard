@@ -61,7 +61,7 @@ export * from '@tldraw/tlschema'
 // Shadows the schema package's narrower versions: see shape-types.ts.
 export type { TLHandle, TLShape, TLShapePartial } from './lib/editor/types/shape-types'
 export type { TLBindingCreate, TLBindingUpdate } from './lib/editor/types/binding-types'
-export { ArrowBindingUtil } from './lib/editor/bindings/ArrowBindingUtil'
+export { ARROW_STAYS_BEHIND_META, ArrowBindingUtil } from './lib/editor/bindings/ArrowBindingUtil'
 export {
 	BindingUtil,
 	type BindingOnChangeOptions,
@@ -184,6 +184,7 @@ export {
 	GRID_STEPS,
 	HASH_PATTERN_ZOOM_NAMES,
 	HIT_TEST_MARGIN,
+	INTERNAL_POINTER_IDS,
 	MAX_PAGES,
 	MAX_SHAPES_PER_PAGE,
 	MAX_ZOOM,
@@ -268,6 +269,7 @@ export {
 	type ElbowEnd,
 	type ElbowRoute,
 } from './lib/editor/shapes/shared/arrow/elbow-arrow'
+export { WAYPOINTS_META, getArrowWaypoints } from './lib/editor/shapes/shared/arrow/routed-arrow'
 export {
 	getSolidStraightArrowPath,
 	getStraightArrowHandlePath,
@@ -441,6 +443,33 @@ export {
 	getRegisteredFontFaceRules,
 	registerFontSource,
 } from './lib/utils/exportShapeFromDom'
+export {
+	getRendererMode,
+	RENDERER_STORAGE_KEY,
+	setRendererMode,
+	type RendererMode,
+} from './lib/editor/rendererMode'
+export {
+	gpuColor,
+	gpuDash,
+	readGpuColor,
+	type GpuImage,
+	type GpuStroke,
+	type GpuColor,
+	type GpuContext,
+	type GpuPrimitive,
+	type GpuRect,
+} from './lib/gpu/primitives'
+export { dashPolylines, flattenPath, strokeTriangles, type Polyline } from './lib/gpu/stroke'
+export {
+	getMountedShapeList,
+	getShapeElement,
+	LEAVE_PAGE_ABOVE,
+	requestShapeElement,
+} from './lib/components/shapeElements'
+export { configureGpuSnapshotCache } from './lib/gpu/snapshotCache'
+export { getGpuSnapshots, type GpuSnapshots } from './lib/gpu/snapshots'
+export { DEFAULT_GPU_BUDGET, getGpuScene, GPU_BUDGET_STORAGE_KEY, gpuLayerSupported, type GpuScene } from './lib/gpu/gpuScene'
 export { getBrowserCanvasMaxSize, type CanvasMaxSize } from './lib/utils/getBrowserCanvasMaxSize'
 export { debugFlags, featureFlags, type DebugFlag } from './lib/utils/debug-flags'
 export {

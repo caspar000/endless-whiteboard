@@ -5,6 +5,7 @@ import {
 	type TLAnyShapeUtilConstructor,
 } from '@lifeboard/canvas'
 import { expressionShapeUtils } from './expressionShapeUtils'
+import { GpuTestRectShapeUtil } from './gpuTestShape'
 
 /**
  * The frame, made a container rather than a card: no fill, a colourable border.
@@ -49,6 +50,10 @@ export function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
 		frameShapeUtil,
 		// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
 		...expressionShapeUtils,
+		// The GPU renderer's test rectangle (gpuTestShape.tsx), only in a browser a test drives that asks
+		// for it. A server's schema doesn't have it, so a board with it in its schema can't sync: the
+		// server suite, driven as well, got "the server is older than this app" for every board.
+		...(gpuTestShapeWanted() ? [GpuTestRectShapeUtil] : []),
 	]
 }
 
@@ -60,4 +65,14 @@ export function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
 export function buildStoreShapeUtils(utils: TLAnyShapeUtilConstructor[]): TLAnyShapeUtilConstructor[] {
 	const ours = new Set(utils.map((util) => util.type))
 	return [...defaultShapeUtils.filter((util) => !ours.has(util.type)), ...utils]
+}
+
+/** `localStorage['lifeboard:gpu-test-shape'] = '1'`, set by the app's own e2e suite (e2e/helpers.ts). */
+function gpuTestShapeWanted(): boolean {
+	if (typeof navigator === 'undefined' || !navigator.webdriver) return false
+	try {
+		return globalThis.localStorage?.getItem('lifeboard:gpu-test-shape') === '1'
+	} catch {
+		return false
+	}
 }

@@ -20,6 +20,7 @@ function stubEditor() {
 		getShape: (id: TLShapeId) => shapes.get(id as string),
 		getCurrentPageShapes: () => [...shapes.values()],
 		getShapePageBounds: () => ({ x: 0, y: 0, w: 200, h: 300, maxX: 200, maxY: 300 }),
+		getCurrentPageId: () => 'page:page',
 		createShape: (partial: { id: string; type: string; meta?: Record<string, unknown> }) => {
 			shapes.set(partial.id, { meta: {}, props: {}, ...partial } as unknown as TLShape)
 		},

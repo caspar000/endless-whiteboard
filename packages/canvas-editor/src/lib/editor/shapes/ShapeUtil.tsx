@@ -11,6 +11,7 @@ import { Vec2d } from '../../primitives/Vec2d'
 import { Geometry2d } from '../../primitives/geometry/Geometry2d'
 import type { Editor } from '../Editor'
 import { SvgExportContext } from '../types/SvgExportContext'
+import type { GpuContext, GpuPrimitive } from '../../gpu/primitives'
 import { TLResizeHandle } from '../types/selection-types'
 
 /** @public */
@@ -173,6 +174,45 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	 */
 	canUnmount(_shape: Shape): boolean {
 		return true
+	}
+
+	/**
+	 * Whether shapes of this type can leave the page on a big board: be unmounted, not just hidden,
+	 * while off screen or while the GPU layer draws them (docs/gpu-renderer-plan.md, phase 8). Only for
+	 * a `component` that keeps no state of its own and draws from its own record (and its bindings'
+	 * shapes' geometry), so mounting it again shows the same thing. Anything else it draws from goes
+	 * in {@link ShapeUtil.getRenderKey}. Off by default.
+	 *
+	 * Asked without tracking the record: whatever could change the answer must also change the
+	 * record's props, or the shape's place on or off screen.
+	 *
+	 * @public
+	 */
+	canLeavePage(_shape: Shape): boolean {
+		return false
+	}
+
+	/**
+	 * What the shape's `component` draws from besides its record and geometry, as a string: a zoom
+	 * past which it draws differently, whether it's selected. The GPU layer's copy of a shape it read
+	 * from the page is out of date once this changes, which matters for a shape that has left the
+	 * page, as there's no element left to see it change.
+	 *
+	 * @public
+	 */
+	getRenderKey(_shape: Shape, _zoom: number): string {
+		return ''
+	}
+
+	/**
+	 * The shape's box in its own space, for culling, where working out its geometry costs more than
+	 * its props say (a geo shape measures its label): may be bigger than the geometry's box, never
+	 * smaller. Undefined: the geometry's box. Asked of every shape on the board when it opens.
+	 *
+	 * @public
+	 */
+	getCullingBounds(_shape: Shape): Box2d | undefined {
+		return undefined
 	}
 
 	/**
@@ -361,6 +401,15 @@ export abstract class ShapeUtil<Shape extends TLUnknownShape = TLUnknownShape> {
 	 * @public
 	 */
 	toSvg?(shape: Shape, ctx: SvgExportContext): SVGElement | Promise<SVGElement>
+
+	/**
+	 * What the shape draws on the GPU layer, in its own space, or `null` when the page draws it
+	 * (docs/gpu-renderer-plan.md). Without this method the page always draws the shape. Whatever it
+	 * returns must look exactly like `component`: `parity.spec.ts` checks it.
+	 *
+	 * @public
+	 */
+	toGpu?(shape: Shape, ctx: GpuContext): GpuPrimitive[] | null
 
 	/**
 	 * Get the shape's background layer as an SVG object.

@@ -1,5 +1,6 @@
 import {
 	BaseBoxShapeUtil,
+	Box2d,
 	DefaultFontFamilies,
 	Editor,
 	TLColorMode,
@@ -32,6 +33,8 @@ import {
 	geoShapeProps,
 	getDefaultColorTheme,
 	getPolygonVertices,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { ShapeFillOverride, ShapeFillOverrideContext } from '../shared/ShapeFill'
 
@@ -94,6 +97,16 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	static override props = geoShapeProps
 	static override migrations = geoShapeMigrations
 
+	override canLeavePage(_shape: TLGeoShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLGeoShape, zoom: number) {
+		// A pattern fill's tile follows the zoom, and is plain under 18%; the link button hides under 32%.
+		const pattern = shape.props.fill === 'pattern' ? `${Math.ceil(zoom)}${zoom <= 0.18 ? 't' : ''}` : ''
+		return `${pattern}:${shape.props.url && zoom < 0.32 ? 'h' : ''}`
+	}
+
 	override options: TLGeoShapeUtilOptions = {}
 
 	override canEdit = () => true
@@ -118,6 +131,11 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 			flipX: false,
 			flipY: false,
 		}
+	}
+
+	/** Its body's box, without measuring its label as its geometry does (its label sits inside it). */
+	override getCullingBounds(shape: TLGeoShape) {
+		return new Box2d(0, 0, Math.max(1, shape.props.w), Math.max(1, shape.props.h + shape.props.growY))
 	}
 
 	override getGeometry(shape: TLGeoShape): Geometry2d {
@@ -598,7 +616,7 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 						richText={richText}
 						labelColor={labelColor}
 						wrap
-						bounds={props.geo === 'cloud' ? this.getGeometry(shape).bounds : undefined}
+						bounds={props.geo === 'cloud' ? this.editor.getShapeGeometry(shape.id).bounds : undefined}
 						scale={props.scale}
 					/>
 					{shape.props.url && (
@@ -607,6 +625,14 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 				</HTMLContainer>
 			</>
 		)
+	}
+
+	/**
+	 * Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4b): the body a
+	 * picture of its own SVG, the label its text, read back from the page.
+	 */
+	override toGpu(shape: TLGeoShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLGeoShape) {
@@ -1165,6 +1191,34 @@ export class GeoShapeUtil extends BaseBoxShapeUtil<TLGeoShape> {
 	}
 }
 
+/**
+ * A 'w' at each font and size, the narrowest a label gets. The same for every label in them, so
+ * measured once rather than once a shape (a big board opening measured it 25,000 times), and again
+ * once fonts finish loading, which changes it.
+ */
+const minLabelSizes = new WeakMap<Editor, Map<string, { w: number; h: number }>>()
+
+function minLabelSize(editor: Editor, font: TLGeoShape['props']['font'], size: TLGeoShape['props']['size']) {
+	let sizes = minLabelSizes.get(editor)
+	if (!sizes) {
+		const fresh = new Map<string, { w: number; h: number }>()
+		minLabelSizes.set(editor, (sizes = fresh))
+		document.fonts?.addEventListener?.('loadingdone', () => fresh.clear())
+	}
+	const key = `${font}:${size}`
+	let measured = sizes.get(key)
+	if (!measured) {
+		measured = editor.textMeasure.measureText('w', {
+			...TEXT_PROPS,
+			fontFamily: FONT_FAMILIES[font],
+			fontSize: LABEL_FONT_SIZES[size],
+			maxWidth: 100,
+		})
+		sizes.set(key, measured)
+	}
+	return measured
+}
+
 function getLabelSize(editor: Editor, shape: TLGeoShape) {
 	const text = richTextToPlainText(shape.props.richText)
 
@@ -1172,12 +1226,7 @@ function getLabelSize(editor: Editor, shape: TLGeoShape) {
 		return { w: 0, h: 0 }
 	}
 
-	const minSize = editor.textMeasure.measureText('w', {
-		...TEXT_PROPS,
-		fontFamily: FONT_FAMILIES[shape.props.font],
-		fontSize: LABEL_FONT_SIZES[shape.props.size],
-		maxWidth: 100,
-	})
+	const minSize = minLabelSize(editor, shape.props.font, shape.props.size)
 
 	// TODO: Can I get these from somewhere?
 	const sizes = {

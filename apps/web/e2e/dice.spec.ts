@@ -389,7 +389,9 @@ test.describe('dice', () => {
 		])
 
 		// One entry, not two: the shape and its property are written inside a single history stop.
-		await page.evaluate(() => (window as unknown as { editor: { undo(): void } }).editor.undo())
+		await page.evaluate(() => {
+			;(window as unknown as { editor: { undo(): void } }).editor.undo()
+		})
 		await expect(page.locator('.lb-roll-card')).toHaveCount(0)
 		expect(await shapes()).toBe(0)
 	})

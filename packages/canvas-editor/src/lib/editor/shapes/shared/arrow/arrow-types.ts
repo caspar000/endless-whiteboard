@@ -40,4 +40,6 @@ export type TLArrowInfo =
 			route?: VecLike[]
 			/** The run of an elbow's route that `elbowMidPoint` moves, if it has one. */
 			elbow?: { axis: 'x' | 'y'; from: number; to: number }
+			/** A route through waypoints (routed-arrow.ts), its turns rounded as far as they go. */
+			smooth?: boolean
 	  }

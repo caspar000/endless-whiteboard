@@ -23,7 +23,7 @@ import {
 	readPropertyRegistry,
 	extensionClipboardHooks,
 } from '@lifeboard/node-kit'
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
 	Tldraw,
 	createShapeId,
@@ -67,6 +67,7 @@ import { useSyncedStore } from '@lifeboard/canvas-sync/react'
 import { uploadBoardAssets } from '../server/boardAssets'
 import { fetchServerAsset, syncUri } from '../server/serverVault'
 import { SyncStatusPill, type SyncState } from './SyncStatusPill'
+import { BoardPreparingPill } from './BoardPreparingPill'
 import { trackAuthorship } from './authorship'
 import { CommentsOverlay } from './comments/CommentsOverlay'
 import { CommentsPanel } from './comments/CommentsPanel'
@@ -91,6 +92,7 @@ import { createNodeTools } from './nodeTools'
 import { setTldrawUi } from './tldrawUi'
 import { nodeComponents, nodeUiOverrides } from './uiOverrides'
 import { RollupDebugBadge } from './RollupDebugBadge'
+import { PerfMonitor } from './PerfMonitor'
 
 /**
  * The canvas. `persistenceKey` gives us tldraw's built-in IndexedDB persistence — throttled writes,
@@ -152,8 +154,29 @@ function CanvasOverlays() {
  */
 const editorOptions = { ...extensionClipboardHooks }
 
+/**
+ * A board on its way to the screen: before the editor exists, and while it loads the board's records.
+ * Shown at once, where tldraw's fades in after a moment: loading a big board keeps the page busy for
+ * seconds, and the fade never got to run, so all that showed was an empty board. The spinner turns on
+ * the compositor, so it keeps turning while the page is busy.
+ */
+function OpeningBoard({ children }: { children?: ReactNode }) {
+	return (
+		<div className="lb-board__loading" role="status">
+			<div>
+				<span className="lb-board__spinner" aria-hidden="true" />
+				Opening board…
+				{children}
+			</div>
+		</div>
+	)
+}
+
 const canvasComponents: TLComponents = {
 	...nodeComponents,
+	// The editor's loading screens ("Loading assets…", then "Connecting…" while a board on this device
+	// loads from IndexedDB) as the board's own.
+	LoadingScreen: OpeningBoard,
 	// The paper backdrop, and whichever grid the user has chosen (see CanvasBackground.tsx).
 	Background: CanvasBackground,
 	// tldraw's own grid is drawn only while `isGridMode` is on, and that same flag is what makes
@@ -367,16 +390,13 @@ function OpeningServerBoard() {
 		return () => clearTimeout(timer)
 	}, [])
 	return (
-		<div className="lb-board__loading">
-			<div>
-				Opening board…
-				{waited && (
-					<p className="lb-board__loading-hint">
-						Waiting for the server. A board opens offline once it has been opened on this device.
-					</p>
-				)}
-			</div>
-		</div>
+		<OpeningBoard>
+			{waited && (
+				<p className="lb-board__loading-hint">
+					Waiting for the server. A board opens offline once it has been opened on this device.
+				</p>
+			)}
+		</OpeningBoard>
 	)
 }
 
@@ -462,7 +482,7 @@ function BoardCanvas({
 		[]
 	)
 
-	if (!restore.ready) return <div className="lb-board__loading">Opening board…</div>
+	if (!restore.ready) return <OpeningBoard />
 	if (restore.tooNew) {
 		return (
 			<div className="lb-board__loading" role="alert">
@@ -639,6 +659,8 @@ function BoardCanvas({
 				    "useEditor must be used inside of <Tldraw />" and took the whole app down in
 				    dev, where the badge is the only thing that renders it. */}
 				{import.meta.env.DEV && <RollupDebugBadge />}
+				{/* `?perf=1`: frame times, long tasks and the GPU layer's state (PerfMonitor.tsx). */}
+				{import.meta.env.DEV && <PerfMonitor />}
 				{/* Rendered inside <Tldraw> so it can portal into the editor's own container and track
 				    the shape through pans and zooms. */}
 				<PropertiesPanel />
@@ -648,7 +670,11 @@ function BoardCanvas({
 				<FileImportHandler />
 				<TldrawUiBridge />
 			</Tldraw>
-			{sync && <SyncStatusPill {...sync} />}
+			{/* The board's quiet statuses, side by side in its corner. */}
+			<div className="lb-board-pills">
+				{sync && <SyncStatusPill {...sync} />}
+				{editor && <BoardPreparingPill editor={editor} />}
+			</div>
 		</div>
 	)
 }

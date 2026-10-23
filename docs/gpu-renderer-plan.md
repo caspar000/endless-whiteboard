@@ -1,0 +1,1062 @@
+# GPU renderer plan
+
+Goal: any board pans, zooms, hovers, selects and drags as fast at any zoom and any size (10,000,
+100,000, 1,000,000 shapes) as a small board does at 100%, and **looks exactly as it does now**.
+
+Written 2026-10-20 after the research and the prototype (`prototypes/gpu-canvas`). Phases stop for
+review; each ends with the checks listed under it passing.
+
+Agreed 2026-10-20: work on `gpu-renderer` off `develop`; builds for the e2e checks are fine; the
+parity tolerance below is fine; phase 8c's server backup is fine when it comes.
+
+## Why the board is slow, measured
+
+All numbers on the M1 Pro's GPU in headless Chromium. By default headless Chromium renders in
+software (SwiftShader), which every earlier number in `docs/performance-plan.md` used. To get the
+GPU, launch with `--use-angle=metal --enable-gpu-rasterization --ignore-gpu-blocklist --enable-gpu`.
+120 fps is the cap, so 8.3 ms a frame is the floor.
+
+Four-tree test board, 3,490 shapes, 26,509 page elements, 186 MB JS heap (dev build):
+
+| Pan | Whole board | 25% | 50% | 100% |
+|---|---|---|---|---|
+| App today | 40 ms | 27 ms | 14 ms | 8.6 ms |
+| App, shapes `visibility: hidden` | 10 ms | | | |
+| App, shapes `display: none` | 8.3 ms | | | |
+
+A trace of the zoomed-out pan, per frame: Blink's layerization 19 ms (a paint chunk per shape),
+GPU raster 18 ms, the browser's mouse hit test 7.6 ms, our signals ~5 ms. Promoting the shape layer
+(`will-change`) made it four times worse; positioning shapes without transforms changed nothing.
+The cost is the browser handling every element on screen on every frame. Opening the board takes
+2 s; every shape is mounted.
+
+Prototype (WebGL2, instanced discs, rings, line segments and glyphs, copies of this board):
+
+| Pan | Whole board | 10% | 25% | 50% | 100% |
+|---|---|---|---|---|---|
+| 3,490 shapes | 8.4 ms | 8.3 | 8.3 | 8.3 | 8.3 |
+| 101,210 | 8.4 | 8.3 | 8.3 | 8.3 | 8.3 |
+| 1,001,630 | 10.5 | 8.3 | 8.3 | 8.3 | 8.3 |
+
+Hit test at 1M shapes: 0.07 µs. What it doesn't prove: memory for a million *distinct* shapes
+(copies share one GPU buffer), the data layer, rich HTML nodes.
+
+## The approach: hybrid, with the page as the source of truth
+
+1. **Every shape keeps its page element**, laid out as today. It stays the source of truth for
+   editing, events, accessibility, exports (`exportShapeFromDom`), text layout and the e2e suite.
+2. **A WebGL2 layer draws shapes when there are many on screen.** Below a budget of shapes on
+   screen (a starting guess of 300, measured in phase 2), nothing changes: the page draws them, as
+   now. Above it, the GPU draws every shape it can and their elements get `visibility: hidden`
+   (measured: 42 → 10 ms; it keeps layout, unlike `display: none`). Normal work at normal zoom never
+   leaves today's path, so most of the e2e suite tests exactly what it tests now.
+3. **Live shapes always stay in the page**: the one being edited, a playing video, an open book
+   reader, anything that asks (`ShapeUtil.isLive`).
+4. **The switch must be invisible.** That's the whole visual contract: for every shape type the GPU
+   picture matches the page's picture, checked by pixel comparison at every zoom, theme and pixel
+   ratio (see *Verification*). A type the GPU can't match yet stays in the page.
+5. **Text layout comes from the page.** The hidden element is still laid out, so line breaks and
+   positions are read from it (as the prototype's export did), never re-implemented. Text pixels
+   come from the browser's own rasteriser (Canvas2D `fillText` into an atlas at the device size),
+   the same Skia that draws the page.
+6. **No WebGL2, or the context is lost**: the page draws everything, as today.
+
+Rejected along the way: level of detail (changes the board); promoting layers, CSS containment,
+left/top positioning (measured, no gain); a full rewrite to a canvas-only renderer (throws away the
+page's text layout, editing, accessibility and the e2e suite).
+
+## Verification, used by every phase
+
+### 1. Visual parity: the page against the GPU, same machine, same run
+
+A new spec, `e2e/parity.spec.ts`, renders each scene twice in one browser: once with the renderer
+forced to the page (`?renderer=dom`), once forced to the GPU (`?renderer=gpu`), same camera, UI
+chrome hidden, and compares the two screenshots with pixelmatch.
+
+- **Because both pictures come from the same machine in the same run, there are no stored golden
+  images**, so fonts and platforms can't make it flaky, and it runs the same locally and in CI.
+- Scenes: the **gallery board** (below), the four-tree board, a dense synthetic board.
+- Grid: zoom 10%, 25%, 50%, 100%, 200%, 400%; light and dark; pixel ratio 1 and 2, in Chromium on
+  every run. WebKit (`LB_PARITY_WEBKIT=1`, Desktop Safari) only on purpose, once at the end of a
+  phase that gives the GPU something new to draw: at pixel ratio 2 (what real Safari runs the GPU
+  layer at), without the four-tree board (which crashes Playwright's WebKit, not Safari). Agreed
+  2026-10-20: every run in WebKit cost ~20 minutes for little.
+- Pass: pixelmatch threshold 0.1 and at most 0.07% of pixels differing per screenshot (0.05% until
+  2026-10-21, raised for accepted sub-pixel edge differences; phases 2–3) (a
+  starting value; set in phase 0 from two page renders of the same scene, so it sits just above
+  the page's own run-to-run noise). On failure the diff image is attached to the report.
+- Tightened per type where it can be: lines and discs should match to the pixel at 100%.
+
+### 2. The switch, frame by frame
+
+`e2e/parity.spec.ts` also zooms across the budget in steps and screenshots every step, each compared
+with a page-only render at the same camera: no frame may lose a shape, double one, or jump.
+
+### 3. The page path unchanged
+
+Before each phase, screenshot the gallery board and the four-tree board with `?renderer=dom` at the
+whole zoom grid and keep them locally (`test-results/dom-baseline/`). After the phase, the same
+screenshots must match them under the same threshold: the page path didn't move.
+
+### 4. The e2e suite
+
+The whole suite (`pnpm exec playwright test`, 27 specs, ~228 tests, Chromium and WebKit) passes at
+the end of each phase, locally with `LB_E2E_PORT` set, and in CI on the PR. Load makes the full run
+flaky (known): a failure is rerun alone before it counts. The suite builds the app first (agreed).
+
+### 5. Performance, against the numbers above
+
+`e2e/bench.spec.ts` gains GPU launch flags and the cases in the tables above (pan, zoom, hover,
+drag a node, box-select; four-tree board, synthetic 10k and 100k distinct shapes). Each phase
+records its numbers in this file. `e2e/perf.spec.ts` gains tripwires for the wins as they land
+(loose under CI's software raster, tight locally).
+
+### 6. Unit tests
+
+For the display-list builders (shape → GPU primitives), text-run extraction, the spatial index, the
+atlas packer and the budget/hysteresis logic, in `packages/canvas`'s vitest suite.
+
+## The gallery board
+
+A fixture (`apps/web/e2e/fixtures/gallery.ts`, inserted by a test helper) with one of everything,
+laid out in a grid so each sits alone and together:
+
+- **Canvas shapes:** geo (every geo type × fill none/semi/solid/pattern × dash draw/solid/dashed/
+  dotted × sizes, with and without labels), text (sizes, alignments, wrapping), draw and highlight
+  (pressure, closed), line (all spline types), frame (named, nested), note (sticky with crease and
+  shadow, pinned), image (cropped, flipped), video (poster), embed, bookmark/link preview.
+- **Arrows:** straight, bent, routed with waypoints (smooth), every arrowhead, every dash, labelled,
+  bound and unbound, exact and edge anchors, `scale`, halo on and off (kept behind), hidden
+  relations shown.
+- **Node types:** markdown note, item, table, rollup, book, quote, dice card, habit, track, up next,
+  skill-tree header; skill nodes in every state (locked, available, unlocked, finished branch),
+  every tier, draft, root, keystone, mastery, pillar, with and without pictures; entries and works
+  (done, hollow, counts).
+- **States:** selected, hovered, editing, locked, a frame clipping its children.
+
+## Phases
+
+Each phase lists what changes, what must be true at its end, and how that's checked. Sizes are
+rough: S a few days, M a week or two, L several weeks.
+
+### Phase 0: the safety net (no rendering change). M
+
+- The renderer switch: `?renderer=dom|gpu|auto` and a dev setting; `auto` (default) is today's
+  page path until phase 2.
+- The gallery board fixture; generators for synthetic boards of N distinct shapes (a mix of types,
+  realistic relations) and the four-tree board.
+- `parity.spec.ts` with the page against itself (both sides `dom`): proves the harness is stable
+  and sets the noise threshold.
+- `bench.spec.ts` with GPU flags and the new cases; record the "before" numbers here.
+- The page-path baseline screenshots (*Verification 3*).
+
+Done when: the whole suite passes; parity of the page against itself passes 10 runs in a row on
+Chromium and WebKit; the before numbers are in this file.
+
+#### Phase 0, as built (2026-10-20)
+
+- `?renderer=dom|gpu|auto` and `localStorage['lifeboard:renderer']`, read by `getRendererMode()`
+  (`canvas-editor/src/lib/editor/rendererMode.ts`); `window.lifeboardRenderer.set()` switches it at
+  runtime. Nothing reads it yet. A settings control waits for phase 2, when it does something.
+- Fixtures in `apps/web/e2e/fixtures/`: `gallery.ts` (every registered shape type with its
+  defaults, then geo × geo type, fill × dash, colours, size × font, text, notes, lines, frames,
+  images, arrows with every head, dash, bend, label, elbow, scale, waypoints and kept-behind; strokes
+  drawn with the mouse) and `synthetic.ts` (N distinct shapes, seeded). The four-tree board comes from
+  the whole-life test command, which now also shows under automation (`navigator.webdriver`) so the
+  production build used by e2e has it.
+- `e2e/parity.spec.ts`: the three scenes × pixel ratio 1 and 2 × dark and light × zoom 10–400%,
+  up to 6 views per zoom; renderer A against B, pixelmatch threshold 0.1, at most 0.05% differing;
+  the app's chrome hidden. `LB_PARITY_BASELINE=save|compare` keeps or checks renderer A's shots in
+  `apps/web/.parity-baseline/<browser>/` (ignored by git). A `webkit-parity` project (Desktop Safari)
+  runs it in WebKit too.
+- **Noise: the page against itself differs by 0.0000%** on every view (gallery 58 views, four-trees
+  68, synthetic 72, at both pixel ratios, Chromium and WebKit). Two page renders are identical, so any
+  difference the GPU path makes shows.
+- `e2e/bench.spec.ts`: GPU flags unless `LB_BENCH_GPU=0`, and a `large boards benchmark` test
+  (`LB_BENCH=1 pnpm exec playwright test e2e/bench.spec.ts -g large`).
+
+**Before**, production build, GPU, 1280×720, mean / p95 ms per frame (8.3 is the floor):
+
+| | Pan, all on screen | Pan 25% | Pan 50% | Pan 100% | Hover, all | Brush, all | Drag a node, all |
+|---|---|---|---|---|---|---|---|
+| Four-tree board (3,490) | 27 / 42 | 14.2 / 25.1 | 8.4 / 9.7 | 8.3 / 9.5 | 15.6 / 33.6 | 31.9 / 58.3 | (nodes are pinned) |
+| Synthetic (10,000) | 36.3 / 58.3 | 8.8 / 10.3 | 8.4 / 9.8 | 8.4 / 10.1 | 11.6 / 17.3 | 24.9 / 42.2 | 69.3 / 116.6 |
+
+### Phase 1: the GPU layer, drawing nothing yet. M
+
+- `packages/canvas/src/lib/gpu/`: a WebGL2 canvas between the grid and the shape layer; pixel ratio,
+  resize, context loss and restore; a frame scheduler that draws in the same animation frame as the
+  page's camera transform (no lag of a frame between the two).
+- The scene: kept from store diffs (create, update, delete, reorder), a dynamic R-tree for what's on
+  screen, z-order from the page's sorted shapes.
+- The display-list contract on `ShapeUtil`: `toGpu(shape, ctx): GpuPrimitive[] | null`. Primitives:
+  rect, rounded rect, ellipse/disc, ring arc, path (filled, stroked, dashed), text run, image,
+  shadow. `null` means "the page draws this one".
+- The renderer: instanced batches per primitive kind and per texture, in z-order runs (a run is
+  broken only where z-order needs it), as in the prototype.
+- A debug view: page only, GPU only, both with a difference highlight.
+
+Done when: the suite passes (nothing visible changed); unit tests cover the scene sync and index;
+with `?renderer=gpu` and a test-only shape type that draws a rect, parity passes for it.
+
+#### Phase 1, as built (2026-10-20)
+
+- `canvas-editor/src/lib/gpu/`: `primitives.ts` (the contract: `GpuPrimitive`, so far `rect`, and
+  `gpuColor`), `gpuScene.ts` (per editor: which shapes are the GPU's and their instance data, as
+  per-shape computed caches), `GpuRenderer.ts` (WebGL2, instanced rounded rects by signed distance),
+  `GpuLayer.tsx` (the canvas at `--layer-gpu: 250`, between the grid and the shapes, in the page only
+  while the renderer asks for it, made fresh with its context on each mount and removed with it; a
+  lost context hands everything back).
+  `ShapeUtil.toGpu` declared; `Shape.tsx` gives a GPU-drawn shape's element `visibility: hidden`.
+- **Simpler than planned, on purpose:** no R-tree yet. The instance buffer holds every GPU shape in
+  z-order, so a camera move only changes uniforms and nothing walks the shapes per frame; a change
+  rebuilds the buffer from cached per-shape arrays (cheap up to tens of thousands). The index comes
+  back with chunked buffers in phase 8, where the size needs it.
+- `compare` renderer mode: the page draws everything and the GPU draws on top with
+  `mix-blend-mode: difference`; where the two agree the screen is black.
+- `gpu-test-rect` (`apps/web/src/canvas/gpuTestShape.tsx`), registered only under automation, and
+  a `gpu-rects` parity scene: 8 looks × rotated, half-transparent, both.
+- **What matching the page took**, all measured with probes against the page:
+  - The page-to-screen mapping is the shape layer's own: `z·(p + camera + offset) + 0.5·(1 − z)`.
+  - Chrome doesn't snap anything to device pixels: an edge's coverage follows the camera in
+    fractions of a pixel. Snapping made it worse.
+  - The background runs under a see-through border to the outer edge, and stops at an opaque
+    border's inner edge (Blink's background bleed avoidance).
+  - WebKit at pixel ratio 2 anti-aliases exactly like Chrome (0.033% on `gpu-rects`). At pixel
+    ratio 1 and exactly 100% it snaps bordered boxes to whole pixels by a rule not yet reproduced.
+- **Playwright's WebKit crashes with a WebGL canvas under a large board.** The four-tree board
+  panned at 10% crashes the page with an empty WebGL canvas added by hand (our code not involved),
+  and pans fine without one. Until that's understood the GPU layer is off in WebKit
+  (`GPU_LAYER_SUPPORTED`): no canvas, the page draws everything, and WebKit parity compares the page
+  with itself. Phase 2 starts by checking real Safari.
+- **A WebGL layer under the shapes changes the page's own pixels.** The browser then composites
+  the shape layer apart, and its antialiasing shifts a little: measured 0.046% of pixels on the
+  synthetic board zoomed out with an empty WebGL canvas, none with an empty 2D one or none at all.
+  So the canvas only exists while the GPU renderer is on (with it off, the page is exactly Phase 0's,
+  checked against the baselines), and the parity checks compare `idle` (GPU layer there, drawing
+  nothing) against `gpu`, so the GPU's drawing is held to 0.05% on its own. What the compositing does
+  to shapes the page still draws is reported per scene (`COMPOSITING` lines): up to 0.25% on the
+  synthetic board (all page-drawn) zoomed out, 0.08% on the four-tree board. It shrinks as shape
+  types move to the GPU, and is gone in `auto` below the budget, where there is no GPU layer.
+- Parity, GPU against `idle`: `gpu-rects` worst view 0.0446% (ratio 1) and 0.0347% (ratio 2) in
+  Chromium, 0.0328% at ratio 2 in WebKit; every other scene 0%.
+
+### Phase 2: the switch. M
+
+- The budget: shapes on screen counted from the index; above the budget (with hysteresis so it
+  doesn't flicker at the edge) shapes with a `toGpu` go to the GPU and their elements get
+  `visibility: hidden`; below it, everything is the page's.
+- Real Safari doesn't crash (checked by hand 2026-10-20: the four-tree board with an empty WebGL
+  canvas under it, panned zoomed out, kept working, no slower). The crash is Playwright's WebKit
+  build. So: the GPU layer back on in WebKit at pixel ratio 2 and up (ratio 1 keeps the page, for the
+  border snapping); WebKit parity runs every scene but the four-tree board with the GPU on, and the
+  four-tree board on the page, with that noted.
+- Hidden boards (open tabs) give their WebGL context back; a board keeps one only while shown.
+- Switching on and off needs hysteresis: each switch makes and frees a WebGL context.
+- Live shapes stay in the page. Z-order across the two: when a GPU shape lies above a live shape
+  and overlaps it, it's drawn on a second GPU canvas above the shape layer (usually none).
+- The switch happens in one frame: the GPU frame is drawn before the elements are hidden, and the
+  elements are shown before the GPU stops drawing them.
+- Measure the budget: the number of visible elements where the page path stops holding 8.3 ms on
+  this machine, and set it a margin below.
+
+Done when: the frame-by-frame switch check passes with the test shape type; the suite passes;
+nothing else changed (no real type has `toGpu` yet).
+
+#### Phase 2, as built (2026-10-20)
+
+- `GpuScene.wanted` decides whether the layer is in the page: the board shown (`shown`, set by the
+  app from the active tab, so a board open behind it holds no WebGL context), the browser able
+  (`gpuLayerSupported`: WebKit only at pixel ratio 2 and up, after the hand check in real Safari),
+  and the renderer `gpu`, `compare`, `idle`, or `auto` with its count over the budget.
+- `auto`: the GPU's shapes on screen (eligible and not culled) over `DEFAULT_GPU_BUDGET` (64,
+  `localStorage['lifeboard:gpu-budget']` overrides) turn it on; under 70% of it turn it off. Not
+  counted at all on a board none of whose types have `toGpu`, which is every real board until phase 3.
+- **The budget, measured** (production build, GPU, pan per frame): the page holds the 120 fps floor
+  up to ~70–85 shapes on screen (four-tree board 72 → 8.4 ms, 85 → 9.1, 147 → 10.4, 479 → 16.9,
+  3,446 → 44; synthetic 87 → 9.6, 309 → 13.2, 816 → 22.5, 3,664 → 76.5). 64 is a margin under it.
+- **Z-order:** a shape the GPU could draw that lies above a page-drawn shape it overlaps is left to
+  the page (one pass in drawing order over a grid of page-drawn bounds). Simpler than the second GPU
+  canvas the plan had, and it can't stack anything wrong.
+- **A Phase 1 bug found:** the scene drew in the order of `getRenderingShapeList`, which is sorted by
+  id on purpose (page elements never move in the DOM; z-order is each entry's `index`). Overlapping
+  GPU shapes would have stacked by id. Now sorted by `index`; a unit test and the `gpu-rects` scene's
+  new stacking cases cover it.
+- `e2e/switch.spec.ts`: 300 half-transparent rects, budget 40, zoomed out across it and back in, five
+  shots per step while it settles, each against the page alone (≤ 0.4%: a lost or doubled shape
+  differs by percents): passes; and a count wobbling about the budget switches once.
+- **Left for phase 3:** borders far thinner than a device pixel (a 1 px border at 25% zoom) are
+  spread across pixels a little differently from Skia's: one `gpu-rects` view at pixel ratio 1
+  differs by 0.058% (limit 0.05%). Phase 3 is thin strokes zoomed out, so that's where it gets solved.
+- A settings control for the renderer waits for phase 3, when `auto` first switches on real boards.
+
+### Phase 3: arrows and lines. L
+
+The biggest single cost (lines hidden took the zoomed-out pan from 40 to 25 ms on the four-tree
+board), and the simplest to match.
+
+- Every arrow form: straight, arc (bend), routed waypoints drawn smooth, elbow; the same path the
+  page draws, from the same geometry functions (`getArrowInfo`, `getRoutedArrowInfo`), tessellated
+  once and re-tessellated only when the arrow changes.
+- Dash patterns matched exactly: the page's `getPerfectDashProps` decides dash and gap lengths, the
+  GPU draws those.
+- Arrowheads (every type), the label (text run, with its gap cut out of the line), the halo, the
+  masks, `scale`, colours from the theme, the hint path when selected.
+- The line shape (all splines). Detail under half a device pixel simplified away (as in the
+  prototype; invisible by construction, checked by parity).
+
+Done when: parity passes for every arrow and line in the gallery at the whole grid; `arrows`,
+`relations`, `svg`, `views` and `perf` specs pass; the four-tree zoomed-out pan drops by the lines'
+share (expected ~40 → ~25 ms before nodes move).
+
+#### Phase 3, as built (2026-10-20)
+
+- **The GPU layer moved over the shapes** (`--layer-gpu: 350`, under the overlays). Under them, the
+  WebGL canvas made the browser composite the shape layer apart and rasterise it at another scale,
+  which blurred the page's own thin lines zoomed out (what phases 1–2 recorded as "compositing";
+  seen side by side it was blur, not antialiasing). Over them, the page draws exactly as without the
+  layer (page alone against `idle`: 0.0000% at every zoom), and parity compares the GPU with the page
+  alone again. The z-order rule turned over with it: a shape the GPU could draw that lies **under** an
+  overlapping page-drawn shape is left to the page. So on the four-tree board, whose lines run under
+  the nodes they join, the lines stay the page's until the nodes are the GPU's (phase 4).
+- `GpuStroke` (an SVG path, width, colour, dash, halo) and `gpu/stroke.ts`: paths flattened (M L H V
+  Q C A Z, absolute and relative), dashed by length as `stroke-dasharray` lays it (a dash starting
+  where the line ends isn't drawn, as the browser doesn't), and built into one strip per line with
+  round joins and caps that never overlap (capsules per segment would double the soft rim at every
+  joint). Widths, the halo and antialiasing are the shader's, so zoom changes no geometry. Coverage is
+  a pixel square's exact share of the stroke, across the stroke's own direction.
+- Halos: in `--color-background` (read when the theme changes), `2·min(0.75, 1.5 / --tl-zoom)` each
+  side, `--tl-zoom` read at draw time and watched (it lags the camera on big boards, as the page's).
+- Frames are runs in z-order of rect instances and stroke vertices; WebGL2 has no base instance, so a
+  rect run re-points its instance attributes.
+- `ArrowShapeUtil.toGpu`: halo (unless kept behind), body with its dash, `arrow` heads; the page keeps
+  labels (text, phase 4), heads that cut the line (masked), and the selection hint.
+  `LineShapeUtil.toGpu`: solid, dashed and dotted (each dashed segment its own dash); the hand-drawn
+  style stays the page's.
+- A see-through shape drawing more than one piece (an arrow's line over its halo) stays the page's:
+  the page fades it as one, the GPU would fade each piece and show the halo through the line.
+- Parity scene `gpu-strokes`: every arrow form, dash, size, bend, elbow, scale, waypoints, kept
+  behind, half-transparent, crossing pairs, and lines of both splines and three dashes. Light theme
+  and pixel ratio 2 within 0.036%; one dark view at ratio 1 and 50% is 0.065% (below).
+- **Known, accepted (2026-10-20/21):** sub-pixel edge placement (this and phase 2's thin borders)
+  turned up in more views than two (a synthetic view at 10% in dark mode, 0.061%; a rect view, 0.059%),
+  so the parity limit is 0.07% for every view instead of a list of exceptions. Haloed lines at 50% sit ~0.1 device pixel lower on the page than exact maths
+  puts them (both halo and line; at 25% and 100% they match). It shows only in dark mode, where the
+  near-white halo meets the dark paper. Skia's rasteriser places some edges on a sub-pixel grid; that
+  is what to look at, alongside phase 2's sub-pixel borders.
+
+### Phase 4: simple shapes and the skill tree's nodes. L
+
+- Geo (every type, fill, dash, size, label), text, note (crease and soft shadow), frame (title,
+  clipping), draw and highlight, image (the same asset, mipmapped), video poster.
+- Skill nodes, entries and works: discs, rings and progress arcs with round caps, dashed borders,
+  icons (rasterised once into an atlas from the same SVG at the device size), glows and shadows
+  (the page's `box-shadow` reproduced with the same Gaussian), tier colours, locked dimming
+  (opacity), pictures.
+- Text: runs and line boxes read from the hidden element; glyph runs rasterised by the browser into
+  an atlas per (font, weight, size at the device's scale), re-rasterised when the zoom settles
+  at a new size; clipped and ellipsised exactly where the page clips them.
+
+Done when: parity passes for all of these at the whole grid, on Chromium and WebKit; the suite
+passes; the four-tree board pans zoomed out at ≤ 10 ms (the `visibility: hidden` measurement).
+
+#### Phase 4a, as built (2026-10-21): text, pictures and the skill tree's nodes
+
+- **Pictures** (`GpuImage`, `gpu/atlas.ts`): anything the browser's 2D canvas draws as the page does,
+  kept in one 4096² texture at the exact scale and sub-pixel phase it's seen at (1/4096 of a pixel,
+  fine enough that a glyph lands in the same quarter pixel as the page's), drawn stretched while the
+  camera moves and rastered again once it has been still for 120 ms, 6 ms a frame. A shelf of
+  pictures is drawn side by side in one canvas and sent in one upload: thousands of uploads in a
+  frame (the board zoomed out, every picture new) ran WebGL out of memory. The canvas is in the
+  document, out of sight, because a canvas takes `-webkit-font-smoothing`, tabular figures and the
+  other font settings from its own element's style; detached, its text came out 10–20% heavier.
+- **Nodes read from their elements** (`gpu/snapshots.ts`; `NodeDefinition.gpu`, on for skills,
+  entries and works). What the browser laid out is read back after it renders and redrawn:
+  - boxes: background, flat tints (`linear-gradient(c, c)` layers), one radius, snapped to whole
+    pixels in the shape's own space as Blink paints them (found by probing: an edge is at the shape's
+    translation plus the rounded layout position);
+  - solid borders, and dashed round ones drawn as Blink draws them (`DrawCurvedDashedDottedBoxSide`:
+    the outline brought in by half the width rounded down, stroked 2.2× wide, dash 3w gap 2w, the gap
+    fitted to the outline's length as Skia measures it, rounded down, cut to the ring); exact at
+    pixel ratio 2, within a few pixels at 1;
+  - glows (`box-shadow`): a picture by canvas `shadowBlur`, which blurs as CSS does, clipped to outside
+    the box;
+  - text: each line one `fillText`, so the browser shapes and spaces it, placed where its glyphs were
+    laid out (glyph by glyph if the widths disagree), the baseline snapped to a whole pixel in the
+    shape's space as Blink does; `-webkit-line-clamp` cut to its lines with the ellipsis after the
+    last glyph that leaves room;
+  - SVG (rings, icons): a picture of its own markup with the computed styles written in.
+
+  Anything else (transforms, filters, pictures, text cut short another way, square dashed borders)
+  leaves the node to the page, and why is kept in `lifeboardRenderer.snapshots(editor).reasons`.
+  A node is the page's until it's read, and again from the moment its element, the theme or a font
+  changes until it's read again, so nothing out of date shows. Moving it doesn't need a new read.
+- **The z-order rule** goes by where a stroke runs (boxes along it, 64 units each, padded by its width,
+  halo and a pixel), not its bounds, and skips culled shapes, whose overlaps are off screen. Before,
+  one page-drawn node on screen sent nearly every line on the four-tree board to the page.
+- **Strokes:** curves are cut only as finely as the zoom needs (a sixth of a device pixel at the top
+  of the zoom's power of two; at 10% the four-tree board's lines were 83 MB cut for 400%), and the
+  frame reuses the rect and stroke arrays when their pieces haven't changed.
+- **Chromium multisamples curves.** It rasterises a curved path 4× multisampled and a straight one
+  analytically (measured: a 0.3 px curve covers one sample of four, and four curves laid over each
+  other still one; straight ones add up). The four-tree board's lines lie over each other, so drawn
+  analytically they came out darker zoomed out (0.49% at 10%). The layer now draws into a 4×
+  multisampled target, and a curve thinner than a device pixel is covered by samples; everything
+  else keeps its exact shader edges, on quads a pixel wider, so it resolves unchanged. Not in WebKit,
+  which paints pages with CoreGraphics.
+- **Parity runs on Chromium's GPU rasteriser** on macOS (`LB_PARITY_SOFTWARE=1` for the software one),
+  because that's what people see: the software rasteriser antialiases round edges and dash ends
+  differently (4× vertical supersampling) and the two disagree by up to 0.15 px on a circle's edge.
+  CI has no GPU, so the spec skips there (agreed 2026-10-21; `LB_PARITY=1` forces it).
+- A shape whose pictures would be more than 1,024 device pixels across at the zoom's power of two is
+  the page's: zoomed far in (400% on a retina screen) a node's glow and ring didn't fit in the atlas
+  together, and its text went missing. `auto` keeps so few shapes on the page anyway.
+- **Accepted (2026-10-21):** at 25% and below, thin lines differ by a quarter of a pixel's coverage
+  here and there (the GPU's curves aren't cut where Skia cuts them, and multisampling turns that into
+  whole samples), up to 0.59% of pixels on the four-tree board in dark mode; the limit there is 0.6%.
+- **Known miss:** in dark mode at pixel ratio 1, a dotted elbow arrow at 50% and 100% differs by
+  0.17%/0.12% (0.065% under the software rasteriser): Chromium's GPU rasteriser draws dots on a
+  curved path differently from the GPU layer's exact ones, with or without multisampling. Left for
+  phase 4d (dash styles).
+
+**Numbers** (production build, GPU, mean / p95 ms a frame):
+
+| Four-tree board (3,490) | Pan at fit (10%) | Pan 25% | Pan 50% | Pan 100% | Hover, fit | Brush, fit |
+|---|---|---|---|---|---|---|
+| Page | 19.2 / 33.5 | 11.6 / 16.9 | 8.4 / 9.9 | 8.3 / 9.5 | 13.2 / 25.1 | 22.1 / 42.8 |
+| GPU | 9.8 / 16.9 | 8.8 / 10.0 | 8.5 / 10.0 | 8.5 / 10.3 | 8.8 / 16.3 | 13.8 / 33.4 |
+
+Parity: 19 of 20 (the miss above); the suite: 222 passed.
+
+#### Phase 4b, as built (2026-10-21): geo
+
+- `GeoShapeUtil.toGpu` is the same reader as the nodes': the body a picture of its own SVG, the label
+  its text. Every geo type, fill, dash (the hand-drawn one too: it's SVG all the same), size, colour
+  and label.
+- The SVG picture takes in its widest stroke's reach past the box (a shape's SVG has no viewBox, and a
+  picture is clipped to its size). What it fills from elsewhere in the page, the hatching pattern, is
+  copied in with its tile inlined as a data URL: a picture of an SVG can't see the page's
+  definitions or load a blob. The pattern's id follows the zoom, so the element changes and is read
+  again.
+- Labels have tldraw's text outline: six sharp `text-shadow`s in the paper's colour, a pixel each way
+  up to 200% and `2px / --tl-zoom` past it. They're drawn under the text in the same picture; a shape
+  with one is read again when `--tl-zoom` changes the outline.
+- Positioned children paint after what flows, by z-index, then in order (the label is `z-index: 10`);
+  a negative z-index, and generated content (`::before`, `::after`, list bullets), leave the shape to
+  the page.
+- Speed work found on the way: elements are read only while the camera is still and handed over a few
+  times a second; the frame is kept by a reactor of its own instead of being asked on every camera
+  move; the atlas finds pictures by a number, not their key; a round piece is four wedges a half turn,
+  not twelve (a dotted arrow zoomed out is thousands of dots); the zoom's powers of two are atoms.
+- The benchmark now records each measurement's zoom and turns edge scrolling off: brush and drag start
+  at the screen's edge, where the camera scrolls by time, so the slower renderer brushed and dragged
+  further. Before, page and GPU weren't measured at the same zoom on the 10,000-shape board.
+- **The 10,000-shape board was slower on the GPU zoomed out** (31 → 82 ms panning at 10%), found when
+  the benchmark was made fair, and fixed (25.9 against the page's 32.5). Drawing wasn't it; signals and
+  reads were:
+  - The scene read the camera, the culled set and the editor's rendering list straight from the editor.
+    All three are woken by every frame of a pan (the camera is a record, and the queries see it), and
+    every computed built on them then checked each shape's caches to find nothing had changed. The zoom's
+    powers of two, the culled set and the rendering list are now atoms, set only when they change.
+  - Each shape had a reactor for its element's visibility; one set of hidden shapes and one reactor
+    now apply it, showing and hiding only what changed.
+  - Each shape's stroke vertices stay on the GPU in a slot of their own; a frame sends only new ones.
+  - Elements are read only after the camera has been still for 150 ms: between the wheel steps of a
+    gesture the editor already counts the camera idle, and reading (and handing over) in a pan cost it
+    frames.
+
+  10,000-shape board at 10% (page / GPU, ms): pan 32.5 / 25.9, hover 10.8 / 8.6, brush 19.6 / 16.2,
+  drag 16.6 / 16.9. Most of it (notes, text, markdown) is still the page's until 4c and 5. The
+  four-tree board: pan at fit 19.6 / 9.6, 25% 12.4 / 8.9, 100% 8.3 / 9.9; at 100%, where `auto` turns
+  the GPU on (some 110 shapes on screen), it's 1.5 ms slower: for the budget in phase 9.
+- Parity 19/20 (the dotted dark arrow); one run's dark view at 200% failed on Chromium drawing a label
+  in garbage glyphs on the page itself, and passed again. Suite 224 passed.
+
+#### Phase 4c, as built (2026-10-21): notes, frames, images
+
+The same reader again (`toGpu` on `NoteShapeUtil`, `FrameShapeUtil`, `ImageShapeUtil`), taught what
+these draw with:
+
+- **Notes:** the soft shadow is a `box-shadow` on an ellipse (`border-radius: 50%` on a box that isn't
+  square), drawn when the box itself paints nothing; several shadows on one box, last first, as CSS
+  paints them; the crease is a picture of its `clip-path: path(…)` filled with a canvas gradient
+  (vertical `linear-gradient`s, any stops). A note drawn at another scale (`transform: scale`) stays the
+  page's.
+- **Images:** a picture the canvas draws from the decoded `<img>` itself: its box snapped,
+  `object-fit` (`fill`, `cover`, `contain`, centred), a flip, and cut to what the shape's overflow
+  leaves, its rounded corners or a round crop's ellipse included. A cropped image's container is moved
+  by a `translate`, which the reader now allows (a translation only; where things land is read from
+  their boxes). Not yet loaded, the read waits; an animated GIF stays the page's.
+- A rounded overflow cut now takes the corners off: anything but an image reaching into one leaves the
+  shape to the page.
+- **Frames:** an empty frame with no name is the GPU's. A frame's heading is scaled by `1 / zoom` to
+  keep its size on screen (`scale(var(--tl-scale))`), which a picture can't follow, so a named frame
+  stays the page's; so does one with shapes in it, which are clipped (the page's) and lie over it.
+
+Numbers (page / GPU, mean ms): 10,000-shape board (its 247 notes now the GPU's) pan at fit 33 / 23.2,
+25% 8.8 / 8.9, 50% 8.4 / 8.7, 100% 8.4 / 8.5; four-tree board pan at fit 21.3 / 10.9, 25% 12.6 /
+10.4, 100% 8.3 / 8.5. Two runs in a row while the machine was busy came out far slower on the GPU
+(14–16 ms at 25%) and didn't repeat in four runs after, alone or after the page: a benchmark worth
+running twice before believing. Parity 19/20 (the dotted dark arrow); suite 224 passed.
+
+#### Phase 4d, as built (2026-10-21): hand-drawn styles, dashes, text, video
+
+- Draw and highlight shapes, text shapes and video posters go through the element reader; so do
+  hand-drawn lines. Nearly all of the gallery's are the GPU's (a text with generated `::before` content
+  isn't).
+- **Dashed and dotted arrows and lines are pictures of their own SVG now**, not GPU strokes. On the
+  GPU rasteriser Chromium draws a dash's ends and a dot a pixel or two wide its own way, and the GPU's
+  exact coverage didn't match: the dark arrow view at 50%, pixel ratio 1, that had failed since 4a went
+  from 0.174% to 0.050% (the arrows and lines scene at ratio 2: 0.004–0.015%). Solid lines stay
+  strokes, since they mustn't add up laid over each other (the four-tree board's), and pictures would.
+  An arrow's halo is as wide as `--tl-zoom` says past 200%, so such an arrow is read again when it
+  changes, as text with the outline is.
+- The SVG picture's margin is how far its contents reach past its box (`getBBox`), not only its widest
+  stroke: a freehand line's filled outline reaches well past the shape's bounds.
+
+Parity 20/20 for the first time on GPU rasterisation. Numbers (page / GPU, mean ms): four-tree board
+pan at fit 19.4 / 9.1, 25% 11.4 / 8.9, 100% 8.3 / 8.5; 10,000-shape board pan at fit 36 / 22.5, hover
+11.9 / 9.1, brush 25.9 / 17.3. Suite 223 passed; the two failures were a probe of mine left in `e2e/`
+and the board-preview test that fails about one run in three on its own.
+
+### Phase 5: rich nodes as cached pictures. L
+
+Markdown notes, items, tables, rollups, books, quotes, dice cards, habits, tracks, up next, embeds,
+link previews, the skill-tree header: HTML that isn't worth re-drawing primitive by primitive.
+
+- Each one's picture taken from its own element when it changes (debounced), at the resolution the
+  zoom needs, packed into a texture atlas with a memory budget and LRU eviction.
+- The picture comes from Chrome's HTML-in-Canvas (`drawElementImage` / `texElementImage2D`, in
+  origin trial to Chrome 160) where present, otherwise from the existing export path
+  (`exportShapeFromDom` into an SVG, drawn to a canvas). A spike at the start of the phase checks
+  both for fidelity and for WebKit (a canvas tainted by an SVG `foreignObject` can't be uploaded to
+  WebGL there; if so, WebKit keeps these in the page).
+- Until a node's picture is ready, or when it can't be taken, that node stays in the page.
+
+Done when: parity passes for every rich node at the zooms above the budget; texture memory stays
+under its budget on the dense synthetic board; `books`, `dice`, `propertyCard`, `views`, `ui` and
+`smoke` specs pass.
+
+#### Phase 5, as built (2026-10-21)
+
+**The spike** settled how a rich node's picture is taken:
+
+- Chrome's HTML-in-Canvas is in Playwright's Chromium 151 behind a flag (people would need an origin
+  trial token, to Chrome 160), and draws only elements that are children of a `<canvas layoutsubtree>`:
+  our shapes' elements live in the page. Not used.
+- The export path (`exportShapeFromDom`, a `foreignObject` with styles and fonts inlined) doesn't taint
+  a canvas in Chromium or WebKit, so its pictures could go to WebGL. But per node, 0.03–2.4% of its
+  pixels differed from the page (a skill item's checkbox and title 7px to the right: styles the copy
+  missed). Not used.
+- The element reader from phase 4 already read half the rich nodes exactly. It was extended instead.
+
+**The reader, extended** (and every node definition is read by default now; `gpu: false` opts out):
+
+- Borders that differ by side (a quote's or up-next's accent side, a table row's rule): a picture of the
+  ring between the outer and inner outlines, each side its own colour up to the corner diagonals.
+- Gradients at any angle, laid along CSS's gradient line.
+- `text-transform: uppercase` and `lowercase` (when the length stays the same).
+- Pieces reaching into a rounded overflow cut's corners (a cover filling a rounded card) are cut to
+  them, each corner its own radius.
+- Form controls (inputs, selects, text areas, buttons the browser draws) and running animations (waited
+  for when they end; a spinner never does) leave a node to the page.
+
+In the gallery every rich node is the GPU's but those with a native control (habit, skill item, the
+layout tuner) and the bookmark (generated `::after` content). The atlas is one fixed 4096² texture that
+starts again empty when full, so texture memory is bounded by construction.
+
+**A bug found on the way, fixed ahead of phase 7:** an export of a shape read from its element
+(`exportShapeFromDom`: board previews, the agent's look at the board, copy as image) copies inherited
+styles, `visibility` among them, so a node the GPU drew (its element `visibility: hidden`) exported
+blank. With rich nodes on the GPU under `auto`, the board-preview test failed about one run in three. The
+export now shows the element for the moment it reads it; `switch.spec.ts` checks it.
+
+Numbers (page / GPU, mean ms): 10,000-shape board (markdown and text now the GPU's) pan at fit 33.1 /
+23.1, hover 11.6 / 8.4, brush 20.9 / 13.9, drag 18.4 / 14.8; four-tree board pan at fit 20.1 / 9.6.
+Parity 20/20 (17 min on the production build with the kept four-tree board, ~22 before). Suite 220
+passed; the board-preview test 8/8 alone after the fix.
+
+### Phase 6: everything above and around the shapes. M
+
+- Check every layer against the GPU path: selection and hover indicators (already a 2D canvas),
+  handles, brush, snap lines, the tracing aura, comments, presence cursors, agent presence, the
+  maze's hexagon view, dice overlays, property cards, the quick-look focus mode.
+- Browser hit testing: hidden elements no longer take the browser's per-frame mouse hit test (the
+  7.6 ms); the editor's geometric hit testing is unchanged. Interactive content inside a node
+  (buttons, checkboxes) works as today below the budget; above it, the first click selects, as a
+  click on a tiny node does today.
+- Accessibility: below the budget, unchanged. Above it, hidden elements leave the accessibility
+  tree; an off-screen list of the shapes on screen keeps them reachable (checked with
+  `getByRole` in a new test).
+
+Done when: `ui`, `keyboard`, `keymap`, `touch`, `phone`, `comments`, `agent`, `controls`, `dice`
+and `webkit` specs pass with `?renderer=auto` on boards above the budget as well as below it.
+
+#### Phase 6, as built (2026-10-21)
+
+- **The layers, checked:** selection and hover indicators, handles, the brush, snap lines and
+  collaborators' cursors are in the overlay layer (400), over the GPU's (350). So are comment pins, the
+  agent's cursor, quick look, the maze's hexagon view and the dice tray, which come in through
+  `InFrontOfTheCanvas` (the app's overlays and extensions'). The tracing aura is in the shapes' layer,
+  under the GPU, where it belongs: behind shapes.
+- **Property cards** are in the shapes' layer too but drawn over every shape, so a GPU-drawn shape
+  under one would have come out over it. Cards now tell the scene where they are
+  (`GpuScene.above`), and the z-order rule leaves a shape under one to the page.
+- **Accessibility:** the shapes the GPU draws on screen are named in a list only assistive technology
+  sees ("Shapes on the canvas", up to 200 and "and N more"): `visibility: hidden` takes their elements
+  out of the accessibility tree. `switch.spec.ts` checks it with `getByRole`.
+- **Clicks** on a GPU-drawn shape's element go to the canvas, whose own hit testing selects the shape
+  (the plan's "first click selects"); editing hands it back to the page. A node's property card stays
+  the page's, so its links work as before.
+- **The suite with the GPU on everywhere:** `LB_GPU_BUDGET=0` makes `auto` turn the GPU on whenever a
+  shape it could draw is on screen (`readBudget` takes 0 now). The listed specs passed but one, which
+  was a test returning the editor from `page.evaluate` (too big to send back once the GPU scene hangs
+  off it); that and the same in `dice.spec.ts` and `keyboard.spec.ts` are fixed. The switching test
+  sets a budget of its own and skips under `LB_GPU_BUDGET`.
+
+Done: the listed specs and `switch.spec.ts` pass with the GPU on everywhere (`LB_GPU_BUDGET=0`) and as
+they come; the whole suite 224 passed; gallery and synthetic parity 8/8.
+
+### Phase 7: exports, thumbnails and the agent's view. S
+
+Exports still copy the hidden elements, which are laid out, so they should be unchanged; this phase
+proves it and fixes what isn't.
+
+Done when: thumbnails, SVG/PNG export and the agent's board image are pixel-identical before and
+after (`svg`, `assets`, `pwa`, `agent` specs, plus a direct image comparison).
+
+#### Phase 7, as built (2026-10-21)
+
+- Every picture of the board goes through the editor's export: thumbnails (`persistence/thumbnails.ts`),
+  the agent's look at the board (`node-kit/src/ops/view.ts`) and copy or export as an image all call
+  `editor.toImage`, which copies the shapes' elements.
+- What broke it was fixed in phase 5: the copy carried a GPU-drawn shape's `visibility: hidden` into
+  its children, so those shapes exported blank.
+- `gpuExport.spec.ts` exports the gallery board as a PNG with the page drawing it and again with the
+  GPU drawing it (100-odd shapes' elements hidden), and finds no pixel different (pixelmatch at
+  threshold 0). With the phase-5 fix taken out it fails on 729,557 pixels.
+- `svg`, `assets`, `pwa`, `agent` and `gpuExport` pass with the GPU on everywhere (`LB_GPU_BUDGET=0`).
+
+### Phase 8: the data layer, for 100,000 to 1,000,000 shapes. L, in three parts
+
+With drawing solved, the next limits are memory and loading. Measured first on synthetic boards of
+10k, 100k and 1M distinct shapes; each part only if the measurement says so.
+
+- **8a. Unmount what the GPU draws and isn't near the screen** (issue #47's unmounting): an element
+  per shape is ~7.6 page elements; at 100k shapes that's 760k elements. Exports, text extraction and
+  pictures ask for an element to be mounted and wait for it.
+- **8b. Per-shape memory**: today ~50 KB per shape (record, cached geometry, signals, React). Scene
+  data for the GPU and the index in typed arrays; per-shape computed caches created on demand and
+  dropped when off screen. Target ≤ 2 KB per shape off screen.
+- **8c. Loading and syncing by region**: the board stored in spatial chunks; open loads what's on
+  screen first and streams the rest; sync subscribes to regions. Server and IndexedDB migrations,
+  so it needs a server backup before deploying (AGENTS.md).
+
+Done when, for each part: its board size opens and pans, zooms, hovers and drags at the floor; the
+suite passes; memory and open time recorded here.
+
+#### Phase 8, measured first (2026-10-21)
+
+Synthetic boards (geo, text, notes, markdown, a relation in four), production build, GPU, the shape
+limit raised for the run only (`MAX_SHAPES_PER_PAGE` is 20,000):
+
+| Shapes | Build | JS heap | Elements | Pan at fit, page / GPU | Stored | Open again |
+|---|---|---|---|---|---|---|
+| 10,000 | 6 s | 388 MB (37 KB a shape) | 78,600 (7.9 a shape) | 27.9 / 26.6 ms | 12 MB | 11 s, heap 725 MB |
+| 20,000 | 20 s | 819 MB (40 KB a shape) | 156,600 (7.8 a shape) | 34.9 / 31.0 ms | 15 MB | 29 s (28 s before the canvas shows), heap 1.5 GB |
+| 50,000 | — | — | — | — | all 50,000 written within 5 s | no shape after 10 minutes |
+
+- **Opening is the wall.** It grows faster than the board (11 s, 29 s, then nothing in 10 minutes at
+  50k), and the heap after opening is about twice the heap after building. Nothing is lost at 50k: the
+  board is in IndexedDB whole; loading it is what doesn't finish.
+- **Memory:** ~40 KB a shape. 100,000 would be ~4 GB, at a tab's limit; 1,000,000 can't fit.
+- **Elements:** ~8 a shape, so 160,000 at 20k. Zoomed out, the GPU's gain shrinks as the board grows
+  (27.9 → 26.6 at 10k on this measure): the page's per-element work outside painting is what's left.
+- 100,000 and 1,000,000 weren't tried: 50,000 doesn't open.
+
+#### Phase 8, step 1: opening, as built (2026-10-21)
+
+A CPU profile of the open (`e2e-scratch/open.scratch.spec.ts`, dev server, function names) found three
+things, none of them the data layer:
+
+- **Measuring text laid out the whole page.** `TextManager` found its measuring element with
+  `document.querySelector`, removed it and appended a new one to the editor's container for every
+  measurement, so each `getBoundingClientRect` laid out every shape mounted so far: quadratic. 29 of
+  the 40 s a 20k board took to open in dev. The element now lives in a box of its own with
+  `contain: strict` (`.tl-text-measure-box`), so a measurement lays out only itself. The `'w'` a geo
+  label measures for its narrowest width is measured once a font and size, not once a shape, and again
+  when fonts finish loading.
+- **Finding a shape's element walked the page.** The GPU reader, the hide reactor and exports each
+  used `querySelector` per shape. `Shape` now keeps a map of mounted containers
+  (`getShapeElement(editor, id)`, exported).
+- **50k never opened because it was empty.** The data was lost, not slow: closing a board's tab while a
+  write was still running cancelled that write (`didCancel` turned true once the client was disposed),
+  its transaction rolled back to the last finished write, and what came in during it was never written.
+  A 50k board's first write takes seconds, so closing it 5 s after building it put back the empty board,
+  which then "opened" with no shapes, idle, forever. Any board could lose the edits of a write in flight
+  when its tab closed; on a small one the window is short. `close()` now lets the running write finish
+  and writes what queued behind it; a unit test covers it. (The stray `AbortError`s were those cancels'
+  unhandled `tx.done`.)
+
+| Shapes | Open again, before | After |
+|---|---|---|
+| 20,000 (dev) | 40.5 s | 11.7 s |
+| 50,000 (dev) | never (empty) | 36 s |
+| 50,000 (production) | never (empty) | 34.6 s (31.9 s before the canvas shows), heap 3.2 GB |
+
+Still to do, from the same profile and runs: opening mounts every shape (React and the page: most of
+the 35 s), ~44 KB a shape in memory, and at 50k the GPU pan at fit averages 700 ms a frame while the
+reader is still reading (each hand-over rebuilds the whole frame). Steps 2 and 3.
+
+#### Phase 8, step 3 (8a): shapes leave the page, as built (2026-10-22)
+
+Done before step 2: a heap snapshot (`e2e-scratch/heap.scratch.spec.ts`, `heapdiff.mjs`) put most of
+a shape's ~45 KB in what being mounted costs (33 React fibers, ~15 elements with their styles, 11
+effect schedulers, 17 computeds and their sets a shape), which is this step's to remove.
+
+- **What leaves.** On a board of more than 2,000 shapes (`LEAVE_PAGE_ABOVE`; tests lower it through
+  `localStorage['lifeboard:leave-page-above']`), a shape whose util says `canLeavePage(shape)` is
+  unmounted, not hidden, while it's culled or the GPU layer draws it. `Canvas` renders
+  `getMountedShapeList`. Core shapes say yes (geo, text, notes, frames, images, draw, highlight, line,
+  arrows, bookmarks, groups); a node type opts in with `canLeavePage` on its definition (the markdown
+  note does). A shape whose text has a `{…}` stays (`hasExpression`): what it shows depends on other
+  shapes. Small boards are as before.
+- **What it draws from.** `ShapeUtil.getRenderKey(shape, zoom)` names what a component draws from
+  besides its record: a zoom past which it draws differently (pattern fills, forced-solid strokes, the
+  link button), selection states (an arrow's hint, an image's crop, a frame being drawn). A snapshot
+  is read again when that key, the shape's geometry (an arrow's bound shape moving) or its record
+  changes; nothing is left on the page to see the change. The zoom is the camera's once it has been
+  still, latched.
+- **Asking for an element.** `requestShapeElement` pins a shape mounted until released; the DOM exports
+  use it, and a test checks the board exports the same, pixel for pixel, with its shapes on the page or
+  gone. `getShapeElement` gives the mounted ones.
+- **Reading ahead.** While the GPU layer is on and the camera has been still a second, the reader
+  mounts never-read shapes within a screen of the viewport, 200 at a time, reads them and lets them go,
+  so a pan finds them read instead of mounting them. Shown for the read in batches of 64.
+- **The frame.** In levels: a piece only has to come after the pieces below it that it overlaps, so
+  each level draws its rects, strokes and pictures a call each (2,864 runs on a 20k board became 95).
+  It holds the shapes within a viewport of the screen (`region`), moved when the screen nears its edge
+  or the zoom halves or doubles; the whole of a 20k board in it stalled the GPU, and following culling
+  rebuilt it every half screen.
+- **Smaller fixes on the way.** The mounted list, and the z-order rule, read the scene's latched copies
+  rather than computeds with a parent for every shape (each pin checked 20,000 of them). Reading waits
+  for the camera to be still across a whole frame (a slow frame mid-pan looked like a stop, and reading
+  then slowed the pan more). A hand-over waits eight times as long as the last one took. A shape read
+  ahead stays mounted until its pictures decode. SVG pictures decoded are kept for the 4,000 most
+  recently used (one decoded document a shape held gigabytes). A cloud's label isn't measured again on
+  every mount. An element is read made plainly visible (`display` and `visibility` put back in the same
+  task, so the page never paints it so): read again while the GPU hid it, an SVG's picture copied the
+  `visibility: hidden` it inherited and came out blank, which parity caught as geo shapes without
+  bodies once re-reads became common.
+
+Production build, GPU flags, synthetic boards (`e2e-scratch/scale.scratch.spec.ts`,
+`steady.scratch.spec.ts`; the shape limit raised for the run only):
+
+| | 20,000 before | 20,000 after | 50,000 before | 50,000 after |
+|---|---|---|---|---|
+| JS heap, built | 819 MB | 183–211 MB (8–10 KB a shape) | 2.2 GB | 488–496 MB |
+| Elements in the page | 156,600 | ~650 | 390,800 | ~600 |
+| Build | 20 s | 3 s | 27 s | 12 s |
+| Open again | 29 s | 5–7 s | 34.6 s | 18–20 s |
+
+| Pan at 10% zoom (mean / p95) | 10,000 | 20,000 |
+|---|---|---|
+| Page | 32 / 42 ms | 35–98 ms |
+| GPU, just switched on (nothing read) | 20 / 25 ms | 27–30 / 33 ms |
+| GPU, once read (second pan) | 8.5–9.1 / 10–17 ms | 13.6 / 42.6 ms |
+
+- 10k reaches the 120 fps floor once read (all 7,500 in 51 s). 20k is near it on the second pan; the
+  first pan after reading still pays for rastering what it hasn't drawn at that phase yet.
+- Reading is the slow part: ~150–300 shapes a second, each mounted, read and let go. A 20k board takes
+  ~5 minutes to read whole, which reading ahead limits to the shapes near the screen.
+- Open time at 50k is now the store's load, not mounting: the canvas shows only once all records are
+  in. That's step 4's.
+
+#### Phase 8, step 2 (8b): per-shape memory, as built (2026-10-22)
+
+Measured first: heap snapshots of fresh boards of 3,000 and 9,000 shapes (both past
+`LEAVE_PAGE_ABOVE`, at 100%, so nearly all off screen and off the page), the difference divided by
+6,000 (`e2e-scratch/heap.scratch.spec.ts`, `heapdiff.mjs`, the computeds counted by name). After
+step 3 a shape off the page cost 7.4 KB: its record's atom and seven computeds (`isShapeHidden`,
+`shapeRenderInfo`, `pageTransformCache`, `pageBoundsCache`, `pageMaskCache`, the geometry cache and
+its `:isEqual` wrapper), with their geometry. With the GPU on, 9.3 KB: the scene's own four a shape
+(`gpu primitives`, `footprint`, `eligible`, `drawn`) and more.
+
+All of them were made by something asking every shape on the board, not by the shape being on
+screen:
+
+- **Culling, the page's bounds and "back to content"** ask every shape for its box. They now ask
+  `ShapeBoundsIndex` (`editor._boundsIndex`; `editor.hasShapesInBounds` for the button): a box per
+  shape in plain maps, kept from the store's side effects (a shape changing, its parent, the shapes
+  an arrow joins, its bindings) and worked out when asked for, with one `version` atom for what reads
+  it from a computed. Frames cut their children's boxes, as their masks did. An arrow's box is what it
+  joins and its free ends, widened by its bend, so working it out reaches no other shape's caches.
+- **The rendering list** read a computed per shape for its type, opacity and visibility. It now reads
+  the records without tracking them and changes with `_renderVersion`, which a shape's type, opacity,
+  meta, parent or order changing, or a binding, moves; a drag still doesn't rebuild it.
+- **The GPU scene's** frame, z-order rule and hidden set go through `near`, the shapes in its region
+  (the screen and a screen round it), from the index, instead of the whole board.
+
+| A shape off the page (dev build) | Before step 3 | After step 3 | Now |
+|---|---|---|---|
+| GPU off | ~45 KB | 7.4 KB | 2.04 KB |
+| GPU on | | 9.3 KB | 2.02 KB |
+
+What's left is the record: its atom and its contents. At ~2 KB a shape, 100,000 shapes would be
+~200 MB, 1,000,000 ~2 GB, on top of what the shapes near the screen cost.
+
+The page's bounds stay exact: from the index for every shape but arrows, and an arrow measured exactly
+only if its generous box reaches past the rest (a test checks a bent one at the edge). Loose, they
+moved every view parity places by the board's bounds, and one landed past the limit.
+
+Production build (`scale.scratch.spec.ts`), JS heap once built, at 100%:
+
+| | After step 3 | Now |
+|---|---|---|
+| 20,000 shapes | 183–211 MB | 88 MB |
+| 50,000 shapes | 488–496 MB | 195 MB |
+
+Checks: unit tests (a new `boundsIndex.test.ts`: a frame's child, an arrow's ends, a remote change,
+a new size, exact bounds round a bent arrow), the suite with the GPU on everywhere and as is, parity
+20/20, and the four-tree board at the floor on the GPU (8.3–9.2 ms at every zoom, brush 12 ms).
+
+#### Phase 8, step 4 (8c): a whole board loading fast, chosen over loading by region (2026-10-22)
+
+Measured on the production build after step 2: a board of 100,000 shapes builds in 41 s, holds 324 MB
+once built (3 KB a shape) and pans at 10% zoom at 35 ms on the page; reopening it takes 52 s, nearly
+all of it before the canvas shows, and leaves 1.6 GB of heap, five times what building it does.
+
+Loading by region, as planned, is what 1,000,000 shapes would need: the store holding only what's
+near the screen, storage and the server's rooms by region, and about 50 files that read the whole
+board (facts and rollups, relations, collection views, the skill tree, the agent's operations,
+comments, thumbnails) rewritten against an index. Weeks, with migrations. Chosen instead: the board
+stays whole, and its open path is profiled and cut (records read, migrated, validated and put, and
+whatever holds the extra heap), for boards of 100,000–200,000 shapes opening in seconds. No storage
+change, no server backup. Loading by region stays possible later if 1,000,000 shapes is wanted.
+
+As built: a profile of the open (`open.scratch.spec.ts` and `scale.scratch.spec.ts` dumping CPU
+profiles, `e2e-scratch/timeline.mjs` laying them out in half seconds, mapped to the sources) found:
+
+- **Writing a record a round trip.** `storeChangesInIndexedDb` and `storeSnapshotInIndexedDb` awaited
+  each `put`, so writing 75,000 records took seconds, and opening the board waited behind that write.
+  They now ask for every put at once and await them with the transaction.
+- **A full write on every open.** The client began each session by clearing the board's database and
+  putting every record back. It now skips that when the board was read from its own database as it
+  is there (no stash laid over it, the same schema); a new board still gets its first full write.
+- **Measuring every geo label for the bounds index.** `ShapeUtil.getCullingBounds` gives a box from
+  props where geometry costs more; geo's is its body, `w` by `h + growY`.
+
+| Reopen, production build | Before | Now |
+|---|---|---|
+| 50,000 shapes | 20 s | 8.5–9.5 s |
+| 100,000 shapes | 52 s | 7.4–7.9 s |
+
+At 100,000 shapes about 2.5 s of that is reading and putting the records; the rest is the shapes on
+screen at 10% zoom being looked at for the GPU layer (`auto` counting what it could draw, arrows
+measuring the shapes they join) and React. That's phase 10's.
+
+### Phase 9: default on, and tidy. S
+
+- `auto` on for everyone; the page-only path stays as the fallback (no WebGL2, lost context).
+- README *Things worth knowing* (the two renderers, the parity rule: a type with `toGpu` must pass
+  parity), the extension-surfaces skill (a new node type needs a `toGpu` or stays in the page),
+  Help if anything shows.
+- The same for `canLeavePage` and `getRenderKey` (phase 8, step 3): a node type that keeps no state
+  and draws from its own props can leave the page on a big board.
+
+#### Phase 9, as built (2026-10-22)
+
+- `auto` was already the default (`rendererMode.ts`) since phase 2: on for everyone once this branch
+  is merged. The page stays the fallback without WebGL2, on WebKit below pixel ratio 2, and with the
+  context lost; a new test in `e2e/switch.spec.ts` loses a real context (`WEBGL_lose_context`), checks
+  the page draws every shape alone, then restores it and checks the GPU takes them back, with nothing
+  missing or doubled either way.
+- README, *Things worth knowing*: **Shapes are drawn two ways** (the two renderers, how `toGpu` reads
+  the page, `gpu: false`, the parity rule and why it's local) and **On a big board, shapes leave the
+  page** (`canLeavePage`, `getRenderKey`, `requestShapeElement`, the bounds index).
+- The extension-surfaces skill: what a new node type gets from the GPU layer, when to set
+  `canLeavePage`, and running parity locally.
+- Help: nothing. Nothing a user sees changes but speed, and there's no setting to explain.
+
+### Phase 10: boards of 20,000 shapes and up, later
+
+Found in phase 8 and left for later:
+
+- **Reading for the GPU is slow.** ~150–300 shapes a second, each mounted, read and let go: a 20k board
+  takes ~5 minutes to read whole, and until a shape is read it has to mount when it comes on screen.
+- **The first pan after reading is slow** (215 ms a frame at 20k in one run, while reading went on):
+  the pictures it shows haven't been rastered at that phase yet.
+- **Opening is the store's load.** At 50k, 18–20 s before the canvas shows, all 75,000 records read,
+  migrated, validated and put first. Step 4 of phase 8 (loading by region) is the real answer.
+
+Three parts: **10a**, a steady pan at 20k and up; **10b**, reading a board once, not on every open;
+**10c**, a cheaper warm-up after opening.
+
+#### Phase 10b, as built (2026-10-22): what was read is kept
+
+- Every picture the element reader makes is now plain data, a **recipe** (`gpu/recipes.ts`): a rect cut
+  to corners, a box with its borders, a dashed border, a shadow, text runs, an image, an SVG. One
+  function, `drawRecipe`, draws them all, so a picture read from the page and one kept from an earlier
+  session go through the same code. Parity on the gallery didn't move.
+- `gpu/snapshotCache.ts` keeps each shape's primitives in their own IndexedDB database
+  (`lifeboard-gpu-snapshots`), by shape id, with a key: a hash of the app's build, the reader's version
+  (`READER_VERSION` in `snapshots.ts`), the theme, the render key at the settled zoom, and the shape's
+  type, props and meta. A key that doesn't match is read again. Past 200,000 entries the oldest go.
+- Only shapes whose util says `canLeavePage` are kept: they draw from their own record. A picture of
+  an object URL (`blob:`) isn't kept; the URL dies with the page.
+- Kept in batches, two seconds after the last read. On open, reading waits up to 5 s for the cache to
+  load, so a shape isn't read and then found kept. A shape whose element changes after it's drawn
+  (a font arriving, an image loading) is marked and not kept until it's read again.
+- The app turns it on with its version and a build id (`configureGpuSnapshotCache` in `App.tsx`), so a
+  new deploy reads everything once. `localStorage['lifeboard:gpu-cache'] = 'off'` turns it off.
+- Tests: `snapshotCache.test.ts` (what is and isn't storable, and restored pictures draw);
+  `e2e/gpuCache.spec.ts` builds 60 shapes, reads them, reloads, and checks none is read again and the
+  kept pictures match a fresh read in the same session pixel for pixel. Comparing two sessions doesn't
+  work: a reload alone moves a few pixels of a note's crease.
+
+#### Phase 10c, as built (2026-10-22): a cheaper warm-up
+
+Measured with a scratch probe on the production build: a 20,000-shape board in `auto`, fitted,
+watched for long tasks while it's read the first time, then closed and opened again from the list.
+The profiles found four places where one change went through every shape near the screen:
+
+- **Shapes taken from the cache were handed over one at a time.** Each set its snapshot in a
+  microtask of its own, outside a transaction, and each set woke the scene's whole pass. Reopening the
+  board stopped answering for over 20 s. They now go in one `transact`.
+- **Whether the GPU draws a shape was a computed per shape.** All 20,000 were worked out again
+  whenever the z-order rule's answer changed, which is every hand-over, and hooking up their chains of
+  parents (`attach` in `@tldraw/state`) cost most of it. Now one pass over `near` works out both which
+  shapes go to the page under a page-drawn one and which the GPU draws (`GpuScene.drawn`, a set).
+  `isDrawn` reads the set, and `onScreen` counts over `near`, not the whole board.
+- **What has left the page looked every shape up in the store**, on every turn of reading (a
+  read-ahead pin let go is a change). Immutable's string-hash cache holds 255 ids, so 20,000 lookups
+  hashed again each time. Each shape's `canLeavePage` answer is now kept until its record changes or
+  it's deleted (`shapeElements.ts`). The leave-page spec moves an expression from one shape to
+  another to check the answer follows.
+- **Elements changing under shapes were invalidated one at a time.** Shapes mounting in a pan change
+  dozens at once, each set re-ran the pass, and a pan during warm-up left about 5 s of long tasks
+  behind it. The MutationObserver's ids, decoded pictures arriving, a theme or font change and
+  `readAgain` now each go in one `transact`.
+
+Before and after, two runs each (load average 4–7):
+
+| | Before | After |
+|---|---|---|
+| First open, long tasks in the first ~37 s | 11.3 s, 10.2 s | 3.7 s, 3.8 s |
+| First open, worst task | 4.3 s, 3.0 s | 1.7 s, 1.8 s |
+| Shapes read in ~37 s | 7.4k, 8.0k | 8.8k, 9.3k |
+| Reopen from the cache | stops answering from 6–7 s, for the rest of the 24 s | answers at 3–7 s |
+| A pan 10–12 s into the reopen, mean/p95 | 67–72 / 126–225 ms | 24–30 / 83–142 ms |
+
+Still slow, and left for 10a: that pan, and the first seconds of a reopen (the worst task is ~2.4 s,
+the board opening with ~1,400 shapes mounted before the cache is in). Profiles taken at this heap
+size with the sampling profiler on show most time as "(program)", the profiler's own overhead; a
+Chrome trace without it shows reading and its microtasks taking 60–80% of the main thread while the
+camera is still.
+
+#### Phase 10a, as built (2026-10-22): a pan across a big board
+
+Measured with a scratch probe (`e2e-scratch/pan10a.scratch.spec.ts`) on the production build: a
+20,000-shape board in `auto`, fitted (10%), panned there and back cold, several times once it's read,
+and after a reopen from the cache. The probe first panned with wheel events sent from a timer; that
+showed the first two problems below. Real input through Chrome's input pipeline, sent as fast as a
+120 Hz trackpad (`page.mouse.wheel` every 8 ms), showed the last.
+
+- **The first pan after reading rastered thousands of pictures.** A picture is rastered the moment
+  it first comes on screen, whatever that costs, and the first pan across the board brought in about
+  2,000. Now, once the camera is still, the renderer also rasters the pictures in the frame that are
+  off screen and were never rastered, at this zoom, within the same 6 ms a frame
+  (`GpuRenderer.placeImages`). Only while the atlas is under three quarters full (`hasRoom`), so they
+  never push out what's on screen; each is tried once; and a picture that isn't decoded isn't decoded
+  for it (`withoutDecoding`), so thousands of decodes never push the pictures on screen out of the
+  decoded ones. The layer draws once more after the camera stops, so this happens after every pan.
+  The first pan now rasters none, against 1,750–2,200.
+- **A picture still decoding took an atlas slot each frame it was asked for**, left empty. The slot
+  now goes back (`ImageAtlas.unplace`); `atlas.test.ts` checks it.
+- **Every picture on screen was looked up by its phase each frame**, about 2,700 at fit, a string
+  built for each. Each placed picture now keeps what it found, with the scale and phase it was for; a
+  pan by whole device pixels keeps them all.
+- **The selection outlines' canvas cleared itself on every frame of a pan**, with nothing selected.
+  A 2D canvas waits for the GPU when it's busy: up to 230 ms in one pan. It now clears once when the
+  selection empties and doesn't follow the camera.
+- **Draws could pile up on the GPU.** The layer drew in a microtask after every change, so input
+  faster than the frames went out queued a whole frame on the GPU for each event, and once it was
+  behind it fell further behind: with that canvas's waits gone, 850–1,300 ms a frame under
+  trackpad-rate input. Those waits had been the only thing holding the draws back. The layer now
+  draws once a frame, from a `ResizeObserver` watching an empty element it flips the width of: the
+  browser calls it after the frame's animation callbacks and layout, before it paints, so the layer is
+  never a frame behind a change made there. A first fix, putting a draw off to the next animation
+  frame while the GPU was behind, broke exactly that: the reader hands shapes over from an animation
+  callback, and a frame went out with their elements hidden and the layer not yet drawing them (whole
+  rows of shapes blank in two parity runs).
+
+20,000 shapes at fit, mean / p95 a frame:
+
+| Pan | Before 10a | After |
+|---|---|---|
+| First after reading, wheel from a timer | 21–35 / 66–150 ms, four runs | 11.7–11.9 / 25 ms, two runs |
+| Later ones after reading, wheel from a timer | 9.5–10.1 / 16.6 ms | 9.5–9.6 / 9.3–16.5 ms, one of four 13.3 / 42 |
+| After reading, real input at 120 Hz, in turn | 24.6, 94.8, 41.8, 10.4, 10.6 ms | 9.7, 9.1, 16.4, 42.7 ms |
+
+Under real input both have pans whose frames wait on the GPU with the page's thread nearly idle
+(about 100 ms of long tasks in the whole pan); that is the GPU's share of a frame at fit, left below.
+
+Added with it, so the slow states can be seen while they last:
+
+- **Opening a board** shows "Opening board…" with a spinner from the start (`OpeningBoard` in
+  `canvas/Board.tsx`, also the editor's `LoadingScreen`). Before, a big board showed an empty canvas
+  for seconds: tldraw's loading screen fades in after 0.2 s, and with the page busy loading the board
+  the fade never ran. The spinner is a transform animation, which the compositor keeps turning while
+  the page is busy.
+- **"Preparing board"** in the board's corner, beside the sync status, while the GPU layer is on and
+  the shapes around the screen aren't all read ("2,485 / 8,180 shapes"), then while pictures around
+  it aren't rastered ("340 pictures left"), then "Board ready" for a moment. Only after a second of
+  it, so a board that's ready never flashes it. `e2e/boardPreparing.spec.ts`.
+
+Left:
+
+The first three are issues #50, #51 and #52. The board's "Preparing board" pill
+(`canvas/BoardPreparingPill.tsx`) shows the first two as they happen: the shapes around the screen not
+read yet, then the pictures not rastered.
+
+- **A cold pan** (#50): until the board is read the page draws what's on screen, about 3,900 shapes here,
+  and reading 8,000 at fit takes 60–90 s. 27–33 ms a frame with wheel events from a timer, 130–190 ms
+  with real input, which the browser also hit-tests against every one of those elements.
+- **The first seconds of a reopen** (#51): about 5,000 shapes mount and the page stops answering for
+  about 4 s, then the shapes the cache gives back come on screen with pictures the
+  new atlas doesn't have (2,200 rastered in a pan 4 s in, 390 of them still decoding).
+- **Frames waiting on the GPU** (#52) now and then at fit, before and after 10a, unmeasured on the GPU's
+  side so far.
+- The hover hit test once a pan stops, which a profile made look like 100 ms, is 4–6 ms measured
+  directly.
+
+## Working rules
+
+- A branch `gpu-renderer` off `develop`; a PR per phase into `develop`. Nothing reaches `main`
+  without your go-ahead; phase 8c needs a server backup first.
+- Clean-room rule (`docs/canvas-fork-plan.md`): techniques from Figma, Grida, tldraw or anywhere
+  else are implemented from the idea, never ported.
+- Each phase ends with a report: what changed, the checks and their results, the numbers, screenshots
+  side by side. Then it stops for review.
+- Every number measured on the GPU (the flags above) and, for CI, also under software raster.
+
+## Risks
+
+- **Text pixels.** The browser's text through Canvas2D should match the page's, but subpixel
+  positioning can differ by a fraction of a pixel. If parity can't pass for text at some size, text
+  at that size stays in the page (the node can still be GPU-drawn under it).
+- **WebKit.** WebGL2 is there (Safari 15+); HTML-in-Canvas isn't; a `foreignObject` picture may be
+  refused as a texture. Rich nodes may stay in the page on iPhone, which is fine on a phone-sized
+  screen. At pixel ratio 1 (a Mac on a non-retina screen) WebKit snaps bordered boxes to whole pixels
+  at exactly 100%, inconsistently (a 6 px border comes out 7). And Playwright's WebKit crashes with
+  any WebGL canvas under the four-tree board panned at 10% (phase 1). The GPU layer is off in WebKit
+  until both are understood; checking real Safari comes first.
+- **The page beside the GPU layer.** Shapes the page still draws while the GPU layer is on are
+  composited apart, and differ from the page alone by up to 0.25% of pixels zoomed out (phase 1).
+  Fewer of them each phase; to remove it entirely, everything on screen above the budget has to be
+  the GPU's, or the page would have to be composited like that always.
+- **Effects the GPU path must match:** `box-shadow`, CSS filters, blend modes, `backdrop-filter`.
+  Any type using one that can't pass parity stays in the page.
+- **Memory at 1M shapes**: unproven until phase 8.
+- **Size**: this is the largest change the canvas has had. Phases 0–4 alone fix the boards you have
+  today; 5–9 are for the boards you want to make.

@@ -32,21 +32,23 @@ function NoteNodeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<
 	 * That asymmetry is the feature: you edit `{sum price}` and read ₾1,540. It also means the editor
 	 * below never sees a substitution, so typing is never fighting a value that rewrites itself.
 	 *
-	 * Cheap when there is nothing to do: `renderExpressions` returns the string untouched if it holds
-	 * no brace at all, which is almost every note.
+	 * Free when there is nothing to do: a note with no brace at all, which is almost every note, never
+	 * reads the facts, so it does not depend on them and an edit elsewhere on the board leaves it alone.
 	 */
 	const rendered = useValue(
 		'lifeboard:note-expressions',
 		() =>
-			renderExpressions(md, {
-				facts: getPageFacts(editor).get(),
-				edges: getPageEdges(editor).get(),
-				properties: propertyMap(readPropertyRegistry(editor)),
-				rates: getCurrentRates(),
-				selfId: shape.id,
-				values: readShapeProperties(shape),
-				units: readShapePropertyUnits(shape),
-			}),
+			!md.includes('{')
+				? md
+				: renderExpressions(md, {
+						facts: getPageFacts(editor).get(),
+						edges: getPageEdges(editor).get(),
+						properties: propertyMap(readPropertyRegistry(editor)),
+						rates: getCurrentRates(),
+						selfId: shape.id,
+						values: readShapeProperties(shape),
+						units: readShapePropertyUnits(shape),
+					}),
 		// `shape.meta` rather than `shape`: auto-height rewrites the record on every measurement, and
 		// depending on the whole thing would re-run this mid-render for a value that cannot have moved.
 		[editor, md, shape.id, shape.meta]

@@ -1,3 +1,4 @@
+import { requestShapeElement } from '../components/shapeElements'
 import type { Box2d } from '../primitives/Box2d'
 import type { Editor } from '../editor/Editor'
 import type { SvgExportContext } from '../editor/types/SvgExportContext'
@@ -21,8 +22,12 @@ export async function exportShapeFromDom(
 	shape: TLShape,
 	ctx: SvgExportContext
 ): Promise<SVGElement | null> {
-	const source = shapeElement(editor, shape)
-	if (!source) return null
+	// Mounted for the copy, if it has left the page (a big board's shape off screen, or the GPU's).
+	const { el: source, release } = await requestShapeElement(editor, shape.id)
+	if (!source) {
+		release()
+		return null
+	}
 
 	const bounds = editor.getShapeGeometry(shape).bounds
 	const box = document.createElementNS(XHTML, 'div') as HTMLDivElement
@@ -30,12 +35,16 @@ export async function exportShapeFromDom(
 
 	const images: Promise<void>[] = []
 	const families = new Set<string>()
-	shown(source, () => {
-		for (const child of Array.from(source.children)) {
-			const copy = copyWithStyles(child, images, families)
-			if (copy) box.appendChild(copy)
-		}
-	})
+	try {
+		shown(source, () => {
+			for (const child of Array.from(source.children)) {
+				const copy = copyWithStyles(child, images, families)
+				if (copy) box.appendChild(copy)
+			}
+		})
+	} finally {
+		release()
+	}
 	await Promise.all(images)
 	addFonts(ctx, families)
 	return foreignObjectAround(box, bounds.minX, bounds.minY, bounds.width, bounds.height)
@@ -64,13 +73,18 @@ export async function exportLabelFromDom(
 		bounds?: Box2d
 	} = {}
 ): Promise<SVGElement | null> {
-	const source = shapeElement(editor, shape)
+	const { el: source, release } = await requestShapeElement(editor, shape.id)
 	const label = source?.querySelector<HTMLElement>(selector)
-	if (!source || !label) return null
+	if (!source || !label) {
+		release()
+		return null
+	}
 
 	const images: Promise<void>[] = []
 	const families = new Set<string>()
-	const placed = shown(source, () => {
+	let placed: HTMLElement | null
+	try {
+		placed = shown(source, () => {
 		// Where the label's box sits in the shape, before its own transform, which the copy keeps.
 		let x = 0
 		let y = 0
@@ -87,7 +101,10 @@ export async function exportLabelFromDom(
 		copy.style.margin = '0'
 		if (!keepTransform) copy.style.transform = 'none'
 		return copy
-	})
+		})
+	} finally {
+		release()
+	}
 	if (!placed) return null
 	await Promise.all(images)
 	addFonts(ctx, families)
@@ -98,24 +115,23 @@ export async function exportLabelFromDom(
 	return foreignObjectAround(box, bounds.minX, bounds.minY, bounds.width, bounds.height)
 }
 
-function shapeElement(editor: Editor, shape: { id: TLShapeId }): HTMLElement | null {
-	return editor
-		.getContainer()
-		.querySelector<HTMLElement>(`.tl-shape[data-shape-id="${CSS.escape(shape.id)}"]:not(.tl-shape-background)`)
-}
-
 /**
  * Runs `read` with the shape laid out. An off-screen shape is mounted but `display: none`, which
  * leaves its elements without positions or sizes to copy.
  */
 function shown<T>(source: HTMLElement, read: () => T): T {
 	const display = source.style.display
-	if (display !== 'none') return read()
-	source.style.display = 'block'
+	// Culled (display: none) or drawn by the GPU layer (visibility: hidden, which its children inherit
+	// and the copy would carry): shown for the moment it's read.
+	const visibility = source.style.visibility
+	if (display !== 'none' && visibility !== 'hidden') return read()
+	if (display === 'none') source.style.display = 'block'
+	if (visibility === 'hidden') source.style.visibility = ''
 	try {
 		return read()
 	} finally {
 		source.style.display = display
+		source.style.visibility = visibility
 	}
 }
 

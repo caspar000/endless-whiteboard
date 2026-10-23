@@ -24,6 +24,7 @@
 	--layer-background: 100;
 	--layer-grid: 150;
 	--layer-canvas: 200;
+	--layer-gpu: 350;
 	--layer-shapes: 300;
 	--layer-overlays: 400;
 	--layer-following-indicator: 1000;
@@ -245,6 +246,38 @@ input,
 .tl-shapes {
 	position: relative;
 	z-index: var(--layer-shapes);
+}
+
+/* The GPU layer (docs/gpu-renderer-plan.md): over the shapes the page draws (under them, the browser
+   composited them apart and blurred their thin lines), under the overlays. In the compare view it
+   blends by difference, so where the two renderers agree it's black. */
+.tl-gpu-layer {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: var(--layer-gpu);
+}
+
+/* The shapes the GPU layer draws, named for assistive technology only (their elements are hidden). */
+.tl-gpu-shape-list {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+	pointer-events: none;
+}
+
+.tl-gpu-layer--compare {
+	z-index: calc(var(--layer-shapes) + 1);
+	mix-blend-mode: difference;
 }
 
 .tl-overlays {
@@ -825,6 +858,18 @@ input,
 	column-count: initial !important;
 	writing-mode: horizontal-tb !important;
 	word-spacing: 0px;
+}
+
+/* Holds the measuring element; its layout stays inside (see TextManager). */
+.tl-text-measure-box {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+	contain: strict;
+	pointer-events: none;
 }
 
 .tl-text-measure {

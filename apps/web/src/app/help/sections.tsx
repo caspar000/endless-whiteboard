@@ -3,6 +3,7 @@ import {
 	BookOpen,
 	Compass,
 	Dices,
+	GraduationCap,
 	Keyboard,
 	NotepadText,
 	Sigma,
@@ -25,6 +26,7 @@ import { Properties } from './sections/Properties'
 import { Relations } from './sections/Relations'
 import { Server as ServerSection } from './sections/Server'
 import { Shortcuts } from './sections/Shortcuts'
+import { Syllabus } from './sections/Syllabus'
 import { Views } from './sections/Views'
 
 /**
@@ -154,6 +156,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Dices size={15} />,
 		Component: Dice,
+	},
+	{
+		id: 'syllabus',
+		label: 'Syllabus',
+		title: 'Syllabus items, tracks and skill trees',
+		lede: 'Ordered lists of things to read, watch and make, ticked off one at a time, and skill trees that light up from what you have written up. Every tick files a note beside the item.',
+		group: 'Extensions',
+		icon: <GraduationCap size={15} />,
+		Component: Syllabus,
 	},
 	{
 		id: 'shortcuts',

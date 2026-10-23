@@ -1,4 +1,5 @@
-import { test, type CDPSession, type Page } from '@playwright/test'
+import { expect, test, type CDPSession, type Page } from '@playwright/test'
+import { insertSynthetic } from './fixtures/synthetic'
 import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
 
 /**
@@ -14,7 +15,14 @@ import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
  */
 test.skip(!process.env.LB_BENCH, 'Set LB_BENCH=1 to run the canvas benchmark.')
 
-/** `LB_BENCH_NODES` for a bigger board; the page holds up to 4000 shapes. */
+/**
+ * On the GPU unless `LB_BENCH_GPU=0`: headless Chromium otherwise rasterises in software, which is
+ * what the numbers before 2026-10-20 measured (docs/gpu-renderer-plan.md).
+ */
+const GPU_FLAGS = ['--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--enable-gpu']
+test.use({ launchOptions: { args: process.env.LB_BENCH_GPU === '0' ? [] : GPU_FLAGS } })
+
+/** `LB_BENCH_NODES` for a bigger board; the page holds up to 20,000 shapes. */
 const NODES = Number(process.env.LB_BENCH_NODES ?? 500)
 const RUNS = 3
 
@@ -190,7 +198,8 @@ function runGesture(page: Page, kind: 'drag' | 'pan' | 'hover' | 'brush' | 'drag
 			}
 		} else if (gesture === 'drag') {
 			const shapes = editor.getCurrentPageShapes!() as { id: string; type: string }[]
-			const item = shapes.find((shape) => shape.type === 'node.markdown')!
+			// A shape that moves when dragged (skill-tree nodes are pinned in place).
+			const item = shapes.find((shape) => shape.type === 'node.markdown') ?? shapes.find((shape) => shape.type === 'geo')!
 			const bounds = editor.getShapePageBounds!(item.id) as { x: number; y: number; w: number }
 			const start = editor.pageToScreen!({ x: bounds.x + bounds.w / 2, y: bounds.y + 10 }) as {
 				x: number
@@ -367,4 +376,99 @@ test('canvas benchmark', async ({ page }) => {
 			exportMs: round(exportMs),
 		})
 	)
+})
+
+/**
+ * The GPU renderer's benches (docs/gpu-renderer-plan.md): the four-tree board and a generated board
+ * of `LB_BENCH_SYNTH` distinct shapes (10,000 by default; the page holds up to 20,000), panned at
+ * each zoom and hovered, brushed and dragged with everything on screen. Prints one `BENCH_LARGE`
+ * line per board and renderer: `LB_BENCH_RENDERER`, a comma list of `dom`, `gpu` and `auto` (`dom`
+ * by default); `LB_BENCH_ONLY` for one board.
+ */
+test('large boards benchmark', async ({ page }) => {
+	test.setTimeout(1_800_000)
+	const boards: { name: string; build: (page: Page) => Promise<void> }[] = [
+		{
+			name: 'four-trees',
+			build: async (page) => {
+				await page.keyboard.press('ControlOrMeta+k')
+				await page.locator('.lb-palette__input').fill('>whole-life test')
+				await expect(page.locator('.lb-palette__row--on')).toContainText('whole-life test')
+				await page.keyboard.press('Enter')
+				await expect.poll(() => page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length), { timeout: 120_000 }).toBeGreaterThan(3000)
+				await page.waitForTimeout(8000)
+			},
+		},
+		{
+			name: `synthetic-${Number(process.env.LB_BENCH_SYNTH ?? 10000)}`,
+			build: async (page) => {
+				await insertSynthetic(page, Number(process.env.LB_BENCH_SYNTH ?? 10000))
+				await page.waitForTimeout(3000)
+			},
+		},
+	]
+	const zoomTo = (page: Page, z: number | 'fit') =>
+		page.evaluate((z) => {
+			const editor = (window as unknown as { editor: { zoomToFit(o: unknown): void; getCurrentPageBounds(): { center: { x: number; y: number } }; setCamera(c: unknown): void } }).editor
+			if (z === 'fit') editor.zoomToFit({ animation: { duration: 0 } })
+			else {
+				const c = editor.getCurrentPageBounds().center
+				editor.setCamera({ x: innerWidth / 2 / z - c.x, y: innerHeight / 2 / z - c.y, z })
+			}
+		}, z)
+
+	// `LB_BENCH_ONLY`: one board by name prefix (`four-trees`, `synthetic`).
+	for (const board of boards.filter((b) => !process.env.LB_BENCH_ONLY || b.name.startsWith(process.env.LB_BENCH_ONLY))) {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, board.name)
+		await openBoard(page, board.name)
+		const cdp = await page.context().newCDPSession(page)
+		await cdp.send('Performance.enable')
+		const started = Date.now()
+		await board.build(page)
+		const buildMs = Date.now() - started
+		const shapes = await page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)
+		for (const renderer of (process.env.LB_BENCH_RENDERER ?? 'dom').split(',')) {
+			await page.evaluate((m) => {
+				const w = window as unknown as { lifeboardRenderer: { set(m: string): void }; editor: { options: { edgeScrollSpeed: number } } }
+				w.lifeboardRenderer.set(m)
+				// A brush or drag starting at the screen's edge scrolls the camera by time, so a slower
+				// renderer would scroll further and brush or drag more: the gestures do the same work only without.
+				w.editor.options.edgeScrollSpeed = 0
+			}, renderer)
+			// Time for the GPU to read every node on screen, a few milliseconds a frame, before it's timed.
+			await zoomTo(page, 'fit')
+			await page.waitForTimeout(renderer === 'dom' ? 800 : Number(process.env.LB_BENCH_GPU_WAIT ?? 6000))
+			const results: Record<string, FrameStats> = {}
+			// The zoom each was measured at: what `fit` comes to depends on the board's bounds by then.
+			const zooms: Record<string, number> = {}
+			const zoomNow = () => page.evaluate(() => (window as unknown as { editor: { getZoomLevel(): number } }).editor.getZoomLevel())
+			for (const z of ['fit', 0.25, 0.5, 1] as const) {
+				await zoomTo(page, z)
+				await page.waitForTimeout(800)
+				zooms[`pan@${z}`] = Math.round((await zoomNow()) * 1000) / 1000
+				results[`pan@${z}`] = await measure(pan, page, cdp)
+			}
+			await zoomTo(page, 'fit')
+			await page.waitForTimeout(800)
+			zooms.fit = Math.round((await zoomNow()) * 1000) / 1000
+			results['hover@fit'] = await measure(hover, page, cdp)
+			results['brush@fit'] = await measure(brush, page, cdp)
+			if (board.name.startsWith('synthetic')) results['drag@fit'] = await measure(drag, page, cdp)
+			const round = (value: number) => Math.round(value * 10) / 10
+			console.log(
+				'BENCH_LARGE',
+				board.name,
+				renderer,
+				JSON.stringify({
+					shapes,
+					buildMs,
+					zooms,
+					...Object.fromEntries(Object.entries(results).map(([k, v]) => [k, { meanMs: round(v.meanMs), p95Ms: round(v.p95Ms), taskMs: round(v.taskMs), moved: v.moved }])),
+				})
+			)
+		}
+		await cdp.detach()
+	}
 })

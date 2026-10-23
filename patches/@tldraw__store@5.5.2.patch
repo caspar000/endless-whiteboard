@@ -1,0 +1,136 @@
+diff --git a/dist-cjs/lib/RecordsDiff.js b/dist-cjs/lib/RecordsDiff.js
+index f4b7ef5fd96eb91caeb29b08fca7c46e2845d708..787b45201e3e76b51afa888aef4d75664bc29e4f 100644
+--- a/dist-cjs/lib/RecordsDiff.js
++++ b/dist-cjs/lib/RecordsDiff.js
+@@ -74,9 +74,13 @@ function squashRecordDiffsMutableByType(target, diffs, typeName) {
+ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+   let sizeChange = 0;
+   const trackSize = typeName !== void 0;
++  // Patched (Lifeboard): checked once rather than per diff, and set as keys are added. `for…in` on a large
++  // object collects every key before yielding one, so per-diff checks made a squash O(diffs × size).
++  // A stale `true` only costs a lookup.
++  let targetHasRemoved = hasAnyKey(target.removed);
++  let targetHasAdded = hasAnyKey(target.added);
+   for (let i = fromIndex; i < diffs.length; i++) {
+     const diff = diffs[i];
+-    const targetHasRemoved = hasAnyKey(target.removed);
+     for (const _id in diff.added) {
+       const id = _id;
+       const value = diff.added[id];
+@@ -92,9 +96,9 @@ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+       } else {
+         if (trackSize && !target.added[id]) sizeChange++;
+         target.added[id] = value;
++        targetHasAdded = true;
+       }
+     }
+-    const targetHasAdded = hasAnyKey(target.added);
+     for (const _id in diff.updated) {
+       const id = _id;
+       const to = diff.updated[id][1];
+@@ -133,10 +137,12 @@ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+         if (trackSize) sizeChange--;
+       } else if (target.updated[id]) {
+         target.removed[id] = target.updated[id][0];
++        targetHasRemoved = true;
+         delete target.updated[id];
+       } else {
+         if (trackSize && !target.removed[id]) sizeChange++;
+         target.removed[id] = diff.removed[id];
++        targetHasRemoved = true;
+       }
+     }
+   }
+diff --git a/dist-esm/lib/RecordsDiff.mjs b/dist-esm/lib/RecordsDiff.mjs
+index 2881cbeb79d62e3c055f30bea949f241dbe1cbcd..7430e1761714add2566678c947f53322f7e111fb 100644
+--- a/dist-esm/lib/RecordsDiff.mjs
++++ b/dist-esm/lib/RecordsDiff.mjs
+@@ -45,9 +45,13 @@ function squashRecordDiffsMutableByType(target, diffs, typeName) {
+ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+   let sizeChange = 0;
+   const trackSize = typeName !== void 0;
++  // Patched (Lifeboard): checked once rather than per diff, and set as keys are added. `for…in` on a large
++  // object collects every key before yielding one, so per-diff checks made a squash O(diffs × size).
++  // A stale `true` only costs a lookup.
++  let targetHasRemoved = hasAnyKey(target.removed);
++  let targetHasAdded = hasAnyKey(target.added);
+   for (let i = fromIndex; i < diffs.length; i++) {
+     const diff = diffs[i];
+-    const targetHasRemoved = hasAnyKey(target.removed);
+     for (const _id in diff.added) {
+       const id = _id;
+       const value = diff.added[id];
+@@ -63,9 +67,9 @@ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+       } else {
+         if (trackSize && !target.added[id]) sizeChange++;
+         target.added[id] = value;
++        targetHasAdded = true;
+       }
+     }
+-    const targetHasAdded = hasAnyKey(target.added);
+     for (const _id in diff.updated) {
+       const id = _id;
+       const to = diff.updated[id][1];
+@@ -104,10 +108,12 @@ function squashRecordDiffsMutableImpl(target, diffs, fromIndex, typeName) {
+         if (trackSize) sizeChange--;
+       } else if (target.updated[id]) {
+         target.removed[id] = target.updated[id][0];
++        targetHasRemoved = true;
+         delete target.updated[id];
+       } else {
+         if (trackSize && !target.removed[id]) sizeChange++;
+         target.removed[id] = diff.removed[id];
++        targetHasRemoved = true;
+       }
+     }
+   }
+diff --git a/src/lib/RecordsDiff.ts b/src/lib/RecordsDiff.ts
+index e4d757535de307cb2421dbe77db43588ff0b2e77..8bc10c470e0b8c60b0102a75e5bfec77bda97ad4 100644
+--- a/src/lib/RecordsDiff.ts
++++ b/src/lib/RecordsDiff.ts
+@@ -258,6 +258,11 @@ function squashRecordDiffsMutableImpl<T extends UnknownRecord>(
+ ): number {
+ 	let sizeChange = 0
+ 	const trackSize = typeName !== undefined
++	// Patched (Lifeboard): checked once rather than per diff, and set as keys are added. `for…in` on a large
++	// object collects every key before yielding one, so per-diff checks made a squash O(diffs × size).
++	// A stale `true` only costs a lookup.
++	let targetHasRemoved = hasAnyKey(target.removed)
++	let targetHasAdded = hasAnyKey(target.added)
+ 
+ 	// This runs on every history interceptor call — e.g. once per input tick while
+ 	// resizing N shapes, with N entries in diff.updated — so the updated loop must not
+@@ -270,7 +275,6 @@ function squashRecordDiffsMutableImpl<T extends UnknownRecord>(
+ 		const diff = diffs[i]
+ 		// target.removed can only lose entries before the removed loop below, so a
+ 		// stale `true` is harmless (extra no-op deletes).
+-		const targetHasRemoved = hasAnyKey(target.removed)
+ 
+ 		for (const _id in diff.added) {
+ 			const id = _id as IdOf<T>
+@@ -287,11 +291,11 @@ function squashRecordDiffsMutableImpl<T extends UnknownRecord>(
+ 			} else {
+ 				if (trackSize && !target.added[id]) sizeChange++
+ 				target.added[id] = value
++				targetHasAdded = true
+ 			}
+ 		}
+ 
+ 		// the added loop above may have inserted into target.added
+-		const targetHasAdded = hasAnyKey(target.added)
+ 
+ 		for (const _id in diff.updated) {
+ 			const id = _id as IdOf<T>
+@@ -335,10 +339,12 @@ function squashRecordDiffsMutableImpl<T extends UnknownRecord>(
+ 				if (trackSize) sizeChange--
+ 			} else if (target.updated[id]) {
+ 				target.removed[id] = target.updated[id][0]
++				targetHasRemoved = true
+ 				delete target.updated[id]
+ 			} else {
+ 				if (trackSize && !target.removed[id]) sizeChange++
+ 				target.removed[id] = diff.removed[id]
++				targetHasRemoved = true
+ 			}
+ 		}
+ 	}

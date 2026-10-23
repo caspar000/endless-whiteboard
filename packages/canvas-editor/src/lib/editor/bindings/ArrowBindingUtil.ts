@@ -96,6 +96,13 @@ export class ArrowBindingUtil extends BindingUtil<TLArrowBinding> {
 	}
 }
 
+/**
+ * Meta on an arrow that stays where it is put in the stacking order, under the shapes it joins if
+ * sent there, instead of being lifted above them. Its ends sit on those shapes' outlines anyway, so
+ * nothing of it is hidden; what it gains is passing under other shapes rather than over them.
+ */
+export const ARROW_STAYS_BEHIND_META = 'lifeboard:arrowStaysBehind'
+
 function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 	const arrow = editor.getShape<TLArrowShape>(arrowId)
 	if (!arrow) return
@@ -130,6 +137,7 @@ function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 
 	const reparentedArrow = editor.getShape<TLArrowShape>(arrowId)
 	if (!reparentedArrow) throw Error('no reparented arrow')
+	if (reparentedArrow.meta[ARROW_STAYS_BEHIND_META]) return
 
 	const startSibling = editor.getShapeNearestSibling(reparentedArrow, startShape)
 	const endSibling = editor.getShapeNearestSibling(reparentedArrow, endShape)
@@ -148,9 +156,28 @@ function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 
 	let finalIndex: IndexKey
 
-	const higherSiblings = editor.getSortedChildIdsForParent(highestSibling.parentId)
-		.map((id) => editor.getShape(id)!)
-		.filter((sibling) => sibling.index > highestSibling!.index)
+	// The siblings are sorted by index, so the ones above the highest bound sibling start at a point
+	// found by binary search. Reading every sibling instead made each new relation cost as much as
+	// the page is big, and a batch of them quadratic.
+	const siblings = editor.getSortedChildIdsForParent(highestSibling.parentId)
+	let lo = 0
+	let hi = siblings.length
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1
+		if (editor.getShape(siblings[mid]!)!.index > highestSibling.index) hi = mid
+		else lo = mid + 1
+	}
+	const higherSiblings = {
+		length: siblings.length - lo,
+		first: () => editor.getShape(siblings[lo]!)!,
+		find: (test: (sibling: TLShape) => boolean) => {
+			for (let i = lo; i < siblings.length; i++) {
+				const sibling = editor.getShape(siblings[i]!)!
+				if (test(sibling)) return sibling
+			}
+			return undefined
+		},
+	}
 
 	if (higherSiblings.length) {
 		// there are siblings above the highest bound sibling, we need to
@@ -176,7 +203,7 @@ function reparentArrow(editor: Editor, arrowId: TLArrowShape['id']) {
 		// otherwise, we need to find the index between the highest sibling
 		// we want to be above, and the next highest sibling we want to be
 		// below:
-		finalIndex = getIndexBetween(highestSibling.index, higherSiblings[0].index)
+		finalIndex = getIndexBetween(highestSibling.index, higherSiblings.first().index)
 	} else {
 		// if there are no siblings above us, we can just get the next index:
 		finalIndex = getIndexAbove(highestSibling.index)

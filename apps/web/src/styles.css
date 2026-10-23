@@ -2473,6 +2473,23 @@ div.lb-sidebar__moves {
 .lb-board__loading > div {
 	text-align: center;
 }
+.lb-board__spinner {
+	display: block;
+	width: 20px;
+	height: 20px;
+	margin: 0 auto 10px;
+	border-radius: 50%;
+	border: 2px solid var(--lb-border);
+	border-top-color: var(--lb-text-dim);
+	/* A transform animation on a layer of its own: the compositor runs it while the page is busy. */
+	will-change: transform;
+	animation: lb-spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-board__spinner {
+		animation-duration: 2.4s;
+	}
+}
 .lb-board__loading-hint {
 	max-width: 320px;
 	margin: 8px auto 0;
@@ -2481,15 +2498,23 @@ div.lb-sidebar__moves {
 }
 
 /*
- * Where a server board stands with the server (canvas/SyncStatusPill.tsx): quiet unless it matters.
- * Beside the round agent button, level with it, or beside the agent panel while that is open.
+ * The board's quiet statuses (Board.tsx): where a server board stands with the server
+ * (canvas/SyncStatusPill.tsx) and how far a big board is from panning at full speed
+ * (canvas/BoardPreparingPill.tsx). Beside the round agent button, level with it, or beside the agent
+ * panel while that is open; the sync status nearest it.
  */
-.lb-sync-pill {
+.lb-board-pills {
 	position: absolute;
 	top: calc(var(--fl-edge) + 11px);
 	right: calc(var(--fl-edge) + 58px);
 	z-index: 300;
 	transition: right var(--mo-in);
+	display: flex;
+	flex-direction: row-reverse;
+	gap: 8px;
+	pointer-events: none;
+}
+.lb-sync-pill {
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -2501,13 +2526,21 @@ div.lb-sidebar__moves {
 	font-size: 12px;
 	pointer-events: none;
 }
-.lb-shell--agent-open .lb-sync-pill {
+.lb-shell--agent-open .lb-board-pills {
 	right: calc(var(--fl-right) + var(--fl-edge));
 }
 @media (max-width: 1023px) {
-	.lb-shell--agent-open .lb-sync-pill {
+	.lb-shell--agent-open .lb-board-pills {
 		right: calc(var(--fl-edge) + 58px);
 	}
+}
+.lb-board-pill--explained {
+	pointer-events: auto;
+	cursor: default;
+}
+.lb-board-pill__detail {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.8;
 }
 .lb-sync-pill--saving svg {
 	animation: lb-spin 1.2s linear infinite;
@@ -2534,6 +2567,27 @@ div.lb-sidebar__moves {
 	font-variant-numeric: tabular-nums;
 	color: var(--lb-text-dim);
 	pointer-events: none;
+}
+/* The dev-only performance readout (canvas/PerfMonitor.tsx, `?perf=1`). */
+.lb-perf {
+	position: absolute;
+	top: 64px;
+	left: 12px;
+	z-index: 300;
+	display: grid;
+	gap: 2px;
+	padding: 6px 9px;
+	border-radius: 6px;
+	background: var(--lb-overlay);
+	color: var(--lb-text-dim);
+	font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
+	white-space: nowrap;
+}
+.lb-perf b {
+	color: var(--lb-text);
+	font-weight: 600;
 }
 .lb-debug-badge__ok {
 	color: var(--lb-money);
@@ -13578,4 +13632,1404 @@ button.lb-props__eye:hover {
 		max-height: calc(100dvh - var(--fl-card-top) - var(--fl-card-bottom) - 72px);
 		overflow-y: auto;
 	}
+}
+
+/* ---------------------------------------------------------------------------------------------------
+ * Syllabus items and tracks (@lifeboard/skill-tree, docs/skill-tree-plan.md).
+ * Display mode has no pointer events on the shape; the checkboxes, the fold arrow and the track's rows
+ * opt back in, which is the documented escape hatch (see .lb-md__task).
+ * ------------------------------------------------------------------------------------------------- */
+.lb-skill,
+.lb-track {
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 9px 11px;
+	font-size: 13px;
+}
+.lb-skill--done {
+	border-color: var(--lb-border-strong);
+}
+.lb-skill__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-skill__check {
+	pointer-events: auto;
+	cursor: pointer;
+	flex: none;
+	width: 15px;
+	height: 15px;
+	margin: 0;
+	accent-color: var(--lb-accent);
+}
+.lb-skill__check:disabled {
+	cursor: default;
+}
+/* Done, but the evidence note is still only its template: ticked, and visibly not yet counted. */
+.lb-skill__check--hollow {
+	accent-color: var(--lb-text-faint);
+	opacity: 0.7;
+}
+.lb-skill__title {
+	flex: 1;
+	min-width: 0;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+.lb-skill--done .lb-skill__title {
+	color: var(--lb-text-dim);
+}
+.lb-skill__fold {
+	pointer-events: auto;
+	flex: none;
+	border: none;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	cursor: pointer;
+	padding: 0 2px;
+}
+.lb-skill__fold:hover {
+	color: var(--lb-text);
+}
+.lb-skill__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding-left: 23px;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-skill__meta:empty {
+	display: none;
+}
+.lb-skill__kind {
+	border-radius: 4px;
+	padding: 0 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+}
+.lb-skill__kind--ship {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-skill__core {
+	color: var(--lb-star);
+}
+.lb-skill__progress,
+.lb-skill__date {
+	font-variant-numeric: tabular-nums;
+}
+.lb-skill__bar {
+	height: 3px;
+	margin-left: 23px;
+	border-radius: 2px;
+	background: var(--lb-surface-2);
+	overflow: hidden;
+}
+.lb-skill__bar > span {
+	display: block;
+	height: 100%;
+	background: var(--lb-accent);
+}
+.lb-skill__list {
+	list-style: none;
+	margin: 4px 0 0;
+	padding: 0 0 0 23px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+}
+.lb-skill__list li {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--lb-text);
+}
+.lb-skill__li-row {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+.lb-skill__list .lb-skill__li--done > .lb-skill__li-row {
+	color: var(--lb-text-faint);
+	text-decoration: line-through;
+}
+.lb-skill--missing {
+	color: var(--lb-text-faint);
+}
+
+.lb-track__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-track__name {
+	flex: 1;
+	min-width: 0;
+	font-weight: 700;
+	font-size: 14px;
+}
+.lb-track__state {
+	pointer-events: auto;
+	cursor: pointer;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	font-size: 11px;
+	padding: 1px 8px;
+}
+.lb-track--active .lb-track__state {
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-track__sub {
+	display: flex;
+	gap: 8px;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-track__empty {
+	margin: 6px 0 2px;
+	color: var(--lb-text-faint);
+	font-size: 12px;
+}
+.lb-track__list,
+.lb-track__works {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+/* The outline scrolls inside the card; the canvas lets it while the card is being edited. */
+.lb-track__list {
+	margin-top: 6px;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden auto;
+}
+.lb-track__editing,
+.lb-track__editing > .lb-track {
+	height: 100%;
+}
+.lb-track__line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 6px;
+	border-radius: 6px;
+}
+.lb-track__row--next > .lb-track__line {
+	background: var(--lb-accent-tint);
+}
+.lb-track__row.lb-draft > .lb-track__line {
+	outline: 1px dashed var(--lb-accent);
+	outline-offset: -1px;
+}
+.lb-track__fold,
+.lb-track__card {
+	flex: none;
+	width: 16px;
+	pointer-events: auto;
+	border: none;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	padding: 0;
+	cursor: pointer;
+}
+.lb-track__card {
+	opacity: 0;
+}
+.lb-track__line:hover .lb-track__card {
+	opacity: 1;
+}
+.lb-track--missing {
+	color: var(--lb-text-faint);
+}
+.lb-track__num {
+	flex: none;
+	width: 18px;
+	text-align: right;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-track__title {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	font-size: 12px;
+}
+.lb-track__row--done > .lb-track__line .lb-track__title {
+	color: var(--lb-text-faint);
+	text-decoration: line-through;
+}
+.lb-track__step {
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	text-decoration: none;
+}
+.lb-track__aside {
+	flex: none;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-track__move {
+	display: flex;
+	gap: 2px;
+}
+.lb-track__move button {
+	border: none;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	border-radius: 4px;
+	font-size: 11px;
+	width: 20px;
+	cursor: pointer;
+}
+
+.lb-skill-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-skill-editor label {
+	display: grid;
+	grid-template-columns: 72px 1fr;
+	align-items: center;
+	gap: 8px;
+}
+.lb-skill-editor label > span {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-skill-editor__pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+.lb-skill-editor__pair label {
+	grid-template-columns: 1fr;
+	gap: 3px;
+}
+.lb-skill-editor__check {
+	grid-template-columns: 15px 1fr !important;
+}
+.lb-skill-editor input:not([type='checkbox']),
+.lb-skill-editor select {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 3px 6px;
+	min-width: 0;
+	width: 100%;
+}
+.lb-skill-editor input[type='checkbox'] {
+	accent-color: var(--lb-accent);
+}
+.lb-skill-editor__add {
+	display: flex;
+	gap: 6px;
+	border-top: 1px solid var(--lb-border);
+	padding-top: 8px;
+}
+.lb-skill-editor__add button {
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 3px 10px;
+	cursor: pointer;
+}
+.lb-skill-editor__add button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.lb-skill-editor__hint {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-skill-editor__id {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	font-family: ui-monospace, monospace;
+	overflow-wrap: anywhere;
+}
+
+/* Skill nodes and the tree header (@lifeboard/skill-tree, step 2). States: locked dim, available
+ * outlined with its requirement filling the ring, unlocked lit with mastery filling it. */
+.lb-skillnode {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: grid;
+	place-items: center;
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+}
+.lb-skillnode__ring {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+.lb-skillnode__track {
+	fill: none;
+	stroke: var(--lb-border);
+	stroke-width: 4;
+}
+.lb-skillnode__fill {
+	fill: none;
+	stroke: var(--lb-accent);
+	stroke-width: 4;
+	stroke-linecap: round;
+	transition: stroke-dasharray 300ms ease;
+}
+.lb-skillnode__disc {
+	width: 78%;
+	height: 78%;
+	border-radius: 50%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 10px;
+	text-align: center;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+}
+.lb-skillnode__name {
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.25;
+	overflow-wrap: anywhere;
+}
+.lb-skillnode__caption {
+	font-size: 10.5px;
+	color: var(--lb-text-faint);
+	font-variant-numeric: tabular-nums;
+}
+/* Locked: dimmed, but the disc stays solid, so nothing behind it (an arrow, a line) shows through. */
+.lb-skillnode--locked .lb-skillnode__ring,
+.lb-skillnode--locked .lb-skillnode__icon,
+.lb-skillnode--locked .lb-skillnode__label,
+.lb-skillnode--locked .lb-skillnode__picture {
+	opacity: 0.45;
+}
+.lb-skillnode--available .lb-skillnode__disc {
+	border-color: var(--lb-accent);
+	border-style: dashed;
+}
+.lb-skillnode--unlocked .lb-skillnode__disc {
+	/* Tinted, but solid underneath: the lines run to the middle of the node, under its disc. */
+	background: linear-gradient(var(--lb-accent-tint), var(--lb-accent-tint)), var(--lb-surface);
+	border-color: var(--lb-accent);
+	box-shadow: 0 0 22px var(--lb-accent-tint);
+}
+.lb-skillnode--unlocked .lb-skillnode__caption {
+	color: var(--lb-accent);
+}
+/* A finished branch (it and everything below it unlocked, tree/branch.ts): the same look in gold. */
+.lb-skillnode--done .lb-skillnode__disc {
+	background: linear-gradient(color-mix(in srgb, var(--lb-star) 16%, transparent), color-mix(in srgb, var(--lb-star) 16%, transparent)), var(--lb-surface);
+	border-color: var(--lb-star);
+	box-shadow: 0 0 26px color-mix(in srgb, var(--lb-star) 30%, transparent);
+}
+.lb-skillnode--done .lb-skillnode__caption,
+.lb-skillnode--unlocked.lb-skillnode--done .lb-skillnode__icon {
+	color: var(--lb-star);
+}
+.lb-skillnode--done .lb-skillnode__fill {
+	stroke: var(--lb-star);
+}
+.lb-skillnode--tier1 .lb-skillnode__fill {
+	stroke: #c08a5a;
+}
+.lb-skillnode--tier2 .lb-skillnode__fill {
+	stroke: #b9c2cc;
+}
+.lb-skillnode--tier3 .lb-skillnode__fill {
+	stroke: var(--lb-star);
+}
+.lb-skillnode--root .lb-skillnode__disc,
+.lb-skillnode--keystone .lb-skillnode__disc {
+	border-width: 2px;
+}
+.lb-skillnode--mastery .lb-skillnode__disc {
+	border-width: 3px;
+}
+.lb-skillnode--pillar .lb-skillnode__disc {
+	border-width: 2.5px;
+}
+/* The middle of the tree ("you"): large, its name bigger; with a picture, the picture fills the
+   disc and the name sits on it at the bottom (skill/SkillComponent.tsx). */
+.lb-skillnode__label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+.lb-skillnode--mastery .lb-skillnode__disc {
+	width: 88%;
+	height: 88%;
+	gap: 10px;
+}
+.lb-skillnode--mastery .lb-skillnode__name {
+	font-size: 26px;
+	letter-spacing: 0.01em;
+}
+.lb-skillnode--mastery .lb-skillnode__caption {
+	font-size: 14px;
+}
+.lb-skillnode--mastery .lb-skillnode__icon svg {
+	width: 56px;
+	height: 56px;
+}
+.lb-skillnode__disc--picture {
+	position: relative;
+	overflow: hidden;
+	padding: 0;
+	justify-content: flex-end;
+	border-width: 4px;
+}
+.lb-skillnode__picture {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+}
+.lb-skillnode__disc--picture .lb-skillnode__label {
+	position: relative;
+	width: 100%;
+	padding: 28% 12% 12%;
+	background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0));
+	color: #fff;
+}
+.lb-skillnode__disc--picture .lb-skillnode__caption {
+	color: rgb(255 255 255 / 0.8);
+}
+.lb-skill-editor__picture {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-skill-editor__picture img {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+/* Method nodes count how you worked, not what about: a dashed edge, the disc still round. */
+.lb-skillnode--method .lb-skillnode__disc {
+	border-style: dashed;
+	border-width: 1.5px;
+}
+
+.lb-skilltree {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding: 10px 13px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	border-left: 3px solid var(--lb-accent);
+	border-radius: var(--lb-radius);
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+}
+.lb-skilltree__name {
+	font-size: 15px;
+	font-weight: 700;
+}
+.lb-skilltree__goal,
+.lb-skilltree__stats {
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+
+.lb-skill-editor__block {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.lb-skill-editor__block > span {
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-skill-editor textarea {
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	color: var(--lb-text);
+	font-family: ui-monospace, monospace;
+	font-size: 11.5px;
+	padding: 5px 7px;
+	resize: vertical;
+}
+.lb-skill-editor__error {
+	margin: 0;
+	color: var(--lb-danger);
+	font-size: 11px;
+}
+.lb-skill-editor__conditions,
+.lb-skill-editor__advancing {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	font-size: 12px;
+}
+.lb-skill-editor__conditions li {
+	display: grid;
+	grid-template-columns: 14px 1fr auto;
+	gap: 6px;
+	color: var(--lb-text-dim);
+}
+.lb-skill-editor__conditions .lb-skill-editor__met {
+	color: var(--lb-accent);
+}
+.lb-skill-editor__advancing li {
+	color: var(--lb-text-dim);
+}
+
+.lb-skillnode__icon {
+	display: grid;
+	place-items: center;
+	color: var(--lb-text-dim);
+}
+.lb-skillnode--unlocked .lb-skillnode__icon {
+	color: var(--lb-accent);
+}
+.lb-skill-editor__iconbtn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 12px;
+	padding: 4px 8px;
+	cursor: pointer;
+}
+.lb-skill-editor__iconbtn > span {
+	margin-left: auto;
+	color: var(--lb-text-faint);
+}
+
+/* The inline icon chooser lent to extensions (app/boardLook/iconBridge.tsx). */
+.lb-iconpick {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-iconpick__head {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+}
+.lb-iconpick .lb-look__search {
+	height: 30px;
+	font-size: 12px;
+}
+.lb-iconpick__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+	gap: 2px;
+	max-height: 180px;
+	overflow-y: auto;
+}
+
+/* Habit cards (@lifeboard/skill-tree, step 3). A miss is a hollow dot, never red. */
+.lb-habit {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-radius: var(--lb-radius);
+	padding: 9px 11px;
+	font-size: 13px;
+}
+.lb-habit--met {
+	border-color: var(--lb-accent);
+}
+.lb-habit--idle {
+	opacity: 0.6;
+}
+.lb-habit__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-habit__name {
+	flex: 1;
+	min-width: 0;
+	font-weight: 600;
+}
+.lb-habit__count {
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+}
+.lb-habit--met .lb-habit__count {
+	color: var(--lb-accent);
+}
+.lb-habit__buttons {
+	display: flex;
+	gap: 3px;
+}
+.lb-habit__buttons button {
+	pointer-events: auto;
+	width: 22px;
+	height: 22px;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+}
+.lb-habit__sub {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-habit__dots {
+	display: flex;
+	gap: 5px;
+}
+.lb-habit__dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 1.5px solid var(--lb-border-strong);
+}
+.lb-habit__dot--met {
+	background: var(--lb-accent);
+	border-color: var(--lb-accent);
+}
+.lb-habit__dot--now {
+	outline: 1.5px solid var(--lb-text-faint);
+	outline-offset: 2px;
+}
+
+/* Up next (@lifeboard/skill-tree, step 4). */
+.lb-upnext {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font-family: var(--lb-font);
+	border: 1px solid var(--lb-border);
+	border-top: 3px solid var(--lb-accent);
+	border-radius: var(--lb-radius);
+	padding: 10px 12px;
+	font-size: 13px;
+}
+.lb-upnext__head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+.lb-upnext__title {
+	font-weight: 700;
+	font-size: 15px;
+}
+.lb-upnext__goal,
+.lb-upnext__total {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-upnext__empty {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 12px;
+}
+.lb-upnext__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.lb-upnext__row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 4px;
+	border-radius: 6px;
+}
+.lb-upnext__row:first-child {
+	background: var(--lb-accent-tint);
+}
+.lb-upnext__dot {
+	flex: none;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	border: 1.5px dashed var(--lb-border-strong);
+}
+.lb-upnext__item {
+	pointer-events: auto;
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font-family: inherit;
+	font-size: 12.5px;
+	text-align: left;
+	padding: 0;
+	cursor: pointer;
+}
+.lb-upnext__row--habit .lb-upnext__item {
+	cursor: default;
+}
+.lb-upnext__meta {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-upnext__count {
+	flex: none;
+	min-width: 26px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-upnext__plus {
+	pointer-events: auto;
+	width: 22px;
+	height: 22px;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	cursor: pointer;
+}
+.lb-upnext__heat {
+	display: flex;
+	gap: 3px;
+	padding-top: 4px;
+	border-top: 1px solid var(--lb-border);
+}
+.lb-upnext__week {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+.lb-upnext__day {
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+	background: var(--lb-surface-2);
+}
+.lb-upnext__day--1 {
+	background: color-mix(in srgb, var(--lb-accent) 40%, transparent);
+}
+.lb-upnext__day--2 {
+	background: color-mix(in srgb, var(--lb-accent) 70%, transparent);
+}
+.lb-upnext__day--3 {
+	background: var(--lb-accent);
+}
+.lb-upnext__day--future {
+	opacity: 0.3;
+}
+
+/* An imported syllabus that hasn't been confirmed: dashed, so a draft never passes for the real thing. */
+.lb-skill.lb-draft,
+.lb-track.lb-draft,
+.lb-skilltree.lb-draft,
+.lb-habit.lb-draft {
+	border-style: dashed;
+	border-color: var(--lb-accent);
+}
+.lb-skillnode.lb-draft .lb-skillnode__disc {
+	border-style: dashed;
+}
+
+/* The skill-tree defaults on the extension's Settings page (TreeSettings.tsx). */
+.lb-tree-setting {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-tree-setting:last-of-type {
+	border-bottom: 0;
+}
+.lb-tree-setting__label {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	font-size: 13.5px;
+	padding-top: 4px;
+}
+.lb-tree-setting__title {
+	color: var(--lb-text-dim);
+}
+.lb-tree-setting__hint {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
+.lb-tree-setting__value {
+	font-size: 13px;
+	color: var(--lb-text);
+}
+/* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
+.lb-tree-advanced {
+	padding: 10px 0 4px;
+	font-size: 12px;
+	color: var(--lb-text);
+}
+.lb-tree-advanced > summary {
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 4px 0;
+}
+.lb-tree-advanced[open] > summary {
+	margin-bottom: 8px;
+}
+.lb-tree-advanced .lb-tuner__group {
+	margin-bottom: 12px;
+}
+.lb-tree-advanced__reset {
+	margin-top: 4px;
+}
+
+/* Entries and works in a tree view (entry/EntryComponent.tsx): an entry is a disc with its name
+   inside and a ring for its works; a work is a smaller disc with its medium's icon, its title below. */
+.lb-entry {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: grid;
+	place-items: center;
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+}
+.lb-entry__ring {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+.lb-entry__track {
+	fill: none;
+	stroke: var(--lb-border);
+	stroke-width: 4;
+}
+.lb-entry__fill {
+	fill: none;
+	stroke: var(--lb-accent);
+	stroke-width: 4;
+	stroke-linecap: round;
+	transition: stroke-dasharray 300ms ease;
+}
+.lb-entry__disc {
+	width: 84%;
+	height: 84%;
+	border-radius: 50%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	padding: 8px;
+	text-align: center;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+}
+.lb-entry__title {
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.2;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+.lb-entry__count {
+	font-size: 10px;
+	color: var(--lb-text-faint);
+	font-variant-numeric: tabular-nums;
+}
+.lb-entry__icon {
+	color: var(--lb-text-faint);
+	flex-shrink: 0;
+}
+.lb-entry--done .lb-entry__icon {
+	color: var(--lb-accent);
+}
+.lb-entry--done .lb-entry__disc {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+}
+.lb-entry.lb-draft .lb-entry__disc,
+.lb-work.lb-draft .lb-work__disc {
+	border-style: dashed;
+	border-color: var(--lb-accent);
+}
+.lb-work {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 5px;
+	font-family: var(--lb-font);
+	color: var(--lb-text);
+}
+.lb-work__disc {
+	width: 60px;
+	height: 60px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	background: var(--lb-surface);
+	border: 1.5px solid var(--lb-border);
+	color: var(--lb-text-faint);
+}
+.lb-work__title {
+	max-width: 100%;
+	font-size: 10.5px;
+	font-weight: 500;
+	line-height: 1.2;
+	text-align: center;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+/* Done: filled with the accent. Done but not yet written up: only its outline. */
+.lb-work--done .lb-work__disc {
+	background: var(--lb-accent-tint);
+	border-color: var(--lb-accent);
+	color: var(--lb-accent);
+}
+.lb-work--hollow .lb-work__disc {
+	background: var(--lb-surface);
+}
+.lb-work--done .lb-work__title {
+	color: var(--lb-text-faint);
+}
+.lb-entry--missing {
+	color: var(--lb-text-faint);
+	font-size: 10px;
+}
+
+/* The layout tuner (tree/LayoutTuner.tsx), a dev card with every layout setting. */
+.lb-tuner {
+	pointer-events: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px 14px 14px;
+	border-radius: 14px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+}
+.lb-tuner__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 700;
+	font-size: 13px;
+	cursor: grab;
+}
+.lb-tuner__close {
+	margin-left: auto;
+	display: grid;
+	place-items: center;
+	padding: 2px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: inherit;
+	opacity: 0.6;
+	cursor: pointer;
+}
+.lb-tuner__close:hover {
+	opacity: 1;
+	background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.lb-tuner__group h4 {
+	margin: 0 0 4px;
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--lb-text-faint);
+}
+.lb-tuner__row {
+	display: grid;
+	grid-template-columns: 1fr 96px 58px;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
+}
+.lb-tuner__row select {
+	grid-column: 2 / 4;
+}
+.lb-tuner__row--check {
+	grid-template-columns: auto 1fr;
+}
+.lb-tuner__row--changed > span {
+	color: var(--lb-accent);
+	font-weight: 600;
+}
+.lb-tuner input[type='number'],
+.lb-tuner select {
+	min-width: 0;
+	padding: 2px 4px;
+	border-radius: 6px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: inherit;
+	font: inherit;
+}
+.lb-tuner input[type='range'] {
+	min-width: 0;
+	accent-color: var(--lb-accent);
+}
+.lb-tuner__stats {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 2px 10px;
+	margin: 0;
+}
+.lb-tuner__stats dt {
+	color: var(--lb-text-faint);
+}
+.lb-tuner__stats dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+}
+.lb-tuner__hint {
+	margin: 0;
+	color: var(--lb-text-faint);
+}
+.lb-tuner__buttons {
+	display: flex;
+	gap: 6px;
+}
+.lb-tuner__buttons button {
+	flex: 1;
+	padding: 5px 8px;
+	border-radius: 8px;
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/* "The tree's layout is out of date", over the board (tree/StaleLayout.tsx). */
+.lb-stale-layout {
+	position: absolute;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 6px 6px 14px;
+	border-radius: 999px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-sm, 0 2px 8px rgb(0 0 0 / 0.08));
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+	pointer-events: auto;
+}
+.lb-stale-layout button {
+	padding: 4px 10px;
+	border-radius: 999px;
+	border: none;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent, #fff);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/* The band guides (dev): each level's border round You, drawn over the board, to drag in or out
+   (tree/BandGuides.tsx). Only the rings take the pointer. */
+/* The hexagon view (skill-tree tree/MazeGuides.tsx): the maze's cells, the ones the tree took brighter. */
+.lb-maze-guides__cell {
+	fill: none;
+	stroke: var(--lb-accent, #6f86ff);
+	stroke-width: 1;
+	opacity: 0.25;
+}
+.lb-maze-guides__cell--used {
+	fill: var(--lb-accent, #6f86ff);
+	fill-opacity: 0.08;
+	opacity: 0.6;
+}
+.lb-band-guides {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+	z-index: 200;
+}
+.lb-band-guides__ring {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	opacity: 0.9;
+}
+.lb-band-guides__hit {
+	fill: none;
+	stroke: transparent;
+	stroke-width: 16;
+	pointer-events: stroke;
+	cursor: grab;
+}
+.lb-band-guides__hit:active {
+	cursor: grabbing;
+}
+.lb-band-guides__label {
+	fill: currentColor;
+	font-family: var(--lb-font);
+	font-size: 13px;
+	font-weight: 600;
+	paint-order: stroke;
+	stroke: var(--lb-canvas, var(--lb-bg));
+	stroke-width: 4px;
+	stroke-linejoin: round;
+}
+.lb-bubble-guides__bubble {
+	fill: currentColor;
+	fill-opacity: 0.05;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-dasharray: 8 5;
+	opacity: 0.85;
+}
+.lb-bubble-guides__spoke {
+	stroke: currentColor;
+	stroke-width: 1;
+	opacity: 0.5;
+}
+.lb-bubble-guides__note {
+	color: var(--lb-text, #ccc);
+}
+.lb-band-guides__region {
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 1.5;
+	opacity: 0.8;
+}
+.lb-band-guides__expand {
+	fill: none;
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 1;
+	opacity: 0.45;
+}
+.lb-band-guides__overlap {
+	fill: none;
+	stroke: var(--lb-danger, #e5484d);
+	stroke-width: 3;
+	stroke-dasharray: 6 4;
+}
+
+/* What the board is busy with: an import, a layout (tree/Working.tsx). The spinner and the bar's
+   shimmer animate transforms only, which run on the compositor, so they keep moving while a step
+   holds the main thread. */
+.lb-working {
+	position: absolute;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 310;
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	column-gap: 10px;
+	row-gap: 8px;
+	min-width: 280px;
+	max-width: min(440px, calc(100vw - 32px));
+	padding: 10px 14px 12px;
+	border-radius: 14px;
+	background: var(--lb-surface);
+	border: 1px solid var(--lb-border);
+	box-shadow: var(--lb-shadow-sm, 0 2px 8px rgb(0 0 0 / 0.08));
+	font-family: var(--lb-font);
+	font-size: 12px;
+	color: var(--lb-text);
+	pointer-events: none;
+}
+.lb-working__spinner {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid var(--lb-border);
+	border-top-color: var(--lb-accent);
+	animation: lb-working-spin 0.8s linear infinite;
+	will-change: transform;
+}
+.lb-working__text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.lb-working__text strong {
+	font-weight: 600;
+}
+.lb-working__text span {
+	color: var(--lb-text-dim);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-working__count {
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-faint);
+	white-space: nowrap;
+}
+.lb-working__bar {
+	grid-column: 1 / -1;
+	position: relative;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--lb-border);
+	overflow: hidden;
+}
+.lb-working__bar > span {
+	position: absolute;
+	inset: 0;
+	background: var(--lb-accent);
+	transform-origin: left;
+	transition: transform 0.3s ease;
+}
+.lb-working__bar::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	width: 40%;
+	background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+	animation: lb-working-shimmer 1.2s ease-in-out infinite;
+	will-change: transform;
+}
+@keyframes lb-working-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes lb-working-shimmer {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(250%);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-working__spinner,
+	.lb-working__bar::after {
+		animation-duration: 2.4s;
+	}
+}
+
+/* A tree header's arrangement and its buttons (tree/definition.tsx). */
+.lb-skilltree__bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+	flex-wrap: wrap;
+}
+.lb-skilltree__mode {
+	flex: 1;
+	min-width: 0;
+	font-size: 11px;
+	color: var(--lb-accent);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-skilltree__button {
+	pointer-events: auto;
+	cursor: pointer;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text-dim);
+	font-family: inherit;
+	font-size: 11px;
+	padding: 1px 8px;
+}
+.lb-skilltree__button:hover {
+	color: var(--lb-text);
+	border-color: var(--lb-accent);
+}
+
+/* Up next: the current step lit, the next ones greyed (upnext/definition.tsx). */
+.lb-upnext__row--current {
+	background: var(--lb-accent-tint);
+	border-radius: 6px;
+}
+.lb-upnext__row--later {
+	opacity: 0.5;
 }

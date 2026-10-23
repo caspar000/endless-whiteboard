@@ -226,10 +226,30 @@ describe('board index', () => {
 		expect((await put('savedQueries', [{ name: 1 }])).statusCode).toBe(400)
 		expect((await put('cardLayouts', [{ name: 'Event', layout: { rows: [] } }])).statusCode).toBe(204)
 		expect((await put('cardLayouts', [{ name: 'Event', layout: 'rows' }])).statusCode).toBe(400)
+		expect((await put('skillIndex', { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('skillIndex', [{ itemId: 'adler/homer' }])).statusCode).toBe(400)
+		expect((await put('skillIndex', { 'adler/homer': { title: 'no id' } })).statusCode).toBe(400)
+		expect((await put('skillHabits', { h: { habitId: 'h', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('skillHabits', { h: { name: 'no id' } })).statusCode).toBe(400)
+		expect((await put('skillTracks', { t: { trackId: 't', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('skillTracks', { t: { order: [] } })).statusCode).toBe(400)
+		expect((await put('skillTrees', { t: { treeId: 't', nodes: [] } })).statusCode).toBe(204)
+		expect((await put('skillTrees', { t: { treeId: 't' } })).statusCode).toBe(400)
+		expect((await put('syllabusItems', { i: { itemId: 'i', children: [] } })).statusCode).toBe(204)
+		expect((await put('syllabusItems', { i: { title: 'no id' } })).statusCode).toBe(400)
+		expect((await put('syllabusTracks', { t: { trackId: 't', order: [] } })).statusCode).toBe(204)
+		expect((await put('syllabusEvidence', { e: { itemId: 'i', boardId: 'b' } })).statusCode).toBe(204)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
 			cardLayouts: [{ name: 'Event', layout: { rows: [] } }],
+			skillIndex: { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } },
+			skillHabits: { h: { habitId: 'h', boardId: 'b' } },
+			skillTracks: { t: { trackId: 't', boardId: 'b' } },
+			skillTrees: { t: { treeId: 't', nodes: [] } },
+			syllabusItems: { i: { itemId: 'i', children: [] } },
+			syllabusTracks: { t: { trackId: 't', order: [] } },
+			syllabusEvidence: { e: { itemId: 'i', boardId: 'b' } },
 		})
 	})
 

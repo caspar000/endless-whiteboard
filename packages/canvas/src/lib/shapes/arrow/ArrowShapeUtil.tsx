@@ -1,4 +1,9 @@
 import {
+	ARROW_STAYS_BEHIND_META,
+	type GpuContext,
+	type GpuPrimitive,
+	gpuColor,
+	gpuDash,
 	renderHtmlFromRichText,
 	richTextToPlainText,
 	IndexKey,
@@ -45,6 +50,8 @@ import {
 	getStraightArrowHandlePath,
 	toDomPrecision,
 	useIsEditing,
+	useValue,
+	getGpuSnapshots,
 } from '@lifeboard/canvas-editor'
 import React, { type JSX } from 'react'
 import { ShapeFill, getShapeFillSvg, useDefaultColorTheme } from '../shared/ShapeFill'
@@ -74,6 +81,18 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 	static override type = 'arrow' as const
 	static override props = arrowShapeProps
 	static override migrations = arrowShapeMigrations
+
+	override canLeavePage(_shape: TLArrowShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLArrowShape) {
+		// The hint the only selected arrow shows (see `component`).
+		return this.editor.isOnlySelectedShape(shape.id) &&
+			this.editor.isInAny('select.idle', 'select.pointing_handle', 'select.dragging_handle', 'arrow.dragging')
+			? 'hint'
+			: ''
+	}
 
 	override canEdit = () => true
 	override canBind() {
@@ -526,18 +545,68 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		}
 	}
 
+	/**
+	 * What the GPU layer draws for an arrow (docs/gpu-renderer-plan.md, phase 3): the paths the page
+	 * strokes, in its order and colours (the halo under all of it unless kept behind, the body with its
+	 * dash, the heads). The page keeps the arrows it draws in a way the GPU can't match yet: a label
+	 * (text), heads that cut the line (the page masks the line under them), and the selection hint.
+	 */
+	override toGpu(shape: TLArrowShape, ctx: GpuContext): GpuPrimitive[] | null {
+		const editor = this.editor
+		if (arrowLabelText(shape).trim()) return null
+		const info = editor.getArrowInfo(shape)
+		if (!info?.isValid) return []
+		const cuts = (head: string) => !(head === 'none' || head === 'arrow')
+		if (cuts(info.start.arrowhead) || cuts(info.end.arrowhead)) return null
+		// Dots and dashes, by a picture of the arrow's own SVG: Chromium draws a dash's ends and a dot a
+		// pixel or two wide its own way, which the GPU's exact coverage didn't match (phase 4d). Solid
+		// lines stay strokes: laid over each other they mustn't add up, and pictures would.
+		if (shape.props.dash === 'dashed' || shape.props.dash === 'dotted') return getGpuSnapshots(editor).get(shape) ?? null
+		if (
+			editor.isOnlySelectedShape(shape.id) &&
+			editor.isInAny('select.idle', 'select.pointing_handle', 'select.dragging_handle', 'arrow.dragging') &&
+			!editor.getInstanceState().isReadonly
+		)
+			return null
+		const theme = getDefaultColorTheme({ isDarkMode: ctx.isDarkMode })
+		const width = STROKE_SIZES[shape.props.size] * shape.props.scale
+		const body = getArrowBodyPath(info, shape)
+		const as = info.start.arrowhead && getArrowheadPathForType(info, 'start', width)
+		const ae = info.end.arrowhead && getArrowheadPathForType(info, 'end', width)
+		const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(info.isStraight ? info.length : Math.abs(info.bodyArc.length), width, {
+			style: shape.props.dash,
+		})
+		const dash = gpuDash(strokeDasharray, strokeDashoffset)
+		const color = gpuColor(theme[shape.props.color].solid)
+		const paths = (halo: boolean): GpuPrimitive[] => [
+			{ kind: 'stroke', d: body, width, color, dash, halo },
+			...[as, ae].filter((d): d is string => !!d).map((d): GpuPrimitive => ({ kind: 'stroke', d, width, color, halo })),
+		]
+		return [...(shape.meta[ARROW_STAYS_BEHIND_META] ? [] : paths(true)), ...paths(false)]
+	}
+
 	component(shape: TLArrowShape) {
 		// Not a class component, but eslint can't tell that :(
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const theme = useDefaultColorTheme()
-		const onlySelectedShape = this.editor.getOnlySelectedShape()
-		const shouldDisplayHandles =
-			this.editor.isInAny(
-				'select.idle',
-				'select.pointing_handle',
-				'select.dragging_handle',
-				'arrow.dragging'
-			) && !this.editor.getInstanceState().isReadonly
+		const editor = this.editor
+		// Through `useValue`, so each arrow re-renders when *its* answer flips. Read inline, the
+		// selection was a dependency of every arrow's render, and a brush across a board with two
+		// thousand relations re-rendered all of them on every pointer move.
+		// eslint-disable-next-line react-hooks/rules-of-hooks
+		const shouldDisplayHint = useValue(
+			'arrow hint',
+			() =>
+				editor.isOnlySelectedShape(shape.id) &&
+				editor.isInAny(
+					'select.idle',
+					'select.pointing_handle',
+					'select.dragging_handle',
+					'arrow.dragging'
+				) &&
+				!editor.getInstanceState().isReadonly,
+			[editor, shape.id]
+		)
 
 		const info = this.editor.getArrowInfo(shape)
 		const bounds = Box2d.ZeroFix(this.editor.getShapeGeometry(shape).bounds)
@@ -559,7 +628,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 
 		let handlePath: null | JSX.Element = null
 
-		if (onlySelectedShape === shape && shouldDisplayHandles) {
+		if (shouldDisplayHint) {
 			const sw = 2
 			const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(
 				info.isStraight
@@ -626,48 +695,73 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 		// the mask, see <https://linear.app/tldraw/issue/TLD-1500/changing-arrow-color-makes-line-pass-through-text>
 		const maskId = (shape.id + '_clip_' + changeIndex).replace(':', '_')
 
+		// A mask is the dearest thing an arrow draws: the browser rasterizes it offscreen at the size of
+		// the arrow's bounds, for the line and again for the halo, and again whenever the layer repaints,
+		// which is every camera frame. So it is only there when it cuts something out of the line: the
+		// label's box, or an arrowhead drawn as a shape. A plain relation draws its paths directly.
+		const isMasked = !!labelGeometry || (!!as && maskStartArrowhead) || (!!ae && maskEndArrowhead)
+		const masked = (body: React.ReactNode) =>
+			isMasked ? (
+				<g mask={`url(#${maskId})`}>
+					<rect
+						x={toDomPrecision(bounds.minX - 100)}
+						y={toDomPrecision(bounds.minY - 100)}
+						width={toDomPrecision(bounds.width + 200)}
+						height={toDomPrecision(bounds.height + 200)}
+						opacity={0}
+					/>
+					{body}
+				</g>
+			) : (
+				body
+			)
+
 		return (
 			<>
 				<SVGContainer id={shape.id} style={{ minWidth: 50, minHeight: 50 }}>
-					{/* Yep */}
-					<defs>
-						<mask id={maskId}>
-							<rect
-								x={toDomPrecision(-100 + bounds.minX)}
-								y={toDomPrecision(-100 + bounds.minY)}
-								width={toDomPrecision(bounds.width + 200)}
-								height={toDomPrecision(bounds.height + 200)}
-								fill="white"
-							/>
-							{labelGeometry && (
+					{isMasked && (
+						<defs>
+							<mask id={maskId}>
 								<rect
-									x={labelGeometry.x}
-									y={labelGeometry.y}
-									width={labelGeometry.w}
-									height={labelGeometry.h}
-									fill="black"
-									rx={4}
-									ry={4}
+									x={toDomPrecision(-100 + bounds.minX)}
+									y={toDomPrecision(-100 + bounds.minY)}
+									width={toDomPrecision(bounds.width + 200)}
+									height={toDomPrecision(bounds.height + 200)}
+									fill="white"
 								/>
-							)}
-							{as && maskStartArrowhead && (
-								<path
-									d={as}
-									fill={info.start.arrowhead === 'arrow' ? 'none' : 'black'}
-									stroke="none"
-								/>
-							)}
-							{ae && maskEndArrowhead && (
-								<path
-									d={ae}
-									fill={info.end.arrowhead === 'arrow' ? 'none' : 'black'}
-									stroke="none"
-								/>
-							)}
-						</mask>
-					</defs>
+								{labelGeometry && (
+									<rect
+										x={labelGeometry.x}
+										y={labelGeometry.y}
+										width={labelGeometry.w}
+										height={labelGeometry.h}
+										fill="black"
+										rx={4}
+										ry={4}
+									/>
+								)}
+								{as && maskStartArrowhead && (
+									<path
+										d={as}
+										fill={info.start.arrowhead === 'arrow' ? 'none' : 'black'}
+										stroke="none"
+									/>
+								)}
+								{ae && maskEndArrowhead && (
+									<path
+										d={ae}
+										fill={info.end.arrowhead === 'arrow' ? 'none' : 'black'}
+										stroke="none"
+									/>
+								)}
+							</mask>
+						</defs>
+					)}
 					{/* The halo: the arrow again in the paper's colour and a little wider, under all of it, so
-					    it reads over a picture or a dark shape the way a text label does. */}
+					    it reads over a picture or a dark shape the way a text label does. None for an arrow
+					    kept behind the shapes it joins: it never passes over them, and where several such
+					    lines meet (a tree's), a halo would cut a dark seam into the line under it. */}
+					{!shape.meta[ARROW_STAYS_BEHIND_META] && (
 					<g
 						className="tl-arrow-halo"
 						fill="none"
@@ -676,19 +770,13 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 						strokeLinecap="round"
 						pointerEvents="none"
 					>
-						<g mask={`url(#${maskId})`}>
-							<rect
-								x={toDomPrecision(bounds.minX - 100)}
-								y={toDomPrecision(bounds.minY - 100)}
-								width={toDomPrecision(bounds.width + 200)}
-								height={toDomPrecision(bounds.height + 200)}
-								opacity={0}
-							/>
+						{masked(
 							<path d={path} strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} />
-						</g>
+						)}
 						{as && <path d={as} />}
 						{ae && <path d={ae} />}
 					</g>
+					)}
 					<g
 						fill="none"
 						stroke={theme[shape.props.color].solid}
@@ -699,20 +787,13 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 					>
 						{handlePath}
 						{/* firefox will clip if you provide a maskURL even if there is no mask matching that URL in the DOM */}
-						<g mask={`url(#${maskId})`}>
-							<rect
-								x={toDomPrecision(bounds.minX - 100)}
-								y={toDomPrecision(bounds.minY - 100)}
-								width={toDomPrecision(bounds.width + 200)}
-								height={toDomPrecision(bounds.height + 200)}
-								opacity={0}
-							/>
+						{masked(
 							<path
 								d={path}
 								strokeDasharray={strokeDasharray}
 								strokeDashoffset={strokeDashoffset}
 							/>
-						</g>
+						)}
 						{as && maskStartArrowhead && shape.props.fill !== 'none' && (
 							<ShapeFill theme={theme} d={as} color={shape.props.color} fill={shape.props.fill} />
 						)}
@@ -967,7 +1048,7 @@ export class ArrowShapeUtil extends ShapeUtil<TLArrowShape> {
 				haloBody.appendChild(haloPath)
 			} else halo.appendChild(haloPath)
 		}
-		g.appendChild(halo)
+		if (!shape.meta[ARROW_STAYS_BEHIND_META]) g.appendChild(halo)
 
 		const g2 = document.createElementNS('http://www.w3.org/2000/svg', 'g')
 		g2.setAttribute('mask', `url(#${maskId})`)
@@ -1126,11 +1207,14 @@ function getArrowheadSvgPath(
 	}
 }
 
-/** The line an arrow draws: an elbow's route with rounded corners, or its straight or curved body. */
+/**
+ * The line an arrow draws: an elbow's route with rounded corners, a route through waypoints with each
+ * turn rounded as far as it goes, or its straight or curved body.
+ */
 function getArrowBodyPath(info: TLArrowInfo, shape: TLArrowShape) {
 	if (info.isStraight && info.route) {
-		// Corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
-		return getElbowArrowPath(info.route, STROKE_SIZES[shape.props.size] * shape.props.scale * 2)
+		// An elbow's corners rounded at twice the stroke, as tldraw 5 draws them (7 at medium, measured).
+		return getElbowArrowPath(info.route, info.smooth ? Infinity : STROKE_SIZES[shape.props.size] * shape.props.scale * 2)
 	}
 	return info.isStraight ? getSolidStraightArrowPath(info) : getSolidCurvedArrowPath(info)
 }

@@ -15,18 +15,10 @@ export function BackToContent() {
 		let showBackToContentPrev = false
 
 		const interval = setInterval(() => {
-			const renderingShapes = editor.getRenderingShapes()
-			const renderingBounds = editor.getRenderingBounds()
-
-			// renderingShapes will also include shapes that have the canUnmount flag
-			// set to true. These shapes will be on the canvas but may not be in the
-			// viewport... so we also need to narrow down the list to only shapes that
-			// are ALSO in the viewport.
-			const visibleShapes = renderingShapes.filter(
-				(s) => s.maskedPageBounds && renderingBounds.includes(s.maskedPageBounds)
-			)
+			// From the bounds index: the rendering shapes' masked bounds, asked for every second, kept a
+			// set of computeds alive for every shape on the board.
 			const showBackToContentNow =
-				visibleShapes.length === 0 && editor.getCurrentPageShapes().length > 0
+				editor.getCurrentPageShapeIds().size > 0 && !editor.hasShapesInBounds(editor.getRenderingBounds())
 
 			if (showBackToContentPrev !== showBackToContentNow) {
 				setShowBackToContent(showBackToContentNow)

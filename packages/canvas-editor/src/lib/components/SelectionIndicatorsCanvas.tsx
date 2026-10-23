@@ -25,6 +25,13 @@ export function SelectionIndicatorsCanvas({ ids }: { ids: TLShapeId[] }) {
 		() => {
 			const canvas = rCanvas.current
 			if (!canvas) return
+			// Nothing selected: cleared once, without reading the camera, so a pan doesn't clear it again on
+			// every frame. A 2D canvas waits for the GPU once it's busy, which on a big board on the GPU
+			// layer stopped the page for a fifth of a second in a pan.
+			if (!ids.length) {
+				canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+				return
+			}
 			const { w, h } = editor.getViewportScreenBounds()
 			const { x: cx, y: cy, z } = editor.getCamera()
 			const dpr = window.devicePixelRatio || 1

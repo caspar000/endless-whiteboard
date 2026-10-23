@@ -12,6 +12,8 @@ import {
 	toDomPrecision,
 	useIsCropping,
 	useValue,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import { useEffect, useState } from 'react'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
@@ -58,6 +60,18 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 	static override type = 'image' as const
 	static override props = imageShapeProps
 	static override migrations = imageShapeMigrations
+
+	override canLeavePage(_shape: TLImageShape) {
+		return true
+	}
+
+	override getRenderKey(shape: TLImageShape) {
+		// The crop preview (see `component`).
+		return this.editor.isOnlySelectedShape(shape.id) &&
+			this.editor.isInAny('select.crop', 'select.cropping', 'select.pointing_crop_handle')
+			? 'crop'
+			: ''
+	}
 
 	override isAspectRatioLocked = () => true
 	override rendersAhead = () => true
@@ -177,6 +191,11 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 				</HTMLContainer>
 			</>
 		)
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4c). */
+	override toGpu(shape: TLImageShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLImageShape) {

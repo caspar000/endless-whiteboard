@@ -1,0 +1,247 @@
+import { react } from '@tldraw/state'
+import { useValue } from '@tldraw/state-react'
+import { modulate } from '@tldraw/utils'
+import React from 'react'
+import { useEditor } from '../hooks/useEditor'
+import { getRendererMode } from '../editor/rendererMode'
+import { getGpuScene, type GpuFrame } from './gpuScene'
+import { GpuRenderer, type GpuView } from './GpuRenderer'
+import { gpuColor } from './primitives'
+
+/**
+ * The GPU layer (docs/gpu-renderer-plan.md): a WebGL2 canvas over the shapes the page draws and under
+ * the overlays (selection, handles), drawing the shapes the scene gives it.
+ *
+ * In the page only while the scene wants it (`GpuScene.wanted`: the board shown, the browser able, the
+ * renderer asking, or `auto` over its budget). Over the shapes, not under: a WebGL canvas under them
+ * made the browser composite the shape layer apart and rasterise it at another scale, which blurred
+ * the page's thin lines zoomed out (phase 3). Over them, the page draws exactly as without it. With
+ * the GPU off there is no canvas at all; leaving frees the context (a browser allows a handful).
+ */
+export function GpuLayer() {
+	const editor = useEditor()
+	const wanted = useValue('gpu layer wanted', () => getGpuScene(editor).wanted.get(), [editor])
+	const compare = useValue('gpu layer compare', () => getRendererMode() === 'compare', [])
+	if (!wanted) return null
+	return (
+		<>
+			<GpuCanvas compare={compare} />
+			<GpuShapeList />
+		</>
+	)
+}
+
+/** How many of the shapes the GPU draws on screen the list names: zoomed out, a board shows thousands. */
+const LISTED = 200
+
+/**
+ * The shapes on screen the GPU layer draws, named in a list only assistive technology sees: their
+ * elements are hidden (`visibility: hidden`), which takes them out of the accessibility tree.
+ */
+function GpuShapeList() {
+	const editor = useEditor()
+	const shapes = useValue(
+		'gpu shape list',
+		() => {
+			const scene = getGpuScene(editor)
+			const hidden = scene.hidden.get()
+			const culled = scene.culled.get()
+			const out: { id: string; name: string }[] = []
+			let more = 0
+			for (const id of hidden) {
+				if (culled.has(id)) continue
+				if (out.length >= LISTED) {
+					more++
+					continue
+				}
+				const shape = editor.getShape(id)
+				if (!shape) continue
+				const text = editor.getShapeUtil(shape).getText(shape)?.trim()
+				out.push({ id, name: text || `${shape.type.replace(/^node\./, '')} shape` })
+			}
+			return { out, more }
+		},
+		[editor]
+	)
+	if (!shapes.out.length) return null
+	return (
+		<ul className="tl-gpu-shape-list" aria-label="Shapes on the canvas">
+			{shapes.out.map((s) => (
+				<li key={s.id}>{s.name}</li>
+			))}
+			{shapes.more > 0 && <li>{`and ${shapes.more} more`}</li>}
+		</ul>
+	)
+}
+
+/**
+ * Drawn once a frame, after everything that changes it in that frame and before the frame is painted
+ * (see `schedule`), so it moves with the page's camera transform, never a frame behind. A lost context
+ * hands every shape back to the page until it's restored.
+ *
+ * The canvas is made here and removed on the way out, so each run of the effect (React runs them
+ * twice in development) has a canvas of its own and a context that was never given back.
+ */
+function GpuCanvas({ compare }: { compare: boolean }) {
+	const editor = useEditor()
+	const rHost = React.useRef<HTMLDivElement>(null)
+	const rCanvas = React.useRef<HTMLCanvasElement | null>(null)
+
+	React.useEffect(() => {
+		const host = rHost.current
+		if (!host) return
+		const canvas = document.createElement('canvas')
+		canvas.className = 'tl-gpu-layer'
+		canvas.setAttribute('aria-hidden', 'true')
+		host.appendChild(canvas)
+		rCanvas.current = canvas
+		const scene = getGpuScene(editor)
+		let renderer: GpuRenderer | null = null
+		let queued = false
+
+		const start = () => {
+			const gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: false, alpha: true })
+			if (!gl || gl.isContextLost()) return
+			try {
+				renderer = new GpuRenderer(gl)
+			} catch (error) {
+				editor.annotateError(error, { origin: 'gpu.layer', willCrashApp: false })
+				renderer = null
+				return
+			}
+			scene.starts++
+			scene.layerUp.set(true)
+		}
+
+		// When the camera last moved, for pictures: rastered again only once it's been still a moment.
+		const SETTLE_MS = 120
+		let cameraKey = ''
+		let movedAt = 0
+		let later: ReturnType<typeof setTimeout> | null = null
+		const draw = () => {
+			queued = false
+			if (!renderer) return
+			const { x, y, z } = editor.getCamera()
+			const key = `${x},${y},${z}`
+			if (key !== cameraKey) {
+				cameraKey = key
+				movedAt = performance.now()
+			}
+			const settled = performance.now() - movedAt >= SETTLE_MS
+			// The same offset the shape layer is moved by ("position layers" in Canvas.tsx).
+			const offset = z >= 1 ? modulate(z, [1, 8], [0.125, 0.5], true) : modulate(z, [0.1, 1], [-2, 0.125], true)
+			const bounds = editor.getViewportScreenBounds()
+			const dpr = editor.getDevicePixelRatio()
+			const width = Math.max(1, Math.round(bounds.w * dpr))
+			const height = Math.max(1, Math.round(bounds.h * dpr))
+			if (canvas.width !== width) canvas.width = width
+			if (canvas.height !== height) canvas.height = height
+			if (frame) renderer.setFrame(frame)
+			// What the page's halos read: the zoom it was last told (debounced on big boards) and the paper's colour.
+			const haloZoom = Number(container.style.getPropertyValue('--tl-zoom')) || z
+			const view: GpuView = { tx: x + offset, ty: y + offset, z, width: bounds.w, height: bounds.h, dpr, haloZoom, background, settled }
+			const { pending, left } = renderer.draw(view)
+			// Only counted with the camera still: moving, pictures aren't rastered ahead.
+			if (settled && left !== scene.picturesLeft.__unsafe__getWithoutCapture()) scene.picturesLeft.set(left)
+			// Pictures drawn from a raster at another scale or position: again when the camera has been
+			// still long enough, or next frame if there wasn't time for all of them. Once still, a draw in
+			// any case: it rasters what's around the screen for the next pan (`GpuRenderer.placeImages`).
+			if ((pending || !settled) && !later) {
+				const wait = settled ? 16 : SETTLE_MS - (performance.now() - movedAt) + 1
+				later = setTimeout(() => {
+					later = null
+					schedule()
+				}, Math.max(0, wait))
+			}
+		}
+
+		// A draw is asked for by flipping the width of an empty element a ResizeObserver watches: the browser
+		// calls the observer once a frame, after the frame's animation callbacks (camera animations, the
+		// reader handing shapes over) and layout, and before it paints. Drawn in a microtask after each
+		// change instead, a pan whose input came faster than the frames went out had a whole frame queued
+		// on the GPU for every wheel event, and once the GPU was behind it fell further behind: a second
+		// a frame on a big board. Put off to the next animation frame instead, a change made in an
+		// animation callback was painted with the layer a frame behind it.
+		const pulse = document.createElement('div')
+		pulse.setAttribute('aria-hidden', 'true')
+		pulse.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;contain:strict'
+		host.appendChild(pulse)
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => queued && draw())
+		observer?.observe(pulse)
+		const schedule = () => {
+			if (queued) return
+			queued = true
+			if (!observer) return queueMicrotask(draw)
+			pulse.style.width = pulse.style.width === '1px' ? '0px' : '1px'
+		}
+
+		// The paper's colour, read when the theme changes (once its new value is in: a frame later),
+		// not on every frame, which would make the browser work out the styles each time.
+		const container = editor.getContainer()
+		let background = gpuColor(getComputedStyle(container).getPropertyValue('--color-background'))
+		const stopTheme = react('gpu layer theme', () => {
+			editor.user.getIsDarkMode()
+			requestAnimationFrame(() => {
+				background = gpuColor(getComputedStyle(container).getPropertyValue('--color-background'))
+				schedule()
+			})
+		})
+		// `--tl-zoom` follows the camera late on big boards (useZoomCss): a halo redraws when it lands.
+		const zoomWatch = new MutationObserver(schedule)
+		zoomWatch.observe(container, { attributes: true, attributeFilter: ['style'] })
+
+		const onLost = (e: Event) => {
+			e.preventDefault()
+			renderer = null
+			scene.layerUp.set(false)
+		}
+		const onRestored = () => {
+			start()
+			schedule()
+		}
+		canvas.addEventListener('webglcontextlost', onLost)
+		canvas.addEventListener('webglcontextrestored', onRestored)
+		start()
+
+		// What's drawn, kept by its own reactor, which runs only when the scene changes: read on every
+		// camera move instead, the frame checks each of the board's shapes for a change, every frame.
+		let frame: GpuFrame | null = null
+		const stopFrame = react('gpu layer frame', () => {
+			frame = scene.frame.get()
+			schedule()
+		})
+		// Where it's drawn: a draw for each change of these.
+		const stop = react('gpu layer draw', () => {
+			editor.getCamera()
+			editor.getViewportScreenBounds()
+			editor.getDevicePixelRatio()
+			schedule()
+		})
+
+		return () => {
+			if (later) clearTimeout(later)
+			observer?.disconnect()
+			pulse.remove()
+			stop()
+			stopFrame()
+			stopTheme()
+			zoomWatch.disconnect()
+			canvas.removeEventListener('webglcontextlost', onLost)
+			canvas.removeEventListener('webglcontextrestored', onRestored)
+			scene.layerUp.set(false)
+			scene.picturesLeft.set(0)
+			// Given back now rather than whenever the canvas is collected.
+			renderer?.gl.getExtension('WEBGL_lose_context')?.loseContext()
+			renderer = null
+			canvas.remove()
+			rCanvas.current = null
+		}
+	}, [editor])
+
+	React.useEffect(() => {
+		rCanvas.current?.classList.toggle('tl-gpu-layer--compare', compare)
+	}, [compare])
+
+	// `display: contents`: the canvas sits in the canvas's own stacking order, over the shapes, under the overlays.
+	return <div ref={rHost} style={{ display: 'contents' }} />
+}

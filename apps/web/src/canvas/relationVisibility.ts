@@ -1,4 +1,10 @@
-import { isHiddenRelation, isRelation, isRelationDrawn, readRelationView } from '@lifeboard/node-kit'
+import {
+	isHiddenRelation,
+	isRelation,
+	isRelationDrawn,
+	isShapeHiddenByExtension,
+	readRelationView,
+} from '@lifeboard/node-kit'
 import { react, type Editor, type TLShape } from '@lifeboard/canvas'
 import { getTrace } from './tracing'
 
@@ -12,8 +18,9 @@ import { getTrace } from './tracing'
  *
  * Three rules govern the body, and each of them is load-bearing:
  *
- * 1. **Only arrows.** Everything else returns `inherit` immediately — this runs for every shape on
- *    the board, so the common case has to be one comparison.
+ * 1. **Only arrows, and the shapes an extension claims.** Everything else returns `inherit` after one
+ *    map lookup (`isShapeHiddenByExtension`) — this runs for every shape on the board, so the common
+ *    case has to stay that cheap. A collapsed skill item hiding its children is the first claim.
  *
  * 2. **Only relations.** An arrow with a loose end is a drawing, and a "relation view" that made
  *    someone's sketch vanish would be a bug. That question is asked with `isRelation`, which reads
@@ -30,7 +37,7 @@ import { getTrace } from './tracing'
  * pending write along with the camera, the selection and the undo history (see Board.tsx).
  */
 export const getShapeVisibility = (shape: TLShape, editor: Editor): 'hidden' | 'inherit' => {
-	if (shape.type !== 'arrow') return 'inherit'
+	if (shape.type !== 'arrow') return isShapeHiddenByExtension(shape, editor) ? 'hidden' : 'inherit'
 
 	/*
 	 * Decide it from the arrow's own record first, and only ask what it is *bound to* if the answer

@@ -6,11 +6,15 @@ import { createTLStore } from '../../config/createTLStore'
 import { TLLocalSyncClient } from './TLLocalSyncClient'
 import * as idb from './indexedDb'
 
-vi.mock('./indexedDb', async () => ({
-	...(await vi.importActual<object>('./indexedDb')),
-	storeSnapshotInIndexedDb: vi.fn(() => Promise.resolve()),
-	storeChangesInIndexedDb: vi.fn(() => Promise.resolve()),
-}))
+vi.mock('./indexedDb', async () => {
+	const actual = await vi.importActual<typeof import('./indexedDb')>('./indexedDb')
+	return {
+		...actual,
+		loadDataFromStore: vi.fn(actual.loadDataFromStore),
+		storeSnapshotInIndexedDb: vi.fn(() => Promise.resolve()),
+		storeChangesInIndexedDb: vi.fn(() => Promise.resolve()),
+	}
+})
 
 class BroadcastChannelMock {
 	onmessage?: (e: MessageEvent) => void
@@ -125,6 +129,25 @@ test('the first db write after a client connects is a full db overwrite, made as
 	expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
 })
 
+test('a board read from its own database, as it is there, is not written again until it changes', async () => {
+	const schema = createTLStore({ shapeUtils: [] }).schema.serialize()
+	;(idb.loadDataFromStore as jest.Mock).mockImplementationOnce(() =>
+		Promise.resolve({ records: [PageRecordType.create({ name: 'kept', index: 'a0' as IndexKey })], schema, sessionStateSnapshot: null })
+	)
+	const { client } = testClient()
+	await tick()
+	await tick()
+	expect(client.store.query.records('page').get().map((page) => page.name)).toContain('kept')
+	expect(idb.storeSnapshotInIndexedDb).not.toHaveBeenCalled()
+
+	// A change is written as a change, not the whole board again.
+	client.store.put([PageRecordType.create({ name: 'new', index: 'a1' as IndexKey })])
+	await tick()
+	const calls = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls
+	expect(JSON.stringify(calls[calls.length - 1]![0].changes)).toContain('new')
+	expect(idb.storeSnapshotInIndexedDb).not.toHaveBeenCalled()
+})
+
 test('it clears the diff queue after every write', async () => {
 	const { client } = testClient()
 	await tick()
@@ -183,6 +206,25 @@ describe('pending writes are not lost', () => {
 		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
 		const [{ didCancel }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[0]
 		expect(didCancel()).toBe(false)
+	})
+
+	test('closing mid-write lets that write finish, then writes what came in during it', async () => {
+		const client = await clientWithPendingChange()
+		const running = promiseWithResolve<void>()
+		;(idb.storeChangesInIndexedDb as jest.Mock).mockImplementationOnce(() => running)
+		await tick()
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(1)
+		client.store.put([PageRecordType.create({ name: 'test3', index: 'a2' as IndexKey })])
+		client.close()
+		const [{ didCancel }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[0]
+		expect(didCancel()).toBe(false)
+		running.resolve()
+		await tick()
+		await tick()
+		expect(idb.storeChangesInIndexedDb).toHaveBeenCalledTimes(2)
+		const [{ changes, didCancel: didCancelNext }] = (idb.storeChangesInIndexedDb as jest.Mock).mock.calls[1]
+		expect(JSON.stringify(changes)).toContain('test3')
+		expect(didCancelNext()).toBe(false)
 	})
 
 	test('a page that goes mid-write leaves them in localStorage, and the next load has them', async () => {

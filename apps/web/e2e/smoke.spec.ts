@@ -858,7 +858,8 @@ test.describe('nodes', () => {
 						'.lb-board-host:not([data-hidden]) .tl-shape[data-shape-type="note"], .lb-board-host:not([data-hidden]) .tl-shape[data-shape-type="geo"]'
 					),
 				]
-					.map((el) => (el as HTMLElement).innerText.replace(/\s+/g, ' ').trim())
+					// Not `innerText`: that's empty for a shape the GPU layer draws (its element is hidden).
+					.map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim())
 					.filter(Boolean)
 			)
 

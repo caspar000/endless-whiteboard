@@ -13,9 +13,14 @@ import {
 	WeakMapCache,
 	getDefaultColorTheme,
 	getIndexBetween,
+	gpuColor,
+	gpuDash,
+	type GpuContext,
+	type GpuPrimitive,
 	lineShapeMigrations,
 	lineShapeProps,
 	sortByIndex,
+	getGpuSnapshots,
 } from '@lifeboard/canvas-editor'
 
 import { ShapeFill, useDefaultColorTheme } from '../shared/ShapeFill'
@@ -37,6 +42,10 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 	static override type = 'line' as const
 	static override props = lineShapeProps
 	static override migrations = lineShapeMigrations
+
+	override canLeavePage(_shape: TLLineShape) {
+		return true
+	}
 
 	override hideResizeHandles = () => true
 	override hideRotateHandle = () => true
@@ -129,6 +138,34 @@ export class LineShapeUtil extends ShapeUtil<TLLineShape> {
 		}
 
 		return next
+	}
+
+	/**
+	 * What the GPU layer draws for a line (docs/gpu-renderer-plan.md, phase 3): the paths the page
+	 * strokes for the solid, dashed and dotted styles, each dashed segment with its own dash as the page
+	 * lays them. The hand-drawn style is a filled outline, which the page keeps for now.
+	 */
+	override toGpu(shape: TLLineShape, ctx: GpuContext): GpuPrimitive[] | null {
+		const { dash, color, spline: kind } = shape.props
+		// Hand-drawn, dashed and dotted lines as their elements show them (phase 4d): Chromium draws a
+		// dash's ends its own way. Solid ones stay strokes, which don't add up laid over each other.
+		if (dash !== 'solid') return getGpuSnapshots(this.editor).get(shape) ?? null
+		const spline = getGeometryForLineShape(shape)
+		const width = STROKE_SIZES[shape.props.size] * shape.props.scale
+		const c = gpuColor(getDefaultColorTheme({ isDarkMode: ctx.isDarkMode })[color].solid)
+		if (dash === 'solid') {
+			const d = kind === 'line' ? 'M' + spline.points[0] + 'L' + spline.points.slice(1) : getSvgPathForLineGeometry(spline)
+			return [{ kind: 'stroke', d, width, color: c }]
+		}
+		return spline.segments.map((segment, i): GpuPrimitive => {
+			const { strokeDasharray, strokeDashoffset } = getPerfectDashProps(segment.length, width, {
+				style: dash,
+				start: i > 0 ? 'outset' : 'none',
+				end: i < spline.segments.length - 1 ? 'outset' : 'none',
+			})
+			const d = kind === 'line' ? getSvgPathForEdge(segment as never, true) : getSvgPathForBezierCurve(segment as never, true)
+			return { kind: 'stroke', d, width, color: c, dash: gpuDash(strokeDasharray, strokeDashoffset) }
+		})
 	}
 
 	component(shape: TLLineShape) {

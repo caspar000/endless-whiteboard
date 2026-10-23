@@ -1,4 +1,5 @@
-import { type Extensions, type JSONContent, generateHTML } from '@tiptap/core'
+import { type Extensions, type JSONContent, getHTMLFromFragment, getSchema } from '@tiptap/core'
+import { Node, type Schema } from '@tiptap/pm/model'
 import Highlight from '@tiptap/extension-highlight'
 import StarterKit from '@tiptap/starter-kit'
 import { SmartTypography } from './smartTypography'
@@ -53,6 +54,18 @@ export const tipTapDefaultExtensions: Extensions = [
 
 const htmlCache = new WeakMap<Extensions, WeakMap<TLRichText, string>>()
 
+/**
+ * One schema per set of extensions. TipTap's `generateHTML` builds the schema again on every call,
+ * and opening a board draws one label per shape: at 10,000 shapes that was about a second of
+ * building the same schema.
+ */
+const schemaCache = new WeakMap<Extensions, Schema>()
+function schemaFor(extensions: Extensions): Schema {
+	let schema = schemaCache.get(extensions)
+	if (!schema) schemaCache.set(extensions, (schema = getSchema(extensions)))
+	return schema
+}
+
 const escapeHtml = (text: string) =>
 	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -73,7 +86,8 @@ export function renderHtmlFromRichText(
 	let html = byDoc.get(richText)
 	if (html === undefined) {
 		try {
-			html = generateHTML(richText as JSONContent, extensions)
+			const schema = schemaFor(extensions)
+			html = getHTMLFromFragment(Node.fromJSON(schema, richText as JSONContent).content, schema)
 		} catch {
 			html = richTextToPlainText(richText)
 				.split('\n')

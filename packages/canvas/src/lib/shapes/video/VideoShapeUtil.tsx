@@ -9,6 +9,8 @@ import {
 	useIsEditing,
 	videoShapeMigrations,
 	videoShapeProps,
+	getGpuSnapshots,
+	type GpuPrimitive,
 } from '@lifeboard/canvas-editor'
 import React from 'react'
 import { HyperlinkButton } from '../shared/HyperlinkButton'
@@ -39,6 +41,11 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<TLVideoShape> {
 
 	component(shape: TLVideoShape) {
 		return <TLVideoUtilComponent shape={shape} videoUtil={this} />
+	}
+
+	/** Drawn by the GPU layer as its element shows it (docs/gpu-renderer-plan.md, phase 4d). */
+	override toGpu(shape: TLVideoShape): GpuPrimitive[] | null {
+		return getGpuSnapshots(this.editor).get(shape) ?? null
 	}
 
 	indicator(shape: TLVideoShape) {

@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { CommandContext } from '@lifeboard/node-kit'
-import type { Editor } from '@lifeboard/canvas'
+import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
@@ -37,6 +37,17 @@ import { useRates } from './useRates'
 import { useTheme } from './useTheme'
 import { BoardPill } from './BoardPill'
 import { useKeyboardInset, usePhone } from './usePhone'
+
+// The console/e2e handle on the renderer (docs/gpu-renderer-plan.md): the parity checks draw one
+// board both ways by switching it.
+;(window as unknown as { lifeboardRenderer?: unknown }).lifeboardRenderer = { get: getRendererMode, set: setRendererMode, scene: getGpuScene, snapshots: getGpuSnapshots }
+
+// What the GPU layer read of each shape, kept between sessions for this build (docs/gpu-renderer-plan.md,
+// phase 10). `localStorage['lifeboard:gpu-cache'] = 'off'` reads every board from the page, as the checks
+// compare against.
+if (globalThis.localStorage?.getItem('lifeboard:gpu-cache') !== 'off') {
+	configureGpuSnapshotCache({ version: `${__APP_VERSION__}-${__BUILD_ID__}` })
+}
 
 /**
  * How long a closed tab's editor stays mounted after the tab goes away.
@@ -638,6 +649,12 @@ export function App() {
 	const activeBoardIdRef = useRef(activeBoardId)
 	activeBoardIdRef.current = activeBoardId
 
+	// The GPU layer follows the board on screen (docs/gpu-renderer-plan.md): the others, hidden behind
+	// it, give their WebGL context back.
+	useEffect(() => {
+		for (const [id, editor] of editors.current) getGpuScene(editor).shown.set(id === activeBoardId)
+	}, [activeBoardId])
+
 	/*
 	 * Redraws the previews of boards that changed since their last one, one board at a time and never
 	 * on the way out of a board: an export of a couple of hundred notes blocks the page for ~400 ms, and
@@ -820,6 +837,9 @@ export function App() {
 								onEditor={(editor) => {
 									if (editor) {
 										editors.current.set(board.id, editor)
+										// Only the board on screen may bring up a GPU layer: a tab open behind it is
+										// hidden with `visibility`, keeps its size, and would hold a WebGL context.
+										getGpuScene(editor).shown.set(board.id === activeBoardIdRef.current)
 										focusOnly(activeBoardIdRef.current)
 										// The agent panel's context, for a board that mounted after its tab was
 										// chosen. `syncAgentContext` ignores this when another board is on screen.

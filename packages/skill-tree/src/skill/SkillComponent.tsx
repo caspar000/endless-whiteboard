@@ -28,7 +28,8 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	)
 	// Dashed while the import that added it is unconfirmed: the vault holds the mark, not the shape.
 	const draft = useValue('lifeboard:skill-draft', () => isDraftNode(shape.props.treeId, shape.props.nodeId), [shape.props.treeId, shape.props.nodeId])
-	const state = mastery ? 'unlocked' : (status?.state ?? 'locked')
+	// You and a pillar light up once anything under them is unlocked; until then they are in reach.
+	const state = mastery ? (mastery.lit ? 'unlocked' : 'available') : (status?.state ?? 'locked')
 	// Gold once it and everything below it is unlocked, blue while only it is.
 	const done = useValue('lifeboard:skill-branch-done', () => state === 'unlocked' && inFinishedBranch(editor, shape.props.nodeId), [editor, state, shape.props.nodeId])
 	const { fraction, caption } = mastery ?? ringFor(status)
@@ -77,10 +78,10 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 }
 
 /** For Mastery and a pillar: how much of everything below it is unlocked (tree/branch.ts). */
-function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { fraction: number; caption: string } {
+function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { fraction: number; caption: string; lit: boolean } {
 	const { trees, total, unlocked } = branchProgress(editor, nodeId)
 	const count = `${trees} ${trees === 1 ? 'tree' : 'trees'}`
-	return { fraction: total ? unlocked / total : 0, caption: `${count} · ${unlocked}/${total}` }
+	return { fraction: total ? unlocked / total : 0, caption: `${count} · ${unlocked}/${total}`, lit: unlocked > 0 }
 }
 
 function ringFor(status: NodeStatus | null): { fraction: number; caption: string } {

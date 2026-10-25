@@ -1,35 +1,43 @@
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { habitHistory, habitRuleValue, habitStart, type Period } from './habits'
-import { todayIso } from './model'
-import type { HabitIndex, IndexEntry, SkillIndex } from './skillIndex'
+import { parse as parseYaml } from 'yaml'
+import { getTreeSources, requirementKind, type ConditionStatus, type Evidence } from './sources'
+
+export type { ConditionStatus } from './sources'
 
 /**
- * What a skill node asks for, and whether the evidence gives it (docs/skill-tree-plan.md, "Trees and
- * skill nodes"). Pure: the index and the tree's nodes in, a status out.
+ * What a skill node asks for, and whether it has it (docs/skill-tree-plan.md, "Trees and skill
+ * nodes"). Pure: the tree's nodes and the evidence in, a status out.
  *
  * ```yaml
- * - node: [adler/root]               # these nodes are unlocked
- * - item: adler/011-aristotle        # this item is done, with evidence
- * - count: { min: 3, kind: Practice } # evidence tagged to this node, filtered
- * - habit: { id: film-week, rule: total, min: 4 }   # step 3
+ * - node: [adler/root]   # these nodes are unlocked
+ * - manual: Read it      # ticked by hand (right-click › Mark as done)
+ * - item: adler/homer    # any other key is a kind a source registers (sources.ts)
  * ```
  */
-export type Condition =
-	| { node: string[] }
-	| { item: string }
-	| { count: { min: number; kind?: string; medium?: string; method?: string } }
-	| { habit: { id: string; rule: string; min: number } }
+export interface Condition {
+	key: string
+	/** `node`'s is the list of node ids; any other kind's is what its `parse` returned. */
+	value: unknown
+}
 
 export type ParseResult = { ok: true; conditions: Condition[] } | { ok: false; error: string }
+
+/** The kinds every tree has, without a source. */
+const BUILT_IN = ['node', 'manual']
 
 /**
  * Parsed requirements by their text. Every node on a board evaluates its whole tree whenever the
  * index or the vault changes, so the same few hundred strings were parsed by YAML again and again
  * (a million times over for a confirmed /mu/core). Results are shared: treat them as read-only.
+ * What parses depends on the registered sources, so a new source empties the cache.
  */
 const parsedCache = new Map<string, ParseResult>()
+let cachedFor: unknown = null
 
 export function parseRequirements(source: string): ParseResult {
+	if (cachedFor !== getTreeSources()) {
+		parsedCache.clear()
+		cachedFor = getTreeSources()
+	}
 	const known = parsedCache.get(source)
 	if (known) return known
 	const result = parseUncached(source)
@@ -58,45 +66,55 @@ function parseUncached(source: string): ParseResult {
 	return { ok: true, conditions }
 }
 
+/** The keys a condition may be written under, for error messages. */
+const knownKeys = () => [...BUILT_IN, ...getTreeSources().flatMap((s) => s.requirements?.map((k) => k.key) ?? [])].join(', ')
+
 function parseCondition(entry: unknown): Condition | string {
-	if (!entry || typeof entry !== 'object') return 'expected node, item, count or habit'
-	const e = entry as Record<string, unknown>
-	if ('node' in e) {
-		const ids = Array.isArray(e.node) ? e.node : [e.node]
+	if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return `expected one of ${knownKeys()}`
+	const [key, value] = Object.entries(entry as Record<string, unknown>)[0] ?? []
+	if (!key) return `expected one of ${knownKeys()}`
+	if (key === 'node') {
+		const ids = Array.isArray(value) ? value : [value]
 		if (!ids.every((id) => typeof id === 'string' && id)) return 'node takes node ids'
-		return { node: ids as string[] }
+		return { key, value: ids as string[] }
 	}
-	if ('item' in e) return typeof e.item === 'string' && e.item ? { item: e.item } : 'item takes an item id'
-	if ('count' in e) {
-		const c = (e.count ?? {}) as Record<string, unknown>
-		const min = Number(c.min)
-		if (!Number.isFinite(min) || min < 1) return 'count needs min: 1 or more'
-		const out: { min: number; kind?: string; medium?: string; method?: string } = { min }
-		for (const key of ['kind', 'medium', 'method'] as const) {
-			if (typeof c[key] === 'string' && c[key]) out[key] = c[key] as string
-		}
-		return { count: out }
-	}
-	if ('habit' in e) {
-		const h = (e.habit ?? {}) as Record<string, unknown>
-		if (typeof h.id !== 'string' || !h.id) return 'habit needs an id'
-		return { habit: { id: h.id, rule: typeof h.rule === 'string' ? h.rule : 'total', min: Number(h.min) || 1 } }
-	}
-	return 'expected node, item, count or habit'
+	if (key === 'manual') return { key, value: typeof value === 'string' ? value : '' }
+	const kind = requirementKind(key)
+	if (!kind) return `unknown requirement "${key}": expected one of ${knownKeys()}`
+	const parsed = kind.parse(value)
+	return parsed.ok ? { key, value: parsed.value } : parsed.error
 }
 
-export function formatRequirements(conditions: readonly Condition[]): string {
-	return conditions.length ? stringifyYaml(conditions, { flowCollectionPadding: true }).trim() : ''
+/** The node ids a `node` condition names; none for any other. */
+export const nodesOf = (c: Condition): string[] => (c.key === 'node' ? (c.value as string[]) : [])
+
+/** Whether a node's requirements ask for a hand tick. */
+export function asksForTick(requires: string): boolean {
+	const parsed = parseRequirements(requires)
+	return parsed.ok && parsed.conditions.some((c) => c.key === 'manual')
+}
+
+/**
+ * Requirements written in YAML with short ids, made full: node ids get the tree's prefix, and each
+ * source's kind qualifies its own. Returns the conditions as YAML-ready values, or an error.
+ */
+export function qualifyConditions(
+	source: string,
+	ids: { goal: (id: string) => string; tree: (id: string) => string }
+): { ok: true; conditions: Record<string, unknown>[] } | { ok: false; error: string } {
+	const parsed = parseRequirements(source)
+	if (!parsed.ok) return parsed
+	return {
+		ok: true,
+		conditions: parsed.conditions.map((c) => {
+			if (c.key === 'node') return { node: nodesOf(c).map(ids.tree) }
+			const kind = requirementKind(c.key)
+			return { [c.key]: kind?.qualify ? kind.qualify(c.value, ids) : c.value }
+		}),
+	}
 }
 
 export type NodeState = 'locked' | 'available' | 'unlocked'
-
-export interface ConditionStatus {
-	label: string
-	have: number
-	need: number
-	met: boolean
-}
 
 export const TIERS = ['Bronze', 'Silver', 'Gold'] as const
 export const TIER_AT = [3, 10, 25] as const
@@ -115,8 +133,8 @@ export interface Mastery {
 export interface NodeStatus {
 	state: NodeState
 	conditions: ConditionStatus[]
-	/** Items tagged to this node, done with evidence. */
-	evidence: IndexEntry[]
+	/** Evidence tagged to this node. */
+	evidence: Evidence[]
 	mastery: Mastery
 }
 
@@ -126,24 +144,23 @@ export interface TreeNode {
 	requires: string
 	/** `method` nodes count evidence from the whole tree, by how it was made (see below). */
 	kind?: string
+	/** When it was ticked by hand, `YYYY-MM-DD`, or ''. */
+	tickedAt?: string
 }
 
 /**
- * Evaluates every node of a tree against the index. Prerequisites are followed by id; a node that
+ * Evaluates every node of a tree against the evidence. Prerequisites are followed by id; a node that
  * names one the tree doesn't have, or that sits in a cycle, stays locked.
  */
 export function evaluateTree(
 	nodes: readonly TreeNode[],
-	index: SkillIndex,
-	habits: HabitIndex = {},
-	today: string = todayIso(),
+	evidenceIn: readonly Evidence[],
 	/** The state of a node of another tree, for a node here that requires it. */
 	outside?: (nodeId: string) => NodeStatus | undefined
 ): Map<string, NodeStatus> {
 	const byId = new Map(nodes.map((n) => [n.nodeId, n]))
-	const evidenceByTag = new Map<string, IndexEntry[]>()
-	for (const entry of Object.values(index)) {
-		if (!entry.evidence) continue
+	const evidenceByTag = new Map<string, Evidence[]>()
+	for (const entry of evidenceIn) {
 		for (const tag of entry.tags) {
 			const list = evidenceByTag.get(tag)
 			if (list) list.push(entry)
@@ -155,8 +172,8 @@ export function evaluateTree(
 	 * any three, whatever field they were tagged to. So its pool is every piece of evidence tagged to
 	 * any node of this tree, and its count conditions are expected to filter by method.
 	 */
-	const treeEvidence = new Map<string, IndexEntry>()
-	for (const node of nodes) for (const e of evidenceByTag.get(node.nodeId) ?? []) treeEvidence.set(e.itemId, e)
+	const treeEvidence = new Map<string, Evidence>()
+	for (const node of nodes) for (const e of evidenceByTag.get(node.nodeId) ?? []) treeEvidence.set(e.id, e)
 	const out = new Map<string, NodeStatus>()
 	const visiting = new Set<string>()
 
@@ -178,37 +195,24 @@ export function evaluateTree(
 		let prerequisitesMet = true
 		let consumed = 0
 		for (const condition of conditions) {
-			if ('node' in condition) {
-				const have = condition.node.filter((id) => evaluate(id).state === 'unlocked').length
-				const met = have === condition.node.length
+			if (condition.key === 'node') {
+				const ids = nodesOf(condition)
+				const have = ids.filter((id) => evaluate(id).state === 'unlocked').length
+				const met = have === ids.length
 				if (!met) prerequisitesMet = false
-				statuses.push({ label: `Unlock ${condition.node.map((id) => byId.get(id)?.name ?? id).join(', ')}`, have, need: condition.node.length, met })
-			} else if ('item' in condition) {
-				const entry = index[condition.item]
-				const met = !!entry?.evidence
-				statuses.push({ label: entry?.title ?? condition.item, have: met ? 1 : 0, need: 1, met })
-			} else if ('count' in condition) {
-				const { min, kind, medium, method } = condition.count
-				const matching = evidence.filter(
-					(e) =>
-						(!kind || e.kind.toLowerCase() === kind.toLowerCase()) &&
-						(!medium || e.medium.toLowerCase() === medium.toLowerCase()) &&
-						(!method || e.method.toLowerCase() === method.toLowerCase())
-				)
-				consumed = Math.max(consumed, min)
-				const filter = [kind, medium, method].filter(Boolean).join(', ')
-				statuses.push({ label: `${min} ${min === 1 ? 'piece' : 'pieces'}${filter ? ` (${filter})` : ''}`, have: Math.min(matching.length, min), need: min, met: matching.length >= min })
+				statuses.push({ label: `Unlock ${ids.map((id) => byId.get(id)?.name ?? id).join(', ')}`, have, need: ids.length, met })
+			} else if (condition.key === 'manual') {
+				const met = !!node.tickedAt
+				statuses.push({ label: (condition.value as string) || 'Ticked by hand', have: met ? 1 : 0, need: 1, met })
 			} else {
-				const { id, rule, min } = condition.habit
-				const habit = habits[id]
-				const start = habit ? habitStart(habit, index) : null
-				const period = (habit?.period ?? 'week') as Period
-				const value =
-					habit && start
-						? habitRuleValue(habitHistory({ ...habit, period, startedAt: start }, Object.values(index), today), rule, period)
-						: 0
-				const ruleLabel: Record<string, string> = { total: 'in total', streak: `${period}s in a row`, best_week: 'in one week', days: `${period}s on target`, periods: `${period}s on target` }
-				statuses.push({ label: `${habit?.name || id}: ${min} ${ruleLabel[rule] ?? rule}`, have: Math.min(value, min), need: min, met: value >= min })
+				const kind = requirementKind(condition.key)
+				if (!kind) {
+					statuses.push({ label: `Nothing reads "${condition.key}"`, have: 0, need: 1, met: false })
+					continue
+				}
+				const { consumed: used, ...status } = kind.evaluate(condition.value, { nodeId, evidence, tickedAt: node.tickedAt ?? '' })
+				consumed = Math.max(consumed, used ?? 0)
+				statuses.push(status)
 			}
 		}
 		if (!parsed.ok) statuses.push({ label: `Requirements don't parse: ${parsed.error}`, have: 0, need: 1, met: false })
@@ -229,7 +233,7 @@ export function evaluateTree(
 	return out
 }
 
-function lockedStatus(evidence: IndexEntry[]): NodeStatus {
+function lockedStatus(evidence: Evidence[]): NodeStatus {
 	return { state: 'locked', conditions: [], evidence, mastery: masteryOf([]) }
 }
 
@@ -237,7 +241,7 @@ function lockedStatus(evidence: IndexEntry[]): NodeStatus {
  * Bronze, Silver and Gold at 3, 10 and 25 pieces of evidence beyond unlocking, each tier needing one
  * more Ship than the last: mastery means having made things, not only taken them in.
  */
-export function masteryOf(beyond: readonly IndexEntry[]): Mastery {
+export function masteryOf(beyond: readonly Evidence[]): Mastery {
 	const count = beyond.length
 	const ships = beyond.filter((e) => e.kind.toLowerCase() === 'ship').length
 	let tier = 0

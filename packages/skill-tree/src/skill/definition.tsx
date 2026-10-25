@@ -6,7 +6,7 @@ import {
 import { T } from '@lifeboard/canvas'
 import { Sparkle } from 'lucide-react'
 import { SKILL_TYPE, type SkillNodeProps } from '../board'
-import { makeItemId } from '../model'
+import { makeItemId } from '../ids'
 import { SkillComponent } from './SkillComponent'
 import { getLayoutConfig } from '../tree/layoutConfig'
 

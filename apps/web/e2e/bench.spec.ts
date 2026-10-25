@@ -1,4 +1,5 @@
 import { expect, test, type CDPSession, type Page } from '@playwright/test'
+import { startWholeLifeTest } from './fixtures/fourTrees'
 import { insertSynthetic } from './fixtures/synthetic'
 import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
 
@@ -391,10 +392,7 @@ test('large boards benchmark', async ({ page }) => {
 		{
 			name: 'four-trees',
 			build: async (page) => {
-				await page.keyboard.press('ControlOrMeta+k')
-				await page.locator('.lb-palette__input').fill('>whole-life test')
-				await expect(page.locator('.lb-palette__row--on')).toContainText('whole-life test')
-				await page.keyboard.press('Enter')
+				await startWholeLifeTest(page)
 				await expect.poll(() => page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length), { timeout: 120_000 }).toBeGreaterThan(3000)
 				await page.waitForTimeout(8000)
 			},

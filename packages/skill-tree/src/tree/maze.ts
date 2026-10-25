@@ -32,13 +32,15 @@ export interface MazeInput {
 	/** Skill nodes; the rest (cards) settle round theirs. */
 	isSkill?: (id: string) => boolean
 	config: LayoutConfig
+	/** See `MazeOptions.toward`. */
+	toward?: (id: string) => string | undefined
 }
 
 /** The maze as the whole-life layout's placement (wholeLayout.ts): every node a cell, `mazeCell` across. */
-export function mazeLayout({ start, order, kids, radius, isSkill, config: C }: MazeInput): Map<string, Point> {
+export function mazeLayout({ start, order, kids, radius, isSkill, config: C, toward }: MazeInput): Map<string, Point> {
 	const cell = C.mazeCell
 	// Any setting goes (the layout tuner): a cell has some size, a chain at least one step.
-	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: Math.max(1, Math.round(C.mazeSpacing)), cell: Math.max(1, cell), hub: C.mazeHub, local: isSkill && ((id) => !isSkill(id)), wrap: C.mazeFamilies === 'wrap' })
+	const m = maze(start, order, kids, radius, { grid: C.mazeGrid, walk: C.mazeWalk, fill: C.mazeRoom, spacing: Math.max(1, Math.round(C.mazeSpacing)), cell: Math.max(1, cell), hub: C.mazeHub, local: isSkill && ((id) => !isSkill(id)), wrap: C.mazeFamilies === 'wrap', toward })
 	grid = { cell: Math.max(1, cell), shape: C.mazeGrid, cells: m.cells, used: [...m.used] }
 	// Each node's whole way from its parent: through any shared corridor cells (`~n`) on the way.
 	const into = new Map(m.corridors.map((c) => [c.to, c]))
@@ -98,6 +100,8 @@ export interface MazeOptions {
 	 * on first and keeps close to it. Otherwise it forks in turn with everything else and spreads out.
 	 */
 	wrap?: boolean
+	/** Another node a node would like its cell to face (a tree's second pillar), or none. */
+	toward?: (id: string) => string | undefined
 }
 
 export interface MazeResult {
@@ -344,6 +348,18 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 		taken.group = { ids: rest.flatMap((h) => h.ids), steps: 0 }
 	}
 	/**
+	 * Which way a group of one wants its door from `cv`, when the node in it leans toward another
+	 * (`toward`): at that node if it is placed, else at the door kept for it.
+	 */
+	const aimOf = (g: Group, cv: number): number | undefined => {
+		const target = g.ids.length === 1 ? o.toward?.(g.ids[0]!) : undefined
+		if (!target) return undefined
+		const door = [...doorAt.values()].find((d) => d.group.ids.includes(target))
+		const p = at.get(target) ?? (door ? pt(door.cell) : undefined)
+		const from = pt(cv)
+		return p ? Math.atan2(p.y - from.y, p.x - from.x) : undefined
+	}
+	/**
 	 * Doors for `groups` round the node `v` at `cv` (reached from `from`): each where it suits best of
 	 * the cells that still leave everyone a way out; when a group finds none, it and the rest share
 	 * the last door found, as one bundle. Always at least one: the node's own way out began beside it.
@@ -379,8 +395,10 @@ function grow(start: string, order: readonly string[], kids: (id: string) => rea
 			// Wrapping (`wrap`): a shared corridor cell's doors keep close to the node the family belongs
 			// to, so a big family wraps round its parent instead of trailing off along its trunk.
 			const home = o.wrap ? homeOf.get(v) : undefined
+			const aim = aimOf(g, cv)
 			const score = (c: number) => {
 				const direction = cv === ORIGIN ? Math.atan2(pt(c).y, pt(c).x) : angleFrom(cv, c)
+				if (aim !== undefined) return off(direction, aim) * 4 + (chain ? freeSides(c) : 0)
 				if (home !== undefined) return (Math.hypot(pt(c).x - pt(home).x, pt(c).y - pt(home).y) / o.cell) * 4 + off(direction, wants[i]!)
 				if (chain) return o.walk === 'snake' ? freeSides(c) * 10 + off(direction, out) : -Math.hypot(pt(c).x, pt(c).y) / o.cell + off(direction, out)
 				return off(direction, wants[i]!) * 4 + Math.hypot(pt(c).x, pt(c).y) / o.cell / 4

@@ -2,6 +2,7 @@ import { expect, type Browser, type BrowserContextOptions, type Page } from '@pl
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createBoard, gotoFresh, openBoard, skipFirstRunDemo } from '../helpers'
 
 /**
@@ -16,12 +17,24 @@ export const FOUR_TREES_BOARD = 'Four trees'
 
 const shapeCount = (page: Page) => page.evaluate(() => (window as unknown as { editor: { getCurrentPageShapes(): unknown[] } }).editor.getCurrentPageShapes().length)
 
+const repo = fileURLToPath(new URL('../../../../', import.meta.url))
+const read = (file: string) => fs.readFileSync(path.join(repo, file), 'utf8')
+
+/** Starts the whole-life test board on the open board (the syllabus's test hook, wholeLifeTest.ts). */
+export async function startWholeLifeTest(page: Page): Promise<void> {
+	const docs = {
+		life: read('packages/syllabus/fixtures/whole-life-test.yaml'),
+		trees: ['adler', 'film', 'theatre', 'games'].map((name) => read(`syllabi/${name}.yaml`)),
+	}
+	await page.waitForFunction(() => 'lifeboardWholeLifeTest' in window)
+	await page.evaluate((docs) => {
+		void (window as unknown as { lifeboardWholeLifeTest: (d: typeof docs) => Promise<void> }).lifeboardWholeLifeTest(docs)
+	}, docs)
+}
+
 /** Puts the whole-life test on the open board and waits until it's laid out and settled. */
 export async function insertFourTrees(page: Page): Promise<void> {
-	await page.keyboard.press('ControlOrMeta+k')
-	await page.locator('.lb-palette__input').fill('>whole-life test')
-	await expect(page.locator('.lb-palette__row--on')).toContainText('whole-life test')
-	await page.keyboard.press('Enter')
+	await startWholeLifeTest(page)
 	// Inserted, laid out and settled: thousands of shapes, then nothing more for a moment.
 	await expect.poll(() => shapeCount(page), { timeout: 120_000 }).toBeGreaterThan(3000)
 	let last = -1

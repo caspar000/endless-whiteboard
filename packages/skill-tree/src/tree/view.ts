@@ -1,6 +1,6 @@
 import type { Editor } from '@lifeboard/canvas'
 import { isTree, TREE_TYPE, type TreeShape, type ViewMode } from '../board'
-import { getItems } from '../syllabus'
+import { allItems } from '../sources'
 import { boardTrees, treeGraph, viewContents, type ViewContents } from '../views'
 
 /**
@@ -11,7 +11,7 @@ import { boardTrees, treeGraph, viewContents, type ViewContents } from '../views
 
 /** What a header shows right now. */
 export function contentsOf(editor: Editor, header: TreeShape): ViewContents {
-	return viewContents(treeGraph(boardTrees(editor)), getItems(), header.props)
+	return viewContents(treeGraph(boardTrees(editor)), allItems(), header.props)
 }
 
 /** The header whose view shows this node or item: its own tree's first, else any that has it. */

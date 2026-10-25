@@ -55,6 +55,11 @@ Director on Practical, Adler on Mental, and simple test trees: calisthenics, ket
 Physical; meditation on Spiritual, sharing a node with Mental; tabletop campaigns on Social. µ/core
 is left out. The user will rewrite the test trees once the layout is right.
 
+Since 2026-10-25 it is a test fixture, not a command: Film, Theatre and Games replace Director on
+Practical, and the e2e suite inserts it through `window.lifeboardWholeLifeTest`, which exists only in
+a browser under Playwright (`packages/syllabus/src/wholeLifeTest.ts`, `apps/web/e2e/fixtures/fourTrees.ts`). Its
+documents are `packages/syllabus/fixtures/whole-life-test.yaml` and the syllabi in `syllabi/`.
+
 ## Phases
 
 Stop after each for the user to look.

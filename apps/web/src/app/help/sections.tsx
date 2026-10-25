@@ -5,6 +5,7 @@ import {
 	Dices,
 	GraduationCap,
 	Keyboard,
+	Network,
 	NotepadText,
 	Sigma,
 	Spline,
@@ -26,6 +27,7 @@ import { Properties } from './sections/Properties'
 import { Relations } from './sections/Relations'
 import { Server as ServerSection } from './sections/Server'
 import { Shortcuts } from './sections/Shortcuts'
+import { SkillTrees } from './sections/SkillTrees'
 import { Syllabus } from './sections/Syllabus'
 import { Views } from './sections/Views'
 
@@ -160,11 +162,20 @@ export const HELP_SECTIONS: HelpSection[] = [
 	{
 		id: 'syllabus',
 		label: 'Syllabus',
-		title: 'Syllabus items, tracks and skill trees',
-		lede: 'Ordered lists of things to read, watch and make, ticked off one at a time, and skill trees that light up from what you have written up. Every tick files a note beside the item.',
+		title: 'Syllabus items and tracks',
+		lede: 'Ordered lists of things to read, watch and make, ticked off one at a time. Every tick files a note beside the item, and with skill trees on, what you write up lights the tree.',
 		group: 'Extensions',
 		icon: <GraduationCap size={15} />,
 		Component: Syllabus,
+	},
+	{
+		id: 'skill-trees',
+		label: 'Skill trees',
+		title: 'Skill trees',
+		lede: 'Constellations of skill nodes that light up as you meet what each one asks for. A tree lives in your vault, and any board shows a view of it.',
+		group: 'Extensions',
+		icon: <Network size={15} />,
+		Component: SkillTrees,
 	},
 	{
 		id: 'shortcuts',

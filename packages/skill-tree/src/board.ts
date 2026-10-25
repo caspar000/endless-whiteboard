@@ -1,47 +1,6 @@
 import type { Editor, TLShape } from '@lifeboard/canvas'
-import { readText } from './properties'
 
-/**
- * The syllabus's shapes on a board. Items and tracks are vault data (syllabus.ts); these shapes are
- * views of them: a card shows one item, a list shows one track.
- */
-
-export const ITEM_TYPE = 'node.skillItem'
-export const TRACK_TYPE = 'node.track'
-export const NOTE_TYPE = 'node.markdown'
-
-/** A card: one vault item, its works as a checklist inside. */
-export interface SkillItemProps {
-	itemId: string
-	autoHeight: boolean
-}
-
-/** A list: one vault track as an outline, in reading order. */
-export interface TrackProps {
-	trackId: string
-	/** Item ids unfolded on this card, newline-separated: how it is folded is this board's business. */
-	open: string
-}
-
-export type ItemShape = TLShape & { type: typeof ITEM_TYPE; props: SkillItemProps }
-export type TrackShape = TLShape & { type: typeof TRACK_TYPE; props: TrackProps }
-
-export function isItem(shape: TLShape | undefined | null): shape is ItemShape {
-	return shape?.type === ITEM_TYPE
-}
-
-export function isTrack(shape: TLShape | undefined | null): shape is TrackShape {
-	return shape?.type === TRACK_TYPE
-}
-
-/** The note filed as this item's write-up, if there is one on this board. */
-export function evidenceNoteFor(editor: Editor, itemId: string): TLShape | undefined {
-	if (!itemId) return undefined
-	return editor
-		.getCurrentPageShapes()
-		// `node.markdown` is the notes package's type; this package doesn't import its shape types.
-		.find((shape) => (shape.type as string) === NOTE_TYPE && readText(shape, 'evidenceOf') === itemId)
-}
+/** The skill tree's shapes on a board: nodes, the header that holds a view, and the entries a view draws. */
 
 export const SKILL_TYPE = 'node.skill'
 export const TREE_TYPE = 'node.skillTree'
@@ -127,43 +86,7 @@ export function treeNodes(editor: Editor, treeId: string): SkillShape[] {
 	return editor.getCurrentPageShapes().filter((s): s is SkillShape => isSkill(s) && s.props.treeId === treeId)
 }
 
-export const HABIT_TYPE = 'node.habit'
-
-export interface HabitProps {
-	habitId: string
-	name: string
-	goal: string
-	/** `day` | `week` | `month` */
-	period: string
-	target: number
-	/** YAML filter (`kind: Ship`), or '' to tick by hand. */
-	counts: string
-	/** An item id: the habit waits until that item is done. '' starts it at once. */
-	startedBy: string
-	/** `YYYY-MM-DD` the habit was made; periods before it don't count. */
-	startedAt: string
-	/** Hand ticks per period key, as JSON. */
-	log: string
-	/** `active` | `paused` */
-	state: string
-	autoHeight: boolean
-}
-
-export type HabitShape = TLShape & { type: typeof HABIT_TYPE; props: HabitProps }
-
-export function isHabit(shape: TLShape | undefined | null): shape is HabitShape {
-	return shape?.type === HABIT_TYPE
-}
-
-export const UP_NEXT_TYPE = 'node.upNext'
-
-export interface UpNextProps {
-	/** The track this card shows; '' follows the first active one. */
-	trackId: string
-	autoHeight: boolean
-}
-
-/** Marks a shape an import created and nobody has confirmed yet (syllabusIO.ts). */
+/** Marks a shape an import created and nobody has confirmed yet (treeIO.ts, and the syllabus's import). */
 export const DRAFT_META = 'lifeboard:skillDraft'
 
 /** A draft draws dashed and stays out of the index until "Confirm draft". */

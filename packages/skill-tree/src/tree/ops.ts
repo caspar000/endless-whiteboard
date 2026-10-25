@@ -3,7 +3,7 @@ import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { isDraft, isSkill, isTree, MASTERY, MASTERY_NODE, SKILL_TYPE, TREE_TYPE, treeNodes, type SkillShape, type TreeShape } from '../board'
 import { getTreeDef, getTreeDefs, updateTreeMeta, upsertNodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph } from '../views'
-import { parseRequirements } from '../requirements'
+import { nodesOf, parseRequirements } from '../requirements'
 import { SKILL_SIZE } from '../skill/definition'
 import { layoutGraph, type GraphEdge, type GraphNode } from './layout'
 import { prerequisitesOf } from './prerequisites'
@@ -141,8 +141,7 @@ export function drawPrerequisites(editor: Editor, treeId: string): void {
 			const parsed = parseRequirements(node.props.requires)
 			if (!parsed.ok) continue
 			for (const condition of parsed.conditions) {
-				if (!('node' in condition)) continue
-				for (const id of condition.node) {
+				for (const id of nodesOf(condition)) {
 					const from = byNodeId.get(id)
 					if (!from || from.id === node.id) continue
 					const arrow = connectShapes(editor, from.id, node.id)

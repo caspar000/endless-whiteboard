@@ -5,7 +5,7 @@ import { isSkill, isTrack, isTree, NOTE_TYPE, treeNodes, type SkillShape } from 
 
 import { showTrack, tick } from './ops'
 import { getItem, getTrack, getTracks, updateItem } from './syllabus'
-import { evaluateTree } from './requirements'
+import { treeStatus } from './tree/status'
 import { getSkillIndex, getTrackIndex } from './skillIndex'
 import { gatherAroundMastery, layoutFrom, layoutTree, treeHeader } from './tree/ops'
 import { getTreeDef, getTreeDefs, updateTreeMeta } from './treeDefs'
@@ -280,10 +280,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 				const treeIds = new Set(ctx.editor.getCurrentPageShapes().flatMap((s) => (s.type === 'node.skill' ? [(s.props as { treeId: string }).treeId] : [])))
 				for (const treeId of treeIds) {
 					const tree = treeNodes(ctx.editor, treeId)
-					const status = evaluateTree(
-						tree.map((n) => ({ nodeId: n.props.nodeId, name: n.props.name, requires: n.props.requires, kind: n.props.kind })),
-						index
-					)
+					const status = treeStatus(ctx.editor, treeId)
 					for (const n of tree) {
 						const s = status.get(n.props.nodeId)
 						nodes.push({

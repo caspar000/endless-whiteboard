@@ -4,7 +4,7 @@ import { getAssetBridge, getIconBridge, useAssetUrl } from '@lifeboard/node-kit'
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { SKILL_TYPE, type SkillNodeProps, type SkillShape } from '../board'
 import { parseRequirements, type NodeStatus } from '../requirements'
-import { getSkillIndex } from '../skillIndex'
+import { allItems, lookOf } from '../sources'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
 
@@ -28,8 +28,12 @@ export function SkillEditor({ skill, editor, status }: { skill: SkillShape; edit
 	const advancing = useValue(
 		'lifeboard:skill-advancing',
 		() =>
-			Object.values(getSkillIndex())
-				.filter((e) => e.tags.includes(skill.props.nodeId) && !e.evidence && !e.hasChildren)
+			Object.values(allItems())
+				.filter((e) => e.tags.includes(skill.props.nodeId) && !e.children.length)
+				.flatMap((e) => {
+					const look = lookOf(e.itemId)
+					return look && (!look.done || look.hollow) ? [{ itemId: e.itemId, title: look.title, done: look.done }] : []
+				})
 				.slice(0, 8),
 		[skill.props.nodeId]
 	)

@@ -6,6 +6,10 @@
 
 // Registers the node types with tldraw's type system. Side-effect import, kept above the exports.
 import './shape-types'
+import { registerTreeSource } from './sources'
+import { syllabusTreeSource } from './syllabusSource'
+
+registerTreeSource(syllabusTreeSource)
 
 export { skillTreeExtension } from './extension'
 export {

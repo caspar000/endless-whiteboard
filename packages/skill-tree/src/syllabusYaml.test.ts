@@ -69,8 +69,8 @@ describe('parseSyllabus', () => {
 		expect(node.icon).toBe('sword')
 		const requires = parseRequirements(node.requires)
 		expect(requires.ok && requires.conditions).toEqual([
-			{ node: ['adler/start'] },
-			{ item: 'adler/homer' },
+			{ key: 'node', value: ['adler/start'] },
+			{ key: 'item', value: 'adler/homer' },
 		])
 	})
 
@@ -90,7 +90,7 @@ tree:
 		expect(result.errors).toHaveLength(3)
 		expect(result.errors[0]).toMatch(/goal is required/)
 		expect(result.errors[1]).toMatch(/Track 1 › item 1: kind is one of/)
-		expect(result.errors[2]).toMatch(/expected node, item or count/)
+		expect(result.errors[2]).toMatch(/unknown requirement "habit"/)
 	})
 
 	it('reads several trees, each qualifying its own nodes, and their mounts', () => {
@@ -114,7 +114,7 @@ trees:
 			['mind', 'mastery/mental'],
 		])
 		expect(doc.trees[1]!.nodes.map((n) => n.nodeId)).toEqual(['mind/focus', 'mind/memory'])
-		expect(parseRequirements(doc.trees[1]!.nodes[1]!.requires)).toMatchObject({ ok: true, conditions: [{ node: ['mind/focus'] }] })
+		expect(parseRequirements(doc.trees[1]!.nodes[1]!.requires)).toMatchObject({ ok: true, conditions: [{ key: 'node', value: ['mind/focus'] }] })
 		expect(doc.trees[0]!.nodes[0]!.kind).toBe('mastery')
 	})
 

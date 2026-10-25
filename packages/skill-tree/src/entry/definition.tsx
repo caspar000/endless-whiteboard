@@ -2,7 +2,7 @@ import { createShapePropsMigrationIds, createShapePropsMigrationSequence, type N
 import { T } from '@lifeboard/canvas'
 import { CircleDot } from 'lucide-react'
 import { ENTRY_TYPE, type EntryProps } from '../board'
-import { getItem } from '../syllabus'
+import { lookOf } from '../sources'
 import { EntryComponent } from './EntryComponent'
 
 /** A disc the size a skill node used to be, its name inside, so a line meets its middle. */
@@ -51,5 +51,5 @@ export const entryNodeDefinition: NodeDefinition<EntryProps> = {
 		shape.props.variant === 'work'
 			? { cx: shape.props.w / 2, cy: WORK_DISC / 2, r: WORK_DISC / 2, rest: { x: 0, y: WORK_DISC, w: shape.props.w, h: Math.max(1, shape.props.h - WORK_DISC) } }
 			: { cx: shape.props.w / 2, cy: shape.props.h / 2, r: Math.min(shape.props.w, shape.props.h) / 2 },
-	getLabel: (shape) => getItem(shape.props.itemId)?.title || undefined,
+	getLabel: (shape) => lookOf(shape.props.itemId)?.title || undefined,
 }

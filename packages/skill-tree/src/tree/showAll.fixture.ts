@@ -52,7 +52,7 @@ export function showView(
 		return parsed.doc
 	})
 	const trees: TreeDefs = Object.fromEntries(
-		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '' }])
+		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '', ticked: {} }])
 	)
 	const items: Record<string, { itemId: string; parent: string; children: string[]; tags: string[] }> = {}
 	const add = (item: DocItem, parent: string) => {

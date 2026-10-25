@@ -36,6 +36,8 @@ export interface TreeDef {
 	removed: string[]
 	/** The board whose import made this tree and has not confirmed it; '' once confirmed. */
 	draft: string
+	/** Nodes ticked by hand (a `manual` requirement), node id to `YYYY-MM-DD`. Kept here, not on the shapes. */
+	ticked: Readonly<Record<string, string>>
 }
 
 export type TreeDefs = Readonly<Record<string, TreeDef>>
@@ -92,6 +94,9 @@ export function parseTreeDef(raw: unknown): TreeDef | null {
 		nodes: (Array.isArray(r.nodes) ? r.nodes : []).map(parseNode).filter((n): n is NodeDef => !!n),
 		removed: (Array.isArray(r.removed) ? r.removed : []).filter((id): id is string => typeof id === 'string'),
 		draft: str(r.draft),
+		ticked: Object.fromEntries(
+			Object.entries(r.ticked && typeof r.ticked === 'object' ? (r.ticked as Record<string, unknown>) : {}).filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1])
+		),
 	}
 }
 
@@ -106,7 +111,7 @@ export function replaceTreeDefs(raw: unknown): void {
 	trees.set(next)
 }
 
-const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mount: '', nodes: [], removed: [], draft: '' })
+const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mount: '', nodes: [], removed: [], draft: '', ticked: {} })
 
 /** A node keeps its draft mark through an edit that doesn't name one: a shape's fields carry no draft. */
 const keepDraft = (node: NodeDef, had: NodeDef | undefined): NodeDef =>
@@ -195,6 +200,16 @@ export function updateTreeMeta(treeId: string, meta: Partial<TreeMeta & { draft:
 	if (!treeId) return
 	const tree = trees.get()[treeId] ?? emptyTree(treeId)
 	commit({ ...trees.get(), [treeId]: { ...tree, ...meta } })
+}
+
+/** Ticks a node by hand (`at`, `YYYY-MM-DD`), or takes the tick back (''). */
+export function setTicked(treeId: string, nodeId: string, at: string): void {
+	const tree = trees.get()[treeId]
+	if (!tree) return
+	const ticked = { ...tree.ticked }
+	if (at) ticked[nodeId] = at
+	else delete ticked[nodeId]
+	commit({ ...trees.get(), [treeId]: { ...tree, ticked } })
 }
 
 /** Removes a whole tree from the vault. Its shapes on boards become loose copies. */

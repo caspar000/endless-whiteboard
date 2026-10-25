@@ -40,9 +40,10 @@ function checkTree(doc: ReturnType<typeof load>) {
 		expect(parsed.ok, node.nodeId).toBe(true)
 		if (!parsed.ok) continue
 		for (const c of parsed.conditions) {
-			if (!('count' in c) || c.count.method) continue
+			const count = c.value as { min: number; method?: string }
+			if (c.key !== 'count' || count.method) continue
 			const available = items.filter((i) => i.tags.includes(node.nodeId)).reduce((n, i) => n + leaves(i), 0)
-			expect(c.count.min, node.nodeId).toBeLessThanOrEqual(available)
+			expect(count.min, node.nodeId).toBeLessThanOrEqual(available)
 		}
 	}
 }
@@ -100,9 +101,10 @@ describe('syllabi/adler.yaml', () => {
 			expect(parsed.ok, node.nodeId).toBe(true)
 			if (!parsed.ok) continue
 			for (const c of parsed.conditions) {
-				if (!('count' in c) || c.count.method) continue
+				const count = c.value as { min: number; method?: string }
+				if (c.key !== 'count' || count.method) continue
 				const available = items.filter((i) => i.tags.includes(node.nodeId)).reduce((n, i) => n + leaves(i), 0)
-				expect(c.count.min, node.nodeId).toBeLessThanOrEqual(available)
+				expect(count.min, node.nodeId).toBeLessThanOrEqual(available)
 			}
 		}
 	})

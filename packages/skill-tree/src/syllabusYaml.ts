@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml, YAMLParseError } from 'yaml'
 import { formatChildRule, ITEM_KINDS } from './model'
-import { parseRequirements, type Condition } from './requirements'
+import { qualifyConditions } from './requirements'
 
 /**
  * The one format for import, export and the agent's drafts (docs/skill-tree-plan.md, "The YAML
@@ -210,21 +210,16 @@ export function parseSyllabus(source: string): SyllabusResult {
 	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, trees } }
 }
 
-/** Requirements written as YAML, with node and item ids qualified, back to stored YAML. */
+/** Requirements written as YAML, with node ids and every kind's own ids qualified, back to stored YAML. */
 function qualifyRequirements(value: unknown, treeId: string, goal: string, path: string, errors: string[]): string {
 	if (value === undefined || value === null || value === '') return ''
 	const source = typeof value === 'string' ? value : stringifyYaml(value)
-	const parsed = parseRequirements(source)
-	if (!parsed.ok) {
-		errors.push(`${path}: ${parsed.error}`)
+	const result = qualifyConditions(source, { goal: (id) => qualify(goal, slug(id)), tree: (id) => qualify(treeId, slug(id)) })
+	if (!result.ok) {
+		errors.push(`${path}: ${result.error}`)
 		return ''
 	}
-	const conditions: Condition[] = parsed.conditions.map((c) => {
-		if ('node' in c) return { node: c.node.map((id) => qualify(treeId, slug(id))) }
-		if ('item' in c) return { item: qualify(goal, slug(c.item)) }
-		return c
-	})
-	return stringifyYaml(conditions, { flowCollectionPadding: true }).trim()
+	return stringifyYaml(result.conditions, { flowCollectionPadding: true }).trim()
 }
 
 /** Everything a document will create, counted, for a confirmation message. */

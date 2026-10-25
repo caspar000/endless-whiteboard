@@ -47,32 +47,19 @@ previous build stays up and the container logs say why. The server and the web a
 
 2. **Pull request from `develop` into `main`.** CI (`.github/workflows/ci.yml`) runs on every pull
    request into `main`: typecheck and every package's unit tests, the whole app suite (Chromium and the
-   iPhone WebKit specs) and the suite against a real server. Merge once it's green, with *Squash and
-   merge* or *Rebase and merge*; merge commits are turned off.
+   iPhone WebKit specs) and the suite against a real server. Merge once it's green, with *Create a
+   merge commit*:
 
    ```sh
    gh pr create --base main --head develop --title "<what ships>"
    gh pr checks --watch
-   gh pr merge --squash   # or --rebase
+   gh pr merge --merge
    ```
 
-   Either way `main` gets copies of `develop`'s commits under new ids. The *Sync develop* workflow
-   (`.github/workflows/sync-develop.yml`) fixes that by itself once the pull request merges: it
-   replays whatever was pushed to `develop` after the merged commit onto `main` and force-pushes
-   `develop` there, so the next pull request holds only new work. Don't merge `main` back into
-   `develop` by hand: the merge conflicts whenever later work touched the same lines, and its merge
-   commit stops *Rebase and merge* from working on the next pull request.
-
-   A local `develop` is behind the rewritten one afterwards. Move it with
-   `git fetch && git switch develop && git reset --hard origin/develop`, after committing anything
-   unpushed and putting it back on top. If the workflow fails (a newer commit doesn't replay cleanly),
-   do its job by hand, where `<merged>` is the last commit of the merged pull request:
-
-   ```sh
-   git fetch && git switch develop && git reset --hard origin/develop
-   git rebase --onto origin/main <merged>
-   git push --force-with-lease origin develop
-   ```
+   Use a merge commit for this pull request, never *Squash and merge* or *Rebase and merge*. Those
+   two give `main` copies of `develop`'s commits under new ids, and the next pull request from
+   `develop` then conflicts with those copies. With a merge commit, `develop` is never rewritten and
+   nothing has to be synced afterwards. Feature branches into `develop` can merge any way.
 
    When one spec fails in CI, read its trace (the run's `e2e-results` artifact) before calling it a
    regression: under load, timeouts are common. GitHub sometimes rejects a push with

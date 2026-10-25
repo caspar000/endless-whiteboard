@@ -137,7 +137,7 @@ describe('fixtures/whole-life-test.yaml', () => {
 	it('puts you at the centre of five pillars, and a tree on each of the other four', () => {
 		const mastery = doc.trees.find((t) => t.treeId === 'mastery')!
 		expect(mastery.nodes.filter((n) => n.kind === 'pillar').map((n) => n.name)).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])
-		const mounts = new Set(doc.trees.map((t) => t.mount).filter(Boolean))
+		const mounts = new Set(doc.trees.flatMap((t) => t.mounts))
 		expect([...mounts].sort()).toEqual(['mastery/mental', 'mastery/physical', 'mastery/social', 'mastery/spiritual'])
 	})
 
@@ -159,7 +159,7 @@ describe('syllabi/film.yaml', () => {
 
 	it('has a tree that holds together, hung under the Practical pillar', () => {
 		checkTree(doc)
-		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+		expect(doc.trees[0]!.mounts).toEqual(['mastery/practical'])
 	})
 
 	it('keeps every skill node to a dozen entries or so, each a person with their works', () => {
@@ -178,7 +178,7 @@ describe('syllabi/theatre.yaml', () => {
 
 	it('has a tree that holds together, hung under the Practical pillar', () => {
 		checkTree(doc)
-		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+		expect(doc.trees[0]!.mounts).toEqual(['mastery/practical'])
 	})
 
 	it('keeps every skill node to a dozen entries or so, Russian and Georgian people under their own names', () => {
@@ -198,7 +198,7 @@ describe('syllabi/games.yaml', () => {
 
 	it('has a tree that holds together, hung under the Practical pillar', () => {
 		checkTree(doc)
-		expect(doc.trees[0]!.mount).toBe('mastery/practical')
+		expect(doc.trees[0]!.mounts).toEqual(['mastery/practical'])
 	})
 
 	it('keeps every skill node to a dozen entries or so, each a studio or designer with their games', () => {

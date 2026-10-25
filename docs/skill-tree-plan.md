@@ -49,6 +49,30 @@ syllabus without a tree.
 - Shape types, vault keys, command ids and operation ids are unchanged, so nothing on a board or in
   the vault moves.
 
+## Mastery (2026-10-25)
+
+The fourth phase. Mastery is one tree per vault, `mastery`, built in Settings › Skill trees
+(`packages/skill-tree/src/mastery.ts`, `MasteryBuilder.tsx`):
+
+- **You** (`mastery/root`, kind `mastery`) at the root, and the **pillars** (kind `pillar`, each
+  requiring You) in their order round you. *Set up Mastery* starts with Physical, Mental, Spiritual,
+  Practical and Social; pillars can be renamed, reordered, added and removed. You exists only as
+  Mastery's root: the node editor no longer offers the kind, and YAML turns it into `skill` anywhere
+  else. (`pillar` stays a kind any tree can use, as /mu/core's categories do.) Mastery's own nodes
+  aren't edited on the board beyond name, icon and picture. Removing a pillar takes it off the trees
+  hung under it.
+- **Hanging:** a tree has `mounts`, a list (it was one `mount`; an old one is read as a list of
+  one). YAML takes `mount:` or `mounts:`. A tree under two pillars is drawn once: it grows from the
+  first, as its last child when the other pillar comes next round You and its first when it comes
+  before, so it sits on the side facing the other (`towardOtherParents`, `wholeLayout.ts`). Both
+  pillars draw a line to it.
+- **Lighting:** a pillar is lit once any node in a tree under it is unlocked, and its ring is the
+  share of those nodes unlocked; You is the same across all of them. Until then they draw as in reach.
+- **On a board:** *Add Mastery to this board* (⌘K) makes Mastery if the vault has none and puts its
+  view right of what is on the board. Settings has no board open, so the builder points there.
+- **Gone:** *Gather every tree around a Mastery node*, and the `mastery` option of the layout
+  operation.
+
 ## Rebuild: one syllabus, many views (agreed 2026-10-17)
 
 Using Adler and /mu/core on real boards showed three problems. An import made three separate

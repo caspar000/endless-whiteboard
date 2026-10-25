@@ -1,7 +1,8 @@
 import { connectShapes } from '@lifeboard/node-kit'
 import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
-import { isDraft, isSkill, isTree, MASTERY, MASTERY_NODE, SKILL_TYPE, TREE_TYPE, treeNodes, type SkillShape, type TreeShape } from '../board'
-import { getTreeDef, getTreeDefs, updateTreeMeta, upsertNodeDef } from '../treeDefs'
+import { isDraft, isSkill, isTree, MASTERY, SKILL_TYPE, TREE_TYPE, treeNodes, type SkillShape, type TreeShape } from '../board'
+import { ensureMastery } from '../mastery'
+import { getTreeDef, getTreeDefs } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph } from '../views'
 import { nodesOf, parseRequirements } from '../requirements'
 import { SKILL_SIZE } from '../skill/definition'
@@ -366,45 +367,22 @@ export function drawMounts(editor: Editor): void {
 	})
 }
 
-/** The board's Mastery node, if it has one. */
-export function masteryNode(editor: Editor): SkillShape | undefined {
-	return nodeShapes(editor).get(MASTERY_NODE)
-}
-
 /**
- * Puts the Mastery tree on this board and every tree on the board under it: the vault gets a
- * Mastery node if it has none, each tree here that hangs from nothing is mounted on it, and a
- * Mastery header views it all, laid out around the Mastery node. Trees already mounted elsewhere
- * (on a pillar, say) keep their mount and come along through it. One undo step for the board; the
- * mounts are vault data and stay.
+ * Puts a view of Mastery on this board (making the Mastery tree first if the vault has none), right
+ * of everything already here; or, when the board shows it already, goes to it. Returns its header.
  */
-export function gatherAroundMastery(editor: Editor): number {
-	const treeIds = [...new Set([...nodeShapes(editor).values()].filter((s) => !isDraft(s) && s.props.treeId !== MASTERY).map((s) => s.props.treeId))]
-	if (!treeIds.length && !getTreeDef(MASTERY)) return 0
-	if (!getTreeDef(MASTERY)?.nodes.some((n) => n.nodeId === MASTERY_NODE)) {
-		upsertNodeDef(MASTERY, { nodeId: MASTERY_NODE, name: 'Mastery', kind: MASTERY, icon: 'trophy', sector: '', ring: '', requires: '' })
-		updateTreeMeta(MASTERY, { name: 'Mastery' })
+export function showMastery(editor: Editor): TreeShape | undefined {
+	ensureMastery()
+	const def = getTreeDef(MASTERY)!
+	let header = treeHeader(editor, MASTERY)
+	if (!header) {
+		const bounds = editor.getCurrentPageBounds()
+		const at = bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center
+		editor.run(() => {
+			editor.markHistoryStoppingPoint('add Mastery')
+			editor.createShape({ id: createShapeId(), type: TREE_TYPE, x: at.x, y: at.y, props: { treeId: MASTERY, name: def.name, goal: def.goal, mode: getTreePrefs().importShows } } as never)
+		})
+		header = treeHeader(editor, MASTERY)
 	}
-	for (const treeId of treeIds) if (!getTreeDef(treeId)?.mount) updateTreeMeta(treeId, { mount: MASTERY_NODE })
-
-	let moved = 0
-	editor.run(() => {
-		editor.markHistoryStoppingPoint('gather trees around Mastery')
-		const c = editor.getCurrentPageBounds()?.center ?? { x: 0, y: 0 }
-		if (!masteryNode(editor)) {
-			editor.createShape({
-				id: createShapeId(),
-				type: SKILL_TYPE,
-				x: c.x - SKILL_SIZE / 2,
-				y: c.y - SKILL_SIZE / 2,
-				props: { nodeId: MASTERY_NODE, treeId: MASTERY, name: 'Mastery', kind: MASTERY, icon: 'trophy' },
-			} as never)
-		}
-		if (!treeHeader(editor, MASTERY)) {
-			editor.createShape({ id: createShapeId(), type: TREE_TYPE, x: c.x - 140, y: c.y - 300, props: { treeId: MASTERY, name: 'Mastery' } } as never)
-		}
-		drawMounts(editor)
-		moved = layoutReach(editor, MASTERY_NODE, null)
-	})
-	return moved
+	return header
 }

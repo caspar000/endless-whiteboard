@@ -14425,6 +14425,145 @@ button.lb-props__eye:hover {
 	font-size: 13px;
 	color: var(--lb-text);
 }
+/* The Mastery builder in Settings › Skill trees (MasteryBuilder.tsx): pillars on the left, the picked
+ * pillar's trees on the right. */
+.lb-mastery__title {
+	margin: 0 0 10px;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--lb-text);
+}
+.lb-mastery {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	font-size: 13px;
+	color: var(--lb-text);
+}
+.lb-mastery ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.lb-mastery__columns {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 16px;
+}
+.lb-mastery__you {
+	padding: 4px 8px;
+	font-weight: 600;
+	color: var(--lb-text-dim);
+}
+.lb-mastery__pillar,
+.lb-mastery__tree {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 4px 3px 16px;
+	border-radius: var(--lb-radius);
+}
+.lb-mastery__pillar--on {
+	background: var(--lb-surface-2);
+}
+.lb-mastery__pillar input {
+	flex: 1;
+	min-width: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	padding: 3px 6px;
+}
+.lb-mastery__pillar input:focus {
+	border-color: var(--lb-border);
+	background: var(--lb-surface);
+	outline: none;
+}
+.lb-mastery__pillar button,
+.lb-mastery__tree button {
+	flex: none;
+	width: 22px;
+	height: 22px;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-mastery__pillar button:hover:not(:disabled),
+.lb-mastery__tree button:hover {
+	background: var(--lb-surface);
+	color: var(--lb-text);
+}
+.lb-mastery__pillar button:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+.lb-mastery__tree {
+	padding-left: 8px;
+}
+.lb-mastery__tree > span:first-child {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-mastery__also {
+	flex: none;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+.lb-mastery__heading {
+	padding: 4px 8px;
+	font-weight: 600;
+	color: var(--lb-text-dim);
+}
+.lb-mastery__add {
+	display: flex;
+	gap: 6px;
+	margin-top: 8px;
+	padding-left: 16px;
+}
+.lb-mastery__add input,
+.lb-mastery__trees select {
+	flex: 1;
+	min-width: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface);
+	color: inherit;
+	font: inherit;
+	padding: 4px 8px;
+}
+.lb-mastery__trees select {
+	width: 100%;
+	margin-top: 8px;
+}
+.lb-mastery__button {
+	flex: none;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font: inherit;
+	padding: 4px 10px;
+	cursor: pointer;
+}
+.lb-mastery__button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.lb-mastery__empty,
+.lb-mastery__hint {
+	margin: 0;
+	padding: 4px 8px;
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
+
 /* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
 .lb-tree-advanced {
 	padding: 10px 0 4px;

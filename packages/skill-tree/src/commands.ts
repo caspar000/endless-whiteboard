@@ -1,9 +1,9 @@
 import type { Command } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
 import { isSkill, isTree, MASTERY, type SkillShape } from './board'
-import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId, treeHeader } from './tree/ops'
+import { drawPrerequisites, layoutFrom, layoutTree, selectedTreeId, showMastery, treeHeader } from './tree/ops'
 import { recalculate } from './tree/viewSync'
-import { toggleAllNodes } from './tree/view'
+import { contentsOf, toggleAllNodes } from './tree/view'
 import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
 import { isDevBuild } from './env'
@@ -41,13 +41,9 @@ export const skillTreeCommands: readonly Command[] = [
 		run: ({ editor }) => {
 			const treeId = editor && selectedTreeId(editor)
 			if (!editor || !treeId) return
-			// The Mastery node's tree is every tree on the board.
-			if (treeId === MASTERY) gatherAroundMastery(editor)
-			else {
-				const header = treeHeader(editor, treeId)
-				if (header) recalculate(editor, header)
-				else layoutTree(editor, treeId)
-			}
+			const header = treeHeader(editor, treeId)
+			if (header) recalculate(editor, header)
+			else layoutTree(editor, treeId)
 		},
 	},
 	{
@@ -61,12 +57,23 @@ export const skillTreeCommands: readonly Command[] = [
 		},
 	},
 	{
-		id: 'skill-tree.gather-mastery',
-		title: 'Gather every tree around a Mastery node',
+		id: 'skill-tree.add-mastery',
+		title: 'Add Mastery to this board',
 		group: GROUP,
-		when: (ctx) => !!ctx.editor && ctx.editor.getCurrentPageShapes().some((s) => isSkill(s) && s.props.kind !== MASTERY),
+		when: (ctx) => ctx.editor !== null,
 		run: ({ editor }) => {
-			if (editor) gatherAroundMastery(editor)
+			if (!editor) return
+			const header = showMastery(editor)
+			// The view fills in after the change (treeSync.ts); then show all of it.
+			setTimeout(() => {
+				const shown = header ? contentsOf(editor, header).skills : new Set<string>()
+				const nodes = editor.getCurrentPageShapes().filter((s) => isSkill(s) && shown.has(s.props.nodeId))
+				if (!nodes.length) return
+				editor.setSelectedShapes(nodes.map((n) => n.id))
+				const bounds = editor.getSelectionPageBounds()
+				editor.selectNone()
+				if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 250 } })
+			}, 0)
 		},
 	},
 	{

@@ -3,6 +3,7 @@ import { measure, SHOW_ALL, WHOLE_LIFE, WHOLE_LIFE_SKILLS, type ShowAll } from '
 import { wholeLayout } from './wholeLayout'
 import { maze } from './maze'
 import { DEFAULT_LAYOUT } from './layoutConfig'
+import type { GraphEdge, GraphNode } from './layout'
 
 const lay = (view: ShowAll) => wholeLayout(view.nodes, view.edges, { isSkill: (id) => view.skills.has(id), start: view.start, arrows: view.arrows, config: DEFAULT_LAYOUT })
 
@@ -79,4 +80,49 @@ describe('maze', () => {
 				owner.set(k, c.from)
 			}
 	})
+})
+
+describe('a tree under two pillars', () => {
+	/** You, five pillars, `each` small trees on each: the shape of Mastery. */
+	function mastery(each: number): { nodes: GraphNode[]; edges: GraphEdge[] } {
+		const nodes: GraphNode[] = [{ id: 'you', w: 300, h: 300 }]
+		const edges: GraphEdge[] = []
+		for (let p = 0; p < 5; p++) {
+			nodes.push({ id: `p${p}`, w: 220, h: 220 })
+			edges.push({ from: 'you', to: `p${p}` })
+			for (let t = 0; t < each; t++) {
+				const root = `p${p}t${t}`
+				nodes.push({ id: root, w: 150, h: 150 })
+				edges.push({ from: `p${p}`, to: root })
+				for (let k = 0; k < 3; k++) {
+					nodes.push({ id: `${root}k${k}`, w: 150, h: 150 })
+					edges.push({ from: root, to: `${root}k${k}` })
+				}
+			}
+		}
+		return { nodes, edges }
+	}
+	const angle = (p: { x: number; y: number }) => Math.atan2(p.y, p.x)
+	/** Whether `c` lies on the shorter arc from `a` to `b`. */
+	const between = (a: number, b: number, c: number) => {
+		const span = (x: number) => ((x % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI
+		const ab = span(b - a)
+		const ac = span(c - a)
+		return Math.sign(ab) === Math.sign(ac) && Math.abs(ac) < Math.abs(ab)
+	}
+
+	// With nothing else on the pillars, two that aren't neighbours can come out opposite each other (a
+	// pillar's share of the circle is what hangs below it, and the shared tree counts under its first),
+	// where neither way round is between; so only neighbours are asked of that board.
+	const pairs = (each: number) => [['p1', 'p2'], ['p2', 'p1'], ['p0', 'p4'], ...(each ? [['p1', 'p3']] : [])] as const
+	for (const each of [2, 0])
+	for (const [a, b] of pairs(each)) {
+		it(`is drawn between ${a} and ${b}, whichever it names first (${each} other trees on each pillar)`, () => {
+			const { nodes, edges } = mastery(each)
+			nodes.push({ id: 'shared', w: 150, h: 150 }, { id: 'sharedk', w: 150, h: 150 })
+			edges.push({ from: a, to: 'shared' }, { from: b, to: 'shared' }, { from: 'shared', to: 'sharedk' })
+			const at = wholeLayout(nodes, edges, { isSkill: () => true, start: 'you' })
+			expect(between(angle(at.get(a)!), angle(at.get(b)!), angle(at.get('shared')!))).toBe(true)
+		})
+	}
 })

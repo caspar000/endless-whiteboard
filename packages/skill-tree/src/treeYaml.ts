@@ -1,4 +1,5 @@
 import { stringify as stringifyYaml } from 'yaml'
+import { MASTERY, MASTERY_NODE } from './board'
 import { qualifyConditions } from './requirements'
 
 /**
@@ -27,8 +28,8 @@ export interface DocTree {
 	layout: string
 	sectors: string[]
 	rings: string[]
-	/** A node of another tree this one hangs from ('' for none). */
-	mount: string
+	/** Nodes of other trees this one hangs from. */
+	mounts: string[]
 	nodes: DocNode[]
 }
 
@@ -71,10 +72,11 @@ export function parseTrees(raw: Raw, goal: string, errors: string[]): DocTree[] 
 				continue
 			}
 			const requires = qualifyRequirements(value.requires, treeId, goal, `${path}`, errors)
+			const nodeId = qualify(treeId, slug(text(value.id)))
 			nodes.push({
-				nodeId: qualify(treeId, slug(text(value.id))),
+				nodeId,
 				name: text(value.name) || text(value.id),
-				kind: ['root', 'skill', 'method', 'keystone', 'pillar', 'mastery'].includes(text(value.kind)) ? text(value.kind) : 'skill',
+				kind: kindOf(text(value.kind), nodeId),
 				icon: text(value.icon),
 				sector: text(value.sector),
 				ring: text(value.ring),
@@ -82,7 +84,8 @@ export function parseTrees(raw: Raw, goal: string, errors: string[]): DocTree[] 
 			})
 		}
 		const layout = text(treeRaw.layout)
-		const mount = text(treeRaw.mount)
+		// `mount: mastery/mental`, or several: `mounts: [mastery/mental, mastery/practical]`.
+		const mounts = [...new Set([...list(treeRaw.mount), ...list(treeRaw.mounts)].map((m) => qualify(goal, slug(m))))]
 		trees.push({
 			treeId,
 			name: text(treeRaw.name) || (t === 0 ? text(raw.name) : '') || treeId,
@@ -90,11 +93,21 @@ export function parseTrees(raw: Raw, goal: string, errors: string[]): DocTree[] 
 			layout: ['sectors', 'lineage', 'free'].includes(layout) ? layout : 'sectors',
 			sectors: list(treeRaw.sectors),
 			rings: list(treeRaw.rings),
-			mount: mount ? qualify(goal, slug(mount)) : '',
+			mounts,
 			nodes,
 		})
 	}
 	return trees
+}
+
+/**
+ * A node's kind. You (`mastery`) is only Mastery's root: Mastery is built in Settings › Skill trees
+ * (mastery.ts), and anywhere else it is a skill. A pillar, a node whose ring is the share of
+ * everything below it unlocked, can be in any tree (/mu/core's categories are).
+ */
+function kindOf(kind: string, nodeId: string): string {
+	if (kind === MASTERY) return nodeId === MASTERY_NODE ? MASTERY : 'skill'
+	return ['root', 'skill', 'method', 'keystone', 'pillar'].includes(kind) ? kind : 'skill'
 }
 
 /** Requirements written as YAML, with node ids and every kind's own ids qualified, back to stored YAML. */

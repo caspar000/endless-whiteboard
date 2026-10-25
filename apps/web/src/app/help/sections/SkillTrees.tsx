@@ -35,7 +35,7 @@ export function SkillTrees({ go }: SectionProps) {
 					is (a book, a film, an album) and its title below; right-click it, or an entry without works, ›
 					Mark as done. Done fills it in; done but not written up yet leaves only its outline. Right-click
 					an entry › Put a card on the board for its checklist. Double-click a skill node, or press Enter,
-					to edit it. The Mastery node at the middle is drawn large, and its editor's <strong>Picture</strong>
+					to edit it. You, at the middle of Mastery, is drawn large, and its editor's <strong>Picture</strong>
 					fills it with a picture of you; any skill node can have one.
 				</p>
 				<p>
@@ -66,6 +66,21 @@ export function SkillTrees({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Mastery">
+				<p>
+					<strong>Mastery</strong> is the tree at the middle of everything: you, the pillars of your life
+					around you, and your other trees hung under them. Build it in Settings › Extensions › Skill trees:
+					<strong>Set up Mastery</strong> starts you with Physical, Mental, Spiritual, Practical and Social.
+					Rename, reorder, add and remove pillars there; pick one to hang trees under it. A tree can hang
+					under several pillars, and is drawn once, between them, with a line from each.
+				</p>
+				<p>
+					<code>Add Mastery to this board</code> puts a view of it on the open board. A pillar lights up once
+					anything in a tree under it is unlocked, and its ring fills with the share of those trees you have
+					unlocked; You does the same across every pillar.
+				</p>
+			</Section>
+
 			<Section title="Laying a tree out">
 				<p>
 					<code>Lay out tree</code> (or Re-calculate) arranges the tree: the root stays where it is, its
@@ -74,11 +89,7 @@ export function SkillTrees({ go }: SectionProps) {
 					it) to grow the tree from there. <code>Lay out from this node</code> arranges one node and everything that depends
 					on it and leaves the rest alone.
 				</p>
-				<p>
-					<code>Gather every tree around a Mastery node</code> puts one Mastery node in the middle of the
-					board with every tree as a branch of it. Its ring shows how much of all of them you have
-					unlocked. Each layout is one undo step, and nothing moves on its own afterwards.
-				</p>
+				<p>Each layout is one undo step, and nothing moves on its own afterwards.</p>
 			</Section>
 
 			<Section title="One tree, many boards">
@@ -94,9 +105,9 @@ export function SkillTrees({ go }: SectionProps) {
 					on every board; undo brings it back. To show less on one board, change its view instead.
 				</p>
 				<p className="lb-help__aside">
-					<code>Hang a skill tree from a node</code> mounts one tree on another tree's node: a pillar, or
-					Mastery. A view of that node then shows the mounted tree as its branch, and the node's ring shows
-					how much of everything below it is unlocked.
+					<code>Hang a skill tree from a node</code> mounts one tree on other trees' nodes, usually
+					pillars. A view of any of them then shows the mounted tree as its branch. Mastery's builder does
+					the same for pillars.
 				</p>
 			</Section>
 		</>

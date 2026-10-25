@@ -1,7 +1,7 @@
 import { defineOperation, fail, ok, type RegisteredOperation } from '@lifeboard/node-kit'
 import { createShapeId } from '@lifeboard/canvas'
 import { isSkill, type SkillShape } from './board'
-import { gatherAroundMastery, layoutFrom, layoutTree, treeHeader } from './tree/ops'
+import { layoutFrom, layoutTree, treeHeader } from './tree/ops'
 import { getTreeDef, getTreeDefs, updateTreeMeta } from './treeDefs'
 import { treeGraph } from './views'
 
@@ -14,21 +14,19 @@ export const treeOperations: readonly RegisteredOperation[] = [
 		id: 'skill.tree.layout',
 		title: 'Lay out a skill tree',
 		description:
-			'Places a skill tree on the open board so no nodes overlap and no line runs through a node: the tree from its root, one node and everything depending on it, or every tree around a Mastery node. One undo step.',
+			'Places a skill tree on the open board so no nodes overlap and no line runs through a node: the tree from its root, or one node and everything depending on it. One undo step.',
 		params: {
-			treeId: { type: 'string', description: 'The tree to lay out, e.g. "adler". Leave empty with mastery set.' },
+			treeId: { type: 'string', description: 'The tree to lay out, e.g. "adler". Leave empty with from set.' },
 			from: { type: 'string', description: 'A node id: lay out only it and what depends on it, around where it stands.' },
-			mastery: { type: 'boolean', description: 'True to gather every tree on the board around a Mastery node (made if missing).' },
 		},
 		run: async (ctx, args) => {
 			const editor = ctx.editor
 			if (!editor) return fail(NO_BOARD)
-			if (args.mastery) return ok({ moved: gatherAroundMastery(editor) })
 			if (args.from) {
 				const node = editor.getCurrentPageShapes().find((s): s is SkillShape => isSkill(s) && s.props.nodeId === args.from)
 				return node ? ok({ moved: layoutFrom(editor, node) }) : fail(`No node "${args.from}" on this board.`)
 			}
-			if (!args.treeId) return fail('Name a treeId, a from node, or set mastery.')
+			if (!args.treeId) return fail('Name a treeId or a from node.')
 			const moved = layoutTree(editor, args.treeId)
 			return moved ? ok({ moved }) : fail(`No tree "${args.treeId}" on this board.`)
 		},
@@ -69,19 +67,20 @@ export const treeOperations: readonly RegisteredOperation[] = [
 		id: 'skill.tree.mount',
 		title: 'Hang a skill tree from a node',
 		description:
-			'Mounts a tree on a node of another tree (a pillar, Mastery), so any view of that node shows the tree as its branch. Empty "on" takes the mount away. Vault data: it changes every board.',
+			'Hangs a tree from nodes of other trees (usually pillars of Mastery, "mastery/mental"), so any view of those nodes shows the tree as their branch. A tree can hang from several nodes; it is drawn once. "on" replaces where it hangs; empty takes it down. Vault data: it changes every board.',
 		params: {
 			tree: { type: 'string', description: 'The tree to hang.', required: true, liveChoices: () => Object.keys(getTreeDefs()).sort() },
-			on: { type: 'string', description: 'The node id to hang it from, e.g. "mastery/mental". Empty to unmount.' },
+			on: { type: 'string', description: 'The node ids to hang it from, comma-separated, e.g. "mastery/mental, mastery/practical". Empty to take it down.' },
 		},
 		run: async (_ctx, args) => {
 			if (!getTreeDef(args.tree)) return fail(`No tree "${args.tree}".`)
 			const graph = treeGraph(getTreeDefs())
-			const on = args.on ?? ''
-			if (on && !graph.nodes.has(on)) return fail(`No node "${on}" in the vault.`)
-			if (on && graph.nodes.get(on)!.treeId === args.tree) return fail('A tree cannot hang from one of its own nodes.')
-			updateTreeMeta(args.tree, { mount: on })
-			return ok({ tree: args.tree, mount: on })
+			const on = [...new Set((args.on ?? '').split(',').map((id) => id.trim()).filter(Boolean))]
+			const missing = on.find((id) => !graph.nodes.has(id))
+			if (missing) return fail(`No node "${missing}" in the vault.`)
+			if (on.some((id) => graph.nodes.get(id)!.treeId === args.tree)) return fail('A tree cannot hang from one of its own nodes.')
+			updateTreeMeta(args.tree, { mounts: on })
+			return ok({ tree: args.tree, mounts: on })
 		},
 	}),
 ]

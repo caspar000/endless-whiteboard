@@ -29,8 +29,8 @@ export interface TreeDef {
 	/** Comma-separated, in fan order. */
 	sectors: string
 	rings: string
-	/** A node of another tree this tree hangs from, so a view of that node shows this tree too ('' for none). */
-	mount: string
+	/** Nodes of other trees this tree hangs from, so a view of any of them shows this tree too. */
+	mounts: readonly string[]
 	nodes: NodeDef[]
 	/** Node ids deleted from this tree. */
 	removed: string[]
@@ -43,7 +43,7 @@ export interface TreeDef {
 export type TreeDefs = Readonly<Record<string, TreeDef>>
 
 export const NODE_FIELDS = ['name', 'kind', 'icon', 'sector', 'ring', 'requires'] as const
-export const TREE_FIELDS = ['name', 'goal', 'sectors', 'rings', 'mount'] as const
+export const TREE_FIELDS = ['name', 'goal', 'sectors', 'rings', 'mounts'] as const
 export type TreeMeta = Pick<TreeDef, (typeof TREE_FIELDS)[number]>
 
 const trees = atom<TreeDefs>('lifeboard:skill-trees', {})
@@ -63,6 +63,12 @@ function commit(next: TreeDefs): void {
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
+
+/** `mounts`, or the one `mount` a tree had before it could hang from several nodes. */
+export function mountsOf(r: Record<string, unknown>): string[] {
+	const raw = Array.isArray(r.mounts) ? r.mounts : str(r.mount) ? [r.mount] : []
+	return [...new Set(raw.filter((m): m is string => typeof m === 'string' && !!m))]
+}
 
 function parseNode(raw: unknown): NodeDef | null {
 	if (!raw || typeof raw !== 'object') return null
@@ -90,7 +96,7 @@ export function parseTreeDef(raw: unknown): TreeDef | null {
 		goal: str(r.goal),
 		sectors: str(r.sectors),
 		rings: str(r.rings),
-		mount: str(r.mount),
+		mounts: mountsOf(r),
 		nodes: (Array.isArray(r.nodes) ? r.nodes : []).map(parseNode).filter((n): n is NodeDef => !!n),
 		removed: (Array.isArray(r.removed) ? r.removed : []).filter((id): id is string => typeof id === 'string'),
 		draft: str(r.draft),
@@ -111,7 +117,7 @@ export function replaceTreeDefs(raw: unknown): void {
 	trees.set(next)
 }
 
-const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mount: '', nodes: [], removed: [], draft: '', ticked: {} })
+const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mounts: [], nodes: [], removed: [], draft: '', ticked: {} })
 
 /** A node keeps its draft mark through an edit that doesn't name one: a shape's fields carry no draft. */
 const keepDraft = (node: NodeDef, had: NodeDef | undefined): NodeDef =>
@@ -200,6 +206,15 @@ export function updateTreeMeta(treeId: string, meta: Partial<TreeMeta & { draft:
 	if (!treeId) return
 	const tree = trees.get()[treeId] ?? emptyTree(treeId)
 	commit({ ...trees.get(), [treeId]: { ...tree, ...meta } })
+}
+
+/** Puts a tree's nodes in this order (ids it doesn't list keep their place at the end). */
+export function orderNodeDefs(treeId: string, ids: readonly string[]): void {
+	const tree = trees.get()[treeId]
+	if (!tree) return
+	const rank = new Map(ids.map((id, i) => [id, i]))
+	const nodes = [...tree.nodes].sort((a, b) => (rank.get(a.nodeId) ?? ids.length) - (rank.get(b.nodeId) ?? ids.length))
+	commit({ ...trees.get(), [treeId]: { ...tree, nodes } })
 }
 
 /** Ticks a node by hand (`at`, `YYYY-MM-DD`), or takes the tick back (''). */

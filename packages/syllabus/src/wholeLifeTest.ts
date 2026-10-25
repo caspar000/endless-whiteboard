@@ -34,9 +34,9 @@ export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: nu
 			await step('Confirming')
 			confirmDraft(editor)
 			const mounts: Record<string, string> = { adler: 'mastery/mental', film: 'mastery/practical', theatre: 'mastery/practical', games: 'mastery/practical' }
-			for (const [treeId, mount] of Object.entries(mounts)) updateTreeMeta(treeId, { mount })
+			for (const [treeId, mount] of Object.entries(mounts)) updateTreeMeta(treeId, { mounts: [mount] })
 			const kept = new Set(Object.keys(mounts))
-			for (const tree of Object.values(getTreeDefs())) if (!kept.has(tree.treeId) && tree.mount.startsWith('mastery/')) updateTreeMeta(tree.treeId, { mount: '' })
+			for (const tree of Object.values(getTreeDefs())) if (!kept.has(tree.treeId) && tree.mounts.some((m) => m.startsWith('mastery/'))) updateTreeMeta(tree.treeId, { mounts: [] })
 			// The imports made headers; Mastery's view reaches them all, so Mastery's is the one.
 			const headers = editor.getCurrentPageShapes().filter(isTree)
 			editor.run(() => {

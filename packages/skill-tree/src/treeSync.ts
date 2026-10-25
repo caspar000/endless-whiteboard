@@ -53,7 +53,7 @@ const metaOf = (header: TreeShape): TreeMeta => ({
 	goal: header.props.goal,
 	sectors: header.props.sectors,
 	rings: header.props.rings,
-	mount: getTreeDef(header.props.treeId)?.mount ?? '',
+	mounts: getTreeDef(header.props.treeId)?.mounts ?? [],
 })
 
 /** What decides which nodes a header's view shows. */

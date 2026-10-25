@@ -2,7 +2,7 @@ import type { Editor } from '@lifeboard/canvas'
 import { isDraft, isSkill, isTree, type SkillShape, type TreeShape } from './board'
 import type { GraphEdge } from './tree/layout'
 import { prerequisitesOf } from './tree/prerequisites'
-import { getTreeDefs, type NodeDef, type TreeDef, type TreeDefs, type TreeMeta } from './treeDefs'
+import { getTreeDefs, mountsOf, type NodeDef, type TreeDef, type TreeDefs, type TreeMeta } from './treeDefs'
 
 /**
  * Every tree in the vault as one graph, and what a view of it reaches (docs/skill-tree-plan.md,
@@ -54,9 +54,11 @@ export function treeGraph(trees: TreeDefs): TreeGraph {
 	}
 	const mounts = Object.values(trees).flatMap((tree) => {
 		const root = rootOf.get(tree.treeId)
-		const at = nodes.get(tree.mount)
 		// A tree can't hang from itself; a mount on a missing node is ignored until the node exists.
-		return root && at && at.treeId !== tree.treeId ? [{ from: tree.mount, to: root, treeId: tree.treeId }] : []
+		return tree.mounts.flatMap((mount) => {
+			const at = nodes.get(mount)
+			return root && at && at.treeId !== tree.treeId ? [{ from: mount, to: root, treeId: tree.treeId }] : []
+		})
 	})
 	return { nodes, prerequisites, mounts, loose, rootOf }
 }
@@ -100,7 +102,7 @@ export function boardTrees(editor: Editor): TreeDefs {
 			goal: header?.props.goal ?? draftTreeMeta(shape).goal ?? '',
 			sectors: header?.props.sectors ?? '',
 			rings: header?.props.rings ?? '',
-			mount: draftMount(shape),
+			mounts: draftMounts(shape),
 			nodes: [],
 			removed: [],
 			draft: '',
@@ -108,7 +110,7 @@ export function boardTrees(editor: Editor): TreeDefs {
 		}
 		if (tree.nodes.some((n) => n.nodeId === shape.props.nodeId)) continue
 		const { nodeId, name, kind, icon, sector, ring, requires } = shape.props
-		out[shape.props.treeId] = { ...tree, mount: tree.mount || draftMount(shape), nodes: [...tree.nodes, { nodeId, name, kind, icon, sector, ring, requires }] }
+		out[shape.props.treeId] = { ...tree, mounts: tree.mounts.length ? tree.mounts : draftMounts(shape), nodes: [...tree.nodes, { nodeId, name, kind, icon, sector, ring, requires }] }
 	}
 	return out
 }
@@ -124,11 +126,13 @@ export function draftTreeMeta(shape: SkillShape): Partial<TreeMeta> {
 	if (!raw || typeof raw !== 'object') return {}
 	const r = raw as Record<string, unknown>
 	const out: Partial<TreeMeta> = {}
-	for (const key of ['name', 'goal', 'sectors', 'rings', 'mount'] as const) if (typeof r[key] === 'string') out[key] = r[key] as string
+	for (const key of ['name', 'goal', 'sectors', 'rings'] as const) if (typeof r[key] === 'string') out[key] = r[key] as string
+	const mounts = mountsOf(r)
+	if (mounts.length) out.mounts = mounts
 	return out
 }
 
-const draftMount = (shape: SkillShape) => draftTreeMeta(shape).mount ?? ''
+const draftMounts = (shape: SkillShape) => draftTreeMeta(shape).mounts ?? []
 
 /** What one tree view shows, and what each shown item hangs from. */
 export interface ViewContents {

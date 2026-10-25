@@ -34,10 +34,10 @@ export function importTrees(editor: Editor, trees: readonly DocTree[], at: { x: 
 			sectors: tree.sectors.join(', '),
 			rings: tree.rings.join(', '),
 			// A document that names no mount leaves the tree hanging where it hangs.
-			...(tree.mount ? { mount: tree.mount } : {}),
+			...(tree.mounts.length ? { mounts: tree.mounts } : {}),
 			...(had ? {} : { draft: board }),
 		})
-		if (tree.mount && inDoc.has(tree.mount)) continue
+		if (tree.mounts.some((m) => inDoc.has(m))) continue
 		const header = editor.getCurrentPageShapes().find((s) => isTree(s) && s.props.treeId === tree.treeId)
 		const props = { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') }
 		if (header) {
@@ -103,7 +103,7 @@ export function treeDoc(editor: Editor, goal: string, anyGoal: boolean): Record<
 	return {
 		id: tree.props.treeId,
 		name: def?.name || tree.props.name,
-		...(def?.mount ? { mount: def.mount } : {}),
+		...(def?.mounts.length === 1 ? { mount: def.mounts[0] } : def?.mounts.length ? { mounts: def.mounts } : {}),
 		...(tree.props.sectors ? { sectors: tags(tree.props.sectors) } : {}),
 		...(tree.props.rings ? { rings: tags(tree.props.rings) } : {}),
 		nodes: nodes.map((n) => ({

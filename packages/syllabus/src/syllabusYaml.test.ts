@@ -107,10 +107,15 @@ trees:
     nodes:
       - { id: focus, name: Deep Focus, kind: root }
       - { id: memory, name: Memory, requires: [ { node: [focus] } ] }
+  - id: both
+    mounts: [mental, mastery/social]
+    nodes:
+      - { id: start, name: Start, kind: root }
 `)
-		expect(doc.trees.map((t) => [t.treeId, t.mount])).toEqual([
-			['mastery', ''],
-			['mind', 'mastery/mental'],
+		expect(doc.trees.map((t) => [t.treeId, t.mounts])).toEqual([
+			['mastery', []],
+			['mind', ['mastery/mental']],
+			['both', ['mastery/mental', 'mastery/social']],
 		])
 		expect(doc.trees[1]!.nodes.map((n) => n.nodeId)).toEqual(['mind/focus', 'mind/memory'])
 		expect(parseRequirements(doc.trees[1]!.nodes[1]!.requires)).toMatchObject({ ok: true, conditions: [{ key: 'node', value: ['mind/focus'] }] })

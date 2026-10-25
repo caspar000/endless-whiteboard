@@ -27,9 +27,13 @@ export function SelectionIndicatorsCanvas({ ids }: { ids: TLShapeId[] }) {
 			if (!canvas) return
 			// Nothing selected: cleared once, without reading the camera, so a pan doesn't clear it again on
 			// every frame. A 2D canvas waits for the GPU once it's busy, which on a big board on the GPU
-			// layer stopped the page for a fifth of a second in a pan.
+			// layer stopped the page for a fifth of a second in a pan. The transform goes back to identity
+			// first: the last outline's is still set, and cleared under it only the part of the canvas right
+			// of and below that shape's corner went, leaving its top and left edges behind.
 			if (!ids.length) {
-				canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+				const ctx = canvas.getContext('2d')
+				ctx?.setTransform(1, 0, 0, 1, 0, 0)
+				ctx?.clearRect(0, 0, canvas.width, canvas.height)
 				return
 			}
 			const { w, h } = editor.getViewportScreenBounds()

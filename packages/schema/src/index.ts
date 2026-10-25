@@ -6,6 +6,7 @@ import {
 	getNodeDefinitions,
 	itemsToNotesMigrations,
 	registerExtension,
+	removeHabitNodesMigrations,
 	removeHealthNodesMigrations,
 	rollupsToTablesMigrations,
 	tablesExtension,
@@ -13,6 +14,7 @@ import {
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
 import { skillTreeExtension } from '@lifeboard/skill-tree'
+import { syllabusExtension } from '@lifeboard/syllabus'
 import {
 	createTLSchemaFromUtils,
 	defaultBindingUtils,
@@ -36,13 +38,14 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	// list of what the build ships, not the list of what has shapes.
 	diceExtension,
 	skillTreeExtension,
+	syllabusExtension,
 ]
 
 /**
  * Migrations that rewrite records across types, rather than one shape's props. Each declares its own
  * `dependsOn`, so the order here is only for reading.
  */
-export const STORE_MIGRATIONS = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations]
+export const STORE_MIGRATIONS = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations, removeHabitNodesMigrations]
 
 /** Idempotent, so the app's composition root and the server can both call it. */
 export function registerShippedExtensions(): void {

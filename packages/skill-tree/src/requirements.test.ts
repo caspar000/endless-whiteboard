@@ -1,95 +1,59 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateTree, masteryOf, parseRequirements, type TreeNode } from './requirements'
-import type { IndexEntry, SkillIndex } from './skillIndex'
+import { evaluateTree, parseRequirements, type TreeNode } from './requirements'
+import { registerTreeSource } from './sources'
 
-function entry(itemId: string, tags: string[], over: Partial<IndexEntry> = {}): IndexEntry {
-	return {
-		itemId,
-		title: itemId,
-		kind: 'Study',
-		medium: 'book',
-		tags,
-		done: true,
-		doneAt: '2026-10-01',
-		evidence: true,
-		method: 'analytical',
-		core: false,
-		parentItemId: '',
-		hasChildren: false,
-		position: 0,
-		...over,
-	}
-}
+/** A kind of requirement as a source would add one: met when the node has at least `min` pieces of evidence. */
+registerTreeSource({
+	id: 'test:pieces',
+	requirements: [
+		{
+			key: 'pieces',
+			parse: (value) => (typeof value === 'number' && value > 0 ? { ok: true, value } : { ok: false, error: 'pieces takes a number' }),
+			evaluate: (value, node) => ({ label: `${value} pieces`, have: Math.min(node.evidence.length, value as number), need: value as number, met: node.evidence.length >= (value as number), consumed: value as number }),
+		},
+	],
+})
 
-const indexOf = (...entries: IndexEntry[]): SkillIndex => Object.fromEntries(entries.map((e) => [e.itemId, e]))
+const piece = (id: string, tags: string[]) => ({ id, title: id, doneAt: '2026-10-01', kind: 'Study', medium: '', method: '', tags })
 
-describe('parseRequirements', () => {
-	it('reads the four conditions', () => {
-		const result = parseRequirements(
-			'- node: [a, b]\n- item: x\n- count: { min: 3, kind: Practice }\n- habit: { id: film, rule: streak, min: 4 }'
-		)
-		expect(result).toEqual({
+describe('requirements', () => {
+	it('reads node and manual, and a kind a source registered', () => {
+		expect(parseRequirements('- node: [a]\n- manual: Read it\n- pieces: 2')).toEqual({
 			ok: true,
 			conditions: [
-				{ node: ['a', 'b'] },
-				{ item: 'x' },
-				{ count: { min: 3, kind: 'Practice' } },
-				{ habit: { id: 'film', rule: 'streak', min: 4 } },
+				{ key: 'node', value: ['a'] },
+				{ key: 'manual', value: 'Read it' },
+				{ key: 'pieces', value: 2 },
 			],
 		})
-	})
-
-	it('accepts a single node id without a list, and nothing at all', () => {
-		expect(parseRequirements('- node: a')).toEqual({ ok: true, conditions: [{ node: ['a'] }] })
+		expect(parseRequirements('- node: a')).toEqual({ ok: true, conditions: [{ key: 'node', value: ['a'] }] })
 		expect(parseRequirements('  ')).toEqual({ ok: true, conditions: [] })
 	})
 
-	it('says what is wrong, and where', () => {
+	it("says what is wrong: the source's own error, or a kind nothing registered", () => {
 		expect(parseRequirements('node: a')).toMatchObject({ ok: false })
-		expect(parseRequirements('- count: { min: 0 }')).toEqual({ ok: false, error: 'Item 1: count needs min: 1 or more' })
-		expect(parseRequirements('- [unclosed')).toMatchObject({ ok: false })
+		expect(parseRequirements('- pieces: none')).toEqual({ ok: false, error: 'Item 1: pieces takes a number' })
+		expect(parseRequirements('- habit: { id: h }')).toMatchObject({ ok: false, error: expect.stringMatching(/unknown requirement "habit"/) })
 	})
-})
 
-describe('evaluateTree', () => {
 	const tree: TreeNode[] = [
 		{ nodeId: 'root', name: 'Root', requires: '' },
-		{ nodeId: 'drama', name: 'Drama', requires: '- node: [root]\n- count: { min: 2 }' },
-		{ nodeId: 'tragedy', name: 'Tragedy', requires: '- node: [drama]\n- count: { min: 1 }' },
+		{ nodeId: 'drama', name: 'Drama', requires: '- node: [root]\n- pieces: 2' },
+		{ nodeId: 'tragedy', name: 'Tragedy', requires: '- node: [drama]\n- manual: Saw one' },
 	]
 
-	it('opens a node with no requirement, and the next ring in reach of it', () => {
-		const status = evaluateTree(tree, {})
-		expect(status.get('root')!.state).toBe('unlocked')
-		expect(status.get('drama')!.state).toBe('available')
-		expect(status.get('tragedy')!.state).toBe('locked')
+	it("follows prerequisites, and asks the source's kind for the rest", () => {
+		const none = evaluateTree(tree, [])
+		expect([none.get('root')!.state, none.get('drama')!.state, none.get('tragedy')!.state]).toEqual(['unlocked', 'available', 'locked'])
+		const two = evaluateTree(tree, [piece('a', ['drama']), piece('b', ['drama'])])
+		expect(two.get('drama')!.state).toBe('unlocked')
+		expect(two.get('tragedy')!.state).toBe('available')
 	})
 
-	it('unlocks on enough tagged evidence and passes the unlock down the chain', () => {
-		const status = evaluateTree(tree, indexOf(entry('a', ['drama']), entry('b', ['drama'])))
-		expect(status.get('drama')!.state).toBe('unlocked')
-		expect(status.get('tragedy')!.state).toBe('available')
-	})
-
-	it('ignores ticks without evidence', () => {
-		const status = evaluateTree(tree, indexOf(entry('a', ['drama']), entry('b', ['drama'], { evidence: false })))
-		expect(status.get('drama')!.state).toBe('available')
-		expect(status.get('drama')!.conditions[1]).toMatchObject({ have: 1, need: 2, met: false })
-	})
-
-	it('filters counts by kind, medium and method', () => {
-		const nodes: TreeNode[] = [{ nodeId: 'n', name: 'N', requires: '- count: { min: 1, kind: Practice, method: practice }' }]
-		expect(evaluateTree(nodes, indexOf(entry('a', ['n']))).get('n')!.state).toBe('available')
-		expect(evaluateTree(nodes, indexOf(entry('a', ['n'], { kind: 'Practice', method: 'practice' }))).get('n')!.state).toBe('unlocked')
-	})
-
-	it('lets a method node count evidence from anywhere in its tree, by method', () => {
-		const nodes: TreeNode[] = [
-			...tree,
-			{ nodeId: 'reading', name: 'Reading', kind: 'method', requires: '- count: { min: 2, method: analytical }' },
-		]
-		const status = evaluateTree(nodes, indexOf(entry('a', ['drama']), entry('b', ['tragedy']), entry('c', ['elsewhere'])))
-		expect(status.get('reading')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
+	it('unlocks a manual node once it is ticked by hand', () => {
+		const ticked = tree.map((n) => (n.nodeId === 'tragedy' ? { ...n, tickedAt: '2026-10-25' } : n))
+		const status = evaluateTree(ticked, [piece('a', ['drama']), piece('b', ['drama'])])
+		expect(status.get('tragedy')).toMatchObject({ state: 'unlocked', conditions: [{ met: true }, { label: 'Saw one', met: true }] })
 	})
 
 	it('keeps cycles and unknown prerequisites locked instead of looping', () => {
@@ -98,47 +62,19 @@ describe('evaluateTree', () => {
 			{ nodeId: 'b', name: 'B', requires: '- node: [a]' },
 			{ nodeId: 'c', name: 'C', requires: '- node: [nowhere]' },
 		]
-		const status = evaluateTree(nodes, {})
+		const status = evaluateTree(nodes, [])
 		expect(status.get('a')!.state).toBe('locked')
 		expect(status.get('c')!.state).toBe('locked')
 	})
 
-	it('counts mastery from the evidence beyond what unlocking used', () => {
-		const pieces = Array.from({ length: 6 }, (_, i) => entry(`e${i}`, ['drama'], { doneAt: `2026-10-0${i + 1}`, kind: i === 5 ? 'Ship' : 'Study' }))
-		const drama = evaluateTree(tree, indexOf(...pieces)).get('drama')!
-		expect(drama.mastery.count).toBe(4)
-		expect(drama.mastery.ships).toBe(1)
-		expect(drama.mastery.tier).toBe(1)
-	})
-})
-
-describe('masteryOf', () => {
-	const pieces = (n: number, ships: number) =>
-		Array.from({ length: n }, (_, i) => entry(`m${i}`, [], { kind: i < ships ? 'Ship' : 'Study' }))
-
-	it('needs a Ship for every tier', () => {
-		expect(masteryOf(pieces(3, 0)).tier).toBe(0)
-		expect(masteryOf(pieces(3, 1)).tier).toBe(1)
-		expect(masteryOf(pieces(10, 1)).tier).toBe(1)
-		expect(masteryOf(pieces(10, 2)).tier).toBe(2)
-		expect(masteryOf(pieces(30, 3))).toMatchObject({ tier: 3, nextAt: null })
-	})
-})
-
-describe('evaluateTree across trees', () => {
-	const tree = (requires: string): TreeNode[] => [
+	const sit = [
 		{ nodeId: 'm/sit', name: 'Sit', requires: '', kind: 'root' },
-		{ nodeId: 'm/steady', name: 'Steady', requires },
+		{ nodeId: 'm/steady', name: 'Steady', requires: '- node: [m/sit, a/single]' },
 	]
 	const unlocked = { state: 'unlocked' } as ReturnType<typeof evaluateTree> extends Map<string, infer S> ? S : never
 
-	it("asks for the state of another tree's node", () => {
-		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18', (id) => (id === 'a/single' ? unlocked : undefined))
-		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
-	})
-
-	it("counts another tree's node as locked when nothing answers for it", () => {
-		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18')
-		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 1, need: 2, met: false })
+	it("asks for the state of another tree's node, and counts it locked when nothing answers", () => {
+		expect(evaluateTree(sit, [], (id) => (id === 'a/single' ? unlocked : undefined)).get('m/steady')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
+		expect(evaluateTree(sit, []).get('m/steady')!.conditions[0]).toMatchObject({ have: 1, need: 2, met: false })
 	})
 })

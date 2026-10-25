@@ -2,7 +2,7 @@ import { connectShapes } from '@lifeboard/node-kit'
 import { ARROW_STAYS_BEHIND_META, atom, Box, createShapeId, getArrowWaypoints, WAYPOINTS_META, type Atom, type Editor, type TLArrowBinding, type TLArrowShape, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { ENTRY_TYPE, isEntry, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type EntryShape, type SkillShape, type TreeShape } from '../board'
 import { ENTRY_SIZE, WORK_ANCHOR, WORK_DISC, WORK_SIZE } from '../entry/definition'
-import { getItem } from '../syllabus'
+import { getTreeItem } from '../sources'
 import { arcBend, itemKey, lineEnds } from './lines'
 import { orbitCluster } from './orbits'
 import { getLayoutConfig } from './layoutConfig'
@@ -525,7 +525,7 @@ function secondTags(items: ReadonlyMap<string, { variant: 'entry' | 'work'; pare
 	const out: { from: string; to: string }[] = []
 	for (const [id, at] of items) {
 		if (at.variant !== 'entry') continue
-		for (const tag of getItem(id)?.tags ?? []) if (tag !== at.parent && skills.has(tag)) out.push({ from: tag, to: itemKey(id) })
+		for (const tag of getTreeItem(id)?.tags ?? []) if (tag !== at.parent && skills.has(tag)) out.push({ from: tag, to: itemKey(id) })
 	}
 	return out
 }
@@ -644,7 +644,7 @@ export function tidyLines(editor: Editor, moved?: ReadonlySet<TLShapeId>): void 
 		const b = editor.getShape(ends.find((b) => b.props.terminal === 'end')?.toId as never)
 		let bend = 0
 		if (isEntry(a) && isEntry(b) && a.props.variant === 'work' && b.props.variant === 'work') {
-			const parent = getItem(b.props.itemId)?.parent
+			const parent = getTreeItem(b.props.itemId)?.parent
 			const entry = parent ? entries.get(parent) : undefined
 			if (entry) bend = arcBend(discCentre(a), discCentre(b), discCentre(entry))
 		}

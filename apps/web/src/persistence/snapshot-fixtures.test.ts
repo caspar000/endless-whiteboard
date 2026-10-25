@@ -12,6 +12,7 @@ import {
 	itemsToNotesMigrations,
 	rollupsToTablesMigrations,
 	removeHealthNodesMigrations,
+	removeHabitNodesMigrations,
 	ITEM_NODE_TYPE,
 	ROLLUP_NODE_TYPE,
 	TABLE_NODE_TYPE,
@@ -58,7 +59,7 @@ function makeStore() {
 		// The same store migrations `<Tldraw migrations>` gets. Without them this test would load
 		// fixtures through a schema the app never actually uses, and the one migration that rewrites
 		// records across *types* would go completely unexercised on real data.
-		migrations: [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations],
+		migrations: [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations, removeHabitNodesMigrations],
 	})
 }
 

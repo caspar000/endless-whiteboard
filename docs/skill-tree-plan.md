@@ -5,6 +5,74 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+## Cleanup (2026-10-25)
+
+Agreed in a grilling round, the second of four phases: a git change came first, then this, then the
+split below and a Mastery builder in Settings. Removed:
+
+- **Habits**, all of them: the habit card (`node.habit`, deleted from old boards by the
+  `removeHabitNodes` store migration), the `habit:` requirement, Up Next's habit rows, the YAML
+  `habits:` block and the `skillHabits` vault key. They come back as an extension of their own. The
+  syllabi's habits, for that extension to bring back: Adler's "Write Up an Entry" (one analytical
+  write-up a week) and "Read for 30 Minutes" (daily); /mu/core's "Three Albums a Week"; Film's "Two
+  Film Weeks" a month; Theatre's "Two Theatre Weeks" a month; Games' "Play a Game as a Director" and
+  "Build One Exercise" (weekly) and "Finish One Playable Stage" (monthly). Adler's "The Reading
+  Habit" node asked for four weeks of the first; it now asks for four analytical write-ups.
+- **The game director curriculum**: Film, Theatre and Games replaced it. The lists Film and Games
+  still read from it are `syllabi/director_lists.py`.
+- **The Mastery demo** and **Adler's sample tree**, with their commands.
+- **Built-in syllabi**: the YAML files and their generators moved to `syllabi/` at the repo root,
+  and the per-syllabus import commands went. A syllabus comes in by dropping its file on a board.
+
+The sections below are the history as it was built, and still mention what is gone.
+
+## The split (2026-10-25)
+
+The third phase: one extension became two, so a skill tree can be used without a syllabus and a
+syllabus without a tree.
+
+- **`lifeboard.skill-tree`** (`packages/skill-tree`): skill nodes, tree headers and the entries a
+  view draws, the layout, views and mounts, Settings › Skill trees, the tree commands and the
+  `skill.tree.*` operations. A node's requirements know `node:` (prerequisites) and `manual:` (ticked
+  by hand: right-click › Mark as done; the tick is kept on the tree definition, `ticked`, by node).
+- **`lifeboard.syllabus`** (`packages/syllabus`): items, tracks, lists, Up next, cards, write-up
+  templates and evidence, the YAML import and export, and the other `skill.*` operations.
+- **Sources** (`packages/skill-tree/src/sources.ts`) are how one meets the other. A source gives
+  kinds of requirement (`key`, `parse`, `qualify` for YAML ids, `evaluate`), evidence (pieces of
+  finished work, each tagged to nodes; mastery counts them), and items a view draws beside the nodes
+  they are tagged to, with how each looks. The syllabus registers one with `item:` and `count:`. A
+  key no source registered doesn't parse, so it is an error on the node rather than met.
+- The syllabus depends on the skill tree's package, never the other way. With Skill trees off, a
+  syllabus keeps its lists, Up next and cards, and an import leaves the document's trees out.
+- The YAML is still one file per syllabus: the skill tree parses the `tree:`/`trees:` part
+  (`treeYaml.ts`) and puts it on a board (`treeIO.ts`); the syllabus parses the rest.
+- Shape types, vault keys, command ids and operation ids are unchanged, so nothing on a board or in
+  the vault moves.
+
+## Mastery (2026-10-25)
+
+The fourth phase. Mastery is one tree per vault, `mastery`, built in Settings › Skill trees
+(`packages/skill-tree/src/mastery.ts`, `MasteryBuilder.tsx`):
+
+- **You** (`mastery/root`, kind `mastery`) at the root, and the **pillars** (kind `pillar`, each
+  requiring You) in their order round you. *Set up Mastery* starts with Physical, Mental, Spiritual,
+  Practical and Social; pillars can be renamed, reordered, added and removed. You exists only as
+  Mastery's root: the node editor no longer offers the kind, and YAML turns it into `skill` anywhere
+  else. (`pillar` stays a kind any tree can use, as /mu/core's categories do.) Mastery's own nodes
+  aren't edited on the board beyond name, icon and picture. Removing a pillar takes it off the trees
+  hung under it.
+- **Hanging:** a tree has `mounts`, a list (it was one `mount`; an old one is read as a list of
+  one). YAML takes `mount:` or `mounts:`. A tree under two pillars is drawn once: it grows from the
+  first, as its last child when the other pillar comes next round You and its first when it comes
+  before, so it sits on the side facing the other (`towardOtherParents`, `wholeLayout.ts`). Both
+  pillars draw a line to it.
+- **Lighting:** a pillar is lit once any node in a tree under it is unlocked, and its ring is the
+  share of those nodes unlocked; You is the same across all of them. Until then they draw as in reach.
+- **On a board:** *Add Mastery to this board* (⌘K) makes Mastery if the vault has none and puts its
+  view right of what is on the board. Settings has no board open, so the builder points there.
+- **Gone:** *Gather every tree around a Mastery node*, and the `mastery` option of the layout
+  operation.
+
 ## Rebuild: one syllabus, many views (agreed 2026-10-17)
 
 Using Adler and /mu/core on real boards showed three problems. An import made three separate

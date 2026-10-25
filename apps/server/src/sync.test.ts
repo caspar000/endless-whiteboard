@@ -229,8 +229,6 @@ describe('board index', () => {
 		expect((await put('skillIndex', { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } })).statusCode).toBe(204)
 		expect((await put('skillIndex', [{ itemId: 'adler/homer' }])).statusCode).toBe(400)
 		expect((await put('skillIndex', { 'adler/homer': { title: 'no id' } })).statusCode).toBe(400)
-		expect((await put('skillHabits', { h: { habitId: 'h', boardId: 'b' } })).statusCode).toBe(204)
-		expect((await put('skillHabits', { h: { name: 'no id' } })).statusCode).toBe(400)
 		expect((await put('skillTracks', { t: { trackId: 't', boardId: 'b' } })).statusCode).toBe(204)
 		expect((await put('skillTracks', { t: { order: [] } })).statusCode).toBe(400)
 		expect((await put('skillTrees', { t: { treeId: 't', nodes: [] } })).statusCode).toBe(204)
@@ -244,7 +242,6 @@ describe('board index', () => {
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
 			cardLayouts: [{ name: 'Event', layout: { rows: [] } }],
 			skillIndex: { 'adler/homer': { itemId: 'adler/homer', boardId: 'b' } },
-			skillHabits: { h: { habitId: 'h', boardId: 'b' } },
 			skillTracks: { t: { trackId: 't', boardId: 'b' } },
 			skillTrees: { t: { treeId: 't', nodes: [] } },
 			syllabusItems: { i: { itemId: 'i', children: [] } },

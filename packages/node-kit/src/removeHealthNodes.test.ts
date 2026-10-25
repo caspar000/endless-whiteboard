@@ -14,6 +14,10 @@ const shape = (id: string, type: string, parentId = 'page:page') => ({ id, typeN
 const binding = (id: string, fromId: string, toId: string) => ({ id, typeName: 'binding', type: 'arrow', fromId, toId })
 
 describe('removeHealthNodes', () => {
+	it('keeps the id boards already recorded', () => {
+		expect(REMOVE_HEALTH_NODES_MIGRATION_ID).toBe('com.lifeboard.removeHealthNodes/1')
+	})
+
 	it('deletes health shapes, their descendants and bindings that touch them', () => {
 		const store = {
 			'page:page': { id: 'page:page', typeName: 'page' },

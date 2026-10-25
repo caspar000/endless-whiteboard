@@ -1,5 +1,6 @@
 /**
- * `@lifeboard/skill-tree`: syllabi and skill trees (docs/skill-tree-plan.md).
+ * `@lifeboard/skill-tree`: skill trees (docs/skill-tree-plan.md), and the door other extensions add
+ * to them through (sources.ts).
  *
  * Reaches the host only through `@lifeboard/node-kit`'s public barrel, like every extension.
  */
@@ -7,51 +8,46 @@
 // Registers the node types with tldraw's type system. Side-effect import, kept above the exports.
 import './shape-types'
 
-export { skillTreeExtension } from './extension'
+export { skillTreeExtension, SKILL_TREE_EXTENSION } from './extension'
 export {
-	ITEM_TYPE,
+	DRAFT_META,
+	draftClass,
+	ENTRY_TYPE,
+	isDraft,
+	isEntry,
+	isSkill,
+	isTree,
 	SKILL_TYPE,
-	TRACK_TYPE,
 	TREE_TYPE,
-	type SkillItemProps,
+	treeNodes,
+	type EntryProps,
+	type EntryShape,
 	type SkillNodeProps,
+	type SkillShape,
 	type SkillTreeProps,
-	type TrackProps,
+	type TreeShape,
 } from './board'
 export {
-	getHabitIndex,
-	getSkillIndex,
-	getTrackIndex,
-	replaceHabitIndex,
-	setHabitIndexPersistence,
-	type TrackEntry,
-	type TrackIndex,
-	type HabitEntry,
-	type HabitIndex,
-	type IndexEntry,
-	type SkillIndex,
-} from './skillIndex'
-export {
-	getEvidence,
-	getItems,
-	getTracks,
-	replaceEvidence,
-	replaceItems,
-	replaceTracks,
-	setEvidencePersistence,
-	setItemsPersistence,
-	setTracksPersistence,
-	type ItemDef,
-	type TrackDef,
-} from './syllabus'
-export { evaluateTree, parseRequirements, type Condition, type NodeStatus } from './requirements'
-export { getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
-export { itemNodeDefinition } from './item/definition'
+	registerTreeSource,
+	type ConditionStatus,
+	type Evidence,
+	type RequirementContext,
+	type RequirementKind,
+	type TreeItem,
+	type TreeItemLook,
+	type TreeSource,
+} from './sources'
+export { evaluateTree, masteryOf, parseRequirements, type Condition, type NodeStatus, type TreeNode } from './requirements'
+export { prerequisitesOf } from './tree/prerequisites'
+export { treeStatus } from './tree/status'
+export { getTreeDef, getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, updateTreeMeta, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
+export { firstTreeId, isMap, list, parseTrees, qualify, slug, text, type DocNode, type DocTree } from './treeYaml'
+export { boardHasTreeDraft, confirmTrees, discardTrees, importTrees, treeDoc, treeGoals, treePrefix } from './treeIO'
+export { syncBoard } from './treeSync'
+export { holdImport, isImporting, onImportEnd, whileImporting } from './importing'
+export { working } from './progress'
+export { makeItemId, todayIso } from './ids'
+export { isAutomated, isDevBuild } from './env'
 export { entryNodeDefinition } from './entry/definition'
-export { trackNodeDefinition } from './track/definition'
 export { skillNodeDefinition } from './skill/definition'
 export { treeNodeDefinition } from './tree/definition'
-export { habitNodeDefinition } from './habit/definition'
-export { upNextNodeDefinition } from './upnext/definition'
-export { ADLER_SAMPLE } from './sample'
-export { templateFor, MEDIA, type Medium, type Template } from './templates'

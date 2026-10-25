@@ -1,7 +1,6 @@
 import { createShapeId, react, type Editor, type TLShape, type TLShapeId } from '@lifeboard/canvas'
 import { isImporting, onImportEnd } from './importing'
-import { getItems, getSkillIndex } from './syllabus'
-import { getHabitIndex } from './skillIndex'
+import { allEvidence, allItems } from './sources'
 import { styleArrows } from './tree/arrowStyle'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
@@ -54,7 +53,7 @@ const metaOf = (header: TreeShape): TreeMeta => ({
 	goal: header.props.goal,
 	sectors: header.props.sectors,
 	rings: header.props.rings,
-	mount: getTreeDef(header.props.treeId)?.mount ?? '',
+	mounts: getTreeDef(header.props.treeId)?.mounts ?? [],
 })
 
 /** What decides which nodes a header's view shows. */
@@ -111,13 +110,12 @@ export function watchTrees(editor: Editor): void {
 	// Trees decide which skill nodes a view shows; items (their tags, their works) which entries.
 	const stop = react('lifeboard:skill-tree-sync', () => {
 		getTreeDefs()
-		getItems()
+		allItems()
 		schedule(editor)
 	})
 	// What is unlocked decides which arrows are dotted (tree/arrowStyle.ts): restyled after the change.
 	const stopStyle = react('lifeboard:skill-arrow-style', () => {
-		getSkillIndex()
-		getHabitIndex()
+		allEvidence()
 		getTreeDefs()
 		queueMicrotask(() => {
 			if (!disposed.has(editor)) styleArrows(editor)

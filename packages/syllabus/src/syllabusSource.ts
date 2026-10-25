@@ -1,6 +1,6 @@
 import { computed } from '@lifeboard/canvas'
-import { mediumIcon } from './entry/mediumIcon'
-import { type Evidence, type RequirementKind, type TreeSource } from './sources'
+import type { Evidence, RequirementKind, TreeSource } from '@lifeboard/skill-tree'
+import { mediumIcon } from './mediumIcon'
 import { getItems, getSkillIndex, isItemDone, progressOf } from './syllabus'
 
 /**

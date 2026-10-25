@@ -1,27 +1,18 @@
 import type { Editor } from '@lifeboard/canvas'
-import { isTree, TREE_TYPE } from '../board'
-import { confirmDraft, importSyllabus } from '../syllabusIO'
-import { parseSyllabus } from '../syllabusYaml'
-import { getTreeDefs, updateTreeMeta } from '../treeDefs'
-import { syncBoard } from '../treeSync'
-import { holdImport } from '../importing'
-import { working } from '../progress'
+import { getTreeDefs, holdImport, isAutomated, isTree, syncBoard, TREE_TYPE, updateTreeMeta, working } from '@lifeboard/skill-tree'
+import { confirmDraft, importSyllabus } from './syllabusIO'
+import { parseSyllabus } from './syllabusYaml'
 
-/** Vite's dev flag, read without the `vite/client` types this package doesn't load. */
-export const isDevBuild = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
-
-/** A browser driven by a test (Playwright sets `navigator.webdriver`). */
-export const isAutomated = (): boolean => typeof navigator !== 'undefined' && navigator.webdriver === true
 
 /**
  * The board the whole-life layout is tested on (docs/skill-tree-layout-plan.md, "Test board"): you at
  * the centre, the five pillars, Adler on Mental and Film, Theatre and Games on Practical, nothing else.
  * One view, Mastery's, showing everything. Only the Mastery tree of fixtures/whole-life-test.yaml is
- * used (its test trees stay in the file for the layout tests). Every other tree hanging from a pillar
+ * used (its test trees stay in the file for the content tests). Every other tree hanging from a pillar
  * is taken off it (its mount cleared, nothing deleted), so the view reaches only these; importing a
  * tree again hangs it back. Confirmed, as it is a sample to look at rather than an import to review.
  *
- * The documents come in as text: the e2e suite reads them from disk (fixtures/ and syllabi/ at the
+ * The documents come in as text: the e2e suite reads them from disk (fixtures/ here, syllabi/ at the
  * repo root), so none of them is in the app's bundle.
  */
 export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: number }, docs: { life: string; trees: readonly string[] }): Promise<void> {

@@ -1,25 +1,15 @@
 import type { Command } from '@lifeboard/node-kit'
 import type { Editor } from '@lifeboard/canvas'
-import { isItem, isSkill, isTree, MASTERY, type SkillShape } from './board'
-import { tick } from './ops'
-import { getItem } from './syllabus'
+import { isSkill, isTree, MASTERY, type SkillShape } from './board'
 import { drawPrerequisites, gatherAroundMastery, layoutFrom, layoutTree, selectedTreeId, treeHeader } from './tree/ops'
 import { recalculate } from './tree/viewSync'
 import { toggleAllNodes } from './tree/view'
 import { recalculateAll } from './tree/StaleLayout'
 import { TUNER_TYPE } from './tree/LayoutTuner'
-import { isDevBuild } from './tree/wholeLifeTest'
+import { isDevBuild } from './env'
 
-/**
- * The syllabus verbs for ⌘K. "Add syllabus item" and "Add track" are generated from the node types.
- *
- * No default `kbd` yet: the plan's ⌘↵ for "Complete item" waits until it is checked against
- * tldraw's own bindings, and a clash would not warn, it would just make the key do something else.
- */
-const GROUP = 'Syllabus'
-
-/** The vault items behind the selected cards. */
-const selectedCards = (editor: Editor): string[] => editor.getSelectedShapes().filter(isItem).map((card) => card.props.itemId)
+/** The skill tree's verbs for ⌘K. "Add skill node" is generated from the node type. */
+const GROUP = 'Skill trees'
 
 /** The one skill node selected, other than a Mastery node (whose branch is the whole board). */
 function selectedNode(editor: Editor): SkillShape | null {
@@ -29,19 +19,6 @@ function selectedNode(editor: Editor): SkillShape | null {
 }
 
 export const skillTreeCommands: readonly Command[] = [
-	{
-		id: 'skill-tree.complete',
-		title: 'Complete or reopen item',
-		group: GROUP,
-		when: (ctx) => !!ctx.editor && selectedCards(ctx.editor).some((id) => getItem(id)?.children.length === 0),
-		run: ({ editor }) => {
-			if (!editor) return
-			for (const card of editor.getSelectedShapes().filter(isItem)) {
-				const item = getItem(card.props.itemId)
-				if (item && !item.children.length) tick(editor, item.itemId, !item.done, card.id)
-			}
-		},
-	},
 	{
 		id: 'skill-tree.draw-prerequisites',
 		title: 'Redraw prerequisite lines',

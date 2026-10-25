@@ -14,6 +14,7 @@ import {
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
 import { skillTreeExtension } from '@lifeboard/skill-tree'
+import { syllabusExtension } from '@lifeboard/syllabus'
 import {
 	createTLSchemaFromUtils,
 	defaultBindingUtils,
@@ -37,6 +38,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	// list of what the build ships, not the list of what has shapes.
 	diceExtension,
 	skillTreeExtension,
+	syllabusExtension,
 ]
 
 /**

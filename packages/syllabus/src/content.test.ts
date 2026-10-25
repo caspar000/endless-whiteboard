@@ -5,9 +5,8 @@ import filmYaml from '../../../syllabi/film.yaml?raw'
 import theatreYaml from '../../../syllabi/theatre.yaml?raw'
 import gamesYaml from '../../../syllabi/games.yaml?raw'
 import lifeYaml from '../fixtures/whole-life-test.yaml?raw'
-import { parseRequirements } from './requirements'
+import { parseRequirements, prerequisitesOf } from '@lifeboard/skill-tree'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
-import { prerequisitesOf } from './tree/prerequisites'
 
 /** The syllabi in syllabi/ at the repo root, and the whole-life fixture: they parse, and their trees hold together. */
 const load = (text: string) => {

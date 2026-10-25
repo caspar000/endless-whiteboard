@@ -129,4 +129,4 @@ export function nextInOrder(order: readonly string[], isDone: (id: string) => bo
 	return null
 }
 
-export { makeItemId, todayIso } from './ids'
+export { makeItemId, todayIso } from '@lifeboard/skill-tree'

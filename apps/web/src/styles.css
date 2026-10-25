@@ -13635,7 +13635,7 @@ button.lb-props__eye:hover {
 }
 
 /* ---------------------------------------------------------------------------------------------------
- * Syllabus items and tracks (@lifeboard/skill-tree, docs/skill-tree-plan.md).
+ * Syllabus items and tracks (@lifeboard/syllabus, docs/skill-tree-plan.md).
  * Display mode has no pointer events on the shape; the checkboxes, the fold arrow and the track's rows
  * opt back in, which is the documented escape hatch (see .lb-md__task).
  * ------------------------------------------------------------------------------------------------- */
@@ -14275,7 +14275,7 @@ button.lb-props__eye:hover {
 	overflow-y: auto;
 }
 
-/* Up next (@lifeboard/skill-tree, step 4). */
+/* Up next (@lifeboard/syllabus, step 4). */
 .lb-upnext {
 	width: 100%;
 	display: flex;

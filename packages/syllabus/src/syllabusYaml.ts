@@ -1,10 +1,13 @@
-import { parse as parseYaml, stringify as stringifyYaml, YAMLParseError } from 'yaml'
+import { firstTreeId, isMap, list, parseTrees, qualify, slug, text, type DocTree } from '@lifeboard/skill-tree'
+import { parse as parseYaml, YAMLParseError } from 'yaml'
 import { formatChildRule, ITEM_KINDS } from './model'
-import { qualifyConditions } from './requirements'
+
+export type { DocNode, DocTree } from '@lifeboard/skill-tree'
 
 /**
  * The one format for import, export and the agent's drafts (docs/skill-tree-plan.md, "The YAML
- * format"). Pure: text in, a validated document with fully qualified ids out.
+ * format"). Pure: text in, a validated document with fully qualified ids out. The `tree:` or
+ * `trees:` part is the skill tree's (its treeYaml.ts).
  *
  * Ids are written short and qualified on the way in: an item `homer` in goal `adler` is
  * `adler/homer`, its child `iliad` is `adler/homer/iliad`, and a tag or node reference `greek-drama`
@@ -35,28 +38,6 @@ export interface DocTrack {
 	order: string[]
 }
 
-export interface DocNode {
-	nodeId: string
-	name: string
-	kind: string
-	icon: string
-	sector: string
-	ring: string
-	requires: string
-}
-
-export interface DocTree {
-	treeId: string
-	name: string
-	goal: string
-	layout: string
-	sectors: string[]
-	rings: string[]
-	/** A node of another tree this one hangs from ('' for none). */
-	mount: string
-	nodes: DocNode[]
-}
-
 export interface SyllabusDoc {
 	goal: string
 	name: string
@@ -66,21 +47,6 @@ export interface SyllabusDoc {
 }
 
 export type SyllabusResult = { ok: true; doc: SyllabusDoc } | { ok: false; errors: string[] }
-
-const slug = (value: string) =>
-	value
-		.toLowerCase()
-		.normalize('NFKD')
-		.replace(/[^a-z0-9/]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-
-const qualify = (prefix: string, id: string) => (id.includes('/') ? id : `${prefix}/${id}`)
-
-type Raw = Record<string, unknown>
-const isMap = (v: unknown): v is Raw => !!v && typeof v === 'object' && !Array.isArray(v)
-const text = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '')
-const list = (v: unknown): string[] =>
-	Array.isArray(v) ? v.map(text).filter(Boolean) : typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : []
 
 export function parseSyllabus(source: string): SyllabusResult {
 	let raw: unknown
@@ -97,9 +63,8 @@ export function parseSyllabus(source: string): SyllabusResult {
 	const errors: string[] = []
 	const goal = slug(text(raw.goal))
 	if (!goal) errors.push('goal is required: a short id such as "adler" or "film"')
-	const treeRaws = [...(isMap(raw.tree) ? [raw.tree] : []), ...(Array.isArray(raw.trees) ? raw.trees.filter(isMap) : [])]
 	// Tags name nodes of the first tree unless they say otherwise.
-	const treeId = slug(text(treeRaws[0]?.id)) || goal
+	const treeId = firstTreeId(raw, goal)
 	const tag = (t: string) => qualify(treeId, slug(t))
 
 	const parseItem = (value: unknown, prefix: string, path: string): DocItem | null => {
@@ -167,59 +132,10 @@ export function parseSyllabus(source: string): SyllabusResult {
 		})
 	}
 
-	const trees: DocTree[] = []
-	for (const [t, treeRaw] of treeRaws.entries()) {
-		const treeId = slug(text(treeRaw.id)) || (t === 0 ? goal : '')
-		if (!treeId) {
-			errors.push(`Tree ${t + 1}: a tree after the first needs an id`)
-			continue
-		}
-		const nodes: DocNode[] = []
-		for (const [i, value] of (Array.isArray(treeRaw.nodes) ? treeRaw.nodes : []).entries()) {
-			const path = treeRaws.length > 1 ? `Tree ${t + 1} › node ${i + 1}` : `Tree node ${i + 1}`
-			if (!isMap(value) || !text(value.id)) {
-				errors.push(`${path}: a node needs an id`)
-				continue
-			}
-			const requires = qualifyRequirements(value.requires, treeId, goal, `${path}`, errors)
-			nodes.push({
-				nodeId: qualify(treeId, slug(text(value.id))),
-				name: text(value.name) || text(value.id),
-				kind: ['root', 'skill', 'method', 'keystone', 'pillar', 'mastery'].includes(text(value.kind)) ? text(value.kind) : 'skill',
-				icon: text(value.icon),
-				sector: text(value.sector),
-				ring: text(value.ring),
-				requires,
-			})
-		}
-		const layout = text(treeRaw.layout)
-		const mount = text(treeRaw.mount)
-		trees.push({
-			treeId,
-			name: text(treeRaw.name) || (t === 0 ? text(raw.name) : '') || treeId,
-			goal: text(raw.name) || goal,
-			layout: ['sectors', 'lineage', 'free'].includes(layout) ? layout : 'sectors',
-			sectors: list(treeRaw.sectors),
-			rings: list(treeRaw.rings),
-			mount: mount ? qualify(goal, slug(mount)) : '',
-			nodes,
-		})
-	}
+	const trees = parseTrees(raw, goal, errors)
 
 	if (errors.length) return { ok: false, errors }
 	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, trees } }
-}
-
-/** Requirements written as YAML, with node ids and every kind's own ids qualified, back to stored YAML. */
-function qualifyRequirements(value: unknown, treeId: string, goal: string, path: string, errors: string[]): string {
-	if (value === undefined || value === null || value === '') return ''
-	const source = typeof value === 'string' ? value : stringifyYaml(value)
-	const result = qualifyConditions(source, { goal: (id) => qualify(goal, slug(id)), tree: (id) => qualify(treeId, slug(id)) })
-	if (!result.ok) {
-		errors.push(`${path}: ${result.error}`)
-		return ''
-	}
-	return stringifyYaml(result.conditions, { flowCollectionPadding: true }).trim()
 }
 
 /** Everything a document will create, counted, for a confirmation message. */

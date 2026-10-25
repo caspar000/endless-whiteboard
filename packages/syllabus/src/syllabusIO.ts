@@ -1,27 +1,35 @@
-import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { DRAFT_META, isDraft, isSkill, isTree, TREE_TYPE } from './board'
-import { parseTags } from './model'
+import type { Editor, TLShapeId } from '@lifeboard/canvas'
+import { isExtensionEnabled } from '@lifeboard/node-kit'
+import {
+	boardHasTreeDraft,
+	confirmTrees,
+	discardTrees,
+	DRAFT_META,
+	importTrees,
+	isDraft,
+	SKILL_TREE_EXTENSION,
+	treeDoc,
+	treeGoals,
+	treePrefix,
+	whileImporting,
+} from '@lifeboard/skill-tree'
+import { stringify as stringifyYaml } from 'yaml'
 import { boardIdOf } from './skillIndex'
 import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
 import type { SyllabusDoc } from './syllabusYaml'
-import { whileImporting } from './importing'
-import { confirmTreeDrafts, discardTreeDrafts, getTreeDef, hasTreeDrafts, updateTreeMeta, upsertNodeDefs } from './treeDefs'
-import { getTreePrefs } from './treePrefs'
-import { draftTreeMeta } from './views'
 
 /**
  * Putting a syllabus document into the vault and its tree on a board, and taking one out
  * (docs/skill-tree-plan.md, "The YAML format" and "Drafts").
  *
- * Items and tracks go into the vault (syllabusMerge.ts), with no shapes: the board gets the tree view.
- * "Show as list" and "Add Up Next" add the other views. An import is a
+ * Items and tracks go into the vault (syllabusMerge.ts), with no shapes. The document's trees go to
+ * the skill tree (its treeIO.ts) when that extension is on, and are left out when it is off; the
+ * board gets a view of each. "Show as list" and "Add Up Next" add the other views. An import is a
  * **draft**: what it makes is marked as this board's draft, draws dashed, and stays out of the index
  * until "Confirm draft". Ids that already exist are updated in place instead (titles, tags,
  * requirements; never a tick or a note), so a YAML file can be edited and imported again.
  */
-export { DRAFT_META, isDraft } from './board'
 
 export interface ImportResult {
 	/** New items and tracks in the vault, and new shapes on the board. */
@@ -32,6 +40,9 @@ export interface ImportResult {
 
 /** The board an import is a draft of: the one its editor shows. */
 const boardOf = (editor: Editor) => boardIdOf(editor) ?? 'board'
+
+/** Whether a document's trees go anywhere: only with the skill tree on. */
+const treesOn = () => isExtensionEnabled(SKILL_TREE_EXTENSION)
 
 export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
 	return whileImporting(editor, () => importNow(editor, doc, at))
@@ -50,47 +61,10 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 		vaultCreated = merged.created
 		updated += merged.updated
 
-		// Trees go into the vault, a new tree and new nodes as this board's draft. The board gets a
-		// header to view each (one mounted on a node of another tree in this document shows inside that
-		// tree's view instead); the view puts the nodes on and lays them out (treeSync.ts).
-		const board = boardOf(editor)
-		const inDoc = new Set(doc.trees.flatMap((t) => t.nodes.map((n) => n.nodeId)))
-		let headerY = at.y
-		for (const tree of doc.trees) {
-			const had = getTreeDef(tree.treeId)
-			const known = new Set(had?.nodes.map((n) => n.nodeId))
-			upsertNodeDefs(
-				tree.treeId,
-				tree.nodes.map(({ nodeId, name, kind, icon, sector, ring, requires }) => ({ nodeId, name, kind, icon, sector, ring, requires, ...(known.has(nodeId) ? {} : { draft: board }) }))
-			)
-			updated += tree.nodes.filter((n) => known.has(n.nodeId)).length
-			vaultCreated += tree.nodes.filter((n) => !known.has(n.nodeId)).length
-			updateTreeMeta(tree.treeId, {
-				name: tree.name,
-				goal: tree.goal,
-				sectors: tree.sectors.join(', '),
-				rings: tree.rings.join(', '),
-				// A document that names no mount leaves the tree hanging where it hangs.
-				...(tree.mount ? { mount: tree.mount } : {}),
-				...(had ? {} : { draft: board }),
-			})
-			if (tree.mount && inDoc.has(tree.mount)) continue
-			const header = editor.getCurrentPageShapes().find((s) => isTree(s) && s.props.treeId === tree.treeId)
-			const props = { name: tree.name, goal: tree.goal, layout: tree.layout, sectors: tree.sectors.join(', '), rings: tree.rings.join(', ') }
-			if (header) {
-				editor.updateShape({ id: header.id, type: TREE_TYPE, props } as never)
-				updated++
-			} else {
-				editor.createShape({
-					id: createShapeId(),
-					type: TREE_TYPE,
-					parentId: editor.getCurrentPageId(),
-					x: at.x,
-					y: headerY,
-					props: { ...props, treeId: tree.treeId, mode: getTreePrefs().importShows },
-				} as never)
-				headerY += 2400
-			}
+		if (treesOn()) {
+			const trees = importTrees(editor, doc.trees, at, boardOf(editor))
+			vaultCreated += trees.created
+			updated += trees.updated
 		}
 		// The cards this import made (headers) are the draft on the board; the vault marks the rest.
 		for (const shape of editor.getCurrentPageShapes()) {
@@ -108,14 +82,8 @@ export function confirmDraft(editor: Editor): number {
 
 function confirmNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	const vault = confirmDrafts(boardOf(editor)) + confirmTreeDrafts(boardOf(editor))
+	const vault = confirmDrafts(boardOf(editor)) + confirmTrees(editor, boardOf(editor))
 	if (!drafts.length) return vault
-	// A tree with no header of its own (mounted on another) carries its name and mount on its nodes.
-	for (const shape of drafts) {
-		if (!isSkill(shape)) continue
-		const meta = draftTreeMeta(shape)
-		if (Object.keys(meta).length) updateTreeMeta(shape.props.treeId, meta)
-	}
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('confirm draft')
 		for (const shape of drafts) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: false } } as never)
@@ -129,11 +97,9 @@ export function discardDraft(editor: Editor): number {
 }
 
 function discardNow(editor: Editor): number {
-	// The draft's node shapes go with it: the vault forgets those nodes, so nothing on the board may
-	// stand for them (the sync would otherwise take a stray shape for a node made offline).
-	const goneNodes = new Set(discardTreeDrafts(boardOf(editor)))
-	const drafts = editor.getCurrentPageShapes().filter((s) => isDraft(s) || (isSkill(s) && goneNodes.has(s.props.nodeId)))
-	const vault = discardDrafts(boardOf(editor)) + goneNodes.size
+	const trees = discardTrees(editor, boardOf(editor))
+	const drafts = [...new Set([...editor.getCurrentPageShapes().filter(isDraft), ...trees.shapes])]
+	const vault = discardDrafts(boardOf(editor)) + trees.nodes
 	if (!drafts.length) return vault
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('discard draft')
@@ -144,34 +110,25 @@ function discardNow(editor: Editor): number {
 
 /** Whether this board has a draft waiting: shapes, or vault items and tracks its imports made. */
 export function boardHasDraft(editor: Editor): boolean {
-	return hasDrafts(boardOf(editor)) || hasTreeDrafts(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
+	return hasDrafts(boardOf(editor)) || boardHasTreeDraft(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
 }
 
 /** The goals there are syllabi for, by name: the vault's tracks, and this board's trees. */
 export function boardGoals(editor: Editor): string[] {
-	const goals = [
-		...Object.values(getTracks()).filter((t) => !t.draft).map((t) => t.goal),
-		...editor
-			.getCurrentPageShapes()
-			.filter((s) => !isDraft(s))
-			.flatMap((s) => (isTree(s) ? [s.props.goal] : [])),
-	]
+	const goals = [...Object.values(getTracks()).filter((t) => !t.draft).map((t) => t.goal), ...treeGoals(editor)]
 	return [...new Set(goals.filter(Boolean))]
 }
 
 /**
  * One goal's syllabus as YAML (the first goal if none is named): its tracks with their items, from
  * the vault, and this board's tree for it. One goal per document, because an import gives everything
- * in it the document's goal. Ids are written in full, so importing the result again updates rather than
- * duplicates.
+ * in it the document's goal. Ids are written in full, so importing the result again updates rather
+ * than duplicates.
  */
 export function exportSyllabus(editor: Editor, goalName?: string): string {
 	const goal = goalName || boardGoals(editor)[0] || 'goal'
-	const shapes = editor.getCurrentPageShapes().filter((s) => !isDraft(s))
-	const ofGoal = (s: { props: { goal: string } }) => s.props.goal === goal || (!s.props.goal && !goalName)
 	const tracks = Object.values(getTracks()).filter((t) => !t.draft && (t.goal === goal || (!t.goal && !goalName)))
-	const trees = shapes.filter(isTree).filter(ofGoal)
-	const prefix = (tracks[0]?.trackId || trees[0]?.props.treeId || '').split('/')[0]
+	const prefix = (tracks[0]?.trackId || treePrefix(editor, goal, !goalName)).split('/')[0]
 	const all = getItems()
 	const itemDoc = (item: ItemDef, depth = 0): Record<string, unknown> => {
 		const children = item.children.map((id) => all[id]).filter((c): c is ItemDef => !!c && !c.draft)
@@ -199,27 +156,7 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 			}),
 		}))
 	}
-	const tree = trees[0]
-	if (tree) {
-		// The vault's tree, whole: this board may show only a branch of it.
-		const def = getTreeDef(tree.props.treeId)
-		const nodes = def?.nodes ?? shapes.filter(isSkill).filter((s) => s.props.treeId === tree.props.treeId).map((s) => s.props)
-		doc.tree = {
-			id: tree.props.treeId,
-			name: def?.name || tree.props.name,
-			...(def?.mount ? { mount: def.mount } : {}),
-			...(tree.props.sectors ? { sectors: parseTags(tree.props.sectors) } : {}),
-			...(tree.props.rings ? { rings: parseTags(tree.props.rings) } : {}),
-			nodes: nodes.map((n) => ({
-				id: n.nodeId,
-				name: n.name,
-				kind: n.kind,
-				...(n.icon ? { icon: n.icon } : {}),
-				...(n.sector ? { sector: n.sector } : {}),
-				...(n.ring ? { ring: n.ring } : {}),
-				...(n.requires ? { requires: parseYaml(n.requires) as unknown } : {}),
-			})),
-		}
-	}
+	const tree = treeDoc(editor, goal, !goalName)
+	if (tree) doc.tree = tree
 	return stringifyYaml(doc, { lineWidth: 0 })
 }

@@ -1,5 +1,5 @@
 import { BookOpen, Clapperboard, Disc3, Drama, Dumbbell, FileText, Gamepad2, Landmark, MapPin, Mic, type LucideIcon } from 'lucide-react'
-import { getItem, type ItemDef } from '../syllabus'
+import { getItem, type ItemDef } from './syllabus'
 
 const ICONS: Record<string, LucideIcon> = {
 	book: BookOpen,

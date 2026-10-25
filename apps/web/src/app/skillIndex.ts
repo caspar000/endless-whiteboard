@@ -1,17 +1,15 @@
+import { getTreeDefs, replaceTreeDefs, setTreeDefsPersistence } from '@lifeboard/skill-tree'
 import {
 	getEvidence,
 	getItems,
 	getTracks,
-	getTreeDefs,
 	replaceEvidence,
 	replaceItems,
 	replaceTracks,
-	replaceTreeDefs,
 	setEvidencePersistence,
 	setItemsPersistence,
 	setTracksPersistence,
-	setTreeDefsPersistence,
-} from '@lifeboard/skill-tree'
+} from '@lifeboard/syllabus'
 import { pushVaultSetting } from '../server/serverVault'
 
 /**

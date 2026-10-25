@@ -20,10 +20,10 @@ const shapeCount = (page: Page) => page.evaluate(() => (window as unknown as { e
 const repo = fileURLToPath(new URL('../../../../', import.meta.url))
 const read = (file: string) => fs.readFileSync(path.join(repo, file), 'utf8')
 
-/** Starts the whole-life test board on the open board (the skill tree's test hook, tree/wholeLifeTest.ts). */
+/** Starts the whole-life test board on the open board (the syllabus's test hook, wholeLifeTest.ts). */
 export async function startWholeLifeTest(page: Page): Promise<void> {
 	const docs = {
-		life: read('packages/skill-tree/fixtures/whole-life-test.yaml'),
+		life: read('packages/syllabus/fixtures/whole-life-test.yaml'),
 		trees: ['adler', 'film', 'theatre', 'games'].map((name) => read(`syllabi/${name}.yaml`)),
 	}
 	await page.waitForFunction(() => 'lifeboardWholeLifeTest' in window)

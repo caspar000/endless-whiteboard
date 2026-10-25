@@ -3,13 +3,54 @@ import mucoreYaml from '../../../../syllabi/mucore.yaml?raw'
 import filmYaml from '../../../../syllabi/film.yaml?raw'
 import theatreYaml from '../../../../syllabi/theatre.yaml?raw'
 import gamesYaml from '../../../../syllabi/games.yaml?raw'
-import lifeYaml from '../../fixtures/whole-life-test.yaml?raw'
-import { parseSyllabus, type DocItem } from '../syllabusYaml'
+import lifeYaml from '../../../syllabus/fixtures/whole-life-test.yaml?raw'
+import { parse as parseYaml } from 'yaml'
+import { registerTreeSource } from '../sources'
+import { firstTreeId, isMap, list, parseTrees, qualify, slug, text, type DocTree } from '../treeYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
 import { orientFrom, type GraphEdge, type GraphNode } from './layout'
 import { lineEnds } from './lines'
 import { sizeOfKind } from '../skill/definition'
+
+/*
+ * The syllabi's trees name `item:` and `count:`, which the syllabus teaches trees (it is a source,
+ * sources.ts). The layout only follows prerequisites, so a stand-in that accepts both is enough here.
+ */
+const anything = (key: string) => ({ key, parse: (value: unknown) => ({ ok: true as const, value }), evaluate: () => ({ label: key, have: 0, need: 1, met: false }) })
+registerTreeSource({ id: 'test:syllabus-kinds', requirements: [anything('item'), anything('count')] })
+
+type Item = { itemId: string; parent: string; children: string[]; tags: string[] }
+
+/**
+ * A syllabus document's trees, and its entries and works as a tree view sees them. Ids are qualified
+ * the way the syllabus's parser does it (an entry gets the goal, a work its entry, a tag the first
+ * tree); only what the layout needs is read.
+ */
+function readDoc(source: string): { trees: DocTree[]; items: Item[] } {
+	const raw = parseYaml(source) as Record<string, unknown>
+	const goal = slug(text(raw.goal))
+	const errors: string[] = []
+	const trees = parseTrees(raw, goal, errors)
+	if (errors.length) throw new Error(errors.join('\n'))
+	const treeId = firstTreeId(raw, goal)
+	const items: Item[] = []
+	const walk = (value: unknown, prefix: string, parent: string): string | null => {
+		if (!isMap(value)) return null
+		const itemId = qualify(prefix, slug(text(value.id) || text(value.title)))
+		const item: Item = { itemId, parent, children: [], tags: list(value.tags).map((t) => qualify(treeId, slug(t))) }
+		items.push(item)
+		for (const child of Array.isArray(value.children) ? value.children : []) {
+			const id = walk(child, itemId, itemId)
+			if (id) item.children.push(id)
+		}
+		return itemId
+	}
+	for (const track of Array.isArray(raw.tracks) ? raw.tracks : []) {
+		for (const entry of isMap(track) && Array.isArray(track.items) ? track.items : []) walk(entry, goal, '')
+	}
+	return { trees, items }
+}
 
 /**
  * A content file's Show all, as the graph `layoutView` hands to the layout: skill nodes, entries,
@@ -46,20 +87,11 @@ export function showView(
 	mounts: Record<string, string> = {},
 	keep: (treeId: string) => boolean = () => true
 ): ShowAll {
-	const docs = sources.map((source) => {
-		const parsed = parseSyllabus(source)
-		if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
-		return parsed.doc
-	})
+	const docs = sources.map(readDoc)
 	const trees: TreeDefs = Object.fromEntries(
 		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mount: mounts[t.treeId] ?? t.mount, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '', ticked: {} }])
 	)
-	const items: Record<string, { itemId: string; parent: string; children: string[]; tags: string[] }> = {}
-	const add = (item: DocItem, parent: string) => {
-		items[item.itemId] = { itemId: item.itemId, parent, children: item.children.map((c) => c.itemId), tags: item.tags }
-		for (const c of item.children) add(c, item.itemId)
-	}
-	for (const doc of docs) for (const track of doc.tracks) for (const item of track.items) add(item, '')
+	const items = Object.fromEntries(docs.flatMap((doc) => doc.items).map((item) => [item.itemId, item]))
 	const graph = treeGraph(trees)
 	const view = viewContents(graph, items, { treeId: treeId || docs[0]!.trees[0]!.treeId, root: '', mode })
 	const key = (id: string) => `item:${id}`

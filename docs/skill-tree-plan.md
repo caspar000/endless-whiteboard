@@ -7,8 +7,8 @@ where the build diverged from the plan and why.
 
 ## Cleanup (2026-10-25)
 
-Agreed in a grilling round, the first of four phases (the others: splitting the skill tree and the
-syllabus into two extensions, then a Mastery builder in Settings). Removed:
+Agreed in a grilling round, the second of four phases: a git change came first, then this, then the
+split below and a Mastery builder in Settings. Removed:
 
 - **Habits**, all of them: the habit card (`node.habit`, deleted from old boards by the
   `removeHabitNodes` store migration), the `habit:` requirement, Up Next's habit rows, the YAML
@@ -25,6 +25,29 @@ syllabus into two extensions, then a Mastery builder in Settings). Removed:
   and the per-syllabus import commands went. A syllabus comes in by dropping its file on a board.
 
 The sections below are the history as it was built, and still mention what is gone.
+
+## The split (2026-10-25)
+
+The third phase: one extension became two, so a skill tree can be used without a syllabus and a
+syllabus without a tree.
+
+- **`lifeboard.skill-tree`** (`packages/skill-tree`): skill nodes, tree headers and the entries a
+  view draws, the layout, views and mounts, Settings › Skill trees, the tree commands and the
+  `skill.tree.*` operations. A node's requirements know `node:` (prerequisites) and `manual:` (ticked
+  by hand: right-click › Mark as done; the tick is kept on the tree definition, `ticked`, by node).
+- **`lifeboard.syllabus`** (`packages/syllabus`): items, tracks, lists, Up next, cards, write-up
+  templates and evidence, the YAML import and export, and the other `skill.*` operations.
+- **Sources** (`packages/skill-tree/src/sources.ts`) are how one meets the other. A source gives
+  kinds of requirement (`key`, `parse`, `qualify` for YAML ids, `evaluate`), evidence (pieces of
+  finished work, each tagged to nodes; mastery counts them), and items a view draws beside the nodes
+  they are tagged to, with how each looks. The syllabus registers one with `item:` and `count:`. A
+  key no source registered doesn't parse, so it is an error on the node rather than met.
+- The syllabus depends on the skill tree's package, never the other way. With Skill trees off, a
+  syllabus keeps its lists, Up next and cards, and an import leaves the document's trees out.
+- The YAML is still one file per syllabus: the skill tree parses the `tree:`/`trees:` part
+  (`treeYaml.ts`) and puts it on a board (`treeIO.ts`); the syllabus parses the rest.
+- Shape types, vault keys, command ids and operation ids are unchanged, so nothing on a board or in
+  the vault moves.
 
 ## Rebuild: one syllabus, many views (agreed 2026-10-17)
 

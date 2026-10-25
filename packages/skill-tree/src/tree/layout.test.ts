@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layoutGraph, type GraphEdge, type GraphNode } from './layout'
+import { layoutGraph, radialTree, type GraphEdge, type GraphNode } from './layout'
 
 const box = (id: string, w = 150, h = 150): GraphNode => ({ id, w, h })
 
@@ -96,5 +96,44 @@ describe('layoutGraph with obstacles', () => {
 				expect(overlap, `${n.id} covers an obstacle`).toBe(false)
 			}
 		}
+	})
+})
+
+describe('radialTree', () => {
+	it('puts one root in the centre and its children on the first ring', () => {
+		const out = radialTree([
+			{ id: 'r', parent: '' },
+			{ id: 'a', parent: 'r' },
+			{ id: 'b', parent: 'r' },
+			{ id: 'a1', parent: 'a' },
+		])
+		expect(out.get('r')!.depth).toBe(0)
+		expect(out.get('a')!.depth).toBe(1)
+		expect(out.get('a1')!.depth).toBe(2)
+		expect(out.get('a')!.angle).not.toBe(out.get('b')!.angle)
+	})
+
+	it('gives subtrees arcs in proportion to their leaves', () => {
+		const out = radialTree([
+			{ id: 'r', parent: '' },
+			{ id: 'big', parent: 'r' },
+			{ id: 'small', parent: 'r' },
+			...['x', 'y', 'z'].map((id) => ({ id, parent: 'big' })),
+		])
+		// big has three of the four leaves, so its children span three quarters of the circle.
+		const angles = ['x', 'y', 'z'].map((id) => out.get(id)!.angle)
+		expect(Math.max(...angles) - Math.min(...angles)).toBeCloseTo((2 * Math.PI * 3) / 4 - (2 * Math.PI) / 4, 5)
+	})
+
+	it('places several roots on the first ring and still places nodes caught in a cycle', () => {
+		const out = radialTree([
+			{ id: 'a', parent: '' },
+			{ id: 'b', parent: '' },
+			{ id: 'c', parent: 'd' },
+			{ id: 'd', parent: 'c' },
+		])
+		expect(out.get('a')!.depth).toBe(1)
+		expect(out.get('b')!.depth).toBe(1)
+		expect(out.size).toBe(4)
 	})
 })

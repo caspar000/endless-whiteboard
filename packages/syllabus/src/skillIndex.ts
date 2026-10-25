@@ -1,5 +1,5 @@
 import type { Editor, TLShape } from '@lifeboard/canvas'
-import { isImporting, onImportEnd } from './importing'
+import { isImporting, onImportEnd } from '@lifeboard/skill-tree'
 import { NOTE_TYPE } from './board'
 import { hasEvidence } from './model'
 import { readText } from './properties'

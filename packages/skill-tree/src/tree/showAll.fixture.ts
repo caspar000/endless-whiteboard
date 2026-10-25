@@ -1,10 +1,9 @@
-import adlerYaml from '../../content/adler.yaml?raw'
-import directorYaml from '../../content/director.yaml?raw'
-import mucoreYaml from '../../content/mucore.yaml?raw'
-import lifeYaml from '../../content/whole-life-test.yaml?raw'
-import filmYaml from '../../content/film.yaml?raw'
-import theatreYaml from '../../content/theatre.yaml?raw'
-import gamesYaml from '../../content/games.yaml?raw'
+import adlerYaml from '../../../../syllabi/adler.yaml?raw'
+import mucoreYaml from '../../../../syllabi/mucore.yaml?raw'
+import filmYaml from '../../../../syllabi/film.yaml?raw'
+import theatreYaml from '../../../../syllabi/theatre.yaml?raw'
+import gamesYaml from '../../../../syllabi/games.yaml?raw'
+import lifeYaml from '../../fixtures/whole-life-test.yaml?raw'
 import { parseSyllabus, type DocItem } from '../syllabusYaml'
 import type { TreeDefs } from '../treeDefs'
 import { treeGraph, viewContents } from '../views'
@@ -80,22 +79,14 @@ export function showView(
 	return { name, nodes, edges, start: view.start, skills: view.skills, arrows, lines }
 }
 
-const LIFE_MOUNTS = { adler: 'mastery/mental', director: 'mastery/practical' }
-/** The whole-life test board: you, the pillars, the test trees, Adler on Mental and Director on Practical. */
-export const WHOLE_LIFE = showView('whole-life', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'all', LIFE_MOUNTS)
-/** The test board as the dev command now makes it: you, the pillars, Adler, Film, Theatre and Games. */
-const PRACTICAL = { film: 'mastery/practical', theatre: 'mastery/practical', games: 'mastery/practical' }
-export const ADLER_LIFE = showView('adler-life', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'all', { ...LIFE_MOUNTS, ...PRACTICAL }, (t) =>
-	['mastery', 'adler', ...Object.keys(PRACTICAL)].includes(t)
-)
-/** The four-tree test board in the skill-node view. */
-export const ADLER_LIFE_SKILLS = showView('adler-life-skills', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'overview', { ...LIFE_MOUNTS, ...PRACTICAL }, (t) =>
-	['mastery', 'adler', ...Object.keys(PRACTICAL)].includes(t)
-)
+const LIFE_MOUNTS = { adler: 'mastery/mental', film: 'mastery/practical', theatre: 'mastery/practical', games: 'mastery/practical' }
+const LIFE_TREES = ['mastery', ...Object.keys(LIFE_MOUNTS)]
+/** The whole-life test board (tree/wholeLifeTest.ts): you, the pillars, Adler on Mental, and Film, Theatre and Games on Practical. */
+export const WHOLE_LIFE = showView('whole-life', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'all', LIFE_MOUNTS, (t) => LIFE_TREES.includes(t))
 /** The same in the skill-node view. */
-export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, directorYaml], 'mastery', 'overview', LIFE_MOUNTS)
+export const WHOLE_LIFE_SKILLS = showView('whole-life-skills', [lifeYaml, adlerYaml, filmYaml, theatreYaml, gamesYaml], 'mastery', 'overview', LIFE_MOUNTS, (t) => LIFE_TREES.includes(t))
 
-export const SHOW_ALL = [showAll('adler', adlerYaml), showAll('director', directorYaml), showAll('mucore', mucoreYaml)]
+export const SHOW_ALL = [showAll('adler', adlerYaml), showAll('mucore', mucoreYaml)]
 
 type Point = { x: number; y: number }
 

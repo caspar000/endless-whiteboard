@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import adlerYaml from '../content/adler.yaml?raw'
-import directorYaml from '../content/director.yaml?raw'
-import mucoreYaml from '../content/mucore.yaml?raw'
-import lifeYaml from '../content/whole-life-test.yaml?raw'
-import filmYaml from '../content/film.yaml?raw'
-import theatreYaml from '../content/theatre.yaml?raw'
-import gamesYaml from '../content/games.yaml?raw'
+import adlerYaml from '../../../syllabi/adler.yaml?raw'
+import mucoreYaml from '../../../syllabi/mucore.yaml?raw'
+import filmYaml from '../../../syllabi/film.yaml?raw'
+import theatreYaml from '../../../syllabi/theatre.yaml?raw'
+import gamesYaml from '../../../syllabi/games.yaml?raw'
+import lifeYaml from '../fixtures/whole-life-test.yaml?raw'
 import { parseRequirements } from './requirements'
-import { ADLER_SAMPLE } from './sample'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
 import { prerequisitesOf } from './tree/prerequisites'
 
-/** The content files in content/: they parse, and their trees hold together. */
+/** The syllabi in syllabi/ at the repo root, and the whole-life fixture: they parse, and their trees hold together. */
 const load = (text: string) => {
 	const result = parseSyllabus(text)
 	if (!result.ok) throw new Error(result.errors.join('\n'))
@@ -52,7 +50,7 @@ function checkTree(doc: ReturnType<typeof load>) {
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 const leaves = (item: DocItem): number => (item.children.length ? item.children.reduce((n, c) => n + leaves(c), 0) : 1)
 
-describe('content/adler.yaml', () => {
+describe('syllabi/adler.yaml', () => {
 	const doc = load(adlerYaml)
 	const items = doc.tracks[0]!.items
 	const tree = doc.trees[0]!
@@ -70,14 +68,7 @@ describe('content/adler.yaml', () => {
 		expect(items[9]!.title).toBe('Plato')
 	})
 
-	it('keeps the in-app sample ids, so importing it merges with the sample', () => {
-		ADLER_SAMPLE.forEach((entry, i) => {
-			const id = `adler/${String(i + 1).padStart(3, '0')}-${slug(entry.title)}`
-			expect(items[i]!.itemId).toBe(id)
-			// The sample's works are still there, by id; an entry may have gained the work its old title named.
-			const kids = items[i]!.children.map((c) => c.itemId)
-			for (const w of entry.works ?? []) expect(kids).toContain(`${id}/${slug(w.title)}`)
-		})
+	it('keeps the node ids it has always had', () => {
 		for (const id of ['root', 'inspectional', 'analytical', 'greek-epic-drama', 'greek-philosophy', 'greek-science', 'greek-history', 'reading-habit']) {
 			expect(nodeIds.has(`adler/${id}`)).toBe(true)
 		}
@@ -117,7 +108,7 @@ describe('content/adler.yaml', () => {
 	})
 })
 
-describe('content/mucore.yaml', () => {
+describe('syllabi/mucore.yaml', () => {
 	const doc = load(mucoreYaml)
 	const units = doc.tracks[0]!.items
 
@@ -138,60 +129,7 @@ describe('content/mucore.yaml', () => {
 	})
 })
 
-describe('content/director.yaml', () => {
-	const doc = load(directorYaml)
-	const track = (id: string) => doc.tracks.find((t) => t.trackId === `director/${id}`)!
-
-	it("holds Mark Brown's 100 in his order, in chronological clusters", () => {
-		const clusters = track('game-design').items.filter((i) => i.itemId.startsWith('director/brown-'))
-		const games = clusters.flatMap((c) => c.children)
-		expect(games).toHaveLength(100)
-		expect(games[0]!.title).toBe('Space Invaders (1978)')
-		expect(games[99]!.title).toBe('Shadows of Doubt (2023)')
-		const years = games.map((g) => Number(/\((\d{4})\)$/.exec(g.title)![1]))
-		expect(years).toEqual([...years].sort((a, b) => a - b))
-	})
-
-	it("holds Scorsese's 39 and the directors' poll in rank order", () => {
-		const western = track('western-film').items
-		const scorsese = western.find((i) => i.itemId === 'director/scorsese-39')!
-		expect(scorsese.children).toHaveLength(39)
-		expect(scorsese.children[0]!.title).toBe('Metropolis')
-		const poll = western.filter((i) => i.itemId.startsWith('director/sight-and-sound-')).flatMap((i) => i.children)
-		expect(poll).toHaveLength(104)
-		expect(poll[0]!.title).toBe('2001: A Space Odyssey (1968)')
-	})
-
-	it('turns each film week into its seven steps', () => {
-		const weeks = track('film-weeks').items
-		expect(weeks).toHaveLength(16)
-		for (const week of weeks) expect(week.children, week.title).toHaveLength(7)
-	})
-
-	it('lists an item in a second track by reference, and every reference resolves', () => {
-		const ids = new Set(doc.tracks.flatMap((t) => t.items.map((i) => i.itemId)))
-		expect(track('western-theatre').order).toContain('director/aristotle-poetics')
-		for (const t of doc.tracks) for (const id of t.order) expect(ids.has(id), `${t.trackId} → ${id}`).toBe(true)
-	})
-
-	it('gives each of the eight stagecraft disciplines its games and exercises', () => {
-		const disciplines = track('stagecraft').items.filter((i) => i.itemId.startsWith('director/stagecraft-'))
-		expect(disciplines).toHaveLength(8)
-		for (const d of disciplines) expect(d.children.filter((c) => c.medium === 'game'), d.title).toHaveLength(3)
-	})
-
-	it('has a tree that holds together, hung under the Practical pillar', () => {
-		checkTree(doc)
-		expect(doc.trees[0]!.mount).toBe('mastery/practical')
-	})
-
-	it("holds Schreiber's twenty Levels", () => {
-		const course = track('game-design').items.find((i) => i.itemId === 'director/schreiber-game-design-concepts')!
-		expect(course.children.map((c) => c.title.split(':')[0])).toEqual(Array.from({ length: 20 }, (_, i) => `Level ${i + 1}`))
-	})
-})
-
-describe('content/whole-life-test.yaml', () => {
+describe('fixtures/whole-life-test.yaml', () => {
 	const doc = load(lifeYaml)
 	const nodes = new Map(doc.trees.flatMap((t) => t.nodes.map((n) => [n.nodeId, t.treeId] as const)))
 
@@ -214,7 +152,7 @@ describe('content/whole-life-test.yaml', () => {
 	})
 })
 
-describe('content/film.yaml', () => {
+describe('syllabi/film.yaml', () => {
 	const doc = load(filmYaml)
 	const entries = doc.tracks.flatMap((t) => t.items)
 
@@ -233,7 +171,7 @@ describe('content/film.yaml', () => {
 	})
 })
 
-describe('content/theatre.yaml', () => {
+describe('syllabi/theatre.yaml', () => {
 	const doc = load(theatreYaml)
 	const entries = doc.tracks.flatMap((t) => t.items)
 
@@ -253,7 +191,7 @@ describe('content/theatre.yaml', () => {
 	})
 })
 
-describe('content/games.yaml', () => {
+describe('syllabi/games.yaml', () => {
 	const doc = load(gamesYaml)
 	const entries = doc.tracks.flatMap((t) => t.items)
 

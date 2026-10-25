@@ -5,6 +5,27 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+## Cleanup (2026-10-25)
+
+Agreed in a grilling round, the first of four phases (the others: splitting the skill tree and the
+syllabus into two extensions, then a Mastery builder in Settings). Removed:
+
+- **Habits**, all of them: the habit card (`node.habit`, deleted from old boards by the
+  `removeHabitNodes` store migration), the `habit:` requirement, Up Next's habit rows, the YAML
+  `habits:` block and the `skillHabits` vault key. They come back as an extension of their own. The
+  syllabi's habits, for that extension to bring back: Adler's "Write Up an Entry" (one analytical
+  write-up a week) and "Read for 30 Minutes" (daily); /mu/core's "Three Albums a Week"; Film's "Two
+  Film Weeks" a month; Theatre's "Two Theatre Weeks" a month; Games' "Play a Game as a Director" and
+  "Build One Exercise" (weekly) and "Finish One Playable Stage" (monthly). Adler's "The Reading
+  Habit" node asked for four weeks of the first; it now asks for four analytical write-ups.
+- **The game director curriculum**: Film, Theatre and Games replaced it. The lists Film and Games
+  still read from it are `syllabi/director_lists.py`.
+- **The Mastery demo** and **Adler's sample tree**, with their commands.
+- **Built-in syllabi**: the YAML files and their generators moved to `syllabi/` at the repo root,
+  and the per-syllabus import commands went. A syllabus comes in by dropping its file on a board.
+
+The sections below are the history as it was built, and still mention what is gone.
+
 ## Rebuild: one syllabus, many views (agreed 2026-10-17)
 
 Using Adler and /mu/core on real boards showed three problems. An import made three separate

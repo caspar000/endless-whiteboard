@@ -19,15 +19,10 @@ export {
 	type TrackProps,
 } from './board'
 export {
-	getHabitIndex,
 	getSkillIndex,
 	getTrackIndex,
-	replaceHabitIndex,
-	setHabitIndexPersistence,
 	type TrackEntry,
 	type TrackIndex,
-	type HabitEntry,
-	type HabitIndex,
 	type IndexEntry,
 	type SkillIndex,
 } from './skillIndex'
@@ -51,7 +46,5 @@ export { entryNodeDefinition } from './entry/definition'
 export { trackNodeDefinition } from './track/definition'
 export { skillNodeDefinition } from './skill/definition'
 export { treeNodeDefinition } from './tree/definition'
-export { habitNodeDefinition } from './habit/definition'
 export { upNextNodeDefinition } from './upnext/definition'
-export { ADLER_SAMPLE } from './sample'
 export { templateFor, MEDIA, type Medium, type Template } from './templates'

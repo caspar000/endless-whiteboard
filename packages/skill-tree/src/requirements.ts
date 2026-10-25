@@ -1,7 +1,5 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { habitHistory, habitRuleValue, habitStart, type Period } from './habits'
-import { todayIso } from './model'
-import type { HabitIndex, IndexEntry, SkillIndex } from './skillIndex'
+import type { IndexEntry, SkillIndex } from './skillIndex'
 
 /**
  * What a skill node asks for, and whether the evidence gives it (docs/skill-tree-plan.md, "Trees and
@@ -11,14 +9,12 @@ import type { HabitIndex, IndexEntry, SkillIndex } from './skillIndex'
  * - node: [adler/root]               # these nodes are unlocked
  * - item: adler/011-aristotle        # this item is done, with evidence
  * - count: { min: 3, kind: Practice } # evidence tagged to this node, filtered
- * - habit: { id: film-week, rule: total, min: 4 }   # step 3
  * ```
  */
 export type Condition =
 	| { node: string[] }
 	| { item: string }
 	| { count: { min: number; kind?: string; medium?: string; method?: string } }
-	| { habit: { id: string; rule: string; min: number } }
 
 export type ParseResult = { ok: true; conditions: Condition[] } | { ok: false; error: string }
 
@@ -59,7 +55,7 @@ function parseUncached(source: string): ParseResult {
 }
 
 function parseCondition(entry: unknown): Condition | string {
-	if (!entry || typeof entry !== 'object') return 'expected node, item, count or habit'
+	if (!entry || typeof entry !== 'object') return 'expected node, item or count'
 	const e = entry as Record<string, unknown>
 	if ('node' in e) {
 		const ids = Array.isArray(e.node) ? e.node : [e.node]
@@ -77,12 +73,7 @@ function parseCondition(entry: unknown): Condition | string {
 		}
 		return { count: out }
 	}
-	if ('habit' in e) {
-		const h = (e.habit ?? {}) as Record<string, unknown>
-		if (typeof h.id !== 'string' || !h.id) return 'habit needs an id'
-		return { habit: { id: h.id, rule: typeof h.rule === 'string' ? h.rule : 'total', min: Number(h.min) || 1 } }
-	}
-	return 'expected node, item, count or habit'
+	return 'expected node, item or count'
 }
 
 export function formatRequirements(conditions: readonly Condition[]): string {
@@ -135,8 +126,6 @@ export interface TreeNode {
 export function evaluateTree(
 	nodes: readonly TreeNode[],
 	index: SkillIndex,
-	habits: HabitIndex = {},
-	today: string = todayIso(),
 	/** The state of a node of another tree, for a node here that requires it. */
 	outside?: (nodeId: string) => NodeStatus | undefined
 ): Map<string, NodeStatus> {
@@ -187,7 +176,7 @@ export function evaluateTree(
 				const entry = index[condition.item]
 				const met = !!entry?.evidence
 				statuses.push({ label: entry?.title ?? condition.item, have: met ? 1 : 0, need: 1, met })
-			} else if ('count' in condition) {
+			} else {
 				const { min, kind, medium, method } = condition.count
 				const matching = evidence.filter(
 					(e) =>
@@ -198,17 +187,6 @@ export function evaluateTree(
 				consumed = Math.max(consumed, min)
 				const filter = [kind, medium, method].filter(Boolean).join(', ')
 				statuses.push({ label: `${min} ${min === 1 ? 'piece' : 'pieces'}${filter ? ` (${filter})` : ''}`, have: Math.min(matching.length, min), need: min, met: matching.length >= min })
-			} else {
-				const { id, rule, min } = condition.habit
-				const habit = habits[id]
-				const start = habit ? habitStart(habit, index) : null
-				const period = (habit?.period ?? 'week') as Period
-				const value =
-					habit && start
-						? habitRuleValue(habitHistory({ ...habit, period, startedAt: start }, Object.values(index), today), rule, period)
-						: 0
-				const ruleLabel: Record<string, string> = { total: 'in total', streak: `${period}s in a row`, best_week: 'in one week', days: `${period}s on target`, periods: `${period}s on target` }
-				statuses.push({ label: `${habit?.name || id}: ${min} ${ruleLabel[rule] ?? rule}`, have: Math.min(value, min), need: min, met: value >= min })
 			}
 		}
 		if (!parsed.ok) statuses.push({ label: `Requirements don't parse: ${parsed.error}`, have: 0, need: 1, met: false })

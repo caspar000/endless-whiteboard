@@ -6,6 +6,7 @@ import {
 	getNodeDefinitions,
 	itemsToNotesMigrations,
 	registerExtension,
+	removeHabitNodesMigrations,
 	removeHealthNodesMigrations,
 	rollupsToTablesMigrations,
 	tablesExtension,
@@ -42,7 +43,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
  * Migrations that rewrite records across types, rather than one shape's props. Each declares its own
  * `dependsOn`, so the order here is only for reading.
  */
-export const STORE_MIGRATIONS = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations]
+export const STORE_MIGRATIONS = [itemsToNotesMigrations, rollupsToTablesMigrations, removeHealthNodesMigrations, removeHabitNodesMigrations]
 
 /** Idempotent, so the app's composition root and the server can both call it. */
 export function registerShippedExtensions(): void {

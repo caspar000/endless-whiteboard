@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ADLER_LIFE, ADLER_LIFE_SKILLS, measure, SHOW_ALL, WHOLE_LIFE, type ShowAll } from './showAll.fixture'
+import { measure, SHOW_ALL, WHOLE_LIFE, WHOLE_LIFE_SKILLS, type ShowAll } from './showAll.fixture'
 import { wholeLayout } from './wholeLayout'
 import { maze } from './maze'
 import { DEFAULT_LAYOUT } from './layoutConfig'
@@ -8,7 +8,7 @@ const lay = (view: ShowAll) => wholeLayout(view.nodes, view.edges, { isSkill: (i
 
 describe('wholeLayout', () => {
 	// The four-tree board both ways, and single trees with everything.
-	for (const view of [ADLER_LIFE_SKILLS, ADLER_LIFE, ...SHOW_ALL]) {
+	for (const view of [WHOLE_LIFE_SKILLS, WHOLE_LIFE, ...SHOW_ALL]) {
 		it(`places all of ${view.name} with nothing covering anything`, () => {
 			const at = lay(view)
 			expect(at.size).toBe(view.nodes.length)
@@ -17,7 +17,7 @@ describe('wholeLayout', () => {
 	}
 
 	// Big families wrapped round their node: the same, nothing left out or covered.
-	for (const view of [ADLER_LIFE_SKILLS, ADLER_LIFE]) {
+	for (const view of [WHOLE_LIFE_SKILLS, WHOLE_LIFE]) {
 		it(`places all of ${view.name}, big families wrapped, with nothing covering anything`, () => {
 			const at = wholeLayout(view.nodes, view.edges, { isSkill: (id) => view.skills.has(id), start: view.start, arrows: view.arrows, config: { ...DEFAULT_LAYOUT, mazeFamilies: 'wrap' } })
 			expect(at.size).toBe(view.nodes.length)
@@ -26,7 +26,7 @@ describe('wholeLayout', () => {
 	}
 
 	it('puts the pillars round you clockwise in their order, Physical at the top', () => {
-		const at = lay(ADLER_LIFE_SKILLS)
+		const at = lay(WHOLE_LIFE_SKILLS)
 		const pillars = ['physical', 'mental', 'spiritual', 'practical', 'social'].map((p) => at.get(`mastery/${p}`)!)
 		const angles = pillars.map((p) => Math.atan2(p.y, p.x))
 		expect(Math.abs(angles[0]! + Math.PI / 2)).toBeLessThan(0.6)
@@ -58,16 +58,16 @@ describe('maze', () => {
 
 	for (const spacing of [1, 2]) {
 		it(`gives every node of the four-tree board a cell, ${spacing} apart along a chain`, () => {
-			const { order, kids, radius } = tree(ADLER_LIFE_SKILLS)
-			const m = maze(ADLER_LIFE_SKILLS.start, order, kids, radius, { grid: 'hex', walk: 'snake', fill: 1.5, spacing, cell: 210, hub: 20 })
+			const { order, kids, radius } = tree(WHOLE_LIFE_SKILLS)
+			const m = maze(WHOLE_LIFE_SKILLS.start, order, kids, radius, { grid: 'hex', walk: 'snake', fill: 1.5, spacing, cell: 210, hub: 20 })
 			expect(m.overflow).toEqual([])
 			expect(m.at.size).toBe(order.length)
 		})
 	}
 
 	it('never runs two corridors through one cell', () => {
-		const { order, kids, radius } = tree(ADLER_LIFE_SKILLS)
-		const m = maze(ADLER_LIFE_SKILLS.start, order, kids, radius, { grid: 'hex', walk: 'snake', fill: 1.5, spacing: 2, cell: 210, hub: 20 })
+		const { order, kids, radius } = tree(WHOLE_LIFE_SKILLS)
+		const m = maze(WHOLE_LIFE_SKILLS.start, order, kids, radius, { grid: 'hex', walk: 'snake', fill: 1.5, spacing: 2, cell: 210, hub: 20 })
 		const key = (p: { x: number; y: number }) => `${Math.round(p.x)},${Math.round(p.y)}`
 		// A corridor's inner cells (not its ends, the nodes) belong to it alone, apart from a family's
 		// shared corridor cells (`~n`), which every way through them runs along.

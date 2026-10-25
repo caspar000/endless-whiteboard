@@ -14275,82 +14275,6 @@ button.lb-props__eye:hover {
 	overflow-y: auto;
 }
 
-/* Habit cards (@lifeboard/skill-tree, step 3). A miss is a hollow dot, never red. */
-.lb-habit {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-	background: var(--lb-surface);
-	color: var(--lb-text);
-	font-family: var(--lb-font);
-	border: 1px solid var(--lb-border);
-	border-radius: var(--lb-radius);
-	padding: 9px 11px;
-	font-size: 13px;
-}
-.lb-habit--met {
-	border-color: var(--lb-accent);
-}
-.lb-habit--idle {
-	opacity: 0.6;
-}
-.lb-habit__head {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-.lb-habit__name {
-	flex: 1;
-	min-width: 0;
-	font-weight: 600;
-}
-.lb-habit__count {
-	font-variant-numeric: tabular-nums;
-	color: var(--lb-text-dim);
-}
-.lb-habit--met .lb-habit__count {
-	color: var(--lb-accent);
-}
-.lb-habit__buttons {
-	display: flex;
-	gap: 3px;
-}
-.lb-habit__buttons button {
-	pointer-events: auto;
-	width: 22px;
-	height: 22px;
-	border: 1px solid var(--lb-border);
-	border-radius: 5px;
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
-	cursor: pointer;
-	font-size: 13px;
-	line-height: 1;
-}
-.lb-habit__sub {
-	color: var(--lb-text-faint);
-	font-size: 11px;
-}
-.lb-habit__dots {
-	display: flex;
-	gap: 5px;
-}
-.lb-habit__dot {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	border: 1.5px solid var(--lb-border-strong);
-}
-.lb-habit__dot--met {
-	background: var(--lb-accent);
-	border-color: var(--lb-accent);
-}
-.lb-habit__dot--now {
-	outline: 1.5px solid var(--lb-text-faint);
-	outline-offset: 2px;
-}
-
 /* Up next (@lifeboard/skill-tree, step 4). */
 .lb-upnext {
 	width: 100%;
@@ -14426,30 +14350,9 @@ button.lb-props__eye:hover {
 	padding: 0;
 	cursor: pointer;
 }
-.lb-upnext__row--habit .lb-upnext__item {
-	cursor: default;
-}
 .lb-upnext__meta {
 	color: var(--lb-text-faint);
 	font-size: 11px;
-}
-.lb-upnext__count {
-	flex: none;
-	min-width: 26px;
-	text-align: center;
-	font-variant-numeric: tabular-nums;
-	color: var(--lb-text-dim);
-	font-size: 12px;
-}
-.lb-upnext__plus {
-	pointer-events: auto;
-	width: 22px;
-	height: 22px;
-	border: 1px solid var(--lb-border);
-	border-radius: 5px;
-	background: var(--lb-surface-2);
-	color: var(--lb-text);
-	cursor: pointer;
 }
 .lb-upnext__heat {
 	display: flex;
@@ -14484,8 +14387,7 @@ button.lb-props__eye:hover {
 /* An imported syllabus that hasn't been confirmed: dashed, so a draft never passes for the real thing. */
 .lb-skill.lb-draft,
 .lb-track.lb-draft,
-.lb-skilltree.lb-draft,
-.lb-habit.lb-draft {
+.lb-skilltree.lb-draft {
 	border-style: dashed;
 	border-color: var(--lb-accent);
 }

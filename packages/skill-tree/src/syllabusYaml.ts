@@ -57,23 +57,12 @@ export interface DocTree {
 	nodes: DocNode[]
 }
 
-export interface DocHabit {
-	habitId: string
-	name: string
-	period: string
-	target: number
-	counts: string
-	startedBy: string
-	state: string
-}
-
 export interface SyllabusDoc {
 	goal: string
 	name: string
 	tracks: DocTrack[]
 	/** `tree:` (one) or `trees:` (several, each with its own id; a tree can `mount:` on another's node). */
 	trees: DocTree[]
-	habits: DocHabit[]
 }
 
 export type SyllabusResult = { ok: true; doc: SyllabusDoc } | { ok: false; errors: string[] }
@@ -104,12 +93,12 @@ export function parseSyllabus(source: string): SyllabusResult {
 		}
 		return { ok: false, errors: ['Not valid YAML'] }
 	}
-	if (!isMap(raw)) return { ok: false, errors: ['A syllabus is a map with goal, tracks, tree and habits'] }
+	if (!isMap(raw)) return { ok: false, errors: ['A syllabus is a map with goal, tracks and tree'] }
 	const errors: string[] = []
 	const goal = slug(text(raw.goal))
-	if (!goal) errors.push('goal is required: a short id such as "adler" or "director"')
+	if (!goal) errors.push('goal is required: a short id such as "adler" or "film"')
 	const treeRaws = [...(isMap(raw.tree) ? [raw.tree] : []), ...(Array.isArray(raw.trees) ? raw.trees.filter(isMap) : [])]
-	// Tags and habit filters name nodes of the first tree unless they say otherwise.
+	// Tags name nodes of the first tree unless they say otherwise.
 	const treeId = slug(text(treeRaws[0]?.id)) || goal
 	const tag = (t: string) => qualify(treeId, slug(t))
 
@@ -217,36 +206,11 @@ export function parseSyllabus(source: string): SyllabusResult {
 		})
 	}
 
-	const habits: DocHabit[] = []
-	for (const [i, value] of (Array.isArray(raw.habits) ? raw.habits : []).entries()) {
-		const path = `Habit ${i + 1}`
-		if (!isMap(value) || !(text(value.id) || text(value.name))) {
-			errors.push(`${path}: a habit needs an id or a name`)
-			continue
-		}
-		const period = text(value.period) || 'week'
-		if (!['day', 'week', 'month'].includes(period)) errors.push(`${path}: period is day, week or month`)
-		const counts = isMap(value.counts)
-			? Object.entries(value.counts)
-					.map(([k, v]) => `${k}: ${k === 'tag' ? tag(text(v)) : text(v)}`)
-					.join('\n')
-			: text(value.counts)
-		habits.push({
-			habitId: qualify(goal, slug(text(value.id) || text(value.name))),
-			name: text(value.name) || text(value.id),
-			period,
-			target: Math.max(1, Number(value.target) || 1),
-			counts,
-			startedBy: text(value.startedBy) ? qualify(goal, slug(text(value.startedBy))) : '',
-			state: text(value.state) === 'paused' ? 'paused' : 'active',
-		})
-	}
-
 	if (errors.length) return { ok: false, errors }
-	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, trees, habits } }
+	return { ok: true, doc: { goal, name: text(raw.name) || goal, tracks, trees } }
 }
 
-/** Requirements written as YAML, with node, item and habit ids qualified, back to stored YAML. */
+/** Requirements written as YAML, with node and item ids qualified, back to stored YAML. */
 function qualifyRequirements(value: unknown, treeId: string, goal: string, path: string, errors: string[]): string {
 	if (value === undefined || value === null || value === '') return ''
 	const source = typeof value === 'string' ? value : stringifyYaml(value)
@@ -258,7 +222,6 @@ function qualifyRequirements(value: unknown, treeId: string, goal: string, path:
 	const conditions: Condition[] = parsed.conditions.map((c) => {
 		if ('node' in c) return { node: c.node.map((id) => qualify(treeId, slug(id))) }
 		if ('item' in c) return { item: qualify(goal, slug(c.item)) }
-		if ('habit' in c) return { habit: { ...c.habit, id: qualify(goal, slug(c.habit.id)) } }
 		return c
 	})
 	return stringifyYaml(conditions, { flowCollectionPadding: true }).trim()
@@ -273,7 +236,6 @@ export function describeDoc(doc: SyllabusDoc): string {
 		`${doc.tracks.length} track${doc.tracks.length === 1 ? '' : 's'}`,
 		`${items} item${items === 1 ? '' : 's'}`,
 		nodes ? `${nodes} skill node${nodes === 1 ? '' : 's'}${doc.trees.length > 1 ? ` in ${doc.trees.length} trees` : ''}` : '',
-		doc.habits.length ? `${doc.habits.length} habit${doc.habits.length === 1 ? '' : 's'}` : '',
 	]
 	return parts.filter(Boolean).join(', ')
 }

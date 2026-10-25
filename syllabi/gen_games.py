@@ -1,16 +1,16 @@
 """Writes games.yaml, the games tree of the game director's self-education.
 
-The third of the three trees the director curriculum (gen_director.py) is split into, built the way
-Adler's is: a skill node is a school of games or a shelf of design books, an entry is a studio or a
-designer, its works are the games they made (and the books they wrote). The play list is Mark Brown's
-100 (from gen_director.py) and MoMA's first 14, merged and sorted by school, each studio's games in
+The third of three trees, film, theatre and games, built the way Adler's is: a skill node is a
+school of games or a shelf of design books, an entry is a studio or a designer, its works are the
+games they made (and the books they wrote). The play list is Mark Brown's
+100 (from director_lists.py) and MoMA's first 14, merged and sorted by school, each studio's games in
 order. Run `python3 gen_games.py` here after editing; the YAML is what ships.
 """
 
 import json
 import re
 
-from gen_director import BROWN, LEVELS
+from director_lists import BROWN, LEVELS
 
 OUT = 'games.yaml'
 
@@ -249,7 +249,7 @@ CLOSE_READING = [
     single('how-to-play-video-games', 'Payne & Huntemann (eds.), How to Play Video Games', 'close-reading'),
 ]
 
-# The larger milestones of practice. The monthly stage is a habit; quarters and years are not periods.
+# The larger milestones of practice.
 PRACTICE = [
     *[person(f'jam-{n}', f'Game Jam, Quarter {n}', 'ship-a-stage', [
         work(f'jam-{n}-enter', 'Enter Ludum Dare or GMTK', 'artefact', True),
@@ -298,11 +298,6 @@ TREE = {
 }
 
 # The practice rhythm, counted from what you write up: a week's game, the week's build, the month's stage.
-HABITS = [
-    {'id': 'play-as-a-director', 'name': 'Play a Game as a Director', 'period': 'week', 'target': 1, 'counts': {'method': 'five-passes'}},
-    {'id': 'weekly-build', 'name': 'Build One Exercise', 'period': 'week', 'target': 1, 'counts': {'kind': 'Practice'}},
-    {'id': 'monthly-stage', 'name': 'Finish One Playable Stage', 'period': 'month', 'target': 1, 'counts': {'kind': 'Ship'}},
-]
 
 TRACKS = [
     ('design', 'Game Design', FOUNDATIONS + DESIGN_CRAFT + NARRATIVE),
@@ -352,9 +347,6 @@ def write():
         kind = f', kind: {n["kind"]}' if n['kind'] else ''
         req = f', requires: {flow(n["requires"])}' if n['requires'] else ''
         lines.append(f'      - {{ id: {n["id"]}, name: {q(n["name"])}{kind}, icon: {n["icon"]}{req} }}')
-    lines += ['', 'habits:']
-    for h in HABITS:
-        lines.append(f'  - {{ id: {h["id"]}, name: {q(h["name"])}, period: {h["period"]}, target: {h["target"]}, counts: {flow(h["counts"])} }}')
     open(OUT, 'w').write('\n'.join(lines) + '\n')
     print(f'{OUT}: {entries} entries')
 

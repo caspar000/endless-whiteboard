@@ -1,12 +1,12 @@
 import { defineOperation, fail, ok, type Command, type FileImport, type JsonValue, type RegisteredOperation } from '@lifeboard/node-kit'
 import { createShapeId, type Editor } from '@lifeboard/canvas'
 import { parse as parseYaml } from 'yaml'
-import { isHabit, isSkill, isTrack, isTree, NOTE_TYPE, treeNodes, type SkillShape } from './board'
+import { isSkill, isTrack, isTree, NOTE_TYPE, treeNodes, type SkillShape } from './board'
 
 import { showTrack, tick } from './ops'
 import { getItem, getTrack, getTracks, updateItem } from './syllabus'
 import { evaluateTree } from './requirements'
-import { getHabitIndex, getSkillIndex, getTrackIndex } from './skillIndex'
+import { getSkillIndex, getTrackIndex } from './skillIndex'
 import { gatherAroundMastery, layoutFrom, layoutTree, treeHeader } from './tree/ops'
 import { getTreeDef, getTreeDefs, updateTreeMeta } from './treeDefs'
 import { treeGraph } from './views'
@@ -81,11 +81,11 @@ async function importText(editor: Editor, source: string | (() => Promise<string
 	return outcome
 }
 
-/** The goal of the selected list, tree or habit, if one is selected. */
+/** The goal of the selected list or tree, if one is selected. */
 const selectedGoal = (editor: Editor) =>
 	editor
 		.getSelectedShapes()
-		.flatMap((s) => (isTrack(s) ? [getTrack(s.props.trackId)?.goal ?? ''] : isTree(s) || isHabit(s) ? [s.props.goal] : []))[0]
+		.flatMap((s) => (isTrack(s) ? [getTrack(s.props.trackId)?.goal ?? ''] : isTree(s) ? [s.props.goal] : []))[0]
 
 const hasDraft = (editor: Editor | null) => !!editor && boardHasDraft(editor)
 
@@ -120,73 +120,6 @@ export const syllabusCommands: readonly Command[] = [
 			} catch {
 				reportProblems(editor, 'Could not write to the clipboard', ['Allow clipboard access and try again.'])
 			}
-		},
-	},
-	{
-		id: 'skill-tree.import-adler',
-		title: "Import Adler's full reading list (137 entries)",
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			// Loaded on demand: the document is sixty kilobytes the board never needs otherwise.
-			const outcome = await importText(editor, () => import('../content/adler.yaml?raw').then((m) => m.default), "Importing Adler's reading list")
-			if (!outcome.ok) reportProblems(editor, "Adler's list not imported", outcome.errors)
-		},
-	},
-	{
-		id: 'skill-tree.import-director',
-		title: 'Import the game director curriculum (196 entries)',
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			const outcome = await importText(editor, () => import('../content/director.yaml?raw').then((m) => m.default), 'Importing the game director curriculum')
-			if (!outcome.ok) reportProblems(editor, 'The director curriculum not imported', outcome.errors)
-		},
-	},
-	{
-		id: 'skill-tree.import-film',
-		title: 'Import the film curriculum (151 entries)',
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			const outcome = await importText(editor, () => import('../content/film.yaml?raw').then((m) => m.default), 'Importing the film curriculum')
-			if (!outcome.ok) reportProblems(editor, 'The film curriculum not imported', outcome.errors)
-		},
-	},
-	{
-		id: 'skill-tree.import-theatre',
-		title: 'Import the theatre curriculum (138 entries)',
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			const outcome = await importText(editor, () => import('../content/theatre.yaml?raw').then((m) => m.default), 'Importing the theatre curriculum')
-			if (!outcome.ok) reportProblems(editor, 'The theatre curriculum not imported', outcome.errors)
-		},
-	},
-	{
-		id: 'skill-tree.import-games',
-		title: 'Import the games curriculum (122 entries)',
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			const outcome = await importText(editor, () => import('../content/games.yaml?raw').then((m) => m.default), 'Importing the games curriculum')
-			if (!outcome.ok) reportProblems(editor, 'The games curriculum not imported', outcome.errors)
-		},
-	},
-	{
-		id: 'skill-tree.import-mucore',
-		title: 'Import /mu/core (1111 recordings)',
-		group: GROUP,
-		when: (ctx) => ctx.editor !== null,
-		run: async ({ editor }) => {
-			if (!editor) return
-			const outcome = await importText(editor, () => import('../content/mucore.yaml?raw').then((m) => m.default), 'Importing /mu/core')
-			if (!outcome.ok) reportProblems(editor, '/mu/core not imported', outcome.errors)
 		},
 	},
 	{
@@ -237,10 +170,9 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 		title: 'Import a syllabus',
 		description: [
 			'Puts a syllabus written in the skill-tree YAML format on the open board, as a draft the user confirms or discards.',
-			'Top-level keys: goal (short id), name, tracks (each: id, name, state, defaultTags, items), tree (id, name, layout sectors|lineage|free, sectors, rings, nodes), habits.',
+			'Top-level keys: goal (short id), name, tracks (each: id, name, state, defaultTags, items), tree (id, name, layout sectors|lineage|free, sectors, rings, nodes).',
 			'An item: id, title, kind (Study|Practice|Ship), medium (book, work, play, film, game, album, talk, exercise, artefact, visit), tags (node ids), core, childRule (core|all|a number), children.',
-			'A node: id, name, kind (root|skill|method|keystone), icon (a Tabler icon name), sector, ring, requires (a list of { node: [ids] }, { item: id }, { count: { min, kind, medium, method } }, { habit: { id, rule: total|streak|best_week|periods, min } }).',
-			'A habit: id, name, period (day|week|month), target, counts (a map of kind/medium/method/tag, or empty to tick by hand), startedBy (an item id).',
+			'A node: id, name, kind (root|skill|method|keystone), icon (a Tabler icon name), sector, ring, requires (a list of { node: [ids] }, { item: id }, { count: { min, kind, medium, method } }).',
 			'Ids are short and get the goal as a prefix; an id containing "/" is used as it is. Items whose id is already on the board are updated in place.',
 			'Returns what was created and updated, or the problems that stopped the import.',
 		].join(' '),
@@ -264,7 +196,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 		id: 'skill.export',
 		title: 'Export the syllabus',
 		description:
-			"Returns one goal's tracks, items, skill tree and habits from the open board in the skill-tree YAML format, ids in full, and the names of every goal the board holds.",
+			"Returns one goal's tracks, items and skill tree from the open board in the skill-tree YAML format, ids in full, and the names of every goal the board holds.",
 		params: {
 			goal: { type: 'string', description: 'The goal name to export. Optional; defaults to the first goal on the board.' },
 		},
@@ -323,15 +255,14 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 		id: 'skill.read',
 		title: 'Read syllabus progress',
 		description:
-			'Returns progress from the vault: tracks with their order, items with done/evidence/tags, habits, and the state of every skill node on the open board (locked, available, unlocked, mastery).',
+			'Returns progress from the vault: tracks with their order, items with done/evidence/tags, and the state of every skill node on the open board (locked, available, unlocked, mastery).',
 		params: {
-			goal: { type: 'string', description: 'Only this goal (a track or habit goal name). Optional.' },
+			goal: { type: 'string', description: 'Only this goal (a track goal name). Optional.' },
 		},
 		readOnly: true,
 		run: async (ctx, args) => {
 			const goal = args.goal ?? ''
 			const tracks = Object.values(getTrackIndex()).filter((t) => !goal || t.goal === goal)
-			const habits = Object.values(getHabitIndex()).filter((h) => !goal || h.goal === goal)
 			const index = getSkillIndex()
 			const items = Object.values(index).map(({ itemId, title, kind, medium, tags, done, doneAt, evidence, parentItemId }) => ({
 				itemId,
@@ -351,8 +282,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 					const tree = treeNodes(ctx.editor, treeId)
 					const status = evaluateTree(
 						tree.map((n) => ({ nodeId: n.props.nodeId, name: n.props.name, requires: n.props.requires, kind: n.props.kind })),
-						index,
-						getHabitIndex()
+						index
 					)
 					for (const n of tree) {
 						const s = status.get(n.props.nodeId)
@@ -368,7 +298,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 				}
 			}
 			// The index entries are plain JSON already; the round trip drops undefined fields and satisfies JsonValue.
-			return ok(JSON.parse(JSON.stringify({ tracks, items, habits, nodes })) as JsonValue)
+			return ok(JSON.parse(JSON.stringify({ tracks, items, nodes })) as JsonValue)
 		},
 	}),
 	defineOperation({

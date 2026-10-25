@@ -127,34 +127,6 @@ export function treeNodes(editor: Editor, treeId: string): SkillShape[] {
 	return editor.getCurrentPageShapes().filter((s): s is SkillShape => isSkill(s) && s.props.treeId === treeId)
 }
 
-export const HABIT_TYPE = 'node.habit'
-
-export interface HabitProps {
-	habitId: string
-	name: string
-	goal: string
-	/** `day` | `week` | `month` */
-	period: string
-	target: number
-	/** YAML filter (`kind: Ship`), or '' to tick by hand. */
-	counts: string
-	/** An item id: the habit waits until that item is done. '' starts it at once. */
-	startedBy: string
-	/** `YYYY-MM-DD` the habit was made; periods before it don't count. */
-	startedAt: string
-	/** Hand ticks per period key, as JSON. */
-	log: string
-	/** `active` | `paused` */
-	state: string
-	autoHeight: boolean
-}
-
-export type HabitShape = TLShape & { type: typeof HABIT_TYPE; props: HabitProps }
-
-export function isHabit(shape: TLShape | undefined | null): shape is HabitShape {
-	return shape?.type === HABIT_TYPE
-}
-
 export const UP_NEXT_TYPE = 'node.upNext'
 
 export interface UpNextProps {

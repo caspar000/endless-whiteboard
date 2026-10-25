@@ -1,9 +1,8 @@
 """Writes film.yaml, the film tree of the game director's self-education, from the lists below.
 
-The director curriculum (gen_director.py) is being split into three trees, film, theatre and games,
-each built the way Adler's is: a skill node is a school or an era, an entry is a person, its works
-are what they made. This is the film one. The canon lists (Scorsese's 39, the Sight & Sound
-directors' poll) come from gen_director.py, merged and sorted by director and era. Russian and
+One of three trees, film, theatre and games, each built the way Adler's is: a skill node is a
+school or an era, an entry is a person, its works are what they made. The canon lists (Scorsese's
+39, the Sight & Sound directors' poll) come from director_lists.py, merged and sorted by director and era. Russian and
 Georgian directors and works go by their own names, as the user reads both and looks them up by them;
 Georgian titles and years as Georgian Wikipedia gives them (checked 2026-10-18).
 Run `python3 gen_film.py` here after editing; the YAML is what ships.
@@ -12,7 +11,7 @@ Run `python3 gen_film.py` here after editing; the YAML is what ships.
 import json
 import re
 
-from gen_director import SCORSESE, SIGHT_AND_SOUND
+from director_lists import SCORSESE, SIGHT_AND_SOUND
 
 OUT = 'film.yaml'
 
@@ -392,9 +391,6 @@ TREE = {
     ],
 }
 
-HABITS = [
-    {'id': 'film-weeks', 'name': 'Two Film Weeks', 'period': 'month', 'target': 2, 'counts': {'method': 'film-sheet'}},
-]
 
 TRACKS = [
     ('craft', 'Film Craft', CRAFT + READING),
@@ -445,9 +441,6 @@ def write():
         kind = f', kind: {n["kind"]}' if n['kind'] else ''
         req = f', requires: {flow(n["requires"])}' if n['requires'] else ''
         lines.append(f'      - {{ id: {n["id"]}, name: {q(n["name"])}{kind}, icon: {n["icon"]}{req} }}')
-    lines += ['', 'habits:']
-    for h in HABITS:
-        lines.append(f'  - {{ id: {h["id"]}, name: {q(h["name"])}, period: {h["period"]}, target: {h["target"]}, counts: {flow(h["counts"])} }}')
     open(OUT, 'w').write('\n'.join(lines) + '\n')
     print(f'{OUT}: {entries} entries')
 

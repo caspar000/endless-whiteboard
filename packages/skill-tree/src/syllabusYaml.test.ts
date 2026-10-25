@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { parseRequirements } from './requirements'
 import { parseSyllabus, type SyllabusDoc } from './syllabusYaml'
 import { radialTree } from './tree/layout'
-import MASTERY_DEMO from '../content/mastery.yaml?raw'
 
 const SOURCE = `
 goal: adler
@@ -34,12 +33,6 @@ tree:
       requires:
         - node: [start]
         - item: homer
-        - habit: { id: weekly-entry, rule: periods, min: 4 }
-habits:
-  - id: weekly-entry
-    name: One entry a week
-    period: week
-    counts: { tag: greek-epic }
 `
 
 function parsed(source: string): SyllabusDoc {
@@ -65,12 +58,10 @@ describe('parseSyllabus', () => {
 		expect(track.items).toHaveLength(1)
 	})
 
-	it('qualifies tags, default tags and habit filters with the tree', () => {
+	it('qualifies tags and default tags with the tree', () => {
 		const doc = parsed(SOURCE)
 		expect(doc.tracks[0]!.items[0]!.tags).toEqual(['adler/greek-epic'])
 		expect(doc.tracks[0]!.defaultTags).toEqual(['adler/canon'])
-		expect(doc.habits[0]!.counts).toBe('tag: adler/greek-epic')
-		expect(doc.habits[0]!.habitId).toBe('adler/weekly-entry')
 	})
 
 	it('qualifies every reference inside requirements', () => {
@@ -80,7 +71,6 @@ describe('parseSyllabus', () => {
 		expect(requires.ok && requires.conditions).toEqual([
 			{ node: ['adler/start'] },
 			{ item: 'adler/homer' },
-			{ habit: { id: 'adler/weekly-entry', rule: 'periods', min: 4 } },
 		])
 	})
 
@@ -90,15 +80,17 @@ tracks:
   - id: t
     items:
       - { id: x, kind: lecture }
-habits:
-  - { name: h, period: fortnight }
+tree:
+  id: t
+  nodes:
+    - { id: n, name: N, requires: [{ habit: { id: h } }] }
 `)
 		expect(result.ok).toBe(false)
 		if (result.ok) return
 		expect(result.errors).toHaveLength(3)
 		expect(result.errors[0]).toMatch(/goal is required/)
 		expect(result.errors[1]).toMatch(/Track 1 › item 1: kind is one of/)
-		expect(result.errors[2]).toMatch(/Habit 1: period/)
+		expect(result.errors[2]).toMatch(/expected node, item or count/)
 	})
 
 	it('reads several trees, each qualifying its own nodes, and their mounts', () => {
@@ -175,14 +167,5 @@ describe('radialTree', () => {
 		expect(out.get('a')!.depth).toBe(1)
 		expect(out.get('b')!.depth).toBe(1)
 		expect(out.size).toBe(4)
-	})
-})
-
-describe('the Mastery demo', () => {
-	it('parses, with five pillars and a tree mounted on each', () => {
-		const doc = parsed(MASTERY_DEMO)
-		const pillars = doc.trees[0]!.nodes.filter((n) => n.kind === 'pillar').map((n) => n.name)
-		expect(pillars).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])
-		expect(doc.trees.slice(1).map((t) => t.mount)).toEqual(['mastery/physical', 'mastery/mental', 'mastery/spiritual', 'mastery/practical', 'mastery/social'])
 	})
 })

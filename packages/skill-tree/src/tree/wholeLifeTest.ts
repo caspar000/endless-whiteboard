@@ -15,35 +15,30 @@ export const isAutomated = (): boolean => typeof navigator !== 'undefined' && na
 
 /**
  * The board the whole-life layout is tested on (docs/skill-tree-layout-plan.md, "Test board"): you at
- * the centre, the five pillars, Adler on Mental and Film, Theatre and Games on Practical, nothing else. One
- * view, Mastery's, showing everything; no habit cards. Only the Mastery tree of
- * content/whole-life-test.yaml is used (its test trees stay in the file for the layout tests). Every
- * other tree hanging from a pillar is taken off it (its mount cleared, nothing deleted), so the view
- * reaches only these; importing a tree again hangs it back. Confirmed, as it is a sample to look at rather than an import to review.
+ * the centre, the five pillars, Adler on Mental and Film, Theatre and Games on Practical, nothing else.
+ * One view, Mastery's, showing everything. Only the Mastery tree of fixtures/whole-life-test.yaml is
+ * used (its test trees stay in the file for the layout tests). Every other tree hanging from a pillar
+ * is taken off it (its mount cleared, nothing deleted), so the view reaches only these; importing a
+ * tree again hangs it back. Confirmed, as it is a sample to look at rather than an import to review.
+ *
+ * The documents come in as text: the e2e suite reads them from disk (fixtures/ and syllabi/ at the
+ * repo root), so none of them is in the app's bundle.
  */
-export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: number }): Promise<void> {
-	const files = { mastery: 'You and the pillars', adler: 'Adler', film: 'Film', theatre: 'Theatre', games: 'Games' }
-	await working(editor, 'Inserting the whole-life test board', Object.keys(files).length + 3, async (step) => {
+export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: number }, docs: { life: string; trees: readonly string[] }): Promise<void> {
+	await working(editor, 'Inserting the whole-life test board', docs.trees.length + 3, async (step) => {
 		await step('Reading the documents')
-		const [life, ...trees] = (
-			await Promise.all([
-				import('../../content/whole-life-test.yaml?raw'),
-				import('../../content/adler.yaml?raw'),
-				import('../../content/film.yaml?raw'),
-				import('../../content/theatre.yaml?raw'),
-				import('../../content/games.yaml?raw'),
-			])
-		).map((m) => parseSyllabus(m.default))
-		if (!life!.ok || trees.some((t) => !t.ok)) throw new Error('A whole-life test document does not parse')
+		const life = parseSyllabus(docs.life)
+		const trees = docs.trees.map(parseSyllabus)
+		if (!life.ok || trees.some((t) => !t.ok)) throw new Error('A whole-life test document does not parse')
 		// Laid out once, at the end, rather than after each import.
 		const release = holdImport(editor)
 		try {
-			await step(`Adding ${files.mastery}`)
-			importSyllabus(editor, { ...life!.doc, trees: life!.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [], habits: [] }, at)
+			await step('Adding You and the pillars')
+			importSyllabus(editor, { ...life.doc, trees: life.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [] }, at)
 			for (const tree of trees) {
 				if (!tree.ok) continue
 				await step(`Adding ${tree.doc.trees[0]?.name ?? tree.doc.name}`)
-				importSyllabus(editor, { ...tree.doc, habits: [] }, at)
+				importSyllabus(editor, tree.doc, at)
 			}
 			await step('Confirming')
 			confirmDraft(editor)
@@ -63,4 +58,16 @@ export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: nu
 		}
 		syncBoard(editor)
 	})
+}
+
+/**
+ * Puts `window.lifeboardWholeLifeTest` on the page for the e2e suite, inserting the board into the
+ * editor that opened last. Only in a browser driven by a test.
+ */
+export function exposeWholeLifeTest(editor: Editor): void {
+	if (!isAutomated()) return
+	;(window as unknown as { lifeboardWholeLifeTest?: unknown }).lifeboardWholeLifeTest = (docs: { life: string; trees: string[] }) => {
+		const bounds = editor.getCurrentPageBounds()
+		return insertWholeLifeTest(editor, bounds ? { x: bounds.maxX + 400, y: bounds.minY } : editor.getViewportPageBounds().center, docs)
+	}
 }

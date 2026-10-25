@@ -1,9 +1,8 @@
-import { habitHistory, habitStart, periodKey, type Period } from './habits'
-import type { HabitEntry, IndexEntry, SkillIndex, TrackEntry } from './skillIndex'
+import type { IndexEntry, SkillIndex, TrackEntry } from './skillIndex'
 
 /**
  * What to do now (docs/skill-tree-plan.md, "Up next"): the next undone step of every active track,
- * the habits not yet met this period, and which days had anything done. Pure: the three indexes in.
+ * and which days had anything done. Pure: the indexes in.
  */
 export interface NextStep {
 	track: TrackEntry
@@ -13,16 +12,8 @@ export interface NextStep {
 	parent: IndexEntry | null
 }
 
-export interface DueHabit {
-	habit: HabitEntry
-	count: number
-	target: number
-	period: Period
-}
-
 export interface UpNext {
 	steps: NextStep[]
-	habits: DueHabit[]
 	/** Completions per day, `YYYY-MM-DD` to count. */
 	days: Map<string, number>
 }
@@ -42,8 +33,6 @@ export function nextLeaf(entry: IndexEntry, byParent: Map<string, IndexEntry[]>,
 export function upNext(
 	tracks: readonly TrackEntry[],
 	index: SkillIndex,
-	habits: readonly HabitEntry[],
-	today: string,
 	goal = ''
 ): UpNext {
 	const inGoal = (g: string) => !goal || g === goal
@@ -69,28 +58,14 @@ export function upNext(
 		}
 	}
 
-	const due: DueHabit[] = []
 	const entries = Object.values(index)
-	for (const habit of habits) {
-		if (habit.state !== 'active' || !inGoal(habit.goal)) continue
-		const start = habitStart(habit, index)
-		if (!start) continue
-		const period = (habit.period || 'week') as Period
-		const history = habitHistory({ ...habit, period, startedAt: start }, entries, today)
-		const current = history[history.length - 1]
-		const target = Math.max(1, habit.target)
-		if (current && current.key === periodKey(today, period) && current.count < target) {
-			due.push({ habit, count: current.count, target, period })
-		}
-	}
-
 	const days = new Map<string, number>()
 	for (const entry of entries) {
 		if (!entry.done || !entry.doneAt || entry.hasChildren) continue
 		if (goal && !tracks.some((t) => t.goal === goal && t.order.includes(rootOf(entry, index)))) continue
 		days.set(entry.doneAt, (days.get(entry.doneAt) ?? 0) + 1)
 	}
-	return { steps, habits: due, days }
+	return { steps, days }
 }
 
 /** The top-level item an entry belongs to, which is what tracks list. */
@@ -104,9 +79,9 @@ function rootOf(entry: IndexEntry, index: SkillIndex): string {
 	return current.itemId
 }
 
-/** The goals tracks and habits name, for the card's filter. */
-export function goalsOf(tracks: readonly TrackEntry[], habits: readonly HabitEntry[]): string[] {
-	return [...new Set([...tracks.map((t) => t.goal), ...habits.map((h) => h.goal)].filter(Boolean))].sort()
+/** The goals tracks name, for the card's filter. */
+export function goalsOf(tracks: readonly TrackEntry[]): string[] {
+	return [...new Set(tracks.map((t) => t.goal).filter(Boolean))].sort()
 }
 
 /**

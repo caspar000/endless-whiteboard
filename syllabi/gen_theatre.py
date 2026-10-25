@@ -1,8 +1,7 @@
 """Writes theatre.yaml, the theatre tree of the game director's self-education.
 
-The second of the three trees the director curriculum (gen_director.py) is split into, built the way
-Adler's is: a skill node is a tradition, an era or a discipline, an entry is a person, its works are
-what they wrote or staged. Russian and Georgian people and works go by their own names (checked
+The second of three trees, film, theatre and games, built the way Adler's is: a skill node is a
+tradition, an era or a discipline, an entry is a person, its works are what they wrote or staged. Russian and Georgian people and works go by their own names (checked
 against Georgian and Russian sources, 2026-10-18). Run `python3 gen_theatre.py` here after editing.
 """
 
@@ -353,9 +352,6 @@ TREE = {
     ],
 }
 
-HABITS = [
-    {'id': 'theatre-weeks', 'name': 'Two Theatre Weeks', 'period': 'month', 'target': 2, 'counts': {'method': 'ball'}},
-]
 
 TRACKS = [
     ('directing', 'Directing', DIRECTING),
@@ -409,9 +405,6 @@ def write():
         kind = f', kind: {n["kind"]}' if n['kind'] else ''
         req = f', requires: {flow(n["requires"])}' if n['requires'] else ''
         lines.append(f'      - {{ id: {n["id"]}, name: {q(n["name"])}{kind}, icon: {n["icon"]}{req} }}')
-    lines += ['', 'habits:']
-    for h in HABITS:
-        lines.append(f'  - {{ id: {h["id"]}, name: {q(h["name"])}, period: {h["period"]}, target: {h["target"]}, counts: {flow(h["counts"])} }}')
     open(OUT, 'w').write('\n'.join(lines) + '\n')
     print(f'{OUT}: {entries} entries')
 

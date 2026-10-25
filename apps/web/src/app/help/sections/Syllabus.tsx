@@ -5,7 +5,7 @@ import { Section, type SectionProps } from '../kit'
  *
  * Built from the board's own `lb-skill` and `lb-track` markup, as a still: the two things worth
  * showing are that a parent's children tick from the card, and that a track says what comes next.
- * Hardcoded titles rather than `ADLER_SAMPLE`, so the help chunk doesn't pull the package in.
+ * Hardcoded titles, so the help chunk doesn't pull the package in.
  */
 function SyllabusDemo() {
 	return (
@@ -125,20 +125,10 @@ export function Syllabus(_props: SectionProps) {
 			<Section title="Up next">
 				<p>
 					<strong>Up next</strong> is the card to work from, one per track. It shows the track's current
-					step, lit, to tick right there, and the next five greyed so you can see what is coming; then the
-					habits of that track's goal still due this period, and twelve weeks of the days you did something.
+					step, lit, to tick right there, the next five greyed so you can see what is coming, and twelve
+					weeks of the days you did something.
 					It follows the first active track; double-click it to pick another, and put one card per track you
 					are working on.
-				</p>
-			</Section>
-
-			<Section title="Habits">
-				<p>
-					A <strong>habit</strong> is a target per day, week or month. Tick it with + and −, or give it a
-					filter (double-click it: kind, medium, method or tag) and it counts the written-up items that
-					match by itself, such as one film sheet a week. It can wait until a syllabus item is done before
-					it starts. The card shows the last eight periods as dots and your current streak; a missed
-					period is a hollow dot and costs nothing.
 				</p>
 			</Section>
 
@@ -148,9 +138,7 @@ export function Syllabus(_props: SectionProps) {
 					what it requires, in a few lines of YAML in its editor: other nodes unlocked first (
 					<code>- node: [adler/root]</code>), a particular item done (<code>- item: …</code>), or some
 					number of written-up items tagged to it (<code>- count: {'{'} min: 3 {'}'}</code>, which can also
-					filter by kind, medium or method), or a habit kept long enough (
-					<code>- habit: {'{'} id: …, rule: streak, min: 4 {'}'}</code>; the rules are total, streak,
-					best_week and periods). Tag an item with a node's id and its evidence counts there.
+					filter by kind, medium or method). Tag an item with a node's id and its evidence counts there.
 				</p>
 				<p>
 					A node is dim while its prerequisites are locked, outlined once they are open, and lit when its
@@ -161,8 +149,7 @@ export function Syllabus(_props: SectionProps) {
 				</p>
 				<p className="lb-help__aside">
 					Every item in your vault is in one index, so a tree on one board lights up from items on another,
-					and a track can list items from anywhere. <code>Insert Adler's skill tree (sample)</code> puts a
-					small tree beside the reading-list sample; <code>Redraw prerequisite lines</code> redraws its
+					and a track can list items from anywhere. <code>Redraw prerequisite lines</code> redraws a tree's
 					arrows after you edit requirements. Deleting a parent hides its children, so undo brings them
 					back together.
 				</p>
@@ -238,24 +225,20 @@ export function Syllabus(_props: SectionProps) {
 				<p className="lb-help__aside">
 					<code>Hang a skill tree from a node</code> mounts one tree on another tree's node: a pillar, or
 					Mastery. A view of that node then shows the mounted tree as its branch, and the node's ring shows
-					how much of everything below it is unlocked. <code>Insert the Mastery demo (five pillars)</code>{' '}
-					builds one: Mastery, Physical, Mental, Spiritual, Practical and Social, with a starter tree on
-					each, and your Adler tree under Mental if you have it.
+					how much of everything below it is unlocked.
 				</p>
 			</Section>
 
 			<Section title="Syllabi as YAML">
 				<p>
-					A whole syllabus, its tracks, entries, tree and habits, can be written as one YAML document and
+					A whole syllabus, its tracks, entries and tree, can be written as one YAML document and
 					brought in with <code>Import syllabus YAML from the clipboard</code>, or by dropping a{' '}
 					<code>.yaml</code> file on the board. The agent can write one for you from a pasted list or a
 					chart. The entries go into your vault and the board gets the skill tree; add a list or Up next
 					when you want them. An import arrives as a <strong>draft</strong>: dashed, and counting toward
 					nothing until you run <code>Confirm draft</code>. <code>Discard draft</code> removes it.
-					<code>Import Adler's full reading list (137 entries)</code>,{' '}
-					<code>Import the game director curriculum (196 entries)</code> and{' '}
-					<code>Import /mu/core (1111 recordings)</code> bring in the three built-in syllabi. The director
-					curriculum's tree hangs from the Practical pillar once the Mastery demo is on a board.
+					No syllabus is built in. Adler's reading list, /mu/core, and the film, theatre and games trees
+					are files in the repo's <code>syllabi/</code> folder: drop one on a board to bring it in.
 				</p>
 				<p>
 					Write ids short (<code>homer</code>); they get the document's <code>goal</code> as a prefix (

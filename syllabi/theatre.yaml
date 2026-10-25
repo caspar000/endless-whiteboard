@@ -1259,6 +1259,3 @@ trees:
       - { id: acting, name: "Acting and Performance", icon: mood-happy, requires: [{node: [stagecraft]}, {count: {min: 3}}] }
       - { id: weeks, name: "Theatre Weeks", icon: calendar, requires: [{node: [stagecraft]}, {count: {min: 1, kind: practice}}] }
       - { id: arts, name: "Literature and the Arts", icon: palette, requires: [{node: [root]}, {count: {min: 2}}] }
-
-habits:
-  - { id: theatre-weeks, name: "Two Theatre Weeks", period: month, target: 2, counts: {method: ball} }

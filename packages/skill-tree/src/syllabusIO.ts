@@ -1,7 +1,7 @@
 import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { DRAFT_META, HABIT_TYPE, isDraft, isHabit, isSkill, isTree, TREE_TYPE } from './board'
-import { parseTags, todayIso } from './model'
+import { DRAFT_META, isDraft, isSkill, isTree, TREE_TYPE } from './board'
+import { parseTags } from './model'
 import { boardIdOf } from './skillIndex'
 import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
@@ -15,11 +15,11 @@ import { draftTreeMeta } from './views'
  * Putting a syllabus document into the vault and its tree on a board, and taking one out
  * (docs/skill-tree-plan.md, "The YAML format" and "Drafts").
  *
- * Items and tracks go into the vault (syllabusMerge.ts), with no shapes: the board gets the tree view
- * and the habit cards. "Show as list" and "Add Up Next" add the other views. An import is a
+ * Items and tracks go into the vault (syllabusMerge.ts), with no shapes: the board gets the tree view.
+ * "Show as list" and "Add Up Next" add the other views. An import is a
  * **draft**: what it makes is marked as this board's draft, draws dashed, and stays out of the index
  * until "Confirm draft". Ids that already exist are updated in place instead (titles, tags,
- * requirements; never a tick, a note or a habit's log), so a YAML file can be edited and imported again.
+ * requirements; never a tick or a note), so a YAML file can be edited and imported again.
  */
 export { DRAFT_META, isDraft } from './board'
 
@@ -92,27 +92,7 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 				headerY += 2400
 			}
 		}
-		const x = at.x + 600
-		doc.habits.forEach((habit, i) => {
-			const existing = editor.getCurrentPageShapes().find((s) => isHabit(s) && s.props.habitId === habit.habitId)
-			if (existing) {
-				const { habitId, state, ...props } = habit
-				void habitId
-				void state
-				editor.updateShape({ id: existing.id, type: HABIT_TYPE, props: { ...props, goal: doc.name } } as never)
-				updated++
-				return
-			}
-			editor.createShape({
-				id: createShapeId(),
-				type: HABIT_TYPE,
-				x,
-				y: at.y + i * 110,
-				props: { ...habit, goal: doc.name, startedAt: todayIso(), log: '{}' },
-			} as never)
-		})
-
-		// The cards this import made (headers, habits) are the draft on the board; the vault marks the rest.
+		// The cards this import made (headers) are the draft on the board; the vault marks the rest.
 		for (const shape of editor.getCurrentPageShapes()) {
 			if (!before.has(shape.id)) editor.updateShape({ id: shape.id, type: shape.type, meta: { [DRAFT_META]: true } } as never)
 		}
@@ -167,22 +147,22 @@ export function boardHasDraft(editor: Editor): boolean {
 	return hasDrafts(boardOf(editor)) || hasTreeDrafts(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
 }
 
-/** The goals there are syllabi for, by name: the vault's tracks, and this board's trees and habits. */
+/** The goals there are syllabi for, by name: the vault's tracks, and this board's trees. */
 export function boardGoals(editor: Editor): string[] {
 	const goals = [
 		...Object.values(getTracks()).filter((t) => !t.draft).map((t) => t.goal),
 		...editor
 			.getCurrentPageShapes()
 			.filter((s) => !isDraft(s))
-			.flatMap((s) => (isTree(s) || isHabit(s) ? [s.props.goal] : [])),
+			.flatMap((s) => (isTree(s) ? [s.props.goal] : [])),
 	]
 	return [...new Set(goals.filter(Boolean))]
 }
 
 /**
  * One goal's syllabus as YAML (the first goal if none is named): its tracks with their items, from
- * the vault, and this board's tree and habits for it. One goal per document, because an import gives everything in it the
- * document's goal. Ids are written in full, so importing the result again updates rather than
+ * the vault, and this board's tree for it. One goal per document, because an import gives everything
+ * in it the document's goal. Ids are written in full, so importing the result again updates rather than
  * duplicates.
  */
 export function exportSyllabus(editor: Editor, goalName?: string): string {
@@ -240,17 +220,6 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 				...(n.requires ? { requires: parseYaml(n.requires) as unknown } : {}),
 			})),
 		}
-	}
-	const habits = shapes.filter(isHabit).filter(ofGoal)
-	if (habits.length) {
-		doc.habits = habits.map((h) => ({
-			id: h.props.habitId,
-			name: h.props.name,
-			period: h.props.period,
-			target: h.props.target,
-			...(h.props.counts ? { counts: parseYaml(h.props.counts) as unknown } : {}),
-			...(h.props.startedBy ? { startedBy: h.props.startedBy } : {}),
-		}))
 	}
 	return stringifyYaml(doc, { lineWidth: 0 })
 }

@@ -5,14 +5,13 @@ import {
 	type NodeComponentProps,
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
-import { stopEventPropagation, T, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
+import { stopEventPropagation, T, useValue, type TLShapeId } from '@lifeboard/canvas'
 import { ListTodo } from 'lucide-react'
 import { memo, type SyntheticEvent } from 'react'
-import { isHabit, UP_NEXT_TYPE, type UpNextProps } from '../board'
-import { parseFilter, parseLog, periodKey, PERIOD_NOUN, type Period } from '../habits'
+import { UP_NEXT_TYPE, type UpNextProps } from '../board'
 import { todayIso } from '../model'
 import { tick } from '../ops'
-import { boardIdOf, getHabitIndex, getSkillIndex, type HabitEntry } from '../skillIndex'
+import { getSkillIndex } from '../skillIndex'
 import { getItems, getTracks } from '../syllabus'
 import { upcomingSteps, upNext } from '../upNext'
 
@@ -21,23 +20,6 @@ const swallow = (e: SyntheticEvent) => e.stopPropagation()
 const WEEKS = 12
 
 const versions = createShapePropsMigrationIds(UP_NEXT_TYPE, { PerTrack: 1 })
-
-/** Whether a shape the index points at is on the board this editor shows. */
-function onThisBoard(editor: Editor, boardId: string, shapeId: string): boolean {
-	return boardIdOf(editor) === boardId && !!editor.getShape(shapeId as TLShapeId)
-}
-
-function tickHabit(editor: Editor, habit: HabitEntry): void {
-	const shape = editor.getShape(habit.shapeId as TLShapeId)
-	if (!isHabit(shape)) return
-	const key = periodKey(todayIso(), (habit.period || 'week') as Period)
-	const log = parseLog(shape.props.log)
-	log[key] = (log[key] ?? 0) + 1
-	editor.run(() => {
-		editor.markHistoryStoppingPoint('tick habit')
-		editor.updateShape({ id: shape.id, type: shape.type, props: { log: JSON.stringify(log) } } as never)
-	})
-}
 
 /** Monday-started weeks ending with this one, as rows of seven ISO days. */
 function heatmapWeeks(today: string): string[][] {
@@ -61,8 +43,8 @@ const UPCOMING = 5
 
 /**
  * The card to work from, for one track (docs/skill-tree-plan.md, "Rebuild"): its current step, lit and
- * ready to tick, the next five greyed so you can see what is coming, then the habits of its goal still
- * due this period and twelve weeks of the days you did something. It follows the first active track
+ * ready to tick, the next five greyed so you can see what is coming, then twelve weeks of the days you
+ * did something. It follows the first active track
  * unless you pick one (double-click it).
  */
 function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<UpNextProps>) {
@@ -75,10 +57,9 @@ function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Up
 			const items = getItems()
 			const live = Object.fromEntries(Object.entries(items).filter(([, i]) => !i.draft))
 			const steps = track ? upcomingSteps(track.order, live, UPCOMING + 1) : []
-			const habits = Object.values(getHabitIndex())
-			// Habits and days are this track's goal's; the heatmap counts what this track's entries finished.
-			const rest = track ? upNext([track], getSkillIndex(), habits, today, track.goal) : { habits: [], days: new Map<string, number>() }
-			return { track, tracks, steps, habits: rest.habits, days: rest.days }
+			// The heatmap counts what this track's entries finished.
+			const days = track ? upNext([track], getSkillIndex(), track.goal).days : new Map<string, number>()
+			return { track, tracks, steps, days }
 		},
 		[shape.props.trackId, today]
 	)
@@ -121,39 +102,6 @@ function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Up
 							</span>
 						</li>
 					))}
-				</ul>
-			)}
-			{data.habits.length > 0 && (
-				<ul className="lb-upnext__list">
-					{data.habits.map(({ habit, count, target, period }) => {
-						const here = onThisBoard(editor, habit.boardId, habit.shapeId)
-						const manual = !parseFilter(habit.counts)
-						return (
-							<li key={habit.habitId} className="lb-upnext__row lb-upnext__row--habit">
-								<span className="lb-upnext__count">
-									{count}/{target}
-								</span>
-								<span className="lb-upnext__item">
-									<span>{habit.name}</span>
-									<span className="lb-upnext__meta">this {PERIOD_NOUN[period]}</span>
-								</span>
-								{here && manual && (
-									<button
-										type="button"
-										className="lb-upnext__plus"
-										aria-label={`Tick ${habit.name}`}
-										onPointerDown={swallow}
-										onClick={(e) => {
-											e.stopPropagation()
-											tickHabit(editor, habit)
-										}}
-									>
-										+
-									</button>
-								)}
-							</li>
-						)
-					})}
 				</ul>
 			)}
 			<div className="lb-upnext__heat" aria-label={`${total} things done in the last ${WEEKS} weeks`}>

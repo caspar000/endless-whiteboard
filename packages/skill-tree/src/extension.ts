@@ -1,7 +1,7 @@
 import { watchTrees } from './treeSync'
+import { exposeWholeLifeTest } from './tree/wholeLifeTest'
 import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
-import { habitNodeDefinition } from './habit/definition'
 import { upNextNodeDefinition } from './upnext/definition'
 import { skillTreeCommands } from './commands'
 import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
@@ -45,8 +45,7 @@ export const skillTreeExtension: Extension = {
 		"An entry is done when its core works are, or all of them, or some number of them, whichever you choose.",
 		"A list shows a track in reading order. Every entry folds and unfolds to its works and shows its progress, and the next undone entry is lit. Double-click a list to scroll it. The arrow on a row puts a card for that entry on the board.",
 		"A skill tree is a constellation of skill nodes. Each node says what it requires: other nodes unlocked first, a particular item done, or some number of written-up items tagged to it. A node is locked until its prerequisites are, in reach once they are, and lit when its requirement is met; after that, more evidence fills its ring toward Bronze, Silver and Gold.",
-		"A habit is a target per day, week or month: tick it by hand, or let it count written-up items that match a filter, such as one film sheet a week. A missed period is just a hollow dot, and a skill node can require a habit.",
-		"Up next is the card to work from: the next step of every active track, the habits not yet met this period, and twelve weeks of the days you did something.",
+		"Up next is the card to work from: the next step of every active track and twelve weeks of the days you did something.",
 		"Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the syllabus stays in your vault.",
 	],
 	icon: GraduationCap,
@@ -57,7 +56,6 @@ export const skillTreeExtension: Extension = {
 		defineNode(trackNodeDefinition),
 		defineNode(skillNodeDefinition),
 		defineNode(treeNodeDefinition),
-		defineNode(habitNodeDefinition),
 		defineNode(upNextNodeDefinition),
 		defineNode(entryNodeDefinition),
 		defineNode(tunerNodeDefinition),
@@ -114,6 +112,7 @@ export const skillTreeExtension: Extension = {
 		onBoardOpen: ({ editor, boardId }) => {
 			watchBoard(editor, boardId)
 			watchTrees(editor)
+			exposeWholeLifeTest(editor)
 		},
 	},
 }

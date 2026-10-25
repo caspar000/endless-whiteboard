@@ -1,7 +1,7 @@
 # /mu/core: musicgenretree.org's "1111 Essential Recordings of Music" (Classics edition), the chart
 # 4chan's /mu/ wiki calls New /mu/core. One recording per genre, grouped by category and family.
 # Source: https://www.musicgenretree.org/ (text_classics.html and the chart's image map, which
-# gives each recording its category and family). Import with "Import /mu/core (1111 recordings)".
+# gives each recording its category and family). Import it by dropping the file on a board.
 goal: mucore
 name: Music listener
 
@@ -1816,6 +1816,3 @@ tree:
     - { id: electronic-dance-glitch-hop-future-bass, name: "Glitch Hop, Future Bass", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance] }, { count: { min: 2 } } ] }
     - { id: experimental-experimental, name: "Experimental", icon: flask, sector: experimental, requires: [ { node: [experimental] }, { count: { min: 13 } } ] }
     - { id: experimental-non-music, name: "Non-Music", icon: flask, sector: experimental, requires: [ { node: [experimental] }, { count: { min: 2 } } ] }
-
-habits:
-  - { id: weekly-albums, name: "Three Albums a Week", period: week, target: 3, counts: { medium: album } }

@@ -1,16 +1,13 @@
 import {
 	getEvidence,
-	getHabitIndex,
 	getItems,
 	getTracks,
 	getTreeDefs,
 	replaceEvidence,
-	replaceHabitIndex,
 	replaceItems,
 	replaceTracks,
 	replaceTreeDefs,
 	setEvidencePersistence,
-	setHabitIndexPersistence,
 	setItemsPersistence,
 	setTracksPersistence,
 	setTreeDefsPersistence,
@@ -30,14 +27,13 @@ const WAIT_MS = 1000
 
 /**
  * The syllabus's vault data, persisted the same way under their own keys: the items and tracks and
- * the tree definitions are the only copy (a server backup must keep them); the write-up and habit
- * copies are rebuilt by any board that opens.
+ * the tree definitions are the only copy (a server backup must keep them); the write-up copies are
+ * rebuilt by any board that opens.
  */
 const STORES = [
 	{ key: 'syllabusItems', cacheKey: 'lifeboard:syllabusItems', get: getItems, replace: replaceItems, listen: setItemsPersistence },
 	{ key: 'syllabusTracks', cacheKey: 'lifeboard:syllabusTracks', get: getTracks, replace: replaceTracks, listen: setTracksPersistence },
 	{ key: 'syllabusEvidence', cacheKey: 'lifeboard:syllabusEvidence', get: getEvidence, replace: replaceEvidence, listen: setEvidencePersistence },
-	{ key: 'skillHabits', cacheKey: 'lifeboard:skillHabits', get: getHabitIndex, replace: replaceHabitIndex, listen: setHabitIndexPersistence },
 	{ key: 'skillTrees', cacheKey: 'lifeboard:skillTrees', get: getTreeDefs, replace: replaceTreeDefs, listen: setTreeDefsPersistence },
 ] as const
 

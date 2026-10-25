@@ -24,9 +24,9 @@ function entry(itemId: string, tags: string[], over: Partial<IndexEntry> = {}): 
 const indexOf = (...entries: IndexEntry[]): SkillIndex => Object.fromEntries(entries.map((e) => [e.itemId, e]))
 
 describe('parseRequirements', () => {
-	it('reads the four conditions', () => {
+	it('reads the three conditions', () => {
 		const result = parseRequirements(
-			'- node: [a, b]\n- item: x\n- count: { min: 3, kind: Practice }\n- habit: { id: film, rule: streak, min: 4 }'
+			'- node: [a, b]\n- item: x\n- count: { min: 3, kind: Practice }'
 		)
 		expect(result).toEqual({
 			ok: true,
@@ -34,7 +34,6 @@ describe('parseRequirements', () => {
 				{ node: ['a', 'b'] },
 				{ item: 'x' },
 				{ count: { min: 3, kind: 'Practice' } },
-				{ habit: { id: 'film', rule: 'streak', min: 4 } },
 			],
 		})
 	})
@@ -133,12 +132,12 @@ describe('evaluateTree across trees', () => {
 	const unlocked = { state: 'unlocked' } as ReturnType<typeof evaluateTree> extends Map<string, infer S> ? S : never
 
 	it("asks for the state of another tree's node", () => {
-		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18', (id) => (id === 'a/single' ? unlocked : undefined))
+		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, (id) => (id === 'a/single' ? unlocked : undefined))
 		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
 	})
 
 	it("counts another tree's node as locked when nothing answers for it", () => {
-		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {}, {}, '2026-10-18')
+		const status = evaluateTree(tree('- node: [m/sit, a/single]'), {})
 		expect(status.get('m/steady')!.conditions[0]).toMatchObject({ have: 1, need: 2, met: false })
 	})
 })

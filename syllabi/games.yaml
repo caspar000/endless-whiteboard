@@ -1066,8 +1066,3 @@ trees:
       - { id: close-reading, name: "Close Reading", icon: eye, requires: [{node: [canon]}, {count: {min: 2}}] }
       - { id: ship-a-stage, name: "Ship a Stage", kind: keystone, icon: flag, requires: [{node: [design-craft]}, {count: {min: 1, kind: ship}}] }
       - { id: finished-game, name: "A Small Finished Game", kind: keystone, icon: rocket, requires: [{node: [ship-a-stage]}, {count: {min: 1, kind: ship}}] }
-
-habits:
-  - { id: play-as-a-director, name: "Play a Game as a Director", period: week, target: 1, counts: {method: five-passes} }
-  - { id: weekly-build, name: "Build One Exercise", period: week, target: 1, counts: {kind: Practice} }
-  - { id: monthly-stage, name: "Finish One Playable Stage", period: month, target: 1, counts: {kind: Ship} }

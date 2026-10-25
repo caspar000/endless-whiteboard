@@ -1,7 +1,7 @@
 # Adler and Van Doren, How to Read a Book (1972), appendix A: the 137 entries in their order,
 # with a skill tree of fields by era. Source of the list: tosummarise.com, checked against the book;
-# its typos are corrected. Import with "Import syllabus YAML from the clipboard" or drop the file on
-# a board. Ids match the in-app sample, so importing on a board that has it updates it in place.
+# its typos are corrected. Import it by dropping the file on a board, or with "Import syllabus YAML
+# from the clipboard".
 goal: adler
 name: Western canon reader
 
@@ -1313,7 +1313,7 @@ tree:
       ring: method
       requires: |-
         - node: [adler/root]
-        - habit: { id: adler/weekly-entry, rule: periods, min: 4 }
+        - count: { min: 4, method: analytical }
     - id: greek-epic-drama
       name: "Greek Epic and Drama"
       kind: skill
@@ -1710,7 +1710,3 @@ tree:
       requires:
         - node: [war-democracy-capital]
         - count: { min: 1 }
-
-habits:
-  - { id: weekly-entry, name: "Write Up an Entry", period: week, target: 1, counts: { method: analytical } }
-  - { id: daily-reading, name: "Read for 30 Minutes", period: day, target: 1 }

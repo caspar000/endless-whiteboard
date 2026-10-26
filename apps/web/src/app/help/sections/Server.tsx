@@ -68,7 +68,7 @@ export function Server(_props: SectionProps) {
 					moved or deleted.
 				</p>
 				<p>
-					With boards in both places, All boards has a filter: <em>On the server</em> or <em>On this
+					With boards in both places, All Boards has a filter: <em>On the server</em> or <em>On this
 					device</em>, and a card on this device alone says so under its name.
 				</p>
 				<p>

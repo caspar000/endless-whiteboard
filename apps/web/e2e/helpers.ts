@@ -92,7 +92,7 @@ export async function showSidebar(page: Page): Promise<boolean> {
  */
 export async function clickInSidebar(page: Page, name: string | RegExp): Promise<void> {
 	const opened = await showSidebar(page)
-	// `.first()`: a board can be listed twice, under Recent boards and All boards.
+	// `.first()`: a board can be listed twice, under Recent boards and All Boards.
 	await page.locator('.lb-sidebar').getByRole('button', { name, exact: true }).first().click()
 	if (opened) await page.locator('.lb-sidebar__collapse').click()
 }
@@ -105,8 +105,8 @@ export async function openSettings(page: Page, tab: SettingsTab = 'General'): Pr
 }
 
 export async function backToList(page: Page): Promise<void> {
-	// The sidebar's All boards row is the way back to the home screen.
-	await clickInSidebar(page, /^All boards \d+$/)
+	// The sidebar's All Boards row is the way back to the home screen.
+	await clickInSidebar(page, /^All Boards \d+$/)
 	await expect(page.locator('.lb-home__header')).toBeVisible()
 }
 
@@ -136,7 +136,7 @@ export async function openBoard(page: Page, name: string): Promise<void> {
 }
 
 export async function createBoard(page: Page, name?: string): Promise<void> {
-	// Some callers get here immediately after clicking "All boards". That navigation first exports a
+	// Some callers get here immediately after clicking "All Boards". That navigation first exports a
 	// thumbnail, so the click can resolve while the previous board is still visible. Starting another
 	// async create during that transition lets the two navigations race and can leave us on the canvas
 	// with no corresponding card rendered on the home screen.

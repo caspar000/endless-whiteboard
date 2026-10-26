@@ -153,7 +153,7 @@ registerCommand({
 
 registerCommand({
 	id: 'view.home',
-	title: 'All boards',
+	title: 'All Boards',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goHome(),
 })

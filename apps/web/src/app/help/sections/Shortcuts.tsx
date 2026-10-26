@@ -88,6 +88,14 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The board list's own keys, bound by the page rather than registered (app/BoardList.tsx).
+		title: 'In All boards',
+		rows: [
+			[['/'], 'Search the boards by name'],
+			[['Esc'], 'Clear the search, then leave it'],
+		],
+	},
+	{
 		// Not commands and not keys: the whole interaction with a kanban or a calendar is a drag, and a
 		// reference that lists every keystroke but none of the gestures would be missing the feature.
 		title: 'On a kanban or a calendar',

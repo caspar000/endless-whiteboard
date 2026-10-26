@@ -25,7 +25,7 @@ pnpm dev          # http://localhost:5173
 ## The two screens
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
-board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
+board cards, modelled on Freeform's board browser, with a search box over the grid that narrows it by board name. Each card's preview is that board's own thumbnail,
 drawn from the live editor once the board is off screen and the user is idle, in light and dark at once. A board with no
 current preview (imported, moved from another device, made by an agent) gets one drawn in a hidden editor off screen,
 one board at a time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server

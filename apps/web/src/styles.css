@@ -1772,11 +1772,72 @@ div.lb-sidebar__moves {
 	background: var(--lb-accent);
 }
 
-/* All boards' filter, between the server's boards and this device's (BoardList.tsx). */
-.lb-list__filter {
-	align-self: flex-start;
-	width: fit-content;
+/* All boards' search, and the filter between the server's boards and this device's (BoardList.tsx). */
+.lb-list__tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
 	margin: 0 0 16px;
+}
+.lb-list__search {
+	position: relative;
+	flex: 0 1 320px;
+	min-width: min(100%, 200px);
+}
+.lb-list__search input {
+	width: 100%;
+	height: 36px;
+	padding: 0 34px 0 36px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 14px;
+}
+.lb-list__search input:focus {
+	outline: none;
+	box-shadow: inset 0 0 0 1.5px var(--lb-accent);
+}
+.lb-list__search input::placeholder {
+	color: var(--lb-text-faint);
+}
+/* The clear button below replaces the browser's own, which Firefox doesn't draw. */
+.lb-list__search input::-webkit-search-cancel-button {
+	appearance: none;
+}
+.lb-list__search-icon {
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	transform: translateY(-50%);
+	color: var(--lb-text-faint);
+	pointer-events: none;
+}
+.lb-list__search-clear {
+	position: absolute;
+	top: 50%;
+	right: 6px;
+	transform: translateY(-50%);
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-list__search-clear:hover {
+	background: var(--lb-surface);
+	color: var(--lb-text);
+}
+.lb-list__filter {
+	width: fit-content;
 }
 .lb-list__filter-count {
 	margin-left: 4px;
@@ -13577,6 +13638,9 @@ button.lb-props__eye:hover {
 	}
 	.lb-home__header h1 {
 		font-size: 24px;
+	}
+	.lb-list__search {
+		flex-basis: 100%;
 	}
 	/* Two columns of cards; the name is what tells them apart at this size, so the date goes. */
 	.lb-grid {

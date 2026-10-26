@@ -45,6 +45,8 @@ centre, straight paths outward and arcs along the orbits.
 - Adding entries or works lays out only their own cluster again.
 - A structural change (a new tree, shared node or pillar, a tree moved to another pillar) marks the
   layout out of date; Re-calculate lays it out again. Nothing reflows on its own.
+- A view with nothing left to show is never out of date. Deleting the last of a view's nodes deletes
+  its hidden header in the same undo step (`treeSync.ts`, `dropEmptyHeaders`).
 
 `tree/compact.ts` (the greedy layout) is replaced.
 

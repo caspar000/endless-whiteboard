@@ -47,7 +47,8 @@ export function SkillTrees({ go }: SectionProps) {
 					cluster is laid out again. A change to the tree's shape (a new node or tree, a node shared with
 					another tree, a tree hung somewhere else) puts a note over the board, <em>The tree's layout is
 					out of date</em>; its Re-calculate button, or <code>Re-calculate the tree layout</code>, lays it
-					out again. An entry tagged to more than one skill node is drawn once, under the first, with a
+					out again. Deleting every node a tree shows takes the tree off the board, with no note left
+					behind; one undo puts it back. An entry tagged to more than one skill node is drawn once, under the first, with a
 					faint dotted line to each of the others. Every connection is a line, thickest between skill
 					nodes and thinner the further a card is from its skill node. A line between skill nodes is
 					grey until the node it leads to is unlocked, then in the accent colour. An unlocked node glows blue. Once a

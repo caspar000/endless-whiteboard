@@ -205,6 +205,7 @@ export {
 	type TldrawOptions,
 	defaultTldrawOptions,
 } from './lib/editor/Editor'
+export { isRetiredShapeSequence, retiredShapeSequence } from './lib/editor/retiredShapeSequence'
 export { getSnapshot, loadSnapshot, type TLEditorSnapshot } from './lib/config/TLEditorSnapshot'
 export {
 	DefaultShapeWrapper,

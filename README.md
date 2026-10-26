@@ -65,9 +65,10 @@ sit at the default's softness. Both are saved with the board's name, in the boar
 server's `boards` table, and changing them does not count as editing the board.
 
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
-dock and the dice tray are rounded surfaces held off the window edge. On a board, the open boards hang
-from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved tail;
-elsewhere the sidebar is the way to a board. <kbd>⌘\</kbd> slides the sidebar away and
+dock and the dice tray are rounded surfaces held off the window edge. On every screen, the open boards
+hang from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved
+tail, after a pinned **All boards** label; Settings, Help and the board list start below them. A phone
+shows the board pill in their place, on every screen too. <kbd>⌘\</kbd> slides the sidebar away and
 leaves a round button in its corner; under 1024px it starts that way and opens over the board. The
 board runs under all of it, so zoom to fit, quick look and panning a shape into view frame inside
 what the chrome leaves (`Editor.setSafeInsets`).

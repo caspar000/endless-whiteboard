@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react'
+import { LayoutGrid, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
@@ -29,20 +29,23 @@ function Slope({ side }: { side: 'left' | 'right' }) {
 }
 
 /**
- * The open boards, as folder labels hanging from the top edge of the window beside the sidebar.
- * Shown on a board only: everywhere else the sidebar is the way to a board.
+ * The open boards, as folder labels hanging from the top edge of the window beside the sidebar, after
+ * a pinned "All boards" label that leads home. Shown on every screen, so a board is one click away
+ * from Settings or Help too; there no label is in front.
  *
  * The labels overlap like a stack of folder tabs, the active one in front and each step away from it
  * one layer further back. A label's side away from the active one is a slope that sweeps over the
  * start of the label behind; that label keeps its own rounded foot a few px further on, so a notch of
  * the board shows between the two. The first label meets the window edge square, and "+" sits after
  * the last label's slope.
- * Double-clicking the active label renames the board in place.
+ * Double-clicking the active board's label renames the board in place.
  */
 export function TabStrip({
 	boards,
 	tabs,
+	view,
 	activeBoardId,
+	onHome,
 	onSelect,
 	onClose,
 	onNew,
@@ -50,7 +53,9 @@ export function TabStrip({
 }: {
 	boards: BoardMeta[]
 	tabs: string[]
+	view: 'list' | 'settings' | 'help' | 'board'
 	activeBoardId: string | null
+	onHome: () => void
 	onSelect: (board: BoardMeta) => void
 	onClose: (id: string) => void
 	onNew: () => void
@@ -63,24 +68,54 @@ export function TabStrip({
 		const board = byId.get(id)
 		return board ? [board] : []
 	})
-	const activeIndex = open.findIndex((board) => board.id === activeBoardId)
+	// The labels' places in the stack, "All boards" being the first: 0 is All boards, 1 the first board.
+	// On Settings and Help (or a board that is gone) none is in front, and every label slopes to the
+	// right, like those after an active one.
+	const boardIndex = view === 'board' ? open.findIndex((board) => board.id === activeBoardId) : -1
+	const activeIndex = view === 'list' ? 0 : boardIndex >= 0 ? boardIndex + 1 : -1
+	const layer = (index: number) => ({ zIndex: 50 - Math.abs(index - activeIndex) })
+	const shape = (index: number) => {
+		const active = index === activeIndex
+		// Left of the active label the right side is covered, right of it the left side.
+		const slopeLeft = index > 0 && index <= activeIndex
+		const slopeRight = index >= activeIndex
+		const className = [
+			'lb-tabs__tab',
+			active ? 'lb-tabs__tab--active' : '',
+			slopeLeft ? 'lb-tabs__tab--slope-left' : '',
+			slopeRight ? 'lb-tabs__tab--slope-right' : '',
+		]
+			.filter(Boolean)
+			.join(' ')
+		return { active, slopeLeft, slopeRight, className }
+	}
+	const home = shape(0)
 
 	return (
 		<div className="lb-tabs lb-stagger" role="tablist" aria-label="Open boards">
-			{open.map((board, index) => {
+			<div
+				role="tab"
+				tabIndex={0}
+				aria-selected={home.active}
+				className={`${home.className} lb-tabs__tab--home`}
+				style={layer(0)}
+				onClick={onHome}
+				onKeyDown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault()
+						onHome()
+					}
+				}}
+			>
+				{home.slopeRight && <Slope side="right" />}
+				<LayoutGrid className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+				<span className="lb-tabs__label">All boards</span>
+			</div>
+
+			{open.map((board, i) => {
 				const { id } = board
-				const active = index === activeIndex
-				// Left of the active label the right side is covered, right of it the left side.
-				const slopeLeft = index > 0 && index <= activeIndex
-				const slopeRight = index >= activeIndex
-				const classes = [
-					'lb-tabs__tab',
-					active ? 'lb-tabs__tab--active' : '',
-					slopeLeft ? 'lb-tabs__tab--slope-left' : '',
-					slopeRight ? 'lb-tabs__tab--slope-right' : '',
-				]
-					.filter(Boolean)
-					.join(' ')
+				const index = i + 1
+				const { active, slopeLeft, slopeRight, className } = shape(index)
 				return (
 					// The whole label is the click target, like a browser tab — not just the text.
 					// A <div> with button semantics rather than a <button>, because the close control
@@ -90,8 +125,8 @@ export function TabStrip({
 						role="tab"
 						tabIndex={0}
 						aria-selected={active}
-						className={classes}
-						style={{ zIndex: 50 - Math.abs(index - activeIndex) }}
+						className={className}
+						style={layer(index)}
 						onClick={() => onSelect(board)}
 						// Middle click closes, as a browser tab does. Pressing the wheel would otherwise
 						// start the browser's autoscroll.

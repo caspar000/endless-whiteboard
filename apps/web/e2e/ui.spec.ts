@@ -61,6 +61,26 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('.lb-list__board', { hasText: 'First' })).toHaveCount(1)
 	})
 
+	test('the tabs show on every page, All boards first', async ({ page }) => {
+		await gotoFresh(page)
+		const strip = page.getByRole('tablist', { name: 'Open boards' })
+		const home = strip.getByRole('tab', { name: 'All boards' })
+		const board = strip.getByRole('tab', { name: /Home office shopping/ })
+		await expect(board).toHaveAttribute('aria-selected', 'true')
+		await expect(home).toHaveAttribute('aria-selected', 'false')
+
+		await home.click()
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+		await expect(home).toHaveAttribute('aria-selected', 'true')
+
+		// Settings and Help keep the strip, with nothing in front, and a board is a click away.
+		await openSettings(page)
+		await expect(strip.getByRole('tab', { selected: true })).toHaveCount(0)
+		await board.click()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(board).toHaveAttribute('aria-selected', 'true')
+	})
+
 	test('double-clicking empty canvas is tldraw\'s again, not a note', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
@@ -1747,7 +1767,8 @@ test.describe('canvas grid', () => {
 		expect(new Set(ids).size).toBe(ids.length)
 
 		// And each tab in turn must resolve to a pattern inside its *own* svg, with dots actually painted.
-		const tabs = await page.getByRole('tab').all()
+		// The boards' tabs only, which are the ones with a close button: All boards leads home.
+		const tabs = await page.locator('.lb-tabs__tab:has(.lb-tabs__close)').all()
 		for (let i = 0; i < tabs.length; i++) {
 			await tabs[i]!.click()
 			await expect(page.locator('.tl-canvas:visible')).toBeVisible()

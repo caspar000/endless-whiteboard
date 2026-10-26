@@ -15389,8 +15389,12 @@ button.lb-props__eye:hover {
  * A card's type is sized against the card (`cqw`), not the page, so the same card reads the same at
  * 560 px on the table and at whatever width the stack gives it.
  */
-.lb-zcard {
+.lb-zcard-frame {
 	container-type: inline-size;
+	width: 100%;
+	height: 100%;
+}
+.lb-zcard {
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
@@ -15448,14 +15452,19 @@ button.lb-props__eye:hover {
 .lb-zcard__text.tl-rich-text-editor {
 	cursor: text;
 }
-.lb-zcard__text p {
+/* Wherever the card is drawn, its own type: the Help page's paragraphs and headings stay outside it. */
+.lb-zcard .lb-zcard__text p {
 	margin: 0 0 0.45em;
+	font-size: 1em;
+	line-height: inherit;
+	color: inherit;
 }
 /* A heading as the first line is the note's title (card/text.ts). */
-.lb-zcard__text h1,
-.lb-zcard__text h2,
-.lb-zcard__text h3 {
+.lb-zcard .lb-zcard__text h1,
+.lb-zcard .lb-zcard__text h2,
+.lb-zcard .lb-zcard__text h3 {
 	margin: 0 0 0.35em;
+	color: inherit;
 	font-size: 1.6em;
 	font-weight: 650;
 	line-height: 1.2;

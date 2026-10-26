@@ -55,6 +55,11 @@ A box is an **index**, then the **notes** in order, then the **citations**. It h
   shape commands and not the document record, so undoing a delete brings the card back but leaves its
   number on the retired list. That errs the safe way: the number is in use again and still never
   given to a different note.
+- **The table's own ways of deleting and copying.** The selection toolbar's delete and ⌫ retire the
+  number as the stack's delete does, and the cards close up; ⌘Z taking back a note just written is a
+  delete too, so the retiring waits a microtask and is dropped if undo or redo announced itself
+  meanwhile. A duplicate, or a paste of a card whose number is taken, is taken off as it arrives: a
+  copy has no place of its own (`watch.ts`).
 - **`{…}` expressions** can be typed (the editor is the sticky note's) but a card draws them as typed
   rather than evaluated. Stickies get their evaluation from the app's own shape utils; a node type
   would need the same seam. Not asked for, so left.

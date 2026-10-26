@@ -139,6 +139,12 @@ export function placeNote(editor: Editor, how: Placement, from: string | null): 
 	return { id, zid }
 }
 
+/** Puts an id on the retired list, if it isn't there yet. */
+export function retireId(editor: Editor, zid: string): void {
+	const meta = readBoxMeta(editor) ?? { version: 1 as const, retired: [] }
+	if (!meta.retired.includes(zid)) writeBoxMeta(editor, { ...meta, retired: [...meta.retired, zid] })
+}
+
 /**
  * Takes a note out of the box. Its id is retired for good; its branches stay where they are.
  *
@@ -151,8 +157,7 @@ export function deleteNote(editor: Editor, id: TLShapeId): void {
 	if (!isCard(card)) return
 	editor.markHistoryStoppingPoint('delete a note')
 	editor.run(() => {
-		const meta = readBoxMeta(editor) ?? { version: 1 as const, retired: [] }
-		if (!meta.retired.includes(card.props.zid)) writeBoxMeta(editor, { ...meta, retired: [...meta.retired, card.props.zid] })
+		retireId(editor, card.props.zid)
 		editor.deleteShapes([id])
 		layoutBox(editor)
 	})

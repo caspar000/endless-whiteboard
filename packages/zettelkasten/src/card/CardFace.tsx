@@ -13,20 +13,23 @@ export function CardFace({ shape, live, editing = false }: { shape: CardShape; l
 	const { zid, richText } = shape.props
 	const empty = isEmptyRichText(richText) && !editing
 	return (
-		<div className="lb-zcard" data-editing={editing || undefined}>
-			<div className="lb-zcard__id">{zid}</div>
-			<div className="lb-zcard__body">
-				{empty ? (
-					<p className="lb-zcard__empty">Empty note</p>
-				) : live ? (
-					<RichText shapeId={shape.id} shapeType={shape.type} richText={richText} className="lb-zcard__text" />
-				) : (
-					<div
-						className="lb-zcard__text tl-rich-text"
-						dir="auto"
-						dangerouslySetInnerHTML={{ __html: renderHtmlFromRichText(richText, editor.getTextExtensions()) }}
-					/>
-				)}
+		// The frame is what the card's type and padding are measured against (`cqw`, styles.css).
+		<div className="lb-zcard-frame">
+			<div className="lb-zcard" data-editing={editing || undefined}>
+				<div className="lb-zcard__id">{zid}</div>
+				<div className="lb-zcard__body">
+					{empty ? (
+						<p className="lb-zcard__empty">Empty note</p>
+					) : live ? (
+						<RichText shapeId={shape.id} shapeType={shape.type} richText={richText} className="lb-zcard__text" />
+					) : (
+						<div
+							className="lb-zcard__text tl-rich-text"
+							dir="auto"
+							dangerouslySetInnerHTML={{ __html: renderHtmlFromRichText(richText, editor.getTextExtensions()) }}
+						/>
+					)}
+				</div>
 			</div>
 		</div>
 	)

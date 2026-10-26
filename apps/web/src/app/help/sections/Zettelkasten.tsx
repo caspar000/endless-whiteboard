@@ -29,12 +29,14 @@ function StackDemo() {
 					.reverse()
 					.map(({ card: [zid, title, text], slot }) => (
 						<div key={zid} className="lb-zstack__card" data-slot={slot} style={{ '--slot': slot } as CSSProperties}>
-							<div className="lb-zcard">
-								<div className="lb-zcard__id">{zid}</div>
-								<div className="lb-zcard__body">
-									<div className="lb-zcard__text tl-rich-text">
-										<h1>{title}</h1>
-										<p>{text}</p>
+							<div className="lb-zcard-frame">
+								<div className="lb-zcard">
+									<div className="lb-zcard__id">{zid}</div>
+									<div className="lb-zcard__body">
+										<div className="lb-zcard__text tl-rich-text">
+											<h1>{title}</h1>
+											<p>{text}</p>
+										</div>
 									</div>
 								</div>
 							</div>

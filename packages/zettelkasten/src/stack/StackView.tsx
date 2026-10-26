@@ -336,9 +336,11 @@ function StackCard({
 	if (!entry.id) {
 		return (
 			<div className="lb-zstack__card lb-zstack__card--gap" data-slot={slot} style={style} aria-hidden={slot !== 0}>
-				<div className="lb-zcard lb-zcard--gap">
-					<div className="lb-zcard__id">{entry.zid}</div>
-					<p className="lb-zcard__empty">Deleted. Its branches follow.</p>
+				<div className="lb-zcard-frame">
+					<div className="lb-zcard lb-zcard--gap">
+						<div className="lb-zcard__id">{entry.zid}</div>
+						<p className="lb-zcard__empty">Deleted. Its branches follow.</p>
+					</div>
 				</div>
 			</div>
 		)

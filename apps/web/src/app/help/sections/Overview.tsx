@@ -301,7 +301,9 @@ export function Overview({ go }: SectionProps) {
 							with a middle click as in a browser; the board stays under All boards. A board’s card there
 							shows its actions over the preview as you point at it: star, rename, share, move and
 							delete, each named as you hover it; on a touch screen, tap the ⋯ instead. To delete
-							several at once, choose Select in All boards, click the boards, then Delete. ⌘\ slides the sidebar
+							several at once, choose Select in All boards, click the boards, then Delete. The search box above
+							the cards finds a board by any words of its name; <kbd className="lb-kbd">/</kbd> jumps to it and
+							Escape clears it. ⌘\ slides the sidebar
 							out of the way, and the round button left in its corner brings it back. The coloured
 							square beside a board’s name, on its tab, in the sidebar and on its card, gives it a colour
 							and an icon: click it and search some 4,700 icons by what the board is for (“gym” finds the

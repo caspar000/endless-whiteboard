@@ -118,11 +118,16 @@ export function StackView() {
 	const step = useCallback((by: number) => go(frontIndex(editor) + by), [editor, go])
 
 	// The board's own keys are off while the stack is up (see the component's comment).
+	// And the canvas's chrome that floats over a shape being edited (the formatting bar) is placed by
+	// where the card sits on the canvas under the stack, so it goes while the stack is up.
 	useEffect(() => {
 		if (!open) return
 		editor.addOpenMenu(STACK_MENU)
+		const container = editor.getContainer()
+		container.classList.add('lb-zstack-open')
 		return () => {
 			editor.deleteOpenMenu(STACK_MENU)
+			container.classList.remove('lb-zstack-open')
 		}
 	}, [editor, open])
 

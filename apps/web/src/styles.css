@@ -15474,6 +15474,13 @@ button.lb-props__eye:hover {
 	color: var(--lb-zcard-faint);
 	font-style: italic;
 }
+/* Being written on: an accent ring, so it's clear the keys go into the card and not to the stack. */
+.lb-zcard[data-editing],
+.lb-zstack .lb-zcard[data-editing] {
+	box-shadow:
+		0 0 0 2px var(--lb-accent),
+		0 10px 28px rgb(0 0 0 / 22%);
+}
 .lb-zcard--gap {
 	background: transparent;
 	box-shadow: none;
@@ -15493,6 +15500,9 @@ button.lb-props__eye:hover {
 	overflow: hidden;
 	perspective: 1600px;
 	font-family: var(--lb-font);
+}
+.lb-zstack-open .tlui-rich-text-toolbar {
+	display: none;
 }
 .lb-zstack__pile {
 	position: relative;
@@ -15620,6 +15630,13 @@ button.lb-props__eye:hover {
 	color: var(--lb-text);
 	font-size: 13px;
 	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+}
+
+/* A phone: the pile sits a little above the middle, clear of the bar, rather than pushed below it. */
+@media (max-width: 767px) {
+	.lb-zstack__pile {
+		margin: 0 0 14vh;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

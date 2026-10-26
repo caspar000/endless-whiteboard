@@ -69,3 +69,71 @@ test('builds Mastery in Settings and puts it on a board, a tree under two pillar
 		)
 	await expect.poll(mountLines).toBe(2)
 })
+
+/** Everything on the board selected and deleted, as ⌘A then Delete would. Headers are hidden, so they stay out of the selection. */
+const deleteEverything = (page: Page) =>
+	page.evaluate(() => {
+		const editor = (window as unknown as { editor: { selectAll(): void; getSelectedShapeIds(): string[]; markHistoryStoppingPoint(name: string): void; deleteShapes(ids: string[]): void } }).editor
+		editor.selectAll()
+		editor.markHistoryStoppingPoint('delete everything')
+		editor.deleteShapes(editor.getSelectedShapeIds())
+	})
+
+const undo = (page: Page) =>
+	page.evaluate(() => {
+		;(window as unknown as { editor: { undo(): void } }).editor.undo()
+	})
+
+const STALE_NOTE = '.lb-stale-layout'
+
+test('deleting a whole tree leaves no out-of-date note behind, and undo brings it back laid out', async ({ page }) => {
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Craft')
+	await openBoard(page, 'Craft')
+
+	await page.evaluate((text) => navigator.clipboard.writeText(text), CRAFT)
+	await command(page, 'Import syllabus YAML from the clipboard')
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(2)
+	await page.getByRole('alertdialog', { name: 'Imported syllabus draft' }).getByRole('button', { name: 'Confirm' }).click()
+	await expect.poll(() => countShapes(page, 'node.skillTree')).toBe(1)
+	await expect(page.locator(STALE_NOTE)).toHaveCount(0)
+
+	await deleteEverything(page)
+	// The tree's nodes go, and with nothing left to show, its hidden header goes with them.
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(0)
+	await expect.poll(() => countShapes(page, 'node.skillTree')).toBe(0)
+	await page.waitForTimeout(300)
+	await expect(page.locator(STALE_NOTE)).toHaveCount(0)
+
+	// One undo step puts the tree back, header and all, with nothing out of date.
+	await undo(page)
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(2)
+	await expect.poll(() => countShapes(page, 'node.skillTree')).toBe(1)
+	await page.waitForTimeout(300)
+	await expect(page.locator(STALE_NOTE)).toHaveCount(0)
+})
+
+test('deleting the whole Mastery view leaves no out-of-date note behind', async ({ page }) => {
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Life')
+	await openBoard(page, 'Life')
+
+	await page.goto('/#/settings/extensions/lifeboard.skill-tree')
+	await page.getByRole('button', { name: 'Set up Mastery' }).click()
+	await expect.poll(() => pillarNames(page)).toEqual(['Physical', 'Mental', 'Spiritual', 'Practical', 'Social'])
+
+	await openBoardFromSidebar(page, 'Life')
+	await command(page, 'Add Mastery to this board')
+	// You and the five pillars.
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(6)
+	await page.waitForTimeout(300)
+	await expect(page.locator(STALE_NOTE)).toHaveCount(0)
+
+	await deleteEverything(page)
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(0)
+	await expect.poll(() => countShapes(page, 'node.skillTree')).toBe(0)
+	await page.waitForTimeout(300)
+	await expect(page.locator(STALE_NOTE)).toHaveCount(0)
+})

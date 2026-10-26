@@ -5,6 +5,7 @@ import { styleArrows } from './tree/arrowStyle'
 import { isDraft, isSkill, isTree, SKILL_TYPE, TREE_TYPE, type SkillShape, type TreeShape } from './board'
 import { drawMounts, drawPrerequisites } from './tree/ops'
 import { applyViews, frameView, planIsEmpty, planViews, refreshStale, curveSkillArrows, routeLaidOut } from './tree/viewSync'
+import { contentsOf } from './tree/view'
 import { boardTrees, treeGraph, type ViewContents } from './views'
 import { sizeOfKind } from './skill/definition'
 import {
@@ -105,6 +106,8 @@ export function watchTrees(editor: Editor): void {
 		if (isImporting()) return
 		if (!syncing && live(shape)) removeNodeDef(shape.props.treeId, shape.props.nodeId)
 		if (!syncing && liveHeader(shape)) schedule(editor)
+		// The header is hidden, so deleting every node a view shows is how a tree is taken off a board.
+		if (!syncing && isSkill(shape)) dropEmptyHeaders(editor)
 	})
 
 	// Trees decide which skill nodes a view shows; items (their tags, their works) which entries.
@@ -151,6 +154,27 @@ onImportEnd((editor) => {
 	for (const [treeId, nodes] of byTree) upsertNodeDefs(treeId, nodes)
 	if (watched.has(editor)) schedule(editor)
 })
+
+const dropping = new WeakSet<Editor>()
+
+/**
+ * Deletes the confirmed headers whose view has nothing left to show, once the deletion that emptied
+ * them has finished. It is recorded with that deletion, so one undo brings back the tree and its
+ * header. A draft's header stays, for its Confirm/Discard bar.
+ */
+function dropEmptyHeaders(editor: Editor): void {
+	if (dropping.has(editor)) return
+	dropping.add(editor)
+	queueMicrotask(() => {
+		dropping.delete(editor)
+		if (disposed.has(editor) || isImporting()) return
+		const empty = editor
+			.getCurrentPageShapes()
+			.filter(liveHeader)
+			.filter((h) => !contentsOf(editor, h).skills.size)
+		if (empty.length) editor.deleteShapes(empty.map((h) => h.id))
+	})
+}
 
 const pending = new WeakSet<Editor>()
 

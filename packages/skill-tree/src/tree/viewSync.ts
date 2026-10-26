@@ -442,12 +442,15 @@ export function structureOf(editor: Editor, view: ViewContents): string {
 
 /**
  * Whether a header's layout is out of date: something structural changed since it was laid out
- * whole, or a cluster outgrew its room. A header laid out before this was recorded never is.
+ * whole, or a cluster outgrew its room. A header laid out before this was recorded never is, and
+ * neither is one whose view has nothing left to lay out (its tree deleted, here or on another board).
  */
 export function layoutIsStale(editor: Editor, header: TreeShape): boolean {
 	const was = header.meta[LAYOUT_OF]
 	if (typeof was !== 'string') return false
-	return header.meta[LAYOUT_STALE] === true || was !== structureOf(editor, contentsOf(editor, header))
+	const view = contentsOf(editor, header)
+	if (!view.skills.size) return false
+	return header.meta[LAYOUT_STALE] === true || was !== structureOf(editor, view)
 }
 
 const staleByBoard = new WeakMap<Editor, Atom<TLShapeId[]>>()

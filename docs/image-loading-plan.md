@@ -4,7 +4,8 @@ PLAN-32. Pictures on a board and the previews on the home screen's cards should 
 small blurred version of themselves, then sharpen when the full picture has loaded, the way Next.js
 `<Image placeholder="blur">` does it. Pictures near the screen should load before they are needed.
 
-This is a plan, not built yet. The decisions at the end need an answer first.
+Decisions agreed with the user on 2026-10-26: ThumbHash; extension pictures only fade in; existing
+boards get ThumbHashes written into them (a server backup is taken). Phase 1 is built.
 
 ## How it works today
 
@@ -53,16 +54,20 @@ most.
 
 **One component draws both.** A small `<BlurUpImage>` in canvas-editor takes the full URL and the
 ThumbHash. It shows the decoded ThumbHash as a plain `<img>` at once, loads the full picture, waits for
-`img.decode()`, and fades it in over 200 ms (no fade under reduced motion). The blur is baked into the
+`img.decode()`, and swaps the `src`, as Next.js does. A picture with no ThumbHash fades in over 200 ms
+instead (no fade under reduced motion). A crossfade between the two would need a second element or a
+background image under every picture, which the GPU layer can't draw. The blur is baked into the
 ThumbHash image, so there is no CSS `filter`, which the GPU layer refuses (`Unsupported('effect')`).
-The image shape, markdown images and item images all use it.
+The GPU layer re-reads a shape when anything inside its element changes, so the swap and the end of
+the fade (its class coming off) both give it a fresh snapshot. The image shape, markdown images and
+item images all use it.
 
 ## Phases
 
 Each phase ends with its specs run alone and a check in the app on a throttled network. Stop and report
 after each.
 
-### Phase 1: blur-up for new pictures
+### Phase 1: blur-up for new pictures (built)
 
 - `assetStore.upload` encodes a ThumbHash from the downscaled bitmap (drawn at ≤100 px, which it
   already has in hand) and returns it as `meta.thumbhash`. SVG and GIF get none.
@@ -71,9 +76,10 @@ after each.
 - `<BlurUpImage>` in the image shape, `MarkdownView` and `ItemNodeComponent`.
 - Check the GPU layer: its atlas is keyed by URL, so the swap from blur to full picture must produce a
   new snapshot rather than keep the blurred one. The fade must not leave the snapshot taken mid-fade.
-- Tests: a unit test that an upload returns a ThumbHash of the right aspect ratio; an e2e spec that
-  holds `/api/assets/*` back, opens a server board on a fresh browser context, sees the blur, releases
-  the request and sees the full picture.
+- Remove background replaces the ThumbHash with the cut-out's own.
+- Tests: `assetStore.test.ts` checks that an upload returns the ThumbHash in `meta`. `assets.spec.ts`
+  imports a picture, deletes its blob, reloads, and sees the blur at the picture's proportions. The
+  e2e suite has no server, so the server-board case was not tested end to end.
 
 ### Phase 2: existing pictures
 

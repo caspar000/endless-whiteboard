@@ -608,6 +608,13 @@ shapes on screen, in reading order and in at most sixteen waves (`canvas/boardEn
 opacity and `translate` animate: a shape is placed by its inline `transform`, and a card lifts on hover
 with one. Reduced motion sets the stagger to zero along with every duration.
 
+**A picture shows blurred until its bytes have arrived.** Each upload keeps a ThumbHash of the picture
+(about 35 characters) in the asset record's `meta.thumbhash`, so it travels with the board. `BlurUpImage`
+(canvas-editor) shows it at once and swaps to the picture once that has decoded; a picture with no
+ThumbHash fades in instead. The blur is in the placeholder image, never a CSS `filter`, because the GPU
+layer can't draw filters. Replacing a picture's bytes (remove background) has to replace its ThumbHash too.
+See docs/image-loading-plan.md.
+
 **Board thumbnails are drawn while you are idle, never on the way out of a board.** An export of a
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn

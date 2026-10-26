@@ -48,6 +48,7 @@ import { readAuthorship } from './authorship'
 import { ago, personName } from './boardPeople'
 import { hashFromAssetSrc, assetSrcForHash, isManagedAssetSrc } from '../persistence/assetStore'
 import { sha256Hex } from '../persistence/hash'
+import { thumbHashOfBlob } from '../persistence/downscale'
 import {
 	removeImageBackground,
 	type RemoveBackgroundResult,
@@ -550,6 +551,8 @@ function RemoveBackgroundButton({ shapeId }: { shapeId: TLImageShape['id'] }) {
 
 			const hash = await sha256Hex(blob)
 			await platform.blobs.put(hash, blob)
+			// The cut-out's own placeholder: the old one would show the background that was removed.
+			const thumbhash = await thumbHashOfBlob(blob)
 
 			const shape = editor.getShape<TLImageShape>(shapeId)
 			const previous = shape?.props.assetId ? editor.getAsset(shape.props.assetId) : undefined
@@ -558,6 +561,7 @@ function RemoveBackgroundButton({ shapeId }: { shapeId: TLImageShape['id'] }) {
 			const asset: TLImageAsset = {
 				...previous,
 				id: AssetRecordType.createId(),
+				meta: withThumbHash(previous.meta, thumbhash),
 				props: {
 					...previous.props,
 					src: assetSrcForHash(hash),
@@ -988,4 +992,10 @@ function AltTextEditor({ shapeId, onClose }: { shapeId: TLShapeId; onClose: () =
 			</TldrawUiToolbarButton>
 		</div>
 	)
+}
+
+/** `meta` with its placeholder replaced by `thumbhash`, or dropped when there is none. */
+function withThumbHash(meta: TLImageAsset['meta'], thumbhash: string | undefined): TLImageAsset['meta'] {
+	const { thumbhash: _old, ...rest } = meta
+	return thumbhash ? { ...rest, thumbhash } : rest
 }

@@ -90,6 +90,7 @@ export {
 	OptionalErrorBoundary,
 	type TLErrorBoundaryProps,
 } from './lib/components/ErrorBoundary'
+export { BlurUpImage } from './lib/components/BlurUpImage'
 export { HTMLContainer, type HTMLContainerProps } from './lib/components/HTMLContainer'
 export { PositionedOnCanvas } from './lib/components/PositionedOnCanvas'
 export { SVGContainer, type SVGContainerProps } from './lib/components/SVGContainer'
@@ -438,6 +439,7 @@ export { WeakMapCache } from './lib/utils/WeakMapCache'
 export { dataUrlToFile } from './lib/utils/assets'
 export { getSvgAsDataUrl, getSvgAsImage } from './lib/utils/export'
 export { sanitizeSvg } from './lib/utils/sanitizeSvg'
+export { encodeThumbHash, getAssetPlaceholderUrl, thumbHashUrl } from './lib/utils/thumbhash'
 export { SmartTypography } from './lib/utils/smartTypography'
 export {
 	exportLabelFromDom,

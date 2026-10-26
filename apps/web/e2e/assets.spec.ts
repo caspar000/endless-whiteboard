@@ -257,6 +257,51 @@ test.describe('asset store', () => {
 			.toBe(true)
 	})
 
+	test('a picture whose bytes have not arrived shows its blurred placeholder', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Blur')
+		await openBoard(page, 'Blur')
+
+		await importGeneratedImage(page)
+		await expect(imageShapes(page)).toHaveCount(1)
+		// The upload keeps a ThumbHash in the asset's meta (docs/image-loading-plan.md).
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const editor = (window as unknown as { editor: { getAssets(): { meta: { thumbhash?: unknown } }[] } }).editor
+					return editor.getAssets()[0]?.meta.thumbhash
+				})
+			)
+			.toMatch(/^[A-Za-z0-9+/]+=*$/)
+		await expect(imageShapes(page).first()).toHaveAttribute('src', /^blob:/)
+		await waitForPersistedShapes(page, 1)
+
+		// The bytes gone, as on a device the board's pictures haven't reached yet: the blur stands in,
+		// at the picture's own proportions (3000×2000).
+		const [hash] = (await readBlobStore(page)).hashes
+		await page.evaluate(async (key) => {
+			const db = await new Promise<IDBDatabase>((resolve) => {
+				const req = indexedDB.open('lifeboard')
+				req.onsuccess = () => resolve(req.result)
+			})
+			await new Promise<void>((resolve) => {
+				const tx = db.transaction('blobs', 'readwrite')
+				tx.objectStore('blobs').delete(key)
+				tx.oncomplete = () => resolve()
+			})
+			db.close()
+		}, hash!)
+		await page.reload()
+		const img = imageShapes(page).first()
+		await expect(img).toHaveAttribute('src', /^data:image\/png/)
+		const ratio = await img.evaluate(async (el: HTMLImageElement) => {
+			await el.decode()
+			return el.naturalWidth / el.naturalHeight
+		})
+		expect(ratio).toBeCloseTo(1.5, 0)
+	})
+
 	test('deleting a board reclaims only the blobs nothing else references', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)

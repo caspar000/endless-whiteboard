@@ -2,6 +2,7 @@
 import {
 	useImageOrVideoAsset,
 	BaseBoxShapeUtil,
+	BlurUpImage,
 	HTMLContainer,
 	TLImageShape,
 	TLOnDoubleClickHandler,
@@ -106,7 +107,7 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 
 		const asset = shape.props.assetId ? this.editor.getAsset(shape.props.assetId) : undefined
 		// Where to load it from: the store's asset store decides (docs/fork-parity.md E10).
-		const { url } = useImageOrVideoAsset({ assetId: shape.props.assetId, width: shape.props.w })
+		const { url, placeholder } = useImageOrVideoAsset({ assetId: shape.props.assetId, width: shape.props.w })
 
 		if (asset?.type === 'bookmark') {
 			throw Error("Bookmark assets can't be rendered as images")
@@ -167,20 +168,19 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 					style={{ overflow: 'hidden', width: shape.props.w, height: shape.props.h }}
 				>
 					<div className="tl-image-container" style={containerStyle}>
-						{url ? (
-							// An <img> rather than upstream's background image, so the alt text reaches
-							// assistive tech, as in today's tldraw.
-							<img
-								className="tl-image"
-								src={!shape.props.playing || reduceMotion ? staticFrameSrc : url}
-								alt={shape.props.altText}
-								style={{
-									// Flipped images (stored since tldraw 2.4) draw mirrored.
-									transform: `scale(${shape.props.flipX ? -1 : 1}, ${shape.props.flipY ? -1 : 1})`,
-								}}
-								draggable={false}
-							/>
-						) : null}
+						{/* An <img> rather than upstream's background image, so the alt text reaches
+						    assistive tech, as in today's tldraw. Blurred until the picture has loaded. */}
+						<BlurUpImage
+							className="tl-image"
+							src={(!shape.props.playing || reduceMotion ? staticFrameSrc : url) || null}
+							placeholder={placeholder}
+							alt={shape.props.altText}
+							style={{
+								// Flipped images (stored since tldraw 2.4) draw mirrored.
+								transform: `scale(${shape.props.flipX ? -1 : 1}, ${shape.props.flipY ? -1 : 1})`,
+							}}
+							draggable={false}
+						/>
 						{asset?.props.isAnimated && !shape.props.playing && (
 							<div className="tl-image__tg">GIF</div>
 						)}

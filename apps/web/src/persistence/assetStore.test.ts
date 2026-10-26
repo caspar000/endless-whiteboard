@@ -12,7 +12,7 @@ import type { TLAsset } from '@lifeboard/canvas'
 // Stubbed to pass the bytes through, because what's under test is the in-flight *bookkeeping*, not
 // the resize — `downscale.test.ts` covers that.
 vi.mock('./downscale', () => ({
-	downscaleImage: async (file: File) => ({ blob: file }),
+	downscaleImage: async (file: File) => ({ blob: file, thumbhash: file.type === 'image/png' ? 'MwgGBICXd3iHiIeHeGh3h3h4' : undefined }),
 }))
 
 /** A blob store whose writes hang until released, so an upload can be held mid-flight on purpose. */
@@ -139,5 +139,22 @@ describe('asset upload tracking', () => {
 		const hash = puts[0]![0]
 		expect(hash).toMatch(/^[0-9a-f]{64}$/)
 		expect(result.src).toBe(assetSrcForHash(hash))
+	})
+})
+
+describe('asset upload placeholder', () => {
+	it("keeps the picture's ThumbHash in the asset's meta", async () => {
+		const blob = blockingBlobStore()
+		blob.release()
+		const store = createLifeboardAssetStore(blob.store)
+		expect((await store.upload!(asset, file())).meta).toEqual({ thumbhash: 'MwgGBICXd3iHiIeHeGh3h3h4' })
+	})
+
+	it('keeps no meta for a picture with no placeholder', async () => {
+		const blob = blockingBlobStore()
+		blob.release()
+		const store = createLifeboardAssetStore(blob.store)
+		const gif = new File([new Uint8Array([1])], 'a.gif', { type: 'image/gif' })
+		expect((await store.upload!(asset, gif)).meta).toEqual({})
 	})
 })

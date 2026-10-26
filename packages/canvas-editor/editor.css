@@ -1498,6 +1498,17 @@ input,
 	}
 }
 
+/* A picture with no blurred placeholder fades in once decoded (BlurUpImage). */
+.tl-blur-up--fade {
+	animation: fade-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tl-blur-up--fade {
+		animation: none;
+	}
+}
+
 /* -------------------- FrameShape ------------------- */
 
 .tl-frame__body {

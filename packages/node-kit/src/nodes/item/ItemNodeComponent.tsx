@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react'
-import { stopEventPropagation, useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
+import { BlurUpImage, stopEventPropagation, useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
 import { fieldKeyLabel, formatFieldValue } from '../../fields'
 import { updateNodeProps, type NodeComponentProps } from '../../registry'
 import type { ItemNodeProps } from './definition'
@@ -9,9 +9,17 @@ import { NodeEditorPopover } from '../../NodeEditorPopover'
 function ItemImage({ assetId, width, alt }: { assetId: TLAssetId; width: number; alt: string }) {
 	// tldraw's own resolution hook: honours the custom TLAssetStore, skips work while the shape is
 	// off-screen, and picks a resolution appropriate to the current zoom.
-	const { url } = useImageOrVideoAsset({ assetId, width })
-	if (!url) return <div className="lb-item__image lb-item__image--loading" />
-	return <img className="lb-item__image" src={url} alt={alt} draggable={false} />
+	const { url, placeholder } = useImageOrVideoAsset({ assetId, width })
+	return (
+		<BlurUpImage
+			className="lb-item__image"
+			src={url}
+			placeholder={placeholder}
+			alt={alt}
+			draggable={false}
+			fallback={<div className="lb-item__image lb-item__image--loading" />}
+		/>
+	)
 }
 
 /**

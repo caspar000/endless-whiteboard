@@ -5,6 +5,8 @@
  * Re-encoding at import to ≤2048px WebP typically cuts it by 10-40×, which shows up directly as
  * faster board loads, lower memory, and far more headroom before hitting the storage quota.
  */
+import { encodeThumbHash } from '@lifeboard/canvas'
+
 export const MAX_EDGE = 2048
 export const WEBP_QUALITY = 0.8
 
@@ -28,6 +30,8 @@ export interface DownscaleResult {
 	height: number
 	/** True when we re-encoded; false when the original was returned untouched. */
 	changed: boolean
+	/** Its blurred placeholder (docs/image-loading-plan.md), for pictures that were decoded here. */
+	thumbhash?: string
 }
 
 /** Formats we can safely re-encode. SVG is vector (rasterising would lose quality); GIF may be
@@ -57,6 +61,7 @@ export async function downscaleImage(
 	}
 
 	try {
+		const thumbhash = encodeThumbHash(bitmap) ?? undefined
 		const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
 		const width = Math.max(1, Math.round(bitmap.width * scale))
 		const height = Math.max(1, Math.round(bitmap.height * scale))
@@ -65,7 +70,7 @@ export async function downscaleImage(
 		canvas.width = width
 		canvas.height = height
 		const ctx = canvas.getContext('2d')
-		if (!ctx) return { blob: file, width: bitmap.width, height: bitmap.height, changed: false }
+		if (!ctx) return { blob: file, width: bitmap.width, height: bitmap.height, changed: false, thumbhash }
 		ctx.drawImage(bitmap, 0, 0, width, height)
 
 		const encoded = await new Promise<Blob | null>((resolve) =>
@@ -75,10 +80,10 @@ export async function downscaleImage(
 		// Keep the original when re-encoding didn't help — true for already-optimised small images,
 		// where WebP can come out larger than the source.
 		if (!encoded || encoded.size >= file.size) {
-			return { blob: file, width: bitmap.width, height: bitmap.height, changed: false }
+			return { blob: file, width: bitmap.width, height: bitmap.height, changed: false, thumbhash }
 		}
 
-		return { blob: encoded, width, height, changed: true }
+		return { blob: encoded, width, height, changed: true, thumbhash }
 	} finally {
 		bitmap.close()
 	}
@@ -92,5 +97,19 @@ async function probeSize(file: Blob): Promise<{ width: number; height: number }>
 		return size
 	} catch {
 		return { width: 0, height: 0 }
+	}
+}
+
+/** The blurred placeholder of a picture already stored, or `undefined` if it doesn't decode. */
+export async function thumbHashOfBlob(blob: Blob): Promise<string | undefined> {
+	try {
+		const bitmap = await createImageBitmap(blob)
+		try {
+			return encodeThumbHash(bitmap) ?? undefined
+		} finally {
+			bitmap.close()
+		}
+	} catch {
+		return undefined
 	}
 }

@@ -1,6 +1,7 @@
 import { useValue } from '@tldraw/state-react'
 import type { TLAssetId, TLImageAsset, TLShapeId, TLVideoAsset } from '@tldraw/tlschema'
 import { useEffect, useState } from 'react'
+import { getAssetPlaceholderUrl } from '../utils/thumbhash'
 import { useEditor } from './useEditor'
 
 /**
@@ -8,7 +9,8 @@ import { useEditor } from './useEditor'
  *
  * `width` is how wide it is drawn, in page units; with the zoom it decides how large it is on screen,
  * so the store can pick a resolution. The URL is looked up again when that size crosses a power of
- * two, and when the asset record changes (an upload finishing, say).
+ * two, and when the asset record changes (an upload finishing, say). `placeholder` is the blurred
+ * copy kept with the asset, to show until the URL's picture has loaded (`BlurUpImage`).
  *
  * @public
  */
@@ -19,7 +21,7 @@ export function useImageOrVideoAsset({
 	assetId: TLAssetId | null
 	width?: number
 	shapeId?: TLShapeId
-}): { asset: TLImageAsset | TLVideoAsset | undefined; url: string | null } {
+}): { asset: TLImageAsset | TLVideoAsset | undefined; url: string | null; placeholder: string | null } {
 	const editor = useEditor()
 	const asset = useValue(
 		'asset',
@@ -56,5 +58,5 @@ export function useImageOrVideoAsset({
 		}
 	}, [editor, asset, steppedScreenScale])
 
-	return { asset, url }
+	return { asset, url, placeholder: getAssetPlaceholderUrl(asset) }
 }

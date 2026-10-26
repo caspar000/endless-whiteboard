@@ -5,7 +5,7 @@ import type { MoveJob } from '../boards/moveQueue'
 import { loadBoardThumbnailUrl, onThumbnailSaved, peekBoardThumbnailUrl } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import { serverPreviewVersion, serverThumbnailUrl } from '../server/serverVault'
-import { useResolvedTheme } from './useTheme'
+import { useResolvedTheme, type ResolvedTheme } from './useTheme'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
 
 /**
@@ -340,11 +340,26 @@ function BoardThumbnail({ board }: { board: BoardMeta }) {
 		void loadBoardThumbnailUrl(platform.kv, board.id, theme, board.updatedAt).then((url) => {
 			if (!cancelled) setLocal(url)
 		})
+		// The other theme's too, so switching theme shows it on the first frame.
+		void loadBoardThumbnailUrl(platform.kv, board.id, otherTheme(theme), board.updatedAt)
 		return () => {
 			cancelled = true
 		}
 		// `updatedAt` covers edits made in another tab; `revision` covers this tab's own captures.
 	}, [platform, board.id, board.updatedAt, revision, theme])
+
+	// A server board's picture in the other theme, fetched into the browser's cache once this one is up,
+	// so switching theme doesn't wait for the network.
+	const otherVersion = board.vault === 'server' ? serverPreviewVersion(board, otherTheme(theme)) : undefined
+	useEffect(() => {
+		if (otherVersion === undefined) return
+		const timer = setTimeout(() => {
+			const image = new Image()
+			image.fetchPriority = 'low'
+			image.src = serverThumbnailUrl(board.id, otherTheme(theme), otherVersion)
+		}, 1_000)
+		return () => clearTimeout(timer)
+	}, [board.id, theme, otherVersion])
 
 	const url = version !== undefined && unreachable !== version ? serverThumbnailUrl(board.id, theme, version) : local
 	if (!url) {
@@ -366,6 +381,8 @@ function BoardThumbnail({ board }: { board: BoardMeta }) {
 		/>
 	)
 }
+
+const otherTheme = (theme: ResolvedTheme): ResolvedTheme => (theme === 'dark' ? 'light' : 'dark')
 
 function initials(name: string): string {
 	const words = name.trim().split(/\s+/).filter(Boolean)

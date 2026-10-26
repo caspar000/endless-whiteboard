@@ -1431,7 +1431,8 @@ test.describe('home screen', () => {
 		await expect
 			.poll(async () => card.locator('.lb-card__image').count(), { timeout: 15_000 })
 			.toBe(1)
-		await expect.poll(() => countThumbnails(page)).toBe(1)
+		// One in each theme.
+		await expect.poll(() => countThumbnails(page)).toBe(2)
 
 		await card.hover()
 		await card.getByRole('button', { name: 'Delete', exact: true }).click()
@@ -1490,15 +1491,13 @@ test.describe('theme', () => {
 		await expect(html).toHaveAttribute('data-theme', 'light')
 	})
 
-	test('switching theme redraws every preview in the new theme', async ({
-		page,
-	}) => {
+	test('a preview is drawn in both themes at once, so switching theme draws nothing', async ({ page }) => {
 		// Pinned so the switch below is a real change of the *resolved* theme: Playwright emulates a
 		// light OS, so the default 'system' already resolves to light.
 		await page.emulateMedia({ colorScheme: 'light' })
 		await gotoFresh(page)
-		// Leaves the demo board with a preview and its tab closed, so its editor is *not* mounted —
-		// which is exactly the board that cannot be re-exported.
+		// Leaves the demo board with its tab closed, so its editor is *not* mounted: the home screen
+		// draws it off screen.
 		await skipFirstRunDemo(page)
 		await createBoard(page, 'Still open')
 
@@ -1507,23 +1506,62 @@ test.describe('theme', () => {
 		await page.locator(NOTE_EDITOR).fill('Something to preview')
 		await backToList(page)
 
-		await expect.poll(() => thumbnailSize(page, 'Still open', 'light')).toBeGreaterThan(2_000)
-		await expect.poll(() => thumbnailSize(page, 'Home office shopping', 'light')).toBeGreaterThan(2_000)
+		// 'Still open' has a mounted (though hidden) editor, so it is drawn from that. Without
+		// `withExportableHost` this would silently be blank paper, which is why the size floor matters.
+		for (const name of ['Still open', 'Home office shopping']) {
+			for (const theme of ['light', 'dark'] as const) {
+				await expect.poll(() => thumbnailSize(page, name, theme), { timeout: 15_000 }).toBeGreaterThan(2_000)
+			}
+		}
+		// The dark one is dark all through, though the app was light while it was drawn: the paper in
+		// its corner and the note card in its middle.
+		const pixels = (theme: 'light' | 'dark') =>
+			page.evaluate(
+				async ([name, theme]) => {
+					const db = await new Promise<IDBDatabase>((resolve) => {
+						const req = indexedDB.open('lifeboard-kv')
+						req.onsuccess = () => resolve(req.result)
+					})
+					const get = (key: string) =>
+						new Promise<unknown>((resolve) => {
+							const q = db.transaction('kv', 'readonly').objectStore('kv').get(key)
+							q.onsuccess = () => resolve(q.result)
+						})
+					const boards = (await get('boards')) as { id: string; name: string }[]
+					const stored = (await get(`thumb:${theme}:${boards.find((b) => b.name === name)!.id}`)) as {
+						type: string
+						bytes: ArrayBuffer
+					}
+					db.close()
+					const bitmap = await createImageBitmap(new Blob([stored.bytes], { type: stored.type }))
+					const canvas = document.createElement('canvas')
+					canvas.width = bitmap.width
+					canvas.height = bitmap.height
+					const context = canvas.getContext('2d')!
+					context.drawImage(bitmap, 0, 0)
+					const at = (x: number, y: number) => {
+						const [r = 0, g = 0, b = 0] = context.getImageData(x, y, 1, 1).data
+						return (r + g + b) / 3
+					}
+					return { corner: at(2, 2), middle: at(Math.floor(bitmap.width / 2), Math.floor(bitmap.height / 2)) }
+				},
+				['Still open', theme] as const
+			)
+		const light = await pixels('light')
+		const dark = await pixels('dark')
+		expect(light.corner).toBeGreaterThan(200)
+		expect(light.middle).toBeGreaterThan(200)
+		expect(dark.corner).toBeLessThan(60)
+		expect(dark.middle).toBeLessThan(60)
 
+		const before = await thumbnailBytes(page)
 		await openSettings(page, 'Appearance')
 		await page.getByRole('button', { name: 'Dark', exact: true }).click()
-
-		// 'Still open' has a mounted (though hidden) editor, so it is re-exported from that. Without
-		// `withExportableHost` this would silently be blank paper, which is why the size floor matters.
-		await expect.poll(() => thumbnailSize(page, 'Still open', 'dark')).toBeGreaterThan(2_000)
-		// The demo board has no editor, so the home screen draws it off screen.
 		await backToList(page)
-		await expect
-			.poll(() => thumbnailSize(page, 'Home office shopping', 'dark'), { timeout: 15_000 })
-			.toBeGreaterThan(2_000)
-		// The light ones are out of date from here on, so they are gone.
-		expect(await thumbnailSize(page, 'Still open', 'light')).toBe(null)
-		expect(await thumbnailSize(page, 'Home office shopping', 'light')).toBe(null)
+		// The cards show their dark pictures straight away, and nothing is drawn again.
+		await expect(page.locator('.lb-card__image')).toHaveCount(2)
+		await page.waitForTimeout(3_000)
+		expect(await thumbnailBytes(page)).toEqual(before)
 	})
 
 	test('a board drawn off screen follows the app theme, not the canvas’s last one', async ({ page }) => {

@@ -13,8 +13,8 @@ import type { BoardMeta } from '../boards/boardIndex'
 import { moveFor } from '../boards/moveQueue'
 import { createLifeboardAssetStore } from '../persistence/assetStore'
 import { takePendingRestore } from '../persistence/pendingRestore'
-import { loadTheme, useResolvedTheme, type ResolvedTheme } from '../app/useTheme'
-import { forgetUnthemedThumbnails, isStoredThumbnailCurrent, saveBoardThumbnail } from '../persistence/thumbnails'
+import { loadTheme } from '../app/useTheme'
+import { areStoredThumbnailsCurrent, forgetUnthemedThumbnails, saveBoardThumbnail, THEMES } from '../persistence/thumbnails'
 import { readBoardSnapshotResult } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
@@ -24,20 +24,19 @@ import { canReadSnapshot } from './snapshotVersion'
 import { getShapeVisibility } from './relationVisibility'
 
 /**
- * Draws previews for boards that have none, or one older than the board's last edit, so every card on
- * the home screen has a current picture of its board without the board being opened first: boards
- * moved from another device, imported, made by an agent, or with no preview in the theme on screen.
+ * Draws previews for boards that have none, or one older than the board's last edit, in either theme,
+ * so every card on the home screen has a current picture of its board without the board being opened
+ * first: boards moved from another device, imported, made by an agent, or drawn before both themes were.
  *
  * One board at a time, in a hidden editor off screen that never takes focus: the board's own node
  * types, visibility rules and files, so the picture is what opening it would show. The preview is
  * saved like any other (persistence/thumbnails.ts), and a server board's goes on to the server for
  * every other device (app/App.tsx). A server board's preview drawn before its last edit, likely on
  * another device, is drawn again once that device has had time to (`LEAVE_TO_EDITOR_MS`). Each board is
- * tried once a session per theme and change; an empty one keeps its placeholder.
+ * tried once a session per change; an empty one keeps its placeholder.
  */
 export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) {
 	const platform = usePlatform()
-	const theme = useResolvedTheme()
 	const [current, setCurrent] = useState<{ board: BoardMeta; snapshot: TLStoreSnapshot } | null>(null)
 	const next = useCallback(() => setCurrent(null), [])
 
@@ -51,13 +50,13 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 		void (async () => {
 			for (const board of boards) {
 				// A moving board is between two homes; it gets its turn once it arrives.
-				const attempt = `${theme}:${board.id}:${board.updatedAt}`
+				const attempt = `${board.id}:${board.updatedAt}`
 				if (tried.has(attempt) || moveFor(board.id)) continue
 				// A board counts as tried only once a pass still current has decided about it. The list
 				// changes on every refresh and each change starts a new pass; one overtaken mid-board
 				// leaves that board to the pass that overtook it.
 				try {
-					const verdict = await shouldDraw(platform, board, theme)
+					const verdict = await shouldDraw(platform, board)
 					if (cancelled) return
 					// Not tried yet: a later pass looks again.
 					if (verdict === 'later') continue
@@ -78,7 +77,7 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 		return () => {
 			cancelled = true
 		}
-	}, [boards, current, platform, theme])
+	}, [boards, current, platform])
 
 	if (!current) return null
 	return (
@@ -92,7 +91,7 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 }
 
 /**
- * Boards already decided about, by theme and the board's `updatedAt`, for the whole session: the home
+ * Boards already decided about, by the board's `updatedAt`, for the whole session: the home
  * screen unmounts whenever a board opens, and checking every board again on each return cost a request
  * per server board. A board that changes since gets a new key, and is looked at again.
  */
@@ -105,13 +104,14 @@ const tried = new Set<string>()
 const LEAVE_TO_EDITOR_MS = 5 * 60_000
 
 /**
- * Whether to draw the board's preview now, `later`, or not at all (`no`, it is current). A server
- * board's list entry says when its preview was drawn, so this asks nothing of the server.
+ * Whether to draw the board's previews now, `later`, or not at all (`no`, both themes' are current). A
+ * server board's list entry says when its previews were drawn, so this asks nothing of the server.
  */
-async function shouldDraw(platform: PlatformAdapter, board: BoardMeta, theme: ResolvedTheme): Promise<'draw' | 'later' | 'no'> {
-	if (await isStoredThumbnailCurrent(platform.kv, board, theme)) return 'no'
+async function shouldDraw(platform: PlatformAdapter, board: BoardMeta): Promise<'draw' | 'later' | 'no'> {
+	if (await areStoredThumbnailsCurrent(platform.kv, board)) return 'no'
 	const recent = Date.now() - board.updatedAt < LEAVE_TO_EDITOR_MS
-	return board.vault === 'server' && recent && serverPreviewVersion(board, theme) !== undefined ? 'later' : 'draw'
+	const pictured = THEMES.every((theme) => serverPreviewVersion(board, theme) !== undefined)
+	return board.vault === 'server' && recent && pictured ? 'later' : 'draw'
 }
 
 /** The board's records as they are stored: on the server, on disk, or still waiting as an import. */

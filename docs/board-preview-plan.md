@@ -120,3 +120,14 @@ The biggest win, and it doesn't change when previews are drawn.
   now only held-back edits do. With a second browser on the home screen while the first was still
   editing a board, the second drew nothing; the first drew it on leaving. One-off cost: local previews
   stored before this have no drawn-at time, so each is redrawn once in the background.
+- **Phase 3.** Every drawing now stores light and dark. The second theme needed two things the plan
+  didn't foresee: the fork ignores `toImage`'s `darkMode` (shapes read `editor.user.getIsDarkMode()`,
+  which every editor shares), so `UserPreferencesManager` gained a per-editor `setDarkModeOverride`; and
+  node cards take their colours from `<html data-theme>`, so the token blocks in styles.css also apply
+  to `[data-lb-theme]`, set on the hidden board's container while it is drawn (the one rule that
+  picked a colour by `:root[data-theme]`, `.lb-chip`, moved onto tokens). The redraw-on-theme-switch
+  pass is gone. A card also warms the other theme's picture (the browser cache for a server board, the
+  object-URL cache for a local one), so even the first switch shows previews without waiting. Checked:
+  a dark preview drawn while the app is light has dark paper and dark node cards; switching theme
+  drew nothing and downloaded only a preview changed seconds before. One-off cost: every board's
+  missing theme is drawn once in the background.

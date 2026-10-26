@@ -57,3 +57,13 @@ export function retireShapes(sequenceId: string, retired: (type: string) => bool
 	})
 	return { id, migrations }
 }
+
+/**
+ * A retired shape type's own migration sequence, kept with nothing in it. Every board saved while the
+ * type existed lists its sequence, and sync refuses a board that lists one the build doesn't have: it
+ * reads as saved by a newer build. Kept at the version boards last saw (an empty sequence is 0), so
+ * only retire a type whose sequence was still empty, or keep its migrations instead.
+ */
+export function retiredShapeSequence(type: string): MigrationSequence {
+	return createMigrationSequence({ sequenceId: `com.tldraw.shape.${type}`, sequence: [] })
+}

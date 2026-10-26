@@ -134,7 +134,7 @@ export async function moveBoardToDevice(
 		if (Object.keys(snapshot.store).length) await setPendingRestore(platform.kv, board.id, snapshot)
 		const theme = getResolvedTheme()
 		const thumbnail = await fetchServerThumbnail(board.id, theme)
-		if (thumbnail) await storeBoardThumbnail(platform.kv, board.id, theme, thumbnail.blob)
+		if (thumbnail) await storeBoardThumbnail(platform.kv, board.id, theme, thumbnail)
 		await addBoard(platform.kv, {
 			id: board.id,
 			name: board.name,

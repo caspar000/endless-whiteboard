@@ -28,6 +28,11 @@ export interface BoardMeta {
 	role?: 'member' | 'edit' | 'view'
 	/** The vault a shared board is from. */
 	sharedBy?: string
+	/**
+	 * A server board's previews, by theme: when each was drawn, on the server's clock. That time is also
+	 * the preview's version (`serverPreviewVersion`).
+	 */
+	previews?: Partial<Record<'light' | 'dark', number>>
 }
 
 /** A server board shared with this account from another vault: it can follow it, not rename or move it. */

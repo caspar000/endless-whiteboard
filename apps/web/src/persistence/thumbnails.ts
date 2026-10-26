@@ -135,7 +135,7 @@ export async function saveBoardThumbnail(
 		if (shapeIds.length === 0) {
 			// An empty board should show the empty-state card, not a blank image.
 			await deleteBoardThumbnail(kv, boardId)
-			notify(boardId)
+			notifyThumbnailSaved(boardId)
 			return
 		}
 
@@ -196,6 +196,44 @@ export async function loadBoardThumbnail(
 	return blob instanceof Blob ? blob : undefined
 }
 
+/**
+ * Object URLs of the previews this tab has read or drawn, by KV key, with the board's `updatedAt` each
+ * was read for. They outlive the home screen, which unmounts whenever a board opens, so going back to
+ * it shows every preview on its first frame instead of the placeholder while IndexedDB answers. Kept
+ * for the session: one small image per board, the same ones the grid shows anyway.
+ */
+const urls = new Map<string, { url: string; readFor: number }>()
+
+function cacheUrl(storedKey: string, blob: Blob | undefined, readFor: number): void {
+	const old = urls.get(storedKey)
+	// An `<img>` that has already loaded the old address keeps its picture after the revoke.
+	if (old) URL.revokeObjectURL(old.url)
+	if (blob) urls.set(storedKey, { url: URL.createObjectURL(blob), readFor })
+	else urls.delete(storedKey)
+}
+
+/** The preview this tab last saw for the board, at once, or `undefined` if it has seen none. */
+export function peekBoardThumbnailUrl(boardId: string, theme: ResolvedTheme): string | undefined {
+	return urls.get(key(boardId, theme))?.url
+}
+
+/**
+ * The board's stored preview as an object URL. Read again only when the board has changed since it was
+ * last read (`updatedAt`), which is how a preview drawn in another tab reaches this one.
+ */
+export async function loadBoardThumbnailUrl(
+	kv: KvStore,
+	boardId: string,
+	theme: ResolvedTheme,
+	updatedAt: number
+): Promise<string | undefined> {
+	const storedKey = key(boardId, theme)
+	const cached = urls.get(storedKey)
+	if (cached && cached.readFor >= updatedAt) return cached.url
+	cacheUrl(storedKey, await loadBoardThumbnail(kv, boardId, theme), updatedAt)
+	return urls.get(storedKey)?.url
+}
+
 /** Keeps a board's latest preview, drawn here or by another device, and drops the other theme's. */
 export async function storeBoardThumbnail(
 	kv: KvStore,
@@ -204,12 +242,20 @@ export async function storeBoardThumbnail(
 	blob: Blob
 ): Promise<void> {
 	await kv.set(key(boardId, theme), blob)
-	for (const other of THEMES) if (other !== theme) await kv.delete(key(boardId, other))
-	notify(boardId)
+	cacheUrl(key(boardId, theme), blob, Date.now())
+	for (const other of THEMES) {
+		if (other === theme) continue
+		await kv.delete(key(boardId, other))
+		cacheUrl(key(boardId, other), undefined, 0)
+	}
+	notifyThumbnailSaved(boardId)
 }
 
 export async function deleteBoardThumbnail(kv: KvStore, boardId: string): Promise<void> {
-	for (const theme of THEMES) await kv.delete(key(boardId, theme))
+	for (const theme of THEMES) {
+		await kv.delete(key(boardId, theme))
+		cacheUrl(key(boardId, theme), undefined, 0)
+	}
 }
 
 /** Drops previews stored before they had a theme (`thumb:<id>`): nothing says which theme they are in. */
@@ -220,6 +266,7 @@ export async function forgetUnthemedThumbnails(kv: KvStore): Promise<void> {
 	}
 }
 
-function notify(boardId: string): void {
+/** Also called once a server board's new preview is on the server, so its card asks for the new version. */
+export function notifyThumbnailSaved(boardId: string): void {
 	for (const listener of listeners) listener(boardId)
 }

@@ -18,7 +18,7 @@ import { forgetUnthemedThumbnails, loadBoardThumbnail, saveBoardThumbnail } from
 import { readBoardSnapshotResult } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
-import { fetchServerAsset, fetchServerThumbnail, readServerBoard } from '../server/serverVault'
+import { fetchServerAsset, readServerBoard, serverPreviewVersion } from '../server/serverVault'
 import { buildBoardShapeUtils, buildStoreShapeUtils } from './boardShapeUtils'
 import { canReadSnapshot } from './snapshotVersion'
 import { getShapeVisibility } from './relationVisibility'
@@ -32,14 +32,13 @@ import { getShapeVisibility } from './relationVisibility'
  * types, visibility rules and files, so the picture is what opening it would show. The preview is
  * saved like any other (persistence/thumbnails.ts), and a server board's goes on to the server for
  * every other device (app/App.tsx). A server board's preview drawn before its last edit, likely on
- * another device, is drawn again. Each board is tried once per visit and theme; an empty one keeps its
- * placeholder.
+ * another device, is drawn again. Each board is tried once a session per theme and change; an empty one
+ * keeps its placeholder.
  */
 export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) {
 	const platform = usePlatform()
 	const theme = useResolvedTheme()
 	const [current, setCurrent] = useState<{ board: BoardMeta; snapshot: TLStoreSnapshot } | null>(null)
-	const tried = useRef(new Set<string>())
 	const next = useCallback(() => setCurrent(null), [])
 
 	useEffect(() => {
@@ -52,8 +51,8 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 		void (async () => {
 			for (const board of boards) {
 				// A moving board is between two homes; it gets its turn once it arrives.
-				const attempt = `${theme}:${board.id}`
-				if (tried.current.has(attempt) || moveFor(board.id)) continue
+				const attempt = `${theme}:${board.id}:${board.updatedAt}`
+				if (tried.has(attempt) || moveFor(board.id)) continue
 				// A board counts as tried only once a pass still current has decided about it. The list
 				// changes on every refresh and each change starts a new pass; one overtaken mid-board
 				// leaves that board to the pass that overtook it.
@@ -62,14 +61,14 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 					if (cancelled) return
 					const snapshot = preview ? undefined : await readBoard(platform, board)
 					if (cancelled) return
-					tried.current.add(attempt)
+					tried.add(attempt)
 					if (!snapshot || Object.keys(snapshot.store).length === 0) continue
 					// From a newer version than this tab runs: its preview waits for that version.
 					if (!canReadSnapshot(snapshot, buildStoreShapeUtils(buildBoardShapeUtils()))) continue
 					setCurrent({ board, snapshot })
 					return
 				} catch (error) {
-					tried.current.add(attempt)
+					tried.add(attempt)
 					console.warn(`Lifeboard: could not draw a preview of “${board.name}”`, error)
 				}
 			}
@@ -90,10 +89,17 @@ export function ThumbnailBackfill({ boards }: { boards: readonly BoardMeta[] }) 
 	)
 }
 
+/**
+ * Boards already decided about, by theme and the board's `updatedAt`, for the whole session: the home
+ * screen unmounts whenever a board opens, and checking every board again on each return cost a request
+ * per server board. A board that changes since gets a new key, and is looked at again.
+ */
+const tried = new Set<string>()
+
+/** A server board's list entry says when its preview was drawn, so this asks nothing of the server. */
 async function hasPreview(platform: PlatformAdapter, board: BoardMeta, theme: ResolvedTheme): Promise<boolean> {
 	if (board.vault !== 'server') return (await loadBoardThumbnail(platform.kv, board.id, theme)) !== undefined
-	const preview = await fetchServerThumbnail(board.id, theme)
-	return preview !== null && preview.drawnAt >= board.updatedAt
+	return (serverPreviewVersion(board, theme) ?? -Infinity) >= board.updatedAt
 }
 
 /** The board's records as they are stored: on the server, on disk, or still waiting as an import. */

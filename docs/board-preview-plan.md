@@ -4,7 +4,8 @@ PLAN-21. The previews on the home screen are slow to appear and sometimes look r
 The goal: a preview is drawn in the background after a board with changes is closed, kept with the
 board in both themes, and shown immediately on every visit and after a theme switch.
 
-Nothing here is built yet. This is the investigation and a proposed plan, waiting for the user's go.
+Agreed with the user on 2026-10-26: build the three phases in order, verifying each in the app.
+Previews that are out of date are shown until redrawn.
 
 ## How it works today
 
@@ -60,10 +61,10 @@ Three phases, each shippable on its own. Stop and report after each.
 
 The biggest win, and it doesn't change when previews are drawn.
 
-- **The board list says which preview is current.** The server keeps each preview's drawn-at time per
-  theme in the `boards` table (`preview_light_at`, `preview_dark_at`), set when a preview is uploaded,
-  and returns them with the board list. The images stay as files: they are what the browser
-  downloads, and keeping megabytes of WebP out of SQLite keeps the database and its backups small.
+- **The board list says which preview is current.** The list returns each preview's drawn-at time per
+  theme. The server already had it, as the image file's mtime, so the images stay as files and the
+  database is unchanged. (The first draft put the times in new `boards` columns; reading the mtime
+  does the same with no schema change and no backup needed.)
 - **Versioned, cacheable image URLs.** A card asks for
   `/api/boards/<id>/thumbnail/<theme>?v=<drawnAt>`, which the server answers with
   `cache-control: private, max-age=31536000, immutable`. A new drawing is a new URL, so the browser's
@@ -105,14 +106,9 @@ The biggest win, and it doesn't change when previews are drawn.
   block for both in a row; roughly twice the preview storage (tens of KB per board).
 - Existing boards with one theme get the other from the backfill once, as they do today.
 
-## Questions for the user
+## Results
 
-1. **Where the server keeps the images.** Recommended: files on disk as now, with the drawn-at times in
-   the database. Putting the bytes in SQLite works too, but makes the database and its backups larger
-   and doesn't make anything faster for the user.
-2. **A stale preview from another device:** show it and redraw it later (recommended), or show the
-   initials until a fresh one is drawn?
-3. **Order.** Phase 1 alone fixes most of the waiting. Build all three, or stop after phase 1 and look?
-
-Phase 1 changes what the server stores (two new columns), so it needs a server backup before it is
-deployed.
+- **Phase 1.** Measured with 13 server boards: going back to the home screen showed every preview
+  within ~60 ms of leaving a board, and unchanged previews caused no network requests. The only
+  requests left were the opened board's redraw (an upload and one download of the new version),
+  which phase 2 removes. An edited board's card switches to its new preview without a reload.

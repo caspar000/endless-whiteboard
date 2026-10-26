@@ -6,7 +6,7 @@ import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../bo
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { isThumbnailStale, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import { isThumbnailStale, notifyThumbnailSaved, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
@@ -632,13 +632,17 @@ export function App() {
 		})
 	}, [hasServer, platform, refreshBoards])
 
-	// A server board's preview goes to the server as this browser draws it, so every device has it.
+	// A server board's preview goes to the server as this browser draws it, so every device has it. Its
+	// card shows the new version once the server has it.
 	const serverBoardIds = useRef(new Set<string>())
 	serverBoardIds.current = new Set(api.boards.filter((board) => board.vault === 'server').map((board) => board.id))
 	useEffect(
 		() =>
 			onThumbnailDrawn((id, theme, blob) => {
-				if (serverBoardIds.current.has(id)) void uploadServerThumbnail(id, theme, blob)
+				if (!serverBoardIds.current.has(id)) return
+				void uploadServerThumbnail(id, theme, blob).then((version) => {
+					if (version !== null) notifyThumbnailSaved(id)
+				})
 			}),
 		[]
 	)

@@ -2,15 +2,15 @@ import { Check, CloudUpload, Ellipsis, HardDriveDownload, LogOut, PencilLine, St
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import type { MoveJob } from '../boards/moveQueue'
-import { loadBoardThumbnail, onThumbnailSaved } from '../persistence/thumbnails'
+import { loadBoardThumbnailUrl, onThumbnailSaved, peekBoardThumbnailUrl } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
-import { fetchServerThumbnail } from '../server/serverVault'
+import { serverPreviewVersion, serverThumbnailUrl } from '../server/serverVault'
 import { useResolvedTheme } from './useTheme'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
- * shape. The preview is the board's own thumbnail, captured when the board was last closed
+ * shape. The preview is the board's own thumbnail, drawn after the board was last closed
  * (persistence/thumbnails.ts); boards never opened fall back to the dotted-paper placeholder so the
  * grid still reads as a grid.
  */
@@ -103,12 +103,7 @@ export function BoardCard({
 					// Not while it moves: its content is between two homes until the move finishes.
 					disabled={moving}
 				>
-					<BoardThumbnail
-						boardId={board.id}
-						updatedAt={board.updatedAt}
-						name={board.name}
-						fromServer={board.vault === 'server'}
-					/>
+					<BoardThumbnail board={board} />
 				</button>
 				{moveJob && (
 					<MoveOverlay job={moveJob} onRetry={onRetryMove} onDismiss={onDismissMove} />
@@ -319,66 +314,57 @@ function MoveOverlay({
 	)
 }
 
-function BoardThumbnail({
-	boardId,
-	updatedAt,
-	name,
-	fromServer,
-}: {
-	boardId: string
-	updatedAt: number
-	name: string
-	/** A server board: its preview comes from the server, drawn by whichever device last had it open. */
-	fromServer: boolean
-}) {
+function BoardThumbnail({ board }: { board: BoardMeta }) {
 	const platform = usePlatform()
 	const theme = useResolvedTheme()
-	const [url, setUrl] = useState<string | null>(null)
+	// A server board's preview comes from the server, drawn by whichever device last had it open, at the
+	// version the board list names. This browser's own copy stands in when there is none, or when it
+	// can't be reached and isn't in the browser's cache.
+	const version = board.vault === 'server' ? serverPreviewVersion(board, theme) : undefined
+	const [unreachable, setUnreachable] = useState<number | null>(null)
+	const [local, setLocal] = useState(() => peekBoardThumbnailUrl(board.id, theme))
 	// Bumped when this board's thumbnail is rewritten, which forces the load effect to re-run.
 	const [revision, setRevision] = useState(0)
 
-	// The capture happens as a board unmounts, i.e. *after* this card is already on screen. Without
+	// The capture happens after the board is closed, i.e. *after* this card is already on screen. Without
 	// listening, the card would keep showing the previous preview until the next full page load.
 	useEffect(() => {
 		return onThumbnailSaved((changedId) => {
-			if (changedId === boardId) setRevision((r) => r + 1)
+			if (changedId === board.id) setRevision((r) => r + 1)
 		})
-	}, [boardId])
+	}, [board.id])
 
 	useEffect(() => {
-		let objectUrl: string | null = null
 		let cancelled = false
-
-		const load = async () =>
-			(fromServer ? (await fetchServerThumbnail(boardId, theme))?.blob : undefined) ??
-			(await loadBoardThumbnail(platform.kv, boardId, theme))
-		void load().then((blob) => {
-			if (cancelled) return
-			if (!blob) {
-				setUrl(null)
-				return
-			}
-			objectUrl = URL.createObjectURL(blob)
-			setUrl(objectUrl)
+		setLocal(peekBoardThumbnailUrl(board.id, theme))
+		void loadBoardThumbnailUrl(platform.kv, board.id, theme, board.updatedAt).then((url) => {
+			if (!cancelled) setLocal(url)
 		})
-
 		return () => {
 			cancelled = true
-			// Revoked on unmount: the grid can hold dozens of these, and leaking one object URL per
-			// card per visit would hold every thumbnail's bytes in memory for the session.
-			if (objectUrl) URL.revokeObjectURL(objectUrl)
 		}
 		// `updatedAt` covers edits made in another tab; `revision` covers this tab's own captures.
-	}, [platform, boardId, updatedAt, revision, fromServer, theme])
+	}, [platform, board.id, board.updatedAt, revision, theme])
 
+	const url = version !== undefined && unreachable !== version ? serverThumbnailUrl(board.id, theme, version) : local
 	if (!url) {
 		return (
 			<div className="lb-card__placeholder" aria-hidden="true">
-				<span>{initials(name)}</span>
+				<span>{initials(board.name)}</span>
 			</div>
 		)
 	}
-	return <img className="lb-card__image" src={url} alt="" draggable={false} />
+	return (
+		<img
+			className="lb-card__image"
+			src={url}
+			alt=""
+			draggable={false}
+			onError={() => {
+				if (version !== undefined) setUnreachable(version)
+			}}
+		/>
+	)
 }
 
 function initials(name: string): string {

@@ -3,7 +3,9 @@ import { ENTRY_TYPE, isEntry } from '@lifeboard/skill-tree'
 import type { TLShapeId } from '@lifeboard/canvas'
 import { GraduationCap } from 'lucide-react'
 import { itemNodeDefinition } from './item/definition'
+import { DraftBar } from './DraftBar'
 import { putCard, tick } from './ops'
+import { SyllabusSettings } from './SyllabusSettings'
 import { watchBoard } from './skillIndex'
 import { getItem, isItemDone } from './syllabus'
 import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
@@ -31,9 +33,11 @@ export const syllabusExtension: Extension = {
 		"A syllabus lives in your vault: its entries (read Homer), their works (the Iliad, the Odyssey), and the tracks that put them in order. Every view of it reads and writes the same thing, so a tick in the list is a tick in a tree and on every board.",
 		"Tick a work and it records the day, and a write-up note appears beside what you ticked from, from a template for its medium: Adler's four questions for a book, the film study sheet for a film. A tick whose note you never wrote in shows hollow: done, but not yet evidence.",
 		'An entry is done when its core works are, or all of them, or some number of them, whichever you choose.',
+		'Drop a syllabus .yaml file on a board and it arrives as a draft: a list of each of its tracks, dashed, and a bar over the board to Confirm or Discard it. Its tree goes into the vault, to show with Show a skill tree on this board.',
 		'A list shows a track in reading order. Every entry folds and unfolds to its works and shows its progress, and the next undone entry is lit. Double-click a list to scroll it. The arrow on a row puts a card for that entry on the board.',
 		'Up next is the card to work from: the next step of every active track and twelve weeks of the days you did something.',
 		"With Skill trees on, a syllabus's tree comes in with it, its entries and works are drawn around the nodes they are tagged to, and its write-ups light those nodes (a node can ask for an item done, or a number of write-ups).",
+		'Below, every syllabus in your vault: rename it, pause it, remove it, or unfold it to rename, reorder, add and remove its entries. Add syllabus starts an empty one.',
 		'Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the syllabus stays in your vault.',
 	],
 	icon: GraduationCap,
@@ -69,6 +73,8 @@ export const syllabusExtension: Extension = {
 			},
 		},
 	],
+	settings: { title: 'Syllabi', Component: SyllabusSettings },
+	overlays: [{ id: 'lifeboard.syllabus.draft-bar', Component: DraftBar }],
 	commands: syllabusCommands,
 	operations: syllabusOperations,
 	fileImports: [syllabusFileImport],

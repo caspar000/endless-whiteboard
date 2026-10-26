@@ -10,11 +10,19 @@ import { draftTreeMeta } from './views'
  * Trees in and out of a board (docs/skill-tree-plan.md, "Drafts"), for an extension whose documents
  * carry trees (the syllabus's YAML). Call inside the caller's `editor.run` and `whileImporting`.
  *
- * Trees go into the vault, a new tree and new nodes as this board's draft. The board gets a header
- * to view each (one mounted on a node of another tree in the same document shows inside that tree's
- * view instead); the view puts the nodes on and lays them out (treeSync.ts).
+ * Trees go into the vault, a new tree and new nodes as this board's draft. With `views`, the board
+ * gets a header to view each (one mounted on a node of another tree in the same document shows inside
+ * that tree's view instead); the view puts the nodes on and lays them out (treeSync.ts). Without, the
+ * trees wait in the vault for "Show a skill tree on this board"; a header this board already has is
+ * still brought up to date.
  */
-export function importTrees(editor: Editor, trees: readonly DocTree[], at: { x: number; y: number }, board: string): { created: number; updated: number } {
+export function importTrees(
+	editor: Editor,
+	trees: readonly DocTree[],
+	at: { x: number; y: number },
+	board: string,
+	views = true
+): { created: number; updated: number } {
 	let created = 0
 	let updated = 0
 	const inDoc = new Set(trees.flatMap((t) => t.nodes.map((n) => n.nodeId)))
@@ -43,7 +51,7 @@ export function importTrees(editor: Editor, trees: readonly DocTree[], at: { x: 
 		if (header) {
 			editor.updateShape({ id: header.id, type: TREE_TYPE, props } as never)
 			updated++
-		} else {
+		} else if (views) {
 			editor.createShape({
 				id: createShapeId(),
 				type: TREE_TYPE,

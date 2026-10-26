@@ -159,6 +159,11 @@ export function Syllabus({ go }: SectionProps) {
 					it. Unfold it to change its goal and its entries: rename, reorder or remove them, or add new
 					ones at the end. <strong>Add syllabus</strong> starts an empty one to fill from there.
 				</p>
+				<p>
+					A syllabus that is the only one feeding its tree shares the tree's name: rename either, here or
+					on a board, and the other follows, Mastery included. A goal with several syllabi, such as Film,
+					keeps its tree's own name.
+				</p>
 				<p className="lb-help__aside">
 					Removing a syllabus asks first, and takes its entries, their works and their ticks with it. An
 					entry another syllabus also lists stays in the vault. Write-up notes stay on their boards. A

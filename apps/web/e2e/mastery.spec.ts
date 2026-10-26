@@ -55,6 +55,10 @@ test('builds Mastery in Settings and puts it on a board, a tree under two pillar
 	await page.getByLabel('Pillar name').nth(4).click()
 	await page.getByLabel('Add a tree').selectOption({ label: 'Craft' })
 	await expect(page.locator('.lb-mastery__tree', { hasText: 'Craft' })).toContainText('also under Practical')
+	// Each pillar shows what hangs under it.
+	await expect(page.getByLabel('Trees under Practical')).toContainText(/Craft\s*2 nodes/)
+	await expect(page.getByLabel('Trees under Making')).toContainText('Craft')
+	await expect(page.getByLabel('Trees under Mental')).toHaveCount(0)
 
 	await openBoardFromSidebar(page, 'Life')
 	await command(page, 'Add Mastery to this board')

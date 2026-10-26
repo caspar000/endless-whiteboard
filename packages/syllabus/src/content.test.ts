@@ -47,6 +47,15 @@ function checkTree(doc: ReturnType<typeof load>) {
 	}
 }
 
+describe('a syllabus with one track', () => {
+	it('names its track and its tree the same, as the app keeps them (treeNames.ts)', () => {
+		for (const doc of [load(adlerYaml), load(mucoreYaml)]) {
+			expect(doc.tracks).toHaveLength(1)
+			expect(doc.trees[0]!.name).toBe(doc.tracks[0]!.name)
+		}
+	})
+})
+
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 const leaves = (item: DocItem): number => (item.children.length ? item.children.reduce((n, c) => n + leaves(c), 0) : 1)
 

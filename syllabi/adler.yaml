@@ -7,7 +7,7 @@ name: Western canon reader
 
 tracks:
   - id: canon
-    name: "Adler's Reading List"
+    name: "Western Canon Reader"
     state: active
     items:
       - id: 001-homer

@@ -106,15 +106,46 @@ export function parseTreeDef(raw: unknown): TreeDef | null {
 	}
 }
 
-/** Loads the vault's copy (localStorage or the server); drops what it can't read. Not persisted back. */
+/**
+ * The starter trees the Mastery demo hung under its pillars, by tree id, with their node ids. The
+ * demo is gone, but a vault that ran it still holds them, and they are nobody's trees.
+ */
+const DEMO_TREES: Readonly<Record<string, readonly string[]>> = {
+	body: ['move', 'strength', 'mobility', 'endurance', 'recovery'],
+	mind: ['focus', 'reading', 'memory', 'writing'],
+	spirit: ['stillness', 'meditation', 'gratitude', 'reflection'],
+	craft: ['play', 'film', 'theatre', 'prototype'],
+	people: ['show-up', 'listen', 'host', 'mentor'],
+}
+
+/**
+ * A demo tree that holds nothing but the demo's own nodes, deleted: every node tombstoned, so a board
+ * still showing the demo drops its shapes rather than writing the tree back. A tree that only shares
+ * the id, or that someone added a node to, is kept as it is.
+ */
+export function retireDemoTree(def: TreeDef): TreeDef {
+	const demo = DEMO_TREES[def.treeId]?.map((id) => `${def.treeId}/${id}`)
+	if (!demo || !def.nodes.length || !def.nodes.every((n) => demo.includes(n.nodeId))) return def
+	return { ...def, mounts: [], nodes: [], removed: [...new Set([...def.removed, ...def.nodes.map((n) => n.nodeId)])], ticked: {} }
+}
+
+/**
+ * Loads the vault's copy (localStorage or the server); drops what it can't read. Persisted back only
+ * when it retired a demo tree, so the vault forgets them too.
+ */
 export function replaceTreeDefs(raw: unknown): void {
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
 	const next: Record<string, TreeDef> = {}
+	let retired = false
 	for (const value of Object.values(raw as Record<string, unknown>)) {
-		const def = parseTreeDef(value)
-		if (def) next[def.treeId] = def
+		const parsed = parseTreeDef(value)
+		if (!parsed) continue
+		const def = retireDemoTree(parsed)
+		retired ||= def !== parsed
+		next[def.treeId] = def
 	}
 	trees.set(next)
+	if (retired) persist?.(next)
 }
 
 const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mounts: [], nodes: [], removed: [], draft: '', ticked: {} })

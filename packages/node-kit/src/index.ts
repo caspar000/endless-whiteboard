@@ -416,7 +416,7 @@ export {
 export { shapeLabel } from './properties/labels'
 export { ITEMS_TO_NOTES_MIGRATION_ID, itemsToNotesMigrations } from './properties/itemsToNotes'
 export { REMOVE_HEALTH_NODES_MIGRATION_ID, removeHealthNodesMigrations } from './removeHealthNodes'
-export { REMOVE_HABIT_NODES_MIGRATION_ID, removeHabitNodesMigrations } from './removeHabitNodes'
+export { habitShapeSequence, REMOVE_HABIT_NODES_MIGRATION_ID, removeHabitNodesMigrations } from './removeHabitNodes'
 export {
 	EDGE_DIRECTIONS,
 	EDGE_DIRECTION_LABELS,

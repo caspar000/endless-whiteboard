@@ -4,7 +4,10 @@ import { CanvasAnnouncer } from './CanvasAnnouncer'
 import '../extensions'
 import {
 	clearAgentActivity,
+	boardKindOf,
 	fireBoardOpen,
+	getBoardKind,
+	holdBoardToKind,
 	installBoardHooks,
 	registerHooks,
 	LayoutYamlEditor,
@@ -53,6 +56,7 @@ import '@lifeboard/canvas/canvas.css'
 import { STORE_MIGRATIONS } from '@lifeboard/schema'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
 import { seedDemoBoard } from '../boards/demoBoard'
+import { takePendingBoardKind } from '../boards/pendingKind'
 import { usePlatform } from '../platform/PlatformContext'
 import { createLifeboardAssetStore } from '../persistence/assetStore'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
@@ -133,6 +137,10 @@ function CanvasLayers() {
 function CanvasOverlays() {
 	const editor = useEditor()
 	const overlays = useSyncExternalStore(subscribeToCanvasOverlays, getVisibleCanvasOverlays)
+	// A board of an extension's own kind (a Zettelkasten box) is that extension's: other extensions'
+	// chrome (the dice tray) stays off it. Enablement is not a signal, so `overlays` (a new array on every
+	// toggle) is the dependency.
+	const ownKind = useValue('lifeboard:board-kind', () => boardKindOf(editor) !== null, [editor, overlays])
 	// An extension's chrome (the dice tray) can land inside Quick look's hole, on top of the node.
 	const looking = useValue('lifeboard:quick-look-open', () => getQuickLook(editor) !== null, [editor])
 	return (
@@ -142,7 +150,7 @@ function CanvasOverlays() {
 			<AgentPresence />
 			<CommentsOverlay />
 			<CommentsPanel />
-			{!looking && overlays.map(({ id, Component }) => <Component key={id} />)}
+			{!looking && !ownKind && overlays.map(({ id, Component }) => <Component key={id} />)}
 			<QuickLookOverlay />
 		</>
 	)
@@ -592,6 +600,12 @@ function BoardCanvas({
 					// Every extension's reactions, plus the core hook above. One installer, because they
 					// all hang off the same two side effects.
 					const stopHooks = installBoardHooks(editor)
+					// A board just made as a kind (a Zettelkasten box) becomes one now that it has an editor,
+					// before the hooks hear it open; and every board of a kind is held to its rules.
+					const kindId = takePendingBoardKind(board.id)
+					const kind = kindId ? getBoardKind(kindId) : undefined
+					if (kind && editor.getCurrentPageShapeIds().size === 0) kind.create(editor)
+					const stopHoldingToKind = holdBoardToKind(editor)
 					fireBoardOpen({ editor, boardId: board.id })
 					// A shape that stops being drawn must stop being selected with it — see
 					// relationVisibility.ts.
@@ -622,6 +636,7 @@ function BoardCanvas({
 						if (w.editor === editor) delete w.editor
 						onEditor?.(null)
 						stopHooks()
+						stopHoldingToKind()
 						stopDeselectingHidden()
 						stopFollowingSelection()
 						stopCascadingDeletes()

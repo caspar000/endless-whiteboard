@@ -1,8 +1,9 @@
 import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import type { CommandContext } from '@lifeboard/node-kit'
+import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
+import { markPendingBoardKind } from '../boards/pendingKind'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
@@ -25,7 +26,7 @@ import { discoverDevHost, getDevHost, setDevHost, subscribeToDevHost } from '../
 import { getAgentPrefs, subscribeToAgentPrefs } from '../agent/prefs'
 import { AgentPanel } from './AgentPanel'
 import { useAgentPanelWidth } from './agentPanelWidth'
-import { setAppCommandApi } from './appCommands'
+import { registerBoardKindCommands, setAppCommandApi } from './appCommands'
 import { BoardList } from './BoardList'
 import { ShareDialogHost } from './ShareDialog'
 import { CommandPalette } from './CommandPalette'
@@ -65,6 +66,10 @@ if (globalThis.localStorage?.getItem('lifeboard:gpu-cache') !== 'off') {
  * the store and need a live editor to land (see `MAX_DRAIN_MS`). Boards whose tab is still open never
  * unmount at all, which is what makes tab switching instant.
  */
+// "New box" and its like. Here rather than in appCommands.ts's own module scope because the kinds come
+// from the extensions, which Board's import above has registered by now.
+registerBoardKindCommands()
+
 const DRAIN_MS = TLDRAW_PERSIST_THROTTLE_MS + 400
 
 /**
@@ -462,10 +467,20 @@ export function App() {
 		navigate({ view: 'help' })
 	}, [navigate])
 
-	const createAndOpen = useCallback(async () => {
-		const board = await api.create()
-		await openBoard(board)
-	}, [api, openBoard])
+	const createAndOpen = useCallback(
+		async (kindId?: string) => {
+			const kind = kindId ? getBoardKind(kindId) : undefined
+			const board = await api.create(kind?.newName)
+			if (kind) {
+				// Written into the board by its first open (boards/pendingKind.ts); the icon goes in the index
+				// now, so the tab says what it is from the start.
+				markPendingBoardKind(board.id, kind.id)
+				if (kind.boardIcon) await api.setLook(board.id, { icon: kind.boardIcon })
+			}
+			await openBoard(board)
+		},
+		[api, openBoard]
+	)
 
 	const closeBoardTab = useCallback(
 		async (id: string) => {
@@ -871,6 +886,7 @@ export function App() {
 							<BoardList
 								api={listApi}
 								onOpen={(board) => void openBoard(board)}
+								onNewKind={(kindId) => void createAndOpen(kindId)}
 								mountedIds={mounted.map((board) => board.id)}
 							/>
 						))}

@@ -22,7 +22,8 @@
 		"@lifeboard/node-kit": "workspace:*",
 		"@lifeboard/note-markdown": "workspace:*",
 		"@lifeboard/skill-tree": "workspace:*",
-		"@lifeboard/syllabus": "workspace:*"
+		"@lifeboard/syllabus": "workspace:*",
+		"@lifeboard/zettelkasten": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/react": "^19.2.0",

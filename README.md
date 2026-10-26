@@ -135,6 +135,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
 | **Syllabus** (`@lifeboard/syllabus`) | `node.skillItem`, `node.track`, `node.upNext` | One syllabus in your vault (entries, their works, and tracks that order them), shown on any board as a list, Up next or a card, so a tick anywhere is a tick everywhere. A tick records the day and files a write-up note from the medium's template beside what you ticked from; a note still holding only the template leaves the tick hollow. The list is the whole outline in reading order, folding each entry to its works. With skill trees on, its entries are drawn in a tree and its write-ups light the nodes they are tagged to. Its Settings page lists every syllabus in the vault, to rename, pause, add or remove, and their entries, to rename, reorder, add or remove. A whole syllabus imports from YAML as a dashed draft: a list per track, its tree left in the vault until you show it, and a bar over the board to Confirm or Discard it. None is built in: [`syllabi/`](syllabi) holds Adler's 137-entry list, /mu/core's 1111 recordings, and the film, theatre and games trees (151 entries, directors with their films; 138, playwrights, practitioners and stagecraft; 122, studios and designers with their games; Russian and Georgian people and works under their own names), each a file to drop on a board. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
 | **Skill trees** (`@lifeboard/skill-tree`) | `node.skill`, `node.skillTree`, `node.skillEntry` | Constellations of skill nodes that light up as their requirements are met: other nodes unlocked, a tick by hand, or what another extension teaches them (the syllabus adds items done and write-ups counted, through `sources.ts`). Trees live in the vault; each board shows a view of a tree from a root you pick, laid out as a maze of hexagons, and trees hang from other trees' nodes. Mastery, built in its Settings page, is you, your pillars and every tree hung under them (one tree can hang under several), each pillar listing its trees beneath it. A tree only one syllabus feeds goes by that syllabus's name. | — |
+| **Zettelkasten** (`@lifeboard/zettelkasten`) | `node.zettel` | A box of index cards in the order you put them, as Luhmann kept his. A box is a board of its own (*New box*), holding its cards and nothing else. Each note takes its number from where you write it: behind the card in front it continues that card's line (25a, then 25b), or branches off it when the line already goes on (25a1). It opens on the stack, the front card with the next ones peeking out behind it, flipped through by scroll, swipe or arrow keys; *Table* lays every card out, a column per top-level note. Notes never move, and a deleted note's number is never given out again. See [`docs/zettelkasten-plan.md`](docs/zettelkasten-plan.md). | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -194,6 +195,7 @@ packages/book-reader/     @lifeboard/book-reader — books & quotes: import, rea
 packages/dice/            @lifeboard/dice — the dice tray, and the 3D roll (three.js + cannon-es)
 packages/skill-tree/      @lifeboard/skill-tree — skill trees, and the sources other extensions feed them through
 packages/syllabus/        @lifeboard/syllabus — syllabus items, tracks, Up next, YAML import; a source for skill trees
+packages/zettelkasten/    @lifeboard/zettelkasten — a Zettelkasten box: Luhmann's ids, the stack, the table layout
   src/three/               the roll: solids, physics, keyframes, the scene. Loaded on first throw only
 packages/mcp-server/      @lifeboard/mcp-server — the MCP server agents connect to (Node, not bundled)
 packages/agent-host/      @lifeboard/agent-host — runs Claude Code behind the in-app agent panel
@@ -250,6 +252,14 @@ an id, a display name, an icon and a version for the Settings card:
   is where tldraw binds its wheel gesture, so a transparent layer there silently breaks pan and zoom
   (see `packages/dice/src/DiceOverlay.tsx`, which claims its click from a capture-phase `window`
   listener for exactly this reason).
+- **A kind of board, not only things on one.** `Extension.boardKinds` lets an extension say what a
+  board *is*: a Zettelkasten box has its own dock in place of the drawing tools, holds only its own
+  shape types, and keeps other extensions' overlays off it (node-kit's `boardKinds.ts`). What makes a
+  board one is written into its own document record by the kind's `create`, so it travels with the
+  board; the board index and the server's `boards` table know nothing of kinds. The app makes one
+  as an ordinary board and hands the kind its editor on the first open (`boards/pendingKind.ts`), and
+  `holdBoardToKind` puts a drawing tool back to Select and takes a disallowed shape off as this device
+  makes it, whichever door it came through. Switching the extension off makes its boards ordinary.
 
 ## An extension's own settings
 
@@ -754,7 +764,7 @@ tests that need a real server. `deploy/darkroomlab/README.md` covers running it.
 Not started (Phase 2+): Tauri packaging, chart nodes, live API nodes,
 the org-mode note extension, and the *runtime-loaded* plugin path (the compile-time extension system
 is in — and now covers nodes, commands, query-driven commands, operations, queries, hooks, file and
-content imports, shape actions, canvas overlays and an extension's own settings panel; sandboxing and
+content imports, shape actions, canvas overlays, kinds of board and an extension's own settings panel; sandboxing and
 a placeholder shape util for uninstalled plugins are what remain).
 
 No licence key is needed to deploy: the canvas is the Apache-2.0 fork, and no package under the

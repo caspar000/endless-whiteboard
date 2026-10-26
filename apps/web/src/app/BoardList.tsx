@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { getAllBoardKinds, getVisibleNodeDefinitions, isExtensionEnabled, subscribeToNodeDefinitions } from '@lifeboard/node-kit'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { dismissMove, retryMove } from '../boards/moveQueue'
 import { usePlatform } from '../platform/PlatformContext'
@@ -40,14 +41,20 @@ function rememberMoveOffered(): void {
 export function BoardList({
 	api,
 	onOpen,
+	onNewKind,
 	mountedIds,
 }: {
 	api: BoardsApi
 	onOpen: (board: BoardMeta) => void
+	/** Makes and opens a kind of board an extension defines (a Zettelkasten box). */
+	onNewKind?: (kindId: string) => void
 	/** Boards with a live editor, whose previews the shell draws from that editor (app/App.tsx). */
 	mountedIds: readonly string[]
 }) {
 	const platform = usePlatform()
+	// Re-rendered on an extension toggle, which is when the kinds on offer change.
+	useSyncExternalStore(subscribeToNodeDefinitions, getVisibleNodeDefinitions)
+	const kinds = getAllBoardKinds().filter(({ owner }) => isExtensionEnabled(owner))
 	const mountedKey = mountedIds.join(' ')
 	// Drawing these off screen as well would draw them twice, from an older copy.
 	const unmounted = useMemo(() => {
@@ -136,6 +143,12 @@ export function BoardList({
 							Select
 						</button>
 					)}
+					{onNewKind &&
+						kinds.map(({ kind }) => (
+							<button key={kind.id} className="lb-btn" onClick={() => onNewKind(kind.id)}>
+								{kind.label}
+							</button>
+						))}
 					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
 						New board
 					</button>

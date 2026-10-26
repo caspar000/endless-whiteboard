@@ -5,6 +5,7 @@ import {
 	cycleRelationView,
 	isHiddenRelation,
 	applyLayoutToMatching,
+	getAllBoardKinds,
 	copyLayout,
 	getCopiedLayout,
 	isRelation,
@@ -54,7 +55,8 @@ import type { Theme } from './useTheme'
  * get app capability because they live in the app, not because the SDK hands it to every command.
  */
 export interface AppCommandApi {
-	createAndOpen(): Promise<void>
+	/** A new board, opened; `kindId` makes it a kind of board an extension defines (a Zettelkasten box). */
+	createAndOpen(kindId?: string): Promise<void>
 	goHome(): Promise<void>
 	/** `tab` is a settings tab id (`sections.tsx`); omitted means the first one. */
 	goSettings(tab?: string): Promise<void>
@@ -89,6 +91,26 @@ registerCommand({
 	group: BOARDS_GROUP,
 	run: () => void api?.createAndOpen(),
 })
+
+/**
+ * "New box" and the like: one command per kind of board an extension defines, owned by that
+ * extension so switching it off takes the command with it. Called once the extensions are registered
+ * (App.tsx), since that is where the kinds come from.
+ */
+export function registerBoardKindCommands(): void {
+	for (const { kind, owner } of getAllBoardKinds()) {
+		registerCommand(
+			{
+				id: `board.new.${kind.id}`,
+				title: kind.label,
+				group: BOARDS_GROUP,
+				icon: kind.icon,
+				run: () => void api?.createAndOpen(kind.id),
+			},
+			owner
+		)
+	}
+}
 
 /**
  * The open board, to the other vault. Two commands rather than one toggle, so the palette's title says

@@ -176,6 +176,15 @@ export {
 	type ShapeAction,
 } from './extensions'
 
+// Kinds of board an extension defines (docs/zettelkasten-plan.md, "The seam: board kinds").
+export {
+	boardKindOf,
+	getAllBoardKinds,
+	getBoardKind,
+	holdBoardToKind,
+	type BoardKind,
+} from './boardKinds'
+
 // The outbound-request seam for extensions that reach the outside world — implemented by the app.
 export { getNetworkBridge, setNetworkBridge, type NetworkBridge } from './network'
 export { getIconBridge, setIconBridge, type IconBridge } from './icons'

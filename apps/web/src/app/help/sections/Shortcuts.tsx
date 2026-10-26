@@ -144,6 +144,21 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The stack covers the board and binds its own keys, as the reader does (packages/zettelkasten).
+		title: 'In a Zettelkasten box',
+		rows: [
+			[['↓', '→', 'PageDown', 'J'], 'The next card'],
+			[['↑', '←', 'PageUp', 'K'], 'The card before'],
+			[['Home', 'End'], 'The front or the back of the box'],
+			[['N'], 'Write a new note behind the card in front'],
+			[['⇧N'], 'Write a new note as a branch off the card in front'],
+			[['0–9'], 'Go to a note by its number'],
+			[['Enter'], 'Write on the card in front'],
+			[['Esc'], 'Put the card down'],
+			[['⌫'], 'Delete the card in front (asks first)'],
+		],
+	},
+	{
 		title: 'Typing an answer',
 		rows: [
 			[['{'], 'Start an expression, anywhere text can be typed'],

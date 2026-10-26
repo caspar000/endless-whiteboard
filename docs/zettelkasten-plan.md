@@ -1,8 +1,8 @@
 # Zettelkasten — implementation plan
 
-Status: **Agreed, not started.** Settled with the user over two rounds of questions on PLAN-35
-(2026-10-26); the parent issue, PLAN-34, has the mockups. Each phase below gets its "as built" notes
-here when it ships, the way `dice-plan.md` and `skill-tree-plan.md` do.
+Status: **Phases 0 and 1 built** (2026-10-26). Settled with the user over two rounds of questions on
+PLAN-35; the parent issue, PLAN-34, has the mockups. Each phase gets its "as built" notes here when it
+ships, the way `dice-plan.md` and `skill-tree-plan.md` do.
 
 A box of index cards, the way Luhmann kept one, rather than a folder of documents. You don't file a
 note under a title: you write it and decide which card it goes behind, and it gets an address from
@@ -18,6 +18,52 @@ A box is an **index**, then the **notes** in order, then the **citations**. It h
 | **Table** | Every card laid out on the table: a column per top-level note, its line running down the column. |
 | **Chain** | One path through the box: a note and what follows it, with the cards it links to blurred beside it. Click one to turn down that path. |
 | **Graph** | Notes as labelled dots, joined by their order and by their links. |
+
+## Phases 0 and 1, as built (2026-10-26)
+
+- **The seam** is `BoardKind` in node-kit (`boardKinds.ts`), as sketched below, plus a `name`, and a
+  `newName` and `boardIcon` for the board a kind starts as. The app: `CanvasToolbar` draws the kind's `Dock` on a
+  phone too; *New box* is on the home screen and in ⌘K (`registerBoardKindCommands`); a new board's
+  kind waits in `boards/pendingKind.ts` until its first open hands `create` an editor; and
+  `holdBoardToKind` keeps the rules. Two things the sketch didn't have: other extensions' overlays (the
+  dice tray) are off on a board of a kind, and the rules hold only this device's own changes, so an
+  older build's shapes arriving from another device aren't deleted behind its back. Tests:
+  `boardKinds.test.ts`.
+- **Two new `NodeDefinition` fields.** `offered: false` keeps a type out of the dock's picker, the
+  generated "Add …" command, the context menu and the agent's `node.create`: a card only exists at a
+  place in its box. `resizable: false` takes the handles off. The card is also `pinned`.
+- **No title prop.** A note's title is its first line when that line is a heading (`# ` in the text),
+  which keeps one editor per card. The sticky note's editor focuses an input field back whenever it
+  blurs, so a separate title field beside it could never keep the caret. Labels, ⌘K's `@` and later
+  the graph use the title, or else the first line (`card/text.ts`).
+- **The card's props are `zid` and `richText` for now.** `keywords`, `links` and `cites` arrive in
+  phase 3 with a migration, rather than sitting unused until then.
+- **The table layout came forward from phase 2.** Cards need somewhere to stand from the first note,
+  so `tableLayout` (pure, tested) runs on every write and delete, and *Table* shows it, framed. Phase 2
+  still owns the index column and the view switcher's other two views.
+- **The stack's keys.** While it is open the editor counts a menu as open (`addOpenMenu`), which is
+  what silences every board key under it at once: tool letters, the dock's digits, Backspace deleting
+  the selection, tldraw's own. The stack then binds its own in a capture-phase `window` listener, only
+  for the board on screen (a background tab keeps its editor). ⌘Z and ⇧⌘Z are among them, since the
+  app's undo is a board command and is silenced with the rest.
+- **Editing in the stack** is the sticky note's own `RichText` (now exported from `@lifeboard/canvas`),
+  mounted on the front card while the shape is in tldraw's editing state. Only one place may draw a
+  card's text live, or two TipTap editors would fight over one note, so the canvas draws it static
+  while the stack is open. The editor starts with all its text selected (right for a label, a way to
+  lose a paragraph on a note), so `placeCaret` puts the caret where the card was clicked, or at the end.
+- **Undo.** Writing, deleting and each editing session are one ⌘Z each. The board's history undoes
+  shape commands and not the document record, so undoing a delete brings the card back but leaves its
+  number on the retired list. That errs the safe way: the number is in use again and still never
+  given to a different note.
+- **`{…}` expressions** can be typed (the editor is the sticky note's) but a card draws them as typed
+  rather than evaluated. Stickies get their evaluation from the app's own shape utils; a node type
+  would need the same seam. Not asked for, so left.
+- **Checked in a browser** (Playwright against the dev server, desktop and a phone-sized dark run):
+  New box, the first note, N and ⇧N giving 1 → 2 → 3, 1a, then 1b behind 1; the flip, wheel, swipe,
+  jump by number and "no such note"; delete with its confirmation, and its undo; a duplicate `2` merged
+  in as from another device, renumbered to `4` with the notice; double-click editing on the table;
+  dragging a card leaving it in place; a sticky made on a box taken off again; a tool key put back to
+  Select.
 
 ## What was decided
 

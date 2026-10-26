@@ -53,7 +53,8 @@ export function insertNode(
 export function registerNodeCommands(): void {
 	for (const def of getNodeDefinitions()) {
 		// Deprecated types stay in the schema so old boards keep opening, but must never be offered.
-		if (def.deprecated) continue
+		// So are types their extension places itself (a Zettelkasten card), which mean nothing loose.
+		if (def.deprecated || def.offered === false) continue
 		registerCommand(
 			{
 				// `node.markdown` → `node.markdown.insert`: the type is already namespaced.

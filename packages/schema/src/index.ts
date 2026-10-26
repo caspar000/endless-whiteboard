@@ -16,6 +16,7 @@ import {
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
 import { skillTreeExtension } from '@lifeboard/skill-tree'
 import { syllabusExtension } from '@lifeboard/syllabus'
+import { zettelkastenExtension } from '@lifeboard/zettelkasten'
 import {
 	createTLSchemaFromUtils,
 	defaultBindingUtils,
@@ -40,6 +41,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	diceExtension,
 	skillTreeExtension,
 	syllabusExtension,
+	zettelkastenExtension,
 ]
 
 /**

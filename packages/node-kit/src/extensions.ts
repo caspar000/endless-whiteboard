@@ -7,6 +7,7 @@ import {
 	type TLContent,
 	type TLShape,
 } from '@lifeboard/canvas'
+import type { BoardKind } from './boardKinds'
 import { registerQuery, type NamedQuery } from './collections/namedQueries'
 import {
 	registerCommand,
@@ -214,6 +215,11 @@ export interface Extension {
 	 * its commands: switching the extension off takes the overlay off screen, live, with no remount.
 	 */
 	overlays?: readonly CanvasOverlay[]
+	/**
+	 * Kinds of board this extension defines: a board that is a Zettelkasten box rather than a drawing
+	 * surface, with a dock of its own and only its own shapes on it. See {@link BoardKind}.
+	 */
+	boardKinds?: readonly BoardKind[]
 	/**
 	 * Commands built from what the user typed in the palette — see {@link CommandSource}. For verbs that
 	 * genuinely take an argument, like rolling a notation.

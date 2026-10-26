@@ -1,9 +1,12 @@
 import {
 	RELATION_VIEW_LABELS,
 	RELATION_VIEW_NOTES,
+	boardKindOf,
+	getVisibleNodeDefinitions,
 	nextRelationView,
 	readRelationView,
 	setRelationView,
+	subscribeToNodeDefinitions,
 } from '@lifeboard/node-kit'
 import {
 	Circle,
@@ -26,7 +29,7 @@ import {
 	Waypoints,
 	type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import {
 	ArrowShapeKindStyle,
 	DefaultColorStyle,
@@ -722,7 +725,14 @@ function ToolSettings({ currentToolId }: { currentToolId: string }) {
 }
 
 export function CanvasToolbar() {
+	const editor = useEditor()
 	const phone = usePhone()
+	// A board an extension defines (a Zettelkasten box) brings its own dock. Enablement is the registry's
+	// state rather than a signal, so the visible list (a new array on every toggle) is a dependency:
+	// switching the extension off gives the board the ordinary dock back without a remount.
+	const offered = useSyncExternalStore(subscribeToNodeDefinitions, getVisibleNodeDefinitions)
+	const kind = useValue('lb:board-kind', () => boardKindOf(editor), [editor, offered])
+	if (kind) return <kind.Dock />
 	return phone ? <PhoneDock settings={(toolId) => <ToolSettings currentToolId={toolId} />} /> : <DesktopDock />
 }
 

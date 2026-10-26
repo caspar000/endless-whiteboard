@@ -58,6 +58,12 @@ export function ExtensionDetail({ id, onBack }: { id: string; onBack: () => void
 
 	const groups: { title: string; items: Contribution[] }[] = [
 		{
+			// A kind of board changes what a whole board is (its dock, what it may hold), which is more than
+			// anything else here does; named by what makes one.
+			title: 'Kinds of board',
+			items: (ext.boardKinds ?? []).map((kind) => ({ label: kind.name, icon: kind.icon })),
+		},
+		{
 			title: 'Node types',
 			items: ext.nodes.map((node) => ({
 				label: node.label,

@@ -35,10 +35,10 @@ export function pillarsOf(trees: TreeDefs = getTreeDefs()): NodeDef[] {
 	return trees[MASTERY]?.nodes.filter((n) => n.kind === 'pillar') ?? []
 }
 
-/** Every tree but Mastery, by name: what can hang under a pillar. */
+/** Every confirmed tree but Mastery that still has nodes, by name: what can hang under a pillar. */
 export function hangableTrees(trees: TreeDefs = getTreeDefs()): TreeDef[] {
 	return Object.values(trees)
-		.filter((t) => t.treeId !== MASTERY && !t.draft)
+		.filter((t) => t.treeId !== MASTERY && !t.draft && t.nodes.length > 0)
 		.sort((a, b) => (a.name || a.treeId).localeCompare(b.name || b.treeId))
 }
 

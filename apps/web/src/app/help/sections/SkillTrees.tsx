@@ -72,8 +72,9 @@ export function SkillTrees({ go }: SectionProps) {
 					<strong>Mastery</strong> is the tree at the middle of everything: you, the pillars of your life
 					around you, and your other trees hung under them. Build it in Settings › Extensions › Skill trees:
 					<strong>Set up Mastery</strong> starts you with Physical, Mental, Spiritual, Practical and Social.
-					Rename, reorder, add and remove pillars there; pick one to hang trees under it. A tree can hang
-					under several pillars, and is drawn once, between them, with a line from each.
+					Rename, reorder, add and remove pillars there; pick one to hang trees under it. The trees under
+					each pillar show beneath it there, with how many nodes each has. A tree can hang under several
+					pillars, and is drawn once, between them, with a line from each.
 				</p>
 				<p>
 					<code>Add Mastery to this board</code> puts a view of it on the open board. A pillar lights up once

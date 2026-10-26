@@ -83,6 +83,19 @@ The fourth phase. Mastery is one tree per vault, `mastery`, built in Settings �
 - **Gone:** *Gather every tree around a Mastery node*, and the `mastery` option of the layout
   operation.
 
+Changed 2026-10-26 (PLAN-29):
+
+- **The builder shows what hangs where:** each pillar lists the trees under it beneath it, as
+  branches, with their node counts. A tree with no nodes left is not offered to hang.
+- **One name for a syllabus and its tree:** when exactly one confirmed track feeds a tree (its id is
+  `<tree id>/…`), the two share a name (`packages/syllabus/src/treeNames.ts`). Renaming either
+  renames the other; when they first meet, or both changed, the track's name wins, as Settings ›
+  Syllabi is where syllabi are named. A goal with several tracks keeps its tree's own name. Adler's
+  and /mu/core's files now name track and tree alike.
+- **The demo's trees are gone:** Body, Mind, Spirit, Craft and People, which the removed Mastery demo
+  left in vaults, are deleted on load (`retireDemoTree`, `treeDefs.ts`) when they hold only the
+  demo's nodes. Every node is tombstoned, so a board still showing the demo drops it.
+
 ## Rebuild: one syllabus, many views (agreed 2026-10-17)
 
 Using Adler and /mu/core on real boards showed three problems. An import made three separate
@@ -268,7 +281,7 @@ room is free (slow, and children land far out).
   edition), the chart the /mu/ wiki calls New /mu/core: one recording per genre. The recordings come
   from the site's text list; their category and family from the chart's image map (each cover's
   `title`), so nothing was transcribed from the image.
-- **Shape:** one track, "/mu/core", of 84 family units in chart order ("Rock: Metal"), each holding
+- **Shape:** one track, "/mu/core" (its tree has the same name), of 84 family units in chart order ("Rock: Metal"), each holding
   its recordings as a collapsed checklist ("Thrash Metal: Metallica - Master of Puppets (1986)").
   The tree is a root, 16 categories as pillars (their rings show how much below is unlocked), and a
   node per family asking for a fifth of its recordings written up. The four categories with one

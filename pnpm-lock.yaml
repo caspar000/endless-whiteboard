@@ -563,6 +563,9 @@ importers:
       nanoid:
         specifier: 4.0.2
         version: 4.0.2
+      thumbhash:
+        specifier: 0.1.1
+        version: 0.1.1
     devDependencies:
       '@jest/expect-utils':
         specifier: ^30.5.2
@@ -5199,6 +5202,9 @@ packages:
 
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
+
+  thumbhash@0.1.1:
+    resolution: {integrity: sha512-kH5pKeIIBPQXAOni2AiY/Cu/NKdkFREdpH+TLdM0g6WA7RriCv0kPLgP731ady67MhTAqrVG/4mnEeibVuCJcg==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -10475,6 +10481,8 @@ snapshots:
       real-require: 1.0.0
 
   three@0.185.1: {}
+
+  thumbhash@0.1.1: {}
 
   tinybench@2.9.0: {}
 

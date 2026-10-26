@@ -65,7 +65,7 @@ test.describe('phone chrome', () => {
 		await page.getByRole('button', { name: 'Expand sidebar' }).click()
 		await sidebar.getByRole('button', { name: 'Search boards and commands' }).click()
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
-		await expect(page.getByPlaceholder(/Search boards/)).toBeFocused()
+		await expect(page.getByRole('combobox', { name: /^Search boards/ })).toBeFocused()
 	})
 
 	test('the agent opens as a card from the right, and a tap beside it closes it', async ({ page }) => {

@@ -1712,7 +1712,7 @@ tracks:
 
 tree:
   id: mucore
-  name: "1111 Essential Recordings"
+  name: "/mu/core"
   sectors: [prehistoric, ancient, sub-saharan-african, greater-middle-eastern, south-asian, central-asian, east-asian, southeast-asian-and-oceanian, indigenous-american, european, latin-american, north-american, caribbean, western-classical, jazz, rhythm-and-blues, hip-hop, rock, electronic-dance, experimental]
   nodes:
     - { id: root, name: "Listen Widely", kind: root, icon: ear }

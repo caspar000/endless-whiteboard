@@ -43,6 +43,47 @@ test.describe('canvas chrome', () => {
 		await expect(page.getByRole('toolbar', { name: 'Selected boards' })).toHaveCount(0)
 	})
 
+	test('the board list is searched by name', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['Trip planning', 'Café menu', 'Gym log']) {
+			await createBoard(page, name)
+			await backToList(page)
+		}
+		const cards = page.locator('.lb-list__board .lb-list__title')
+		const search = page.getByRole('searchbox', { name: 'Search boards' })
+		// Counted rather than assumed: the first run can leave a board of its own.
+		await expect(cards.filter({ hasText: 'Gym log' })).toHaveCount(1)
+		const all = await cards.count()
+
+		// "/" goes to the search from anywhere on the page.
+		await page.locator('.lb-home__header h1').click()
+		await page.keyboard.press('/')
+		await expect(search).toBeFocused()
+		await page.keyboard.type('plan TRIP')
+		await expect(cards).toHaveText(['Trip planning'])
+
+		await search.fill('cafe')
+		await expect(cards).toHaveText(['Café menu'])
+
+		// Select all picks only the boards the search shows.
+		await page.getByRole('button', { name: 'Select', exact: true }).click()
+		await page.getByRole('button', { name: 'Select all shown' }).click()
+		await expect(page.getByRole('toolbar', { name: 'Selected boards' })).toContainText('1 board selected')
+		await page.getByRole('button', { name: 'Cancel' }).click()
+
+		await search.fill('nothing like it')
+		await expect(page.getByRole('status')).toContainText('No boards match “nothing like it”')
+		await page.getByRole('button', { name: 'Clear search', exact: true }).first().click()
+		await expect(cards).toHaveCount(all)
+
+		await search.fill('gym')
+		await expect(cards).toHaveText(['Gym log'])
+		await search.press('Escape')
+		await expect(search).toHaveValue('')
+		await expect(cards).toHaveCount(all)
+	})
+
 	test('a middle click closes a board’s tab, as in a browser', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)
@@ -59,6 +100,26 @@ test.describe('canvas chrome', () => {
 		// Closing a tab isn't deleting the board.
 		await backToList(page)
 		await expect(page.locator('.lb-list__board', { hasText: 'First' })).toHaveCount(1)
+	})
+
+	test('the tabs show on every page, All boards first', async ({ page }) => {
+		await gotoFresh(page)
+		const strip = page.getByRole('tablist', { name: 'Open boards' })
+		const home = strip.getByRole('tab', { name: 'All boards' })
+		const board = strip.getByRole('tab', { name: /Home office shopping/ })
+		await expect(board).toHaveAttribute('aria-selected', 'true')
+		await expect(home).toHaveAttribute('aria-selected', 'false')
+
+		await home.click()
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+		await expect(home).toHaveAttribute('aria-selected', 'true')
+
+		// Settings and Help keep the strip, with nothing in front, and a board is a click away.
+		await openSettings(page)
+		await expect(strip.getByRole('tab', { selected: true })).toHaveCount(0)
+		await board.click()
+		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+		await expect(board).toHaveAttribute('aria-selected', 'true')
 	})
 
 	test('double-clicking empty canvas is tldraw\'s again, not a note', async ({ page }) => {
@@ -1747,7 +1808,8 @@ test.describe('canvas grid', () => {
 		expect(new Set(ids).size).toBe(ids.length)
 
 		// And each tab in turn must resolve to a pattern inside its *own* svg, with dots actually painted.
-		const tabs = await page.getByRole('tab').all()
+		// The boards' tabs only, which are the ones with a close button: All boards leads home.
+		const tabs = await page.locator('.lb-tabs__tab:has(.lb-tabs__close)').all()
 		for (let i = 0; i < tabs.length; i++) {
 			await tabs[i]!.click()
 			await expect(page.locator('.tl-canvas:visible')).toBeVisible()

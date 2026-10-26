@@ -25,7 +25,7 @@ pnpm dev          # http://localhost:5173
 ## The two screens
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
-board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
+board cards, modelled on Freeform's board browser, with a search box over the grid that narrows it by board name. Each card's preview is that board's own thumbnail,
 drawn from the live editor once the board is off screen and the user is idle, in light and dark at once. A board with no
 current preview (imported, moved from another device, made by an agent) gets one drawn in a hidden editor off screen,
 one board at a time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
@@ -65,9 +65,10 @@ sit at the default's softness. Both are saved with the board's name, in the boar
 server's `boards` table, and changing them does not count as editing the board.
 
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
-dock and the dice tray are rounded surfaces held off the window edge. On a board, the open boards hang
-from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved tail;
-elsewhere the sidebar is the way to a board. <kbd>⌘\</kbd> slides the sidebar away and
+dock and the dice tray are rounded surfaces held off the window edge. On every screen, the open boards
+hang from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved
+tail, after a pinned **All boards** label; Settings, Help and the board list start below them. A phone
+shows the board pill in their place, on every screen too. <kbd>⌘\</kbd> slides the sidebar away and
 leaves a round button in its corner; under 1024px it starts that way and opens over the board. The
 board runs under all of it, so zoom to fit, quick look and panning a shape into view frame inside
 what the chrome leaves (`Editor.setSafeInsets`).
@@ -133,7 +134,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
 | **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
 | **Syllabus** (`@lifeboard/syllabus`) | `node.skillItem`, `node.track`, `node.upNext` | One syllabus in your vault (entries, their works, and tracks that order them), shown on any board as a list, Up next or a card, so a tick anywhere is a tick everywhere. A tick records the day and files a write-up note from the medium's template beside what you ticked from; a note still holding only the template leaves the tick hollow. The list is the whole outline in reading order, folding each entry to its works. With skill trees on, its entries are drawn in a tree and its write-ups light the nodes they are tagged to. Its Settings page lists every syllabus in the vault, to rename, pause, add or remove, and their entries, to rename, reorder, add or remove. A whole syllabus imports from YAML as a dashed draft: a list per track, its tree left in the vault until you show it, and a bar over the board to Confirm or Discard it. None is built in: [`syllabi/`](syllabi) holds Adler's 137-entry list, /mu/core's 1111 recordings, and the film, theatre and games trees (151 entries, directors with their films; 138, playwrights, practitioners and stagecraft; 122, studios and designers with their games; Russian and Georgian people and works under their own names), each a file to drop on a board. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
-| **Skill trees** (`@lifeboard/skill-tree`) | `node.skill`, `node.skillTree`, `node.skillEntry` | Constellations of skill nodes that light up as their requirements are met: other nodes unlocked, a tick by hand, or what another extension teaches them (the syllabus adds items done and write-ups counted, through `sources.ts`). Trees live in the vault; each board shows a view of a tree from a root you pick, laid out as a maze of hexagons, and trees hang from other trees' nodes. Mastery, built in its Settings page, is you, your pillars and every tree hung under them (one tree can hang under several). | — |
+| **Skill trees** (`@lifeboard/skill-tree`) | `node.skill`, `node.skillTree`, `node.skillEntry` | Constellations of skill nodes that light up as their requirements are met: other nodes unlocked, a tick by hand, or what another extension teaches them (the syllabus adds items done and write-ups counted, through `sources.ts`). Trees live in the vault; each board shows a view of a tree from a root you pick, laid out as a maze of hexagons, and trees hang from other trees' nodes. Mastery, built in its Settings page, is you, your pillars and every tree hung under them (one tree can hang under several), each pillar listing its trees beneath it. A tree only one syllabus feeds goes by that syllabus's name. | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
 boards and keep rendering**, because enablement hides types from creation UI without ever touching
@@ -607,6 +608,13 @@ only on opening, through `useStaggerIn`. A board opening for the first time does
 shapes on screen, in reading order and in at most sixteen waves (`canvas/boardEntrance.ts`). Only
 opacity and `translate` animate: a shape is placed by its inline `transform`, and a card lifts on hover
 with one. Reduced motion sets the stagger to zero along with every duration.
+
+**A picture shows blurred until its bytes have arrived.** Each upload keeps a ThumbHash of the picture
+(about 35 characters) in the asset record's `meta.thumbhash`, so it travels with the board. `BlurUpImage`
+(canvas-editor) shows it at once and swaps to the picture once that has decoded; a picture with no
+ThumbHash fades in instead. The blur is in the placeholder image, never a CSS `filter`, because the GPU
+layer can't draw filters. Replacing a picture's bytes (remove background) has to replace its ThumbHash too.
+See docs/image-loading-plan.md.
 
 **Board thumbnails are drawn while you are idle, never on the way out of a board.** An export of a
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made

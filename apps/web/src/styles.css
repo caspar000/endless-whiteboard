@@ -647,9 +647,12 @@ button {
 	z-index: 0;
 	overflow: hidden;
 }
-/* Home, Settings and Help sit beside the floating sidebar and the corner buttons, not beneath them. */
+/*
+ * Home, Settings and Help sit beside the floating sidebar and the corner buttons, and under the tab
+ * strip (the active label's height), not beneath them. A phone's pages clear its top bar themselves.
+ */
 .lb-shell--page .lb-shell__content {
-	top: 0;
+	top: 42px;
 	left: var(--fl-page-left);
 	right: var(--fl-page-right);
 	transition:
@@ -694,7 +697,7 @@ button {
 /* ---------------------------------------------------------------- tab strip */
 /*
  * The open boards, as folder labels hanging from the top edge of the window just past the sidebar
- * (or past the button that reopens it). Board view only.
+ * (or past the button that reopens it), after the pinned "All boards" label. On every screen.
  *
  * The labels stack like folder tabs: the active one in front, each step away one layer further back
  * (z-index from TabStrip.tsx). A label's side away from the active one is a slope sweeping over the
@@ -865,6 +868,18 @@ button {
 }
 .lb-tabs__tab:not(.lb-tabs__tab--slope-right) {
 	padding-right: calc(var(--slope-w) * 0.75 - var(--tab-gap));
+}
+/* "All boards" is as wide as its name: it never truncates, and there is only one. */
+.lb-tabs__tab--home {
+	flex: 0 0 auto;
+	min-width: 0;
+}
+.lb-tabs__icon {
+	flex: none;
+	color: var(--lb-text-dim);
+}
+.lb-tabs__tab--active .lb-tabs__icon {
+	color: var(--lb-accent);
 }
 /* The board's colour, as the same rounded square the sidebar shows. */
 .lb-tabs__thumb {
@@ -1757,11 +1772,72 @@ div.lb-sidebar__moves {
 	background: var(--lb-accent);
 }
 
-/* All boards' filter, between the server's boards and this device's (BoardList.tsx). */
-.lb-list__filter {
-	align-self: flex-start;
-	width: fit-content;
+/* All boards' search, and the filter between the server's boards and this device's (BoardList.tsx). */
+.lb-list__tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
 	margin: 0 0 16px;
+}
+.lb-list__search {
+	position: relative;
+	flex: 0 1 320px;
+	min-width: min(100%, 200px);
+}
+.lb-list__search input {
+	width: 100%;
+	height: 36px;
+	padding: 0 34px 0 36px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+	color: var(--lb-text);
+	font-family: inherit;
+	font-size: 14px;
+}
+.lb-list__search input:focus {
+	outline: none;
+	box-shadow: inset 0 0 0 1.5px var(--lb-accent);
+}
+.lb-list__search input::placeholder {
+	color: var(--lb-text-faint);
+}
+/* The clear button below replaces the browser's own, which Firefox doesn't draw. */
+.lb-list__search input::-webkit-search-cancel-button {
+	appearance: none;
+}
+.lb-list__search-icon {
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	transform: translateY(-50%);
+	color: var(--lb-text-faint);
+	pointer-events: none;
+}
+.lb-list__search-clear {
+	position: absolute;
+	top: 50%;
+	right: 6px;
+	transform: translateY(-50%);
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-list__search-clear:hover {
+	background: var(--lb-surface);
+	color: var(--lb-text);
+}
+.lb-list__filter {
+	width: fit-content;
 }
 .lb-list__filter-count {
 	margin-left: 4px;
@@ -13544,9 +13620,13 @@ button.lb-props__eye:hover {
 		display: none;
 	}
 
-	/* Pages (home, Settings, Help) take the whole width and start below the menu button, not beside it. */
+	/* Pages (home, Settings, Help) take the whole width and start below the menu button and the board
+	   pill, not beside them. */
 	.lb-shell {
 		--fl-page-left: 0px;
+	}
+	.lb-shell--page .lb-shell__content {
+		top: 0;
 	}
 	.lb-home__main {
 		padding: var(--fl-card-top) calc(var(--fl-safe-right) + var(--fl-edge) * 2)
@@ -13558,6 +13638,9 @@ button.lb-props__eye:hover {
 	}
 	.lb-home__header h1 {
 		font-size: 24px;
+	}
+	.lb-list__search {
+		flex-basis: 100%;
 	}
 	/* Two columns of cards; the name is what tells them apart at this size, so the date goes. */
 	.lb-grid {
@@ -13597,10 +13680,11 @@ button.lb-props__eye:hover {
 	.lb-card__confirm-actions {
 		flex-direction: column-reverse;
 	}
-	/* Settings and Help: their row of sections clears the menu button; the page under it is full width. */
+	/* Settings and Help: their row of sections sits under the top bar, the board pill being in it, and
+	   the page under that is full width. */
 	.lb-rail {
-		padding-left: calc(var(--fl-safe-left) + var(--fl-edge) * 2 + var(--fl-bar));
-		padding-top: calc(var(--fl-safe-top) + var(--fl-edge));
+		padding-left: calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+		padding-top: calc(var(--fl-card-top) - var(--fl-edge));
 		padding-bottom: var(--fl-edge);
 	}
 	.lb-pane__main {
@@ -14436,8 +14520,8 @@ button.lb-props__eye:hover {
 	font-size: 13px;
 	color: var(--lb-text);
 }
-/* The Mastery builder in Settings › Skill trees (MasteryBuilder.tsx): pillars on the left, the picked
- * pillar's trees on the right. */
+/* The Mastery builder in Settings › Skill trees (MasteryBuilder.tsx): pillars on the left, each with
+ * the trees hung under it as branches, and the picked pillar's trees to hang and take down on the right. */
 .lb-mastery__title {
 	margin: 0 0 10px;
 	font-size: 13.5px;
@@ -14521,6 +14605,54 @@ button.lb-props__eye:hover {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* A pillar's trees, drawn as branches off it: a line down from the pillar, a tick to each tree. */
+.lb-mastery .lb-mastery__branches {
+	margin: 0 0 4px 30px;
+}
+.lb-mastery__branch {
+	position: relative;
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 2px 8px 2px 16px;
+	font-size: 12.5px;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-mastery__branch::before,
+.lb-mastery__branch::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	border-color: var(--lb-border);
+	border-style: solid;
+	border-width: 0;
+}
+.lb-mastery__branch::before {
+	top: 0;
+	bottom: 0;
+	border-left-width: 1px;
+}
+.lb-mastery__branch:last-child::before {
+	bottom: 50%;
+}
+.lb-mastery__branch::after {
+	top: 50%;
+	width: 10px;
+	border-top-width: 1px;
+}
+.lb-mastery__branch-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-mastery__size {
+	flex: none;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+	font-variant-numeric: tabular-nums;
 }
 .lb-mastery__also {
 	flex: none;

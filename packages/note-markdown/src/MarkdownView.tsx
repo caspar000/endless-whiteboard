@@ -2,7 +2,7 @@ import { memo, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
-import { useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
+import { BlurUpImage, useImageOrVideoAsset, type TLAssetId } from '@lifeboard/canvas'
 
 /**
  * Rendered markdown. `react-markdown` builds React elements rather than assigning `innerHTML`, and
@@ -116,13 +116,11 @@ export const MarkdownView = memo(function MarkdownView({
 function MarkdownImage({ src, alt }: { src: string; alt?: string }) {
 	const isAssetId = src.startsWith('asset:')
 	// Called unconditionally — hooks cannot be conditional. A null assetId simply resolves to nothing.
-	const { url } = useImageOrVideoAsset({
+	const { url, placeholder } = useImageOrVideoAsset({
 		assetId: isAssetId ? (src as TLAssetId) : null,
 		// Shape-space width. Notes are narrow, and this only picks which resolution to request.
 		width: 320,
 	})
 
-	const resolved = isAssetId ? url : src
-	if (!resolved) return null
-	return <img className="lb-md__img" src={resolved} alt={alt ?? ''} />
+	return <BlurUpImage className="lb-md__img" src={isAssetId ? url : src} placeholder={placeholder} alt={alt ?? ''} />
 }

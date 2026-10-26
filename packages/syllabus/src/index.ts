@@ -10,9 +10,12 @@
 import './shape-types'
 import { registerTreeSource } from '@lifeboard/skill-tree'
 import { syllabusTreeSource } from './syllabusSource'
+import { watchTreeNames } from './treeNames'
 
 // The syllabus's entries, write-ups and requirement kinds, for skill trees.
 registerTreeSource(syllabusTreeSource)
+// A syllabus and the tree only it feeds go by one name.
+watchTreeNames()
 
 export { syllabusExtension } from './extension'
 export { ITEM_TYPE, TRACK_TYPE, UP_NEXT_TYPE, type SkillItemProps, type TrackProps, type UpNextProps } from './board'

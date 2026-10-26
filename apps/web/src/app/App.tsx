@@ -6,7 +6,14 @@ import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../bo
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { isThumbnailStale, notifyThumbnailSaved, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import {
+	adoptStoredThumbnail,
+	isStoredThumbnailCurrent,
+	isThumbnailStale,
+	notifyThumbnailSaved,
+	onThumbnailDrawn,
+	saveBoardThumbnail,
+} from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
@@ -34,7 +41,7 @@ import { useBoards } from './useBoards'
 import { useHashRoute } from './useHashRoute'
 import { useTabs } from './useTabs'
 import { useRates } from './useRates'
-import { useTheme } from './useTheme'
+import { getResolvedTheme, useTheme } from './useTheme'
 import { BoardPill } from './BoardPill'
 import { useKeyboardInset, usePhone } from './usePhone'
 
@@ -841,6 +848,10 @@ export function App() {
 								onEditor={(editor) => {
 									if (editor) {
 										editors.current.set(board.id, editor)
+										// A board whose preview is current isn't drawn again when it closes, unless it
+										// is changed.
+										const listed = boardsRef.current.find((b) => b.id === board.id) ?? board
+										void adoptStoredThumbnail(editor, isStoredThumbnailCurrent(platform.kv, listed, getResolvedTheme()))
 										// Only the board on screen may bring up a GPU layer: a tab open behind it is
 										// hidden with `visibility`, keeps its size, and would hold a WebGL context.
 										getGpuScene(editor).shown.set(board.id === activeBoardIdRef.current)

@@ -114,3 +114,9 @@ The biggest win, and it doesn't change when previews are drawn.
   opened board being redrawn (its upload and one download of the new version), which phase 2 removes.
   Unchanged previews make no requests. An edited board's card switches to its new preview without a
   reload.
+- **Phase 2.** Opening and closing a board without changing it no longer draws it: returning to the
+  home screen made no preview requests at all, and the boards' `updatedAt` stayed put on the server.
+  Closing a local board used to move its `updatedAt` even when nothing changed (`trackBoardActivity`);
+  now only held-back edits do. With a second browser on the home screen while the first was still
+  editing a board, the second drew nothing; the first drew it on leaving. One-off cost: local previews
+  stored before this have no drawn-at time, so each is redrawn once in the background.

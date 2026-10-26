@@ -1,6 +1,8 @@
 import type { Editor } from '@lifeboard/canvas'
 import type { ResolvedTheme } from '../app/useTheme'
 import type { KvStore } from '../platform/PlatformAdapter'
+import type { BoardMeta } from '../boards/boardIndex'
+import { serverPreviewVersion } from '../server/serverVault'
 
 /**
  * Board thumbnails — the previews on the home screen's cards.
@@ -25,6 +27,8 @@ import type { KvStore } from '../platform/PlatformAdapter'
 const PREFIX = 'thumb:'
 const THEMES: readonly ResolvedTheme[] = ['light', 'dark']
 const key = (boardId: string, theme: ResolvedTheme) => `${PREFIX}${theme}:${boardId}`
+/** When the preview under `key` was stored, by this browser's clock: compared with a local board's `updatedAt`. */
+const drawnAtKey = (boardId: string, theme: ResolvedTheme) => `thumbAt:${theme}:${boardId}`
 
 /**
  * Notification that a board's thumbnail has been (re)written.
@@ -106,12 +110,40 @@ const fresh = new WeakSet<Editor>()
 const watched = new WeakSet<Editor>()
 
 /**
- * Whether the board has changed since its preview was last drawn. An editor starts out stale, so
- * each board is drawn once a session: an edit made just before a reload never reached a preview.
- * Only the user's own edits count; a remote edit is drawn by the device that made it.
+ * Whether the board has changed since its preview was last drawn. An editor starts out stale until
+ * `adoptStoredThumbnail` finds its stored preview current, so a board edited just before a reload is
+ * still drawn. Only the user's own edits count; a remote edit is drawn by the device that made it.
  */
 export function isThumbnailStale(editor: Editor): boolean {
 	return !fresh.has(editor)
+}
+
+/**
+ * Whether the board's stored preview in `theme` was drawn after its last edit: on the server's clock for
+ * a server board, on this browser's for a local one, the clock its `updatedAt` is on.
+ */
+export async function isStoredThumbnailCurrent(kv: KvStore, board: BoardMeta, theme: ResolvedTheme): Promise<boolean> {
+	if (board.vault === 'server') return (serverPreviewVersion(board, theme) ?? -Infinity) >= board.updatedAt
+	const drawnAt = await kv.get<number>(drawnAtKey(board.id, theme))
+	// The picture itself too: a time with no picture to go with it is not a preview.
+	return typeof drawnAt === 'number' && drawnAt >= board.updatedAt && (await loadBoardThumbnail(kv, board.id, theme)) !== undefined
+}
+
+/**
+ * Starts a newly mounted editor out fresh when the board's stored preview is current, so opening and
+ * closing a board without changing it draws nothing. An edit made while the answer is on its way
+ * keeps it stale.
+ */
+export async function adoptStoredThumbnail(editor: Editor, current: Promise<boolean>): Promise<void> {
+	let edited = false
+	const stop = editor.store.listen(() => (edited = true), { scope: 'document', source: 'user' })
+	try {
+		if ((await current) && !edited) markFresh(editor)
+	} catch {
+		// Stays stale: drawing again is the safe side.
+	} finally {
+		stop()
+	}
 }
 
 function markFresh(editor: Editor) {
@@ -242,20 +274,20 @@ export async function storeBoardThumbnail(
 	blob: Blob
 ): Promise<void> {
 	await kv.set(key(boardId, theme), blob)
+	await kv.set(drawnAtKey(boardId, theme), Date.now())
 	cacheUrl(key(boardId, theme), blob, Date.now())
-	for (const other of THEMES) {
-		if (other === theme) continue
-		await kv.delete(key(boardId, other))
-		cacheUrl(key(boardId, other), undefined, 0)
-	}
+	for (const other of THEMES) if (other !== theme) await forget(kv, boardId, other)
 	notifyThumbnailSaved(boardId)
 }
 
 export async function deleteBoardThumbnail(kv: KvStore, boardId: string): Promise<void> {
-	for (const theme of THEMES) {
-		await kv.delete(key(boardId, theme))
-		cacheUrl(key(boardId, theme), undefined, 0)
-	}
+	for (const theme of THEMES) await forget(kv, boardId, theme)
+}
+
+async function forget(kv: KvStore, boardId: string, theme: ResolvedTheme): Promise<void> {
+	await kv.delete(key(boardId, theme))
+	await kv.delete(drawnAtKey(boardId, theme))
+	cacheUrl(key(boardId, theme), undefined, 0)
 }
 
 /** Drops previews stored before they had a theme (`thumb:<id>`): nothing says which theme they are in. */

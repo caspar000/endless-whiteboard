@@ -1323,6 +1323,38 @@ test.describe('home screen', () => {
 		expect(await thumbnailBytes(page)).toEqual(bytes)
 	})
 
+	test('a board opened and closed without a change keeps its preview', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Unchanged')
+		await openBoard(page, 'Unchanged')
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorLike }).editor.createShapes([
+				{ type: 'geo', x: 0, y: 0, props: { w: 300, h: 200 } },
+			])
+		})
+		await backToList(page)
+		await expect.poll(() => previewDrawnAt(page, 'Unchanged'), { timeout: 15_000 }).toBeGreaterThan(0)
+		const drawn = await previewDrawnAt(page, 'Unchanged')
+
+		// A new editor, as after a reload: it starts from the stored preview rather than drawing again.
+		await page.reload()
+		await openBoard(page, 'Unchanged')
+		await backToList(page)
+		await page.waitForTimeout(4_000)
+		expect(await previewDrawnAt(page, 'Unchanged')).toBe(drawn)
+
+		// A change is drawn.
+		await openBoard(page, 'Unchanged')
+		await page.evaluate(() => {
+			;(window as unknown as { editor: EditorLike }).editor.createShapes([
+				{ type: 'geo', x: 400, y: 0, props: { w: 300, h: 200 } },
+			])
+		})
+		await backToList(page)
+		await expect.poll(() => previewDrawnAt(page, 'Unchanged'), { timeout: 15_000 }).toBeGreaterThan(drawn)
+	})
+
 	test('the board title can be renamed by double-clicking its tab', async ({ page }) => {
 		await gotoFresh(page)
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
@@ -1891,6 +1923,26 @@ async function firstDotOffset(page: import('@playwright/test').Page): Promise<st
 		.first()
 		.getAttribute('cx')
 		.then((v) => v ?? '')
+}
+
+/** When the board's light preview was last stored (persistence/thumbnails.ts), or 0 if it has none. */
+async function previewDrawnAt(page: import('@playwright/test').Page, name: string): Promise<number> {
+	return page.evaluate(async (name) => {
+		const db = await new Promise<IDBDatabase>((resolve) => {
+			const req = indexedDB.open('lifeboard-kv')
+			req.onsuccess = () => resolve(req.result)
+		})
+		const get = (key: string) =>
+			new Promise<unknown>((resolve) => {
+				const q = db.transaction('kv', 'readonly').objectStore('kv').get(key)
+				q.onsuccess = () => resolve(q.result)
+			})
+		const boards = (await get('boards')) as { id: string; name: string }[]
+		const id = boards.find((b) => b.name === name)?.id
+		const drawnAt = id ? await get(`thumbAt:light:${id}`) : undefined
+		db.close()
+		return typeof drawnAt === 'number' ? drawnAt : 0
+	}, name)
 }
 
 /** Sizes of every stored thumbnail, sorted — a cheap fingerprint for "did these change?". */

@@ -5,6 +5,16 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+## Imports arrive as lists (2026-10-26)
+
+Asked for after trying it: dropping `adler.yaml` drew the skill tree at once, when a syllabus should
+arrive as something to read, its tree a view you then ask for. An import now puts one list per track
+on the board; its trees go to the vault as before (with Skill trees on) and wait for "Show a skill
+tree on this board". A document with no tracks, only a tree, still shows its tree, since there would
+be nothing else to see. Confirm draft and Discard draft left ⌘K: a board holding a draft shows a bar
+fixed over it, with the two as buttons, until one is pressed. The syllabus's Settings page lists and
+edits every track and its entries.
+
 ## Cleanup (2026-10-25)
 
 Agreed in a grilling round, the second of four phases: a git change came first, then this, then the
@@ -236,10 +246,10 @@ room is free (slow, and children land far out).
   A parent's tick and day are worked out from its works.
 - **Ticks are vault data**, so ⌘Z does not untick: ticking again does. The write-up note a tick files
   is an ordinary note, beside what you ticked from, and undoes like one.
-- **Import** merges a document into the vault (`syllabusMerge.ts`, pure) and puts only the tree and
-  habit cards on the board: /mu/core imports in 0.4 s instead of 6, and the board holds 101 nodes, not
-  2,500 shapes. New items and tracks are drafts of the importing board (`draft` holds its id) until
-  Confirm draft; Discard removes them.
+- **Import** merges a document into the vault (`syllabusMerge.ts`, pure) and puts only a list per
+  track on the board (the tree waits in the vault; since 2026-10-26, see below): /mu/core imports in
+  0.4 s instead of 6. New items and tracks are drafts of the importing board (`draft` holds its id)
+  until Confirm on the board's draft bar; Discard removes them.
 - **The list** (`node.track`) is a resizable card for one vault track: the outline in reading order,
   every entry folding to its works (folding is the board's view state, kept on the card and out of
   undo), a parent's box ticking its next work, an arrow on each row putting a card on the board. It
@@ -447,8 +457,9 @@ Decided 2026-10-17: trees are vault data, and a board's node shapes are views of
 - **Problems** are listed, every one with its place ("Track 1 › item 2: kind is one of …", or the
   YAML line). From the palette or a dropped file they arrive as a note on the board, because an
   extension has no toast to reach; an operation returns them to the agent.
-- **Commands:** Import syllabus YAML from the clipboard, Copy a syllabus as YAML, Confirm draft,
-  Discard draft. A dropped `.yaml` or `.yml` file is imported where it lands.
+- **Commands:** Import syllabus YAML from the clipboard, Copy a syllabus as YAML. A dropped `.yaml`
+  or `.yml` file is imported where it lands. Confirm and Discard are buttons on the bar a board with
+  a draft shows (`DraftBar.tsx`), no longer commands.
 - **Operations:** `skill.import`, `skill.export`, `skill.item.complete`, `skill.tag` (a YAML map of
   item id to node ids, the bulk tagging pass), `skill.read` (tracks, items, habits, and the state of
   every node on the open board), `skill.draft.confirm`, `skill.draft.discard`.

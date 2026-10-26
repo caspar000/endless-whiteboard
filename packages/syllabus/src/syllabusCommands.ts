@@ -6,13 +6,13 @@ import { isItem, isTrack, NOTE_TYPE } from './board'
 import { showTrack, tick } from './ops'
 import { getItem, getTrack, getTracks, updateItem } from './syllabus'
 import { getSkillIndex, getTrackIndex } from './skillIndex'
-import { boardGoals, boardHasDraft, confirmDraft, discardDraft, exportSyllabus, importSyllabus } from './syllabusIO'
+import { boardGoals, confirmDraft, discardDraft, exportSyllabus, importSyllabus } from './syllabusIO'
 import { describeDoc, parseSyllabus } from './syllabusYaml'
 
 /**
  * Getting syllabi in and out (docs/skill-tree-plan.md, step 5): commands for a person, operations
  * (and so MCP tools) for the agent, and `.yaml` files dropped on the board. Every import lands as a
- * draft to look over, then "Confirm draft" or "Discard draft".
+ * draft to look over, then Confirm or Discard on the bar the board shows while it has one (DraftBar.tsx).
  */
 
 const GROUP = 'Syllabus'
@@ -84,7 +84,23 @@ const selectedGoal = (editor: Editor) =>
 		.getSelectedShapes()
 		.flatMap((s) => (isTrack(s) ? [getTrack(s.props.trackId)?.goal ?? ''] : isTree(s) ? [s.props.goal] : []))[0]
 
-const hasDraft = (editor: Editor | null) => !!editor && boardHasDraft(editor)
+/**
+ * Confirms this board's draft, saying so on the board while the trees lay out. What the draft bar's
+ * Confirm runs (DraftBar.tsx); the agent's operation confirms without the progress note.
+ */
+export async function confirmImport(editor: Editor): Promise<void> {
+	await working(editor, 'Confirming the draft', 2, async (step) => {
+		const release = holdImport(editor)
+		try {
+			await step('Adding it to the vault')
+			confirmDraft(editor)
+			await step('Laying out the trees')
+		} finally {
+			release()
+		}
+		await Promise.resolve()
+	})
+}
 
 export const syllabusCommands: readonly Command[] = [
 	{
@@ -132,35 +148,6 @@ export const syllabusCommands: readonly Command[] = [
 			}
 		},
 	},
-	{
-		id: 'skill-tree.confirm-draft',
-		title: 'Confirm draft',
-		group: GROUP,
-		when: (ctx) => hasDraft(ctx.editor),
-		run: async ({ editor }) => {
-			if (!editor) return
-			await working(editor, 'Confirming the draft', 2, async (step) => {
-				const release = holdImport(editor)
-				try {
-					await step('Adding it to the vault')
-					confirmDraft(editor)
-					await step('Laying out the trees')
-				} finally {
-					release()
-				}
-				await Promise.resolve()
-			})
-		},
-	},
-	{
-		id: 'skill-tree.discard-draft',
-		title: 'Discard draft',
-		group: GROUP,
-		when: (ctx) => hasDraft(ctx.editor),
-		run: ({ editor }) => {
-			if (editor) discardDraft(editor)
-		},
-	},
 ]
 
 /** A `.yaml` file dropped on a board is imported as a draft where it was dropped. */
@@ -198,7 +185,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 				summary: outcome.summary,
 				created: outcome.result.created,
 				updated: outcome.result.updated,
-				next: 'Ask the user to look the dashed draft over and run "Confirm draft" or "Discard draft".',
+				next: 'Ask the user to look the dashed draft over and press Confirm or Discard on the bar at the top of the board.',
 			})
 		},
 	}),

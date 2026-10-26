@@ -171,9 +171,12 @@ export function Syllabus({ go }: SectionProps) {
 					A whole syllabus, its tracks, entries and tree, can be written as one YAML document and
 					brought in with <code>Import syllabus YAML from the clipboard</code>, or by dropping a{' '}
 					<code>.yaml</code> file on the board. The agent can write one for you from a pasted list or a
-					chart. The entries go into your vault and the board gets the skill tree (with Skill trees on); add a list or Up next
-					when you want them. An import arrives as a <strong>draft</strong>: dashed, and counting toward
-					nothing until you run <code>Confirm draft</code>. <code>Discard draft</code> removes it.
+					chart. The entries go into your vault and the board gets a list of each track. Its tree goes into
+					your vault too (with Skill trees on): put it on a board when you want it with{' '}
+					<code>Show a skill tree on this board</code>. A file with only a tree in it shows the tree. An
+					import arrives as a <strong>draft</strong>: dashed, and counting toward nothing until you press{' '}
+					<strong>Confirm</strong> on the bar at the top of the board. <strong>Discard</strong> takes it
+					all back out. The bar stays until you press one of the two.
 					No syllabus is built in. Adler's reading list, /mu/core, and the film, theatre and games trees
 					are files in the repo's <code>syllabi/</code> folder: drop one on a board to bring it in.
 				</p>

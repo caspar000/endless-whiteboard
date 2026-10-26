@@ -1,4 +1,4 @@
-import type { Editor, TLShapeId } from '@lifeboard/canvas'
+import { createShapeId, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { isExtensionEnabled } from '@lifeboard/node-kit'
 import {
 	boardHasTreeDraft,
@@ -14,6 +14,8 @@ import {
 	whileImporting,
 } from '@lifeboard/skill-tree'
 import { stringify as stringifyYaml } from 'yaml'
+import { isTrack, TRACK_TYPE } from './board'
+import { TRACK_WIDTH } from './ops'
 import { boardIdOf } from './skillIndex'
 import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
@@ -23,11 +25,13 @@ import type { SyllabusDoc } from './syllabusYaml'
  * Putting a syllabus document into the vault and its tree on a board, and taking one out
  * (docs/skill-tree-plan.md, "The YAML format" and "Drafts").
  *
- * Items and tracks go into the vault (syllabusMerge.ts), with no shapes. The document's trees go to
- * the skill tree (its treeIO.ts) when that extension is on, and are left out when it is off; the
- * board gets a view of each. "Show as list" and "Add Up Next" add the other views. An import is a
+ * Items and tracks go into the vault (syllabusMerge.ts), and the board gets a list of each track. The
+ * document's trees go to the skill tree (its treeIO.ts) when that extension is on, and are left out
+ * when it is off; they wait in the vault for "Show a skill tree on this board", so a syllabus arrives
+ * as something to read and its tree is a view you ask for. A document with no tracks (only a tree)
+ * shows its tree, as there would be nothing else to show. An import is a
  * **draft**: what it makes is marked as this board's draft, draws dashed, and stays out of the index
- * until "Confirm draft". Ids that already exist are updated in place instead (titles, tags,
+ * until Confirm on the board's draft bar (DraftBar.tsx). Ids that already exist are updated in place instead (titles, tags,
  * requirements; never a tick or a note), so a YAML file can be edited and imported again.
  */
 
@@ -44,11 +48,19 @@ const boardOf = (editor: Editor) => boardIdOf(editor) ?? 'board'
 /** Whether a document's trees go anywhere: only with the skill tree on. */
 const treesOn = () => isExtensionEnabled(SKILL_TREE_EXTENSION)
 
-export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
-	return whileImporting(editor, () => importNow(editor, doc, at))
+/**
+ * What an import puts on the board: `lists` (the default) a list per track, or the tree views when
+ * the document has no tracks; `trees` the tree views and no lists.
+ */
+export type ImportShows = 'lists' | 'trees'
+
+export function importSyllabus(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }, shows: ImportShows = 'lists'): ImportResult {
+	return whileImporting(editor, () => importNow(editor, doc, at, shows))
 }
 
-function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }): ImportResult {
+const LIST_GAP = 40
+
+function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number }, shows: ImportShows): ImportResult {
 	const before = new Set(editor.getCurrentPageShapeIds())
 	let updated = 0
 	let vaultCreated = 0
@@ -61,10 +73,21 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 		vaultCreated = merged.created
 		updated += merged.updated
 
+		const lists = shows === 'lists' && doc.tracks.length > 0
 		if (treesOn()) {
-			const trees = importTrees(editor, doc.trees, at, boardOf(editor))
+			const trees = importTrees(editor, doc.trees, at, boardOf(editor), !lists)
 			vaultCreated += trees.created
 			updated += trees.updated
+		}
+		if (lists) {
+			// Side by side, each track once: importing the file again leaves this board's lists where they are.
+			const listed = new Set(editor.getCurrentPageShapes().filter(isTrack).map((s) => s.props.trackId))
+			let x = at.x
+			for (const track of doc.tracks) {
+				if (listed.has(track.trackId)) continue
+				editor.createShape({ id: createShapeId(), type: TRACK_TYPE, parentId: editor.getCurrentPageId(), x, y: at.y, props: { trackId: track.trackId } } as never)
+				x += TRACK_WIDTH + LIST_GAP
+			}
 		}
 		// The cards this import made (headers) are the draft on the board; the vault marks the rest.
 		for (const shape of editor.getCurrentPageShapes()) {

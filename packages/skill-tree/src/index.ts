@@ -45,7 +45,7 @@ export { firstTreeId, isMap, list, parseTrees, qualify, slug, text, type DocNode
 export { boardHasTreeDraft, confirmTrees, discardTrees, importTrees, treeDoc, treeGoals, treePrefix } from './treeIO'
 export { syncBoard } from './treeSync'
 export { holdImport, isImporting, onImportEnd, whileImporting } from './importing'
-export { working } from './progress'
+export { getWork, working } from './progress'
 export { makeItemId, todayIso } from './ids'
 export { isAutomated, isDevBuild } from './env'
 export { entryNodeDefinition } from './entry/definition'

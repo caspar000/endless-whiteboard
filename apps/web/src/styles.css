@@ -647,9 +647,12 @@ button {
 	z-index: 0;
 	overflow: hidden;
 }
-/* Home, Settings and Help sit beside the floating sidebar and the corner buttons, not beneath them. */
+/*
+ * Home, Settings and Help sit beside the floating sidebar and the corner buttons, and under the tab
+ * strip (the active label's height), not beneath them. A phone's pages clear its top bar themselves.
+ */
 .lb-shell--page .lb-shell__content {
-	top: 0;
+	top: 42px;
 	left: var(--fl-page-left);
 	right: var(--fl-page-right);
 	transition:
@@ -694,7 +697,7 @@ button {
 /* ---------------------------------------------------------------- tab strip */
 /*
  * The open boards, as folder labels hanging from the top edge of the window just past the sidebar
- * (or past the button that reopens it). Board view only.
+ * (or past the button that reopens it), after the pinned "All boards" label. On every screen.
  *
  * The labels stack like folder tabs: the active one in front, each step away one layer further back
  * (z-index from TabStrip.tsx). A label's side away from the active one is a slope sweeping over the
@@ -865,6 +868,18 @@ button {
 }
 .lb-tabs__tab:not(.lb-tabs__tab--slope-right) {
 	padding-right: calc(var(--slope-w) * 0.75 - var(--tab-gap));
+}
+/* "All boards" is as wide as its name: it never truncates, and there is only one. */
+.lb-tabs__tab--home {
+	flex: 0 0 auto;
+	min-width: 0;
+}
+.lb-tabs__icon {
+	flex: none;
+	color: var(--lb-text-dim);
+}
+.lb-tabs__tab--active .lb-tabs__icon {
+	color: var(--lb-accent);
 }
 /* The board's colour, as the same rounded square the sidebar shows. */
 .lb-tabs__thumb {
@@ -13544,9 +13559,13 @@ button.lb-props__eye:hover {
 		display: none;
 	}
 
-	/* Pages (home, Settings, Help) take the whole width and start below the menu button, not beside it. */
+	/* Pages (home, Settings, Help) take the whole width and start below the menu button and the board
+	   pill, not beside them. */
 	.lb-shell {
 		--fl-page-left: 0px;
+	}
+	.lb-shell--page .lb-shell__content {
+		top: 0;
 	}
 	.lb-home__main {
 		padding: var(--fl-card-top) calc(var(--fl-safe-right) + var(--fl-edge) * 2)
@@ -13597,10 +13616,11 @@ button.lb-props__eye:hover {
 	.lb-card__confirm-actions {
 		flex-direction: column-reverse;
 	}
-	/* Settings and Help: their row of sections clears the menu button; the page under it is full width. */
+	/* Settings and Help: their row of sections sits under the top bar, the board pill being in it, and
+	   the page under that is full width. */
 	.lb-rail {
-		padding-left: calc(var(--fl-safe-left) + var(--fl-edge) * 2 + var(--fl-bar));
-		padding-top: calc(var(--fl-safe-top) + var(--fl-edge));
+		padding-left: calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+		padding-top: calc(var(--fl-card-top) - var(--fl-edge));
 		padding-bottom: var(--fl-edge);
 	}
 	.lb-pane__main {

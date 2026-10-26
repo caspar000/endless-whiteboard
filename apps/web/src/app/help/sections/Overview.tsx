@@ -295,7 +295,8 @@ export function Overview({ go }: SectionProps) {
 						<h3>Boards and tabs</h3>
 						<p>
 							Boards are separate documents, listed under All boards and opened as tabs across the
-							top. An open tab keeps its board alive, which is what makes switching instant — and
+							top. The tabs stay there on every page, Settings and Help included, with All boards as
+							the first one, so any open board is a click away. An open tab keeps its board alive, which is what makes switching instant — and
 							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
 							with a middle click as in a browser; the board stays under All boards. A board’s card there
 							shows its actions over the preview as you point at it: star, rename, share, move and

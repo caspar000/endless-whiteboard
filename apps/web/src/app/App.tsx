@@ -906,30 +906,32 @@ export function App() {
 				</div>
 
 				{/* The chrome, floating over the content. Painted after it, so it stacks above the board. */}
-				{/* On a board only; elsewhere the sidebar is the way to a board. */}
-				{route.view === 'board' &&
-					(phone ? (
-						<BoardPill
-							boards={api.boards}
-							tabs={tabs}
-							activeBoardId={activeBoardId}
-							onSelect={(board) => void openBoard(board)}
-							onClose={(id) => void closeBoardTab(id)}
-							onNew={() => void createAndOpen()}
-							onAllBoards={() => void goHome()}
-							onRename={(id, name) => void api.rename(id, name)}
-						/>
-					) : (
-						<TabStrip
-							boards={api.boards}
-							tabs={tabs}
-							activeBoardId={activeBoardId}
-							onSelect={(board) => void openBoard(board)}
-							onClose={(id) => void closeBoardTab(id)}
-							onNew={() => void createAndOpen()}
-							onRename={(id, name) => void api.rename(id, name)}
-						/>
-					))}
+				{/* On every screen, so the open boards and All boards are one click away from anywhere. */}
+				{phone ? (
+					<BoardPill
+						boards={api.boards}
+						tabs={tabs}
+						home={route.view === 'list'}
+						activeBoardId={activeBoardId}
+						onSelect={(board) => void openBoard(board)}
+						onClose={(id) => void closeBoardTab(id)}
+						onNew={() => void createAndOpen()}
+						onAllBoards={() => void goHome()}
+						onRename={(id, name) => void api.rename(id, name)}
+					/>
+				) : (
+					<TabStrip
+						boards={api.boards}
+						tabs={tabs}
+						view={route.view}
+						activeBoardId={activeBoardId}
+						onHome={() => void goHome()}
+						onSelect={(board) => void openBoard(board)}
+						onClose={(id) => void closeBoardTab(id)}
+						onNew={() => void createAndOpen()}
+						onRename={(id, name) => void api.rename(id, name)}
+					/>
+				)}
 
 				<button
 					type="button"

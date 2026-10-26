@@ -16,7 +16,9 @@ reference screenshots to take inspiration from, translated into our own design s
   dock, the board dimmed behind. Picking anything, or tapping outside, closes it. It has a **search**
   button that opens the palette (⌘K) full width at the top — the only way to it without a keyboard.
 - **Board pill** (middle): the open board's badge and name. Tapping it lists the open boards (badge, name,
-  ✕ to close), then **+ New board** and **All boards**. It replaces the tab strip and its "+".
+  ✕ to close), then **+ New board** and **All boards**. It replaces the tab strip and its "+", and like
+  the strip it shows on every page (PLAN-30): there it reads "All boards" on the home screen, "Boards"
+  elsewhere, and Settings and Help put their row of chips under the top bar.
 - **AI** (right circle) opens the agent panel as the same floating card, from the right. With the
   keyboard up, it shrinks to the visual viewport so the composer stays above the keyboard.
 

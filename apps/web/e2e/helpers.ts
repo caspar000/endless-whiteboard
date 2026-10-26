@@ -111,8 +111,8 @@ export async function backToList(page: Page): Promise<void> {
 }
 
 /**
- * Opens a board from the sidebar — the way back to one from Settings, Help or the board list, which
- * have no tab strip — and waits for its editor.
+ * Opens a board from the sidebar — which lists every board, where the tab strip holds only the open
+ * ones — and waits for its editor.
  */
 export async function openBoardFromSidebar(page: Page, name: string | RegExp): Promise<void> {
 	await clickInSidebar(page, name)

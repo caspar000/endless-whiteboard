@@ -154,10 +154,12 @@ export function createLifeboardAssetStore(blobs: BlobStore, fetchMissing?: Fetch
 				// Downscale first, then hash: the hash must identify what we actually store, so that
 				// re-pasting the same photo dedupes against the stored (downscaled) blob. An SVG is
 				// cleaned of anything that could run first (sanitizeSvg); one that isn't an SVG is refused.
-				const { blob } = await downscaleImage(await cleanSvg(file))
+				// Re-encodable pictures come back with a blurred placeholder, kept in the asset's meta so it
+				// travels with the board (docs/image-loading-plan.md).
+				const { blob, thumbhash } = await downscaleImage(await cleanSvg(file))
 				const hash = await sha256Hex(blob)
 				await blobs.put(hash, blob)
-				return { src: assetSrcForHash(hash) }
+				return { src: assetSrcForHash(hash), meta: thumbhash ? { thumbhash } : {} }
 			} finally {
 				uploadsInFlight--
 				lastUploadFinishedAt = Date.now()

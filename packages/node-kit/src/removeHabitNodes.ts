@@ -1,4 +1,5 @@
-import { retiredShapeSequence, retireShapes } from './retireShapes'
+import { retiredShapeSequence } from '@lifeboard/canvas'
+import { retireShapes } from './retireShapes'
 
 /**
  * The skill tree's habit cards (`node.habit`), removed until habits come back as an extension of their

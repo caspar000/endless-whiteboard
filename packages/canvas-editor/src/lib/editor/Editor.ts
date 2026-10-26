@@ -1,4 +1,5 @@
 import { richTextToPlainText } from '../utils/richText'
+import { isRetiredShapeSequence } from './retiredShapeSequence'
 import type { TLHandle, TLShape, TLShapePartial } from './types/shape-types'
 import type { Editor as TipTapEditor, EditorOptions as TipTapEditorOptions, Extensions } from '@tiptap/core'
 import { tipTapDefaultExtensions } from '../utils/richText'
@@ -367,12 +368,13 @@ export class Editor extends EventEmitter<TLEventMap> {
 
 		const allShapeUtils = checkShapesAndAddCore(shapeUtils)
 
-		// Every shape type registered in the schema has a props migration sequence named after it.
+		// Every shape type registered in the schema has a props migration sequence named after it, and
+		// every such sequence is a shape type, except a retired one's (retiredShapeSequence.ts).
 		const SHAPE_SEQUENCE = 'com.tldraw.shape.'
 		const shapeTypesInSchema = new Set(
-			Object.keys(store.schema.migrations)
-				.filter((id) => id.startsWith(SHAPE_SEQUENCE))
-				.map((id) => id.slice(SHAPE_SEQUENCE.length))
+			Object.entries(store.schema.migrations)
+				.filter(([id, sequence]) => id.startsWith(SHAPE_SEQUENCE) && !isRetiredShapeSequence(sequence))
+				.map(([id]) => id.slice(SHAPE_SEQUENCE.length))
 		)
 		for (const shapeUtil of allShapeUtils) {
 			if (!shapeTypesInSchema.has(shapeUtil.type)) {

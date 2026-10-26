@@ -26,10 +26,11 @@ pnpm dev          # http://localhost:5173
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
 board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
-drawn from the live editor once the board is off screen and the user is idle. A board with no preview yet (imported, moved
-from another device, made by an agent) gets one drawn in a hidden editor off screen, one board at a
-time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
-boards' previews are stored on the server, so every device has them. Star a board to pin it to
+drawn from the live editor once the board is off screen and the user is idle, in light and dark at once. A board with no
+current preview (imported, moved from another device, made by an agent) gets one drawn in a hidden editor off screen,
+one board at a time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
+boards' previews are stored on the server, so every device has them; the board list says when each was drawn, and
+that time is in the image's address, so the browser keeps it and an unchanged preview shows with no request. Star a board to pin it to
 Favourites. A card's actions (star, rename, share, move, delete) are icon buttons over its preview, named
 in a CSS tooltip (`.lb-tip`), that show on hover; a touch screen gets a ⋯ there instead. Delete asks
 first, in a small card over the preview.
@@ -611,7 +612,10 @@ with one. Reduced motion sets the stagger to zero along with every duration.
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn
 once it is off screen and nothing has been typed or clicked for a moment; unchanged boards are never
-redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A closed tab's editor stays mounted until
+redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`), across reloads too: a preview drawn after
+the board's last `updatedAt` is current. So closing a local board moves its `updatedAt` only if it was
+edited (`trackBoardActivity`). Another device leaves a server board it sees changed to the device that
+changed it for five minutes, showing the old picture meanwhile. A closed tab's editor stays mounted until
 its preview is drawn. A preview draws at most the board's 120 largest shapes: the cost is by the shape, and at
 a card's size the rest are specks. Exporting a hidden board needs
 `withExportableHost`: from a `visibility: hidden` host, the exporter drops every node background and
@@ -689,13 +693,16 @@ port to one new file (`TauriPlatformAdapter`).
   swap: `:root` is dark and `:root[data-theme='light']` overrides it, with `data-theme` always a
   resolved `light` or `dark` (`app/useTheme.ts` does the resolving, and `index.html` repeats it inline
   so a light-mode load doesn't flash dark). tldraw follows via its user preference rather than the
-  `colorScheme` prop, which would remount every editor. Thumbnails are exported in the active theme,
-  so a preview looks like the board you left, and are kept per theme (`thumb:<theme>:<id>`, and one
-  file per theme on the server). A theme change re-exports every board that still has a mounted
-  editor — including inactive tabs, which needs `data-exporting` to swap their `visibility: hidden`
-  for a clip, because tldraw's exporter drops HTML-backed shapes it considers invisible. The rest are
-  drawn in the new theme off screen. That hidden editor is told the app's theme on mount: the canvas's
-  colour preference is shared by every editor and only follows the app once a board has been open.
+  `colorScheme` prop, which would remount every editor. Thumbnails are drawn in both themes at once and
+  kept per theme (`thumb:<theme>:<id>`, and one file per theme on the server), so a theme change draws
+  nothing. The theme not on screen is drawn from the hidden board put in that theme just for the export:
+  `editor.user.setDarkModeOverride` for the canvas (the colour preference is shared by every editor, so
+  changing it would flip the board on screen too) and `data-lb-theme` on its container for the app's
+  tokens, which styles.css also applies to that attribute. So no rule may pick a colour by
+  `:root[data-theme]` alone. Inactive tabs need `data-exporting` to swap their `visibility: hidden` for a
+  clip, because tldraw's exporter drops HTML-backed shapes it considers invisible. The home screen's
+  hidden editor is told the app's theme on mount: the canvas's colour preference only follows the app
+  once a board has been open.
 - **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
   draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
   ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Canvas

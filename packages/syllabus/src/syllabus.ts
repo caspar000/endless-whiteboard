@@ -1,5 +1,5 @@
 import { atom, computed } from '@lifeboard/canvas'
-import { childProgress, parseChildRule, todayIso, type ChildProgress } from './model'
+import { childProgress, makeItemId, parseChildRule, todayIso, type ChildProgress } from './model'
 
 /**
  * The syllabus as vault data (docs/skill-tree-plan.md, "Rebuild: one syllabus, many views"): every
@@ -264,6 +264,63 @@ export function moveInTrack(trackId: string, itemId: string, delta: -1 | 1): voi
 export function removeFromTrack(trackId: string, itemId: string): void {
 	const track = tracks.get()[trackId]
 	if (track) updateTrack(trackId, { order: track.order.filter((id) => id !== itemId) })
+}
+
+/** A new, empty track, active so Up next picks it up. Returns its id. */
+export function addTrack(name: string, goal = ''): string {
+	const trackId = makeItemId(name.trim() || 'syllabus')
+	putTracks([{ trackId, name: name.trim(), goal, state: 'active', order: [], defaultTags: [], draft: '' }])
+	return trackId
+}
+
+/** A new entry at the end of a track, under the track's goal prefix as an import would put it. Returns its id. */
+export function addEntry(trackId: string, title: string): string | null {
+	const track = tracks.get()[trackId]
+	if (!track || !title.trim()) return null
+	const prefix = trackId.includes('/') ? `${trackId.split('/')[0]}/` : ''
+	const itemId = makeItemId(title.trim(), prefix)
+	putItems([
+		{
+			itemId,
+			title: title.trim(),
+			kind: 'Study',
+			medium: '',
+			tags: [...track.defaultTags],
+			core: false,
+			childRule: 'core',
+			parent: '',
+			children: [],
+			done: false,
+			doneAt: '',
+			draft: '',
+		},
+	])
+	updateTrack(trackId, { order: [...track.order, itemId] })
+	return itemId
+}
+
+/** The entries only this track lists: what removing it takes with it. Another track's entries stay. */
+export function entriesOnlyIn(trackId: string): string[] {
+	const track = tracks.get()[trackId]
+	if (!track) return []
+	const elsewhere = new Set(Object.values(tracks.get()).flatMap((t) => (t.trackId === trackId ? [] : t.order)))
+	return track.order.filter((id) => !elsewhere.has(id) && !!items.get()[id])
+}
+
+/** Takes an entry out of a track, and out of the vault with its works when no other track lists it. */
+export function removeEntry(trackId: string, itemId: string): void {
+	if (entriesOnlyIn(trackId).includes(itemId)) removeItems([itemId])
+	else removeFromTrack(trackId, itemId)
+}
+
+/** Removes a track and every entry only it lists, with their works. Ticks on them go too. */
+export function removeTrack(trackId: string): void {
+	if (!tracks.get()[trackId]) return
+	const entries = entriesOnlyIn(trackId)
+	const next = { ...tracks.get() }
+	delete next[trackId]
+	tracks.set(next)
+	removeItems(entries)
 }
 
 // ---- Drafts

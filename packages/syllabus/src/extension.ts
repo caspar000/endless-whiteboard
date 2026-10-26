@@ -4,6 +4,7 @@ import type { TLShapeId } from '@lifeboard/canvas'
 import { GraduationCap } from 'lucide-react'
 import { itemNodeDefinition } from './item/definition'
 import { putCard, tick } from './ops'
+import { SyllabusSettings } from './SyllabusSettings'
 import { watchBoard } from './skillIndex'
 import { getItem, isItemDone } from './syllabus'
 import { syllabusCommands, syllabusFileImport, syllabusOperations } from './syllabusCommands'
@@ -34,6 +35,7 @@ export const syllabusExtension: Extension = {
 		'A list shows a track in reading order. Every entry folds and unfolds to its works and shows its progress, and the next undone entry is lit. Double-click a list to scroll it. The arrow on a row puts a card for that entry on the board.',
 		'Up next is the card to work from: the next step of every active track and twelve weeks of the days you did something.',
 		"With Skill trees on, a syllabus's tree comes in with it, its entries and works are drawn around the nodes they are tagged to, and its write-ups light those nodes (a node can ask for an item done, or a number of write-ups).",
+		'Below, every syllabus in your vault: rename it, pause it, remove it, or unfold it to rename, reorder, add and remove its entries. Add syllabus starts an empty one.',
 		'Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the syllabus stays in your vault.',
 	],
 	icon: GraduationCap,
@@ -69,6 +71,7 @@ export const syllabusExtension: Extension = {
 			},
 		},
 	],
+	settings: { title: 'Syllabi', Component: SyllabusSettings },
 	commands: syllabusCommands,
 	operations: syllabusOperations,
 	fileImports: [syllabusFileImport],

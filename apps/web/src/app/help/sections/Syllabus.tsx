@@ -152,6 +152,20 @@ export function Syllabus({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Managing syllabi">
+				<p>
+					Settings › Extensions › Syllabus lists every syllabus in your vault, active ones first, with
+					how many of its entries are done. Rename one, set it active, paused or not started, or remove
+					it. Unfold it to change its goal and its entries: rename, reorder or remove them, or add new
+					ones at the end. <strong>Add syllabus</strong> starts an empty one to fill from there.
+				</p>
+				<p className="lb-help__aside">
+					Removing a syllabus asks first, and takes its entries, their works and their ticks with it. An
+					entry another syllabus also lists stays in the vault. Write-up notes stay on their boards. A
+					draft import shows up here once you confirm it.
+				</p>
+			</Section>
+
 			<Section title="Syllabi as YAML">
 				<p>
 					A whole syllabus, its tracks, entries and tree, can be written as one YAML document and

@@ -203,11 +203,21 @@ describe('board index', () => {
 		expect((await put(Buffer.from('not an image at all'))).statusCode).toBe(400)
 		expect((await put(webp, `/api/boards/${board.id}/thumbnail/sepia`)).statusCode).toBe(404)
 		const before = Date.now()
-		expect((await put(webp)).statusCode).toBe(204)
+		const sent = await put(webp)
+		expect(sent.statusCode).toBe(200)
+		const { drawnAt } = sent.json() as { drawnAt: number }
+		expect(drawnAt).toBeGreaterThanOrEqual(before - 1000)
 		const got = await app.inject({ url, headers: { cookie } })
 		expect(got.headers['content-type']).toBe('image/webp')
-		expect(Number(got.headers['x-drawn-at'])).toBeGreaterThanOrEqual(before - 1000)
+		expect(got.headers['cache-control']).toBe('no-cache')
+		expect(Number(got.headers['x-drawn-at'])).toBe(drawnAt)
 		expect(got.rawPayload.equals(webp)).toBe(true)
+		// The list says which version is current, and asking for that one may be cached for good.
+		const listed = (await app.inject({ url: '/api/boards', headers: { cookie } })).json() as { id: string; previews: object }[]
+		expect(listed.find((b) => b.id === board.id)?.previews).toEqual({ light: drawnAt })
+		const versioned = await app.inject({ url: `${url}?v=${drawnAt}`, headers: { cookie } })
+		expect(versioned.headers['cache-control']).toContain('immutable')
+		expect((await app.inject({ url: `${url}?v=${drawnAt - 1}`, headers: { cookie } })).headers['cache-control']).toBe('no-cache')
 		// Each theme has its own.
 		expect((await app.inject({ url: `/api/boards/${board.id}/thumbnail/dark`, headers: { cookie } })).statusCode).toBe(404)
 

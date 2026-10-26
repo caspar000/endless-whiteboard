@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 /**
  * The app's colour theme.
@@ -65,41 +65,13 @@ function syncBrowserChrome(): void {
 	if (bg) meta.content = bg
 }
 
-export function useTheme({
-	onRepaint,
-}: {
-	/**
-	 * Called after the app has actually changed appearance, so thumbnails baked in the old theme can be
-	 * refreshed. Not called on the first run, nor when only the stored preference moves (picking `dark`
-	 * while a `system` that already resolved to dark was showing).
-	 */
-	onRepaint?: () => void
-} = {}) {
+export function useTheme() {
 	const [theme, setTheme] = useState<Theme>(loadTheme)
-
-	/**
-	 * The last theme actually painted, so `onRepaint` fires on a change of the *resolved* value rather
-	 * than of the preference.
-	 *
-	 * Seeded from the DOM, which index.html has already set — otherwise the first effect run would
-	 * always look like a change.
-	 */
-	const applied = useRef(document.documentElement.dataset.theme ?? null)
-
-	// Held in a ref so a caller passing an inline function can't re-run the effect (which would
-	// re-apply the theme, and on a stable theme that is just churn).
-	const repaint = useRef(onRepaint)
-	repaint.current = onRepaint
 
 	useEffect(() => {
 		const apply = () => {
-			const resolved = resolve(theme)
-			document.documentElement.dataset.theme = resolved
+			document.documentElement.dataset.theme = resolve(theme)
 			syncBrowserChrome()
-
-			const changed = applied.current !== null && applied.current !== resolved
-			applied.current = resolved
-			if (changed) repaint.current?.()
 		}
 
 		apply()

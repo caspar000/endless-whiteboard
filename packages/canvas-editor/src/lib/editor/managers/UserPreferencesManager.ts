@@ -1,4 +1,4 @@
-import { computed } from '@tldraw/state'
+import { atom, computed } from '@tldraw/state'
 import { warnDeprecatedGetter } from '@tldraw/utils'
 import {
 	TLUserPreferences,
@@ -40,7 +40,21 @@ export class UserPreferencesManager {
 		return this.getUserPreferences()
 	}
 
+	/** Set while this editor alone is drawn in a theme other than the person's (`setDarkModeOverride`). */
+	private readonly darkModeOverride = atom<boolean | null>('darkModeOverride', null)
+
+	/**
+	 * Draws this editor, and no other, dark or light whatever the preference says, until set back to
+	 * `null`. Not saved. For drawing a hidden board in the other theme, which the preference, shared by
+	 * every editor, can't do without changing the board on screen too. @public
+	 */
+	setDarkModeOverride(isDarkMode: boolean | null) {
+		this.darkModeOverride.set(isDarkMode)
+	}
+
 	@computed getIsDarkMode() {
+		const override = this.darkModeOverride.get()
+		if (override !== null) return override
 		const { colorScheme, isDarkMode } = this.user.userPreferences.get()
 		if (colorScheme === 'dark') return true
 		if (colorScheme === 'light') return false

@@ -77,6 +77,7 @@ interface ServerBoard {
 	role: 'member' | 'edit' | 'view'
 	/** The vault a shared board is from. */
 	sharedBy?: string
+	previews?: Partial<Record<ResolvedTheme, number>>
 }
 
 const toMeta = (board: ServerBoard): BoardMeta => ({ ...board, vault: 'server' })
@@ -167,31 +168,58 @@ export async function serverHasBoard(id: string): Promise<boolean> {
 	return ((await (await api('/boards')).json()) as ServerBoard[]).some((board) => board.id === id)
 }
 
-/**
- * A server board's preview in one theme, as whichever device last drew one sent it, and when, by the
- * server's clock (compare with the board's `updatedAt`); `null` if none has.
- */
-export async function fetchServerThumbnail(
-	id: string,
-	theme: ResolvedTheme
-): Promise<{ blob: Blob; drawnAt: number } | null> {
+/** A server board's current preview in one theme, as whichever device last drew one sent it; `null` if none has. */
+export async function fetchServerThumbnail(id: string, theme: ResolvedTheme): Promise<Blob | null> {
 	try {
 		const response = await fetch(`/api/boards/${id}/thumbnail/${theme}`, { cache: 'no-store' })
-		if (!response.ok) return null
-		return { blob: await response.blob(), drawnAt: Number(response.headers.get('x-drawn-at')) || 0 }
+		return response.ok ? await response.blob() : null
 	} catch {
 		return null
 	}
 }
 
-/** Sends a server board's preview, so every device shows it. Best effort: a preview is decoration. */
-export async function uploadServerThumbnail(id: string, theme: ResolvedTheme, blob: Blob): Promise<void> {
-	if (blob.type !== 'image/webp') return
-	await fetch(`/api/boards/${id}/thumbnail/${theme}`, {
-		method: 'PUT',
-		headers: { 'content-type': 'image/webp' },
-		body: blob,
-	}).catch(() => {})
+/**
+ * Versions of previews this browser sent, newer than the board list it last fetched: the card asks for
+ * the new picture straight away rather than at the next refresh of the list.
+ */
+const sentPreviews = new Map<string, number>()
+
+/**
+ * Which version of a server board's preview is current, by when it was drawn on the server's clock
+ * (compare with the board's `updatedAt`); `undefined` if it has none in that theme.
+ */
+export function serverPreviewVersion(board: BoardMeta, theme: ResolvedTheme): number | undefined {
+	const listed = board.previews?.[theme]
+	const sent = sentPreviews.get(`${theme}:${board.id}`)
+	return listed === undefined || (sent ?? 0) > listed ? sent : listed
+}
+
+/**
+ * Where a version of a preview is. The server lets the browser keep it for good, since a new drawing is
+ * a new version, so an unchanged preview shows without a request, online or offline.
+ */
+export const serverThumbnailUrl = (id: string, theme: ResolvedTheme, version: number) =>
+	`/api/boards/${id}/thumbnail/${theme}?v=${version}`
+
+/**
+ * Sends a server board's preview, so every device shows it, and returns its new version. Best effort: a
+ * preview is decoration, so a failure returns `null` rather than throwing.
+ */
+export async function uploadServerThumbnail(id: string, theme: ResolvedTheme, blob: Blob): Promise<number | null> {
+	if (blob.type !== 'image/webp') return null
+	try {
+		const response = await fetch(`/api/boards/${id}/thumbnail/${theme}`, {
+			method: 'PUT',
+			headers: { 'content-type': 'image/webp' },
+			body: blob,
+		})
+		if (!response.ok) return null
+		const { drawnAt } = (await response.json()) as { drawnAt: number }
+		sentPreviews.set(`${theme}:${id}`, drawnAt)
+		return drawnAt
+	} catch {
+		return null
+	}
 }
 
 /** Settings that follow the vault rather than the device. See `app/vaultSettings.ts`. */

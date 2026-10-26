@@ -681,15 +681,19 @@ function BoardCanvas({
 
 /**
  * Keeps the board index's `updatedAt` fresh without writing on every keystroke: the store fires
- * constantly while drawing, so writes are coalesced to at most one per interval.
+ * constantly while drawing, so writes are coalesced to at most one per interval. Closing the board
+ * writes the edits the interval held back, and nothing if there were none: a board only looked at
+ * hasn't changed, and its preview is still current (persistence/thumbnails.ts).
  */
 function trackBoardActivity(editor: Editor, touch: () => void): () => void {
 	const INTERVAL = 30_000
 	let last = 0
+	let held = false
 	const unlisten = editor.store.listen(
 		() => {
 			const now = Date.now()
-			if (now - last < INTERVAL) return
+			held = now - last < INTERVAL
+			if (held) return
 			last = now
 			touch()
 		},
@@ -697,6 +701,6 @@ function trackBoardActivity(editor: Editor, touch: () => void): () => void {
 	)
 	return () => {
 		unlisten()
-		touch()
+		if (held) touch()
 	}
 }

@@ -6,7 +6,14 @@ import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../bo
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
-import { isThumbnailStale, onThumbnailDrawn, saveBoardThumbnail } from '../persistence/thumbnails'
+import {
+	adoptStoredThumbnail,
+	areStoredThumbnailsCurrent,
+	isThumbnailStale,
+	notifyThumbnailSaved,
+	onThumbnailDrawn,
+	saveBoardThumbnail,
+} from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
@@ -227,35 +234,13 @@ export function App() {
 	const editors = useRef(new Map<string, Editor>())
 
 	/**
-	 * Re-exports every preview the theme change just invalidated.
-	 *
-	 * A thumbnail bakes in the theme it was made in, so a switch leaves the home grid showing the old
-	 * palette. Every board with a mounted editor is re-exported here and keeps a real preview —
-	 * including the inactive tabs, which are hidden but still mounted (see `withExportableHost`).
-	 *
-	 * Boards with no mounted editor are drawn in the new theme by the home screen, off screen
-	 * (canvas/ThumbnailBackfill.tsx); previews are kept per theme, so none of them shows the old one.
-	 *
-	 * Serialised through a ref because an OS appearance change can arrive while the idle redraw below is
-	 * still running, and two exports racing would toggle the same hidden host.
+	 * The board the idle redraw below is exporting right now, so its drain waits for it, and so it draws
+	 * one at a time. A theme change draws nothing: every preview is kept in both themes
+	 * (persistence/thumbnails.ts).
 	 */
-	const refreshing = useRef<Promise<void>>(Promise.resolve())
-	/** The board the idle redraw is exporting right now, so its drain waits for it. */
 	const drawingThumbnail = useRef<string | null>(null)
-	const refreshThumbnails = useCallback(() => {
-		refreshing.current = refreshing.current
-			.then(async () => {
-				// Read the editors when the turn actually starts, not when it was queued: a tab may have
-				// opened or closed while an earlier pass was running.
-				for (const [id, editor] of [...editors.current.entries()]) {
-					await saveBoardThumbnail(platform.kv, id, editor)
-				}
-			})
-			// Keeps the chain alive: a rejected link would make every later switch a no-op.
-			.catch((err) => console.warn('Lifeboard: could not refresh thumbnails for the new theme', err))
-	}, [platform])
 
-	const { theme, setTheme } = useTheme({ onRepaint: refreshThumbnails })
+	const { theme, setTheme } = useTheme()
 	// Tops up the exchange rates aggregations read. Nothing waits on it.
 	useRates()
 
@@ -632,13 +617,17 @@ export function App() {
 		})
 	}, [hasServer, platform, refreshBoards])
 
-	// A server board's preview goes to the server as this browser draws it, so every device has it.
+	// A server board's preview goes to the server as this browser draws it, so every device has it. Its
+	// card shows the new version once the server has it.
 	const serverBoardIds = useRef(new Set<string>())
 	serverBoardIds.current = new Set(api.boards.filter((board) => board.vault === 'server').map((board) => board.id))
 	useEffect(
 		() =>
 			onThumbnailDrawn((id, theme, blob) => {
-				if (serverBoardIds.current.has(id)) void uploadServerThumbnail(id, theme, blob)
+				if (!serverBoardIds.current.has(id)) return
+				void uploadServerThumbnail(id, theme, blob).then((version) => {
+					if (version !== null) notifyThumbnailSaved(id)
+				})
 			}),
 		[]
 	)
@@ -678,11 +667,9 @@ export function App() {
 			if (!stale) return
 			const [id, editor] = stale
 			drawingThumbnail.current = id
-			refreshing.current = refreshing.current
-				.then(() => saveBoardThumbnail(platform.kv, id, editor))
-				.finally(() => {
-					drawingThumbnail.current = null
-				})
+			void saveBoardThumbnail(platform.kv, id, editor).finally(() => {
+				drawingThumbnail.current = null
+			})
 		}, 500)
 		return () => {
 			clearInterval(timer)
@@ -837,6 +824,10 @@ export function App() {
 								onEditor={(editor) => {
 									if (editor) {
 										editors.current.set(board.id, editor)
+										// A board whose preview is current isn't drawn again when it closes, unless it
+										// is changed.
+										const listed = boardsRef.current.find((b) => b.id === board.id) ?? board
+										void adoptStoredThumbnail(editor, areStoredThumbnailsCurrent(platform.kv, listed))
 										// Only the board on screen may bring up a GPU layer: a tab open behind it is
 										// hidden with `visibility`, keeps its size, and would hold a WebGL context.
 										getGpuScene(editor).shown.set(board.id === activeBoardIdRef.current)

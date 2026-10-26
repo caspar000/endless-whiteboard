@@ -108,7 +108,9 @@ The biggest win, and it doesn't change when previews are drawn.
 
 ## Results
 
-- **Phase 1.** Measured with 13 server boards: going back to the home screen showed every preview
-  within ~60 ms of leaving a board, and unchanged previews caused no network requests. The only
-  requests left were the opened board's redraw (an upload and one download of the new version),
-  which phase 2 removes. An edited board's card switches to its new preview without a reload.
+- **Phase 1.** Measured with 13 server boards over a simulated 100 ms, 10 Mbit/s connection, leaving a
+  board and going back to the home screen three times. Before: every preview showed ~350 ms after
+  leaving the board, with 30 preview requests each time. After: ~60 ms, with 2 requests, both from the
+  opened board being redrawn (its upload and one download of the new version), which phase 2 removes.
+  Unchanged previews make no requests. An edited board's card switches to its new preview without a
+  reload.

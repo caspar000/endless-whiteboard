@@ -248,6 +248,11 @@ export interface NodeDefinition<Props extends object = object> {
 	/** `false`: no resize handles. For a node whose size is part of what it is (an index card). */
 	resizable?: boolean
 	/**
+	 * `false`: the node may draw outside its box when it isn't being edited, as a sticky note's shadow
+	 * falls past its paper. Its own component then keeps its content inside its bounds itself.
+	 */
+	clip?: boolean
+	/**
 	 * Stays where it is when dragged: a drag leaves it in place (the skill tree's maze is a locked
 	 * structure). Code can still move it.
 	 */
@@ -472,7 +477,7 @@ export function createNodeShapeUtil<Props extends object>(
 						// Clipped in display mode so content stays inside the card's rounded bounds,
 						// but *not* while editing: the item field editor and rollup config render as
 						// popovers below the node, and `hidden` clipped them out of existence.
-						overflow: isEditing ? 'visible' : 'hidden',
+						overflow: isEditing || def.clip === false ? 'visible' : 'hidden',
 					}}
 				>
 					{/*

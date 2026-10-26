@@ -14,9 +14,15 @@ import { CardFace } from '../card/CardFace'
 import { beginJump } from './jump'
 import { frontIndex, getStack, showCard } from './state'
 
-/** The cards drawn around the front one: one already flipped away, the front, and three behind. */
-const BEFORE = 1
-const BEHIND = 3
+/**
+ * The cards kept on the page around the front one. Only slots -1 to 2 can be seen (one flipped away,
+ * the front, two behind); the rest are held at the edge slots, already out of sight, so a card a fast
+ * riffle has flipped past finishes its swing instead of being taken off the page halfway through it.
+ */
+const BEFORE = 4
+const BEHIND = 5
+const FIRST_SLOT = -1
+const LAST_SLOT = 3
 
 /** How much wheel makes one flip, and how soon after one the next may come (a flick riffles, it doesn't fly). */
 const WHEEL_STEP = 60
@@ -276,13 +282,14 @@ export function StackView() {
 				<EmptyBox editor={editor} />
 			) : (
 				<div className="lb-zstack__pile">
-					{/* Later cards first, so the front one is last in the document and on top. */}
-					{[...visible].reverse().map(({ entry, slot }) => (
+					{/* In box order, which a flip never changes, so no card is moved in the document (moving one
+					    restarts its transition); the slots' z-index does the stacking. */}
+					{visible.map(({ entry, slot }) => (
 						<StackCard
 							key={entry.id ?? `gap:${entry.zid}`}
 							editor={editor}
 							entry={entry}
-							slot={slot}
+							slot={Math.max(FIRST_SLOT, Math.min(LAST_SLOT, slot))}
 							editing={slot === 0 && entry.id !== null && editingId === entry.id}
 							swiped={swiped}
 						/>

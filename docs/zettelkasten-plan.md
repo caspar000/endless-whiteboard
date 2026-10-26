@@ -70,6 +70,33 @@ A box is an **index**, then the **notes** in order, then the **citations**. It h
   dragging a card leaving it in place; a sticky made on a box taken off again; a tool key put back to
   Select.
 
+### The card's look and the flip, reworked (2026-10-26)
+
+After seeing pictures of phase 1, the user asked for a 5 × 8 index card, the note card's own font, the
+board's design, and a flip that isn't flaky.
+
+- **5 × 8.** `CARD_W` 560, `CARD_H` 350 (`layout.ts`), and the stack and the Help demo hold 8 : 5.
+- **The sticky note's paper.** A card is drawn as a white sticky is (`canvas/shapes/note/paper.ts`):
+  the canvas theme's `white.noteFill` and `black.solid` (the `--lb-zcard-*` tokens repeat them, so the
+  Help page, which has no editor, draws the same paper), square corners, the sticky's hairline edge and
+  its own shadow element (`tl-note__shadow`). The handwritten face (`--tl-font-draw`) at a label's size
+  and leading: 22 px on a 560 px card, measured in `cqw` of the card's frame so it scales with the card.
+  The card on the table now draws outside its box like a sticky does, for the shadow: a new
+  `NodeDefinition.clip: false`.
+- **The board's paper behind the stack**: the canvas colour and its dots, not a flat grey.
+- **The flip.** Frame-by-frame captures (the animation slowed tenfold) showed what was flaky. The pile
+  was one 3D space, and in one the browser stacks by depth, not z-index: a card swinging back through
+  the pile was drawn behind the card it was passing, with the sticky's shadow showing through. Each
+  card now carries its own `perspective()`, and every slot spells out the same list of transform
+  functions so each interpolates cleanly. The swinging card no longer fades; it is gone by itself once
+  its back is turned (`backface-visibility`). And a fast riffle used to take a card that had just flipped
+  off the page mid-swing: the stack now keeps four cards either side mounted, held at the edge slots,
+  in box order so none is ever moved in the document (moving one restarts its transition).
+- **Smaller things the pictures showed:** a card being written on wears the selection blue; the
+  canvas's formatting bar, placed over the card's spot on the canvas under the stack, is hidden while
+  the stack is up (⌘B and the rest still work); on a phone the pile sits higher and the count gives
+  way to the board pill.
+
 ## What was decided
 
 | # | Question | Decision |
@@ -77,11 +104,11 @@ A box is an **index**, then the **notes** in order, then the **citations**. It h
 | Q1 | Where a box lives | **A box is a board.** Each note is a shape on it. |
 | Q2 | Note ids | **Folgezettel**: given from where the note is placed, never changed. |
 | Q3 | Titles | Optional. The id always shows; the title under it if there is one. |
-| Q4 | What a note holds | **The sticky note's rich text** (bold, italics, lists, `{…}`), on a card of our own design. Not markdown. Fixed card size; longer text scrolls inside it. |
+| Q4 | What a note holds | **The sticky note's rich text** (bold, italics, lists, `{…}`), on a 5 × 8 index card (asked for after phase 1) drawn as the board draws a sticky note. Not markdown. Longer text scrolls inside the card. |
 | Q5 | The chips in a card's footer | Three kinds: **note links**, **index keywords**, **citations**. Clicking one goes to it. |
 | Q6 | The index | Luhmann's: a keyword chip on a note files that note under the keyword. The index lists keywords A–Z with their entry notes, and is the front of the box. |
 | Q7 | Citations | Cards with fields (author, title, year, a free note), ids `c1`, `c2`…, after the last note. |
-| Q8 | The flip | **Rolodex**: the front card tips back over the top and drops behind. About 180 ms, interruptible; a fast scroll riffles. Type an id to jump. Reduced motion cuts. |
+| Q8 | The flip | The front card swings up on its top edge and over, behind the pile, while the next comes forward. About 200 ms, interruptible; a fast scroll riffles. Type an id to jump. Reduced motion cuts. |
 | Q9 | Folders, inbox | Neither. Placing a note when you write it is the point. |
 | Q10 | How many boxes | As many as you like. |
 | Q11 | Placing a note | **N** new note behind the front card, **⇧N** branch, and *New train of thought*. Rules below. |

@@ -50,6 +50,8 @@ export const cardDefinition: NodeDefinition<CardProps> = {
 	canScroll: true,
 	pinned: true,
 	resizable: false,
+	// The sticky note's shadow falls below the card; the paper clips its own text (`.lb-zcard`).
+	clip: false,
 	offered: false,
 	// Draws nothing but its own record when it isn't being edited.
 	canLeavePage: true,

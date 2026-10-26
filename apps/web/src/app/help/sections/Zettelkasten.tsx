@@ -30,6 +30,7 @@ function StackDemo() {
 					.map(({ card: [zid, title, text], slot }) => (
 						<div key={zid} className="lb-zstack__card" data-slot={slot} style={{ '--slot': slot } as CSSProperties}>
 							<div className="lb-zcard-frame">
+								<div className="tl-note__shadow" />
 								<div className="lb-zcard">
 									<div className="lb-zcard__id">{zid}</div>
 									<div className="lb-zcard__body">

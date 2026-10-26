@@ -1,8 +1,8 @@
 import { depthOf, rootOf } from './ids'
 
-/** Every card is the same size, an index card's proportions (A6, 148 × 105). */
+/** Every card is the same size: a 5 × 8 inch index card, lying landscape. */
 export const CARD_W = 560
-export const CARD_H = Math.round((CARD_W * 105) / 148)
+export const CARD_H = (CARD_W * 5) / 8
 
 /** Between cards down a column, and between columns. */
 export const CARD_GAP = 40

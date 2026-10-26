@@ -161,7 +161,10 @@ export function registerApi(
 		return { board, role }
 	}
 
-	/** A board as the app lists it: with this person's star, and how it's shared with them if it is. */
+	/**
+	 * A board as the app lists it: with this person's star, how it's shared with them if it is, and when
+	 * each of its previews was drawn.
+	 */
 	const listed = (user: User, board: ServerBoard, role: BoardRole, favorites: Set<string>) => ({
 		id: board.id,
 		name: board.name,
@@ -172,6 +175,7 @@ export function registerApi(
 		favorite: favorites.has(board.id),
 		role,
 		...(role === 'member' ? {} : { sharedBy: accounts.vault(board.vaultId)?.name ?? 'another vault' }),
+		previews: thumbnails.versions(board.id),
 	})
 
 	const publicUser = (user: User) => ({ id: user.id, username: user.username, displayName: user.displayName })
@@ -524,18 +528,26 @@ export function registerApi(
 	/**
 	 * A board's preview in one theme, as whichever device last drew one sent it. `x-drawn-at` says when,
 	 * against the board's `updatedAt`, both by this server's clock.
+	 *
+	 * Asked for by version (`?v=`, the drawn-at time the board list gives), the answer never changes, so
+	 * the browser keeps it for good and the home screen shows it without asking again. A new drawing is a
+	 * new version, so a new address. Asked for any other way, it is checked every time.
 	 */
-	app.get<{ Params: { id: string; theme: string } }>('/api/boards/:id/thumbnail/:theme', async (request, reply) => {
-		const { id, theme } = request.params
-		if (!access(request, reply, id)) return reply
-		const found = isTheme(theme) ? thumbnails.read(id, theme) : null
-		if (!found) return reply.code(404).send({ error: 'No preview yet.' })
-		return reply
-			.header('content-type', 'image/webp')
-			.header('cache-control', 'no-cache')
-			.header('x-drawn-at', String(found.drawnAt))
-			.send(found.bytes)
-	})
+	app.get<{ Params: { id: string; theme: string }; Querystring: { v?: string } }>(
+		'/api/boards/:id/thumbnail/:theme',
+		async (request, reply) => {
+			const { id, theme } = request.params
+			if (!access(request, reply, id)) return reply
+			const found = isTheme(theme) ? thumbnails.read(id, theme) : null
+			if (!found) return reply.code(404).send({ error: 'No preview yet.' })
+			const current = request.query.v === String(found.drawnAt)
+			return reply
+				.header('content-type', 'image/webp')
+				.header('cache-control', current ? 'private, max-age=31536000, immutable' : 'no-cache')
+				.header('x-drawn-at', String(found.drawnAt))
+				.send(found.bytes)
+		}
+	)
 
 	app.put<{ Params: { id: string; theme: string }; Body: Buffer }>('/api/boards/:id/thumbnail/:theme', async (request, reply) => {
 		const { id, theme } = request.params
@@ -546,8 +558,7 @@ export function registerApi(
 		if (!Buffer.isBuffer(body) || body.subarray(0, 4).toString() !== 'RIFF' || body.subarray(8, 12).toString() !== 'WEBP') {
 			return reply.code(400).send({ error: 'A preview is a WebP image.' })
 		}
-		thumbnails.write(id, theme, body)
-		return reply.code(204).send()
+		return { drawnAt: thumbnails.write(id, theme, body) }
 	})
 
 	/* -------------------------------------------------------------------------------------- files */

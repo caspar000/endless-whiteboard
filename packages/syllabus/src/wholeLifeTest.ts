@@ -25,11 +25,11 @@ export async function insertWholeLifeTest(editor: Editor, at: { x: number; y: nu
 		const release = holdImport(editor)
 		try {
 			await step('Adding You and the pillars')
-			importSyllabus(editor, { ...life.doc, trees: life.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [] }, at)
+			importSyllabus(editor, { ...life.doc, trees: life.doc.trees.filter((t) => t.treeId === 'mastery'), tracks: [] }, at, 'trees')
 			for (const tree of trees) {
 				if (!tree.ok) continue
 				await step(`Adding ${tree.doc.trees[0]?.name ?? tree.doc.name}`)
-				importSyllabus(editor, tree.doc, at)
+				importSyllabus(editor, tree.doc, at, 'trees')
 			}
 			await step('Confirming')
 			confirmDraft(editor)

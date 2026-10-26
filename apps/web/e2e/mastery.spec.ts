@@ -36,7 +36,7 @@ test('builds Mastery in Settings and puts it on a board, a tree under two pillar
 	await page.evaluate((text) => navigator.clipboard.writeText(text), CRAFT)
 	await command(page, 'Import syllabus YAML from the clipboard')
 	await expect.poll(() => countShapes(page, 'node.skill')).toBe(2)
-	await command(page, 'Confirm draft')
+	await page.getByRole('alertdialog', { name: 'Imported syllabus draft' }).getByRole('button', { name: 'Confirm' }).click()
 
 	await page.goto('/#/settings/extensions/lifeboard.skill-tree')
 	await page.getByRole('button', { name: 'Set up Mastery' }).click()

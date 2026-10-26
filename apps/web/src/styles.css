@@ -8,8 +8,13 @@
  * `data-theme` is always a *resolved* value — `light` or `dark`, never `system`. app/useTheme.ts does
  * the resolving (and index.html re-does it inline, before first paint), which is why there is no
  * `prefers-color-scheme` query here.
+ *
+ * `[data-lb-theme]` puts one element and what is inside it in a theme of its own: a hidden board while
+ * its preview in the other theme is drawn (persistence/thumbnails.ts). So no rule may pick a colour by
+ * `:root[data-theme]` alone; a colour that differs by theme is a token.
  */
-:root {
+:root,
+[data-lb-theme='dark'] {
 	--lb-bg: #0c0c0e;
 	--lb-bg-raised: #111114;
 	--lb-surface: #17171a;
@@ -95,6 +100,11 @@
 	--mo-pop: 240ms cubic-bezier(0.34, 1.4, 0.64, 1);
 	/* The gap between one item of a list arriving and the next (`.lb-stagger`). */
 	--mo-stagger: 24ms;
+	/* Option chips (`.lb-chip`): lightness and alpha of their tint, saturation and lightness of their text. */
+	--lb-chip-bg-l: 50%;
+	--lb-chip-bg-a: 18%;
+	--lb-chip-fg-s: 65%;
+	--lb-chip-fg-l: 74%;
 	color-scheme: dark;
 }
 @media (max-width: 1023px) {
@@ -192,7 +202,8 @@
  * surface it actually sits on, so nothing gets quietly less legible by switching:
  * text 17.0:1, text-dim 5.6–6.6:1, accent 4.8–5.7:1, danger 5.5:1, money 5.4:1.
  */
-:root[data-theme='light'] {
+:root[data-theme='light'],
+[data-lb-theme='light'] {
 	--lb-bg: #ebebee;
 	--lb-bg-raised: #f5f5f7;
 	--lb-surface: #ffffff;
@@ -236,6 +247,11 @@
 	--fl-shadow: 0 1px 2px rgb(20 22 40 / 6%), 0 4px 12px rgb(20 22 40 / 6%), 0 16px 40px rgb(20 22 40 / 10%);
 	--fl-shadow-sm: 0 1px 2px rgb(20 22 40 / 6%), 0 6px 16px rgb(20 22 40 / 8%);
 	--fl-cta-hover: #33333a;
+	/* Option chips (`.lb-chip`): the same hue, darkened until it reads on a white card. */
+	--lb-chip-bg-l: 45%;
+	--lb-chip-bg-a: 14%;
+	--lb-chip-fg-s: 60%;
+	--lb-chip-fg-l: 33%;
 	color-scheme: light;
 }
 
@@ -4415,19 +4431,14 @@ div.lb-sidebar__moves {
 	display: inline-flex;
 	align-items: center;
 	gap: 3px;
-	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 50% / 18%);
+	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) var(--lb-chip-bg-l) / var(--lb-chip-bg-a));
 	border-radius: 4px;
 	padding: 1px 6px;
 	font-size: 10px;
-	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 74%);
+	color: hsl(var(--lb-opt-h) var(--lb-opt-s, var(--lb-chip-fg-s)) var(--lb-chip-fg-l));
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	white-space: nowrap;
-}
-/* Same hue, darkened until it reads on a white card rather than glowing off it. */
-:root[data-theme='light'] .lb-chip {
-	background: hsl(var(--lb-opt-h) var(--lb-opt-s, 65%) 45% / 14%);
-	color: hsl(var(--lb-opt-h) var(--lb-opt-s, 60%) 33%);
 }
 .lb-chip__x {
 	background: none;
@@ -14564,6 +14575,157 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 }
 
+/* Every syllabus in the vault, in Settings › Syllabus (SyllabusSettings.tsx): one row per track, each
+ * folding open to its goal and entries. The inputs read as text until they are focused, as Mastery's do. */
+.lb-syllabi {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	font-size: 13px;
+	color: var(--lb-text);
+}
+.lb-syllabi ul,
+.lb-syllabi ol {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.lb-syllabi__track {
+	border-bottom: 1px solid var(--lb-border);
+	padding: 4px 0;
+}
+.lb-syllabi__track:last-child {
+	border-bottom: 0;
+}
+.lb-syllabi__track--confirm {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 4px;
+}
+.lb-syllabi__question {
+	flex: 1;
+	min-width: 0;
+	font-size: 12.5px;
+}
+.lb-syllabi__danger {
+	color: var(--lb-danger);
+}
+.lb-syllabi__head,
+.lb-syllabi__entry {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px;
+	border-radius: var(--lb-radius);
+}
+.lb-syllabi__track--open > .lb-syllabi__head {
+	background: var(--lb-surface-2);
+}
+.lb-syllabi__head input,
+.lb-syllabi__entry input {
+	flex: 1;
+	min-width: 0;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	padding: 3px 6px;
+}
+.lb-syllabi__name {
+	font-weight: 600;
+}
+.lb-syllabi__head input:focus,
+.lb-syllabi__entry input:focus {
+	border-color: var(--lb-border);
+	background: var(--lb-surface);
+	outline: none;
+}
+.lb-syllabi__head select {
+	flex: none;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface);
+	color: inherit;
+	font: inherit;
+	font-size: 12px;
+	padding: 2px 6px;
+}
+.lb-syllabi__fold,
+.lb-syllabi__icon {
+	flex: none;
+	width: 22px;
+	height: 22px;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-syllabi__fold:hover,
+.lb-syllabi__icon:hover:not(:disabled) {
+	background: var(--lb-surface);
+	color: var(--lb-text);
+}
+.lb-syllabi__icon:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+.lb-syllabi__count,
+.lb-syllabi__works,
+.lb-syllabi__num {
+	flex: none;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+	font-variant-numeric: tabular-nums;
+}
+.lb-syllabi__count {
+	padding: 0 6px;
+}
+.lb-syllabi__num {
+	min-width: 2.4em;
+	text-align: right;
+}
+.lb-syllabi__entry--done input {
+	color: var(--lb-text-dim);
+	text-decoration: line-through;
+}
+.lb-syllabi__body {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px 0 6px 26px;
+}
+.lb-syllabi__goal {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 4px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-syllabi__goal input,
+.lb-syllabi__add input {
+	flex: 1;
+	min-width: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 5px;
+	background: var(--lb-surface);
+	color: inherit;
+	font: inherit;
+	padding: 4px 8px;
+}
+.lb-syllabi__entries {
+	max-height: 420px;
+	overflow-y: auto;
+}
+.lb-syllabi__add {
+	display: flex;
+	gap: 6px;
+	padding: 0 4px;
+}
+
 /* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
 .lb-tree-advanced {
 	padding: 10px 0 4px;
@@ -14819,6 +14981,69 @@ button.lb-props__eye:hover {
 	font: inherit;
 	font-weight: 600;
 	cursor: pointer;
+}
+
+/* An unconfirmed syllabus import (syllabus DraftBar.tsx): fixed over the board until Confirm or
+ * Discard is pressed, in the place the stale-layout note takes, which stands aside meanwhile. */
+.lb-draft-bar {
+	position: absolute;
+	top: 64px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: max-content;
+	max-width: calc(100% - 24px);
+	padding: 8px 8px 8px 16px;
+	border-radius: 12px;
+	background: var(--lb-surface);
+	border: 1px dashed var(--lb-accent);
+	box-shadow: var(--lb-shadow-sm, 0 2px 8px rgb(0 0 0 / 0.08));
+	font-family: var(--lb-font);
+	font-size: 12.5px;
+	color: var(--lb-text);
+	pointer-events: auto;
+}
+.lb-draft-bar__text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+	margin-right: 6px;
+}
+.lb-draft-bar__names {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--lb-text-dim);
+}
+.lb-draft-bar__hint {
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+.lb-draft-bar button {
+	flex: none;
+	padding: 6px 14px;
+	border-radius: 8px;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+.lb-draft-bar__discard {
+	border: 1px solid var(--lb-border);
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+.lb-draft-bar__discard:hover {
+	border-color: var(--lb-danger-line);
+	color: var(--lb-danger);
+}
+.lb-draft-bar__confirm {
+	border: none;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent, #fff);
 }
 
 /* "The tree's layout is out of date", over the board (tree/StaleLayout.tsx). */

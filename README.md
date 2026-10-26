@@ -26,10 +26,11 @@ pnpm dev          # http://localhost:5173
 
 **Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
 board cards, modelled on Freeform's board browser. Each card's preview is that board's own thumbnail,
-drawn from the live editor once the board is off screen and the user is idle. A board with no preview yet (imported, moved
-from another device, made by an agent) gets one drawn in a hidden editor off screen, one board at a
-time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
-boards' previews are stored on the server, so every device has them. Star a board to pin it to
+drawn from the live editor once the board is off screen and the user is idle, in light and dark at once. A board with no
+current preview (imported, moved from another device, made by an agent) gets one drawn in a hidden editor off screen,
+one board at a time (`canvas/ThumbnailBackfill.tsx`); only empty boards keep the dotted-paper placeholder. Server
+boards' previews are stored on the server, so every device has them; the board list says when each was drawn, and
+that time is in the image's address, so the browser keeps it and an unchanged preview shows with no request. Star a board to pin it to
 Favourites. A card's actions (star, rename, share, move, delete) are icon buttons over its preview, named
 in a CSS tooltip (`.lb-tip`), that show on hover; a touch screen gets a ⋯ there instead. Delete asks
 first, in a small card over the preview.
@@ -131,7 +132,7 @@ and the user can toggle in **Settings → Extensions**:
 | **Tables & views** (in node-kit) | `node.table` | One card, four views of the same question: a table (grouping, filters, totals), one big number, a kanban, or a calendar. The last two *arrange the real cards on your board* — drop a sticky in a lane and it takes that status; set the status anywhere and it walks into the lane by itself. | — |
 | **Books** (`@lifeboard/book-reader`) | `node.book`, `node.quote` | A dropped PDF/EPUB/MOBI/FB2/CBZ/CBR as a cover card, a full-screen reader that remembers its place — its whole bar on single keys (<kbd>t</kbd> contents, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> layout, <kbd>c</kbd>/<kbd>⇧c</kbd> clip, <kbd>,</kbd> settings) — and passages taken out of it as quote cards linked back to the page. | — |
 | **Dice** (`@lifeboard/dice`) | `node.roll` | A tray down the edge of the canvas. Click `d6` twice and a `d12` and your cursor is holding `2d6 + 1d12`; click the board and real polyhedra tumble and settle *on the paper*, in 3D, where you dropped them. Or type `> roll 2d20 + 10` into ⌘K. A roll leaves nothing behind unless you ask it to — then it lands as a card whose total is a property. | — |
-| **Syllabus** (`@lifeboard/syllabus`) | `node.skillItem`, `node.track`, `node.upNext` | One syllabus in your vault (entries, their works, and tracks that order them), shown on any board as a list, Up next or a card, so a tick anywhere is a tick everywhere. A tick records the day and files a write-up note from the medium's template beside what you ticked from; a note still holding only the template leaves the tick hollow. The list is the whole outline in reading order, folding each entry to its works. With skill trees on, its entries are drawn in a tree and its write-ups light the nodes they are tagged to. A whole syllabus imports from YAML as a dashed draft. None is built in: [`syllabi/`](syllabi) holds Adler's 137-entry list, /mu/core's 1111 recordings, and the film, theatre and games trees (151 entries, directors with their films; 138, playwrights, practitioners and stagecraft; 122, studios and designers with their games; Russian and Georgian people and works under their own names), each a file to drop on a board. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
+| **Syllabus** (`@lifeboard/syllabus`) | `node.skillItem`, `node.track`, `node.upNext` | One syllabus in your vault (entries, their works, and tracks that order them), shown on any board as a list, Up next or a card, so a tick anywhere is a tick everywhere. A tick records the day and files a write-up note from the medium's template beside what you ticked from; a note still holding only the template leaves the tick hollow. The list is the whole outline in reading order, folding each entry to its works. With skill trees on, its entries are drawn in a tree and its write-ups light the nodes they are tagged to. Its Settings page lists every syllabus in the vault, to rename, pause, add or remove, and their entries, to rename, reorder, add or remove. A whole syllabus imports from YAML as a dashed draft: a list per track, its tree left in the vault until you show it, and a bar over the board to Confirm or Discard it. None is built in: [`syllabi/`](syllabi) holds Adler's 137-entry list, /mu/core's 1111 recordings, and the film, theatre and games trees (151 entries, directors with their films; 138, playwrights, practitioners and stagecraft; 122, studios and designers with their games; Russian and Georgian people and works under their own names), each a file to drop on a board. See [`docs/skill-tree-plan.md`](docs/skill-tree-plan.md). | — |
 | **Skill trees** (`@lifeboard/skill-tree`) | `node.skill`, `node.skillTree`, `node.skillEntry` | Constellations of skill nodes that light up as their requirements are met: other nodes unlocked, a tick by hand, or what another extension teaches them (the syllabus adds items done and write-ups counted, through `sources.ts`). Trees live in the vault; each board shows a view of a tree from a root you pick, laid out as a maze of hexagons, and trees hang from other trees' nodes. Mastery, built in its Settings page, is you, your pillars and every tree hung under them (one tree can hang under several). | — |
 
 Turning an extension off removes its tools, menu entries and shortcuts; **its shapes stay on your
@@ -611,7 +612,10 @@ with one. Reduced motion sets the stagger to zero along with every duration.
 couple of hundred notes blocks the page for ~400 ms, and awaiting one before each navigation made
 every tab switch lag by that much. Instead, a board that changed since its last preview is redrawn
 once it is off screen and nothing has been typed or clicked for a moment; unchanged boards are never
-redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`). A closed tab's editor stays mounted until
+redrawn (`isThumbnailStale` in `persistence/thumbnails.ts`), across reloads too: a preview drawn after
+the board's last `updatedAt` is current. So closing a local board moves its `updatedAt` only if it was
+edited (`trackBoardActivity`). Another device leaves a server board it sees changed to the device that
+changed it for five minutes, showing the old picture meanwhile. A closed tab's editor stays mounted until
 its preview is drawn. A preview draws at most the board's 120 largest shapes: the cost is by the shape, and at
 a card's size the rest are specks. Exporting a hidden board needs
 `withExportableHost`: from a `visibility: hidden` host, the exporter drops every node background and
@@ -689,13 +693,16 @@ port to one new file (`TauriPlatformAdapter`).
   swap: `:root` is dark and `:root[data-theme='light']` overrides it, with `data-theme` always a
   resolved `light` or `dark` (`app/useTheme.ts` does the resolving, and `index.html` repeats it inline
   so a light-mode load doesn't flash dark). tldraw follows via its user preference rather than the
-  `colorScheme` prop, which would remount every editor. Thumbnails are exported in the active theme,
-  so a preview looks like the board you left, and are kept per theme (`thumb:<theme>:<id>`, and one
-  file per theme on the server). A theme change re-exports every board that still has a mounted
-  editor — including inactive tabs, which needs `data-exporting` to swap their `visibility: hidden`
-  for a clip, because tldraw's exporter drops HTML-backed shapes it considers invisible. The rest are
-  drawn in the new theme off screen. That hidden editor is told the app's theme on mount: the canvas's
-  colour preference is shared by every editor and only follows the app once a board has been open.
+  `colorScheme` prop, which would remount every editor. Thumbnails are drawn in both themes at once and
+  kept per theme (`thumb:<theme>:<id>`, and one file per theme on the server), so a theme change draws
+  nothing. The theme not on screen is drawn from the hidden board put in that theme just for the export:
+  `editor.user.setDarkModeOverride` for the canvas (the colour preference is shared by every editor, so
+  changing it would flip the board on screen too) and `data-lb-theme` on its container for the app's
+  tokens, which styles.css also applies to that attribute. So no rule may pick a colour by
+  `:root[data-theme]` alone. Inactive tabs need `data-exporting` to swap their `visibility: hidden` for a
+  clip, because tldraw's exporter drops HTML-backed shapes it considers invisible. The home screen's
+  hidden editor is told the app's theme on mount: the canvas's colour preference only follows the app
+  once a board has been open.
 - **Grid and snapping are two settings, not one.** tldraw has a single `isGridMode` flag that both
   draws its grid and snaps dragging to it, and it is *per-board session state* — which is how one board
   ends up with a grid the others don't have, since ⌘' is easy to hit by accident. Settings → Canvas

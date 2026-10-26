@@ -89,7 +89,7 @@ export function treeNodes(editor: Editor, treeId: string): SkillShape[] {
 /** Marks a shape an import created and nobody has confirmed yet (treeIO.ts, and the syllabus's import). */
 export const DRAFT_META = 'lifeboard:skillDraft'
 
-/** A draft draws dashed and stays out of the index until "Confirm draft". */
+/** A draft draws dashed and stays out of the index until it is confirmed (the syllabus's draft bar). */
 export function isDraft(shape: TLShape): boolean {
 	return !!shape.meta[DRAFT_META]
 }

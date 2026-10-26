@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+	addEntry,
+	addTrack,
 	buildIndex,
 	confirmDrafts,
 	discardDrafts,
+	entriesOnlyIn,
 	getItem,
 	getItems,
 	getTrack,
@@ -10,7 +13,9 @@ import {
 	nextLeafOf,
 	putItems,
 	putTracks,
+	removeEntry,
 	removeItems,
+	removeTrack,
 	resetSyllabus,
 	setDone,
 	type EvidenceEntry,
@@ -152,5 +157,49 @@ tracks:
 		expect(byId['a/homer/iliad']).toMatchObject({ done: true, doneAt: '2026-10-01', draft: '' })
 		expect(byId['a/homer']!.children).toEqual(['a/homer/iliad', 'a/homer/odyssey', 'a/homer/fragments'])
 		expect(merged.updated).toBe(3)
+	})
+})
+
+describe('managing syllabi', () => {
+	const track = (trackId: string, order: string[]) => ({ trackId, name: trackId, goal: '', state: 'active', order, defaultTags: [], draft: '' })
+
+	it('adds an entry at the end of a track, under its goal prefix and with its default tags', () => {
+		putTracks([{ ...track('a/canon', ['a/homer']), defaultTags: ['a/epic'] }])
+		homer()
+		const id = addEntry('a/canon', ' Plato ')
+		expect(id).toMatch(/^a\/plato-/)
+		expect(getTrack('a/canon')?.order).toEqual(['a/homer', id])
+		expect(getItem(id!)).toMatchObject({ title: 'Plato', parent: '', tags: ['a/epic'], draft: '' })
+		expect(addEntry('a/canon', '  ')).toBeNull()
+		expect(addEntry('nowhere', 'Plato')).toBeNull()
+	})
+
+	it('adds an empty active track', () => {
+		const id = addTrack('Reading')
+		expect(getTrack(id)).toMatchObject({ name: 'Reading', state: 'active', order: [], draft: '' })
+	})
+
+	it('removes a track with the entries only it lists, and keeps the ones another track lists', () => {
+		homer()
+		putItems([item('a/plato'), item('a/virgil')])
+		putTracks([track('a/canon', ['a/homer', 'a/plato']), track('b/epic', ['a/homer', 'a/virgil'])])
+		expect(entriesOnlyIn('a/canon')).toEqual(['a/plato'])
+		removeTrack('a/canon')
+		expect(getTrack('a/canon')).toBeUndefined()
+		expect(getItem('a/plato')).toBeUndefined()
+		expect(getItem('a/homer/iliad')).toBeDefined()
+		expect(getTrack('b/epic')?.order).toEqual(['a/homer', 'a/virgil'])
+	})
+
+	it('removes an entry from the vault, or only from the track when another lists it', () => {
+		homer()
+		putItems([item('a/plato')])
+		putTracks([track('a/canon', ['a/homer', 'a/plato']), track('b/epic', ['a/homer'])])
+		removeEntry('a/canon', 'a/homer')
+		expect(getTrack('a/canon')?.order).toEqual(['a/plato'])
+		expect(getItem('a/homer')).toBeDefined()
+		removeEntry('a/canon', 'a/plato')
+		expect(getItem('a/plato')).toBeUndefined()
+		expect(getTrack('a/canon')?.order).toEqual([])
 	})
 })

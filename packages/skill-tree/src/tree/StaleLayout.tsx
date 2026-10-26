@@ -1,5 +1,5 @@
 import { useEditor, useValue } from '@lifeboard/canvas'
-import { isTree } from '../board'
+import { isDraft, isTree } from '../board'
 import { getWork, working } from '../progress'
 import { recalculate, staleViews } from './viewSync'
 
@@ -13,7 +13,9 @@ export function StaleLayout() {
 	const stale = useValue('lifeboard:skill-tree-stale-layout', () => staleViews(editor).get(), [editor])
 	// While the board is busy (progress.ts), its note shows here instead.
 	const busy = useValue('lifeboard:skill-tree-busy', () => !!getWork(editor), [editor])
-	if (!stale.length || busy) return null
+	// A draft's Confirm/Discard bar (the syllabus's DraftBar) takes this place; confirming lays the trees out anyway.
+	const drafted = useValue('lifeboard:skill-tree-drafted', () => editor.getCurrentPageShapes().some(isDraft), [editor])
+	if (!stale.length || busy || drafted) return null
 	return (
 		<div
 			className="lb-stale-layout"

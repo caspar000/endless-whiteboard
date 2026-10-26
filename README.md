@@ -24,7 +24,7 @@ pnpm dev          # http://localhost:5173
 
 ## The two screens
 
-**Home** — a sidebar (All boards / Recents / Favourites / Storage, with live counts) beside a grid of
+**Home** — a sidebar (All Boards / Recents / Favourites / Storage, with live counts) beside a grid of
 board cards, modelled on Freeform's board browser, with a search box over the grid that narrows it by board name. Each card's preview is that board's own thumbnail,
 drawn from the live editor once the board is off screen and the user is idle, in light and dark at once. A board with no
 current preview (imported, moved from another device, made by an agent) gets one drawn in a hidden editor off screen,
@@ -67,7 +67,7 @@ server's `boards` table, and changing them does not count as editing the board.
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
 dock and the dice tray are rounded surfaces held off the window edge. On every screen, the open boards
 hang from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved
-tail, after a pinned **All boards** label; Settings, Help and the board list start below them. A phone
+tail, after a pinned **All Boards** label; Settings, Help and the board list start below them. A phone
 shows the board pill in their place, on every screen too. <kbd>⌘\</kbd> slides the sidebar away and
 leaves a round button in its corner; under 1024px it starts that way and opens over the board. The
 board runs under all of it, so zoom to fit, quick look and panning a shape into view frame inside

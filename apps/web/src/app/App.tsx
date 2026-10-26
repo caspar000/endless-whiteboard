@@ -797,6 +797,7 @@ export function App() {
 				className={[
 					'lb-shell',
 					route.view === 'board' ? 'lb-shell--board' : 'lb-shell--page',
+					route.view === 'list' ? 'lb-shell--home' : '',
 					sidebarCollapsed ? 'lb-shell--sidebar-collapsed' : '',
 					agentShown ? 'lb-shell--agent-open' : '',
 					agentResizing ? 'lb-shell--resizing' : '',
@@ -906,7 +907,7 @@ export function App() {
 				</div>
 
 				{/* The chrome, floating over the content. Painted after it, so it stacks above the board. */}
-				{/* On every screen, so the open boards and All boards are one click away from anywhere. */}
+				{/* On every screen, so the open boards and All Boards are one click away from anywhere. */}
 				{phone ? (
 					<BoardPill
 						boards={api.boards}

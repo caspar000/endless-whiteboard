@@ -54,9 +54,9 @@ async function importGeneratedImage(
 		await editor.putExternalContent({ type: 'files', files: [file], point: { x: 200, y: 200 } })
 
 		if (leaveBoardImmediately) {
-			// The sidebar's All boards row, clicked from in here so no round trip gives the upload a head start.
+			// The sidebar's All Boards row, clicked from in here so no round trip gives the upload a head start.
 			const home = document.querySelector<HTMLElement>('.lb-sidebar__library button')
-			if (!home) throw new Error('Could not find All boards to leave the board')
+			if (!home) throw new Error('Could not find All Boards to leave the board')
 			home.click()
 		}
 		return blob.size

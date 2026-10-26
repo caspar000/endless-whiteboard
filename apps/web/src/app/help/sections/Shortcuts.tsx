@@ -89,7 +89,7 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 	},
 	{
 		// The board list's own keys, bound by the page rather than registered (app/BoardList.tsx).
-		title: 'In All boards',
+		title: 'In All Boards',
 		rows: [
 			[['/'], 'Search the boards by name'],
 			[['Esc'], 'Clear the search, then leave it'],

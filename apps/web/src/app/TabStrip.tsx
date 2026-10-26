@@ -30,7 +30,7 @@ function Slope({ side }: { side: 'left' | 'right' }) {
 
 /**
  * The open boards, as folder labels hanging from the top edge of the window beside the sidebar, after
- * a pinned "All boards" label that leads home. Shown on every screen, so a board is one click away
+ * a pinned "All Boards" label that leads home. Shown on every screen, so a board is one click away
  * from Settings or Help too; there no label is in front.
  *
  * The labels overlap like a stack of folder tabs, the active one in front and each step away from it
@@ -68,7 +68,7 @@ export function TabStrip({
 		const board = byId.get(id)
 		return board ? [board] : []
 	})
-	// The labels' places in the stack, "All boards" being the first: 0 is All boards, 1 the first board.
+	// The labels' places in the stack, "All Boards" being the first: 0 is All Boards, 1 the first board.
 	// On Settings and Help (or a board that is gone) none is in front, and every label slopes to the
 	// right, like those after an active one.
 	const boardIndex = view === 'board' ? open.findIndex((board) => board.id === activeBoardId) : -1
@@ -109,7 +109,9 @@ export function TabStrip({
 			>
 				{home.slopeRight && <Slope side="right" />}
 				<LayoutGrid className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
-				<span className="lb-tabs__label">All boards</span>
+				<span className="lb-tabs__label">All Boards</span>
+				{/* Room after the name (16px with the gap), so it doesn't look cut short against the slope. */}
+				<span className="lb-tabs__close-space" aria-hidden="true" />
 			</div>
 
 			{open.map((board, i) => {

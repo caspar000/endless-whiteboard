@@ -102,10 +102,10 @@ test.describe('canvas chrome', () => {
 		await expect(page.locator('.lb-list__board', { hasText: 'First' })).toHaveCount(1)
 	})
 
-	test('the tabs show on every page, All boards first', async ({ page }) => {
+	test('the tabs show on every page, All Boards first', async ({ page }) => {
 		await gotoFresh(page)
 		const strip = page.getByRole('tablist', { name: 'Open boards' })
-		const home = strip.getByRole('tab', { name: 'All boards' })
+		const home = strip.getByRole('tab', { name: 'All Boards' })
 		const board = strip.getByRole('tab', { name: /Home office shopping/ })
 		await expect(board).toHaveAttribute('aria-selected', 'true')
 		await expect(home).toHaveAttribute('aria-selected', 'false')
@@ -1246,7 +1246,7 @@ test.describe('home screen', () => {
 
 		await showSidebar(page)
 		const sidebar = page.locator('.lb-sidebar')
-		await expect(sidebar.getByRole('button', { name: /All boards 2/ })).toBeVisible()
+		await expect(sidebar.getByRole('button', { name: /All Boards 2/ })).toBeVisible()
 		await expect(page.locator('.lb-card')).toHaveCount(2)
 		// It floats, held off the window edge, rather than being docked to it.
 		await expect.poll(async () => (await sidebar.boundingBox())?.x).toBe(12)
@@ -1290,7 +1290,7 @@ test.describe('home screen', () => {
 		await expect(page.locator('.lb-sidebar__favorites .lb-sidebar__item')).toHaveCount(1)
 	})
 
-	test('collapses out of the way, remembers it, and remembers the All boards disclosure', async ({
+	test('collapses out of the way, remembers it, and remembers the All Boards disclosure', async ({
 		page,
 	}) => {
 		await gotoFresh(page)
@@ -1316,10 +1316,10 @@ test.describe('home screen', () => {
 		await expect(sidebar).not.toHaveClass(/lb-sidebar--collapsed/)
 		await expect(sidebar).toHaveCSS('width', '264px')
 
-		await sidebar.getByRole('button', { name: 'Collapse All boards' }).click()
+		await sidebar.getByRole('button', { name: 'Collapse All Boards' }).click()
 		await expect(sidebar.getByRole('navigation', { name: 'Boards', exact: true })).toHaveCount(0)
 		await page.reload()
-		await expect(sidebar.getByRole('button', { name: 'Expand All boards' })).toBeVisible()
+		await expect(sidebar.getByRole('button', { name: 'Expand All Boards' })).toBeVisible()
 		await expect(sidebar.getByRole('navigation', { name: 'Boards', exact: true })).toHaveCount(0)
 	})
 
@@ -1808,7 +1808,7 @@ test.describe('canvas grid', () => {
 		expect(new Set(ids).size).toBe(ids.length)
 
 		// And each tab in turn must resolve to a pattern inside its *own* svg, with dots actually painted.
-		// The boards' tabs only, which are the ones with a close button: All boards leads home.
+		// The boards' tabs only, which are the ones with a close button: All Boards leads home.
 		const tabs = await page.locator('.lb-tabs__tab:has(.lb-tabs__close)').all()
 		for (let i = 0; i < tabs.length; i++) {
 			await tabs[i]!.click()

@@ -182,7 +182,7 @@ export function Sidebar({
 				<nav className="lb-sidebar__library" aria-label="Library">
 					<LibraryRow
 						icon={<LayoutGrid size={18} strokeWidth={1.75} />}
-						label="All boards"
+						label="All Boards"
 						count={boards.length}
 						active={view === 'list'}
 						onClick={onAllBoards}
@@ -233,7 +233,7 @@ export function Sidebar({
 				)}
 
 				<Section
-					title="All boards"
+					title="All Boards"
 					listLabel="Boards"
 					expanded={allBoardsOpen}
 					onToggle={() => setAllBoardsOpen(!allBoardsOpen)}
@@ -433,7 +433,7 @@ function ImportStatus() {
 /**
  * Boards moving between this browser and the server, on every screen: how many of how many, and the
  * one under way. The queue outlives a reload (boards/moveQueue.ts), so this shows again after one.
- * Clicking goes to All boards, where each moving card shows its own progress.
+ * Clicking goes to All Boards, where each moving card shows its own progress.
  */
 function MoveStatus({ onShow }: { onShow: () => void }) {
 	const jobs = useMoves()
@@ -449,7 +449,7 @@ function MoveStatus({ onShow }: { onShow: () => void }) {
 		? current.stage === 'files' && current.filesTotal
 			? `${current.board.name} · files ${current.filesDone} of ${current.filesTotal}`
 			: current.board.name
-		: 'Open All boards to retry'
+		: 'Open All Boards to retry'
 	return (
 		<button
 			type="button"

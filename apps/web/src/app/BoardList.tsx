@@ -162,7 +162,7 @@ export function BoardList({
 	return (
 		<main className="lb-home__main">
 			<header className="lb-home__header">
-				<h1>All boards</h1>
+				<h1>All Boards</h1>
 				<div className="lb-home__header-actions">
 					{api.boards.length > 0 && !selecting && (
 						<button className="lb-btn" onClick={() => setSelecting(true)}>

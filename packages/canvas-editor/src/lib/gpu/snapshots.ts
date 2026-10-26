@@ -110,6 +110,10 @@ export class GpuSnapshots {
 			this.cameraMovedAt = performance.now()
 			zoomTimer ??= setTimeout(settleZoom, STILL_MS)
 		})
+		// The board back on screen: what was asked for while it was out of sight is read now (see `flush`).
+		const stopShown = react('gpu snapshots shown', () => {
+			if (getGpuScene(editor).shown.get() && this.queue.size && this.frame === null) this.frame = requestAnimationFrame(() => this.flush())
+		})
 		// A shape mounting again: read it if it isn't, for what it is now.
 		const stopMounts = onShapeMounted(editor, (id) => {
 			if (this.atoms.has(id) && !this.readFor.has(id)) this.enqueue(id)
@@ -164,6 +168,7 @@ export class GpuSnapshots {
 			for (const release of this.ahead.values()) release()
 			stop()
 			stopCamera()
+			stopShown()
 			stopMounts()
 			if (zoomTimer) clearTimeout(zoomTimer)
 			stopTheme()
@@ -349,6 +354,14 @@ export class GpuSnapshots {
 			this.frame = requestAnimationFrame(() => this.flush())
 			return
 		}
+		// Not while the board is out of sight (a tab behind the one on screen, or behind Settings): its
+		// host hides it with `visibility`, which every shape inherits, and each would be read as empty,
+		// the GPU then hiding its element and drawing nothing for it. Read once it's shown again.
+		if (!getGpuScene(this.editor).shown.__unsafe__getWithoutCapture()) return
+		if (getComputedStyle(this.editor.getContainer()).visibility === 'hidden') {
+			this.frame = requestAnimationFrame(() => this.flush())
+			return
+		}
 		const started = performance.now()
 		const results = this.results
 		// Let go together at the end: each one changes the list of mounted shapes.
@@ -509,7 +522,8 @@ interface ReadFor {
 }
 
 /** The reader's own version: bump it when what it reads from an element changes, and the cache starts again. */
-const READER_VERSION = 1
+// 2: snapshots read while their board was hidden came out empty (PLAN-22); version 1's may be those.
+const READER_VERSION = 2
 /** How long new snapshots wait to be kept, with the others read meanwhile. */
 const KEEP_MS = 2000
 /** How long reading waits for the cache to load, at most. */

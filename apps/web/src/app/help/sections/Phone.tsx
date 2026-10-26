@@ -46,7 +46,7 @@ export function Phone(_props: SectionProps) {
 					The board’s name at the top lists the boards you have open: tap one to switch, the pencil to
 					rename it, × to close it, or start a new one. The button at the top left opens the menu, with
 					every board, Settings and Help, and a search button that does what ⌘K does on a computer. The
-					button at the top right opens the agent. Under All boards, the ⋯ on a card holds its actions:
+					button at the top right opens the agent. Under All Boards, the ⋯ on a card holds its actions:
 					star, rename, share, move and delete.
 				</p>
 			</Section>

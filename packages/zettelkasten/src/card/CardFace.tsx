@@ -18,7 +18,7 @@ import { NoteFoot } from './Foot'
  * The text's links (`[[25a]]`, links.ts) as chips, in the HTML a card draws when it isn't being
  * written on. A link to a number the box doesn't have is drawn struck through.
  */
-function withLinkChips(html: string, has: (zid: string) => boolean): string {
+export function withLinkChips(html: string, has: (zid: string) => boolean): string {
 	return html.replace(LINK_PATTERN, (_whole, raw: string) => {
 		const zid = raw.toLowerCase()
 		const missing = has(zid) ? '' : ' lb-zlink--missing'

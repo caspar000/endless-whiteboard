@@ -34,6 +34,11 @@ export interface AgentBoardApi {
 	open(id: string): Promise<boolean>
 	/** The mounted editor for a board — including one behind a hidden tab. `null` if not mounted. */
 	editorFor(id: string): Editor | null
+	/**
+	 * Opens a board in a tab behind the one on screen and has its editor mount there, without navigating.
+	 * Resolves `false` if there is no such board.
+	 */
+	mount(id: string): Promise<boolean>
 }
 
 let api: AgentBoardApi | null = null
@@ -112,6 +117,25 @@ const bridge: BoardBridge = {
 		}
 		return null
 	},
+}
+
+/** Waits for a board's editor to mount, up to `MOUNT_TIMEOUT_MS`. */
+async function mounted(id: string): Promise<Editor | null> {
+	const deadline = Date.now() + MOUNT_TIMEOUT_MS
+	while (Date.now() < deadline) {
+		const editor = api?.editorFor(id)
+		if (editor) return editor
+		await new Promise((resolve) => setTimeout(resolve, MOUNT_POLL_MS))
+	}
+	return null
+}
+
+bridge.mount = async (id: string) => {
+	const current = api ?? missing()
+	const live = current.editorFor(id)
+	if (live) return live
+	if (!(await current.mount(id))) return null
+	return mounted(id)
 }
 
 // Installed at module scope: the composition root imports this module for the side effect, then

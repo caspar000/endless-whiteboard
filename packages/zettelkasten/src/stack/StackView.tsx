@@ -23,6 +23,7 @@ import { CardFace } from '../card/CardFace'
 import { IndexFace } from '../card/IndexFace'
 import { SourceFace } from '../card/SourceFace'
 import { beginJump } from './jump'
+import { askToPut } from '../ref/PutDialog'
 import { followChain } from './ChainView'
 import { ChipPicker } from './Picker'
 import { onControl, onScreen, typingIn } from './surface'
@@ -221,6 +222,9 @@ export function StackView() {
 					break
 				case 'g':
 					setGraphOpen(editor, true)
+					break
+				case 'p':
+					askToPut(editor)
 					break
 				case 'Backspace':
 				case 'Delete':

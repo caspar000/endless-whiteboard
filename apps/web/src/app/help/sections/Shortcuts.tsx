@@ -153,6 +153,7 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['I'], 'Go to the index'],
 			[['F'], 'Follow the chain of thought from the card in front'],
 			[['G'], 'Show the box as a graph'],
+			[['P'], 'Put the card in front on another board'],
 			[['N'], 'Write a new note behind the card in front'],
 			[['⇧N'], 'Write a new note as a branch off the card in front'],
 			[['0–9'], 'Go to a note by its number'],

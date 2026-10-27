@@ -139,6 +139,17 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="A note on another board">
+				<p>
+					<Keys keys={['P']} /> on a card, or <strong>Put this note on a board…</strong> in ⌘K, shows
+					the note on a board of your choosing. You can also copy a card in the box and paste it
+					there. The note stays in its box: the board shows it with the box’s name, follows it when
+					it changes, and writing on it there writes on it in the box. If the box isn’t open, the
+					board shows the note as it was last seen, and a double-click opens the box in a tab behind
+					the one you are on before you start writing. Click the box’s name to go to the note in it.
+				</p>
+			</Section>
+
 			<Section title="Citing a book from anywhere">
 				<p>
 					On any board, a book (or a quote taken from one) has <strong>Cite in a box…</strong> on its

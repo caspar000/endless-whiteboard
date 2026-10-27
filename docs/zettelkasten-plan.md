@@ -247,6 +247,32 @@ instead of scrolling, the id out of the way, and a deeper pile.
 - The dialog is drawn as the app's dialogs are (raised paper, a hairline, a 45% scrim), into the page
   rather than the canvas's front layer.
 
+### Phase 8, as built (2026-10-27): a note on another board
+
+**The design decision the phase began with: how a board reads a card on another board.** The
+syllabus's vault items, which the plan pointed at, turned out to be a separate synced store rather
+than a way into another board, so they don't fit: a box's note has to stay a card in its box. What
+the app does have is the board bridge: the editor of any board mounted in this session (open tabs stay
+mounted behind the one on screen), and opening a board. So:
+
+- **A reference card** (`node.zettelRef`) on the other board holds the box's board id, the card's
+  *shape id* (stable, unlike its number) and a copy of its text and number.
+- **Live while the box is mounted.** The box's editor is found reactively (`ref/live.ts`, filled from
+  `onBoardOpen`), and signals cross editors, so the reference reads the card through the box's store,
+  redraws as it changes, and keeps its copy current (`history: 'ignore'`). Otherwise it shows the copy,
+  saying it is "as it was when its box was last open".
+- **Written through.** Writing on a reference edits its own copy with the sticky's editor, and every
+  change made while it is being edited goes to the card in the box (`ref/watch.ts`), one undo step in
+  the box per run of typing. A double-click first makes sure the box is mounted: if it isn't, the
+  bridge's new `mount` (node-kit, optional) opens it in a tab behind the one on screen, without
+  switching to it, and writing starts once it is there. Text written while the box went out of reach is
+  kept (`pending`) and delivered when it is next in reach.
+- **Made** with *Put this note on a board…* (`P` in the stack, ⌘K): pick a board that isn't a box, and
+  the reference appears in the middle of its view. Or copy cards in a box and paste them on a board:
+  the box's copy hook marks each card with where it came from, and the board's paste hook turns a
+  marked card into a reference (`ref/clipboard.ts`). Pasted into a box, a copy is still taken off.
+- A reference whose card was deleted says so. Its links and the box's name open the box at that note.
+
 ## What was decided
 
 | # | Question | Decision |

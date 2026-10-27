@@ -51,6 +51,13 @@ export interface BoardBridge {
 	 * which is a debug seam pointing at whichever board mounted last.
 	 */
 	editorFor(id: string): Editor | null
+	/**
+	 * Mounts a board without showing it: it opens in a tab behind the one on screen, and this resolves
+	 * with its editor once mounted (`null` if there is no such board). For reaching into another board
+	 * while the person stays where they are, as a Zettelkasten note shown on another board does to edit
+	 * the card in its box. Optional: a host without tabs can leave it out, and callers fall back to `open`.
+	 */
+	mount?(id: string): Promise<Editor | null>
 }
 
 let bridge: BoardBridge | null = null

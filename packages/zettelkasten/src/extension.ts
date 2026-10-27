@@ -9,6 +9,10 @@ import { cardDefinition } from './card/definition'
 import { linkTextExtensions } from './card/linkSuggest'
 import { indexDefinition, sourceDefinition } from './card/otherDefinitions'
 import { boxCommands } from './commands'
+import { boxClipboard } from './ref/clipboard'
+import { refDefinition } from './ref/definition'
+import { noteBoardOpen } from './ref/live'
+import { watchRefs } from './ref/watch'
 import { boxOperations } from './ops'
 import { watchBox } from './watch'
 
@@ -47,19 +51,21 @@ export const zettelkastenExtension: Extension = {
 		'The agent can read a box, write a note where it belongs (“file this behind 25a”), link notes, file them under keywords and cite sources, by the same rules: it places notes, never moves them.',
 		'Table lays every card out at once: the index, a column for each top-level note with its line running down it, and the sources.',
 		'On any board, “Cite in a box…” on a book or a quote from one makes the book a source in the box you pick, or finds the one already there.',
+		'A note can be shown on any other board (“Put on a board…”, or copy it in the box and paste it there). It stays in its box: the board follows it, and writing on it there writes on it in the box.',
 		'Turning this off leaves your boxes as ordinary boards with their cards on them. Turn it back on and they are boxes again.',
 	],
 	icon: Archive,
 	version: '0.1.0',
 	author: 'Lifeboard',
-	nodes: [defineNode(cardDefinition), defineNode(sourceDefinition), defineNode(indexDefinition)],
+	nodes: [defineNode(cardDefinition), defineNode(sourceDefinition), defineNode(indexDefinition), defineNode(refDefinition)],
 	boardKinds: [boxKind],
 	commands: boxCommands,
 	operations: boxOperations,
 	textExtensions: linkTextExtensions,
 	hooks: {
 		onBoardOpen: ({ editor, boardId }) => {
-			if (!isBox(editor)) return
+			noteBoardOpen(boardId, editor)
+			if (!isBox(editor)) return watchRefs(editor)
 			watchBox(editor)
 			// So "Cite in a box…" can offer it from any board without opening every board to look.
 			rememberBox(boardId)
@@ -75,4 +81,5 @@ export const zettelkastenExtension: Extension = {
 		},
 	],
 	overlays: [{ id: 'zettelkasten.cite', Component: CiteOverlay }],
+	clipboard: boxClipboard,
 }

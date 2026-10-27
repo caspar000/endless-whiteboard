@@ -5,6 +5,7 @@ import { boxOrder, hasWriting, layoutBox, shapeByZid } from './box'
 import { isBoxId } from './ids'
 import { ChainView, followChain } from './stack/ChainView'
 import { GraphView } from './stack/GraphView'
+import { PutOverlay } from './ref/PutDialog'
 import { StackView, writeNote } from './stack/StackView'
 import { registerJumpField } from './stack/jump'
 import { boxNotice, getStack, setGraphOpen, setStackOpen, showCard } from './stack/state'
@@ -91,6 +92,7 @@ export function BoxDock() {
 			<StackView />
 			<ChainView />
 			<GraphView />
+			<PutOverlay />
 			{(notice || missing) && (
 				<div className="lb-zdock__notice" role="status">
 					{missing ? `There is no note ${missing} in this box.` : notice!.text}

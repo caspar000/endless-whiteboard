@@ -1,5 +1,6 @@
 import type { NodeBaseProps } from '@lifeboard/node-kit'
 import type { CardProps, SourceProps } from './box'
+import type { RefProps } from './ref/definition'
 
 /**
  * Registers the box's three card types with tldraw's closed `TLShape` union, as every compile-time extension does
@@ -10,5 +11,6 @@ declare module '@tldraw/tlschema' {
 		'node.zettel': CardProps & NodeBaseProps
 		'node.zettelSource': SourceProps & NodeBaseProps
 		'node.zettelIndex': NodeBaseProps
+		'node.zettelRef': RefProps & NodeBaseProps
 	}
 }

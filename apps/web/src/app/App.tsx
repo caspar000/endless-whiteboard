@@ -234,6 +234,8 @@ export function App() {
 	 * editor mounts the first time its tab is shown, then stays mounted while the tab is open.
 	 */
 	const warm = useRef(new Set<string>())
+	/** Re-renders once a board has been warmed without being shown (the bridge's `mount`). */
+	const [, rewarm] = useState(0)
 
 	/** Live editors by board id, for commands, moves and drawing previews of boards off screen. */
 	const editors = useRef(new Map<string, Editor>())
@@ -611,6 +613,15 @@ export function App() {
 				return true
 			},
 			editorFor: (id) => editors.current.get(id) ?? null,
+			// A tab behind the one on screen, warmed so its editor mounts there, and no navigation.
+			mount: async (id) => {
+				const known = await listBoards(platform.kv)
+				if (!known.some((board) => board.id === id)) return false
+				openTab(id)
+				warm.current.add(id)
+				rewarm((n) => n + 1)
+				return true
+			},
 		})
 	})
 

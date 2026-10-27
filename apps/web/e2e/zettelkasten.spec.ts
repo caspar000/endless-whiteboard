@@ -333,4 +333,58 @@ test.describe('zettelkasten', () => {
 		)
 		expect(sources).toBe(1)
 	})
+
+	test('a note put on another board stays in its box: followed there, and written through to it', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Desk')
+		await page.getByRole('button', { name: 'New box' }).first().click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+		await write(page, 'n', 'one')
+		await write(page, 'n', 'two')
+
+		type Ref = { id: string; zid: string; text: string }
+		const refs = (): Promise<Ref[]> =>
+			page.evaluate(() => {
+				type S = { id: string; type: string; props: { zid: string; richText: { content: { content?: { text: string }[] }[] } } }
+				const editor = (window as unknown as { editor: { getCurrentPageShapes(): S[] } }).editor
+				return editor
+					.getCurrentPageShapes()
+					.filter((shape) => shape.type === 'node.zettelRef')
+					.map((shape) => ({
+						id: shape.id,
+						zid: shape.props.zid,
+						text: shape.props.richText.content.map((block) => (block.content ?? []).map((t) => t.text).join('')).join('\n'),
+					}))
+			})
+
+		// P on the card in front: pick the board, and the note is shown there.
+		await page.keyboard.press('p')
+		await page.getByRole('dialog', { name: 'Put on a board' }).getByRole('button', { name: 'Desk' }).click()
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Desk')
+		await expect.poll(refs).toMatchObject([{ zid: '2', text: 'two' }])
+		const card = page.locator('.lb-zcard--ref')
+		await expect(card.locator('.lb-zcard__from')).toContainText('In Untitled box')
+
+		// Written on here, written in the box.
+		// By position: on the canvas the pointer goes to the canvas, which hands it to the shape.
+		const box = (await card.boundingBox())!
+		await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+		await expect(page.locator('.lb-zcard--ref .ProseMirror')).toBeFocused()
+		await page.keyboard.press('ControlOrMeta+End')
+		await page.keyboard.type(' and more')
+		await page.keyboard.press('Escape')
+		await page.locator('.lb-tabs__tab', { hasText: 'Untitled box' }).click()
+		await expect.poll(() => cards(page).then((all) => all.find((c) => c.zid === '2')?.text)).toBe('two and more')
+
+		// Written in the box, followed here.
+		await page.keyboard.press('Enter')
+		await expect(page.locator('.lb-zstack__front .ProseMirror')).toBeFocused()
+		await page.keyboard.press('ControlOrMeta+End')
+		await page.keyboard.type(', from the box')
+		await page.keyboard.press('Escape')
+		await page.locator('.lb-tabs__tab', { hasText: 'Desk' }).click()
+		await expect.poll(refs).toMatchObject([{ zid: '2', text: 'two and more, from the box' }])
+	})
 })

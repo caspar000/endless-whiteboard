@@ -229,7 +229,7 @@ export function ChainView() {
 				))}
 				<div className="lb-zchain__row lb-zchain__row--end">
 					<p className="lb-zchain__end">
-						{turns.length > 1 ? 'The end of this train of thought. ⌫ goes back a turn.' : 'The end of this train of thought.'}
+						{turns.length > 1 ? 'The end of this train of thought. To go back, pick an earlier turn at the top.' : 'The end of this train of thought.'}
 					</p>
 				</div>
 			</div>

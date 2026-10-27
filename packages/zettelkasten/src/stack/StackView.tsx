@@ -23,7 +23,9 @@ import { CardFace } from '../card/CardFace'
 import { IndexFace } from '../card/IndexFace'
 import { SourceFace } from '../card/SourceFace'
 import { beginJump } from './jump'
+import { followChain } from './ChainView'
 import { ChipPicker } from './Picker'
+import { onControl, onScreen, typingIn } from './surface'
 import { FIRST_SLOT, LAST_SLOT, slotStyle } from './pile'
 import { frontIndex, getStack, setFilling, showCard } from './state'
 
@@ -42,21 +44,6 @@ const MIN_FLIP_GAP_MS = 55
 /** How far a finger has to travel up or down to flip. */
 const SWIPE_PX = 40
 
-/** Whether this editor's board is the one on screen: a tab in the background keeps its editor. */
-function onScreen(editor: Editor): boolean {
-	const container = editor.getContainer()
-	return (
-		container.isConnected &&
-		getComputedStyle(container).visibility !== 'hidden' &&
-		container.getClientRects().length > 0
-	)
-}
-
-/** Somewhere text is being typed: the card's own editor, the jump field, the palette. */
-function typingIn(target: EventTarget | null): boolean {
-	if (!(target instanceof HTMLElement)) return false
-	return target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
-}
 
 /**
  * Puts the caret in a card. At the point that was clicked, or at the end: the sticky note's editor
@@ -119,7 +106,8 @@ export function writeNote(editor: Editor, how: Placement): void {
  */
 export function StackView() {
 	const editor = useEditor()
-	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open, [editor])
+	// A chain being followed is drawn instead (ChainView), and has the cards' live text while it is.
+	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open && !getStack(editor).chain, [editor])
 	const order = useValue('lifeboard:zettel-order', () => boxOrder(editor), [editor])
 	const index = useValue('lifeboard:zettel-front', () => frontIndex(editor), [editor])
 	const editingId = useValue('lifeboard:zettel-editing', () => editor.getEditingShapeId(), [editor])
@@ -218,6 +206,9 @@ export function StackView() {
 					break
 				case 'i':
 					go(order.findIndex((entry) => entry.kind === 'index'))
+					break
+				case 'f':
+					followChain(editor)
 					break
 				case 'Backspace':
 				case 'Delete':
@@ -365,10 +356,6 @@ function fillSource(editor: Editor, zid: string): void {
 	setFilling(editor, zid)
 }
 
-/** A press on something of the card's own (a chip, a link, the picker), which is not a press on its text. */
-function onControl(target: EventTarget): boolean {
-	return (target as HTMLElement).closest('.lb-zchip, .lb-zlink, .lb-zpick, .lb-zcard__foot, .lb-zsource__form') !== null
-}
 
 function StackCard({
 	editor,

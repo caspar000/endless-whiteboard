@@ -155,6 +155,28 @@ instead of scrolling, the id out of the way, and a deeper pile.
 - **Not `canLeavePage`** any more for any of the three types: each now shows things other cards say.
 - Writing a note while the index or a source is in front starts a new train of thought.
 
+### Phase 4, as built (2026-10-27): the chain
+
+- **The path** (`chain.ts`, pure and tested) is built from turns: where reading started, then each
+  link taken, as `{ at: row, to: id }`. A note's line is the note and every note after it in the box
+  with the same top-level number, branches included in reading order, gaps passed over; a source is a
+  line of one. Taking a link cuts the path after the row it was taken from. Rows rather than ids,
+  because a path may come back round to a note it has passed.
+- **The surface** is drawn over the stack or the table it was opened from (`F` in the stack, the dock's
+  chain button, ⌘K *Follow the chain of thought from here*), from the card in front, the card selected
+  on the table, or else note 1. While it is up the stack steps aside and the chain holds the cards'
+  live text; the canvas is live only when neither is up (`isCanvasLive`). Clicking a card's text
+  writes on it, with only that row's copy live when a path passes a note twice.
+- **Beside each card**, blurred and fanned, up to three of the notes and sources it links to (written,
+  added and cited), the rest counted; a dashed thread joins them to the card. Hover brings one into
+  focus. Taking one slides its card from where it was shown into its row (a FLIP transform, 340 ms;
+  none under reduced motion). A link, a number or a chip pressed on a card in the path turns there too,
+  instead of leaving for the stack.
+- **The trail** of turns sits where the board pill is; a turn steps back to it, and so does ⌫ one at a
+  time. Esc puts a card down or leaves.
+- Writing a new note from the dock while a chain is up leaves the chain for the stack, where the new
+  card is.
+
 ## What was decided
 
 | # | Question | Decision |
@@ -175,7 +197,7 @@ instead of scrolling, the id out of the way, and a deeper pile.
 | Q14 | Link direction | One way. The footer also shows a dim "Linked from 26a, 31". |
 | Q15 | Strictness | A box holds only its cards, which the box places. No dock, no dragging, no drawing. Zoom, pan and Quick Look still work. |
 | Q16 | Table layout | A column per top-level note, its line in reading order down it, deeper branches stepped right. |
-| Q17 | Chain view | As described in *The four views* below. |
+| Q17 | Chain view | As described in *The four views* below; built as in *Phase 4, as built*. |
 | Q18 | Graph view | Dots with labels, force layout, solid lines for order and dashed for links (each toggleable). |
 | Q19 | Editing, phone | Type into the front card in the stack, or double-click a card elsewhere. All four views work on a phone. |
 | Q20 | Order of work | Stack and placing notes, table, chain, graph; then the agent, *Cite in box* from Books, and notes on ordinary boards. |

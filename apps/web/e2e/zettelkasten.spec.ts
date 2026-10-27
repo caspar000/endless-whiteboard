@@ -206,4 +206,46 @@ test.describe('zettelkasten', () => {
 		await page.keyboard.press('Home')
 		await expect(front.locator('.lb-zcard__id')).toHaveText('Index')
 	})
+
+	test('the chain reads a train of thought and turns along its links', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await page.getByRole('button', { name: 'New box' }).click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+
+		// A train 1, 1a, 1b, where 1a links to a second train, 2.
+		await write(page, 'n', 'one')
+		await write(page, 'n', 'two')
+		await toFirstNote(page)
+		await write(page, 'n', 'a branch, see [[2]]')
+		await write(page, 'n', 'another branch')
+		expect((await cards(page)).map((card) => card.zid)).toEqual(['1', '1a', '1b', '2'])
+
+		// F follows from the front card: its train, in order, and nothing of the next train.
+		await toFirstNote(page)
+		await page.keyboard.press('f')
+		const rows = page.locator('.lb-zchain__row[data-row] .lb-zchain__card .lb-zcard__id')
+		await expect(rows).toHaveText(['1', '1a', '1b'])
+		// Beside 1a, the note it links to; taking it cuts the path there and carries on from 2.
+		const row1a = page.locator('.lb-zchain__row[data-row="1"]')
+		await row1a.locator('.lb-zchain__peek').click()
+		await expect(rows).toHaveText(['1', '1a', '2'])
+		await expect(page.locator('.lb-zchain__turn')).toHaveText(['1', '2'])
+
+		// Writing on a card in the chain.
+		await page.locator('.lb-zchain__row[data-row="2"] .lb-zchain__card .lb-zcard__body').click()
+		await expect(page.locator('.lb-zchain .ProseMirror')).toBeFocused()
+		await page.keyboard.press('End')
+		await page.keyboard.type(' and more')
+		await page.keyboard.press('Escape')
+		expect((await cards(page)).find((card) => card.zid === '2')?.text).toBe('two and more')
+
+		// Backspace steps back a turn; Escape leaves for the stack it was opened over.
+		await page.keyboard.press('Backspace')
+		await expect(rows).toHaveText(['1', '1a', '1b'])
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-zchain')).toHaveCount(0)
+		await expect(front(page)).toHaveText('1')
+	})
 })

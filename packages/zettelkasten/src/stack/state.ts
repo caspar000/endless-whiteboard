@@ -1,5 +1,6 @@
 import { atom, type Atom, type Editor } from '@lifeboard/canvas'
 import { boxOrder, type BoxEntry } from '../box'
+import type { Turn } from '../chain'
 import { compareZids } from '../ids'
 
 /**
@@ -17,6 +18,8 @@ export interface StackState {
 	keyword: string | null
 	/** A source being filled in, by id: its fields are open on the front card. */
 	filling: string | null
+	/** The chain being followed (chain.ts), drawn over the stack or the table; `null` when there is none. */
+	chain: Turn[] | null
 }
 
 const states = new WeakMap<Editor, Atom<StackState>>()
@@ -25,7 +28,7 @@ function stateOf(editor: Editor): Atom<StackState> {
 	let state = states.get(editor)
 	if (!state) {
 		// A box opens on its stack (docs/zettelkasten-plan.md, Q1).
-		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null, keyword: null, filling: null })
+		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null, keyword: null, filling: null, chain: null })
 		states.set(editor, state)
 	}
 	return state
@@ -39,13 +42,49 @@ export function isStackOpen(editor: Editor): boolean {
 	return stateOf(editor).get().open
 }
 
+/** Shows the stack (`true`) or the table, leaving any chain. */
 export function setStackOpen(editor: Editor, open: boolean): void {
-	stateOf(editor).update((state) => ({ ...state, open }))
+	stateOf(editor).update((state) => ({ ...state, open, chain: null }))
 }
 
 /** Brings a note to the front (and opens the stack if it isn't). */
 export function showCard(editor: Editor, zid: string, keyword: string | null = null): void {
-	stateOf(editor).set({ open: true, zid, keyword, filling: null })
+	stateOf(editor).set({ open: true, zid, keyword, filling: null, chain: null })
+}
+
+export function isChainOpen(editor: Editor): boolean {
+	return stateOf(editor).get().chain !== null
+}
+
+/** Starts following a chain of thought from a note, over whichever view is showing. */
+export function openChain(editor: Editor, from: string): void {
+	stateOf(editor).update((state) => ({ ...state, filling: null, chain: [{ at: null, to: from }] }))
+}
+
+/** Takes the link to `to` from row `at` of the chain's path. */
+export function turnChain(editor: Editor, at: number, to: string): void {
+	stateOf(editor).update((state) => (state.chain ? { ...state, chain: [...state.chain, { at, to }] } : state))
+}
+
+/** Goes back to the chain as it was after its `index`th turn. */
+export function stepChain(editor: Editor, index: number): void {
+	stateOf(editor).update((state) =>
+		state.chain && index >= 0 ? { ...state, chain: state.chain.slice(0, index + 1) } : state
+	)
+}
+
+/** Leaves the chain, back to the stack or the table it was opened over. */
+export function closeChain(editor: Editor): void {
+	stateOf(editor).update((state) => ({ ...state, chain: null }))
+}
+
+/**
+ * Whether the canvas holds the box's one live copy of each card's text (CardFace): not while the stack
+ * or a chain is up, since those edit the cards themselves.
+ */
+export function isCanvasLive(editor: Editor): boolean {
+	const state = stateOf(editor).get()
+	return !state.open && state.chain === null
 }
 
 /** Opens a source's fields on the front card, or closes them (`null`). */

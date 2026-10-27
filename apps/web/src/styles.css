@@ -15917,6 +15917,199 @@ textarea.lb-zsource__field {
 	margin-bottom: 18px !important;
 }
 
+/*
+ * Following a chain of thought (packages/zettelkasten/src/stack/ChainView.tsx): on the stack's paper,
+ * the path down the middle, and beside each card, out of focus, the cards it links to. The turns taken
+ * are a trail in the board pill's place at the top.
+ */
+.lb-zchain {
+	--zch-w: min(560px, calc(100vw - var(--fl-left, 0px) - var(--fl-right, 0px) - 360px));
+	--zch-peek: 230px;
+	position: absolute;
+	inset: 0;
+	z-index: 250;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+	pointer-events: all;
+	touch-action: pan-y;
+	font-family: var(--lb-font);
+}
+.lb-zchain__trail {
+	position: absolute;
+	z-index: 2;
+	top: calc(var(--fl-edge, 12px) + 4px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	max-width: calc(100% - 200px);
+	padding: 4px 4px 4px 10px;
+	overflow-x: auto;
+	border-radius: 999px;
+	background: var(--lb-panel);
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+	color: var(--lb-text);
+	font-size: 13px;
+	white-space: nowrap;
+	scrollbar-width: none;
+}
+.lb-zchain__step {
+	display: inline-flex;
+	align-items: center;
+}
+.lb-zchain__sep {
+	margin: 0 2px;
+	color: var(--lb-text-faint);
+}
+.lb-zchain__turn,
+.lb-zchain__close {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 26px;
+	padding: 0 8px;
+	border-radius: 999px;
+	color: var(--lb-text-dim);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+.lb-zchain__turn:hover,
+.lb-zchain__close:hover {
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+}
+.lb-zchain__turn--here {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-zchain__close {
+	width: 26px;
+	padding: 0;
+	margin-left: 4px;
+}
+.lb-zchain__close svg {
+	width: 15px;
+	height: 15px;
+}
+.lb-zchain__scroll {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 76px 0 140px;
+	scrollbar-width: thin;
+}
+.lb-zchain__row {
+	display: grid;
+	grid-template-columns: var(--zch-w) var(--zch-peek);
+	justify-content: center;
+	align-items: start;
+	gap: 36px;
+	margin: 0 0 28px calc((var(--fl-left, 0px) - var(--fl-right, 0px)));
+	/* The path in the middle of the screen, its links to the right of it. */
+	padding-left: calc(var(--zch-peek) + 36px);
+}
+.lb-zchain__card {
+	position: relative;
+	width: var(--zch-w);
+	aspect-ratio: 8 / 5;
+}
+/* A thread from a card to what it links to. */
+.lb-zchain__row:has(.lb-zchain__peek) .lb-zchain__card::after {
+	content: '';
+	position: absolute;
+	top: 34px;
+	left: 100%;
+	width: 36px;
+	border-top: 1.5px dashed var(--lb-text-faint);
+	pointer-events: none;
+}
+.lb-zchain__side {
+	position: relative;
+	min-height: calc(var(--zch-peek) * 5 / 8 + 2 * 30px);
+}
+.lb-zchain__peek {
+	position: absolute;
+	top: calc(var(--peek) * 30px);
+	left: calc(var(--peek) * 12px);
+	width: var(--zch-peek);
+	aspect-ratio: 8 / 5;
+	z-index: calc(10 - var(--peek));
+	filter: blur(1.6px) saturate(0.85);
+	opacity: 0.78;
+	cursor: pointer;
+	transition:
+		filter 160ms ease-out,
+		opacity 160ms ease-out,
+		transform 160ms ease-out;
+}
+/* The card is shown, not used: a press anywhere on it takes the link. */
+.lb-zchain__peek * {
+	pointer-events: none !important;
+}
+.lb-zchain__peek:hover,
+.lb-zchain__peek:focus-visible {
+	z-index: 11;
+	filter: none;
+	opacity: 1;
+	transform: translateX(-6px);
+	outline: none;
+}
+.lb-zchain__peek:focus-visible .lb-zcard {
+	box-shadow: 0 0 0 2px var(--lb-accent);
+}
+.lb-zchain__more {
+	position: absolute;
+	top: calc(var(--zch-peek) * 5 / 8 + 2 * 30px + 8px);
+	left: 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-zchain__end {
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	text-align: center;
+}
+/* A phone: the path takes most of the width, the links a narrow strip beside it. */
+@media (max-width: 767px) {
+	.lb-zchain {
+		--zch-w: calc(100vw - 132px);
+		--zch-peek: 92px;
+	}
+	.lb-zchain__row {
+		gap: 14px;
+		padding-left: 0;
+	}
+	.lb-zchain__row:has(.lb-zchain__peek) .lb-zchain__card::after {
+		width: 14px;
+		top: 20px;
+	}
+	.lb-zchain__peek {
+		top: calc(var(--peek) * 20px);
+		left: calc(var(--peek) * 6px);
+	}
+	.lb-zchain__side {
+		min-height: calc(var(--zch-peek) * 5 / 8 + 2 * 20px);
+	}
+	.lb-zchain__trail {
+		top: calc(var(--fl-edge, 12px) + 52px);
+		max-width: calc(100% - 24px);
+	}
+	.lb-zchain__scroll {
+		padding-top: 116px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-zchain__peek {
+		transition: none;
+	}
+}
+
 /* The box's bar: the dock's pill, with a field to go to a note. */
 .lb-zdock__jump input {
 	width: 92px;

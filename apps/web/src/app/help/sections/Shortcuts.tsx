@@ -151,6 +151,7 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['↑', '←', 'PageUp', 'K'], 'The card before'],
 			[['Home', 'End'], 'The front (the index) or the back of the box (the sources)'],
 			[['I'], 'Go to the index'],
+			[['F'], 'Follow the chain of thought from the card in front'],
 			[['N'], 'Write a new note behind the card in front'],
 			[['⇧N'], 'Write a new note as a branch off the card in front'],
 			[['0–9'], 'Go to a note by its number'],
@@ -158,6 +159,14 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['[['], 'While writing: link to another note or source'],
 			[['Esc'], 'Put the card down'],
 			[['⌫'], 'Delete the card in front (asks first)'],
+		],
+	},
+	{
+		title: 'Following a chain of thought',
+		rows: [
+			[['↓', '↑', 'J', 'K'], 'Scroll down or up the path'],
+			[['⌫'], 'Go back a turn'],
+			[['Esc'], 'Put the card down, or leave the chain'],
 		],
 	},
 	{

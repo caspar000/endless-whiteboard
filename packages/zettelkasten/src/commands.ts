@@ -1,7 +1,8 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
-import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, SquarePlus } from 'lucide-react'
+import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, Route, SquarePlus } from 'lucide-react'
 import { INDEX_ZID, isBox, placeSource } from './box'
 import { showTable } from './BoxDock'
+import { followChain } from './stack/ChainView'
 import { writeNote } from './stack/StackView'
 import { setFilling, setStackOpen, showCard } from './stack/state'
 
@@ -67,6 +68,16 @@ export const boxCommands: Command[] = [
 		when: inBox,
 		run: ({ editor }) => {
 			if (editor) showCard(editor, INDEX_ZID)
+		},
+	},
+	{
+		id: 'zettelkasten.view.chain',
+		title: 'Follow the chain of thought from here',
+		group: GROUP,
+		icon: Route,
+		when: inBox,
+		run: ({ editor }) => {
+			if (editor) followChain(editor)
 		},
 	},
 	{

@@ -21,6 +21,7 @@ export function NoteNumber({ zid }: { zid: string }) {
 		<button
 			type="button"
 			className="lb-zlink"
+			data-zid={zid}
 			onPointerDown={stopEventPropagation}
 			onClick={(event) => {
 				event.stopPropagation()
@@ -55,7 +56,12 @@ export function Chip({
 	const editor = useEditor()
 	const Icon = ICON[kind]
 	return (
-		<span className={missing ? 'lb-zchip lb-zchip--missing' : 'lb-zchip'} data-kind={kind}>
+		<span
+			className={missing ? 'lb-zchip lb-zchip--missing' : 'lb-zchip'}
+			data-kind={kind}
+			// Where it goes, for a surface that follows it its own way (the chain turns there).
+			data-zid={kind === 'keyword' || missing ? undefined : value}
+		>
 			<button
 				type="button"
 				className="lb-zchip__go"

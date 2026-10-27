@@ -10,19 +10,19 @@ import { useEffect } from 'react'
 import { CARD_TYPE, type CardProps, type CardShape } from '../box'
 import { CARD_H, CARD_W } from '../layout'
 import { placeCaret } from '../stack/StackView'
-import { isStackOpen } from '../stack/state'
+import { isCanvasLive } from '../stack/state'
 import { CardFace } from './CardFace'
 import { nameOf } from './text'
 
 function CardOnCanvas({ shape, isEditing, editor }: NodeComponentProps<CardProps>) {
-	// While the stack is open it has the live copy of the text (CardFace explains why only one may).
-	const stackOpen = useValue('lifeboard:zettel-stack-open', () => isStackOpen(editor), [editor])
-	const writing = isEditing && !stackOpen
+	// While the stack or a chain is up it has the live copy of the text (CardFace explains why only one may).
+	const live = useValue('lifeboard:zettel-canvas-live', () => isCanvasLive(editor), [editor])
+	const writing = isEditing && live
 	// Double-clicking a card on the table starts at the end of its text rather than selecting all of it.
 	useEffect(() => {
 		if (writing) placeCaret(editor)
 	}, [editor, writing])
-	return <CardFace shape={shape as unknown as CardShape} live={!stackOpen} editing={writing} />
+	return <CardFace shape={shape as unknown as CardShape} live={live} editing={writing} />
 }
 
 const versions = createShapePropsMigrationIds(CARD_TYPE, { AddChips: 1 })

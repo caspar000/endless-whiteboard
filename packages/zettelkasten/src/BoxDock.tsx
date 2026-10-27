@@ -1,8 +1,9 @@
 import { useEditor, useValue, type Editor } from '@lifeboard/canvas'
-import { GitBranchPlus, Layers, LayoutGrid, Plus, SquarePlus } from 'lucide-react'
+import { GitBranchPlus, Layers, LayoutGrid, Plus, Route, SquarePlus } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { boxOrder, hasWriting, layoutBox, shapeByZid } from './box'
 import { isBoxId } from './ids'
+import { ChainView, followChain } from './stack/ChainView'
 import { StackView, writeNote } from './stack/StackView'
 import { registerJumpField } from './stack/jump'
 import { boxNotice, getStack, setStackOpen, showCard } from './stack/state'
@@ -55,6 +56,7 @@ export function showTable(editor: Editor): void {
 export function BoxDock() {
 	const editor = useEditor()
 	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open, [editor])
+	const chain = useValue('lifeboard:zettel-chain-open', () => getStack(editor).chain !== null, [editor])
 	const written = useValue('lifeboard:zettel-written', () => hasWriting(boxOrder(editor)), [editor])
 	const notice = useValue('lifeboard:zettel-notice', () => boxNotice.get(), [])
 	const [missing, setMissing] = useState<string | null>(null)
@@ -84,18 +86,24 @@ export function BoxDock() {
 	return (
 		<div className="lb-dock-wrap lb-zdock">
 			<StackView />
+			<ChainView />
 			{(notice || missing) && (
 				<div className="lb-zdock__notice" role="status">
 					{missing ? `There is no note ${missing} in this box.` : notice!.text}
 				</div>
 			)}
 			<div className="lb-dock" role="toolbar" aria-label="Box">
-				<DockButton label="Stack" active={open} onClick={() => setStackOpen(editor, true)}>
+				<DockButton label="Stack" active={open && !chain} onClick={() => setStackOpen(editor, true)}>
 					<Layers size={ICON} aria-hidden="true" />
 				</DockButton>
-				<DockButton label="Table" active={!open} onClick={() => showTable(editor)}>
+				<DockButton label="Table" active={!open && !chain} onClick={() => showTable(editor)}>
 					<LayoutGrid size={ICON} aria-hidden="true" />
 				</DockButton>
+				{written && (
+					<DockButton label="Follow the chain from here" keys="F" active={chain} onClick={() => followChain(editor)}>
+						<Route size={ICON} aria-hidden="true" />
+					</DockButton>
+				)}
 
 				<div className="lb-dock__sep" />
 

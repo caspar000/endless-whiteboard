@@ -116,6 +116,18 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Following a chain of thought">
+				<p>
+					<Keys keys={['F']} /> on a card, or the <strong>chain</strong> button in the box’s bar,
+					reads on from it: the card, then the rest of its train of thought in order, down the middle
+					of the screen. Beside each card, out of focus, are the cards it links to. Click one to turn
+					there: it slides into the path under the card it was linked from, and the path carries on
+					from it. The turns you took run along the top; click one, or press{' '}
+					<Keys keys={['⌫']} />, to go back. You can write on any card in the path.{' '}
+					<Keys keys={['Esc']} /> leaves the chain.
+				</p>
+			</Section>
+
 			<Section title="On the table">
 				<p>
 					<strong>Table</strong> lays every card out at once: the index, a column for each top-level

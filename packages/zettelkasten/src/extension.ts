@@ -6,6 +6,7 @@ import { cardDefinition } from './card/definition'
 import { linkTextExtensions } from './card/linkSuggest'
 import { indexDefinition, sourceDefinition } from './card/otherDefinitions'
 import { boxCommands } from './commands'
+import { boxOperations } from './ops'
 import { watchBox } from './watch'
 
 /** A Zettelkasten box: a board that holds index cards in Luhmann's order, and nothing else. */
@@ -40,6 +41,7 @@ export const zettelkastenExtension: Extension = {
 		'The index at the front of the box lists every keyword with the notes filed under it. Sources (c1, c2…) sit at the back, with their author, title and year.',
 		'Follow a chain of thought (F, or the chain button): a note and the rest of its train down the middle, the notes each one links to beside it. Click one to turn the path there.',
 		'The graph (G) draws the box as dots joined by the order they were written in and by their links, with keywords and sources on request.',
+		'The agent can read a box, write a note where it belongs (“file this behind 25a”), link notes, file them under keywords and cite sources, by the same rules: it places notes, never moves them.',
 		'Table lays every card out at once: the index, a column for each top-level note with its line running down it, and the sources.',
 		'Turning this off leaves your boxes as ordinary boards with their cards on them. Turn it back on and they are boxes again.',
 	],
@@ -49,6 +51,7 @@ export const zettelkastenExtension: Extension = {
 	nodes: [defineNode(cardDefinition), defineNode(sourceDefinition), defineNode(indexDefinition)],
 	boardKinds: [boxKind],
 	commands: boxCommands,
+	operations: boxOperations,
 	textExtensions: linkTextExtensions,
 	hooks: {
 		onBoardOpen: ({ editor }) => {

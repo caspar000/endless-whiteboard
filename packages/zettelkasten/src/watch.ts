@@ -55,6 +55,20 @@ export function watchBox(editor: Editor): void {
 	editor.on('change-history', ({ reason }: { reason: string }) => {
 		if (reason === 'undo' || reason === 'redo') pending = []
 	})
+	// A card is where its number puts it. One moved some other way (an agent's node.update, a script) is
+	// put back, after the change rather than refused before it, so that undo, and another device laying
+	// out its own new note, still go through; the layout is worked out from the ids alone, so putting it
+	// back is always the same answer.
+	let relaying = false
+	editor.sideEffects.registerAfterChangeHandler('shape', (prev, next, source) => {
+		if (source !== 'user' || relaying || (prev.x === next.x && prev.y === next.y)) return
+		if (!isNumbered(next) && next.id !== INDEX_ID) return
+		relaying = true
+		queueMicrotask(() => {
+			relaying = false
+			if (isBox(editor)) editor.run(() => layoutBox(editor), { history: 'ignore' })
+		})
+	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape, source) => {
 		// The index goes with the box, not on its own: deleted on the table, it comes straight back.
 		if (shape.id === INDEX_ID && isBox(editor)) return schedule()

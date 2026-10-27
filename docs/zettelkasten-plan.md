@@ -203,6 +203,31 @@ instead of scrolling, the id out of the way, and a deeper pile.
 - The box's bar has grown a button for the chain and one for the graph, so on a phone it scrolls
   inside its pill, as the board's dock does when cramped.
 
+### Phase 6, as built (2026-10-27): the agent
+
+- **Operations** (`ops.ts`), which are the agent's tools and MCP's: `zettelkasten.box.read` (the
+  notes in order, a page at a time, long texts cut short, with links, keywords, sources, who links to
+  each, the index and the sources), `zettelkasten.note.get` (one note whole, with the notes either
+  side, the one it branched off and its branches), `zettelkasten.note.place` (text, and `behind` or
+  `branch` or neither for a new train; it answers with the number the note got),
+  `zettelkasten.note.write`, `.link`, `.file` (a keyword the index already has is reused in its
+  spelling) and `.cite` (an existing source by id, or author and title, reusing a source with the same
+  two, else adding one at the back). Each takes an optional `boardId`; a board that isn't a box is
+  refused with a sentence, and so is a number the box doesn't have, naming the ones either side.
+- Text arrives as plain text: a first line starting with `#` is the title, blank lines separate
+  paragraphs, `[[25a]]` is a link (`card/text.ts`, tested).
+- node-kit now exports `resolveEditor`, `BOARD_ID_PARAM` and `reportAgentWork` for extensions'
+  operations, so the box's operations pick a board and show the agent at work the same way the core
+  ones do.
+- **The rules hold against the generic operations too.** `node.insert` already refuses a card
+  (`offered: false`) and `node.delete` goes through the box's delete handling (the number is retired).
+  A card moved by `node.update` is put back where its number places it, after the change rather than
+  refused before it, so undo and other devices' layouts still go through (`watch.ts`).
+- **"Behind this one":** while the stack is up, the card in front is the board's selection, so the
+  agent's turn context names it and the composer shows it as attached. A note the agent writes comes
+  to the front of the stack if the person is reading it.
+- Making a new box stays a person's act (*New box*); there is no operation for it.
+
 ## What was decided
 
 | # | Question | Decision |

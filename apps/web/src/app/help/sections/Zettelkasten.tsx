@@ -139,6 +139,17 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="With the agent">
+				<p>
+					The agent can work in a box by the same rules you do. It reads the box in order, writes a
+					note where it belongs and tells you the number it got (“file this as a note behind 25a”),
+					links notes, files them under keywords and cites sources, adding a source to the back of
+					the box when it’s new. It places notes and never moves them, and everything it does is an
+					undo step. While you read the stack, the card in front of you is what it sees as selected,
+					so “behind this one” means that card.
+				</p>
+			</Section>
+
 			<Section title="On the table">
 				<p>
 					<strong>Table</strong> lays every card out at once: the index, a column for each top-level

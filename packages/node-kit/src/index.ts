@@ -128,6 +128,8 @@ export {
 // The core operation surface. Registered by the host's composition root, because these need a
 // `BoardBridge` installed to do anything.
 export { coreOperations, registerCoreOperations } from './ops'
+// For extensions' own operations: which board to act on, and showing the agent at work on it.
+export { BOARD_ID_PARAM, reportAgentWork, resolveEditor, type EditorResult } from './ops/shared'
 export { createNodeShape, textPropFor } from './nodes/insert'
 // tldraw's own shapes, described well enough for an agent to create one. Not registry entries — see
 // the file's doc comment for why that distinction is load-bearing.

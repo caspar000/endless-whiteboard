@@ -144,6 +144,15 @@ export function StackView() {
 		}
 	}, [editor, open])
 
+	// The card in front is the board's selection while the stack is up: it is what the person is looking
+	// at, so it is what the agent's turn is told about ("file this behind the card in front").
+	const frontId = front?.id ?? null
+	useEffect(() => {
+		if (!open || !frontId || editor.getEditingShapeId()) return
+		const selected = editor.getSelectedShapeIds()
+		if (selected.length !== 1 || selected[0] !== frontId) editor.select(frontId)
+	}, [editor, open, frontId])
+
 	// The stack's keys. A window listener, as the reader's are, and only for the board on screen.
 	useEffect(() => {
 		if (!open) return

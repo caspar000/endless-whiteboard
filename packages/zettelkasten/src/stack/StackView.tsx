@@ -27,7 +27,7 @@ import { followChain } from './ChainView'
 import { ChipPicker } from './Picker'
 import { onControl, onScreen, typingIn } from './surface'
 import { FIRST_SLOT, LAST_SLOT, slotStyle } from './pile'
-import { frontIndex, getStack, setFilling, showCard } from './state'
+import { frontIndex, getStack, setFilling, setGraphOpen, showCard } from './state'
 
 /**
  * The cards kept on the page around the front one: the pile (pile.ts) and, either side of it, cards
@@ -107,7 +107,7 @@ export function writeNote(editor: Editor, how: Placement): void {
 export function StackView() {
 	const editor = useEditor()
 	// A chain being followed is drawn instead (ChainView), and has the cards' live text while it is.
-	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open && !getStack(editor).chain, [editor])
+	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open && !getStack(editor).chain && !getStack(editor).graph, [editor])
 	const order = useValue('lifeboard:zettel-order', () => boxOrder(editor), [editor])
 	const index = useValue('lifeboard:zettel-front', () => frontIndex(editor), [editor])
 	const editingId = useValue('lifeboard:zettel-editing', () => editor.getEditingShapeId(), [editor])
@@ -209,6 +209,9 @@ export function StackView() {
 					break
 				case 'f':
 					followChain(editor)
+					break
+				case 'g':
+					setGraphOpen(editor, true)
 					break
 				case 'Backspace':
 				case 'Delete':

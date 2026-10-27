@@ -128,6 +128,17 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="The graph">
+				<p>
+					<Keys keys={['G']} />, or the <strong>graph</strong> button, draws the whole box as dots: a
+					solid line from each note to the one it was written behind, a dashed line for each link.
+					Keywords and sources can be shown as dots of their own from the bar at the top. Scroll or
+					pinch to zoom, drag to look around, and drag a dot to move it. Point at a dot to light it
+					and its neighbours; <Keys keys={['Space']} /> shows its card, and a click opens it in the
+					stack.
+				</p>
+			</Section>
+
 			<Section title="On the table">
 				<p>
 					<strong>Table</strong> lays every card out at once: the index, a column for each top-level

@@ -1,6 +1,6 @@
 import type { Editor } from '@lifeboard/canvas'
 import { INDEX_ID, INDEX_ZID, shapeByZid } from './box'
-import { announce, isChainOpen, isStackOpen, showCard } from './stack/state'
+import { announce, isChainOpen, isGraphOpen, isStackOpen, showCard } from './stack/state'
 
 /**
  * Following a chip: to the note or source it names, or to the index with a keyword picked out. In the
@@ -12,7 +12,7 @@ export function goToCard(editor: Editor, zid: string): void {
 		announce(`There is no ${zid} in this box.`)
 		return
 	}
-	if (isStackOpen(editor) || isChainOpen(editor)) {
+	if (isStackOpen(editor) || isChainOpen(editor) || isGraphOpen(editor)) {
 		editor.complete()
 		showCard(editor, zid)
 		return
@@ -22,7 +22,7 @@ export function goToCard(editor: Editor, zid: string): void {
 }
 
 export function goToKeyword(editor: Editor, keyword: string): void {
-	if (isStackOpen(editor) || isChainOpen(editor)) {
+	if (isStackOpen(editor) || isChainOpen(editor) || isGraphOpen(editor)) {
 		editor.complete()
 		showCard(editor, INDEX_ZID, keyword)
 		return

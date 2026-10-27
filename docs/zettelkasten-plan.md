@@ -177,6 +177,32 @@ instead of scrolling, the id out of the way, and a deeper pile.
 - Writing a new note from the dock while a chain is up leaves the chain for the stack, where the new
   card is.
 
+### Phase 5, as built (2026-10-27): the graph
+
+- **The model** (`graph.ts`, pure and tested): a dot per note; an *order* line from each note to the
+  one it was written behind (the one before it on its line, else the note it branched off), passing
+  over deleted numbers, so a top-level note hangs from the train before it and the box reads as one
+  long line; a *link* line for each written or added link. Keywords (squares) and sources (round, the
+  chips' brown) are dots of their own, joined to their notes, when their layers are on. Order and links
+  are on by default, keywords and sources off (Q18). The layer choice is kept for the session, for
+  every box, and isn't board data.
+- **Layout:** `d3-force`, imported the first time the graph opens (its own 14 KB chunk). Each dot
+  starts where the table puts its card, shrunk, so the graph opens the same way every time; the
+  simulation runs two ticks a frame and settles in about a second, framing itself until the person
+  moves the camera. A change to the box while it is open keeps every dot where it was and settles
+  again gently.
+- **Drawing** is a 2D canvas, with its own camera (wheel or pinch to zoom at the pointer, drag to
+  pan, `0` to fit, `+`/`−`) and its own dotted paper that moves with it. Lines are drawn in screen
+  space, a kind at a time, so they stay a pixel wide at any zoom. Labels show for every dot past
+  1.6× zoom, and below it only for the dot pointed at and its neighbours, which are lit while the
+  rest dims.
+- **Using it:** click a dot to open it in the stack (a keyword opens the index with it picked out);
+  drag a dot to move it; Space shows the card pointed at over the graph. A visually hidden list of
+  every dot as a button makes it usable from the keyboard and by a screen reader, and it is what the
+  e2e test drives.
+- The box's bar has grown a button for the chain and one for the graph, so on a phone it scrolls
+  inside its pill, as the board's dock does when cramped.
+
 ## What was decided
 
 | # | Question | Decision |
@@ -198,7 +224,7 @@ instead of scrolling, the id out of the way, and a deeper pile.
 | Q15 | Strictness | A box holds only its cards, which the box places. No dock, no dragging, no drawing. Zoom, pan and Quick Look still work. |
 | Q16 | Table layout | A column per top-level note, its line in reading order down it, deeper branches stepped right. |
 | Q17 | Chain view | As described in *The four views* below; built as in *Phase 4, as built*. |
-| Q18 | Graph view | Dots with labels, force layout, solid lines for order and dashed for links (each toggleable). |
+| Q18 | Graph view | Dots with labels, force layout, solid lines for order and dashed for links (each toggleable). Built as in *Phase 5, as built*. |
 | Q19 | Editing, phone | Type into the front card in the stack, or double-click a card elsewhere. All four views work on a phone. |
 | Q20 | Order of work | Stack and placing notes, table, chain, graph; then the agent, *Cite in box* from Books, and notes on ordinary boards. |
 

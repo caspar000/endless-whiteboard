@@ -20,6 +20,8 @@ export interface StackState {
 	filling: string | null
 	/** The chain being followed (chain.ts), drawn over the stack or the table; `null` when there is none. */
 	chain: Turn[] | null
+	/** Whether the graph (GraphView) is drawn over the stack or the table. Never with a chain. */
+	graph: boolean
 }
 
 const states = new WeakMap<Editor, Atom<StackState>>()
@@ -28,7 +30,7 @@ function stateOf(editor: Editor): Atom<StackState> {
 	let state = states.get(editor)
 	if (!state) {
 		// A box opens on its stack (docs/zettelkasten-plan.md, Q1).
-		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null, keyword: null, filling: null, chain: null })
+		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null, keyword: null, filling: null, chain: null, graph: false })
 		states.set(editor, state)
 	}
 	return state
@@ -44,12 +46,12 @@ export function isStackOpen(editor: Editor): boolean {
 
 /** Shows the stack (`true`) or the table, leaving any chain. */
 export function setStackOpen(editor: Editor, open: boolean): void {
-	stateOf(editor).update((state) => ({ ...state, open, chain: null }))
+	stateOf(editor).update((state) => ({ ...state, open, chain: null, graph: false }))
 }
 
 /** Brings a note to the front (and opens the stack if it isn't). */
 export function showCard(editor: Editor, zid: string, keyword: string | null = null): void {
-	stateOf(editor).set({ open: true, zid, keyword, filling: null, chain: null })
+	stateOf(editor).set({ open: true, zid, keyword, filling: null, chain: null, graph: false })
 }
 
 export function isChainOpen(editor: Editor): boolean {
@@ -58,7 +60,7 @@ export function isChainOpen(editor: Editor): boolean {
 
 /** Starts following a chain of thought from a note, over whichever view is showing. */
 export function openChain(editor: Editor, from: string): void {
-	stateOf(editor).update((state) => ({ ...state, filling: null, chain: [{ at: null, to: from }] }))
+	stateOf(editor).update((state) => ({ ...state, filling: null, chain: [{ at: null, to: from }], graph: false }))
 }
 
 /** Takes the link to `to` from row `at` of the chain's path. */
@@ -76,6 +78,15 @@ export function stepChain(editor: Editor, index: number): void {
 /** Leaves the chain, back to the stack or the table it was opened over. */
 export function closeChain(editor: Editor): void {
 	stateOf(editor).update((state) => ({ ...state, chain: null }))
+}
+
+export function isGraphOpen(editor: Editor): boolean {
+	return stateOf(editor).get().graph
+}
+
+/** Draws the box as a graph over whichever view is showing, or takes it away. */
+export function setGraphOpen(editor: Editor, graph: boolean): void {
+	stateOf(editor).update((state) => ({ ...state, filling: null, chain: graph ? null : state.chain, graph }))
 }
 
 /**

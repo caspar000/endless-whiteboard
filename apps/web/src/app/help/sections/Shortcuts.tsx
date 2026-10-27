@@ -152,6 +152,7 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['Home', 'End'], 'The front (the index) or the back of the box (the sources)'],
 			[['I'], 'Go to the index'],
 			[['F'], 'Follow the chain of thought from the card in front'],
+			[['G'], 'Show the box as a graph'],
 			[['N'], 'Write a new note behind the card in front'],
 			[['⇧N'], 'Write a new note as a branch off the card in front'],
 			[['0–9'], 'Go to a note by its number'],
@@ -167,6 +168,16 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 			[['↓', '↑', 'J', 'K'], 'Scroll down or up the path'],
 			[['⌫'], 'Go back a turn'],
 			[['Esc'], 'Put the card down, or leave the chain'],
+		],
+	},
+	{
+		title: 'In a box’s graph',
+		rows: [
+			[['Space'], 'Show the card pointed at, or put it away'],
+			[['Enter'], 'Open the card pointed at in the stack'],
+			[['+', '−'], 'Zoom in or out'],
+			[['0'], 'Fit the whole box on screen'],
+			[['Esc'], 'Leave the graph'],
 		],
 	},
 	{

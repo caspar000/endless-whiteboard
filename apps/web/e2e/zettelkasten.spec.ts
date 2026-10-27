@@ -248,4 +248,42 @@ test.describe('zettelkasten', () => {
 		await expect(page.locator('.lb-zchain')).toHaveCount(0)
 		await expect(front(page)).toHaveText('1')
 	})
+
+	test('the graph draws the box, opens a note from it, and leaves for the stack', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await page.getByRole('button', { name: 'New box' }).click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+		await write(page, 'n', 'one')
+		await write(page, 'n', 'two, see [[1]]')
+
+		await page.keyboard.press('g')
+		const graph = page.locator('.lb-zgraph')
+		await expect(graph.locator('canvas')).toBeVisible()
+		// Drawn, not left blank: the canvas takes the screen's size once the layout has run.
+		await expect.poll(() => graph.locator('canvas').evaluate((el: HTMLCanvasElement) => el.width)).toBeGreaterThan(300)
+		const list = graph.getByRole('list', { name: 'Notes in the graph' })
+		await expect(list.getByRole('button')).toHaveText(['1 one', '2 two, see [[1]]'])
+
+		// Keywords are a layer of their own, off until asked for.
+		const keywords = graph.getByRole('button', { name: 'Keywords', exact: true })
+		await expect(keywords).toHaveAttribute('aria-pressed', 'false')
+		await keywords.click()
+		await expect(keywords).toHaveAttribute('aria-pressed', 'true')
+		await keywords.click()
+
+		// A dot opens its note in the stack, and the graph goes.
+		// (The list is the graph for the keyboard and screen readers.)
+		await list.getByRole('button', { name: '2 two' }).focus()
+		await page.keyboard.press('Enter')
+		await expect(graph).toHaveCount(0)
+		await expect(front(page)).toHaveText('2')
+
+		// Escape leaves it too.
+		await page.keyboard.press('g')
+		await expect(page.locator('.lb-zgraph')).toHaveCount(1)
+		await page.keyboard.press('Escape')
+		await expect(page.locator('.lb-zgraph')).toHaveCount(0)
+	})
 })

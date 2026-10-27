@@ -19,6 +19,7 @@
 	},
 	"devDependencies": {
 		"@tldraw/tlschema": "5.5.2",
+		"@types/d3-force": "^3.0.10",
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.3",
 		"react": "^19.2.8",
@@ -31,6 +32,7 @@
 		"@lifeboard/node-kit": "workspace:*",
 		"@tiptap/core": "^3.12.1",
 		"@tiptap/pm": "^3.12.1",
+		"d3-force": "^3.0.0",
 		"lucide-react": "^1.28.0"
 	}
 }

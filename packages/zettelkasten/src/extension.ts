@@ -39,6 +39,7 @@ export const zettelkastenExtension: Extension = {
 		'Link a note to another by typing [[ and its number, or with the + on its card, which also files it under a keyword in the index and cites a source. A card shows which notes link to it.',
 		'The index at the front of the box lists every keyword with the notes filed under it. Sources (c1, c2…) sit at the back, with their author, title and year.',
 		'Follow a chain of thought (F, or the chain button): a note and the rest of its train down the middle, the notes each one links to beside it. Click one to turn the path there.',
+		'The graph (G) draws the box as dots joined by the order they were written in and by their links, with keywords and sources on request.',
 		'Table lays every card out at once: the index, a column for each top-level note with its line running down it, and the sources.',
 		'Turning this off leaves your boxes as ordinary boards with their cards on them. Turn it back on and they are boxes again.',
 	],

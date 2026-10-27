@@ -15938,7 +15938,8 @@ textarea.lb-zsource__field {
 .lb-zchain__trail {
 	position: absolute;
 	z-index: 2;
-	top: calc(var(--fl-edge, 12px) + 4px);
+	/* Under the tab strip, which runs across the top. */
+	top: calc(var(--fl-edge, 12px) + 46px);
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
@@ -16000,7 +16001,7 @@ textarea.lb-zsource__field {
 	inset: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: 76px 0 140px;
+	padding: 112px 0 140px;
 	scrollbar-width: thin;
 }
 .lb-zchain__row {
@@ -16110,7 +16111,174 @@ textarea.lb-zsource__field {
 	}
 }
 
-/* The box's bar: the dock's pill, with a field to go to a note. */
+/*
+ * The box as a graph (packages/zettelkasten/src/stack/GraphView.tsx): a canvas over the board that
+ * draws its own dotted paper so it moves with the graph's camera, and what it shows in a pill at the top.
+ */
+.lb-zgraph {
+	position: absolute;
+	inset: 0;
+	z-index: 250;
+	background: var(--lb-canvas);
+	pointer-events: all;
+	font-family: var(--lb-font);
+}
+.lb-zgraph__canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	touch-action: none;
+	cursor: grab;
+}
+.lb-zgraph__canvas:active {
+	cursor: grabbing;
+}
+.lb-zgraph__canvas--on {
+	cursor: pointer;
+}
+.lb-zgraph__bar {
+	position: absolute;
+	z-index: 2;
+	/* Under the tab strip, which runs across the top. */
+	top: calc(var(--fl-edge, 12px) + 46px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	max-width: calc(100% - 24px);
+	padding: 4px;
+	overflow-x: auto;
+	border-radius: 999px;
+	background: var(--lb-panel);
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+	color: var(--lb-text);
+	font-size: 13px;
+	white-space: nowrap;
+	scrollbar-width: none;
+}
+.lb-zgraph__layer,
+.lb-zgraph__close {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 10px;
+	border-radius: 999px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-zgraph__layer[aria-pressed='true'] {
+	color: var(--lb-text);
+}
+.lb-zgraph__layer:hover,
+.lb-zgraph__close:hover {
+	background: var(--lb-bg-raised);
+}
+.lb-zgraph__layer:focus-visible,
+.lb-zgraph__close:focus-visible {
+	box-shadow: 0 0 0 2px var(--lb-accent);
+}
+/* A swatch of each layer's line or dot, faded while the layer is off. */
+.lb-zgraph__key {
+	display: inline-block;
+	width: 16px;
+	height: 0;
+	border-top: 1.5px solid var(--lb-text-faint);
+	opacity: 0.35;
+}
+.lb-zgraph__layer[aria-pressed='true'] .lb-zgraph__key {
+	opacity: 1;
+}
+.lb-zgraph__key--links {
+	border-top: 1.5px dashed var(--lb-accent);
+}
+.lb-zgraph__key--keywords,
+.lb-zgraph__key--sources {
+	width: 8px;
+	height: 8px;
+	border: 0;
+	background: hsl(152 42% 45%);
+}
+.lb-zgraph__key--sources {
+	border-radius: 50%;
+	background: hsl(28 58% 52%);
+}
+.lb-zgraph__close {
+	width: 26px;
+	padding: 0;
+	margin-left: 2px;
+}
+.lb-zgraph__close svg {
+	width: 15px;
+	height: 15px;
+}
+.lb-zgraph__empty,
+.lb-zgraph__hint {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	pointer-events: none;
+}
+.lb-zgraph__empty {
+	top: 45%;
+}
+.lb-zgraph__hint {
+	bottom: calc(var(--fl-edge, 12px) + 76px);
+}
+/* Space: the card pointed at, over the graph, as Quick Look shows a shape. */
+.lb-zgraph__peek {
+	position: absolute;
+	z-index: 3;
+	right: calc(var(--fl-right, 0px) + 24px);
+	bottom: calc(var(--fl-edge, 12px) + 84px);
+	width: min(440px, calc(100% - 48px));
+	aspect-ratio: 8 / 5;
+}
+.lb-zgraph__peekword {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	margin: 0;
+	border-radius: 12px;
+	background: var(--lb-panel);
+	color: var(--lb-text);
+	font-size: 18px;
+}
+.lb-zgraph__list {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+@media (max-width: 767px) {
+	.lb-zgraph__bar {
+		top: calc(var(--fl-edge, 12px) + 52px);
+	}
+	.lb-zgraph__hint {
+		display: none;
+	}
+}
+
+/* The box's bar: the dock's pill, with a field to go to a note. On a phone it has more tools than
+   width, so it scrolls inside the pill, as the board's dock does when cramped. */
+.lb-zdock .lb-dock {
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.lb-zdock .lb-dock::-webkit-scrollbar {
+	display: none;
+}
 .lb-zdock__jump input {
 	width: 92px;
 	height: calc(var(--fl-tool) - 8px);

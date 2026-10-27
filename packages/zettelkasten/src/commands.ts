@@ -1,10 +1,10 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
-import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, Route, SquarePlus } from 'lucide-react'
+import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, Route, Share2, SquarePlus } from 'lucide-react'
 import { INDEX_ZID, isBox, placeSource } from './box'
 import { showTable } from './BoxDock'
 import { followChain } from './stack/ChainView'
 import { writeNote } from './stack/StackView'
-import { setFilling, setStackOpen, showCard } from './stack/state'
+import { setFilling, setGraphOpen, setStackOpen, showCard } from './stack/state'
 
 const GROUP = 'Zettelkasten'
 
@@ -78,6 +78,16 @@ export const boxCommands: Command[] = [
 		when: inBox,
 		run: ({ editor }) => {
 			if (editor) followChain(editor)
+		},
+	},
+	{
+		id: 'zettelkasten.view.graph',
+		title: 'Show the box as a graph',
+		group: GROUP,
+		icon: Share2,
+		when: inBox,
+		run: ({ editor }) => {
+			if (editor) setGraphOpen(editor, true)
 		},
 	},
 	{

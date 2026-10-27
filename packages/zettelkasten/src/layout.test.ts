@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRANCH_INDENT, CARD_GAP, CARD_H, CARD_W, tableLayout } from './layout'
+import { BRANCH_INDENT, CARD_GAP, CARD_H, CARD_W, INDEX_ZID, tableLayout } from './layout'
 
 const ROW = CARD_H + CARD_GAP
 
@@ -24,5 +24,15 @@ describe('tableLayout', () => {
 	it('gives the same answer for the same ids, so every device writes the same positions', () => {
 		const ids = ['1', '1a', '2', '3', '3a', '3a1']
 		expect([...tableLayout(ids)]).toEqual([...tableLayout([...ids])])
+	})
+
+	it('puts the index in a column before the notes and the sources in one after them', () => {
+		const at = tableLayout([INDEX_ZID, '1', '1a', 'c1', 'c2'])
+		expect(at.get(INDEX_ZID)).toEqual({ x: 0, y: 0 })
+		const notes = CARD_W + CARD_GAP
+		expect(at.get('1')).toEqual({ x: notes, y: 0 })
+		const sources = notes + BRANCH_INDENT + CARD_W + CARD_GAP
+		expect(at.get('c1')).toEqual({ x: sources, y: 0 })
+		expect(at.get('c2')).toEqual({ x: sources, y: ROW })
 	})
 })

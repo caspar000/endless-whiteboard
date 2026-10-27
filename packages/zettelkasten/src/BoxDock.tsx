@@ -1,8 +1,8 @@
 import { useEditor, useValue, type Editor } from '@lifeboard/canvas'
 import { GitBranchPlus, Layers, LayoutGrid, Plus, SquarePlus } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { boxOrder, cardByZid, layoutBox } from './box'
-import { isZid } from './ids'
+import { boxOrder, hasWriting, layoutBox, shapeByZid } from './box'
+import { isBoxId } from './ids'
 import { StackView, writeNote } from './stack/StackView'
 import { registerJumpField } from './stack/jump'
 import { boxNotice, getStack, setStackOpen, showCard } from './stack/state'
@@ -55,12 +55,12 @@ export function showTable(editor: Editor): void {
 export function BoxDock() {
 	const editor = useEditor()
 	const open = useValue('lifeboard:zettel-stack-open', () => getStack(editor).open, [editor])
-	const count = useValue('lifeboard:zettel-count', () => boxOrder(editor).length, [editor])
+	const written = useValue('lifeboard:zettel-written', () => hasWriting(boxOrder(editor)), [editor])
 	const notice = useValue('lifeboard:zettel-notice', () => boxNotice.get(), [])
 	const [missing, setMissing] = useState<string | null>(null)
 	const input = useRef<HTMLInputElement>(null)
 
-	useEffect(() => registerJumpField(input.current), [count === 0])
+	useEffect(() => registerJumpField(input.current), [written])
 
 	useEffect(() => {
 		if (!notice) return
@@ -71,7 +71,7 @@ export function BoxDock() {
 	const jump = (text: string) => {
 		const zid = text.trim().toLowerCase()
 		if (!zid) return
-		if (isZid(zid) && cardByZid(editor, zid)) {
+		if (isBoxId(zid) && shapeByZid(editor, zid)) {
 			setMissing(null)
 			showCard(editor, zid)
 			input.current!.value = ''
@@ -99,7 +99,7 @@ export function BoxDock() {
 
 				<div className="lb-dock__sep" />
 
-				{count === 0 ? (
+				{!written ? (
 					<DockButton label="Write the first note" keys="N" onClick={() => writeNote(editor, 'train')}>
 						<Plus size={ICON} aria-hidden="true" />
 					</DockButton>

@@ -27,6 +27,14 @@ const cards = (page: Page): Promise<Card[]> =>
 
 const front = (page: Page) => page.locator('.lb-zstack__front .lb-zcard__id')
 
+/** To note 1: Home goes to the front of the box, which is its index, and note 1 is behind it. */
+async function toFirstNote(page: Page): Promise<void> {
+	await page.keyboard.press('Home')
+	await expect(front(page)).toHaveText('Index')
+	await page.keyboard.press('ArrowDown')
+	await expect(front(page)).toHaveText('1')
+}
+
 async function write(page: Page, key: 'n' | 'N', text: string): Promise<void> {
 	await page.keyboard.press(key === 'N' ? 'Shift+N' : 'n')
 	await expect(page.locator('.lb-zstack__front .ProseMirror')).toBeFocused()
@@ -45,11 +53,10 @@ test.describe('zettelkasten', () => {
 
 		await write(page, 'n', 'one')
 		await write(page, 'n', 'two')
-		await page.keyboard.press('Home')
-		await expect(front(page)).toHaveText('1')
+		await toFirstNote(page)
 		// 2 already follows 1, so a note behind 1 branches off it.
 		await write(page, 'n', 'a branch')
-		await page.keyboard.press('Home')
+		await toFirstNote(page)
 		await write(page, 'N', 'another branch')
 
 		expect((await cards(page)).map((card) => `${card.zid} ${card.text}`)).toEqual([
@@ -60,7 +67,7 @@ test.describe('zettelkasten', () => {
 		])
 
 		// The stack reads in box order: 1, 1a, 1b, 2.
-		await page.keyboard.press('Home')
+		await toFirstNote(page)
 		for (const zid of ['1a', '1b', '2']) {
 			await page.keyboard.press('ArrowDown')
 			await expect(front(page)).toHaveText(zid)
@@ -109,7 +116,7 @@ test.describe('zettelkasten', () => {
 				.getCurrentPageShapes()
 				.map((shape) => shape.type)
 		)
-		expect(types).toEqual(['node.zettel', 'node.zettel'])
+		expect(types.sort()).toEqual(['node.zettel', 'node.zettel', 'node.zettelIndex'])
 	})
 
 	test('a note longer than its card is written smaller rather than scrolled, and the pile shows more than three cards', async ({ page }) => {
@@ -140,10 +147,63 @@ test.describe('zettelkasten', () => {
 
 		for (let i = 0; i < 6; i++) await write(page, 'n', `note ${i}`)
 		await page.keyboard.press('Home')
-		// Every card but the front one is behind it, in sight.
+		// The index in front, and all seven notes behind it, in sight.
 		const shown = await page
 			.locator('.lb-zstack__card[data-behind]')
 			.evaluateAll((els) => els.filter((el) => getComputedStyle(el).opacity === '1').length)
-		expect(shown).toBe(6)
+		expect(shown).toBe(7)
+	})
+
+	test('notes link with [[, file under keywords in the index, and cite sources at the back', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await page.getByRole('button', { name: 'New box' }).click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+
+		await write(page, 'n', 'Society, first.')
+		// `[[` offers the box's notes; Enter writes the link.
+		await page.keyboard.press('n')
+		await expect(page.locator('.lb-zstack__front .ProseMirror')).toBeFocused()
+		await page.keyboard.type('See [[')
+		await expect(page.locator('.lb-suggest:visible')).toContainText('Society, first.')
+		await page.keyboard.press('Enter')
+		await page.keyboard.type(' for that.')
+		await page.keyboard.press('Escape')
+		expect((await cards(page)).find((card) => card.zid === '2')?.text).toBe('See [[1]] for that.')
+
+		// Drawn as a chip, which goes to the note; that note says who links to it.
+		const front = page.locator('.lb-zstack__front')
+		await front.locator('.lb-zcard__text .lb-zlink', { hasText: '1' }).click()
+		await expect(front.locator('.lb-zcard__id')).toHaveText('1')
+		await expect(front.locator('.lb-zcard__from')).toHaveText('Linked from 2')
+
+		// The + files the note under a keyword, and the index lists it.
+		await front.locator('.lb-zchip--add').click()
+		await page.keyboard.type('Society')
+		await page.keyboard.press('Enter')
+		await expect(front.locator('.lb-zchip[data-kind=keyword]')).toHaveText('Society')
+		await front.locator('.lb-zchip[data-kind=keyword] .lb-zchip__go').click()
+		await expect(front.locator('.lb-zcard__id')).toHaveText('Index')
+		await expect(front.locator('.lb-zindex__row[data-picked]')).toContainText('Society')
+
+		// A new source from the +, numbered c1 and at the back of the box, filled in on its card.
+		await page.keyboard.press('ArrowDown')
+		await expect(front.locator('.lb-zcard__id')).toHaveText('1')
+		await front.locator('.lb-zchip--add').click()
+		await page.keyboard.type('Social Systems')
+		await page.locator('.lb-zpick__row', { hasText: 'New source' }).dispatchEvent('pointerdown')
+		await front.locator('.lb-zchip[data-kind=cite] .lb-zchip__go').click()
+		await expect(front.locator('.lb-zcard__id')).toHaveText('c1')
+		await page.keyboard.press('Enter')
+		await expect(page.getByLabel('Author')).toBeFocused()
+		await page.keyboard.type('Niklas Luhmann')
+		await page.keyboard.press('Escape')
+		await expect(front.locator('.lb-zsource__author')).toHaveText('Niklas Luhmann')
+		await expect(front.locator('.lb-zcard__from')).toHaveText('Cited by 1')
+		await page.keyboard.press('End')
+		await expect(front.locator('.lb-zcard__id')).toHaveText('c1')
+		await page.keyboard.press('Home')
+		await expect(front.locator('.lb-zcard__id')).toHaveText('Index')
 	})
 })

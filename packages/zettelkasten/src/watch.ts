@@ -1,5 +1,5 @@
 import type { Editor } from '@lifeboard/canvas'
-import { isBox, isCard, layoutBox, retireId, settleDuplicateIds } from './box'
+import { ensureIndex, INDEX_ID, isBox, isNumbered, layoutBox, retireId, settleDuplicateIds } from './box'
 import { announce } from './stack/state'
 
 const watched = new WeakSet<Editor>()
@@ -17,6 +17,7 @@ export function watchBox(editor: Editor): void {
 	const settle = () => {
 		scheduled = false
 		if (!isBox(editor)) return
+		ensureIndex(editor)
 		const moved = settleDuplicateIds(editor)
 		for (const { from, to } of moved) {
 			announce(`Another device also wrote a note ${from}. One of them is ${to} now.`)
@@ -32,13 +33,13 @@ export function watchBox(editor: Editor): void {
 
 	const copies = new Set<string>()
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape, source) => {
-		if (!isCard(shape) || !isBox(editor)) return
+		if (!isNumbered(shape) || !isBox(editor)) return
 		if (source === 'remote') return schedule()
 		// Made here but not by placing it: a duplicate or a paste of a card whose number is taken. A
 		// copy of a note has no place of its own in the box, so it doesn't stay.
 		const twin = editor
 			.getCurrentPageShapes()
-			.some((other) => other.id !== shape.id && isCard(other) && other.props.zid === shape.props.zid)
+			.some((other) => other.id !== shape.id && isNumbered(other) && other.props.zid === shape.props.zid)
 		if (twin) {
 			copies.add(shape.id)
 			editor.deleteShapes([shape.id])
@@ -55,7 +56,9 @@ export function watchBox(editor: Editor): void {
 		if (reason === 'undo' || reason === 'redo') pending = []
 	})
 	editor.sideEffects.registerAfterDeleteHandler('shape', (shape, source) => {
-		if (source !== 'user' || !isCard(shape) || !isBox(editor)) return
+		// The index goes with the box, not on its own: deleted on the table, it comes straight back.
+		if (shape.id === INDEX_ID && isBox(editor)) return schedule()
+		if (source !== 'user' || !isNumbered(shape) || !isBox(editor)) return
 		// A copy taken off as it arrived (above) never had a number of its own to retire.
 		if (copies.delete(shape.id)) return
 		layoutBox(editor)

@@ -121,6 +121,40 @@ instead of scrolling, the id out of the way, and a deeper pile.
   the text or the card's width changes, and once the handwriting face has loaded. The same on the table.
 - **The id** is small in the card's top-left corner, out of the text's way; the text starts higher.
 
+### Phase 3, as built (2026-10-27): links, keywords, the index, sources
+
+- **Links are plain text, not a TipTap node.** `[[25a]]` is written into the note as typed, the way
+  `{…}` expressions are. The plan's inline node would have been a schema addition: search, plain-text
+  export and copy would each have needed teaching, and a board with the extension off would lose the
+  links from its text. As text they cost nothing anywhere. While a card is written on, a tint marks
+  each finished link; otherwise the card draws its own text (not through `RichText`) and turns each
+  link into a chip that goes to the note, struck through when the number isn't in the box. A link can
+  point at a source too (`[[c1]]`).
+- **`[[`** opens a menu of the box's notes and sources, by number first, then by words, using
+  node-kit's `{…}` menu. It reaches the board's text editors through a new seam,
+  `Extension.textExtensions` (node-kit), which `Board.tsx` collects once per board; the plugin acts
+  only while a `node.zettel` is being edited.
+- **The card's footer** holds the chips: links (written or added), keywords (green), citations
+  (brown), at most two rows, and under them, dimmed, "Linked from 26a, 31". One **+** on the card in
+  front opens a single field that finds notes, keywords and sources at once, and offers a new keyword
+  or a new source made from what was typed. A chip added with **+** shows a small × on hover (always on
+  touch screens) to take it off. Links written in the text are only removed from the text.
+- **`node.zettel` gained `keywords`, `links`, `cites`** (string arrays, migration `AddChips`). There is
+  no `title` prop: the title stays the first heading (Q3).
+- **The index** is `node.zettelIndex`, one per box under a fixed shape id, so two devices that each
+  make one make the same record. Made with the box, and put back on open (and after a delete on the
+  table) if missing. It draws keywords A to Z with their notes, worked out from the cards, case
+  folded, spelled as the first note in box order spells it. It sits first in the box's order and on
+  the table, but a box still opens on its first note; `Home` and `I` go to it. Pressing a keyword chip
+  goes to the index and picks that keyword out.
+- **Sources** are `node.zettelSource` `{ zid: 'c1', author, title, year, note }`, a series of their
+  own (`isCiteId`, `nextCite`), after every note in the order and in their own column on the table.
+  Enter (or a double-click on the table) opens the fields on the card in the stack; Enter steps
+  between them and Escape leaves. "Cited by" lists the notes that cite or link to it. Deleting one
+  retires its number like a note's.
+- **Not `canLeavePage`** any more for any of the three types: each now shows things other cards say.
+- Writing a note while the index or a source is in front starts a new train of thought.
+
 ## What was decided
 
 | # | Question | Decision |
@@ -137,7 +171,7 @@ instead of scrolling, the id out of the way, and a deeper pile.
 | Q10 | How many boxes | As many as you like. |
 | Q11 | Placing a note | **N** new note behind the front card, **⇧N** branch, and *New train of thought*. Rules below. |
 | Q12 | Moving, deleting | No moving. Deleting asks first; the id is never reused and the note's branches stay, leaving a gap. |
-| Q13 | Making a link | Type `[[` in the text, or **+** in the footer. Not by drawing arrows. |
+| Q13 | Making a link | Type `[[` in the text (written as plain `[[25a]]` text, drawn as a chip), or **+** in the footer. Not by drawing arrows. |
 | Q14 | Link direction | One way. The footer also shows a dim "Linked from 26a, 31". |
 | Q15 | Strictness | A box holds only its cards, which the box places. No dock, no dragging, no drawing. Zoom, pan and Quick Look still work. |
 | Q16 | Table layout | A column per top-level note, its line in reading order down it, deeper branches stepped right. |
@@ -208,6 +242,9 @@ The card types register through `@lifeboard/schema`, so the server learns them f
 carries them must reach the server before any client makes a box (see `docs/deploying.md`).
 
 ### Links in the text
+
+*As built, a link is plain `[[25a]]` text instead (see "Phase 3, as built"). The design below was the
+plan.*
 
 A TipTap inline node, `zettelLink { target: '25a' }`, drawn as the `📄 25a` chip. Typing `[[` opens a
 picker over the box's cards (by id or title); choosing one inserts the node. The extension is added

@@ -23,6 +23,7 @@ import {
 	watchViewDragOut,
 	rollupStats,
 	expressionSuggestExtension,
+	getTextExtensions,
 	readPropertyRegistry,
 	extensionClipboardHooks,
 } from '@lifeboard/node-kit'
@@ -484,6 +485,8 @@ function BoardCanvas({
 					expressionSuggestExtension(() =>
 						editorRef.current ? readPropertyRegistry(editorRef.current) : []
 					),
+					// Extensions' own additions, such as a box's `[[` links (node-kit, `textExtensions`).
+					...getTextExtensions({ editor: () => editorRef.current }),
 				],
 			},
 		}),

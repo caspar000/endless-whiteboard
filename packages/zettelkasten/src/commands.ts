@@ -1,9 +1,9 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
-import { GitBranchPlus, Layers, LayoutGrid, Plus, SquarePlus } from 'lucide-react'
-import { isBox } from './box'
+import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, SquarePlus } from 'lucide-react'
+import { INDEX_ZID, isBox, placeSource } from './box'
 import { showTable } from './BoxDock'
 import { writeNote } from './stack/StackView'
-import { setStackOpen } from './stack/state'
+import { setFilling, setStackOpen, showCard } from './stack/state'
 
 const GROUP = 'Zettelkasten'
 
@@ -43,6 +43,30 @@ export const boxCommands: Command[] = [
 		when: inBox,
 		run: ({ editor }) => {
 			if (editor) writeNote(editor, 'train')
+		},
+	},
+	{
+		id: 'zettelkasten.source.new',
+		title: 'New source',
+		group: GROUP,
+		icon: BookOpenText,
+		when: inBox,
+		run: ({ editor }) => {
+			if (!editor) return
+			editor.complete()
+			const { zid } = placeSource(editor)
+			showCard(editor, zid)
+			setFilling(editor, zid)
+		},
+	},
+	{
+		id: 'zettelkasten.index',
+		title: 'Go to the index',
+		group: GROUP,
+		icon: ListTree,
+		when: inBox,
+		run: ({ editor }) => {
+			if (editor) showCard(editor, INDEX_ZID)
 		},
 	},
 	{

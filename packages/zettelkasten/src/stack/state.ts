@@ -13,6 +13,10 @@ export interface StackState {
 	open: boolean
 	/** The note in front, by id. `null` is the front of the box. */
 	zid: string | null
+	/** A keyword picked out on the index, when the index was opened from a note's keyword. */
+	keyword: string | null
+	/** A source being filled in, by id: its fields are open on the front card. */
+	filling: string | null
 }
 
 const states = new WeakMap<Editor, Atom<StackState>>()
@@ -21,7 +25,7 @@ function stateOf(editor: Editor): Atom<StackState> {
 	let state = states.get(editor)
 	if (!state) {
 		// A box opens on its stack (docs/zettelkasten-plan.md, Q1).
-		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null })
+		state = atom<StackState>('lifeboard:zettel-stack', { open: true, zid: null, keyword: null, filling: null })
 		states.set(editor, state)
 	}
 	return state
@@ -40,8 +44,13 @@ export function setStackOpen(editor: Editor, open: boolean): void {
 }
 
 /** Brings a note to the front (and opens the stack if it isn't). */
-export function showCard(editor: Editor, zid: string): void {
-	stateOf(editor).set({ open: true, zid })
+export function showCard(editor: Editor, zid: string, keyword: string | null = null): void {
+	stateOf(editor).set({ open: true, zid, keyword, filling: null })
+}
+
+/** Opens a source's fields on the front card, or closes them (`null`). */
+export function setFilling(editor: Editor, zid: string | null): void {
+	stateOf(editor).update((state) => ({ ...state, filling: zid }))
 }
 
 /**
@@ -51,11 +60,12 @@ export function showCard(editor: Editor, zid: string): void {
 export function frontIndex(editor: Editor, order: readonly BoxEntry[] = boxOrder(editor)): number {
 	if (!order.length) return -1
 	const { zid } = stateOf(editor).get()
-	if (zid === null) return 0
+	// A box opens on its first note, with the index one card before it.
+	if (zid === null) return Math.max(0, order.findIndex((entry) => entry.kind !== 'index'))
 	const exact = order.findIndex((entry) => entry.zid === zid)
 	if (exact >= 0) return exact
 	// Deleted: the card behind it has moved up into its place.
-	const after = order.findIndex((entry) => compareZids(entry.zid, zid) > 0)
+	const after = order.findIndex((entry) => entry.kind !== 'index' && compareZids(entry.zid, zid) > 0)
 	return after >= 0 ? after : order.length - 1
 }
 

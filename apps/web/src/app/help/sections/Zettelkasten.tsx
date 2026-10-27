@@ -97,10 +97,30 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Links, keywords and sources">
+				<p>
+					A note’s place is only one tie. To link it to any other note, type <code>[[</code> while
+					writing and pick the note by its number or its words: the link is written{' '}
+					<code>[[25a]]</code> and drawn as a chip that goes there. The <strong>+</strong> at the foot
+					of the card in front does three things from one field: link to a note without saying so in
+					the text, file the note under a keyword, or cite a source. A card says which notes link to
+					it.
+				</p>
+				<p>
+					The <strong>index</strong> is the front of the box, one card before note 1 (
+					<Keys keys={['I']} /> or <Keys keys={['Home']} />
+					). It lists every keyword, A to Z, with the notes filed under it, as Luhmann’s did: a few
+					ways in, not a catalogue. The <strong>sources</strong> are at the back, numbered c1, c2…
+					Press <Keys keys={['Enter']} /> on one to fill in its author, title, year and a note. Make
+					one from a note’s <strong>+</strong> or with <strong>New source</strong> in ⌘K.
+				</p>
+			</Section>
+
 			<Section title="On the table">
 				<p>
-					<strong>Table</strong> lays every card out at once: a column for each top-level note, its
-					line running down the column, each branch stepped a little to the right. You can zoom, pan,
+					<strong>Table</strong> lays every card out at once: the index, a column for each top-level
+					note with its line running down it and each branch stepped a little to the right, and the
+					sources last. You can zoom, pan,
 					find a card with ⌘K’s <code>@</code>, and double-click one to write on it. The cards stay
 					where the box puts them.
 				</p>

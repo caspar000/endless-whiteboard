@@ -1,3 +1,4 @@
+import type { Extensions as TipTapExtensions } from '@tiptap/core'
 import type { ComponentType } from 'react'
 import {
 	registerGeoType,
@@ -221,6 +222,16 @@ export interface Extension {
 	 */
 	boardKinds?: readonly BoardKind[]
 	/**
+	 * What this extension adds to every text editor the board draws (stickies, text, shape labels, its
+	 * own cards): TipTap extensions, such as a menu that opens on `[[`. Collected once, when a board
+	 * opens, because swapping a text editor's extensions tears down the editor under the caret; so an
+	 * extension switched off mid-session keeps its additions until the board is opened again. Each one
+	 * must decide for itself which shapes it applies to (`editor` is the board's, once it exists), and
+	 * must add no schema of its own: a document that needed a node this extension adds would stop
+	 * drawing once the extension was gone.
+	 */
+	textExtensions?: (context: TextExtensionContext) => TipTapExtensions
+	/**
 	 * Commands built from what the user typed in the palette — see {@link CommandSource}. For verbs that
 	 * genuinely take an argument, like rolling a notation.
 	 */
@@ -364,6 +375,17 @@ export function isShapeHiddenByExtension(shape: TLShape, editor: Editor): boolea
 	}
 	const isHidden = visibilityByType.get(shape.type)
 	return isHidden ? isHidden(shape, editor) : false
+}
+
+/** What an extension's `textExtensions` is handed. */
+export interface TextExtensionContext {
+	/** The board's editor, or `null` while the board is still being built. Read it when a key is typed. */
+	editor: () => Editor | null
+}
+
+/** Every registered extension's text-editor additions, for a board's text options (see `textExtensions`). */
+export function getTextExtensions(context: TextExtensionContext): TipTapExtensions {
+	return [...extensions.values()].flatMap((ext) => ext.textExtensions?.(context) ?? [])
 }
 
 /** Registration order, which is also toolbar order for their nodes. */

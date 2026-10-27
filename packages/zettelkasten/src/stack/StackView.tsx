@@ -8,11 +8,24 @@ import {
 	type WheelEvent as ReactWheelEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { boxOrder, deleteNote, isCard, placeNote, type BoxEntry, type Placement } from '../box'
+import {
+	boxOrder,
+	deleteNote,
+	hasWriting,
+	isCard,
+	isSource,
+	placeNote,
+	removeChip,
+	type BoxEntry,
+	type Placement,
+} from '../box'
 import { CardFace } from '../card/CardFace'
+import { IndexFace } from '../card/IndexFace'
+import { SourceFace } from '../card/SourceFace'
 import { beginJump } from './jump'
+import { ChipPicker } from './Picker'
 import { FIRST_SLOT, LAST_SLOT, slotStyle } from './pile'
-import { frontIndex, getStack, showCard } from './state'
+import { frontIndex, getStack, setFilling, showCard } from './state'
 
 /**
  * The cards kept on the page around the front one: the pile (pile.ts) and, either side of it, cards
@@ -80,11 +93,16 @@ export function writeNote(editor: Editor, how: Placement): void {
 	// left, a new note still goes behind it: that id still has its place.
 	const selected = editor.getOnlySelectedShape()
 	const order = boxOrder(editor)
-	const from =
-		!getStack(editor).open && isCard(selected)
+	const front = order[frontIndex(editor, order)]
+	const from = !getStack(editor).open
+		? isCard(selected)
 			? selected.props.zid
-			: (order[frontIndex(editor, order)]?.zid ?? null)
-	const { id, zid } = placeNote(editor, how, from)
+			: null
+		: front && (front.kind === 'note' || front.kind === 'gap')
+			? front.zid
+			: null
+	// From the index or a source there is no line to continue: the note starts a new train of thought.
+	const { id, zid } = placeNote(editor, from ? how : 'train', from)
 	showCard(editor, zid)
 	requestAnimationFrame(() => startEditing(editor, id, undefined, false))
 }
@@ -105,6 +123,8 @@ export function StackView() {
 	const order = useValue('lifeboard:zettel-order', () => boxOrder(editor), [editor])
 	const index = useValue('lifeboard:zettel-front', () => frontIndex(editor), [editor])
 	const editingId = useValue('lifeboard:zettel-editing', () => editor.getEditingShapeId(), [editor])
+	const keyword = useValue('lifeboard:zettel-keyword', () => getStack(editor).keyword, [editor])
+	const filling = useValue('lifeboard:zettel-filling', () => getStack(editor).filling, [editor])
 	const [confirming, setConfirming] = useState<string | null>(null)
 	const front = index >= 0 ? order[index] : undefined
 
@@ -165,6 +185,7 @@ export function StackView() {
 			if (accel || event.altKey) return
 			const order = boxOrder(editor)
 			const current = order[frontIndex(editor, order)]
+			const numbered = current?.id && (current.kind === 'note' || current.kind === 'source')
 			let handled = true
 			switch (event.key) {
 				case 'ArrowDown':
@@ -192,11 +213,15 @@ export function StackView() {
 					writeNote(editor, 'branch')
 					break
 				case 'Enter':
-					if (current?.id) startEditing(editor, current.id)
+					if (current?.kind === 'note' && current.id) startEditing(editor, current.id)
+					else if (current?.kind === 'source') fillSource(editor, current.zid)
+					break
+				case 'i':
+					go(order.findIndex((entry) => entry.kind === 'index'))
 					break
 				case 'Backspace':
 				case 'Delete':
-					if (current?.id) setConfirming(current.zid)
+					if (numbered) setConfirming(current.zid)
 					break
 				case 'Escape':
 					setConfirming(null)
@@ -244,9 +269,12 @@ export function StackView() {
 	const onPointerDown = (event: ReactPointerEvent) => {
 		stopEventPropagation(event)
 		swiped.current = false
-		const inText = (event.target as HTMLElement).closest('.tl-rich-text-editor, .lb-zstack__confirm, button, input')
+		const inText = (event.target as HTMLElement).closest(
+			'.tl-rich-text-editor, .lb-zstack__confirm, .lb-zpick, .lb-zsource__form, button, input, textarea'
+		)
 		// A press anywhere but the text being written ends the writing.
 		if (editor.getEditingShapeId() && !inText) editor.complete()
+		if (getStack(editor).filling && !inText) setFilling(editor, null)
 		if (!inText) swipe.current = { y: event.clientY, id: event.pointerId }
 	}
 	const onPointerUp = (event: ReactPointerEvent) => {
@@ -277,7 +305,7 @@ export function StackView() {
 			onTouchStart={stopEventPropagation}
 			onContextMenu={stopEventPropagation}
 		>
-			{order.length === 0 ? (
+			{!hasWriting(order) ? (
 				<EmptyBox editor={editor} />
 			) : (
 				<div className="lb-zstack__pile">
@@ -290,13 +318,15 @@ export function StackView() {
 							entry={entry}
 							slot={Math.max(FIRST_SLOT, Math.min(LAST_SLOT, slot))}
 							editing={slot === 0 && entry.id !== null && editingId === entry.id}
+							filling={slot === 0 && entry.kind === 'source' && filling === entry.zid}
+							keyword={entry.kind === 'index' && slot === 0 ? keyword : null}
 							swiped={swiped}
 						/>
 					))}
 					{confirming && front?.zid === confirming && front.id && (
 						<div className="lb-zstack__confirm" role="alertdialog" aria-label={`Delete ${confirming}?`}>
 							<p>
-								Delete <strong>{confirming}</strong>? Its number won’t be given to another note.
+								Delete <strong>{confirming}</strong>? Its number won’t be given out again.
 							</p>
 							<button
 								type="button"
@@ -316,7 +346,7 @@ export function StackView() {
 					)}
 				</div>
 			)}
-			{order.length > 0 && (
+			{hasWriting(order) && (
 				<div className="lb-zstack__position" aria-live="polite">
 					{index + 1} of {order.length}
 				</div>
@@ -329,17 +359,32 @@ export function StackView() {
 /** The editor counts this as an open menu while the stack is up: see `StackView`. */
 const STACK_MENU = 'lifeboard.zettelkasten.stack'
 
+/** Opens a source's fields on the front card: what is typed into them is one undo step. */
+function fillSource(editor: Editor, zid: string): void {
+	editor.markHistoryStoppingPoint('fill in a source')
+	setFilling(editor, zid)
+}
+
+/** A press on something of the card's own (a chip, a link, the picker), which is not a press on its text. */
+function onControl(target: EventTarget): boolean {
+	return (target as HTMLElement).closest('.lb-zchip, .lb-zlink, .lb-zpick, .lb-zcard__foot, .lb-zsource__form') !== null
+}
+
 function StackCard({
 	editor,
 	entry,
 	slot,
 	editing,
+	filling,
+	keyword,
 	swiped,
 }: {
 	editor: Editor
 	entry: BoxEntry
 	slot: number
 	editing: boolean
+	filling: boolean
+	keyword: string | null
 	swiped: { current: boolean }
 }) {
 	const shape = useValue('lifeboard:zettel-card', () => (entry.id ? editor.getShape(entry.id) : undefined), [editor, entry.id])
@@ -358,22 +403,37 @@ function StackCard({
 			</div>
 		)
 	}
-	if (!isCard(shape)) return null
+	const front = slot === 0
+	const face =
+		entry.kind === 'index' ? (
+			<IndexFace keyword={keyword} />
+		) : isSource(shape) ? (
+			<SourceFace shape={shape} editing={filling} onDone={() => setFilling(editor, null)} />
+		) : isCard(shape) ? (
+			<CardFace
+				shape={shape}
+				live={front}
+				editing={editing}
+				add={front && !editing ? <ChipPicker editor={editor} card={shape} /> : undefined}
+				onRemove={front ? (kind, value) => removeChip(editor, shape.id, kind, value) : undefined}
+			/>
+		) : null
+	if (!face) return null
 	return (
 		<div
-			className={slot === 0 ? 'lb-zstack__card lb-zstack__front' : 'lb-zstack__card'}
+			className={front ? 'lb-zstack__card lb-zstack__front' : 'lb-zstack__card'}
 			data-behind={behind}
 			data-away={away}
 			style={style}
-			aria-hidden={slot !== 0}
+			aria-hidden={!front}
 			onClick={(event) => {
-				if (slot !== 0 || editing || swiped.current) return
-				if ((event.target as HTMLElement).closest('.lb-zcard__body')) {
-					startEditing(editor, shape.id, { x: event.clientX, y: event.clientY })
-				}
+				if (!front || editing || filling || swiped.current || onControl(event.target)) return
+				if (!(event.target as HTMLElement).closest('.lb-zcard__body')) return
+				if (isCard(shape)) startEditing(editor, shape.id, { x: event.clientX, y: event.clientY })
+				else if (isSource(shape)) fillSource(editor, shape.props.zid)
 			}}
 		>
-			<CardFace shape={shape} live={slot === 0} editing={editing} />
+			{face}
 		</div>
 	)
 }

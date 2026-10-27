@@ -4,8 +4,10 @@ import {
 	compareZids,
 	depthOf,
 	indexToLetters,
+	isCiteId,
 	isZid,
 	lettersToIndex,
+	nextCite,
 	nextOnLine,
 	nextTrain,
 	parentOf,
@@ -89,5 +91,16 @@ describe('ids', () => {
 		expect(placeAfterDuplicate('25b', new Set(['25', '25a', '25b']))).toBe('25c')
 		expect(placeAfterDuplicate('25b', new Set(['25', '25a', '25b', '25c']))).toBe('25b1')
 		expect(placeAfterDuplicate('27', new Set(['25', '26', '27']))).toBe('28')
+	})
+
+	it('keeps the sources a series of their own, at the back of the box', () => {
+		expect(isCiteId('c1')).toBe(true)
+		expect(isCiteId('c0')).toBe(false)
+		expect(isZid('c1')).toBe(false)
+		expect(['c10', '2', 'c2', '1a', 'c1'].sort(compareZids)).toEqual(['1a', '2', 'c1', 'c2', 'c10'])
+		expect(nextCite(['1', '2'])).toBe('c1')
+		expect(nextCite(['1', 'c1', 'c4'])).toBe('c5')
+		// Sources don't count towards the next train of thought.
+		expect(nextTrain(['1', 'c7'])).toBe('2')
 	})
 })

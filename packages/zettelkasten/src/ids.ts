@@ -15,9 +15,30 @@ export type Segment = number | string
 
 const ID = /^[1-9]\d*(?:[a-z]+[1-9]\d*)*[a-z]*$/
 const SEGMENT = /[1-9]\d*|[a-z]+/g
+/** A source's id: `c1`, `c2`… A series of its own, at the back of the box (Q7). */
+const CITE = /^c([1-9]\d*)$/
 
 export function isZid(text: string): boolean {
 	return ID.test(text)
+}
+
+export function isCiteId(text: string): boolean {
+	return CITE.test(text)
+}
+
+/** A note's id or a source's: anything the box can go to. */
+export function isBoxId(text: string): boolean {
+	return ID.test(text) || CITE.test(text)
+}
+
+/** The next source number nobody has had. `c1` in a box without sources. */
+export function nextCite(taken: Iterable<string>): string {
+	let max = 0
+	for (const zid of taken) {
+		const match = CITE.exec(zid)
+		if (match) max = Math.max(max, Number(match[1]))
+	}
+	return `c${max + 1}`
 }
 
 /** The segments of an id, or `null` for something that isn't one. */
@@ -50,12 +71,21 @@ function compareSegments(a: Segment, b: Segment): number {
 }
 
 /**
- * The box's order: segment by segment, and a note before its own branches. Anything that isn't an id
- * goes last, in plain string order, so a malformed id is still shown somewhere rather than lost.
+ * The box's order: segment by segment, and a note before its own branches. The sources come after
+ * every note, by number. Anything that is neither goes last, in plain string order, so a malformed id
+ * is still shown somewhere rather than lost.
  */
 export function compareZids(a: string, b: string): number {
 	const pa = parseZid(a)
 	const pb = parseZid(b)
+	const ca = CITE.exec(a)
+	const cb = CITE.exec(b)
+	if (ca && cb) return Number(ca[1]) - Number(cb[1])
+	if (ca || cb) {
+		if (pa) return -1
+		if (pb) return 1
+		return ca ? -1 : 1
+	}
 	if (!pa || !pb) {
 		if (pa) return -1
 		if (pb) return 1

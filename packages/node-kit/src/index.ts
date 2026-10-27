@@ -163,6 +163,7 @@ export {
 	fileImportFor,
 	getExtension,
 	getExtensions,
+	getTextExtensions,
 	getVisibleCanvasOverlays,
 	isShapeHiddenByExtension,
 	registerExtension,
@@ -173,6 +174,7 @@ export {
 	type ContentImportContext,
 	type FileImport,
 	type FileImportContext,
+	type TextExtensionContext,
 	type ShapeAction,
 } from './extensions'
 

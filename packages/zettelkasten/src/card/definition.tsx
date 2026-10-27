@@ -1,4 +1,5 @@
 import {
+	createShapePropsMigrationIds,
 	createShapePropsMigrationSequence,
 	type NodeComponentProps,
 	type NodeDefinition,
@@ -24,6 +25,8 @@ function CardOnCanvas({ shape, isEditing, editor }: NodeComponentProps<CardProps
 	return <CardFace shape={shape as unknown as CardShape} live={!stackOpen} editing={writing} />
 }
 
+const versions = createShapePropsMigrationIds(CARD_TYPE, { AddChips: 1 })
+
 /**
  * One note in a Zettelkasten box.
  *
@@ -39,10 +42,25 @@ export const cardDefinition: NodeDefinition<CardProps> = {
 	props: {
 		zid: T.string,
 		richText: richTextValidator,
+		keywords: T.arrayOf(T.string),
+		links: T.arrayOf(T.string),
+		cites: T.arrayOf(T.string),
 	},
-	// Required from v1 even when empty (§7).
-	migrations: createShapePropsMigrationSequence({ sequence: [] }),
-	defaultProps: () => ({ zid: '', richText: toRichText('') }),
+	migrations: createShapePropsMigrationSequence({
+		sequence: [
+			{
+				// Phase 3's footer: a card from before it has none of the three.
+				id: versions.AddChips,
+				up(props) {
+					const p = props as Partial<CardProps>
+					p.keywords ??= []
+					p.links ??= []
+					p.cites ??= []
+				},
+			},
+		],
+	}),
+	defaultProps: () => ({ zid: '', richText: toRichText(''), keywords: [], links: [], cites: [] }),
 	defaultSize: { w: CARD_W, h: CARD_H },
 	component: CardOnCanvas,
 	canEdit: true,
@@ -53,7 +71,7 @@ export const cardDefinition: NodeDefinition<CardProps> = {
 	// The sticky note's shadow falls below the card; the paper clips its own text (`.lb-zcard`).
 	clip: false,
 	offered: false,
-	// Draws nothing but its own record when it isn't being edited.
-	canLeavePage: true,
+	// Not `canLeavePage`: its footer shows what other cards say (which link to it, what its chips are
+	// called), so it isn't a function of its own record alone.
 	getLabel: (shape) => `${shape.props.zid} ${nameOf(shape.props.richText)}`.trim(),
 }

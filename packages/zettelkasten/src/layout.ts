@@ -1,4 +1,7 @@
-import { depthOf, rootOf } from './ids'
+import { depthOf, isCiteId, rootOf } from './ids'
+
+/** Where the index sits in the box's order (box.ts): before every note. */
+export const INDEX_ZID = 'index'
 
 /** Every card is the same size: a 5 × 8 inch index card, lying landscape. */
 export const CARD_W = 560
@@ -10,8 +13,9 @@ export const CARD_GAP = 40
 export const BRANCH_INDENT = 56
 
 /**
- * The table view's layout (docs/zettelkasten-plan.md, "Table"): a column per top-level note, that note's
- * whole line down the column in reading order, each branching stepped right by `BRANCH_INDENT`.
+ * The table view's layout (docs/zettelkasten-plan.md, "Table"): the index first, on its own; then a
+ * column per top-level note, that note's whole line down the column in reading order, each branching
+ * stepped right by `BRANCH_INDENT`; then the sources, in a column of their own.
  *
  * A pure function of the ids, in box order, which is what makes it safe to write into the board: every
  * device computes the same positions from the same ids, so two writing them at once agree, and a card's
@@ -24,7 +28,7 @@ export function tableLayout(zidsInOrder: readonly string[]): Map<string, { x: nu
 	let columnWidth = 0
 	let y = 0
 	for (const zid of zidsInOrder) {
-		const root = rootOf(zid)
+		const root = zid === INDEX_ZID ? INDEX_ZID : isCiteId(zid) ? 'sources' : rootOf(zid)
 		if (root !== columnRoot) {
 			if (columnRoot !== null) columnX += columnWidth + CARD_GAP
 			columnRoot = root

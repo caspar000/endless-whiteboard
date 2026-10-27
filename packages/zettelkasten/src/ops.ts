@@ -20,7 +20,7 @@ import {
 	isCard,
 	isSource,
 	placeNote,
-	placeSource,
+	findOrAddSource,
 	shapeByZid,
 	type CardShape,
 	type SourceShape,
@@ -289,20 +289,9 @@ export const boxOperations: readonly RegisteredOperation[] = [
 				if (!isSource(shapeByZid(editor, source))) return fail(`There is no source ${source} in this box. Describe it with author and title to add it.`)
 			} else {
 				if (!args.author?.trim() && !args.title?.trim()) return fail('Name a source by its id, or give at least its author or title.')
-				const same = (a = '', b = '') => a.trim().toLowerCase() === b.trim().toLowerCase()
-				const existing = boxOrder(editor)
-					.map((entry) => (entry.id ? editor.getShape(entry.id) : undefined))
-					.find((shape): shape is SourceShape => isSource(shape) && same(shape.props.author, args.author) && same(shape.props.title, args.title))
-				if (existing) source = existing.props.zid
-				else {
-					source = placeSource(editor, {
-						author: args.author?.trim() ?? '',
-						title: args.title?.trim() ?? '',
-						year: args.year?.trim() ?? '',
-						note: args.note?.trim() ?? '',
-					}).zid
-					added = true
-				}
+				const found = findOrAddSource(editor, { author: args.author, title: args.title, year: args.year, note: args.note })
+				source = found.zid
+				added = found.added
 			}
 			addChip(editor, card.id, 'cite', source)
 			const shape = shapeByZid(editor, source) as SourceShape

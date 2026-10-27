@@ -1,7 +1,9 @@
 import type { Command, CommandContext } from '@lifeboard/node-kit'
-import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, Route, Share2, SquarePlus } from 'lucide-react'
+import { BookOpenText, GitBranchPlus, Layers, LayoutGrid, ListTree, Plus, Quote, Route, Share2, SquarePlus } from 'lucide-react'
 import { INDEX_ZID, isBox, placeSource } from './box'
 import { showTable } from './BoxDock'
+import { askToCite } from './cite/CiteDialog'
+import { isCitable } from './cite/work'
 import { followChain } from './stack/ChainView'
 import { writeNote } from './stack/StackView'
 import { setFilling, setGraphOpen, setStackOpen, showCard } from './stack/state'
@@ -88,6 +90,17 @@ export const boxCommands: Command[] = [
 		when: inBox,
 		run: ({ editor }) => {
 			if (editor) setGraphOpen(editor, true)
+		},
+	},
+	{
+		id: 'zettelkasten.cite',
+		title: 'Cite in a box…',
+		group: GROUP,
+		icon: Quote,
+		// On any board: the book or quote picked out is cited in a box elsewhere.
+		when: ({ editor }) => editor !== null && isCitable(editor.getOnlySelectedShape()),
+		run: ({ editor }) => {
+			if (editor) askToCite(editor, editor.getOnlySelectedShape() ?? undefined)
 		},
 	},
 	{

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { gotoFresh, skipFirstRunDemo } from './helpers'
+import { backToList, createBoard, gotoFresh, openBoard, skipFirstRunDemo } from './helpers'
 
 /**
  * A Zettelkasten box (docs/zettelkasten-plan.md): the board kind, the stack's own keys, and the
@@ -285,5 +285,52 @@ test.describe('zettelkasten', () => {
 		await expect(page.locator('.lb-zgraph')).toHaveCount(1)
 		await page.keyboard.press('Escape')
 		await expect(page.locator('.lb-zgraph')).toHaveCount(0)
+	})
+
+	test('a book on another board is cited in a box, once however often it is cited', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await page.getByRole('button', { name: 'New box' }).click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+		await backToList(page)
+		await createBoard(page, 'Reading')
+		await openBoard(page, 'Reading')
+
+		const cite = async () => {
+			await page.evaluate(() => {
+				const editor = (window as unknown as { editor: { getCurrentPageShapes(): { id: string; type: string }[]; createShape(s: object): void; select(id: string): void } }).editor
+				let book = editor.getCurrentPageShapes().find((shape) => shape.type === 'node.book')
+				if (!book) {
+					editor.createShape({ type: 'node.book', x: 0, y: 0, props: { title: 'Social Systems', author: 'Niklas Luhmann' } })
+					book = editor.getCurrentPageShapes().find((shape) => shape.type === 'node.book')!
+				}
+				editor.select(book.id)
+			})
+			await page.keyboard.press('ControlOrMeta+k')
+			await page.locator('.lb-palette__input').fill('>Cite in a box')
+			await page.locator('.lb-palette__input').press('Enter')
+			const dialog = page.getByRole('dialog', { name: 'Cite in a box' })
+			await expect(dialog).toContainText('Social Systems by Niklas Luhmann')
+			await dialog.getByRole('button', { name: 'Untitled box' }).click()
+			await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Untitled box')
+			await expect(front(page)).toHaveText('c1')
+		}
+
+		await cite()
+		await expect(page.locator('.lb-zstack__front .lb-zsource__author')).toHaveText('Niklas Luhmann')
+		await expect(page.locator('.lb-zdock__notice')).toContainText('at the back of the box')
+
+		// Again, from the same board: the box already has it.
+		await backToList(page)
+		await openBoard(page, 'Reading')
+		await cite()
+		await expect(page.locator('.lb-zdock__notice')).toContainText('already in this box, as c1')
+		const sources = await page.evaluate(() =>
+			(window as unknown as { editor: { getCurrentPageShapes(): { type: string }[] } }).editor
+				.getCurrentPageShapes()
+				.filter((shape) => shape.type === 'node.zettelSource').length
+		)
+		expect(sources).toBe(1)
 	})
 })

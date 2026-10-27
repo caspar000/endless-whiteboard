@@ -11,6 +11,11 @@ export interface BoardSummary {
 	createdAt: number
 	updatedAt: number
 	favorite?: boolean
+	/**
+	 * The board's icon, by name, when one was chosen. A kind of board is given its own on creation
+	 * (`BoardKind.boardIcon`), which is the one hint the list gives of what a board is without opening it.
+	 */
+	icon?: string
 }
 
 /**

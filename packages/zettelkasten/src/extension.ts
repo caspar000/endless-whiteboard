@@ -1,7 +1,10 @@
 import { defineNode, type BoardKind, type Extension } from '@lifeboard/node-kit'
-import { Archive } from 'lucide-react'
+import { Archive, Quote } from 'lucide-react'
 import { CARD_TYPE, INDEX_TYPE, isBox, makeBox, SOURCE_TYPE } from './box'
 import { BoxDock } from './BoxDock'
+import { BOX_ICON, rememberBox } from './cite/boxes'
+import { askToCite, CiteOverlay } from './cite/CiteDialog'
+import { isCitable } from './cite/work'
 import { cardDefinition } from './card/definition'
 import { linkTextExtensions } from './card/linkSuggest'
 import { indexDefinition, sourceDefinition } from './card/otherDefinitions'
@@ -15,7 +18,7 @@ export const boxKind: BoardKind = {
 	name: 'Box',
 	label: 'New box',
 	newName: 'Untitled box',
-	boardIcon: 'cards',
+	boardIcon: BOX_ICON,
 	icon: Archive,
 	isKind: isBox,
 	create: makeBox,
@@ -43,6 +46,7 @@ export const zettelkastenExtension: Extension = {
 		'The graph (G) draws the box as dots joined by the order they were written in and by their links, with keywords and sources on request.',
 		'The agent can read a box, write a note where it belongs (“file this behind 25a”), link notes, file them under keywords and cite sources, by the same rules: it places notes, never moves them.',
 		'Table lays every card out at once: the index, a column for each top-level note with its line running down it, and the sources.',
+		'On any board, “Cite in a box…” on a book or a quote from one makes the book a source in the box you pick, or finds the one already there.',
 		'Turning this off leaves your boxes as ordinary boards with their cards on them. Turn it back on and they are boxes again.',
 	],
 	icon: Archive,
@@ -54,8 +58,21 @@ export const zettelkastenExtension: Extension = {
 	operations: boxOperations,
 	textExtensions: linkTextExtensions,
 	hooks: {
-		onBoardOpen: ({ editor }) => {
-			if (isBox(editor)) watchBox(editor)
+		onBoardOpen: ({ editor, boardId }) => {
+			if (!isBox(editor)) return
+			watchBox(editor)
+			// So "Cite in a box…" can offer it from any board without opening every board to look.
+			rememberBox(boardId)
 		},
 	},
+	actions: [
+		{
+			id: 'zettelkasten.cite',
+			label: 'Cite in a box…',
+			icon: Quote,
+			appliesTo: isCitable,
+			run: ({ editor, shape }) => askToCite(editor, editor.getShape(shape.id as never)),
+		},
+	],
+	overlays: [{ id: 'zettelkasten.cite', Component: CiteOverlay }],
 }

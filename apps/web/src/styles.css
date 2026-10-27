@@ -16270,6 +16270,111 @@ textarea.lb-zsource__field {
 	}
 }
 
+/* "Cite in a box…" (packages/zettelkasten/src/cite/CiteDialog.tsx): drawn as the app's dialogs are
+   (`.lb-dialog`, `.lb-modal`): raised paper, a hairline, and a scrim that dims the board. */
+.lb-zcite {
+	position: fixed;
+	inset: 0;
+	z-index: 500;
+	display: grid;
+	place-items: center;
+	font-family: var(--lb-font);
+	pointer-events: all;
+}
+.lb-zcite__scrim {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 45%);
+}
+.lb-zcite__panel {
+	position: relative;
+	width: min(420px, calc(100vw - 32px));
+	max-height: min(560px, calc(100vh - 64px));
+	overflow-y: auto;
+	padding: 16px 18px 18px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text);
+	font-size: 14px;
+}
+.lb-zcite__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+.lb-zcite__head h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+.lb-zcite__close {
+	all: unset;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-zcite__close:hover {
+	background: var(--lb-accent-tint);
+	color: var(--lb-text);
+}
+.lb-zcite__close svg {
+	width: 16px;
+	height: 16px;
+}
+.lb-zcite__text {
+	margin: 0 0 12px;
+	color: var(--lb-text-dim);
+	line-height: 1.45;
+}
+.lb-zcite__text strong {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-zcite__problem {
+	margin: 0 0 10px;
+	color: var(--lb-danger, #e5484d);
+}
+.lb-zcite__boxes {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-zcite__box {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 9px 10px;
+	border-radius: 8px;
+	cursor: pointer;
+}
+.lb-zcite__box:hover,
+.lb-zcite__box:focus-visible {
+	background: var(--lb-accent-tint);
+}
+.lb-zcite__box:disabled {
+	opacity: 0.5;
+	cursor: progress;
+}
+.lb-zcite__box svg {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	color: var(--lb-text-dim);
+}
+
 /* The box's bar: the dock's pill, with a field to go to a note. On a phone it has more tools than
    width, so it scrolls inside the pill, as the board's dock does when cramped. */
 .lb-zdock .lb-dock {

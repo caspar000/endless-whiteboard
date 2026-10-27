@@ -66,6 +66,7 @@ function summarise(board: BoardMeta): BoardSummary {
 		createdAt: board.createdAt,
 		updatedAt: board.updatedAt,
 		...(board.favorite === undefined ? {} : { favorite: board.favorite }),
+		...(board.icon === undefined ? {} : { icon: board.icon }),
 	}
 }
 

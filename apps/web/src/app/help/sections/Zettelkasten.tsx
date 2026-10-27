@@ -139,6 +139,15 @@ export function Zettelkasten({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Citing a book from anywhere">
+				<p>
+					On any board, a book (or a quote taken from one) has <strong>Cite in a box…</strong> on its
+					right-click menu and in ⌘K. Pick the box, and the book becomes a source at the back of it,
+					with its author, title and year (the year once the book’s details have been looked up), or
+					the box shows you the source it already has for it. The box opens on that card.
+				</p>
+			</Section>
+
 			<Section title="With the agent">
 				<p>
 					The agent can work in a box by the same rules you do. It reads the box in order, writes a

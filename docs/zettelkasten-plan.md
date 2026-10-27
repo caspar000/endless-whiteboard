@@ -228,6 +228,25 @@ instead of scrolling, the id out of the way, and a deeper pile.
   to the front of the stack if the person is reading it.
 - Making a new box stays a person's act (*New box*); there is no operation for it.
 
+### Phase 7, as built (2026-10-27): Cite in box
+
+- **Where:** *Cite in a box…* on the right-click menu of a book or a quote card (a `ShapeAction` of the
+  box's extension, matched by type name, so Books needs no change and isn't imported) and as a ⌘K
+  command while one is selected. A quote cites the book it was taken from, when that book is on the
+  board.
+- **What:** the book's author and title, and its year when looking the book up filled in its
+  *Published* property. In the box, a source with the same author and title (case and spacing aside)
+  is reused, otherwise one is added at the back (`findOrAddSource`, which the agent's
+  `zettelkasten.note.cite` now shares). The box opens on that card and says which happened.
+- **Which boxes:** a box is marked in its own document, which the board list doesn't load. So the
+  dialog lists boards this device has opened as boxes (remembered on open) and boards with a box's
+  icon (`cards`, given to every new box, which covers boxes made on other devices). Choosing one opens
+  it, which settles it; one that turns out not to be a box is dropped from the list and the dialog
+  says so. node-kit's `BoardSummary` gained the board's `icon` for this, which `board.list` now also
+  shows the agent.
+- The dialog is drawn as the app's dialogs are (raised paper, a hairline, a 45% scrim), into the page
+  rather than the canvas's front layer.
+
 ## What was decided
 
 | # | Question | Decision |

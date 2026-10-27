@@ -268,6 +268,31 @@ export function placeSource(editor: Editor, fields: Partial<Omit<SourceProps, 'z
 	return { id, zid }
 }
 
+/**
+ * The source for a work in this box: one already there with the same author and title (case and
+ * spacing aside), or a new one at the back. So citing a book twice, from anywhere, cites one source.
+ */
+export function findOrAddSource(
+	editor: Editor,
+	fields: Partial<Omit<SourceProps, 'zid'>>
+): { id: TLShapeId; zid: string; added: boolean } {
+	const same = (a = '', b = '') => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase()
+	for (const entry of boxOrder(editor)) {
+		const shape = entry.id ? editor.getShape(entry.id) : undefined
+		if (isSource(shape) && same(shape.props.author, fields.author) && same(shape.props.title, fields.title)) {
+			return { id: shape.id, zid: shape.props.zid, added: false }
+		}
+	}
+	const tidy = (text = '') => text.trim()
+	const placed = placeSource(editor, {
+		author: tidy(fields.author),
+		title: tidy(fields.title),
+		year: tidy(fields.year),
+		note: tidy(fields.note),
+	})
+	return { ...placed, added: true }
+}
+
 export type ChipKind = 'link' | 'keyword' | 'cite'
 
 const CHIP_PROP = { link: 'links', keyword: 'keywords', cite: 'cites' } as const

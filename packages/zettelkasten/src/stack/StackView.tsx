@@ -4,7 +4,6 @@ import {
 	useEffect,
 	useRef,
 	useState,
-	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
 	type WheelEvent as ReactWheelEvent,
 } from 'react'
@@ -12,17 +11,17 @@ import { createPortal } from 'react-dom'
 import { boxOrder, deleteNote, isCard, placeNote, type BoxEntry, type Placement } from '../box'
 import { CardFace } from '../card/CardFace'
 import { beginJump } from './jump'
+import { FIRST_SLOT, LAST_SLOT, slotStyle } from './pile'
 import { frontIndex, getStack, showCard } from './state'
 
 /**
- * The cards kept on the page around the front one. Only slots -1 to 2 can be seen (one flipped away,
- * the front, two behind); the rest are held at the edge slots, already out of sight, so a card a fast
- * riffle has flipped past finishes its swing instead of being taken off the page halfway through it.
+ * The cards kept on the page around the front one: the pile (pile.ts) and, either side of it, cards
+ * held at the edge slots, already out of sight. A card a fast riffle has flipped past finishes its
+ * swing and its fade there instead of being taken off the page halfway through them. A flip takes
+ * under half a second (styles.css) and a riffle flips a card every MIN_FLIP_GAP_MS, so eight cards can be in the air.
  */
-const BEFORE = 4
-const BEHIND = 5
-const FIRST_SLOT = -1
-const LAST_SLOT = 3
+const BEFORE = 8
+const BEHIND = LAST_SLOT + 2
 
 /** How much wheel makes one flip, and how soon after one the next may come (a flick riffles, it doesn't fly). */
 const WHEEL_STEP = 60
@@ -344,10 +343,12 @@ function StackCard({
 	swiped: { current: boolean }
 }) {
 	const shape = useValue('lifeboard:zettel-card', () => (entry.id ? editor.getShape(entry.id) : undefined), [editor, entry.id])
-	const style = { '--slot': slot } as CSSProperties
+	const style = slotStyle(slot)
+	const behind = slot > 0 || undefined
+	const away = slot < 0 || undefined
 	if (!entry.id) {
 		return (
-			<div className="lb-zstack__card lb-zstack__card--gap" data-slot={slot} style={style} aria-hidden={slot !== 0}>
+			<div className="lb-zstack__card lb-zstack__card--gap" data-behind={behind} data-away={away} style={style} aria-hidden={slot !== 0}>
 				<div className="lb-zcard-frame">
 					<div className="lb-zcard lb-zcard--gap">
 						<div className="lb-zcard__id">{entry.zid}</div>
@@ -361,7 +362,8 @@ function StackCard({
 	return (
 		<div
 			className={slot === 0 ? 'lb-zstack__card lb-zstack__front' : 'lb-zstack__card'}
-			data-slot={slot}
+			data-behind={behind}
+			data-away={away}
 			style={style}
 			aria-hidden={slot !== 0}
 			onClick={(event) => {

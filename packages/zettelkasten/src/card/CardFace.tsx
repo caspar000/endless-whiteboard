@@ -1,5 +1,7 @@
 import { RichText, isEmptyRichText, renderHtmlFromRichText, useEditor } from '@lifeboard/canvas'
+import { useRef } from 'react'
 import type { CardShape } from '../box'
+import { useFitText } from './fit'
 
 /**
  * One index card as it looks everywhere: in the stack, and on the table (the canvas). A 5 × 8 card,
@@ -8,11 +10,15 @@ import type { CardShape } from '../box'
  * `live` draws the text with the sticky note's own rich-text component, which turns into the editor
  * while the card is being edited. Only one place may be live for a card at a time, or two editors
  * would fight over one note: the stack's front card while the stack is open, the canvas otherwise.
+ *
+ * A note longer than its card is written smaller until it fits (fit.ts), rather than scrolling.
  */
 export function CardFace({ shape, live, editing = false }: { shape: CardShape; live: boolean; editing?: boolean }) {
 	const editor = useEditor()
 	const { zid, richText } = shape.props
 	const empty = isEmptyRichText(richText) && !editing
+	const body = useRef<HTMLDivElement>(null)
+	useFitText(body, [richText, live, editing])
 	return (
 		// The frame is what the card's type and padding are measured against (`cqw`, styles.css). The
 		// shadow is the sticky note's own (`tl-note__shadow`), so a card lies on the board as a note does.
@@ -20,7 +26,7 @@ export function CardFace({ shape, live, editing = false }: { shape: CardShape; l
 			<div className="tl-note__shadow" />
 			<div className="lb-zcard" data-editing={editing || undefined}>
 				<div className="lb-zcard__id">{zid}</div>
-				<div className="lb-zcard__body">
+				<div className="lb-zcard__body" ref={body}>
 					{empty ? (
 						<p className="lb-zcard__empty">Empty note</p>
 					) : live ? (

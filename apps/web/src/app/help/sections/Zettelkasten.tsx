@@ -1,5 +1,4 @@
-import { compareZids, placeBehind } from '@lifeboard/zettelkasten'
-import type { CSSProperties } from 'react'
+import { compareZids, placeBehind, slotStyle } from '@lifeboard/zettelkasten'
 import { Jump, Keys, Section, useDemo, type SectionProps } from '../kit'
 
 /** A small box, already in order, with what each card says. */
@@ -15,7 +14,7 @@ const FLIP_STEPS = [1400, 1100, 1100, 1100, 1800] as const
 
 /**
  * The stack, flipping through a small box, drawn with the stack's own classes (`lb-zstack__card`,
- * `lb-zcard`) so the demo moves the way the real one does.
+ * `lb-zcard`) and its slots (`slotStyle`) so the demo moves the way the real one does.
  */
 function StackDemo() {
 	const { step, ref } = useDemo(FLIP_STEPS)
@@ -25,10 +24,8 @@ function StackDemo() {
 			<div className="lb-demo__zpile">
 				{order
 					.map((card, index) => ({ card, slot: index - step }))
-					.filter(({ slot }) => slot >= -1 && slot <= 3)
-					.reverse()
 					.map(({ card: [zid, title, text], slot }) => (
-						<div key={zid} className="lb-zstack__card" data-slot={slot} style={{ '--slot': slot } as CSSProperties}>
+						<div key={zid} className="lb-zstack__card" data-behind={slot > 0 || undefined} data-away={slot < 0 || undefined} style={slotStyle(slot)}>
 							<div className="lb-zcard-frame">
 								<div className="tl-note__shadow" />
 								<div className="lb-zcard">
@@ -95,7 +92,8 @@ export function Zettelkasten({ go }: SectionProps) {
 					Click a card’s text, or press <Keys keys={['Enter']} />, to write on it, and{' '}
 					<Keys keys={['Esc']} /> to put it down. The text is a sticky note’s, so bold, italics and
 					lists work, and a heading as the first line (type <code># </code>) is the note’s title. Most
-					notes don’t need one.
+					notes don’t need one. A note that runs past the end of its card is written smaller until
+					it fits, as you would on paper.
 				</p>
 			</Section>
 

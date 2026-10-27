@@ -15386,6 +15386,7 @@ button.lb-props__eye:hover {
  * note's handwritten face at a label's size and leading. Its type is measured against the card
  * (`cqw` of `.lb-zcard-frame`), so the same card reads the same at 560 px on the table and at
  * whatever width the stack gives it: 22 px on a 560 px card, as a sticky's label is on the board.
+ * A note longer than its card is written smaller until it fits (`--zfit`, card/fit.ts).
  */
 .lb-zcard-frame {
 	--zc: calc(100cqw / 560);
@@ -15401,7 +15402,7 @@ button.lb-props__eye:hover {
 	flex-direction: column;
 	width: 100%;
 	height: 100%;
-	padding: calc(28 * var(--zc)) calc(34 * var(--zc)) calc(26 * var(--zc));
+	padding: calc(36 * var(--zc)) calc(34 * var(--zc)) calc(26 * var(--zc));
 	overflow: hidden;
 	background: var(--lb-zcard-paper);
 	color: var(--lb-zcard-ink);
@@ -15413,20 +15414,25 @@ button.lb-props__eye:hover {
 .lb-zcard-frame > .tl-note__shadow {
 	z-index: 0;
 }
+/* The number, small in the top corner, where it costs the note no room; on a strip of the pile it is
+   all that shows (`--zs-id`, stack/pile.ts). */
 .lb-zcard__id {
-	flex: none;
-	font-size: max(calc(17 * var(--zc)), 11px);
-	line-height: 1.35;
-	opacity: 0.5;
+	position: absolute;
+	top: calc(10 * var(--zc));
+	left: calc(13 * var(--zc));
+	font-size: max(calc(15 * var(--zc)), 10px);
+	line-height: 1;
+	opacity: calc(0.5 * var(--zs-id, 1));
 	font-variant-numeric: tabular-nums;
+	transition: opacity 200ms ease-out;
 }
 .lb-zcard__body {
 	flex: 1;
 	min-height: 0;
-	margin-top: calc(6 * var(--zc));
 	overflow: hidden;
-	/* A sticky's label size and leading; never smaller than reads on a phone. */
-	font-size: max(calc(22 * var(--zc)), 15px);
+	/* A sticky's label size and leading, never smaller than reads on a phone, unless the note is too
+	   long for its card. */
+	font-size: calc(max(calc(22 * var(--zc)), 15px) * var(--zfit, 1));
 	line-height: 1.35;
 }
 .lb-zstack__front .lb-zcard__body,
@@ -15456,6 +15462,9 @@ button.lb-props__eye:hover {
 	font-size: 1em;
 	line-height: inherit;
 	color: inherit;
+	/* Set as a block, the way a card is written out fair; a title stays to the left. */
+	text-align: justify;
+	hyphens: auto;
 }
 /* A heading as the first line is the note's title (card/text.ts): a sticky's `xl` against its `m`. */
 .lb-zcard .lb-zcard__text h1,
@@ -15466,6 +15475,7 @@ button.lb-props__eye:hover {
 	font-weight: normal;
 	line-height: 1.2;
 	color: inherit;
+	text-align: start;
 }
 .lb-zcard__empty {
 	margin: 0;
@@ -15505,60 +15515,45 @@ button.lb-props__eye:hover {
 	display: none;
 }
 .lb-zstack__pile {
+	/* As wide as fits across, and short enough that the pile above it and the bar below fit too. */
+	--zs-w: min(
+		820px,
+		calc(100% - 48px - var(--fl-left, 0px) - var(--fl-right, 0px)),
+		calc((100dvh - 200px) * 8 / 5 / 1.4)
+	);
 	position: relative;
-	width: min(820px, calc(100% - 48px - var(--fl-left, 0px) - var(--fl-right, 0px)));
+	width: var(--zs-w);
 	aspect-ratio: 8 / 5;
-	/* Room above for the cards behind, below for the bar. */
-	margin: 10vh 0 0 calc((var(--fl-left, 0px) - var(--fl-right, 0px)));
+	/* Room above for the cards behind (pile.ts's RISE), and below for the bar. */
+	margin: calc(var(--zs-w) * 5 / 8 * 0.4) 0 0 calc((var(--fl-left, 0px) - var(--fl-right, 0px)));
 }
 /*
- * Each card sits in a slot: 0 in front, 1–3 behind (3 already gone from sight), and -1 flipped away.
- * Moving between slots is a transition, so a flip is every card moving one slot at once, and a flip
- * begun during another retargets it: a fast scroll riffles. A card further than one slot either way is
- * held at -1 or 3 (StackView) until it leaves the window, so nothing is taken out mid-flight.
+ * Each card is in a slot (stack/pile.ts, which sets its transform, opacity, stacking and shade inline):
+ * 0 in front, 1 and on stepping up behind it, -1 swung away. Moving between slots is a transition, so a
+ * flip is every card moving one slot at once, and a flip begun during another retargets it: a fast
+ * scroll riffles. A card past either end of the pile is held at the last slot, out of sight, until it
+ * leaves the window (StackView), so nothing is taken out mid-flight.
  *
- * The flip itself: the front card swings up on its top edge, over the top and behind the pile, and
- * is gone once it passes edge-on (`backface-visibility`). The card behind comes forward at the same
- * time. Going back plays the same swing the other way.
- *
- * Each card carries its own perspective rather than sharing one 3D space with the others: in a shared
- * one the browser sorts the cards by depth instead of by z-index, and a card swinging through the pile
- * was drawn behind the one it was passing. Every slot spells out the same list of transform functions,
- * so each one interpolates into the next function by function.
+ * The flip: the front card swings round a pivot off its top right corner, up over the pile and down
+ * the far side, fading as it goes, while the next card comes forward. Going back plays it in reverse.
+ * It turns in the page's plane, so the cards stack by z-index alone and none can be drawn through another.
  */
 .lb-zstack__card {
 	--zs-ease: cubic-bezier(0.25, 0.8, 0.25, 1);
 	position: absolute;
 	inset: 0;
 	transform-origin: 50% 0;
-	backface-visibility: hidden;
 	transition:
-		transform 220ms var(--zs-ease),
-		opacity 140ms ease-out;
-	will-change: transform;
+		transform 380ms var(--zs-ease),
+		opacity 380ms linear;
+	will-change: transform, opacity;
 }
-.lb-zstack__card[data-slot='0'] {
-	z-index: 10;
-	transform: perspective(1800px) translateY(0) scale(1) rotateX(0deg);
-}
-.lb-zstack__card[data-slot='1'] {
-	z-index: 9;
-	transform: perspective(1800px) translateY(-14%) scale(0.93) rotateX(0deg);
-}
-.lb-zstack__card[data-slot='2'] {
-	z-index: 8;
-	transform: perspective(1800px) translateY(-24%) scale(0.86) rotateX(0deg);
-}
-.lb-zstack__card[data-slot='3'] {
-	z-index: 7;
-	transform: perspective(1800px) translateY(-30%) scale(0.8) rotateX(0deg);
-	opacity: 0;
-}
-/* Over the pile while it swings away; past edge-on its back is turned and it is gone by itself. */
-.lb-zstack__card[data-slot='-1'] {
-	z-index: 11;
-	transform: perspective(1800px) translateY(-6%) scale(1) rotateX(-120deg);
-	pointer-events: none;
+/* Swinging away it keeps an even pace and fades as it goes, so it is seen to leave rather than vanish
+   off the top; coming back it lands as the pile's cards do, quick then settling. */
+.lb-zstack__card[data-away] {
+	transition:
+		transform 440ms cubic-bezier(0.4, 0.1, 0.4, 1),
+		opacity 440ms cubic-bezier(0.5, 0, 0.75, 0.4);
 }
 /* The cards behind are in the pile's shade, a little more each card further back. */
 .lb-zstack__card .lb-zcard::after {
@@ -15566,33 +15561,16 @@ button.lb-props__eye:hover {
 	position: absolute;
 	inset: 0;
 	background: #000;
-	opacity: 0;
+	opacity: var(--zs-shade, 0);
 	pointer-events: none;
 	transition: opacity 200ms var(--zs-ease);
 }
-.lb-zstack__card[data-slot='1'] .lb-zcard::after {
-	opacity: 0.07;
-}
-.lb-zstack__card[data-slot='2'] .lb-zcard::after,
-.lb-zstack__card[data-slot='3'] .lb-zcard::after {
-	opacity: 0.14;
-}
-/* Behind the front card only a strip shows: its number, which goes up into it. */
+/* Behind the front card only a strip shows, and on the first strips the card's number. */
 .lb-zstack__card .lb-zcard__body {
 	transition: opacity 140ms ease-out;
 }
-.lb-zstack__card[data-slot='1'] .lb-zcard__body,
-.lb-zstack__card[data-slot='2'] .lb-zcard__body,
-.lb-zstack__card[data-slot='3'] .lb-zcard__body {
+.lb-zstack__card[data-behind] .lb-zcard__body {
 	opacity: 0;
-}
-.lb-zstack__card[data-slot='1'] .lb-zcard,
-.lb-zstack__card[data-slot='2'] .lb-zcard,
-.lb-zstack__card[data-slot='3'] .lb-zcard {
-	padding-top: calc(12 * var(--zc));
-}
-.lb-zstack__card .lb-zcard {
-	transition: padding-top 200ms var(--zs-ease);
 }
 .lb-zstack__position {
 	position: absolute;
@@ -15668,7 +15646,7 @@ button.lb-props__eye:hover {
    the count gives way to the board pill and the agent button across the top. */
 @media (max-width: 767px) {
 	.lb-zstack__pile {
-		margin: 0 0 14vh;
+		margin: calc(var(--zs-w) * 5 / 8 * 0.4) 0 14vh;
 	}
 	.lb-zstack__position {
 		display: none;
@@ -15677,8 +15655,8 @@ button.lb-props__eye:hover {
 
 @media (prefers-reduced-motion: reduce) {
 	.lb-zstack__card,
-	.lb-zstack__card[data-slot='-1'],
-	.lb-zstack__card .lb-zcard,
+	.lb-zstack__card[data-away],
+	.lb-zstack__card .lb-zcard__id,
 	.lb-zstack__card .lb-zcard::after,
 	.lb-zstack__card .lb-zcard__body {
 		transition: none;
@@ -15687,7 +15665,7 @@ button.lb-props__eye:hover {
 
 /* The Help page's stack (help/sections/Zettelkasten.tsx): the real cards, smaller. */
 .lb-demo--zstack {
-	height: 330px;
+	height: 360px;
 }
 .lb-demo--zstack .lb-demo__hint {
 	z-index: 1;
@@ -15695,12 +15673,12 @@ button.lb-props__eye:hover {
 .lb-demo__zpile {
 	position: absolute;
 	left: 50%;
-	top: 56px;
+	top: 104px;
 	width: 320px;
 	aspect-ratio: 8 / 5;
 	transform: translateX(-50%);
 }
 /* A small card keeps the card's proportions rather than the phone's reading floor. */
 .lb-demo__zpile .lb-zcard__body {
-	font-size: calc(22 * var(--zc));
+	font-size: calc(22 * var(--zc) * var(--zfit, 1));
 }

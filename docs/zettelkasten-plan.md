@@ -97,6 +97,30 @@ board's design, and a flip that isn't flaky.
   the stack is up (⌘B and the rest still work); on a phone the pile sits higher and the count gives
   way to the board pill.
 
+### The flip, the pile, the type (2026-10-27)
+
+The second round of pictures brought five asks: a different flip, justified text, type that shrinks
+instead of scrolling, the id out of the way, and a deeper pile.
+
+- **The flip** is the user's sketch: the front card swings round a pivot just off its top right corner,
+  up and over to the right, fading as it goes (440 ms, at an even pace); going back plays it in
+  reverse and lands like the pile's own moves (380 ms, quick then settling). It turns in the page's
+  plane, so there is no 3D at all and nothing for the browser to depth-sort. Each slot's transform is
+  one list, `translateY scale translate(pivot) rotate translate(−pivot)`, so the rotation interpolates
+  as an arc round the pivot. With the longer swing the stack keeps eight flipped cards mounted, so a
+  riffle never takes one off mid-swing.
+- **The pile** follows a bounded exponential (`stack/pile.ts`): card k behind the front sits
+  `0.4 · (1 − 0.68^k)` of a card's height above it, narrows and darkens the same way. Eight cards show,
+  each strip a third smaller than the one before; the first two strips carry their numbers, the rest
+  are too thin for one. The slot geometry is computed and set inline, and the Help demo uses the same
+  function.
+- **Justified text**, with hyphenation; a title stays left.
+- **Shrink to fit** (`card/fit.ts`): a note longer than its card is set smaller, down to half size,
+  until it fits; only past that does it scroll. A first guess from the overflow ratio, then a few
+  halvings, run between layouts (so a card is never painted at a size it doesn't keep), again whenever
+  the text or the card's width changes, and once the handwriting face has loaded. The same on the table.
+- **The id** is small in the card's top-left corner, out of the text's way; the text starts higher.
+
 ## What was decided
 
 | # | Question | Decision |
@@ -104,11 +128,11 @@ board's design, and a flip that isn't flaky.
 | Q1 | Where a box lives | **A box is a board.** Each note is a shape on it. |
 | Q2 | Note ids | **Folgezettel**: given from where the note is placed, never changed. |
 | Q3 | Titles | Optional. The id always shows; the title under it if there is one. |
-| Q4 | What a note holds | **The sticky note's rich text** (bold, italics, lists, `{…}`), on a 5 × 8 index card (asked for after phase 1) drawn as the board draws a sticky note. Not markdown. Longer text scrolls inside the card. |
+| Q4 | What a note holds | **The sticky note's rich text** (bold, italics, lists, `{…}`), on a 5 × 8 index card (asked for after phase 1) drawn as the board draws a sticky note. Not markdown. Justified. Longer text is set smaller to fit, and scrolls only past half size. |
 | Q5 | The chips in a card's footer | Three kinds: **note links**, **index keywords**, **citations**. Clicking one goes to it. |
 | Q6 | The index | Luhmann's: a keyword chip on a note files that note under the keyword. The index lists keywords A–Z with their entry notes, and is the front of the box. |
 | Q7 | Citations | Cards with fields (author, title, year, a free note), ids `c1`, `c2`…, after the last note. |
-| Q8 | The flip | The front card swings up on its top edge and over, behind the pile, while the next comes forward. About 200 ms, interruptible; a fast scroll riffles. Type an id to jump. Reduced motion cuts. |
+| Q8 | The flip | The front card swings round a pivot off its top right corner, up and over, fading, while the next comes forward; back is the reverse (the user's sketch, after phase 1). Under half a second, interruptible; a fast scroll riffles. Eight cards show behind, on a bounded exponential. Type an id to jump. Reduced motion cuts. |
 | Q9 | Folders, inbox | Neither. Placing a note when you write it is the point. |
 | Q10 | How many boxes | As many as you like. |
 | Q11 | Placing a note | **N** new note behind the front card, **⇧N** branch, and *New train of thought*. Rules below. |

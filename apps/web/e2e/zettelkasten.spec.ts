@@ -111,4 +111,39 @@ test.describe('zettelkasten', () => {
 		)
 		expect(types).toEqual(['node.zettel', 'node.zettel'])
 	})
+
+	test('a note longer than its card is written smaller rather than scrolled, and the pile shows more than three cards', async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' })
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await page.getByRole('button', { name: 'New box' }).click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+
+		const body = page.locator('.lb-zstack__front .lb-zcard__body')
+		const fit = () =>
+			body.evaluate((el) => ({
+				scale: Number(getComputedStyle(el).getPropertyValue('--zfit') || 1),
+				overflow: el.scrollHeight - el.clientHeight,
+			}))
+
+		await write(page, 'n', 'A short note.')
+		expect((await fit()).scale).toBe(1)
+
+		const sentence = 'Minim pariatur fugiat quis aute sint tempor officia veniam anim ea. '
+		await page.keyboard.press('Enter')
+		await expect(page.locator('.lb-zstack__front .ProseMirror')).toBeFocused()
+		await page.keyboard.type(sentence.repeat(10))
+		const typed = await fit()
+		expect(typed.scale).toBeLessThan(1)
+		expect(typed.overflow).toBeLessThanOrEqual(1)
+		await page.keyboard.press('Escape')
+
+		for (let i = 0; i < 6; i++) await write(page, 'n', `note ${i}`)
+		await page.keyboard.press('Home')
+		// Every card but the front one is behind it, in sight.
+		const shown = await page
+			.locator('.lb-zstack__card[data-behind]')
+			.evaluateAll((els) => els.filter((el) => getComputedStyle(el).opacity === '1').length)
+		expect(shown).toBe(6)
+	})
 })

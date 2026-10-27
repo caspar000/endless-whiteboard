@@ -46,6 +46,8 @@ export {
 	type TLPinnedNoteShapeProps,
 } from './lib/shapes/note/PinnedNoteShapeUtil'
 export { PinColorStyle, getPinPaint, type PinColor, type PinPaint } from './lib/shapes/note/pin'
+// A shape's rich-text label, drawn and edited as stickies' are; a node with rich text of its own uses it.
+export { RichText } from './lib/shapes/shared/RichText'
 export { TextShapeTool } from './lib/shapes/text/TextShapeTool'
 export { TextShapeUtil } from './lib/shapes/text/TextShapeUtil'
 export { VideoShapeUtil } from './lib/shapes/video/VideoShapeUtil'

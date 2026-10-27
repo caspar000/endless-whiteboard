@@ -152,6 +152,44 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The stack covers the board and binds its own keys, as the reader does (packages/zettelkasten).
+		title: 'In a Zettelkasten box',
+		rows: [
+			[['↓', '→', 'PageDown', 'J'], 'The next card'],
+			[['↑', '←', 'PageUp', 'K'], 'The card before'],
+			[['Home', 'End'], 'The front (the index) or the back of the box (the sources)'],
+			[['I'], 'Go to the index'],
+			[['F'], 'Follow the chain of thought from the card in front'],
+			[['G'], 'Show the box as a graph'],
+			[['P'], 'Put the card in front on another board'],
+			[['N'], 'Write a new note behind the card in front'],
+			[['⇧N'], 'Write a new note as a branch off the card in front'],
+			[['0–9'], 'Go to a note by its number'],
+			[['Enter'], 'Write on the card in front, or fill in a source'],
+			[['[['], 'While writing: link to another note or source'],
+			[['Esc'], 'Put the card down'],
+			[['⌫'], 'Delete the card in front (asks first)'],
+		],
+	},
+	{
+		title: 'Following a chain of thought',
+		rows: [
+			[['↓', '↑', 'J', 'K'], 'Scroll down or up the path'],
+			[['⌫'], 'Go back a turn'],
+			[['Esc'], 'Put the card down, or leave the chain'],
+		],
+	},
+	{
+		title: 'In a box’s graph',
+		rows: [
+			[['Space'], 'Show the card pointed at, or put it away'],
+			[['Enter'], 'Open the card pointed at in the stack'],
+			[['+', '−'], 'Zoom in or out'],
+			[['0'], 'Fit the whole box on screen'],
+			[['Esc'], 'Leave the graph'],
+		],
+	},
+	{
 		title: 'Typing an answer',
 		rows: [
 			[['{'], 'Start an expression, anywhere text can be typed'],

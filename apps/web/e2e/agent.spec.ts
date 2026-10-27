@@ -445,4 +445,71 @@ test.describe('the agent bridge', () => {
 		await page.waitForTimeout(1_000)
 		expect(server.manifest).toEqual([])
 	})
+
+	test('writes into a Zettelkasten box by its rules: placed, tied, read back, never moved', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await enableBridge(page, port)
+		await server.ready
+		await page.getByRole('button', { name: 'New box' }).first().click()
+		await expect(page.locator('.lb-zstack__empty')).toBeVisible()
+
+		// An ordinary board is refused with a sentence, not an error trace.
+		const empty = (await server.run('zettelkasten.box.read')) as { notes: unknown[] }
+		expect(empty.notes).toEqual([])
+
+		const first = (await server.run('zettelkasten.note.place', { text: '# Society\nWhat a society is.' })) as { zid: string }
+		expect(first.zid).toBe('1')
+		const second = (await server.run('zettelkasten.note.place', { text: 'Communication, not people. See [[1]].', behind: '1' })) as { zid: string }
+		expect(second.zid).toBe('2')
+		const branch = (await server.run('zettelkasten.note.place', { text: 'The joke as a shield.', branch: '1' })) as { zid: string }
+		expect(branch.zid).toBe('1a')
+		// The person watching the stack sees the card the agent wrote.
+		await expect(page.locator('.lb-zstack__front .lb-zcard__id')).toHaveText('1a')
+
+		await server.run('zettelkasten.note.link', { zid: '1a', to: '2' })
+		await server.run('zettelkasten.note.file', { zid: '1', keyword: 'Society' })
+		// Filed again in another case: the index already spells it.
+		const filed = (await server.run('zettelkasten.note.file', { zid: '2', keyword: 'society' })) as { keyword: string; new: boolean }
+		expect(filed).toMatchObject({ keyword: 'Society', new: false })
+		const cited = (await server.run('zettelkasten.note.cite', { zid: '2', author: 'Niklas Luhmann', title: 'Social Systems', year: '1984' })) as { source: string; added: boolean }
+		expect(cited).toMatchObject({ source: 'c1', added: true })
+		const again = (await server.run('zettelkasten.note.cite', { zid: '1', author: 'niklas luhmann', title: 'social systems' })) as { source: string; added: boolean }
+		expect(again).toMatchObject({ source: 'c1', added: false })
+
+		const box = (await server.run('zettelkasten.box.read')) as {
+			notes: { zid: string; title: string | null; links: string[]; keywords: string[]; cites: string[]; linkedFrom: string[] }[]
+			index: { keyword: string; notes: string[] }[]
+			sources: { zid: string; citedBy: string[] }[]
+		}
+		expect(box.notes.map((note) => note.zid)).toEqual(['1', '1a', '2'])
+		expect(box.notes[0]).toMatchObject({ title: 'Society', keywords: ['Society'], cites: ['c1'], linkedFrom: ['2'] })
+		expect(box.notes[1]).toMatchObject({ links: ['2'] })
+		expect(box.index).toEqual([{ keyword: 'Society', notes: ['1', '2'] }])
+		expect(box.sources).toMatchObject([{ zid: 'c1', citedBy: ['1', '2'] }])
+
+		const note = (await server.run('zettelkasten.note.get', { zid: '1' })) as { text: string; branches: string[]; after: string }
+		expect(note).toMatchObject({ text: '# Society\nWhat a society is.', branches: ['1a'], after: '1a' })
+
+		const refused = await server.invoke('zettelkasten.note.place', { text: 'x', behind: '9' })
+		expect(refused.ok).toBe(false)
+		if (!refused.ok) expect(refused.error).toContain('There is no note 9')
+
+		// A card moved with the generic node.update goes back where its number puts it.
+		const card = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: { getCurrentPageShapes(): { id: string; type: string; x: number; y: number; props: { zid?: string } }[] } }).editor
+			const found = editor.getCurrentPageShapes().find((shape) => shape.props.zid === '1a')!
+			return { id: found.id, x: found.x, y: found.y }
+		})
+		await server.run('node.update', { shapeId: card.id, x: card.x + 900, y: card.y + 900 })
+		await expect
+			.poll(() =>
+				page.evaluate((id) => {
+					const editor = (window as unknown as { editor: { getShape(id: string): { x: number; y: number } } }).editor
+					const shape = editor.getShape(id)
+					return [shape.x, shape.y]
+				}, card.id)
+			)
+			.toEqual([card.x, card.y])
+	})
 })

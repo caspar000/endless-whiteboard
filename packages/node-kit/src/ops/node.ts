@@ -127,6 +127,9 @@ export const nodeOperations: RegisteredOperation[] = [
 			if (def?.deprecated) {
 				return fail(`"${args.type}" is a legacy type kept only so old boards load. Use one of: ${offeredTypes()}.`)
 			}
+			if (def?.offered === false) {
+				return fail(`"${args.type}" is made by its own extension's operations, not by node.create. Use one of: ${offeredTypes()}.`)
+			}
 
 			let props: Record<string, unknown> | undefined
 			if (args.text !== undefined) {

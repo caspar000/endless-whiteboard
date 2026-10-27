@@ -13,6 +13,7 @@ import {
 	Tags,
 	Server,
 	Smartphone,
+	Archive,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
@@ -30,6 +31,7 @@ import { Shortcuts } from './sections/Shortcuts'
 import { SkillTrees } from './sections/SkillTrees'
 import { Syllabus } from './sections/Syllabus'
 import { Views } from './sections/Views'
+import { Zettelkasten } from './sections/Zettelkasten'
 
 /**
  * The help page's contents, and the only place that decides what the inner sidebar says.
@@ -176,6 +178,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Network size={15} />,
 		Component: SkillTrees,
+	},
+	{
+		id: 'zettelkasten',
+		label: 'Zettelkasten',
+		title: 'A Zettelkasten box',
+		lede: 'Notes on index cards, in the order you put them. Each note takes its number from where it goes, 25a behind 25, and you read the box by flipping through it.',
+		group: 'Extensions',
+		icon: <Archive size={15} />,
+		Component: Zettelkasten,
 	},
 	{
 		id: 'shortcuts',

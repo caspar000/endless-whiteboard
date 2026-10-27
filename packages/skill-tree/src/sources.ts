@@ -1,5 +1,6 @@
 import { atom } from '@lifeboard/canvas'
 import type { LucideIcon } from 'lucide-react'
+import type { DocTree } from './treeYaml'
 
 /**
  * What other extensions give a skill tree (docs/skill-tree-plan.md, "The split"). A tree on its own
@@ -75,6 +76,25 @@ export interface RequirementKind {
 	evaluate(value: unknown, node: RequirementContext): ConditionStatus & { consumed?: number }
 }
 
+/**
+ * Something a skill tree can be made from (Settings › Skill trees, or ⌘K › Make a skill tree): one
+ * syllabus, say. Nothing becomes a tree until someone asks for it.
+ */
+export interface TreeMaker {
+	/** Unique across sources and stable, as trees remember it (`syllabus:adler/canon`). */
+	id: string
+	name: string
+	/** Where the person finds it: the source's own word for its kind ("Syllabi"). */
+	group: string
+	/**
+	 * The trees to make, the first the main one (others may hang from its nodes), and every maker
+	 * they are made from: a tree several syllabi share is made from all of them, and goes with the last.
+	 */
+	make(): { trees: DocTree[]; from: readonly string[] } | null
+	/** Called once the trees are in the vault: to tag the source's items to their nodes, say. */
+	made?(trees: readonly DocTree[]): void
+}
+
 export interface TreeSource {
 	id: string
 	requirements?: readonly RequirementKind[]
@@ -84,6 +104,8 @@ export interface TreeSource {
 	items?(): Readonly<Record<string, TreeItem>>
 	/** How one of its items looks, or null if it isn't one of the source's. */
 	look?(itemId: string): TreeItemLook | null
+	/** What a tree can be made from. */
+	makers?(): readonly TreeMaker[]
 }
 
 const sources = atom<readonly TreeSource[]>('lifeboard:tree-sources', [])
@@ -121,6 +143,11 @@ export function lookOf(itemId: string): TreeItemLook | null {
 		if (look) return look
 	}
 	return null
+}
+
+/** Everything a tree can be made from, every source's. */
+export function allMakers(): TreeMaker[] {
+	return getTreeSources().flatMap((s) => s.makers?.() ?? [])
 }
 
 export function requirementKind(key: string): RequirementKind | undefined {

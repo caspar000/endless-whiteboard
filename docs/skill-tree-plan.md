@@ -5,6 +5,47 @@ on a running board: layout, trees in the vault, views across boards, pillars and
 Step 6b (lit edges, the pulse, hover history) and Phase B remain. The "as built" notes below say
 where the build diverged from the plan and why.
 
+## Trees are made, not imported (2026-10-26)
+
+Asked for after trying the lists: importing a syllabus still put its tree in the vault, and the
+tree turned up anyway. Film, Theatre and Games hang theirs under `mastery/practical`, so with
+Mastery on the board the tree grew straight into it, and a board already showing a tree redrew it.
+Deleting the syllabus in Settings left the tree in the vault and on the board, with nothing that
+could delete a whole tree (`removeTreeDef` was never called, and would only have let boards adopt
+the nodes back). Settings › Syllabi listed syllabi while the Mastery builder listed trees, so a
+syllabus whose file had no tree had nothing to hang. Decided with the user:
+
+- **An import never touches the skill tree.** The board gets its lists; a `tree:` or `trees:` block
+  is kept with the syllabus, unused, in the vault key `syllabusTreePlans` (`treePlans.ts`), with the
+  file's tracks and the import's draft mark. A tree already made from one of the file's syllabi is
+  updated in place, as its items are. A file with no tracks is a tree and still shows as one.
+- **A tree is made when asked**, in Settings › Skill trees (`TreeList.tsx`) or with
+  `skill.tree.make` (⌘K: Make a skill tree), from what a source offers: a source's `makers()`
+  (`sources.ts`) lists them, and the syllabus offers one per confirmed track (`syllabusTrees.ts`).
+  None picked makes an empty tree, a named root. Made, a tree is on no board and under no pillar.
+- **What a syllabus makes:** the tree its file came with (made once for every track it feeds); else a
+  tree an old import left under the goal's id, taken over; else a **path**: a root named for the
+  syllabus and one node per entry, each growing from the one before. The path asks nothing:
+  `after` (vault only, beside `draft`) draws and lays out like a prerequisite but gates nothing, and
+  each node asks `done:` (the entry done by its works' rule, no write-up needed; `item:` asks for the
+  write-up, so an entry with works could never meet it). A node's `item` (vault only) is the entry it
+  stands for: a view hangs the entry's works from the node, each as an entry hangs, instead of
+  drawing the entry beside it, and right-click › Mark as done on the node ticks an entry without works.
+- **Several at once** make a tree each, or with a shared root (named), a root-only tree with each of
+  theirs hung from it, made from all of them.
+- **`madeFrom`** on a tree lists the makers it came from. Deleting a syllabus (`deleteSyllabus`) takes
+  it off every tree, and deletes those left made from nothing (`forgetMaker`): a tree several feed
+  goes with the last, a shared root with its last branch. Empty trees and old imports have no
+  makers and never go this way. One syllabus making a tree shares its name with it (`treeNames.ts`
+  pairs by `madeFrom` now, the old id-prefix rule kept for trees from before).
+- **Deleting a tree** (`skill.tree.delete`, ⌘K: Delete a skill tree, or × in Settings) leaves a
+  tombstone, as a deleted node does: `deleted`, no nodes, every node in `removed`. A board that shows
+  it drops every shape of it, ones the vault never heard of included, and its header (`treeSync.ts`),
+  so nothing can write it back. Trees made together with it and hung only from it (a shared root's
+  branches) go too; a tree hung there by hand is unhung. Making it again brings it back.
+- `skill.tree.show` and `skill.tree.mount` take a tree's name as well as its id, and a shown tree
+  goes right of what is on the board, as Mastery does, rather than over it.
+
 ## Imports arrive as lists (2026-10-26)
 
 Asked for after trying it: dropping `adler.yaml` drew the skill tree at once, when a syllabus should
@@ -254,7 +295,8 @@ room is free (slow, and children land far out).
 
 - **`syllabus.ts`** holds items (`ItemDef`: title, kind, medium, tags, core, child rule, parent, works
   in order, a leaf's tick and day, draft), tracks (`TrackDef`) and the write-ups boards have seen
-  (`EvidenceEntry`), persisted as `syllabusItems`, `syllabusTracks` and `syllabusEvidence`. The index
+  (`EvidenceEntry`), persisted as `syllabusItems`, `syllabusTracks` and `syllabusEvidence` (and since
+  2026-10-26 the trees their files came with, `syllabusTreePlans`). The index
   every evaluator reads is now derived from them, so it is never out of date and is no longer stored.
   A parent's tick and day are worked out from its works.
 - **Ticks are vault data**, so ⌘Z does not untick: ticking again does. The write-up note a tick files

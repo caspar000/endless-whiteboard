@@ -9,12 +9,12 @@ import {
 	isItemDone,
 	moveInTrack,
 	removeEntry,
-	removeTrack,
 	updateItem,
 	updateTrack,
 	type ItemDef,
 	type TrackDef,
 } from './syllabus'
+import { deleteSyllabus, treesGoingWith } from './syllabusTrees'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
 
@@ -83,7 +83,7 @@ export function SyllabusSettings() {
 					</button>
 				</div>
 				<p className="lb-mastery__hint">
-					Active syllabi feed Up next. Put one on a board with ⌘K › Show a track as a list. A whole syllabus with its works and tree comes from a .yaml file dropped on a board
+					Active syllabi feed Up next. Put one on a board with ⌘K › Show a track as a list, and make a skill tree from one in Settings › Skill trees. A whole syllabus with its works comes from a .yaml file dropped on a board
 					{drafts > 0 && `; ${drafts === 1 ? 'one import is' : `${drafts} imports are`} still a draft on a board and will show here once confirmed`}.
 				</p>
 			</div>
@@ -115,13 +115,15 @@ function TrackRow({
 	if (confirming) {
 		const going = entriesOnlyIn(track.trackId).length
 		const kept = entries.length - going
+		const trees = treesGoingWith(track.trackId)
 		return (
 			<li className="lb-syllabi__track lb-syllabi__track--confirm">
 				<span className="lb-syllabi__question">
-					Remove “{name}”{going > 0 && ` and its ${going === 1 ? 'entry' : `${going} entries`}, with their works and ticks`}?
+					Remove “{name}”{going > 0 && ` and its ${going === 1 ? 'entry' : `${going} entries`}, with their works and ticks`}
+					{trees.length > 0 && `, and the skill ${trees.length === 1 ? 'tree' : 'trees'} ${trees.map((t) => `“${t.name || t.treeId}”`).join(', ')} made from it, from every board`}?
 					{kept > 0 && ` ${kept === 1 ? 'One entry another syllabus lists stays' : `${kept} entries other syllabi list stay`}.`} Lists and cards of it on boards will show it missing.
 				</span>
-				<button type="button" className="lb-mastery__button lb-syllabi__danger" onClick={() => removeTrack(track.trackId)}>
+				<button type="button" className="lb-mastery__button lb-syllabi__danger" onClick={() => deleteSyllabus(track.trackId)}>
 					Remove
 				</button>
 				<button type="button" className="lb-mastery__button" autoFocus onClick={() => setConfirming(false)}>

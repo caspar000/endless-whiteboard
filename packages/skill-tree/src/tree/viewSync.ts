@@ -7,7 +7,7 @@ import { arcBend, itemKey, lineEnds } from './lines'
 import { orbitCluster } from './orbits'
 import { getLayoutConfig } from './layoutConfig'
 import { SKILL_SIZE, sizeOfKind } from '../skill/definition'
-import type { NodeDef } from '../treeDefs'
+import { shapeFieldsOf, type NodeDef } from '../treeDefs'
 import { boardTrees, reachFrom, treeGraph, viewStart, type TreeGraph, type ViewContents } from '../views'
 import { getTreePrefs } from '../treePrefs'
 import { contentsOf } from './view'
@@ -155,11 +155,16 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 	editor.createShapes([
 		...plan.createSkills.map(({ treeId, def }) => {
 			created.add(def.nodeId)
-			const { nodeId, draft, ...rest } = def
-			void draft
 			const at = near(treeId)
-			const size = sizeOfKind(rest.kind)
-			return { id: createShapeId(), type: SKILL_TYPE, parentId: editor.getCurrentPageId(), x: at.x - size / 2, y: at.y - size / 2, props: { ...rest, nodeId, treeId, w: size, h: size } }
+			const size = sizeOfKind(def.kind)
+			return {
+				id: createShapeId(),
+				type: SKILL_TYPE,
+				parentId: editor.getCurrentPageId(),
+				x: at.x - size / 2,
+				y: at.y - size / 2,
+				props: { ...shapeFieldsOf(def), nodeId: def.nodeId, treeId, w: size, h: size },
+			}
 		}),
 		...plan.createItems.map(({ itemId, treeId, variant }) => {
 			created.add(itemKey(itemId))

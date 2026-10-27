@@ -5,6 +5,7 @@ import {
 	confirmTrees,
 	discardTrees,
 	DRAFT_META,
+	getTreeDef,
 	importTrees,
 	isDraft,
 	SKILL_TREE_EXTENSION,
@@ -12,27 +13,31 @@ import {
 	treeGoals,
 	treePrefix,
 	whileImporting,
+	type DocTree,
 } from '@lifeboard/skill-tree'
-import { stringify as stringifyYaml } from 'yaml'
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import { isTrack, TRACK_TYPE } from './board'
 import { TRACK_WIDTH } from './ops'
 import { boardIdOf } from './skillIndex'
 import { confirmDrafts, discardDrafts, getItems, getTracks, hasDrafts, putItems, putTracks, type ItemDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
 import type { SyllabusDoc } from './syllabusYaml'
+import { makerId } from './syllabusTrees'
+import { confirmTreePlans, discardTreePlans, getTreePlans, keepTreePlans } from './treePlans'
 
 /**
- * Putting a syllabus document into the vault and its tree on a board, and taking one out
- * (docs/skill-tree-plan.md, "The YAML format" and "Drafts").
+ * Putting a syllabus document into the vault, and taking one out (docs/skill-tree-plan.md, "The YAML
+ * format", "Drafts" and "Trees are made, not imported").
  *
- * Items and tracks go into the vault (syllabusMerge.ts), and the board gets a list of each track. The
- * document's trees go to the skill tree (its treeIO.ts) when that extension is on, and are left out
- * when it is off; they wait in the vault for "Show a skill tree on this board", so a syllabus arrives
- * as something to read and its tree is a view you ask for. A document with no tracks (only a tree)
- * shows its tree, as there would be nothing else to show. An import is a
- * **draft**: what it makes is marked as this board's draft, draws dashed, and stays out of the index
- * until Confirm on the board's draft bar (DraftBar.tsx). Ids that already exist are updated in place instead (titles, tags,
- * requirements; never a tick or a note), so a YAML file can be edited and imported again.
+ * Items and tracks go into the vault (syllabusMerge.ts), and the board gets a list of each track.
+ * Nothing goes to the skill tree: the document's tree is kept with the syllabus, unused
+ * (treePlans.ts), until someone makes a skill tree from it (Settings › Skill trees, or ⌘K). A tree
+ * already made from one of its syllabi is brought up to date, as its items are. A document with no
+ * tracks (only a tree) is a tree, and is shown as one, as there would be nothing else to show. An
+ * import is a **draft**: what it makes is marked as this board's draft, draws dashed, and stays out
+ * of the index until Confirm on the board's draft bar (DraftBar.tsx). Ids that already exist are
+ * updated in place instead (titles, tags, requirements; never a tick or a note), so a YAML file can
+ * be edited and imported again.
  */
 
 export interface ImportResult {
@@ -50,7 +55,8 @@ const treesOn = () => isExtensionEnabled(SKILL_TREE_EXTENSION)
 
 /**
  * What an import puts on the board: `lists` (the default) a list per track, or the tree views when
- * the document has no tracks; `trees` the tree views and no lists.
+ * the document has no tracks; `trees` the tree views and no lists, its trees made at once (the
+ * whole-life test board's samples, never a person's import).
  */
 export type ImportShows = 'lists' | 'trees'
 
@@ -74,10 +80,26 @@ function importNow(editor: Editor, doc: SyllabusDoc, at: { x: number; y: number 
 		updated += merged.updated
 
 		const lists = shows === 'lists' && doc.tracks.length > 0
-		if (treesOn()) {
-			const trees = importTrees(editor, doc.trees, at, boardOf(editor), !lists)
-			vaultCreated += trees.created
-			updated += trees.updated
+		if (!lists) {
+			if (treesOn()) {
+				const trees = importTrees(editor, doc.trees, at, boardOf(editor), true)
+				vaultCreated += trees.created
+				updated += trees.updated
+			}
+		} else {
+			const trackIds = doc.tracks.map((t) => t.trackId)
+			keepTreePlans(doc.trees, trackIds, boardOf(editor))
+			// A tree already made from one of these syllabi follows the file, as their items do; hung where it was hung.
+			const makers = new Set(trackIds.map(makerId))
+			const made = doc.trees.filter((t) => {
+				const def = getTreeDef(t.treeId)
+				return def && !def.deleted && def.madeFrom.some((m) => makers.has(m))
+			})
+			if (made.length) {
+				const trees = importTrees(editor, made.map((t) => ({ ...t, mounts: [] })), at, boardOf(editor), false)
+				vaultCreated += trees.created
+				updated += trees.updated
+			}
 		}
 		if (lists) {
 			// Side by side, each track once: importing the file again leaves this board's lists where they are.
@@ -105,7 +127,7 @@ export function confirmDraft(editor: Editor): number {
 
 function confirmNow(editor: Editor): number {
 	const drafts = editor.getCurrentPageShapes().filter(isDraft)
-	const vault = confirmDrafts(boardOf(editor)) + confirmTrees(editor, boardOf(editor))
+	const vault = confirmDrafts(boardOf(editor)) + confirmTreePlans(boardOf(editor)) + confirmTrees(editor, boardOf(editor))
 	if (!drafts.length) return vault
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('confirm draft')
@@ -122,7 +144,7 @@ export function discardDraft(editor: Editor): number {
 function discardNow(editor: Editor): number {
 	const trees = discardTrees(editor, boardOf(editor))
 	const drafts = [...new Set([...editor.getCurrentPageShapes().filter(isDraft), ...trees.shapes])]
-	const vault = discardDrafts(boardOf(editor)) + trees.nodes
+	const vault = discardDrafts(boardOf(editor)) + discardTreePlans(boardOf(editor)) + trees.nodes
 	if (!drafts.length) return vault
 	editor.run(() => {
 		editor.markHistoryStoppingPoint('discard draft')
@@ -133,7 +155,8 @@ function discardNow(editor: Editor): number {
 
 /** Whether this board has a draft waiting: shapes, or vault items and tracks its imports made. */
 export function boardHasDraft(editor: Editor): boolean {
-	return hasDrafts(boardOf(editor)) || boardHasTreeDraft(boardOf(editor)) || editor.getCurrentPageShapes().some(isDraft)
+	const board = boardOf(editor)
+	return hasDrafts(board) || boardHasTreeDraft(board) || Object.values(getTreePlans()).some((p) => p.draft === board) || editor.getCurrentPageShapes().some(isDraft)
 }
 
 /** The goals there are syllabi for, by name: the vault's tracks, and this board's trees. */
@@ -179,7 +202,31 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 			}),
 		}))
 	}
+	// The tree on this board for the goal, else the one its file came with, kept unused, so a round trip keeps it.
 	const tree = treeDoc(editor, goal, !goalName)
+	const kept = tracks.length ? Object.values(getTreePlans()).find((p) => !p.draft && p.tracks.includes(tracks[0]!.trackId)) : undefined
 	if (tree) doc.tree = tree
+	else if (kept) doc.tree = keptTreeDoc(kept.tree)
 	return stringifyYaml(doc, { lineWidth: 0 })
+}
+
+/** A kept tree as the `tree:` part of a document, ids in full. */
+function keptTreeDoc(tree: DocTree): Record<string, unknown> {
+	return {
+		id: tree.treeId,
+		name: tree.name,
+		...(tree.mounts.length === 1 ? { mount: tree.mounts[0] } : tree.mounts.length ? { mounts: tree.mounts } : {}),
+		...(tree.sectors.length ? { sectors: tree.sectors } : {}),
+		...(tree.rings.length ? { rings: tree.rings } : {}),
+		nodes: tree.nodes.map((n) => ({
+			id: n.nodeId,
+			name: n.name,
+			kind: n.kind,
+			...(n.icon ? { icon: n.icon } : {}),
+			...(n.sector ? { sector: n.sector } : {}),
+			...(n.ring ? { ring: n.ring } : {}),
+			...(n.requires ? { requires: parseYaml(n.requires) as unknown } : {}),
+			...(n.after ? { after: n.after } : {}),
+		})),
+	}
 }

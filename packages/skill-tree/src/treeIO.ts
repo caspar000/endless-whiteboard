@@ -32,7 +32,18 @@ export function importTrees(
 		const known = new Set(had?.nodes.map((n) => n.nodeId))
 		upsertNodeDefs(
 			tree.treeId,
-			tree.nodes.map(({ nodeId, name, kind, icon, sector, ring, requires }) => ({ nodeId, name, kind, icon, sector, ring, requires, ...(known.has(nodeId) ? {} : { draft: board }) }))
+			tree.nodes.map(({ nodeId, name, kind, icon, sector, ring, requires, after, item }) => ({
+				nodeId,
+				name,
+				kind,
+				icon,
+				sector,
+				ring,
+				requires,
+				...(after ? { after } : {}),
+				...(item ? { item } : {}),
+				...(known.has(nodeId) ? {} : { draft: board }),
+			}))
 		)
 		updated += tree.nodes.filter((n) => known.has(n.nodeId)).length
 		created += tree.nodes.filter((n) => !known.has(n.nodeId)).length

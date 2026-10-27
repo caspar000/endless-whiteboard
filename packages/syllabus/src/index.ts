@@ -33,6 +33,7 @@ export {
 	type ItemDef,
 	type TrackDef,
 } from './syllabus'
+export { getTreePlans, replaceTreePlans, setTreePlansPersistence, type TreePlan } from './treePlans'
 export { itemNodeDefinition } from './item/definition'
 export { trackNodeDefinition } from './track/definition'
 export { upNextNodeDefinition } from './upnext/definition'

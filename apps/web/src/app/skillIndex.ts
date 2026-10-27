@@ -3,12 +3,15 @@ import {
 	getEvidence,
 	getItems,
 	getTracks,
+	getTreePlans,
 	replaceEvidence,
 	replaceItems,
 	replaceTracks,
+	replaceTreePlans,
 	setEvidencePersistence,
 	setItemsPersistence,
 	setTracksPersistence,
+	setTreePlansPersistence,
 } from '@lifeboard/syllabus'
 import { pushVaultSetting } from '../server/serverVault'
 
@@ -24,14 +27,16 @@ import { pushVaultSetting } from '../server/serverVault'
 const WAIT_MS = 1000
 
 /**
- * The syllabus's vault data, persisted the same way under their own keys: the items and tracks and
- * the tree definitions are the only copy (a server backup must keep them); the write-up copies are
- * rebuilt by any board that opens.
+ * The syllabus's vault data, persisted the same way under their own keys: the items and tracks, the
+ * trees their files came with and the tree definitions are the only copy (a server backup must keep
+ * them); the write-up copies are rebuilt by any board that opens.
  */
 const STORES = [
 	{ key: 'syllabusItems', cacheKey: 'lifeboard:syllabusItems', get: getItems, replace: replaceItems, listen: setItemsPersistence },
 	{ key: 'syllabusTracks', cacheKey: 'lifeboard:syllabusTracks', get: getTracks, replace: replaceTracks, listen: setTracksPersistence },
 	{ key: 'syllabusEvidence', cacheKey: 'lifeboard:syllabusEvidence', get: getEvidence, replace: replaceEvidence, listen: setEvidencePersistence },
+	// The tree each syllabus file came with, kept unused until a tree is made from the syllabus.
+	{ key: 'syllabusTreePlans', cacheKey: 'lifeboard:syllabusTreePlans', get: getTreePlans, replace: replaceTreePlans, listen: setTreePlansPersistence },
 	{ key: 'skillTrees', cacheKey: 'lifeboard:skillTrees', get: getTreeDefs, replace: replaceTreeDefs, listen: setTreeDefsPersistence },
 ] as const
 

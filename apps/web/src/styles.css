@@ -14867,6 +14867,59 @@ button.lb-props__eye:hover {
 	padding: 0 4px;
 }
 
+/* Every skill tree in the vault, and the form that makes one, in Settings › Skill trees
+ * (TreeList.tsx). Rows are the syllabus list's; the makers are checkboxes in a wrapping grid. */
+.lb-tree-list__name {
+	flex: 1;
+	min-width: 0;
+	padding: 3px 6px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-tree-list__about {
+	flex: none;
+	max-width: 45%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+.lb-tree-make {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 6px;
+}
+.lb-tree-make__from {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 2px 12px;
+	margin: 0;
+	border: 0;
+	padding: 0 4px;
+}
+.lb-tree-make__from > legend {
+	padding: 0 0 4px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-tree-make__maker,
+.lb-tree-make__shared {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding: 2px 0;
+	font-size: 12.5px;
+	cursor: pointer;
+}
+.lb-tree-make__shared {
+	padding: 0 4px;
+}
+
 /* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
 .lb-tree-advanced {
 	padding: 10px 0 4px;

@@ -2,11 +2,13 @@ import { computed } from '@lifeboard/canvas'
 import type { Evidence, RequirementKind, TreeSource } from '@lifeboard/skill-tree'
 import { mediumIcon } from './mediumIcon'
 import { getItems, getSkillIndex, isItemDone, progressOf } from './syllabus'
+import { syllabusMakers } from './syllabusTrees'
 
 /**
  * The syllabus as a source for skill trees (sources.ts): its write-ups are evidence, its entries and
- * works are what a view draws beside the nodes they are tagged to, and nodes can ask for an item done
- * (`item:`) or a number of write-ups (`count:`).
+ * works are what a view draws beside the nodes they are tagged to, nodes can ask for an item written
+ * up (`item:`), done (`done:`) or a number of write-ups (`count:`), and every syllabus is something a
+ * tree can be made from (syllabusTrees.ts).
  */
 
 /** Items done with a write-up, as evidence for the nodes they are tagged to. */
@@ -24,6 +26,21 @@ const item: RequirementKind = {
 		const entry = getSkillIndex()[value as string]
 		const met = !!entry?.evidence
 		return { label: entry?.title ?? (value as string), have: met ? 1 : 0, need: 1, met }
+	},
+}
+
+/**
+ * An item done: a work ticked, or an entry whose works are done by its rule. Unlike `item:`, no
+ * write-up is asked for; a path made from a syllabus lights its nodes this way.
+ */
+const done: RequirementKind = {
+	key: 'done',
+	parse: (value) => (typeof value === 'string' && value ? { ok: true, value } : { ok: false, error: 'done takes an item id' }),
+	qualify: (value, ids) => ids.goal(value as string),
+	evaluate: (value) => {
+		const item = getItems()[value as string]
+		const met = !!item && isItemDone(item.itemId)
+		return { label: item ? `Finish ${item.title}` : (value as string), have: met ? 1 : 0, need: 1, met }
 	},
 }
 
@@ -62,7 +79,8 @@ const count: RequirementKind = {
 
 export const syllabusTreeSource: TreeSource = {
 	id: 'lifeboard.syllabus',
-	requirements: [item, count],
+	requirements: [item, done, count],
+	makers: syllabusMakers,
 	evidence: () => evidence.get(),
 	items: getItems,
 	look: (itemId) => {

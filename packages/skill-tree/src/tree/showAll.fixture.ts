@@ -89,7 +89,7 @@ export function showView(
 ): ShowAll {
 	const docs = sources.map(readDoc)
 	const trees: TreeDefs = Object.fromEntries(
-		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mounts: mounts[t.treeId] ? [mounts[t.treeId]!] : t.mounts, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '', ticked: {} }])
+		docs.flatMap((doc) => doc.trees).filter((t) => keep(t.treeId)).map((t) => [t.treeId, { ...t, mounts: mounts[t.treeId] ? [mounts[t.treeId]!] : t.mounts, sectors: t.sectors.join(','), rings: t.rings.join(','), removed: [], draft: '', ticked: {}, madeFrom: [], deleted: false }])
 	)
 	const items = Object.fromEntries(docs.flatMap((doc) => doc.items).map((item) => [item.itemId, item]))
 	const graph = treeGraph(trees)

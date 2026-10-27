@@ -11,7 +11,7 @@ const node = (nodeId: string, requires: string[] = [], kind = 'skill'): NodeDef 
 	ring: '',
 	requires: requires.length ? `- node: [${requires.join(', ')}]` : '',
 })
-const tree = (treeId: string, nodes: NodeDef[], ...mounts: string[]): TreeDef => ({ treeId, name: treeId, goal: '', sectors: '', rings: '', mounts, nodes, removed: [], draft: '', ticked: {} })
+const tree = (treeId: string, nodes: NodeDef[], ...mounts: string[]): TreeDef => ({ treeId, name: treeId, goal: '', sectors: '', rings: '', mounts, nodes, removed: [], draft: '', ticked: {}, madeFrom: [], deleted: false })
 
 /** Mastery, two pillars, a tree on each pillar, and a tree hanging from nothing. */
 const VAULT: TreeDefs = {

@@ -3,15 +3,16 @@ import { getTreeDefs, updateTreeMeta, type TreeDefs } from '@lifeboard/skill-tre
 import { getTracks, updateTrack, type TrackDef } from './syllabus'
 
 /**
- * A syllabus and its tree go by one name. An import gives a goal's tracks ids under the goal
- * (`adler/canon`) and its first tree the goal itself (`adler`). When exactly one confirmed track
- * feeds a tree that way, the two are the same thing seen twice: in Settings › Syllabi and in a
- * tree, Mastery included. So renaming either renames the other. A goal with several tracks (Film's
- * six) keeps its tree's own name, as no one syllabus speaks for it.
+ * A syllabus and its tree go by one name. A tree made from exactly one syllabus (syllabusTrees.ts),
+ * or one an old import left under the goal's id (`adler`, fed by `adler/canon`) that exactly one
+ * confirmed track feeds, is the same thing seen twice: in Settings › Syllabi and in a tree, Mastery
+ * included. So renaming either renames the other. A tree several syllabi feed (Film's six, a shared
+ * root) keeps its own name, as no one syllabus speaks for it.
  */
 
-/** Each tree with exactly one confirmed syllabus under its id. */
+/** Each tree with exactly one confirmed syllabus feeding it. */
 export function namePairs(tracks: Readonly<Record<string, TrackDef>>, trees: TreeDefs): { track: TrackDef; treeId: string; treeName: string }[] {
+	const out: { track: TrackDef; treeId: string; treeName: string }[] = []
 	const byPrefix = new Map<string, TrackDef[]>()
 	for (const track of Object.values(tracks)) {
 		const at = track.trackId.indexOf('/')
@@ -19,10 +20,17 @@ export function namePairs(tracks: Readonly<Record<string, TrackDef>>, trees: Tre
 		const prefix = track.trackId.slice(0, at)
 		byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), track])
 	}
-	return [...byPrefix].flatMap(([prefix, list]) => {
-		const tree = trees[prefix]
-		return tree && !tree.draft && list.length === 1 ? [{ track: list[0]!, treeId: tree.treeId, treeName: tree.name }] : []
-	})
+	for (const tree of Object.values(trees)) {
+		if (tree.draft || tree.deleted) continue
+		if (tree.madeFrom.length) {
+			const only = tree.madeFrom.length === 1 ? tracks[tree.madeFrom[0]!.replace(/^syllabus:/, '')] : undefined
+			if (only && !only.draft && tree.madeFrom[0]!.startsWith('syllabus:')) out.push({ track: only, treeId: tree.treeId, treeName: tree.name })
+			continue
+		}
+		const list = byPrefix.get(tree.treeId)
+		if (list?.length === 1) out.push({ track: list[0]!, treeId: tree.treeId, treeName: tree.name })
+	}
+	return out
 }
 
 export interface NameChanges {

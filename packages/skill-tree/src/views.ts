@@ -14,8 +14,9 @@ export interface TreeGraph {
 	/** Every node, with the tree it belongs to. */
 	nodes: ReadonlyMap<string, { treeId: string; def: NodeDef }>
 	/**
-	 * Prerequisite edges, drawn as arrows. Usually inside a tree; one from another tree's node makes
-	 * the node shared between the two (docs/skill-tree-layout-plan.md, "Sharing").
+	 * Prerequisite edges, drawn as arrows, and a path's (`after`), drawn the same. Usually inside a
+	 * tree; one from another tree's node makes the node shared between the two
+	 * (docs/skill-tree-layout-plan.md, "Sharing").
 	 */
 	prerequisites: GraphEdge[]
 	/** From a mount node to the root of a tree mounted on it, drawn as arrows. */
@@ -26,10 +27,19 @@ export interface TreeGraph {
 	rootOf: ReadonlyMap<string, string>
 }
 
+/**
+ * What a node grows from: its prerequisites, and the node before it on a path (`after`), which is
+ * drawn and laid out the same way but asks nothing.
+ */
+export const parentsOf = (node: Pick<NodeDef, 'requires' | 'after'>): string[] => {
+	const pre = prerequisitesOf(node.requires)
+	return node.after && !pre.includes(node.after) ? [...pre, node.after] : pre
+}
+
 /** A tree's root: its node of kind root (or mastery), else its first node without prerequisites, else its first node. */
-export function rootOfTree(nodes: readonly Pick<NodeDef, 'nodeId' | 'kind' | 'requires'>[]): string {
+export function rootOfTree(nodes: readonly Pick<NodeDef, 'nodeId' | 'kind' | 'requires' | 'after'>[]): string {
 	const ids = new Set(nodes.map((n) => n.nodeId))
-	const loose = nodes.filter((n) => !prerequisitesOf(n.requires).some((p) => ids.has(p)))
+	const loose = nodes.filter((n) => !parentsOf(n).some((p) => ids.has(p)))
 	return (nodes.find((n) => n.kind === 'root' || n.kind === 'mastery') ?? loose[0] ?? nodes[0])?.nodeId ?? ''
 }
 
@@ -47,7 +57,7 @@ export function treeGraph(trees: TreeDefs): TreeGraph {
 	for (const tree of Object.values(trees)) {
 		const root = rootOf.get(tree.treeId)
 		for (const node of tree.nodes) {
-			const pre = prerequisitesOf(node.requires).filter((p) => nodes.has(p) && p !== node.nodeId)
+			const pre = parentsOf(node).filter((p) => nodes.has(p) && p !== node.nodeId)
 			for (const from of pre) prerequisites.push({ from, to: node.nodeId })
 			if (!pre.length && node.nodeId !== root && root) loose.push({ from: root, to: node.nodeId })
 		}
@@ -107,6 +117,8 @@ export function boardTrees(editor: Editor): TreeDefs {
 			removed: [],
 			draft: '',
 			ticked: {},
+			madeFrom: [],
+			deleted: false,
 		}
 		if (tree.nodes.some((n) => n.nodeId === shape.props.nodeId)) continue
 		const { nodeId, name, kind, icon, sector, ring, requires } = shape.props
@@ -151,7 +163,8 @@ type ItemLike = { itemId: string; parent: string; children: readonly string[]; t
  * The nodes and items a header shows (docs/skill-tree-plan.md, "Rebuild"). Pure.
  *
  * - **overview**: the skill nodes its view reaches.
- * - **all**: those, every entry tagged to one of them, and every entry's works.
+ * - **all**: those, every entry tagged to one of them, and every entry's works. A node that stands
+ *   for an entry (`item`) has the entry's works hung from it instead, each drawn as an entry is.
  *
  * An entry hangs from the first of its tags that the view reaches; an entry tagged to nothing in
  * reach is not in this tree.
@@ -163,9 +176,15 @@ export function viewContents(
 ): ViewContents {
 	const start = viewStart(graph, header)
 	const reach = reachFrom(graph, start)
+	// A node that stands for an item (a path's entry) is that item: its works hang from the node.
+	const standsFor = new Map<string, string>()
+	for (const id of reach) {
+		const item = graph.nodes.get(id)?.def.item
+		if (item && items[item] && !standsFor.has(item)) standsFor.set(item, id)
+	}
 	const attached = new Map<string, string[]>()
 	for (const item of Object.values(items)) {
-		if (item.parent) continue
+		if (item.parent || standsFor.has(item.itemId)) continue
 		const node = item.tags.find((t) => reach.has(t))
 		if (!node) continue
 		attached.set(node, [...(attached.get(node) ?? []), item.itemId])
@@ -180,6 +199,8 @@ export function viewContents(
 
 	if (header.mode === 'all') {
 		for (const node of reach) for (const id of attached.get(node) ?? []) unfurl(id, node, 'entry')
+		// Each a spoke from the node, as an entry is: a work's chain starts from an entry, which isn't drawn.
+		for (const [itemId, node] of standsFor) for (const work of items[itemId]!.children) unfurl(work, node, 'entry')
 		return { context: 'all', start, skills: reach, items: shown }
 	}
 	return { context: 'overview', start, skills: reach, items: shown }

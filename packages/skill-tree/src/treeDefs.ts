@@ -20,6 +20,16 @@ export interface NodeDef {
 	requires: string
 	/** The board whose import added this node and has not confirmed it; absent once confirmed. */
 	draft?: string
+	/**
+	 * The node this one grows from on a path, drawn as a line like a prerequisite but asking nothing:
+	 * a tree made from a syllabus is its entries on one path, done in any order. Vault only, like `draft`.
+	 */
+	after?: string
+	/**
+	 * The item this node stands for (a path's entry): a view draws the item's works from the node rather
+	 * than the item beside it. Vault only, like `draft`.
+	 */
+	item?: string
 }
 
 export interface TreeDef {
@@ -38,11 +48,27 @@ export interface TreeDef {
 	draft: string
 	/** Nodes ticked by hand (a `manual` requirement), node id to `YYYY-MM-DD`. Kept here, not on the shapes. */
 	ticked: Readonly<Record<string, string>>
+	/** What the tree was made from (a source's maker ids, `syllabus:adler/canon`): it goes when they all have. */
+	madeFrom: readonly string[]
+	/**
+	 * Deleted: no nodes, every one of them in `removed`, kept so a board that still shows the tree drops
+	 * it rather than writing it back. Making the tree again brings it back.
+	 */
+	deleted: boolean
 }
 
 export type TreeDefs = Readonly<Record<string, TreeDef>>
 
 export const NODE_FIELDS = ['name', 'kind', 'icon', 'sector', 'ring', 'requires'] as const
+/** A node's fields a shape carries: the rest (`draft`, `after`, `item`) live in the vault only, and a shape's schema refuses them. */
+export const shapeFieldsOf = (def: NodeDef): Pick<NodeDef, (typeof NODE_FIELDS)[number]> => ({
+	name: def.name,
+	kind: def.kind,
+	icon: def.icon,
+	sector: def.sector,
+	ring: def.ring,
+	requires: def.requires,
+})
 export const TREE_FIELDS = ['name', 'goal', 'sectors', 'rings', 'mounts'] as const
 export type TreeMeta = Pick<TreeDef, (typeof TREE_FIELDS)[number]>
 
@@ -83,6 +109,8 @@ function parseNode(raw: unknown): NodeDef | null {
 		ring: str(r.ring),
 		requires: str(r.requires),
 		...(str(r.draft) ? { draft: str(r.draft) } : {}),
+		...(str(r.after) ? { after: str(r.after) } : {}),
+		...(str(r.item) ? { item: str(r.item) } : {}),
 	}
 }
 
@@ -103,6 +131,8 @@ export function parseTreeDef(raw: unknown): TreeDef | null {
 		ticked: Object.fromEntries(
 			Object.entries(r.ticked && typeof r.ticked === 'object' ? (r.ticked as Record<string, unknown>) : {}).filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1])
 		),
+		madeFrom: (Array.isArray(r.madeFrom) ? r.madeFrom : []).filter((id): id is string => typeof id === 'string' && !!id),
+		deleted: r.deleted === true,
 	}
 }
 
@@ -126,7 +156,7 @@ const DEMO_TREES: Readonly<Record<string, readonly string[]>> = {
 export function retireDemoTree(def: TreeDef): TreeDef {
 	const demo = DEMO_TREES[def.treeId]?.map((id) => `${def.treeId}/${id}`)
 	if (!demo || !def.nodes.length || !def.nodes.every((n) => demo.includes(n.nodeId))) return def
-	return { ...def, mounts: [], nodes: [], removed: [...new Set([...def.removed, ...def.nodes.map((n) => n.nodeId)])], ticked: {} }
+	return tombstone(def)
 }
 
 /**
@@ -148,11 +178,28 @@ export function replaceTreeDefs(raw: unknown): void {
 	if (retired) persist?.(next)
 }
 
-const emptyTree = (treeId: string): TreeDef => ({ treeId, name: '', goal: '', sectors: '', rings: '', mounts: [], nodes: [], removed: [], draft: '', ticked: {} })
+const emptyTree = (treeId: string): TreeDef => ({
+	treeId,
+	name: '',
+	goal: '',
+	sectors: '',
+	rings: '',
+	mounts: [],
+	nodes: [],
+	removed: [],
+	draft: '',
+	ticked: {},
+	madeFrom: [],
+	deleted: false,
+})
 
-/** A node keeps its draft mark through an edit that doesn't name one: a shape's fields carry no draft. */
-const keepDraft = (node: NodeDef, had: NodeDef | undefined): NodeDef =>
-	node.draft === undefined && had?.draft ? { ...node, draft: had.draft } : node
+/** A node keeps its draft mark, path and item through an edit that doesn't name them: a shape's fields carry none. */
+const keepDraft = (node: NodeDef, had: NodeDef | undefined): NodeDef => ({
+	...node,
+	...(node.draft === undefined && had?.draft ? { draft: had.draft } : {}),
+	...(node.after === undefined && had?.after ? { after: had.after } : {}),
+	...(node.item === undefined && had?.item ? { item: had.item } : {}),
+})
 
 /** Adds or updates one node; un-deletes it if it had been deleted (an undo, say). */
 export function upsertNodeDef(treeId: string, node: NodeDef): void {
@@ -160,7 +207,7 @@ export function upsertNodeDef(treeId: string, node: NodeDef): void {
 	const tree = trees.get()[treeId] ?? emptyTree(treeId)
 	const at = tree.nodes.findIndex((n) => n.nodeId === node.nodeId)
 	const nodes = at < 0 ? [...tree.nodes, node] : tree.nodes.map((n, i) => (i === at ? keepDraft(node, n) : n))
-	commit({ ...trees.get(), [treeId]: { ...tree, nodes, removed: tree.removed.filter((id) => id !== node.nodeId) } })
+	commit({ ...trees.get(), [treeId]: { ...tree, nodes, removed: tree.removed.filter((id) => id !== node.nodeId), deleted: false } })
 }
 
 /** Adds or updates many nodes of one tree in a single change: one write, one redraw. */
@@ -170,7 +217,7 @@ export function upsertNodeDefs(treeId: string, nodes: readonly NodeDef[]): void 
 	const byId = new Map(tree.nodes.map((n) => [n.nodeId, n]))
 	for (const node of nodes) if (node.nodeId) byId.set(node.nodeId, keepDraft(node, byId.get(node.nodeId)))
 	const ids = new Set(nodes.map((n) => n.nodeId))
-	commit({ ...trees.get(), [treeId]: { ...tree, nodes: [...byId.values()], removed: tree.removed.filter((id) => !ids.has(id)) } })
+	commit({ ...trees.get(), [treeId]: { ...tree, nodes: [...byId.values()], removed: tree.removed.filter((id) => !ids.has(id)), deleted: false } })
 }
 
 /** Whether a node is still a draft: its own mark, or its whole tree's. */
@@ -232,8 +279,8 @@ export function removeNodeDef(treeId: string, nodeId: string): void {
 	})
 }
 
-/** Sets a tree's name, goal, sectors, rings, mount or draft mark, making the tree if there is none. */
-export function updateTreeMeta(treeId: string, meta: Partial<TreeMeta & { draft: string }>): void {
+/** Sets a tree's name, goal, sectors, rings, mount, draft mark or makers, making the tree if there is none. */
+export function updateTreeMeta(treeId: string, meta: Partial<TreeMeta & Pick<TreeDef, 'draft' | 'madeFrom' | 'deleted'>>): void {
 	if (!treeId) return
 	const tree = trees.get()[treeId] ?? emptyTree(treeId)
 	commit({ ...trees.get(), [treeId]: { ...tree, ...meta } })
@@ -258,12 +305,65 @@ export function setTicked(treeId: string, nodeId: string, at: string): void {
 	commit({ ...trees.get(), [treeId]: { ...tree, ticked } })
 }
 
-/** Removes a whole tree from the vault. Its shapes on boards become loose copies. */
-export function removeTreeDef(treeId: string): void {
-	if (!trees.get()[treeId]) return
-	const next = { ...trees.get() }
-	delete next[treeId]
+/** The trees that exist: every one but the deleted. */
+export const liveTreeDefs = (all: TreeDefs = trees.get()): TreeDef[] => Object.values(all).filter((t) => !t.deleted)
+
+/** A deleted tree: no nodes, mounts or ticks, every node it had tombstoned. */
+const tombstone = (tree: TreeDef): TreeDef => ({
+	...tree,
+	nodes: [],
+	removed: [...new Set([...tree.removed, ...tree.nodes.map((n) => n.nodeId)])],
+	mounts: [],
+	ticked: {},
+	madeFrom: [],
+	draft: '',
+	deleted: true,
+})
+
+/**
+ * Deletes trees from the vault, and with each the trees made together with it and hung only from it
+ * (the branches of a shared root). Every board showing them drops their shapes (`reconcile`); trees
+ * hung from their nodes otherwise stay, unhung. Returns the ids of the trees deleted.
+ */
+export function deleteTreeDefs(treeIds: readonly string[]): string[] {
+	const all = { ...trees.get() }
+	const going = new Set(treeIds.filter((id) => all[id] && !all[id]!.deleted))
+	// The branches of a tree going: made from nothing it wasn't, hung from nothing but it.
+	for (let grew = true; grew; ) {
+		grew = false
+		const goneNodes = new Set([...going].flatMap((id) => all[id]!.nodes.map((n) => n.nodeId)))
+		const makers = new Set([...going].flatMap((id) => all[id]!.madeFrom))
+		for (const tree of Object.values(all)) {
+			if (going.has(tree.treeId) || tree.deleted || !tree.madeFrom.length || !tree.mounts.length) continue
+			if (tree.mounts.every((m) => goneNodes.has(m)) && tree.madeFrom.every((m) => makers.has(m))) {
+				going.add(tree.treeId)
+				grew = true
+			}
+		}
+	}
+	if (!going.size) return []
+	const goneNodes = new Set([...going].flatMap((id) => all[id]!.nodes.map((n) => n.nodeId)))
+	for (const tree of Object.values(all)) {
+		if (going.has(tree.treeId)) all[tree.treeId] = tombstone(tree)
+		else if (tree.mounts.some((m) => goneNodes.has(m))) all[tree.treeId] = { ...tree, mounts: tree.mounts.filter((m) => !goneNodes.has(m)) }
+	}
+	commit(all)
+	return [...going]
+}
+
+/**
+ * Something trees were made from has gone (a syllabus deleted): it is taken off every tree made from
+ * it, and a tree left made from nothing is deleted. Returns the ids of the trees deleted.
+ */
+export function forgetMaker(makerId: string): string[] {
+	const all = trees.get()
+	const made = liveTreeDefs(all).filter((t) => t.madeFrom.includes(makerId))
+	if (!made.length) return []
+	const left = made.filter((t) => t.madeFrom.length > 1)
+	const next = { ...all }
+	for (const tree of left) next[tree.treeId] = { ...tree, madeFrom: tree.madeFrom.filter((m) => m !== makerId) }
 	commit(next)
+	return deleteTreeDefs(made.filter((t) => t.madeFrom.length === 1).map((t) => t.treeId))
 }
 
 /** For tests. */
@@ -283,6 +383,8 @@ export function reconcile(def: TreeDef | undefined, board: BoardNodes): { adopt:
 	const adopt: NodeDef[] = []
 	const remove: string[] = []
 	const update: NodeDef[] = []
+	// A deleted tree takes every shape of it off the board, even one it never heard of.
+	if (def?.deleted) return { adopt, remove: [...board.keys()], update }
 	for (const [nodeId, shape] of board) {
 		const known = def?.nodes.find((n) => n.nodeId === nodeId)
 		if (known) {

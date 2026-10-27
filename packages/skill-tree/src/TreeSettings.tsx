@@ -4,19 +4,24 @@ import { getTreePrefs, setTreePrefs, subscribeToTreePrefs } from './treePrefs'
 import { DEFAULT_LAYOUT, getLayoutConfig, setLayoutConfig } from './tree/layoutConfig'
 import { LayoutFields } from './tree/LayoutFields'
 import { MasteryBuilder } from './MasteryBuilder'
+import { TreeList } from './TreeList'
 
-/** The extension's page in Settings: the Mastery builder, then the skill-tree defaults (each tree can override them). */
+/** The extension's page in Settings: the trees (TreeList.tsx), the Mastery builder, then the skill-tree defaults (each tree can override them). */
 export function TreeSettings() {
 	const prefs = useSyncExternalStore(subscribeToTreePrefs, getTreePrefs)
 	const layout = useValue('lifeboard:skill-tree-layout-settings', getLayoutConfig, [])
 	return (
 		<>
 			<div className="lb-appearance__card">
+				<h3 className="lb-mastery__title">Trees</h3>
+				<TreeList />
+			</div>
+			<div className="lb-appearance__card">
 				<h3 className="lb-mastery__title">Mastery</h3>
 				<MasteryBuilder />
 			</div>
 			<div className="lb-appearance__card">
-				<Row title="An import shows" hint="What a syllabus's tree view opens on. Shift+E switches between the two.">
+				<Row title="A tree shown on a board" hint="What it opens on: its skill nodes, or those and the items tagged to them. Shift+E switches between the two.">
 					<select value={prefs.importShows} onChange={(e) => setTreePrefs({ importShows: e.target.value === 'overview' ? 'overview' : 'all' })}>
 						<option value="all">Everything</option>
 						<option value="overview">Skill nodes only</option>

@@ -247,6 +247,8 @@ describe('board index', () => {
 		expect((await put('syllabusItems', { i: { title: 'no id' } })).statusCode).toBe(400)
 		expect((await put('syllabusTracks', { t: { trackId: 't', order: [] } })).statusCode).toBe(204)
 		expect((await put('syllabusEvidence', { e: { itemId: 'i', boardId: 'b' } })).statusCode).toBe(204)
+		expect((await put('syllabusTreePlans', { t: { treeId: 't', tracks: [], tree: { nodes: [] } } })).statusCode).toBe(204)
+		expect((await put('syllabusTreePlans', { t: { tracks: [] } })).statusCode).toBe(400)
 		expect((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()).toEqual({
 			disabledExtensions: ['lifeboard.dice'],
 			savedQueries: [{ name: 'spend', body: 'sum Price' }],
@@ -257,6 +259,7 @@ describe('board index', () => {
 			syllabusItems: { i: { itemId: 'i', children: [] } },
 			syllabusTracks: { t: { trackId: 't', order: [] } },
 			syllabusEvidence: { e: { itemId: 'i', boardId: 'b' } },
+			syllabusTreePlans: { t: { treeId: 't', tracks: [], tree: { nodes: [] } } },
 		})
 	})
 

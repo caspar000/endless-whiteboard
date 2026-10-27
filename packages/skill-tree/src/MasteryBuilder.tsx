@@ -109,7 +109,7 @@ export function MasteryBuilder() {
 								disabled={!others.length}
 								onChange={(e) => e.target.value && hangTree(e.target.value, current.nodeId, true)}
 							>
-								<option value="">{others.length ? 'Add a tree…' : 'No other trees in the vault'}</option>
+								<option value="">{others.length ? 'Add a tree…' : 'No other trees: make one above'}</option>
 								{others.map((t) => (
 									<option key={t.treeId} value={t.treeId}>
 										{t.name || t.treeId}
@@ -122,7 +122,7 @@ export function MasteryBuilder() {
 					)}
 				</div>
 			</div>
-			<p className="lb-mastery__hint">Put it on a board with ⌘K › Add Mastery to this board. Import a syllabus to add its tree to the vault; a tree only one syllabus feeds goes by that syllabus's name.</p>
+			<p className="lb-mastery__hint">Put it on a board with ⌘K › Add Mastery to this board. Make a tree above to hang it here; a tree made from one syllabus goes by that syllabus's name.</p>
 		</div>
 	)
 }

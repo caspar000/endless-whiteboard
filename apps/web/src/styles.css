@@ -105,6 +105,12 @@
 	--lb-chip-bg-a: 18%;
 	--lb-chip-fg-s: 65%;
 	--lb-chip-fg-l: 74%;
+	/*
+	 * A Zettelkasten card is a white sticky note's paper and ink (packages/zettelkasten): the canvas
+	 * theme's `white.noteFill` and `black.solid`, so a card and a white sticky are the same paper.
+	 */
+	--lb-zcard-paper: #e9e9e9;
+	--lb-zcard-ink: #1d1d1d;
 	color-scheme: dark;
 }
 @media (max-width: 1023px) {
@@ -252,6 +258,8 @@
 	--lb-chip-bg-a: 14%;
 	--lb-chip-fg-s: 60%;
 	--lb-chip-fg-l: 33%;
+	--lb-zcard-paper: #fefefe;
+	--lb-zcard-ink: #1d1d1d;
 	color-scheme: light;
 }
 
@@ -14867,6 +14875,59 @@ button.lb-props__eye:hover {
 	padding: 0 4px;
 }
 
+/* Every skill tree in the vault, and the form that makes one, in Settings › Skill trees
+ * (TreeList.tsx). Rows are the syllabus list's; the makers are checkboxes in a wrapping grid. */
+.lb-tree-list__name {
+	flex: 1;
+	min-width: 0;
+	padding: 3px 6px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-tree-list__about {
+	flex: none;
+	max-width: 45%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 11.5px;
+	color: var(--lb-text-faint);
+}
+.lb-tree-make {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 6px;
+}
+.lb-tree-make__from {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: 2px 12px;
+	margin: 0;
+	border: 0;
+	padding: 0 4px;
+}
+.lb-tree-make__from > legend {
+	padding: 0 0 4px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-tree-make__maker,
+.lb-tree-make__shared {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding: 2px 0;
+	font-size: 12.5px;
+	cursor: pointer;
+}
+.lb-tree-make__shared {
+	padding: 0 4px;
+}
+
 /* The maze's settings in Settings (tree/LayoutFields.tsx), the same rows as the layout tuner's. */
 .lb-tree-advanced {
 	padding: 10px 0 4px;
@@ -15439,4 +15500,1079 @@ button.lb-props__eye:hover {
 }
 .lb-upnext__row--later {
 	opacity: 0.5;
+}
+
+/* ------------------------------------------------------------- zettelkasten */
+/*
+ * A Zettelkasten box (packages/zettelkasten, docs/zettelkasten-plan.md): its cards, the stack it opens
+ * on, and its bar in the dock's place.
+ *
+ * A card is a 5 × 8 index card drawn as the board draws a sticky note (canvas/shapes/note/paper.ts):
+ * flat paper with square corners, a hairline edge and a soft shadow under its lower half, and the
+ * note's handwritten face at a label's size and leading. Its type is measured against the card
+ * (`cqw` of `.lb-zcard-frame`), so the same card reads the same at 560 px on the table and at
+ * whatever width the stack gives it: 22 px on a 560 px card, as a sticky's label is on the board.
+ * A note longer than its card is written smaller until it fits (`--zfit`, card/fit.ts).
+ */
+.lb-zcard-frame {
+	--zc: calc(100cqw / 560);
+	position: relative;
+	container-type: inline-size;
+	width: 100%;
+	height: 100%;
+}
+.lb-zcard {
+	position: relative;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	padding: calc(36 * var(--zc)) calc(34 * var(--zc)) calc(26 * var(--zc));
+	overflow: hidden;
+	background: var(--lb-zcard-paper);
+	color: var(--lb-zcard-ink);
+	/* The sticky's edge: only enough to keep pale paper apart from a pale board. */
+	box-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%);
+	font-family: var(--tl-font-draw, 'tldraw_draw', sans-serif);
+}
+/* The sticky's shadow (`.tl-note__shadow`), under the card: drawn in its own element, behind it. */
+.lb-zcard-frame > .tl-note__shadow {
+	z-index: 0;
+}
+/* The number, small in the top corner, where it costs the note no room; on a strip of the pile it is
+   all that shows (`--zs-id`, stack/pile.ts). */
+.lb-zcard__id {
+	position: absolute;
+	top: calc(10 * var(--zc));
+	left: calc(13 * var(--zc));
+	font-size: max(calc(15 * var(--zc)), 10px);
+	line-height: 1;
+	opacity: calc(0.5 * var(--zs-id, 1));
+	font-variant-numeric: tabular-nums;
+	transition: opacity 200ms ease-out;
+}
+.lb-zcard__body {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	/* A sticky's label size and leading, never smaller than reads on a phone, unless the note is too
+	   long for its card. */
+	font-size: calc(max(calc(22 * var(--zc)), 15px) * var(--zfit, 1));
+	line-height: 1.35;
+}
+.lb-zstack__front .lb-zcard__body,
+.lb-zcard[data-editing] .lb-zcard__body {
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+/* tldraw draws a label's text over its shape (absolute, full size); on a card it flows under the id. */
+.lb-zcard .lb-zcard__text {
+	position: relative;
+	top: auto;
+	left: auto;
+	display: block;
+	width: 100%;
+	height: auto;
+	min-height: 100%;
+	color: inherit;
+	font-family: inherit;
+	white-space: pre-wrap;
+}
+.lb-zcard__text.tl-rich-text-editor {
+	cursor: text;
+}
+/* Wherever the card is drawn, its own type: the Help page's paragraphs and headings stay outside it. */
+.lb-zcard .lb-zcard__text p {
+	margin: 0;
+	font-size: 1em;
+	line-height: inherit;
+	color: inherit;
+	/* Set as a block, the way a card is written out fair; a title stays to the left. */
+	text-align: justify;
+	hyphens: auto;
+}
+/* A heading as the first line is the note's title (card/text.ts): a sticky's `xl` against its `m`. */
+.lb-zcard .lb-zcard__text h1,
+.lb-zcard .lb-zcard__text h2,
+.lb-zcard .lb-zcard__text h3 {
+	margin: 0 0 0.2em;
+	font-size: 1.45em;
+	font-weight: normal;
+	line-height: 1.2;
+	color: inherit;
+	text-align: start;
+}
+.lb-zcard__empty {
+	margin: 0;
+	opacity: 0.45;
+}
+/* Being written on: the canvas's selection blue round the paper. */
+.lb-zcard[data-editing] {
+	box-shadow: 0 0 0 2px var(--lb-accent);
+}
+.lb-zcard--gap {
+	background: transparent;
+	box-shadow: none;
+	outline: 1.5px dashed var(--lb-text-faint);
+	outline-offset: -1.5px;
+	color: var(--lb-text-dim);
+}
+
+/*
+ * What ties a note to the rest of the box (packages/zettelkasten/src/links.ts): links, keywords and
+ * sources. Drawn as the board's option chips are (`.lb-chip`): a tint with the colour in the text, at
+ * the card's own size and in its hand. The paper is the same light sheet in both themes, so the three
+ * hues are fixed: blue for a link (the selection's), green for a keyword, brown for a source.
+ */
+.lb-zcard {
+	--zk-link: 214 68%;
+	--zk-keyword: 152 42%;
+	--zk-cite: 28 58%;
+}
+.lb-zlink,
+.lb-zlink-token {
+	border-radius: calc(3 * var(--zc));
+	background: hsl(var(--zk-link) 50% / 13%);
+	color: hsl(var(--zk-link) 36%);
+}
+.lb-zlink {
+	all: unset;
+	display: inline;
+	padding: 0 0.18em;
+	border-radius: calc(3 * var(--zc));
+	background: hsl(var(--zk-link) 50% / 13%);
+	color: hsl(var(--zk-link) 36%);
+	font: inherit;
+	cursor: pointer;
+	pointer-events: all;
+	white-space: nowrap;
+}
+.lb-zlink:hover {
+	background: hsl(var(--zk-link) 50% / 22%);
+}
+.lb-zlink--missing {
+	background: rgb(0 0 0 / 5%);
+	color: rgb(0 0 0 / 45%);
+	text-decoration: line-through;
+}
+.lb-zcard__foot {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	gap: calc(5 * var(--zc));
+	margin-top: calc(10 * var(--zc));
+	font-size: max(calc(15 * var(--zc)), 12px);
+	line-height: 1.2;
+}
+/* A finger needs more than a small card's chip to aim at. */
+@media (pointer: coarse) {
+	.lb-zchip__go,
+	.lb-zchip--add {
+		min-height: 26px;
+	}
+	.lb-zchip--add {
+		min-width: 34px;
+	}
+}
+.lb-zcard__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(5 * var(--zc));
+	/* Two rows at most: a card is a card, not a list of its links. Room above and to the right, inside
+	   the clip, for a chip's remove badge. */
+	max-height: calc(2 * 1.2em + 4 * 2 * var(--zc) + 5 * var(--zc) + 8 * var(--zc));
+	overflow: hidden;
+	padding: calc(8 * var(--zc)) calc(8 * var(--zc)) 0 0;
+	margin: calc(-8 * var(--zc)) calc(-8 * var(--zc)) 0 0;
+}
+.lb-zchip {
+	--zk-hue: var(--zk-link);
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	border-radius: calc(4 * var(--zc));
+	background: hsl(var(--zk-hue) 50% / 13%);
+	color: hsl(var(--zk-hue) 32%);
+}
+.lb-zchip[data-kind='keyword'] {
+	--zk-hue: var(--zk-keyword);
+}
+.lb-zchip[data-kind='cite'] {
+	--zk-hue: var(--zk-cite);
+}
+.lb-zchip--missing {
+	background: rgb(0 0 0 / 5%);
+	color: rgb(0 0 0 / 45%);
+	text-decoration: line-through;
+}
+.lb-zchip__go,
+.lb-zchip__remove,
+.lb-zchip--add {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	gap: calc(4 * var(--zc));
+	min-width: 0;
+	cursor: pointer;
+	pointer-events: all;
+	font: inherit;
+}
+.lb-zchip__go {
+	padding: calc(2 * var(--zc)) calc(7 * var(--zc));
+}
+.lb-zchip__label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-zchip svg {
+	flex: none;
+	width: 0.9em;
+	height: 0.9em;
+	stroke-width: 2.25;
+}
+.lb-zchip:hover {
+	background: hsl(var(--zk-hue) 50% / 22%);
+}
+/*
+ * Taking a chip off, on the card in front: a small badge over the chip's corner, shown on hover, on
+ * keyboard focus, and always where nothing can hover. Over the chip rather than beside it, so that
+ * showing it never moves the chips after it: a row that shifts under the pointer between press and
+ * release sends the click to the wrong chip.
+ */
+.lb-zchip__remove {
+	position: absolute;
+	top: calc(-7 * var(--zc));
+	right: calc(-7 * var(--zc));
+	justify-content: center;
+	width: max(calc(17 * var(--zc)), 14px);
+	height: max(calc(17 * var(--zc)), 14px);
+	border-radius: 50%;
+	background: var(--lb-zcard-paper);
+	box-shadow: 0 0 0 1px hsl(var(--zk-hue) 40% / 45%);
+	visibility: hidden;
+}
+.lb-zchip__remove svg {
+	width: 70%;
+	height: 70%;
+}
+.lb-zchip:hover .lb-zchip__remove,
+.lb-zchip:has(:focus-visible) .lb-zchip__remove {
+	visibility: visible;
+}
+@media (hover: none) {
+	.lb-zchip__remove {
+		visibility: visible;
+	}
+}
+.lb-zchip--add {
+	justify-content: center;
+	padding: calc(2 * var(--zc)) calc(7 * var(--zc));
+	border-radius: calc(4 * var(--zc));
+	border: 1px dashed rgb(0 0 0 / 25%);
+	color: rgb(0 0 0 / 50%);
+}
+.lb-zchip--add:hover,
+.lb-zchip--add:focus-visible {
+	border-color: hsl(var(--zk-link) 50%);
+	color: hsl(var(--zk-link) 36%);
+}
+.lb-zchip--add svg {
+	width: 0.9em;
+	height: 0.9em;
+}
+.lb-zcard__from {
+	opacity: 0.55;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-zcard__from .lb-zlink {
+	background: none;
+	color: inherit;
+	padding: 0;
+	text-decoration: underline;
+	text-decoration-color: rgb(0 0 0 / 30%);
+	text-underline-offset: 0.15em;
+}
+/* The chips' **+**: the app's field and menu, since it is a control and not the card's writing. */
+.lb-zpick {
+	position: relative;
+	display: inline-flex;
+	font-family: var(--lb-font);
+	font-size: 13px;
+}
+.lb-zpick__input {
+	width: 220px;
+	height: 28px;
+	padding: 0 9px;
+	border: 1px solid var(--lb-accent);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	outline: none;
+}
+.lb-zpick__rows {
+	position: fixed;
+	z-index: 400;
+	min-width: 280px;
+	max-height: 260px;
+	overflow-y: auto;
+	padding: 3px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	box-shadow: var(--lb-shadow-1);
+	color: var(--lb-text);
+}
+.lb-zpick__row {
+	display: flex;
+	font-family: var(--lb-font);
+	font-size: 13px;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 8px;
+	border-radius: 5px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.lb-zpick__row--on {
+	background: var(--lb-accent-tint);
+}
+.lb-zpick__row svg {
+	flex: none;
+	width: 14px;
+	height: 14px;
+	color: var(--lb-text-dim);
+}
+.lb-zpick__label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-zpick__detail {
+	margin-left: auto;
+	padding-left: 12px;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+/* The index: a keyword to a line, A to Z, and the numbers of the notes filed under it. */
+.lb-zcard .lb-zindex__row {
+	margin: 0 0 0.3em;
+	text-align: start;
+	border-radius: calc(3 * var(--zc));
+	transition: background-color 400ms ease-out;
+}
+.lb-zindex__row[data-picked] {
+	background: hsl(var(--zk-keyword) 50% / 16%);
+	box-shadow: 0 0 0 calc(4 * var(--zc)) hsl(var(--zk-keyword) 50% / 16%);
+}
+.lb-zindex__notes .lb-zlink {
+	margin-left: 0.3em;
+}
+/* A source: who, what (the title as a note's title is), when, and a note on it. */
+.lb-zcard .lb-zsource__author {
+	text-align: start;
+}
+.lb-zcard .lb-zsource__title {
+	margin: 0 0 0.25em;
+	font-size: 1.45em;
+	font-weight: normal;
+	line-height: 1.2;
+	color: inherit;
+}
+.lb-zsource__year {
+	font-size: 0.7em;
+	opacity: 0.7;
+}
+.lb-zcard .lb-zsource__note {
+	opacity: 0.75;
+}
+.lb-zsource__form {
+	display: flex;
+	flex-direction: column;
+	gap: calc(6 * var(--zc));
+}
+.lb-zsource__field {
+	all: unset;
+	box-sizing: border-box;
+	width: 100%;
+	padding: calc(2 * var(--zc)) 0;
+	border-bottom: 1px dashed rgb(0 0 0 / 22%);
+	font: inherit;
+	color: inherit;
+	pointer-events: all;
+}
+.lb-zsource__field::placeholder {
+	color: rgb(0 0 0 / 35%);
+}
+.lb-zsource__field:focus {
+	border-bottom-color: var(--lb-accent);
+}
+.lb-zsource__field--title {
+	font-size: 1.45em;
+	line-height: 1.2;
+}
+textarea.lb-zsource__field {
+	resize: none;
+	white-space: pre-wrap;
+}
+
+/*
+ * The stack: over the board, under the box's bar (the dock is 300), on the board's own dotted paper
+ * (the Help page's `.lb-demo` paper, which is the board's).
+ */
+.lb-zstack {
+	position: absolute;
+	inset: 0;
+	z-index: 250;
+	display: grid;
+	place-items: center;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+	pointer-events: all;
+	touch-action: none;
+	overflow: hidden;
+	font-family: var(--lb-font);
+}
+.lb-zstack-open .tlui-rich-text-toolbar {
+	display: none;
+}
+.lb-zstack__pile {
+	/* As wide as fits across, and short enough that the pile above it and the bar below fit too. */
+	--zs-w: min(
+		820px,
+		calc(100% - 48px - var(--fl-left, 0px) - var(--fl-right, 0px)),
+		calc((100dvh - 200px) * 8 / 5 / 1.4)
+	);
+	position: relative;
+	width: var(--zs-w);
+	aspect-ratio: 8 / 5;
+	/* Room above for the cards behind (pile.ts's RISE), and below for the bar. */
+	margin: calc(var(--zs-w) * 5 / 8 * 0.4) 0 0 calc((var(--fl-left, 0px) - var(--fl-right, 0px)));
+}
+/*
+ * Each card is in a slot (stack/pile.ts, which sets its transform, opacity, stacking and shade inline):
+ * 0 in front, 1 and on stepping up behind it, -1 swung away. Moving between slots is a transition, so a
+ * flip is every card moving one slot at once, and a flip begun during another retargets it: a fast
+ * scroll riffles. A card past either end of the pile is held at the last slot, out of sight, until it
+ * leaves the window (StackView), so nothing is taken out mid-flight.
+ *
+ * The flip: the front card swings round a pivot off its top right corner, up over the pile and down
+ * the far side, fading as it goes, while the next card comes forward. Going back plays it in reverse.
+ * It turns in the page's plane, so the cards stack by z-index alone and none can be drawn through another.
+ */
+.lb-zstack__card {
+	--zs-ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+	position: absolute;
+	inset: 0;
+	transform-origin: 50% 0;
+	transition:
+		transform 380ms var(--zs-ease),
+		opacity 380ms linear;
+	will-change: transform, opacity;
+}
+/* Swinging away it keeps an even pace and fades as it goes, so it is seen to leave rather than vanish
+   off the top; coming back it lands as the pile's cards do, quick then settling. */
+.lb-zstack__card[data-away] {
+	transition:
+		transform 440ms cubic-bezier(0.4, 0.1, 0.4, 1),
+		opacity 440ms cubic-bezier(0.5, 0, 0.75, 0.4);
+}
+/* The cards behind are in the pile's shade, a little more each card further back. */
+.lb-zstack__card .lb-zcard::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: #000;
+	opacity: var(--zs-shade, 0);
+	pointer-events: none;
+	transition: opacity 200ms var(--zs-ease);
+}
+/* Behind the front card only a strip shows, and on the first strips the card's number. */
+.lb-zstack__card .lb-zcard__body {
+	transition: opacity 140ms ease-out;
+}
+.lb-zstack__card[data-behind] .lb-zcard__body {
+	opacity: 0;
+}
+.lb-zstack__position {
+	position: absolute;
+	top: calc(var(--fl-edge, 12px) + 8px);
+	right: calc(var(--fl-right, 0px) + var(--fl-edge, 12px) + 64px);
+	color: var(--lb-text-dim);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+.lb-zstack__confirm {
+	position: absolute;
+	z-index: 20;
+	left: 50%;
+	bottom: 16px;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border-radius: 14px;
+	background: var(--lb-panel);
+	color: var(--lb-text);
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+	font-family: var(--lb-font);
+	font-size: 13px;
+	white-space: nowrap;
+}
+.lb-zstack__confirm p {
+	margin: 0 4px 0 0;
+}
+.lb-zstack__empty {
+	max-width: 360px;
+	text-align: center;
+	color: var(--lb-text);
+}
+.lb-zstack__empty p {
+	margin: 0 0 8px;
+}
+.lb-zstack__hint {
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	margin-bottom: 18px !important;
+}
+
+/*
+ * Following a chain of thought (packages/zettelkasten/src/stack/ChainView.tsx): on the stack's paper,
+ * the path down the middle, and beside each card, out of focus, the cards it links to. The turns taken
+ * are a trail in the board pill's place at the top.
+ */
+.lb-zchain {
+	--zch-w: min(560px, calc(100vw - var(--fl-left, 0px) - var(--fl-right, 0px) - 360px));
+	--zch-peek: 230px;
+	position: absolute;
+	inset: 0;
+	z-index: 250;
+	background-color: var(--lb-canvas);
+	background-image: radial-gradient(circle, var(--lb-dot) 1px, transparent 1.2px);
+	background-size: 24px 24px;
+	pointer-events: all;
+	touch-action: pan-y;
+	font-family: var(--lb-font);
+}
+.lb-zchain__trail {
+	position: absolute;
+	z-index: 2;
+	/* Under the tab strip, which runs across the top. */
+	top: calc(var(--fl-edge, 12px) + 46px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	max-width: calc(100% - 200px);
+	padding: 4px 4px 4px 10px;
+	overflow-x: auto;
+	border-radius: 999px;
+	background: var(--lb-panel);
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+	color: var(--lb-text);
+	font-size: 13px;
+	white-space: nowrap;
+	scrollbar-width: none;
+}
+.lb-zchain__step {
+	display: inline-flex;
+	align-items: center;
+}
+.lb-zchain__sep {
+	margin: 0 2px;
+	color: var(--lb-text-faint);
+}
+.lb-zchain__turn,
+.lb-zchain__close {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 26px;
+	padding: 0 8px;
+	border-radius: 999px;
+	color: var(--lb-text-dim);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+.lb-zchain__turn:hover,
+.lb-zchain__close:hover {
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+}
+.lb-zchain__turn--here {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-zchain__close {
+	width: 26px;
+	padding: 0;
+	margin-left: 4px;
+}
+.lb-zchain__close svg {
+	width: 15px;
+	height: 15px;
+}
+.lb-zchain__scroll {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 112px 0 140px;
+	scrollbar-width: thin;
+}
+.lb-zchain__row {
+	display: grid;
+	grid-template-columns: var(--zch-w) var(--zch-peek);
+	justify-content: center;
+	align-items: start;
+	gap: 36px;
+	margin: 0 0 28px calc((var(--fl-left, 0px) - var(--fl-right, 0px)));
+	/* The path in the middle of the screen, its links to the right of it. */
+	padding-left: calc(var(--zch-peek) + 36px);
+}
+.lb-zchain__card {
+	position: relative;
+	width: var(--zch-w);
+	aspect-ratio: 8 / 5;
+}
+/* A thread from a card to what it links to. */
+.lb-zchain__row:has(.lb-zchain__peek) .lb-zchain__card::after {
+	content: '';
+	position: absolute;
+	top: 34px;
+	left: 100%;
+	width: 36px;
+	border-top: 1.5px dashed var(--lb-text-faint);
+	pointer-events: none;
+}
+.lb-zchain__side {
+	position: relative;
+	min-height: calc(var(--zch-peek) * 5 / 8 + 2 * 30px);
+}
+.lb-zchain__peek {
+	position: absolute;
+	top: calc(var(--peek) * 30px);
+	left: calc(var(--peek) * 12px);
+	width: var(--zch-peek);
+	aspect-ratio: 8 / 5;
+	z-index: calc(10 - var(--peek));
+	filter: blur(1.6px) saturate(0.85);
+	opacity: 0.78;
+	cursor: pointer;
+	transition:
+		filter 160ms ease-out,
+		opacity 160ms ease-out,
+		transform 160ms ease-out;
+}
+/* The card is shown, not used: a press anywhere on it takes the link. */
+.lb-zchain__peek * {
+	pointer-events: none !important;
+}
+.lb-zchain__peek:hover,
+.lb-zchain__peek:focus-visible {
+	z-index: 11;
+	filter: none;
+	opacity: 1;
+	transform: translateX(-6px);
+	outline: none;
+}
+.lb-zchain__peek:focus-visible .lb-zcard {
+	box-shadow: 0 0 0 2px var(--lb-accent);
+}
+.lb-zchain__more {
+	position: absolute;
+	top: calc(var(--zch-peek) * 5 / 8 + 2 * 30px + 8px);
+	left: 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-zchain__end {
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	text-align: center;
+}
+/* A phone: the path takes most of the width, the links a narrow strip beside it. */
+@media (max-width: 767px) {
+	.lb-zchain {
+		--zch-w: calc(100vw - 132px);
+		--zch-peek: 92px;
+	}
+	.lb-zchain__row {
+		gap: 14px;
+		padding-left: 0;
+	}
+	.lb-zchain__row:has(.lb-zchain__peek) .lb-zchain__card::after {
+		width: 14px;
+		top: 20px;
+	}
+	.lb-zchain__peek {
+		top: calc(var(--peek) * 20px);
+		left: calc(var(--peek) * 6px);
+	}
+	.lb-zchain__side {
+		min-height: calc(var(--zch-peek) * 5 / 8 + 2 * 20px);
+	}
+	.lb-zchain__trail {
+		top: calc(var(--fl-edge, 12px) + 52px);
+		max-width: calc(100% - 24px);
+	}
+	.lb-zchain__scroll {
+		padding-top: 116px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-zchain__peek {
+		transition: none;
+	}
+}
+
+/*
+ * The box as a graph (packages/zettelkasten/src/stack/GraphView.tsx): a canvas over the board that
+ * draws its own dotted paper so it moves with the graph's camera, and what it shows in a pill at the top.
+ */
+.lb-zgraph {
+	position: absolute;
+	inset: 0;
+	z-index: 250;
+	background: var(--lb-canvas);
+	pointer-events: all;
+	font-family: var(--lb-font);
+}
+.lb-zgraph__canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	touch-action: none;
+	cursor: grab;
+}
+.lb-zgraph__canvas:active {
+	cursor: grabbing;
+}
+.lb-zgraph__canvas--on {
+	cursor: pointer;
+}
+.lb-zgraph__bar {
+	position: absolute;
+	z-index: 2;
+	/* Under the tab strip, which runs across the top. */
+	top: calc(var(--fl-edge, 12px) + 46px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	max-width: calc(100% - 24px);
+	padding: 4px;
+	overflow-x: auto;
+	border-radius: 999px;
+	background: var(--lb-panel);
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+	color: var(--lb-text);
+	font-size: 13px;
+	white-space: nowrap;
+	scrollbar-width: none;
+}
+.lb-zgraph__layer,
+.lb-zgraph__close {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 10px;
+	border-radius: 999px;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-zgraph__layer[aria-pressed='true'] {
+	color: var(--lb-text);
+}
+.lb-zgraph__layer:hover,
+.lb-zgraph__close:hover {
+	background: var(--lb-bg-raised);
+}
+.lb-zgraph__layer:focus-visible,
+.lb-zgraph__close:focus-visible {
+	box-shadow: 0 0 0 2px var(--lb-accent);
+}
+/* A swatch of each layer's line or dot, faded while the layer is off. */
+.lb-zgraph__key {
+	display: inline-block;
+	width: 16px;
+	height: 0;
+	border-top: 1.5px solid var(--lb-text-faint);
+	opacity: 0.35;
+}
+.lb-zgraph__layer[aria-pressed='true'] .lb-zgraph__key {
+	opacity: 1;
+}
+.lb-zgraph__key--links {
+	border-top: 1.5px dashed var(--lb-accent);
+}
+.lb-zgraph__key--keywords,
+.lb-zgraph__key--sources {
+	width: 8px;
+	height: 8px;
+	border: 0;
+	background: hsl(152 42% 45%);
+}
+.lb-zgraph__key--sources {
+	border-radius: 50%;
+	background: hsl(28 58% 52%);
+}
+.lb-zgraph__close {
+	width: 26px;
+	padding: 0;
+	margin-left: 2px;
+}
+.lb-zgraph__close svg {
+	width: 15px;
+	height: 15px;
+}
+.lb-zgraph__empty,
+.lb-zgraph__hint {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 13px;
+	pointer-events: none;
+}
+.lb-zgraph__empty {
+	top: 45%;
+}
+.lb-zgraph__hint {
+	bottom: calc(var(--fl-edge, 12px) + 76px);
+}
+/* Space: the card pointed at, over the graph, as Quick Look shows a shape. */
+.lb-zgraph__peek {
+	position: absolute;
+	z-index: 3;
+	right: calc(var(--fl-right, 0px) + 24px);
+	bottom: calc(var(--fl-edge, 12px) + 84px);
+	width: min(440px, calc(100% - 48px));
+	aspect-ratio: 8 / 5;
+}
+.lb-zgraph__peekword {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	margin: 0;
+	border-radius: 12px;
+	background: var(--lb-panel);
+	color: var(--lb-text);
+	font-size: 18px;
+}
+.lb-zgraph__list {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+@media (max-width: 767px) {
+	.lb-zgraph__bar {
+		top: calc(var(--fl-edge, 12px) + 52px);
+	}
+	.lb-zgraph__hint {
+		display: none;
+	}
+}
+
+/* "Cite in a box…" (packages/zettelkasten/src/cite/CiteDialog.tsx): drawn as the app's dialogs are
+   (`.lb-dialog`, `.lb-modal`): raised paper, a hairline, and a scrim that dims the board. */
+.lb-zcite {
+	position: fixed;
+	inset: 0;
+	z-index: 500;
+	display: grid;
+	place-items: center;
+	font-family: var(--lb-font);
+	pointer-events: all;
+}
+.lb-zcite__scrim {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 45%);
+}
+.lb-zcite__panel {
+	position: relative;
+	width: min(420px, calc(100vw - 32px));
+	max-height: min(560px, calc(100vh - 64px));
+	overflow-y: auto;
+	padding: 16px 18px 18px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+	box-shadow: var(--lb-shadow-2);
+	color: var(--lb-text);
+	font-size: 14px;
+}
+.lb-zcite__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+.lb-zcite__head h2 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+.lb-zcite__close {
+	all: unset;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-zcite__close:hover {
+	background: var(--lb-accent-tint);
+	color: var(--lb-text);
+}
+.lb-zcite__close svg {
+	width: 16px;
+	height: 16px;
+}
+.lb-zcite__text {
+	margin: 0 0 12px;
+	color: var(--lb-text-dim);
+	line-height: 1.45;
+}
+.lb-zcite__text strong {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-zcite__problem {
+	margin: 0 0 10px;
+	color: var(--lb-danger, #e5484d);
+}
+.lb-zcite__boxes {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-zcite__box {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 9px 10px;
+	border-radius: 8px;
+	cursor: pointer;
+}
+.lb-zcite__box:hover,
+.lb-zcite__box:focus-visible {
+	background: var(--lb-accent-tint);
+}
+.lb-zcite__box:disabled {
+	opacity: 0.5;
+	cursor: progress;
+}
+.lb-zcite__box svg {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	color: var(--lb-text-dim);
+}
+
+/* The box's bar: the dock's pill, with a field to go to a note. On a phone it has more tools than
+   width, so it scrolls inside the pill, as the board's dock does when cramped. */
+.lb-zdock .lb-dock {
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.lb-zdock .lb-dock::-webkit-scrollbar {
+	display: none;
+}
+.lb-zdock__jump input {
+	width: 92px;
+	height: calc(var(--fl-tool) - 8px);
+	margin: 0 4px;
+	padding: 0 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 13px;
+}
+.lb-zdock__jump input:focus {
+	outline: none;
+	border-color: var(--lb-accent);
+}
+.lb-zdock__notice {
+	pointer-events: auto;
+	padding: 6px 12px;
+	border-radius: 12px;
+	background: var(--lb-panel);
+	color: var(--lb-text);
+	font-size: 13px;
+	box-shadow: var(--fl-shadow-sm, 0 6px 16px rgb(0 0 0 / 30%));
+}
+
+/* A phone: the pile sits a little above the middle, clear of the bar, rather than pushed below it;
+   the count gives way to the board pill and the agent button across the top. */
+@media (max-width: 767px) {
+	.lb-zstack__pile {
+		margin: calc(var(--zs-w) * 5 / 8 * 0.4) 0 14vh;
+	}
+	.lb-zstack__position {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lb-zstack__card,
+	.lb-zstack__card[data-away],
+	.lb-zstack__card .lb-zcard__id,
+	.lb-zstack__card .lb-zcard::after,
+	.lb-zstack__card .lb-zcard__body {
+		transition: none;
+	}
+}
+
+/* The Help page's stack (help/sections/Zettelkasten.tsx): the real cards, smaller. */
+.lb-demo--zstack {
+	height: 360px;
+}
+.lb-demo--zstack .lb-demo__hint {
+	z-index: 1;
+}
+.lb-demo__zpile {
+	position: absolute;
+	left: 50%;
+	top: 104px;
+	width: 320px;
+	aspect-ratio: 8 / 5;
+	transform: translateX(-50%);
+}
+/* A small card keeps the card's proportions rather than the phone's reading floor. */
+.lb-demo__zpile .lb-zcard__body {
+	font-size: calc(22 * var(--zc) * var(--zfit, 1));
 }

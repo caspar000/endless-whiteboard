@@ -22,6 +22,7 @@
     "@lifeboard/schema": "workspace:*",
     "@lifeboard/skill-tree": "workspace:*",
     "@lifeboard/syllabus": "workspace:*",
+    "@lifeboard/zettelkasten": "workspace:*",
     "@tldraw/tlschema": "5.5.2",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",

@@ -14,6 +14,7 @@ import {
 	NODE_FIELDS,
 	reconcile,
 	removeNodeDef,
+	shapeFieldsOf,
 	updateTreeMeta,
 	upsertNodeDef,
 	upsertNodeDefs,
@@ -199,7 +200,10 @@ export function syncBoard(editor: Editor): void {
 	const shapes = editor.getCurrentPageShapes()
 	const byTree = new Map<string, SkillShape[]>()
 	for (const shape of shapes) if (live(shape)) byTree.set(shape.props.treeId, [...(byTree.get(shape.props.treeId) ?? []), shape])
-	const headers = shapes.filter(liveHeader)
+	// A deleted tree's views go with it, drafts too: nothing is left to show.
+	const deadHeaders = shapes.filter((s): s is TreeShape => isTree(s) && !!getTreeDef(s.props.treeId)?.deleted)
+	const dead = new Set(deadHeaders.map((h) => h.id))
+	const headers = shapes.filter(liveHeader).filter((h) => !dead.has(h.id))
 
 	const removals: SkillShape[] = []
 	const updates: { shape: SkillShape; def: NodeDef }[] = []
@@ -225,7 +229,7 @@ export function syncBoard(editor: Editor): void {
 		return [{ id: header.id, type: TREE_TYPE, props: { name: def.name, goal: def.goal, sectors: def.sectors, rings: def.rings } }]
 	})
 	// Every header is a view, a draft's too: reviewing a draft is when you most want to look inside it.
-	const views = shapes.filter((s): s is TreeShape => isTree(s) && !!s.props.treeId)
+	const views = shapes.filter((s): s is TreeShape => isTree(s) && !!s.props.treeId && !dead.has(s.id))
 	const view = planViews(editor, views, new Set(removals.map((s) => s.id)))
 	for (const treeId of view.trees) redraw.add(treeId)
 	// A tree whose nodes require another tree's draws those arrows too, so it redraws with that tree.
@@ -245,22 +249,17 @@ export function syncBoard(editor: Editor): void {
 		if (!b || (Math.abs(b.w - size) < 0.5 && Math.abs(b.h - size) < 0.5)) return []
 		return [{ id: s.id, type: SKILL_TYPE, x: s.x + (b.w - size) / 2, y: s.y + (b.h - size) / 2, props: { w: size, h: size } }]
 	})
-	if (!removals.length && !updates.length && !headerUpdates.length && !resizes.length && planIsEmpty(view)) return refreshStale(editor)
+	if (!deadHeaders.length && !removals.length && !updates.length && !headerUpdates.length && !resizes.length && planIsEmpty(view)) return refreshStale(editor)
 
 	let laidOutNew: ViewContents[] = []
 	syncing = true
 	try {
 		editor.run(
 			() => {
-				if (removals.length) editor.deleteShapes(removals.map((s) => s.id))
+				if (removals.length || deadHeaders.length) editor.deleteShapes([...removals, ...deadHeaders].map((s) => s.id))
 				editor.updateShapes([
-					...updates.map(({ shape, def }) => {
-						// The draft mark lives in the vault only; the shape reads it from there.
-						const { nodeId, draft, ...props } = def
-						void nodeId
-						void draft
-						return { id: shape.id, type: SKILL_TYPE, props }
-					}),
+					// The draft mark and the path live in the vault only; the shape reads them from there.
+					...updates.map(({ shape, def }) => ({ id: shape.id, type: SKILL_TYPE, props: shapeFieldsOf(def) })),
 					...headerUpdates,
 					...resizes,
 				] as never)

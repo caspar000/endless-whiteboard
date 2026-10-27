@@ -87,7 +87,7 @@ export function registerToolCommands(): void {
 
 	const nodeKbds = nodeToolKbds()
 	for (const def of getNodeDefinitions()) {
-		if (def.deprecated) continue
+		if (def.deprecated || def.offered === false) continue
 		const toolId = toolIdForNodeType(def.type)
 		const kbd = nodeKbds.get(toolId)
 		registerCommand(

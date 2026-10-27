@@ -26,6 +26,29 @@ export function SkillTrees({ go }: SectionProps) {
 				</p>
 			</Section>
 
+			<Section title="Making and deleting a tree">
+				<p>
+					A tree comes into your vault only when you make one. Settings › Extensions › Skill trees lists
+					every tree, and <strong>Make a skill tree</strong> there makes one from what you tick: a{' '}
+					<Jump to="syllabus" go={go}>
+						syllabus
+					</Jump>
+					, several, or nothing for an empty tree with only a root. Several each make a tree; tick{' '}
+					<strong>Hang them from one shared root</strong> and name it to have them grow from one root
+					instead. <code>Make a skill tree</code> does the same from ⌘K, one syllabus at a time.
+				</p>
+				<p>
+					A tree you make is on no board and under no pillar. <code>Show a skill tree on this board</code>{' '}
+					puts it on a board, to the right of what is there; Mastery's builder hangs it under a pillar.
+				</p>
+				<p className="lb-help__aside">
+					<code>Delete a skill tree</code>, or × beside it in Settings, deletes it from your vault and from
+					every board that shows it, Mastery included, with the trees a shared root was made with. A tree
+					hung from it by hand stays, unhung. Ticks in syllabi stay. Deleting the last syllabus a tree was
+					made from deletes the tree too. Make it again and it comes back.
+				</p>
+			</Section>
+
 			<Section title="Everything, or the skill nodes">
 				<p>
 					A tree opens on <strong>everything</strong>: its skill nodes with their entries and works round
@@ -59,7 +82,7 @@ export function SkillTrees({ go }: SectionProps) {
 				<p className="lb-help__aside">
 					A tree's header card, which holds its view, isn't drawn. Settings › Extensions › Skill trees can
 					draw it again (to change where its view starts, or lay it out again with Re-calculate),
-					and sets what an import opens on. The whole-life board grows from You
+					and sets what a tree shown on a board opens on. The whole-life board grows from You
 					through a maze of hexagons, branch by branch, each arrow running along its corridor, the maze only
 					as big as the tree needs; under Advanced are its settings (the hexagons' size, cells to an only
 					child, the grid it grows in and more). With everything shown, every entry and work is a node of the

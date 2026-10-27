@@ -17,6 +17,7 @@ export {
 	isEntry,
 	isSkill,
 	isTree,
+	MASTERY,
 	SKILL_TYPE,
 	TREE_TYPE,
 	treeNodes,
@@ -29,6 +30,7 @@ export {
 } from './board'
 export {
 	registerTreeSource,
+	type TreeMaker,
 	type ConditionStatus,
 	type Evidence,
 	type RequirementContext,
@@ -40,7 +42,19 @@ export {
 export { evaluateTree, masteryOf, parseRequirements, type Condition, type NodeStatus, type TreeNode } from './requirements'
 export { prerequisitesOf } from './tree/prerequisites'
 export { treeStatus } from './tree/status'
-export { getTreeDef, getTreeDefs, replaceTreeDefs, setTreeDefsPersistence, updateTreeMeta, type NodeDef, type TreeDef, type TreeDefs } from './treeDefs'
+export {
+	forgetMaker,
+	getTreeDef,
+	getTreeDefs,
+	liveTreeDefs,
+	replaceTreeDefs,
+	setTreeDefsPersistence,
+	updateTreeMeta,
+	type NodeDef,
+	type TreeDef,
+	type TreeDefs,
+} from './treeDefs'
+export { deleteTree, EMPTY_TREE, makeTrees, type MadeTrees } from './treeMaking'
 export { firstTreeId, isMap, list, parseTrees, qualify, slug, text, type DocNode, type DocTree } from './treeYaml'
 export { boardHasTreeDraft, confirmTrees, discardTrees, importTrees, treeDoc, treeGoals, treePrefix } from './treeIO'
 export { syncBoard } from './treeSync'

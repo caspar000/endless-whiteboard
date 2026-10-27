@@ -105,6 +105,8 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 	syllabusItems: (value) => keyedBy(value, 'itemId'),
 	syllabusTracks: (value) => keyedBy(value, 'trackId'),
 	syllabusEvidence: (value) => keyedBy(value, 'itemId'),
+	// The tree each syllabus file came with, kept unused until a tree is made from the syllabus, keyed by tree id.
+	syllabusTreePlans: (value) => keyedBy(value, 'treeId'),
 	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
 	skillTrees: (value) =>
 		!!value &&

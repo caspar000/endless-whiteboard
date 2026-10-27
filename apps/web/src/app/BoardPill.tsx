@@ -9,7 +9,7 @@ import { useStaggerIn } from './useStaggerIn'
  * the menu and the AI button, showing the board you are on. Tapping it lists the open boards, each to
  * switch to, rename or close, then a new board and the way to all of them — the jobs of the tab strip
  * and its "+" (and the tab's double-click rename), in a list where every name has the width to be read.
- * Shown on every screen, like the tab strip; off a board it reads "All boards" on the home screen and
+ * Shown on every screen, like the tab strip; off a board it reads "All Boards" on the home screen and
  * "Boards" elsewhere.
  */
 export function BoardPill({
@@ -25,7 +25,7 @@ export function BoardPill({
 }: {
 	boards: readonly BoardMeta[]
 	tabs: readonly string[]
-	/** On the home screen, where All boards is the page you are on. */
+	/** On the home screen, where All Boards is the page you are on. */
 	home: boolean
 	activeBoardId: string | null
 	onSelect: (board: BoardMeta) => void
@@ -77,7 +77,7 @@ export function BoardPill({
 				onClick={() => setOpen((was) => !was)}
 			>
 				{active && <BoardBadge board={active} className="lb-pill__badge" />}
-				<span className="lb-pill__name">{active?.name ?? (home ? 'All boards' : 'Boards')}</span>
+				<span className="lb-pill__name">{active?.name ?? (home ? 'All Boards' : 'Boards')}</span>
 				<ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
 			</button>
 
@@ -156,7 +156,7 @@ export function BoardPill({
 						</button>
 						<button type="button" role="menuitem" className="lb-pill__action" onClick={pick(onAllBoards)}>
 							<LayoutGrid size={18} strokeWidth={1.75} aria-hidden="true" />
-							All boards
+							All Boards
 						</button>
 					</div>
 				</div>

@@ -138,17 +138,25 @@ export function Syllabus({ go }: SectionProps) {
 					<Jump to="skill-trees" go={go}>
 						Skill trees
 					</Jump>{' '}
-					on (Settings › Extensions), a syllabus's tree comes in with it,
-					and a tree view showing everything draws the syllabus's entries and works around the skill nodes
-					they are tagged to. Tag an item with a node's id and its write-ups count there. A node can ask
-					for a particular item done (<code>- item: adler/homer</code>), or a number of written-up items
-					tagged to it (<code>- count: {'{'} min: 3 {'}'}</code>, which can also filter by kind, medium or
-					method). Right-click an entry or work in a tree › Mark as done, or › Put a card on the board.
+					on (Settings › Extensions), you can make a skill tree from a syllabus: in Settings › Extensions ›
+					Skill trees, or with <code>Make a skill tree</code>. Nothing makes one for you; an import never
+					does. If the syllabus's file came with a tree, that is the tree you get. Otherwise you get a path:
+					the syllabus at the root and one node per entry along it, each lit once its entry is done, in
+					whatever order you do them. The entry's works hang from its node; right-click a work, or a node
+					whose entry has no works, › Mark as done.
+				</p>
+				<p>
+					A tree view showing everything draws the syllabus's entries and works around the skill nodes they
+					are tagged to. Tag an item with a node's id and its write-ups count there. A node can ask for a
+					particular item written up (<code>- item: adler/homer</code>), done (<code>- done: adler/homer</code>),
+					or a number of written-up items tagged to it (<code>- count: {'{'} min: 3 {'}'}</code>, which can
+					also filter by kind, medium or method). Right-click an entry or work in a tree › Mark as done, or ›
+					Put a card on the board.
 				</p>
 				<p className="lb-help__aside">
 					Every item in your vault is in one index, so a tree on one board lights up from items on another,
 					and a track can list items from anywhere. With Skill trees off, a syllabus still has its lists,
-					Up next and cards, and an import leaves its tree out.
+					Up next and cards.
 				</p>
 			</Section>
 
@@ -160,14 +168,14 @@ export function Syllabus({ go }: SectionProps) {
 					ones at the end. <strong>Add syllabus</strong> starts an empty one to fill from there.
 				</p>
 				<p>
-					A syllabus that is the only one feeding its tree shares the tree's name: rename either, here or
-					on a board, and the other follows, Mastery included. A goal with several syllabi, such as Film,
-					keeps its tree's own name.
+					A tree made from one syllabus shares its name: rename either, here or on a board, and the other
+					follows, Mastery included. A tree several syllabi feed, such as Film's, keeps its own name.
 				</p>
 				<p className="lb-help__aside">
-					Removing a syllabus asks first, and takes its entries, their works and their ticks with it. An
-					entry another syllabus also lists stays in the vault. Write-up notes stay on their boards. A
-					draft import shows up here once you confirm it.
+					Removing a syllabus asks first, and takes its entries, their works and their ticks with it, and
+					the skill trees made from it, off every board. A tree another syllabus still feeds stays. An entry
+					another syllabus also lists stays in the vault. Write-up notes stay on their boards. A draft
+					import shows up here once you confirm it.
 				</p>
 			</Section>
 
@@ -176,9 +184,9 @@ export function Syllabus({ go }: SectionProps) {
 					A whole syllabus, its tracks, entries and tree, can be written as one YAML document and
 					brought in with <code>Import syllabus YAML from the clipboard</code>, or by dropping a{' '}
 					<code>.yaml</code> file on the board. The agent can write one for you from a pasted list or a
-					chart. The entries go into your vault and the board gets a list of each track. Its tree goes into
-					your vault too (with Skill trees on): put it on a board when you want it with{' '}
-					<code>Show a skill tree on this board</code>. A file with only a tree in it shows the tree. An
+					chart. The entries go into your vault and the board gets a list of each track, and nothing else.
+					A tree in the file is kept with the syllabus, unused, until you make a skill tree from it. A file
+					with only a tree in it, and no tracks, is a tree, and shows as one. An
 					import arrives as a <strong>draft</strong>: dashed, and counting toward nothing until you press{' '}
 					<strong>Confirm</strong> on the bar at the top of the board. <strong>Discard</strong> takes it
 					all back out. The bar stays until you press one of the two.

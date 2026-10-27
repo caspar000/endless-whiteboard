@@ -294,14 +294,16 @@ export function Overview({ go }: SectionProps) {
 					<div className="lb-help__fact">
 						<h3>Boards and tabs</h3>
 						<p>
-							Boards are separate documents, listed under All boards and opened as tabs across the
-							top. The tabs stay there on every page, Settings and Help included, with All boards as
+							Boards are separate documents, listed under All Boards and opened as tabs across the
+							top. The tabs stay there on every page, Settings and Help included, with All Boards as
 							the first one, so any open board is a click away. An open tab keeps its board alive, which is what makes switching instant — and
 							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
-							with a middle click as in a browser; the board stays under All boards. A board’s card there
+							with a middle click as in a browser; the board stays under All Boards. A board’s card there
 							shows its actions over the preview as you point at it: star, rename, share, move and
 							delete, each named as you hover it; on a touch screen, tap the ⋯ instead. To delete
-							several at once, choose Select in All boards, click the boards, then Delete. ⌘\ slides the sidebar
+							several at once, choose Select in All Boards, click the boards, then Delete. The search box above
+							the cards finds a board by any words of its name; <kbd className="lb-kbd">/</kbd> jumps to it and
+							Escape clears it. ⌘\ slides the sidebar
 							out of the way, and the round button left in its corner brings it back. The coloured
 							square beside a board’s name, on its tab, in the sidebar and on its card, gives it a colour
 							and an icon: click it and search some 4,700 icons by what the board is for (“gym” finds the

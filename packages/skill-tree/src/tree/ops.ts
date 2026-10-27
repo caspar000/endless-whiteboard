@@ -124,9 +124,9 @@ export function insertTree(
 }
 
 /**
- * Draws one arrow per prerequisite of every node in a tree, replacing the ones drawn before. The
- * arrows are a picture of the requirements, never read back: what a node requires lives in its
- * `requires` alone, so tidying or deleting a line changes nothing about the tree.
+ * Draws one arrow per prerequisite of every node in a tree, and one per step of a path, replacing the
+ * ones drawn before. The arrows are a picture of the requirements, never read back: what a node
+ * requires lives in its `requires` alone, so tidying or deleting a line changes nothing about the tree.
  */
 export function drawPrerequisites(editor: Editor, treeId: string): void {
 	const nodes = treeNodes(editor, treeId)
@@ -136,18 +136,19 @@ export function drawPrerequisites(editor: Editor, treeId: string): void {
 		.getCurrentPageShapes()
 		.filter((s) => s.type === 'arrow' && s.meta[SKILL_EDGE_META] === treeId)
 		.map((s) => s.id)
+	// A path's line (`after`) is drawn like a prerequisite's; it lives on the vault's node, not the shape.
+	const after = new Map(getTreeDef(treeId)?.nodes.flatMap((n) => (n.after ? [[n.nodeId, n.after] as const] : [])) ?? [])
 	editor.run(() => {
 		if (stale.length) editor.deleteShapes(stale)
 		for (const node of nodes) {
 			const parsed = parseRequirements(node.props.requires)
-			if (!parsed.ok) continue
-			for (const condition of parsed.conditions) {
-				for (const id of nodesOf(condition)) {
-					const from = byNodeId.get(id)
-					if (!from || from.id === node.id) continue
-					const arrow = connectShapes(editor, from.id, node.id)
-					if (arrow) editor.updateShape({ id: arrow, type: 'arrow', meta: { [SKILL_EDGE_META]: treeId } })
-				}
+			const ids = parsed.ok ? parsed.conditions.flatMap(nodesOf) : []
+			const path = after.get(node.props.nodeId)
+			for (const id of path && !ids.includes(path) ? [...ids, path] : ids) {
+				const from = byNodeId.get(id)
+				if (!from || from.id === node.id) continue
+				const arrow = connectShapes(editor, from.id, node.id)
+				if (arrow) editor.updateShape({ id: arrow, type: 'arrow', meta: { [SKILL_EDGE_META]: treeId } })
 			}
 		}
 	})

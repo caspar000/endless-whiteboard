@@ -23,10 +23,13 @@ const PROJECTED: { id: string; title?: string; group: string }[] = [
 	// Properties can only be defined from a shape's own panel, so defining one before there is
 	// anything to put it on means creating a shape you did not want first.
 	{ id: 'property.create', title: 'Define a property', group: CANVAS_GROUP },
-	// Skill trees live in the vault; these are the only way to put one on a board that hasn't got it,
-	// or to hang one tree from another's node, without writing YAML.
-	{ id: 'skill.tree.show', title: 'Show a skill tree on this board', group: 'Syllabus' },
-	{ id: 'skill.tree.mount', title: 'Hang a skill tree from a node', group: 'Syllabus' },
+	// Skill trees live in the vault and come into it only when asked for: these make one (from a
+	// syllabus, or empty), delete one from every board, put one on a board that hasn't got it, or hang
+	// one tree from another's node, without writing YAML. Settings › Skill trees does the same by hand.
+	{ id: 'skill.tree.make', title: 'Make a skill tree', group: 'Skill trees' },
+	{ id: 'skill.tree.delete', title: 'Delete a skill tree', group: 'Skill trees' },
+	{ id: 'skill.tree.show', title: 'Show a skill tree on this board', group: 'Skill trees' },
+	{ id: 'skill.tree.mount', title: 'Hang a skill tree from a node', group: 'Skill trees' },
 	{ id: 'skill.track.show', title: 'Show a track as a list', group: 'Syllabus' },
 ]
 

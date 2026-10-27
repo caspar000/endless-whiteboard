@@ -38,7 +38,8 @@ export const skillTreeExtension: Extension = {
 	description: 'Constellations of skill nodes that light up as you meet what each one asks for. Trees live in your vault and any board can show a view of one.',
 	details: [
 		'A skill tree is a constellation of skill nodes. Each node says what it requires: other nodes unlocked first, a tick by hand, or whatever another extension teaches it (the syllabus adds items done and write-ups counted). A node is locked until its prerequisites are, in reach once they are, and lit when its requirement is met; after that, more evidence fills its ring toward Bronze, Silver and Gold.',
-		'A tree lives in your vault. A board shows a view of it from any of its nodes, and trees can hang from a node of another tree, so a view of that node shows them as its branches.',
+		'A tree lives in your vault, and comes into it only when you make one, on this page or with Make a skill tree (⌘K): from a syllabus, from several under one shared root, or empty. Delete a skill tree takes one out of the vault and off every board.',
+		'A board shows a view of a tree from any of its nodes (Show a skill tree on this board), and trees can hang from a node of another tree, so a view of that node shows them as its branches.',
 		'Mastery is the tree at the middle: you, the pillars of your life, and your other trees hung under them. Build it on this page; Add Mastery to this board (⌘K) puts it on a board. A pillar lights up once anything under it is unlocked.',
 		'The view lays itself out as a maze of hexagons that grows from its start, and with everything shown it draws the items other extensions tag to each node around it.',
 		'Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the trees stay in your vault.',

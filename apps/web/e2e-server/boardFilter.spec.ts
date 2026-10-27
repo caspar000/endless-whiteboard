@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-/** All boards, with a server: a filter between the server's boards and the ones only on this device. */
+/** All Boards, with a server: a filter between the server's boards and the ones only on this device. */
 
 test('the board list filters between the server and this device, and cards say which', async ({ page }) => {
 	await page.goto('/login')
@@ -12,8 +12,8 @@ test('the board list filters between the server and this device, and cards say w
 	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 
 	// Two new boards, both on the server; then one of them moves to this device.
-	// The way to the board list is the sidebar's All boards row (it says how many there are).
-	const allBoards = () => page.locator('.lb-sidebar').getByRole('button', { name: /^All boards/ }).first().click()
+	// The way to the board list is the sidebar's All Boards row (it says how many there are).
+	const allBoards = () => page.locator('.lb-sidebar').getByRole('button', { name: /^All Boards/ }).first().click()
 	const rename = async (name: string) => {
 		await allBoards()
 		await page.getByRole('button', { name: 'New board' }).first().click()

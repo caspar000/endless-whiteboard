@@ -1,6 +1,8 @@
 import { getAllBoardKinds, getVisibleNodeDefinitions, isExtensionEnabled, subscribeToNodeDefinitions } from '@lifeboard/node-kit'
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { Search, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
+import { searchBoards } from '../boards/boardSearch'
 import { dismissMove, retryMove } from '../boards/moveQueue'
 import { usePlatform } from '../platform/PlatformContext'
 import { ThumbnailBackfill } from '../canvas/ThumbnailBackfill'
@@ -32,6 +34,15 @@ function rememberMoveOffered(): void {
 	} catch {
 		// Private-mode Safari: the offer comes back next time, which is harmless.
 	}
+}
+
+const NON_TEXT_INPUTS = ['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'file', 'color']
+
+/** Whether a key landed where text is being typed, which a "/" there is part of. */
+function isTyping(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false
+	if (target.isContentEditable || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true
+	return target instanceof HTMLInputElement && !NON_TEXT_INPUTS.includes(target.type)
 }
 
 /**
@@ -75,13 +86,35 @@ export function BoardList({
 	}
 	// Only worth showing when there are boards in both places.
 	const filtering = api.hasServer && localBoards.length > 0 && localBoards.length < api.boards.length
+
+	// The search narrows the boards by name; the filter's counts are of the boards that match it.
+	// Not remembered like the filter: a board made while a search was on would come back hidden.
+	const [query, setQuery] = useState('')
+	const searching = query.trim() !== ''
+	const searchRef = useRef<HTMLInputElement>(null)
+	const matches = searchBoards(api.boards, query)
+	const localMatches = matches.filter((board) => !board.vault)
 	const shown =
-		!filtering || where === 'all' ? api.boards : where === 'device' ? localBoards : api.boards.filter((board) => board.vault)
+		!filtering || where === 'all' ? matches : where === 'device' ? localMatches : matches.filter((board) => board.vault)
 	const filters: { value: Where; label: string; count: number }[] = [
-		{ value: 'all', label: 'All', count: api.boards.length },
-		{ value: 'server', label: 'On the server', count: api.boards.length - localBoards.length },
-		{ value: 'device', label: 'On this device', count: localBoards.length },
+		{ value: 'all', label: 'All', count: matches.length },
+		{ value: 'server', label: 'On the server', count: matches.length - localMatches.length },
+		{ value: 'device', label: 'On this device', count: localMatches.length },
 	]
+	// "/" goes to the search, as on most sites with one. Only this page is mounted while it shows.
+	useEffect(() => {
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
+			if (isTyping(event.target)) return
+			const input = searchRef.current
+			if (!input) return
+			event.preventDefault()
+			input.focus()
+			input.select()
+		}
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [])
 
 	/** Queued, so a reload neither stops the moves nor hides them (boards/moveQueue.ts). */
 	const move = (boards: BoardMeta[]) => void api.move(boards)
@@ -136,7 +169,7 @@ export function BoardList({
 	return (
 		<main className="lb-home__main">
 			<header className="lb-home__header">
-				<h1>All boards</h1>
+				<h1>All Boards</h1>
 				<div className="lb-home__header-actions">
 					{api.boards.length > 0 && !selecting && (
 						<button className="lb-btn" onClick={() => setSelecting(true)}>
@@ -166,7 +199,7 @@ export function BoardList({
 						className="lb-btn lb-btn--ghost lb-btn--tiny"
 						onClick={() => setSelected(new Set(shown.filter((board) => !moveOf(board.id)).map((board) => board.id)))}
 					>
-						Select all{filtering && where !== 'all' ? ' shown' : ''}
+						Select all{searching || (filtering && where !== 'all') ? ' shown' : ''}
 					</button>
 					{confirmDelete ? (
 						<button
@@ -222,18 +255,54 @@ export function BoardList({
 				</div>
 			)}
 
-			{filtering && (
-				<div className="lb-appearance__seg lb-list__filter" role="group" aria-label="Where the boards are">
-					{filters.map((filter) => (
-						<button
-							key={filter.value}
-							className={where === filter.value ? 'lb-appearance__opt lb-appearance__opt--active' : 'lb-appearance__opt'}
-							aria-pressed={where === filter.value}
-							onClick={() => setWhere(filter.value)}
-						>
-							{filter.label} <span className="lb-list__filter-count">{filter.count}</span>
-						</button>
-					))}
+			{!api.loading && api.boards.length > 0 && (
+				<div className="lb-list__tools">
+					<div className="lb-list__search" role="search">
+						<Search className="lb-list__search-icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+						<input
+							ref={searchRef}
+							type="search"
+							placeholder="Search boards"
+							aria-label="Search boards"
+							value={query}
+							onChange={(event) => setQuery(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key !== 'Escape') return
+								// The first Escape clears the search, the next one leaves it; neither ends Select.
+								event.stopPropagation()
+								if (query) setQuery('')
+								else event.currentTarget.blur()
+							}}
+						/>
+						{query && (
+							<button
+								type="button"
+								className="lb-list__search-clear"
+								aria-label="Clear search"
+								title="Clear search"
+								onClick={() => {
+									setQuery('')
+									searchRef.current?.focus()
+								}}
+							>
+								<X size={14} strokeWidth={2} aria-hidden="true" />
+							</button>
+						)}
+					</div>
+					{filtering && (
+						<div className="lb-appearance__seg lb-list__filter" role="group" aria-label="Where the boards are">
+							{filters.map((filter) => (
+								<button
+									key={filter.value}
+									className={where === filter.value ? 'lb-appearance__opt lb-appearance__opt--active' : 'lb-appearance__opt'}
+									aria-pressed={where === filter.value}
+									onClick={() => setWhere(filter.value)}
+								>
+									{filter.label} <span className="lb-list__filter-count">{filter.count}</span>
+								</button>
+							))}
+						</div>
+					)}
 				</div>
 			)}
 
@@ -247,6 +316,13 @@ export function BoardList({
 					</p>
 					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
 						New board
+					</button>
+				</div>
+			) : shown.length === 0 && searching ? (
+				<div className="lb-list__empty" role="status">
+					<p>No boards match “{query.trim()}”.</p>
+					<button className="lb-btn" onClick={() => setQuery('')}>
+						Clear search
 					</button>
 				</div>
 			) : (

@@ -28,7 +28,7 @@ test.describe('phone chrome', () => {
 
 		await pill(page).click()
 		const list = page.getByRole('menu', { name: 'Open boards' })
-		await expect(list.getByRole('menuitem')).toHaveText(['Home office shopping', 'Untitled board', 'New board', 'All boards'])
+		await expect(list.getByRole('menuitem')).toHaveText(['Home office shopping', 'Untitled board', 'New board', 'All Boards'])
 		await list.getByRole('menuitem', { name: 'Home office shopping' }).click()
 		await expect(list).toHaveCount(0)
 		await expect(pill(page)).toContainText('Home office shopping')
@@ -41,7 +41,7 @@ test.describe('phone chrome', () => {
 		await expect(list).toHaveCount(0)
 
 		await pill(page).click()
-		await list.getByRole('menuitem', { name: 'All boards' }).click()
+		await list.getByRole('menuitem', { name: 'All Boards' }).click()
 		await expect(page.locator('.lb-home__header')).toBeVisible()
 	})
 
@@ -58,14 +58,14 @@ test.describe('phone chrome', () => {
 		expect(box.y + box.height).toBeLessThan(844 - 56)
 
 		// Going somewhere from it closes it.
-		await sidebar.getByRole('button', { name: /^All boards/ }).first().click()
+		await sidebar.getByRole('button', { name: /^All Boards/ }).first().click()
 		await expect(page.locator('.lb-home__header')).toBeVisible()
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
 
 		await page.getByRole('button', { name: 'Expand sidebar' }).click()
 		await sidebar.getByRole('button', { name: 'Search boards and commands' }).click()
 		await expect(sidebar).toHaveClass(/lb-sidebar--collapsed/)
-		await expect(page.getByPlaceholder(/Search boards/)).toBeFocused()
+		await expect(page.getByRole('combobox', { name: /^Search boards/ })).toBeFocused()
 	})
 
 	test('the agent opens as a card from the right, and a tap beside it closes it', async ({ page }) => {
@@ -242,7 +242,7 @@ test.describe('phone pages', () => {
 		await page.getByRole('menuitem', { name: 'New board' }).click()
 		await expect(pill(page)).toContainText('Untitled board')
 		await pill(page).click()
-		await page.getByRole('menuitem', { name: 'All boards' }).click()
+		await page.getByRole('menuitem', { name: 'All Boards' }).click()
 		const cards = page.locator('.lb-list__boards > li')
 		await expect(cards).toHaveCount(2)
 		// Measured once both have risen into place.
@@ -258,7 +258,7 @@ test.describe('phone pages', () => {
 		await gotoFresh(page)
 		await expect(pill(page)).toBeVisible()
 		await pill(page).click()
-		await page.getByRole('menuitem', { name: 'All boards' }).click()
+		await page.getByRole('menuitem', { name: 'All Boards' }).click()
 		const card = page.locator('.lb-list__board').first()
 		const rename = card.getByRole('button', { name: 'Rename' })
 		await expect(rename).toBeHidden()

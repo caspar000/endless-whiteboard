@@ -19,6 +19,10 @@ export interface DocNode {
 	sector: string
 	ring: string
 	requires: string
+	/** The node it grows from on a path, asking nothing of it (treeDefs.ts); '' for none. */
+	after: string
+	/** The item it stands for (treeDefs.ts), set by what made the tree, never written in YAML; '' for none. */
+	item: string
 }
 
 export interface DocTree {
@@ -81,6 +85,8 @@ export function parseTrees(raw: Raw, goal: string, errors: string[]): DocTree[] 
 				sector: text(value.sector),
 				ring: text(value.ring),
 				requires,
+				after: text(value.after) ? qualify(treeId, slug(text(value.after))) : '',
+				item: '',
 			})
 		}
 		const layout = text(treeRaw.layout)

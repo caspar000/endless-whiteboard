@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /*
  * The feeds' only copy of your sources and categories, across a reload: what is in localStorage the
@@ -34,13 +34,21 @@ async function openApp() {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 const categoryNames = (feeds: typeof import('@lifeboard/feeds')) => Object.values(feeds.getCategories()).map((c) => c.name)
 
+// The first import of the extension transforms its whole module graph; done once here, so a test's
+// simulated reloads only re-run modules already transformed and stay well inside their timeout.
+beforeAll(async () => {
+	await import('@lifeboard/feeds')
+	await import('./feeds')
+}, 60_000)
+
 beforeEach(() => {
 	storage.clear()
 	pushes.length = 0
 	serverTakes = true
 })
 
-describe('feeds across a reload', () => {
+// Each test opens the app two or three times, every one a fresh module graph: slow under a full run.
+describe('feeds across a reload', { timeout: 20_000 }, () => {
 	it('keeps a category and a source made just before the page closes', async () => {
 		const first = await openApp()
 		const added = (first.feeds.addCategory('Electrical Engineering') as { categoryId: string }).categoryId

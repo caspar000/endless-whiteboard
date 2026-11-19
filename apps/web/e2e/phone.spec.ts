@@ -379,6 +379,66 @@ test.describe('phone gaps', () => {
 		])
 		expect(opened.url()).toBe('https://lifeboard.app/docs')
 	})
+
+	test('a tap on a link card in Hand opens its link; a drag pans and a double tap is Quick look', async ({ page }) => {
+		await gotoBoard(page)
+		await expect(pill(page)).toBeVisible()
+		const centre = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: DockEditor & { setCamera(c: unknown): void } }).editor
+			editor.createShapes([
+				{ id: 'shape:card', type: 'bookmark', x: 0, y: 0, props: { url: 'https://example.com/page', w: 200, h: 200, assetId: null } },
+			])
+			editor.setCamera({ x: 95, y: 250, z: 1 })
+			// What would open in a new tab, recorded rather than left for.
+			const opened: string[] = []
+			;(window as unknown as { opened: string[] }).opened = opened
+			window.open = (url?: string | URL) => {
+				opened.push(String(url))
+				return null
+			}
+			return editor.pageToScreen({ x: 100, y: 100 })
+		})
+		expect(await tool(page)).toBe('hand')
+		const opened = () => page.evaluate(() => (window as unknown as { opened: string[] }).opened)
+		const touch = await touches(page)
+
+		await touch('touchStart', [[centre.x, centre.y]])
+		await touch('touchEnd')
+		await expect.poll(opened).toEqual(['https://example.com/page'])
+		expect(await tool(page)).toBe('hand')
+		expect(await page.evaluate(() => (window as unknown as { editor: DockEditor }).editor.getSelectedShapeIds())).toEqual([])
+
+		// A drag that starts on the card pans, and opens nothing.
+		await touch('touchStart', [[centre.x, centre.y]])
+		for (let i = 1; i <= 6; i++) await touch('touchMove', [[centre.x + i * 12, centre.y + i * 8]])
+		await touch('touchEnd')
+		const moved = await page.evaluate(() => (window as unknown as { editor: DockEditor }).editor.getShape('shape:card'))
+		expect(moved).toMatchObject({ x: 0, y: 0 })
+		const after = await page.evaluate(() => {
+			const editor = (window as unknown as { editor: DockEditor }).editor
+			return editor.pageToScreen({ x: 100, y: 100 })
+		})
+		expect(after.x).toBeGreaterThan(centre.x + 30)
+
+		// A pan that comes back to where it started is still a pan: it opens nothing.
+		await touch('touchStart', [[after.x, after.y]])
+		for (let i = 1; i <= 4; i++) await touch('touchMove', [[after.x + i * 10, after.y]])
+		for (let i = 3; i >= 0; i--) await touch('touchMove', [[after.x + i * 10 + 2, after.y]])
+		await page.waitForTimeout(200)
+		await touch('touchEnd')
+		await page.waitForTimeout(700)
+		expect(await opened()).toEqual(['https://example.com/page'])
+		const back = await page.evaluate(() => (window as unknown as { editor: DockEditor }).editor.pageToScreen({ x: 100, y: 100 }))
+
+		// A double tap is Quick look, as on any shape, and opens nothing either.
+		for (let i = 0; i < 2; i++) {
+			await touch('touchStart', [[back.x, back.y]])
+			await touch('touchEnd')
+		}
+		await expect(page.getByTestId('lb.quick-look')).toBeVisible()
+		await page.waitForTimeout(700)
+		expect(await opened()).toEqual(['https://example.com/page'])
+	})
 })
 
 test.describe('phone kinds', () => {

@@ -321,6 +321,20 @@ export function Overview({ go }: SectionProps) {
 						</p>
 					</div>
 					<div className="lb-help__fact">
+						<h3>Links</h3>
+						<p>
+							Drag a web address onto the board, or paste one, and it becomes a square card: the
+							page&rsquo;s picture, its name and its site, as in Freeform. Click anywhere on the card to
+							open the link; the small ↗ in its corner only says it is one. Drag the card to move it,
+							shift-click to select it, and double-click to change its name, its address or its picture,
+							and which part of the picture the square shows. Its corners resize it and it stays square.
+							The name and picture are read from the page by your server; without one, the card is named
+							after its site until you name it. With shapes selected, a pasted link goes onto them as
+							their link instead. Pasted embed code (an <code>&lt;iframe&gt;</code> from YouTube, Figma
+							and the like) becomes the embed, and a Mermaid flowchart becomes shapes joined by arrows.
+						</p>
+					</div>
+					<div className="lb-help__fact">
 						<h3>The grid</h3>
 						<p>
 							Snapping and the dotted paper are set once for the app, in Settings → Canvas. Hold{' '}

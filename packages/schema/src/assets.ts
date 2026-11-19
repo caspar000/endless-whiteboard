@@ -50,7 +50,7 @@ export function collectAssetRefs(snapshot: { store: Record<string, unknown> }): 
 	let pending = false
 	for (const record of Object.values(snapshot.store)) {
 		if (!record || typeof record !== 'object') continue
-		const rec = record as { typeName?: unknown; props?: unknown }
+		const rec = record as { typeName?: unknown; props?: unknown; meta?: unknown }
 		if (rec.typeName === 'asset') {
 			const props = rec.props
 			if (!props || typeof props !== 'object') continue
@@ -74,6 +74,8 @@ export function collectAssetRefs(snapshot: { store: Record<string, unknown> }): 
 			// than in asset records — those blobs are stored *before* the shape is created (see
 			// `createAssetBridge`), so a shape reference is never pending.
 			collectSrcStrings(rec.props, hashes)
+			// And in `meta`, where a link card keeps a picture chosen for it (apps/web canvas/linkPreview).
+			collectSrcStrings(rec.meta, hashes)
 		}
 	}
 	return { hashes, pending }

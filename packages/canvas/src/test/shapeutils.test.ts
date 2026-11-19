@@ -201,4 +201,22 @@ describe('When interacting with a shape...', () => {
 		// it should not be selected.
 		expect(editor.getSelectedShapeIds().length).toBe(0)
 	})
+
+	it('selects and moves a shape with an onClick handler when it is dragged', () => {
+		const util = editor.getShapeUtil<TLGeoShape>('geo')
+		const fnClick = jest.fn((shape: any) => ({ id: shape.id, type: shape.type }))
+		util.onClick = fnClick
+
+		// Something else is selected; the drag must move the shape under the pointer, not that.
+		editor.select(ids.frame1)
+		editor.pointerDown(250, 250, ids.box1)
+		editor.pointerMove(300, 300)
+		editor.pointerUp(300, 300)
+
+		expect(fnClick).not.toHaveBeenCalled()
+		expect(editor.getSelectedShapeIds()).toEqual([ids.box1])
+		expect(editor.getShape(ids.box1)).toMatchObject({ x: 250, y: 250 })
+		expect(editor.getShape(ids.frame1)).toMatchObject({ x: 10, y: 10 })
+		delete (util as { onClick?: unknown }).onClick
+	})
 })

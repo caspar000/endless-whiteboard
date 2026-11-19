@@ -11,7 +11,8 @@ export function Phone(_props: SectionProps) {
 			<Section title="Looking around without changing anything">
 				<p>
 					On a phone, a board opens in <strong>Hand</strong>. Dragging moves you around the board and
-					pinching zooms; nothing on it moves, however a thumb lands. Links still open. A double tap on a
+					pinching zooms; nothing on it moves, however a thumb lands. Links still open, and a tap on a link card opens its
+					link. A double tap on a
 					book opens it to read, and on any other shape opens it in Quick look, filling the screen;
 					tap beside it to close. A double tap on empty board zooms in.
 				</p>

@@ -104,7 +104,8 @@ PNG come out at 1×–3× and trimmed to the drawing if wanted. Extensions can a
 (`Extension.geoTypes`), which join the dock's shape picker. Pasting
 knows a few things besides text and pictures: a Mermaid flowchart becomes shapes joined by bound
 arrows (`canvas`'s `utils/mermaid`), `<iframe>` embed code becomes the embed, Excalidraw content
-comes in as shapes, and a link pasted onto selected shapes becomes their link.
+comes in as shapes, a link pasted onto selected shapes becomes their link, and any other link becomes
+a link card.
 Double-clicking empty canvas is tldraw's default action. Double-clicking the active board's tab
 renames it.
 
@@ -527,11 +528,10 @@ helpers, because `insertNode` is one of six ways a shape appears (dock, context 
 duplicate, import, agent) and a hook on the helpers would silently miss five. One flag stops a hook's
 own writes re-entering any hook: hooks react to what the user did, not to each other.
 
-The first two consumers are both real. The property-sidecar merge that makes copying shapes between
-boards work is now an `onShapeCreate` hook (`canvas/Board.tsx`) — which is what proves the fire point
-covers a paste. And dropping a link makes a **note carrying a `Link` property**
-(`packages/note-markdown/src/linkDrop.ts`) rather than tldraw's bookmark card, because a card cannot
-hold a property, join a table or stand in a view.
+The property-sidecar merge that makes copying shapes between boards work is an `onShapeCreate` hook
+(`canvas/Board.tsx`), which is what proves the fire point covers a paste. No extension claims dropped
+content today: a dropped link used to become a note with a `Link` property, and is now a link card
+(see *A link is a card that opens it*).
 
 **Adding a command** means one `registerCommand` call — an id, a title, a group, optionally a `when`
 predicate and a default `kbd`. `packages/node-kit/src/commands.ts` is the one table every command
@@ -628,6 +628,20 @@ only on opening, through `useStaggerIn`. A board opening for the first time does
 shapes on screen, in reading order and in at most sixteen waves (`canvas/boardEntrance.ts`). Only
 opacity and `translate` animate: a shape is placed by its inline `transform`, and a card lifts on hover
 with one. Reduced motion sets the stagger to zero along with every duration.
+
+**A link is a card that opens it** (`canvas/linkPreview/`). A dropped or pasted link becomes a square
+poster, as in Freeform: the page's picture fills it, its name and site sit on a band along the bottom.
+A click anywhere opens the link in a new tab, after a double-click's wait; shift or ⌘ selects, a drag
+selects and moves (the fork's `PointingShape` selects a click-taking shape when it's dragged), and a
+double-click opens the inspector beside it. On a phone in Hand, a tap opens it too (`canvas/phoneMode.ts`),
+while a drag pans and a double tap is Quick look. It is tldraw's bookmark record with our util over it, so
+the schema is unchanged and Freeform's cards look the same. A browser can't read another site's page,
+so the server does (`GET /api/link-preview`, `apps/server/src/linkPreview.ts`): it connects only to
+public addresses, checked as it connects and on every redirect, and gives back the name, picture and
+icon, which the app keeps as the board's own files (`/api/link-preview/image`). Without a server a card
+is named by its domain. What the page says is the bookmark asset, shared by every card of the address;
+what someone changed on one card (its name, picture, crop) is that card's `meta.linkPreview`, which is
+why asset GC also walks shape `meta`. The square resizes only in proportion.
 
 **A picture shows blurred until its bytes have arrived.** Each upload keeps a ThumbHash of the picture
 (about 35 characters) in the asset record's `meta.thumbhash`, so it travels with the board. `BlurUpImage`

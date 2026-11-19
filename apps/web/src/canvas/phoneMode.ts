@@ -1,5 +1,6 @@
 import { atom, react, type Atom, type Editor, type TLEventInfo } from '@lifeboard/canvas'
 import { PHONE_QUERY } from '../app/usePhone'
+import { cancelOpen, clickToOpen } from './linkPreview/openLink'
 import { openQuickLook } from './quickLook'
 
 /**
@@ -32,12 +33,15 @@ export function setNavMode(editor: Editor, mode: NavMode): void {
 
 /**
  * Shapes whose editing is reading: double-tapped in Hand, they open, since reading changes nothing on
- * the board. Links need no rule; a tap on one reaches the link itself.
+ * the board. A link in a note's text needs no rule; a tap on one reaches the link itself.
  */
 const READ_BY_OPENING = new Set(['node.book'])
 
+/** How far a finger may wander and still have tapped, in screen pixels. Past it, it was panning. */
+const TAP_SLOP = 8
+
 /**
- * Three rules, all only on a phone and only in Hand mode:
+ * Four rules, all only on a phone and only in Hand mode:
  *
  * - **Back to Hand once you are done.** Placing a sticky, a shape or a frame ends in the select tool
  *   (after the typing, for a sticky or text), which on a phone is exactly where a stray drag moves what
@@ -50,6 +54,9 @@ const READ_BY_OPENING = new Set(['node.book'])
  *   tap on any other shape Quick look can show opens it there instead: the phone's Space. Both are
  *   caught as the tap comes up, before the hand tool's own double tap (zoom in) settles; one on empty
  *   board still zooms.
+ * - **A tap on a link card opens its link**, as a click does in Select (`linkPreview/openLink.ts`): the
+ *   card is a link all over, with nothing in it the hand tool would let a tap reach. A finger that moves
+ *   is panning, and a second tap is the double tap above, so neither opens it.
  *
  * The first two run a microtask later: the menu opens in a batch that also changes the tool, and the
  * decision needs the whole of it.
@@ -58,9 +65,26 @@ export function installPhoneMode(editor: Editor): () => void {
 	if (isPhone()) editor.setCurrentTool('hand')
 	const mode = navModeOf(editor)
 
+	// Where the finger went down, while the gesture can still be a tap. Once it has wandered past the
+	// slop it is a pan for good, even if it comes back to where it started.
+	let pressedAt: { x: number; y: number } | null = null
 	const onEvent = (info: TLEventInfo) => {
-		if (info.type !== 'click' || info.name !== 'double_click' || info.phase !== 'up') return
 		if (!isPhone() || editor.getCurrentToolId() !== 'hand') return
+		if (info.type === 'pointer' && info.name === 'pointer_down') pressedAt = { x: info.point.x, y: info.point.y }
+		if (info.type === 'pointer' && info.name === 'pointer_move' && pressedAt) {
+			const wandered = Math.hypot(info.point.x - pressedAt.x, info.point.y - pressedAt.y) > TAP_SLOP
+			if (wandered || editor.inputs.isDragging || editor.inputs.isPinching) pressedAt = null
+		}
+		if (info.type === 'pointer' && info.name === 'pointer_up') {
+			const tapped = pressedAt && Math.hypot(info.point.x - pressedAt.x, info.point.y - pressedAt.y) <= TAP_SLOP
+			pressedAt = null
+			if (!tapped || editor.inputs.isPinching) return
+			const shape = editor.getShapeAtPoint(editor.inputs.currentPagePoint, { hitInside: true })
+			if (shape?.type === 'bookmark') clickToOpen(editor, shape.id)
+			return
+		}
+		if (info.type !== 'click' || info.name !== 'double_click' || info.phase !== 'up') return
+		cancelOpen()
 		const shape = editor.getShapeAtPoint(editor.inputs.currentPagePoint, { hitInside: true })
 		if (!shape) return
 		if (READ_BY_OPENING.has(shape.type)) {

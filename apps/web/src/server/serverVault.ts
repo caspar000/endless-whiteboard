@@ -292,6 +292,51 @@ export function fetchServerAsset(hash: string): Promise<Blob | null> {
 	return pending
 }
 
+/** What a link card shows, as the server read it from the page (`apps/server/src/linkPreview.ts`). */
+export interface ServerLinkPreview {
+	title: string
+	description: string
+	siteName: string
+	image: string
+	favicon: string
+}
+
+/**
+ * The page's name, picture and icon, read by the server: a browser can't read another site's page.
+ * `null` without a server, or when the page couldn't be read — the card then goes by its domain.
+ */
+export async function fetchLinkPreview(url: string): Promise<ServerLinkPreview | null> {
+	if (!available) return null
+	try {
+		const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`, { cache: 'no-store' })
+		if (!response.ok) return null
+		const body = (await response.json()) as Partial<ServerLinkPreview> | null
+		const text = (value: unknown) => (typeof value === 'string' ? value : '')
+		return {
+			title: text(body?.title),
+			description: text(body?.description),
+			siteName: text(body?.siteName),
+			image: text(body?.image),
+			favicon: text(body?.favicon),
+		}
+	} catch {
+		return null
+	}
+}
+
+/** A picture on the web, fetched by the server for the board to keep. `null` as above. */
+export async function fetchLinkPreviewImage(url: string): Promise<Blob | null> {
+	if (!available || !url) return null
+	try {
+		const response = await fetch(`/api/link-preview/image?url=${encodeURIComponent(url)}`)
+		if (!response.ok) return null
+		const blob = await response.blob()
+		return blob.size > 0 ? blob : null
+	} catch {
+		return null
+	}
+}
+
 /** Of these hashes, the ones the server has no file for. */
 export async function missingServerAssets(hashes: string[]): Promise<string[]> {
 	const response = await api('/assets/missing', { method: 'POST', body: JSON.stringify({ hashes }) })

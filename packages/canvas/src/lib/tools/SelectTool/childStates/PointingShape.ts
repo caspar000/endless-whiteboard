@@ -18,6 +18,8 @@ export class PointingShape extends StateNode {
 	hitShapeForPointerUp = {} as TLShape
 
 	didSelectOnEnter = false
+	/** Whether a drag from here selects the shape first (see `selectBeforeDragging`). */
+	selectOnDrag = false
 
 	override onEnter = (info: TLPointerEventInfo & { target: 'shape' }) => {
 		const selectedShapeIds = this.editor.getSelectedShapeIds()
@@ -32,20 +34,23 @@ export class PointingShape extends StateNode {
 		this.hitShape = info.shape
 		const outermostSelectingShape = this.editor.getOutermostSelectableShape(info.shape)
 
-		if (
-			// If the shape has an onClick handler
-			this.editor.getShapeUtil(info.shape).onClick ||
-			// ...or if the shape is the focused layer (e.g. group)
+		const hasClickHandler = !!this.editor.getShapeUtil(info.shape).onClick
+		const keepsSelection =
+			// If the shape is the focused layer (e.g. group)
 			outermostSelectingShape.id === focusedGroupId ||
 			// ...or if the shape is within the selection
 			selectedShapeIds.includes(outermostSelectingShape.id) ||
 			this.editor.isAncestorSelected(outermostSelectingShape.id) ||
 			// ...or if the current point is NOT within the selection bounds
 			(selectedShapeIds.length > 1 && selectionBounds?.containsPoint(currentPagePoint))
-		) {
+		this.selectOnDrag = false
+
+		// If the shape has an onClick handler, or one of the above
+		if (hasClickHandler || keepsSelection) {
 			// We won't select the shape on enter, though we might select it on pointer up!
 			this.didSelectOnEnter = false
 			this.hitShapeForPointerUp = outermostSelectingShape
+			this.selectOnDrag = hasClickHandler && !keepsSelection
 			return
 		}
 
@@ -206,8 +211,22 @@ export class PointingShape extends StateNode {
 				this.parent.transition('dragging_arrow_label', info)
 				return
 			}
+			this.selectBeforeDragging()
 			this.parent.transition('translating', info)
 		}
+	}
+
+	/**
+	 * A shape that takes clicks isn't selected on press, because the click may be taken (a link card
+	 * opens its link). Dragging it is a move all the same, so it's selected here, as a press would
+	 * have: otherwise the drag would move whatever was selected before, or nothing.
+	 */
+	private selectBeforeDragging() {
+		if (!this.selectOnDrag) return
+		const id = this.hitShapeForPointerUp.id
+		const selected = this.editor.getSelectedShapeIds()
+		this.editor.mark('selecting shape')
+		this.editor.setSelectedShapes(isAdditive(this.editor) ? [...selected, id] : [id])
 	}
 
 	override onCancel: TLEventHandlers['onCancel'] = () => {

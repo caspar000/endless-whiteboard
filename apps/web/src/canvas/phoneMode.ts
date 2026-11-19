@@ -65,10 +65,16 @@ export function installPhoneMode(editor: Editor): () => void {
 	if (isPhone()) editor.setCurrentTool('hand')
 	const mode = navModeOf(editor)
 
+	// Where the finger went down, while the gesture can still be a tap. Once it has wandered past the
+	// slop it is a pan for good, even if it comes back to where it started.
 	let pressedAt: { x: number; y: number } | null = null
 	const onEvent = (info: TLEventInfo) => {
 		if (!isPhone() || editor.getCurrentToolId() !== 'hand') return
 		if (info.type === 'pointer' && info.name === 'pointer_down') pressedAt = { x: info.point.x, y: info.point.y }
+		if (info.type === 'pointer' && info.name === 'pointer_move' && pressedAt) {
+			const wandered = Math.hypot(info.point.x - pressedAt.x, info.point.y - pressedAt.y) > TAP_SLOP
+			if (wandered || editor.inputs.isDragging || editor.inputs.isPinching) pressedAt = null
+		}
 		if (info.type === 'pointer' && info.name === 'pointer_up') {
 			const tapped = pressedAt && Math.hypot(info.point.x - pressedAt.x, info.point.y - pressedAt.y) <= TAP_SLOP
 			pressedAt = null

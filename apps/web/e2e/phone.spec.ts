@@ -420,9 +420,19 @@ test.describe('phone gaps', () => {
 		})
 		expect(after.x).toBeGreaterThan(centre.x + 30)
 
+		// A pan that comes back to where it started is still a pan: it opens nothing.
+		await touch('touchStart', [[after.x, after.y]])
+		for (let i = 1; i <= 4; i++) await touch('touchMove', [[after.x + i * 10, after.y]])
+		for (let i = 3; i >= 0; i--) await touch('touchMove', [[after.x + i * 10 + 2, after.y]])
+		await page.waitForTimeout(200)
+		await touch('touchEnd')
+		await page.waitForTimeout(700)
+		expect(await opened()).toEqual(['https://example.com/page'])
+		const back = await page.evaluate(() => (window as unknown as { editor: DockEditor }).editor.pageToScreen({ x: 100, y: 100 }))
+
 		// A double tap is Quick look, as on any shape, and opens nothing either.
 		for (let i = 0; i < 2; i++) {
-			await touch('touchStart', [[after.x, after.y]])
+			await touch('touchStart', [[back.x, back.y]])
 			await touch('touchEnd')
 		}
 		await expect(page.getByTestId('lb.quick-look')).toBeVisible()

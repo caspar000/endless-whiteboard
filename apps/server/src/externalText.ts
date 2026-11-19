@@ -2,6 +2,7 @@ import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
 import { request as httpRequest, type IncomingMessage } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { BlockList, isIP, type LookupFunction } from 'node:net'
+import { pipeline } from 'node:stream/promises'
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib'
 import type { FastifyInstance } from 'fastify'
 
@@ -213,32 +214,33 @@ export class ExternalText {
 	}
 }
 
-/** The body, unpacked, up to `MAX_TEXT_BYTES`. */
-function readBody(response: IncomingMessage): Promise<Buffer> {
+/**
+ * The body, unpacked, up to `MAX_TEXT_BYTES`. Through `pipeline`, which hands an error on either stream
+ * (the site hanging up mid-body, a timeout, a corrupt gzip) to the read and destroys both: a
+ * decompressor `pipe`d from the response would leave the response's own errors unheard, and an unheard
+ * error ends the server.
+ */
+async function readBody(response: IncomingMessage): Promise<Buffer> {
 	const encoding = String(response.headers['content-encoding'] ?? '').toLowerCase()
-	const stream =
+	const unpack =
 		encoding === 'gzip' || encoding === 'x-gzip'
-			? response.pipe(createGunzip())
+			? createGunzip()
 			: encoding === 'deflate'
-				? response.pipe(createInflate())
+				? createInflate()
 				: encoding === 'br'
-					? response.pipe(createBrotliDecompress())
-					: response
-	return new Promise((resolve, reject) => {
-		const chunks: Buffer[] = []
-		let size = 0
-		stream.on('data', (chunk: Buffer) => {
+					? createBrotliDecompress()
+					: null
+	const chunks: Buffer[] = []
+	let size = 0
+	const collect = async (source: AsyncIterable<Buffer>) => {
+		for await (const chunk of source) {
 			size += chunk.length
-			if (size > MAX_TEXT_BYTES) {
-				response.destroy()
-				reject(new Error('it is too large'))
-				return
-			}
+			if (size > MAX_TEXT_BYTES) throw new Error('it is too large')
 			chunks.push(chunk)
-		})
-		stream.on('end', () => resolve(Buffer.concat(chunks)))
-		stream.on('error', reject)
-	})
+		}
+	}
+	await (unpack ? pipeline(response, unpack, collect) : pipeline(response, collect))
+	return Buffer.concat(chunks)
 }
 
 /**

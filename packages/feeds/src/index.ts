@@ -23,6 +23,8 @@ export { FEED_TYPE, type FeedProps } from './board'
 export type { FeedCategory, FeedItem, FeedSource, SourceItems, WatchedEntry } from './model'
 export { getFeedProvider, getFeedProviders, registerFeedProvider, type FeedProvider, type ReadText } from './providers/registry'
 export {
+	addCategory,
+	addSource,
 	getCategories,
 	getSourceItems,
 	getSources,

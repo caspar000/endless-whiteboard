@@ -33,6 +33,17 @@ beforeAll(async () => {
 			case '/picture':
 				response.writeHead(200, { 'content-type': 'image/png' })
 				return response.end('png')
+			case '/cut-gzip': {
+				// gzip headers and the start of a body, then the connection is reset.
+				response.writeHead(200, { 'content-type': 'text/xml', 'content-encoding': 'gzip' })
+				response.write(gzipSync(FEED.repeat(50)).subarray(0, 40))
+				return setTimeout(() => request.socket.destroy(), 20)
+			}
+			case '/cut': {
+				response.writeHead(200, { 'content-type': 'text/xml', 'content-length': '10000' })
+				response.write(FEED)
+				return setTimeout(() => request.socket.destroy(), 20)
+			}
 			case '/huge':
 				response.writeHead(200, { 'content-type': 'text/plain' })
 				return response.end('x'.repeat(MAX_TEXT_BYTES + 1))
@@ -95,6 +106,14 @@ describe('reading', () => {
 		expect(await get('/picture')).toMatchObject({ ok: false, status: 502 })
 		expect(await get('/huge')).toMatchObject({ ok: false, status: 502, error: expect.stringMatching(/too large/) })
 		expect(await get('/missing')).toMatchObject({ ok: false, status: 502, error: expect.stringMatching(/404/) })
+	})
+
+	it('fails the read, and only the read, when a site hangs up mid-body', async () => {
+		const { get } = local()
+		// An error nobody listens for would end the process, and vitest with it.
+		expect(await get('/cut-gzip')).toMatchObject({ ok: false, status: 502 })
+		expect(await get('/cut')).toMatchObject({ ok: false, status: 502 })
+		expect(await get('/feed')).toMatchObject({ ok: true })
 	})
 
 	it('never connects to a private address, whatever name it goes by', async () => {

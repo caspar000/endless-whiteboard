@@ -1715,8 +1715,6 @@ div.lb-sidebar__moves {
 	font-size: 14px;
 	font-weight: 600;
 	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .lb-card__date,
@@ -16706,19 +16704,22 @@ textarea.lb-zsource__field {
 }
 
 /* A category chip: the hue of option chips (`--lb-opt-h`), at the size of a filter. */
+/* Every chip, however many rows they take: a category you can't see is a filter you can't pick. The
+   list below gives up the room, and still scrolls once the card is edited. */
 .lb-feed__chips {
 	flex: none;
 	display: flex;
 	gap: 6px;
-	overflow: hidden;
 	flex-wrap: wrap;
-	max-height: 62px;
 	padding: 2px 12px 10px;
 	border-bottom: 1px solid var(--lb-border);
 }
 .lb-feed__chip {
 	pointer-events: auto;
 	flex: none;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -16731,6 +16732,11 @@ textarea.lb-zsource__field {
 	white-space: nowrap;
 	background: var(--lb-surface-2);
 	color: var(--lb-text-dim);
+}
+.lb-feed__chip-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .lb-feed__chip:hover {
 	background: var(--lb-surface-hover);

@@ -110,10 +110,11 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 					className="lb-feed__chip lb-feed__chip--cat"
 					style={categoryStyle(c)}
 					aria-pressed={data.active === c.categoryId}
+					title={c.name}
 					onPointerDown={swallow}
 					onClick={() => setView(editor, shape.id, { categoryId: c.categoryId })}
 				>
-					{c.name}
+					<span className="lb-feed__chip-name">{c.name}</span>
 					<span className="lb-feed__count">{data.counts[c.categoryId] || ''}</span>
 				</button>
 			))}

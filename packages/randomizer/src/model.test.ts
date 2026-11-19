@@ -6,6 +6,7 @@ import {
 	flipCount,
 	flipDurations,
 	flipSequence,
+	formatLine,
 	formatList,
 	inShuffle,
 	isOut,
@@ -78,6 +79,32 @@ describe('mergeList', () => {
 	it('round-trips through the text it shows', () => {
 		const items = [item('a'), { ...item('b'), year: '1978' }]
 		expect(mergeList(items, 'albums', formatList(items, 'albums'))).toEqual(items)
+	})
+
+	it('reads back every line it writes, including the ambiguous two-part ones', () => {
+		const cases = [
+			{ title: 'Book', creator: '', year: 'c. 1600' },
+			{ title: 'Book', creator: '', year: '1600' },
+			{ title: 'Book', creator: '1349', year: '' },
+			{ title: 'Book', creator: 'Someone', year: 'c. 1600' },
+			{ title: 'Book', creator: '', year: '' },
+		]
+		for (const fields of cases) expect(parseLine(formatLine(fields))).toEqual(fields)
+	})
+
+	it('keeps the cover and stamps of a year-only item through an unrelated edit', () => {
+		const book: RandomItem = {
+			id: 'b',
+			list: 'books',
+			title: 'Book',
+			creator: '',
+			year: 'c. 1600',
+			cover: 'asset:abc',
+			stamps: [{ kind: 'liked', date: '2026-11-19' }],
+		}
+		const next = mergeList([book], 'books', `${formatList([book], 'books')}\nAnother — Someone`, () => 'new')
+		expect(next[0]).toEqual(book)
+		expect(next).toHaveLength(2)
 	})
 })
 

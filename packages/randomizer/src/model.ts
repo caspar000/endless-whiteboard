@@ -240,8 +240,19 @@ export function parseLine(line: string): { title: string; creator: string; year:
 	return { title, creator: second, year: third }
 }
 
+/**
+ * The line `parseLine` reads back as the same item: the list editor shows this, and a save that
+ * read an item back differently would match it to nothing and drop its cover and stamps.
+ *
+ * Two parts are ambiguous, because a four-digit second part is read as a year. So a year with no
+ * creator keeps the empty creator (`Title — — c. 1600`) unless it is four digits, and a creator that
+ * is four digits (a band called 1349) gets an empty year after it.
+ */
 export function formatLine(item: Pick<RandomItem, 'title' | 'creator' | 'year'>): string {
-	return [item.title, item.creator, item.year].filter(Boolean).join(' — ')
+	const { title, creator, year } = item
+	if (year) return creator || /^\d{4}$/.test(year) ? [title, creator, year].filter(Boolean).join(' — ') : `${title} — — ${year}`
+	if (creator) return /^\d{4}$/.test(creator) ? `${title} — ${creator} —` : `${title} — ${creator}`
+	return title
 }
 
 export function formatList(items: readonly RandomItem[], list: ListId): string {

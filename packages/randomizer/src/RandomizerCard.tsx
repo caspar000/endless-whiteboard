@@ -202,7 +202,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		}
 	}, [editor, flip])
 
-	useEffect(() => onShuffleRequest(shape.id, () => void shuffle()), [shape.id, shuffle])
+	useEffect(() => onShuffleRequest(editor, shape.id, () => void shuffle()), [editor, shape.id, shuffle])
 
 	const selectList = (next: ListId) => {
 		if (busy || next === list) return
@@ -577,7 +577,12 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 
 			{isEditing && (
 				<div onPointerDown={stopEventPropagation} onTouchStart={stopEventPropagation}>
-					<ListEditor shape={shape} editor={editor} />
+					{/*
+					 * Keyed by list: switching lists while it is open saves the one you were typing into
+					 * and opens the other with its own text, rather than showing one list's text under
+					 * the other's name.
+					 */}
+					<ListEditor key={list} shape={shape} editor={editor} />
 				</div>
 			)}
 		</div>

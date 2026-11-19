@@ -14,7 +14,10 @@ import type { RandomizerProps } from './props'
  * edit (`mergeList`).
  */
 export function ListEditor({ shape, editor }: { shape: NodeShape<RandomizerProps>; editor: Editor }) {
-	const { list, items } = shape.props
+	// Fixed for the editor's life: the card keys it by list, so a switch makes a new editor rather than
+	// moving this one's text to another list.
+	const [list] = useState(shape.props.list)
+	const { items } = shape.props
 	const kind = LISTS[list]
 	const [text, setText] = useState(() => formatList(items, list))
 	const latest = useRef({ text, initial: text })

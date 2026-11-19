@@ -1715,6 +1715,8 @@ div.lb-sidebar__moves {
 	font-size: 14px;
 	font-weight: 600;
 	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .lb-card__date,

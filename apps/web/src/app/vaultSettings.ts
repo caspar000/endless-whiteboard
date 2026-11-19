@@ -1,5 +1,6 @@
 import { getDisabledExtensionIds, setDisabledExtensionIds } from '@lifeboard/node-kit'
 import { persistDisabledExtensions } from '../extensions'
+import { currentAccount } from '../server/accounts'
 import { getVaultSettings, pushVaultSetting } from '../server/serverVault'
 import { replaceSavedQueries, savedQueries } from './savedQueries'
 import { applyRemoteCardLayouts } from './cardLayouts'
@@ -33,5 +34,5 @@ export async function syncVaultSettings(): Promise<void> {
 
 	applyRemoteCardLayouts(remote.cardLayouts)
 	applyRemoteSkillIndex(remote)
-	applyRemoteFeeds(remote)
+	applyRemoteFeeds(remote, currentAccount.get()?.vault.id ?? null)
 }

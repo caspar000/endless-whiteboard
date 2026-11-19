@@ -60,14 +60,14 @@ describe('feeds across a reload', () => {
 
 		serverTakes = true
 		const second = await openApp()
-		second.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} })
+		second.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
 		expect(categoryNames(second.feeds)).toEqual(['Music'])
 		expect(pushes.at(-1)).toMatchObject({ key: 'feedCategories', value: { [Object.keys(second.feeds.getCategories())[0]!]: { name: 'Music' } } })
 		await settle()
 
 		// Taken now: the next answer from the vault is the truth again.
 		const third = await openApp()
-		third.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} })
+		third.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
 		expect(categoryNames(third.feeds)).toEqual([])
 	})
 
@@ -76,8 +76,59 @@ describe('feeds across a reload', () => {
 		first.feeds.addCategory('Old name')
 		await settle()
 		const second = await openApp()
-		second.app.applyRemoteFeeds({ feedCategories: { c1: { categoryId: 'c1', name: 'From another device', color: 'blue', order: 0 } } })
+		second.app.applyRemoteFeeds({ feedCategories: { c1: { categoryId: 'c1', name: 'From another device', color: 'blue', order: 0 } } }, 'vault-a')
 		expect(categoryNames(second.feeds)).toEqual(['From another device'])
 		expect(JSON.parse(storage.get('lifeboard:feedCategories')!)).toHaveProperty('c1')
+	})
+
+	it("never shows one vault's feeds to another, nor sends them there, even with an edit unsent", async () => {
+		// Account A, in its vault, changes its sources while the server isn't taking writes.
+		const a = await openApp()
+		a.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
+		serverTakes = false
+		a.feeds.addCategory('A only')
+		a.feeds.addSource({ provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
+		await settle()
+		expect(storage.get('lifeboard:feedUnsent:feedSources')).toBe('1')
+
+		// Account B, in another vault, on the same browser.
+		serverTakes = true
+		const b = await openApp()
+		pushes.length = 0
+		const bSources = { s1: { sourceId: 's1', provider: 'youtube', feedUrl: 'https://f/b', link: '', title: 'B channel', categories: [], addedAt: '' } }
+		b.app.applyRemoteFeeds({ feedCategories: {}, feedSources: bSources, feedWatched: {} }, 'vault-b')
+		expect(Object.values(b.feeds.getSources()).map((s) => s.title)).toEqual(['B channel'])
+		expect(categoryNames(b.feeds)).toEqual([])
+		expect(pushes).toEqual([])
+		expect([...storage.values()].join()).not.toMatch(/A private channel|A only/)
+		expect(storage.get('lifeboard:feedVault')).toBe('vault-b')
+	})
+
+	it("seeds a new vault with nothing of another vault's", async () => {
+		const a = await openApp()
+		a.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
+		a.feeds.addCategory('A only')
+		await settle()
+		const b = await openApp()
+		pushes.length = 0
+		b.app.applyRemoteFeeds({}, 'vault-b')
+		expect(pushes.map((p) => [p.key, p.value])).toEqual([
+			['feedSources', {}],
+			['feedCategories', {}],
+			['feedWatched', {}],
+		])
+	})
+
+	it('forgets every feed on this browser when logging out', async () => {
+		const a = await openApp()
+		a.app.applyRemoteFeeds({}, 'vault-a')
+		serverTakes = false
+		a.feeds.addCategory('A only')
+		a.feeds.addSource({ provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
+		a.app.forgetFeeds()
+		expect(categoryNames(a.feeds)).toEqual([])
+		expect([...storage.keys()].filter((k) => k.startsWith('lifeboard:feed'))).toEqual([])
+		const next = await openApp()
+		expect(next.feeds.getSources()).toEqual({})
 	})
 })

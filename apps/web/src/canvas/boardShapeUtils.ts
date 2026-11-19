@@ -6,6 +6,7 @@ import {
 } from '@lifeboard/canvas'
 import { expressionShapeUtils } from './expressionShapeUtils'
 import { GpuTestRectShapeUtil } from './gpuTestShape'
+import { LinkPreviewShapeUtil } from './linkPreview/LinkPreviewShapeUtil'
 
 /**
  * The frame, made a container rather than a card: no fill, a colourable border.
@@ -48,6 +49,8 @@ export function buildBoardShapeUtils(): TLAnyShapeUtilConstructor[] {
 	return [
 		...nodeShapeUtils(),
 		frameShapeUtil,
+		// Link cards as square posters that open their link (linkPreview/).
+		LinkPreviewShapeUtil,
 		// Stickies, text, shape labels and arrow labels evaluate `{…}` too — see expressionShapeUtils.
 		...expressionShapeUtils,
 		// The GPU renderer's test rectangle (gpuTestShape.tsx), only in a browser a test drives that asks

@@ -9,6 +9,7 @@ import { registerAdminApi } from './adminApi.ts'
 import { registerApi } from './api.ts'
 import { AssetFiles } from './assets.ts'
 import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
+import { registerLinkPreview } from './linkPreview.ts'
 import { registerAuth } from './auth.ts'
 import type { ServerConfig } from './config.ts'
 import { Accounts } from './accounts.ts'
@@ -64,6 +65,7 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		secureCookies: config.secureCookies,
 	})
 	registerAdminApi(app, { vault, accounts, rooms, thumbnails })
+	registerLinkPreview(app)
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {
 		app.log.warn(`No built web app in ${config.webDir}: serving the API only.`)

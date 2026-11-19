@@ -129,3 +129,16 @@ describe('server', () => {
 		expect((await rotated.inject({ url: '/assets/index-abc123.js', cookies })).statusCode).toBe(401)
 	})
 })
+
+describe('external text', () => {
+	it('reads only for someone logged in, and never from inside the network', async () => {
+		const app = await buildApp(config)
+		const url = '/api/external/text?url=' + encodeURIComponent('http://127.0.0.1/feed')
+		expect((await app.inject({ url })).statusCode).toBe(401)
+		const cookies = sessionCookie(await logIn(app))
+		expect((await app.inject({ url: '/api/external/text', cookies })).statusCode).toBe(400)
+		const refused = await app.inject({ url, cookies })
+		expect(refused.statusCode).toBe(403)
+		expect(refused.json().error).toMatch(/not on the internet/)
+	})
+})

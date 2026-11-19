@@ -17,6 +17,7 @@
     "@lifeboard/canvas": "workspace:*",
     "@lifeboard/canvas-sync": "workspace:*",
     "@lifeboard/dice": "workspace:*",
+    "@lifeboard/feeds": "workspace:*",
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@lifeboard/schema": "workspace:*",

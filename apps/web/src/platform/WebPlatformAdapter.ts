@@ -1,3 +1,4 @@
+import type { ExternalText } from '@lifeboard/node-kit'
 import { clear, createStore, del, get, keys, set, type UseStore } from 'idb-keyval'
 import type {
 	BlobStore,
@@ -234,6 +235,30 @@ export function createWebPlatformAdapter(): PlatformAdapter {
 				return blob.size > 0 ? blob : null
 			} catch {
 				return null
+			}
+		},
+
+		/**
+		 * Same origin, unlike the two above: the server reads the site, and it needs the session to.
+		 * Without a server the app answers `/api` itself (the dev server's page, or nothing at all from
+		 * disk), which is why anything but JSON means there is none.
+		 */
+		async fetchExternalText(url: string): Promise<ExternalText> {
+			const unavailable = { ok: false, reason: 'unavailable', message: 'Reading other sites needs the Lifeboard server.' } as const
+			let response: Response
+			try {
+				response = await fetch(`/api/external/text?url=${encodeURIComponent(url)}`, { cache: 'no-store' })
+			} catch {
+				return { ok: false, reason: 'failed', message: "Couldn't reach the server." }
+			}
+			if (!(response.headers.get('content-type') ?? '').includes('application/json')) return unavailable
+			if (response.status === 401 || response.status === 404) return unavailable
+			try {
+				const body = (await response.json()) as { url?: string; text?: string; error?: string }
+				if (!response.ok || typeof body.text !== 'string') return { ok: false, reason: 'failed', message: body.error ?? `The server answered ${response.status}.` }
+				return { ok: true, url: body.url ?? url, text: body.text }
+			} catch {
+				return { ok: false, reason: 'failed', message: 'The server sent something unreadable.' }
 			}
 		},
 

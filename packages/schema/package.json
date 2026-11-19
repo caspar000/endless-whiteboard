@@ -19,6 +19,7 @@
 		"@lifeboard/book-reader": "workspace:*",
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/dice": "workspace:*",
+		"@lifeboard/feeds": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
 		"@lifeboard/note-markdown": "workspace:*",
 		"@lifeboard/skill-tree": "workspace:*",

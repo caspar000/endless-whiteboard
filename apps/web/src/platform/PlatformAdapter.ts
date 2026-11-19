@@ -1,3 +1,4 @@
+import type { ExternalText } from '@lifeboard/node-kit'
 /**
  * The entire Tauri/Capacitor port surface (§4.5).
  *
@@ -65,4 +66,9 @@ export interface PlatformAdapter {
 	 */
 	fetchExternalJson(url: string): Promise<unknown | null>
 	fetchExternalBlob(url: string): Promise<Blob | null>
+	/**
+	 * A page or feed on a site that sends no CORS headers, read by the server vault on our behalf
+	 * (`apps/server/src/externalText.ts`); `unavailable` without one. Never throws.
+	 */
+	fetchExternalText(url: string): Promise<ExternalText>
 }

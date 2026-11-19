@@ -14,6 +14,7 @@ import {
 	Server,
 	Smartphone,
 	Archive,
+	Shuffle,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
@@ -25,6 +26,7 @@ import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
 import { Phone } from './sections/Phone'
 import { Properties } from './sections/Properties'
+import { Randomizer } from './sections/Randomizer'
 import { Relations } from './sections/Relations'
 import { Server as ServerSection } from './sections/Server'
 import { Shortcuts } from './sections/Shortcuts'
@@ -187,6 +189,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Archive size={15} />,
 		Component: Zettelkasten,
+	},
+	{
+		id: 'randomizer',
+		label: 'Randomizer',
+		title: 'A randomizer',
+		lede: 'A card that picks something from your lists of albums, films and books. Press Shuffle and the cover flips like a departure board until it lands on one; stamp what you have heard, seen or read, and it leaves the shuffle.',
+		group: 'Extensions',
+		icon: <Shuffle size={15} />,
+		Component: Randomizer,
 	},
 	{
 		id: 'shortcuts',

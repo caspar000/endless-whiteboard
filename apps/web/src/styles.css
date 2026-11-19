@@ -17433,3 +17433,370 @@ textarea.lb-zsource__field {
 .lb-demo__zpile .lb-zcard__body {
 	font-size: calc(22 * var(--zc) * var(--zfit, 1));
 }
+
+/* ------------------------------------------------ link cards (canvas/linkPreview) */
+/*
+ * A link as a square poster: the page's picture fills it, its name and site sit on a dark band along
+ * the bottom, and the arrow in the corner says it's a link without being a button (the whole card is
+ * one). The band is a gradient rather than a frosted blur: the GPU layer can't draw a filter, and a
+ * card it can't copy would be left to the page on every big board.
+ *
+ * Sized in container units, so a small card and a large one read the same.
+ */
+.lb-linkcard {
+	--lb-linkcard-hue: 210;
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	border-radius: var(--lb-shape-radius);
+	container-type: size;
+	background: #26262a;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.24);
+	color: #fff;
+	font-family: var(--lb-font);
+	user-select: none;
+}
+.lb-linkcard__indicator {
+	rx: var(--lb-shape-radius);
+	ry: var(--lb-shape-radius);
+}
+.lb-linkcard__image,
+.lb-linkcard__fallback {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+.lb-linkcard__image {
+	display: block;
+	object-fit: cover;
+}
+.lb-linkcard__fallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-bottom: 22%;
+	background: radial-gradient(120% 90% at 28% 12%, hsl(var(--lb-linkcard-hue) 36% 32%), hsl(var(--lb-linkcard-hue) 28% 13%));
+}
+.lb-linkcard__tile {
+	width: 36%;
+	aspect-ratio: 1;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	border-radius: 22%;
+	background: hsl(var(--lb-linkcard-hue) 52% 42%);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+	font-size: 20cqw;
+	font-weight: 700;
+	line-height: 1;
+}
+.lb-linkcard__tile img {
+	width: 62%;
+	height: 62%;
+	object-fit: contain;
+}
+
+/* What it is, not something to press: small, and taking no clicks. */
+.lb-linkcard__badge {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 18px;
+	padding: 0 6px 0 4px;
+	border-radius: 9px;
+	background: rgba(18, 18, 20, 0.55);
+	box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.32);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	pointer-events: none;
+}
+.lb-linkcard__badge-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: hsl(var(--lb-linkcard-hue) 55% 50%);
+	box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.45);
+}
+
+.lb-linkcard__band {
+	--lb-linkcard-url: clamp(10px, 3.6cqw, 13px);
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	isolation: isolate;
+	padding: clamp(22px, 13cqw, 48px) clamp(10px, 4.5cqw, 16px) clamp(9px, 4cqw, 14px);
+}
+.lb-linkcard__band::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: linear-gradient(to top, rgba(10, 10, 12, 0.86) 0%, rgba(10, 10, 12, 0.62) 50%, rgba(10, 10, 12, 0) 100%);
+	transform-origin: bottom center;
+	transition: transform var(--mo-out);
+}
+.lb-linkcard__band-inner {
+	display: grid;
+	gap: 2px;
+	/* The address sits below the card's edge until hovered. */
+	transform: translateY(calc(var(--lb-linkcard-url) * 1.4 + 4px));
+	transition: transform var(--mo-out);
+}
+.lb-linkcard__band p {
+	margin: 0;
+}
+.lb-linkcard__title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	font-size: clamp(12px, 7.5cqw, 30px);
+	font-weight: 700;
+	line-height: 1.15;
+	letter-spacing: -0.01em;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.lb-linkcard__domain {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	font-size: clamp(10px, 4.2cqw, 15px);
+	line-height: 1.4;
+	color: rgba(255, 255, 255, 0.76);
+}
+.lb-linkcard__fav {
+	flex: none;
+	width: 1.15em;
+	height: 1.15em;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	border-radius: 4px;
+	background: hsl(var(--lb-linkcard-hue) 52% 42%);
+	color: #fff;
+	font-size: 0.75em;
+	font-weight: 700;
+	line-height: 1;
+}
+.lb-linkcard__fav img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+.lb-linkcard__domain-text,
+.lb-linkcard__url {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.lb-linkcard__url {
+	margin-top: 2px;
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+	font-size: var(--lb-linkcard-url);
+	line-height: 1.4;
+	color: rgba(255, 255, 255, 0.72);
+	opacity: 0;
+	transition: opacity var(--mo-out);
+}
+.lb-linkcard.is-hover .lb-linkcard__band::before {
+	transform: scaleY(1.22);
+}
+.lb-linkcard.is-hover .lb-linkcard__band-inner {
+	transform: translateY(0);
+}
+.lb-linkcard.is-hover .lb-linkcard__url {
+	opacity: 1;
+}
+.tl-shape[data-shape-type='bookmark'] {
+	cursor: pointer;
+}
+
+/* The inspector beside a card being edited, on the floating surface (see `.lb-popover`). */
+.lb-linkinspector {
+	display: grid;
+	gap: 14px;
+	padding: 2px 4px 4px;
+}
+.lb-linkinspector__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.lb-linkinspector__head h2 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 650;
+}
+.lb-linkinspector__close {
+	width: 28px;
+	height: 28px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-linkinspector__close svg {
+	width: 16px;
+	height: 16px;
+}
+.lb-linkinspector__close:hover {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-linkinspector__field {
+	display: grid;
+	gap: 6px;
+	min-width: 0;
+}
+.lb-linkinspector__label {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--lb-text-dim);
+}
+.lb-linkinspector__input {
+	width: 100%;
+	height: 34px;
+	padding: 0 10px;
+	box-sizing: border-box;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 8px;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 14px;
+}
+.lb-linkinspector__input:focus {
+	outline: none;
+	border-color: var(--lb-accent);
+	box-shadow: 0 0 0 3px var(--lb-accent-tint);
+}
+.lb-linkinspector__input[aria-invalid='true'] {
+	border-color: var(--lb-danger);
+}
+.lb-linkinspector__error {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--lb-danger);
+}
+.lb-linkinspector__meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	color: var(--lb-text-dim);
+}
+.lb-linkinspector__meta > span {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.lb-linkinspector__linkbtn {
+	flex: none;
+	padding: 4px 0;
+	border: 0;
+	background: none;
+	color: var(--lb-accent);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.lb-linkinspector__linkbtn:hover:not(:disabled) {
+	text-decoration: underline;
+}
+.lb-linkinspector__linkbtn:disabled {
+	color: var(--lb-text-dim);
+	cursor: progress;
+}
+.lb-linkinspector__thumbframe {
+	display: grid;
+	place-items: center;
+	padding: 8px;
+	background: var(--lb-surface-2);
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+}
+.lb-linkinspector__thumb {
+	position: relative;
+	overflow: hidden;
+	border-radius: 4px;
+	cursor: crosshair;
+	touch-action: none;
+}
+.lb-linkinspector__thumb:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-linkinspector__thumb img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	user-select: none;
+}
+.lb-linkinspector__crop {
+	position: absolute;
+	border-radius: 2px;
+	box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.55);
+	outline: 1.5px solid rgba(255, 255, 255, 0.9);
+	pointer-events: none;
+}
+.lb-linkinspector__dot {
+	position: absolute;
+	width: 14px;
+	height: 14px;
+	margin: -7px 0 0 -7px;
+	border-radius: 50%;
+	border: 2px solid #fff;
+	background: var(--lb-accent);
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+	pointer-events: none;
+}
+.lb-linkinspector__empty,
+.lb-linkinspector__help,
+.lb-linkinspector__status {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--lb-text-dim);
+}
+.lb-linkinspector__empty {
+	padding: 18px 8px;
+	text-align: center;
+}
+.lb-linkinspector__buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.lb-linkinspector__btn {
+	height: 30px;
+	padding: 0 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.lb-linkinspector__btn:hover {
+	border-color: var(--lb-border-strong);
+}

@@ -49,6 +49,13 @@ describe('collectAssetRefs', () => {
 		expect([...collectAssetRefs(snapshot(card, remote)).hashes].sort()).toEqual([CAFE, FACADE])
 	})
 
+	it('counts a picture chosen for one link card, which the card keeps in its meta', () => {
+		const shape = { typeName: 'shape', type: 'bookmark', props: { url: 'https://example.com', assetId: null }, meta: { linkPreview: { image: `asset:${AAA}` } } }
+		const refs = collectAssetRefs(snapshot(shape))
+		expect([...refs.hashes]).toEqual([AAA])
+		expect(refs.pending).toBe(false)
+	})
+
 	it('reports an empty src as pending, because tldraw writes the record before the upload lands', () => {
 		expect(collectAssetRefs(snapshot(asset(''))).pending).toBe(true)
 		expect(collectAssetRefs(snapshot(asset(null))).pending).toBe(true)

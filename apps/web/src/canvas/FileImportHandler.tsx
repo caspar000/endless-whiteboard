@@ -3,13 +3,13 @@ import { useEffect } from 'react'
 import {
 	defaultHandleExternalFileContent,
 	defaultHandleExternalTextContent,
-	defaultHandleExternalUrlContent,
 	useEditor,
 	useToasts,
 	useTranslation,
 	type TLFilesExternalContent,
 } from '@lifeboard/canvas'
 import { MAX_IMPORT_BYTES } from '../persistence/downscale'
+import { createLinkPreview } from './linkPreview/linkPreviewAsset'
 
 /**
  * Routes dropped and pasted files: ones an enabled extension claims (see `fileImportFor`) go to that
@@ -70,17 +70,15 @@ export function FileImportHandler() {
 		/*
 		 * The same arrangement for a dropped or pasted **URL** and for **text**.
 		 *
-		 * Files were the only content an extension could claim, which left the most obvious drop of all
-		 * — a link — going to tldraw's bookmark card. A card is a fine thing to look at and cannot carry
-		 * a property, join a table or appear in a view, which in this app is most of what content is
-		 * for. So this opens the same door for the other two content types, and anything unclaimed
-		 * continues into tldraw's pipeline exactly as before.
+		 * An extension may claim a dropped link or pasted text (`contentImports`). A link nobody claims
+		 * becomes a link card (`linkPreview/`), never an embed: an embed plays the page on the board,
+		 * and a link is something to keep and open. Embed code pasted as such still makes an embed.
 		 */
 		editor.registerExternalContentHandler('url', async (content) => {
 			const point = content.point ?? editor.getViewportPageBounds().center
 			const claim = contentImportFor(content.url)
 			if (!claim) {
-				await defaultHandleExternalUrlContent(editor, content, { toasts, msg })
+				createLinkPreview(editor, content.url, point)
 				return
 			}
 			try {

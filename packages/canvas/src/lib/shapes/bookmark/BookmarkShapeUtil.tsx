@@ -33,7 +33,7 @@ export class BookmarkShapeUtil extends BaseBoxShapeUtil<TLBookmarkShape> {
 		return true
 	}
 
-	override getRenderKey(_shape: TLBookmarkShape, zoom: number) {
+	override getRenderKey(_shape: TLBookmarkShape, zoom: number): string {
 		// The link button hides under 32%.
 		return zoom < 0.32 ? 'h' : ''
 	}

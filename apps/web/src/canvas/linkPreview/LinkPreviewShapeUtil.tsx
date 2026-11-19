@@ -1,7 +1,6 @@
 import { NodeEditorPopover, useAssetUrl } from '@lifeboard/node-kit'
 import {
 	BookmarkShapeUtil,
-	DOUBLE_CLICK_DURATION,
 	HTMLContainer,
 	isValidUrl,
 	toDomPrecision,
@@ -11,13 +10,13 @@ import {
 	type TLBookmarkShape,
 	type TLOnBeforeCreateHandler,
 	type TLOnBeforeUpdateHandler,
-	type TLShapeId,
 } from '@lifeboard/canvas'
 import { isManagedAssetSrc } from '@lifeboard/schema'
 import { useState, type CSSProperties } from 'react'
 import { LinkPreviewInspector } from './LinkPreviewInspector'
 import { cropPosition, hueOf, LINK_PREVIEW_SIZE, linkPreviewContent } from './linkPreview'
 import { bookmarkAssetId, fillBookmark } from './linkPreviewAsset'
+import { clickToOpen } from './openLink'
 
 /**
  * A link on the board, as Freeform shows one: a square poster, the page's picture filling it, its name
@@ -64,23 +63,10 @@ export class LinkPreviewShapeUtil extends BookmarkShapeUtil {
 		// `ctrlKey` is ⌘ on a Mac, as tldraw reads it.
 		const { shiftKey, ctrlKey, altKey } = this.editor.inputs
 		if (shiftKey || ctrlKey || altKey) return
-		if (pendingOpen?.id === shape.id) {
-			clearTimeout(pendingOpen.timer)
-			pendingOpen = null
+		if (clickToOpen(this.editor, shape.id) === 'second') {
 			this.editor.select(shape.id)
 			this.editor.setEditingShape(shape.id)
 			this.editor.setCurrentTool('select.editing_shape')
-			return { id: shape.id, type: shape.type }
-		}
-		if (pendingOpen) clearTimeout(pendingOpen.timer)
-		const editor = this.editor
-		pendingOpen = {
-			id: shape.id,
-			timer: setTimeout(() => {
-				pendingOpen = null
-				if (editor.getEditingShapeId() === shape.id) return
-				openLink(editor.getShape<TLBookmarkShape>(shape.id)?.props.url ?? '')
-			}, DOUBLE_CLICK_DURATION),
 		}
 		return { id: shape.id, type: shape.type }
 	}
@@ -108,14 +94,6 @@ export class LinkPreviewShapeUtil extends BookmarkShapeUtil {
 		if (!known) queueMicrotask(() => void fillBookmark(editor, next.id))
 		return { ...next, props: { ...next.props, assetId: known ? known.id : null } }
 	}
-}
-
-/** The click waiting to see whether it's the first of two. */
-let pendingOpen: { id: TLShapeId; timer: ReturnType<typeof setTimeout> } | null = null
-
-function openLink(url: string) {
-	if (!isValidUrl(url)) return
-	window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 function bookmarkAsset(editor: Editor, shape: TLBookmarkShape): TLBookmarkAsset | null {

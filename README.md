@@ -629,7 +629,8 @@ with one. Reduced motion sets the stagger to zero along with every duration.
 poster, as in Freeform: the page's picture fills it, its name and site sit on a band along the bottom.
 A click anywhere opens the link in a new tab, after a double-click's wait; shift or ⌘ selects, a drag
 selects and moves (the fork's `PointingShape` selects a click-taking shape when it's dragged), and a
-double-click opens the inspector beside it. It is tldraw's bookmark record with our util over it, so
+double-click opens the inspector beside it. On a phone in Hand, a tap opens it too (`canvas/phoneMode.ts`),
+while a drag pans and a double tap is Quick look. It is tldraw's bookmark record with our util over it, so
 the schema is unchanged and Freeform's cards look the same. A browser can't read another site's page,
 so the server does (`GET /api/link-preview`, `apps/server/src/linkPreview.ts`): it connects only to
 public addresses, checked as it connects and on every redirect, and gives back the name, picture and

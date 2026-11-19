@@ -32,9 +32,26 @@ async function dropUrl(page: Page, url: string): Promise<void> {
 }
 
 interface CardEditor {
-	getCurrentPageShapes(): { id: string; type: string; x: number; y: number; props: { url: string; w: number; h: number } }[]
+	getCurrentPageShapes(): {
+		id: string
+		type: string
+		x: number
+		y: number
+		props: { url: string; w: number; h: number }
+		meta: { linkPreview?: { image?: string } }
+	}[]
 	getSelectedShapeIds(): string[]
+	select(id: string): void
 	selectNone(): void
+}
+
+const opened = (page: Page) => page.evaluate(() => (window as unknown as { opened: string[] }).opened)
+
+/** Drops a link and waits for its card, with nothing selected. */
+async function dropCard(page: Page, url: string) {
+	await dropUrl(page, url)
+	await expect.poll(async () => await countShapes(page, 'bookmark')).toBe(1)
+	await page.evaluate(() => (window as unknown as { editor: CardEditor }).editor.selectNone())
 }
 
 async function theCard(page: Page) {
@@ -115,6 +132,77 @@ test.describe('link cards', () => {
 		await page.keyboard.press('Escape')
 		await expect(inspector).toBeHidden()
 		await page.waitForTimeout(600)
-		expect(await page.evaluate(() => (window as unknown as { opened: string[] }).opened)).toEqual([])
+		expect(await opened(page)).toEqual([])
+	})
+
+	test('a corner resizes the card in proportion, however the pointer moves', async ({ page }) => {
+		await dropCard(page, 'https://example.com/page')
+		const id = (await theCard(page)).id
+		await page.evaluate((id) => (window as unknown as { editor: CardEditor }).editor.select(id), id)
+
+		const box = (await page.locator('.lb-linkcard').boundingBox())!
+		await page.mouse.move(box.x + box.width, box.y + box.height)
+		await page.mouse.down()
+		// Mostly sideways: a free resize would make it wide and short.
+		await page.mouse.move(box.x + box.width + 120, box.y + box.height + 10, { steps: 8 })
+		await page.mouse.up()
+
+		const card = await theCard(page)
+		expect(card.props.w).toBeGreaterThan(300)
+		expect(card.props.h).toBeCloseTo(card.props.w, 5)
+	})
+
+	test('a new address in the inspector is where the card goes', async ({ page }) => {
+		await dropCard(page, 'https://example.com/page')
+
+		await page.locator('.lb-linkcard').dblclick()
+		const inspector = page.getByRole('dialog', { name: 'Link preview' })
+		// Typed the way people do, without the scheme.
+		await inspector.getByRole('textbox', { name: 'URL' }).fill('example.org/elsewhere')
+		await page.keyboard.press('Enter')
+		await expect.poll(async () => (await theCard(page)).props.url).toBe('https://example.org/elsewhere')
+		await expect(page.locator('.lb-linkcard__domain-text')).toHaveText('example.org')
+		await inspector.getByRole('button', { name: 'Close' }).click()
+		await expect(inspector).toBeHidden()
+		await page.evaluate(() => (window as unknown as { editor: CardEditor }).editor.selectNone())
+		await page.waitForTimeout(600)
+
+		const box = (await page.locator('.lb-linkcard').boundingBox())!
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+		await expect.poll(() => opened(page)).toEqual(['https://example.org/elsewhere'])
+	})
+
+	test('a picture uploaded in the inspector replaces the card’s, and is still there after a reload', async ({ page }) => {
+		await dropCard(page, 'https://example.com/page')
+		await expect(page.locator('.lb-linkcard__image')).toHaveCount(0)
+
+		await page.locator('.lb-linkcard').dblclick()
+		await expect(page.getByRole('dialog', { name: 'Link preview' })).toBeVisible()
+		// Made in the page, so the test carries no binary fixture (as assets.spec.ts does).
+		await page.evaluate(async () => {
+			const canvas = document.createElement('canvas')
+			canvas.width = 400
+			canvas.height = 200
+			const ctx = canvas.getContext('2d')!
+			ctx.fillStyle = '#e07a2e'
+			ctx.fillRect(0, 0, 400, 200)
+			const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'))
+			const input = document.querySelector<HTMLInputElement>('.lb-linkinspector input[type=file]')!
+			const files = new DataTransfer()
+			files.items.add(new File([blob], 'cover.png', { type: 'image/png' }))
+			input.files = files.files
+			input.dispatchEvent(new Event('change', { bubbles: true }))
+		})
+		await expect.poll(async () => (await theCard(page)).meta.linkPreview?.image ?? '').toMatch(/^asset:[0-9a-f]{64}$/)
+		const kept = (await theCard(page)).meta.linkPreview!.image
+		await expect(page.locator('.lb-linkcard__image')).toBeVisible()
+
+		await page.reload()
+		await expect(page.locator('.lb-linkcard__image')).toBeVisible()
+		expect((await theCard(page)).meta.linkPreview?.image).toBe(kept)
+		// The picture itself came back, not just its name.
+		await expect
+			.poll(() => page.locator('.lb-linkcard__image').evaluate((img) => (img as HTMLImageElement).naturalWidth))
+			.toBe(400)
 	})
 })

@@ -22,6 +22,7 @@
 		"@lifeboard/feeds": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
 		"@lifeboard/note-markdown": "workspace:*",
+		"@lifeboard/randomizer": "workspace:*",
 		"@lifeboard/skill-tree": "workspace:*",
 		"@lifeboard/syllabus": "workspace:*",
 		"@lifeboard/zettelkasten": "workspace:*"

@@ -15,6 +15,7 @@ import {
 	type Extension,
 } from '@lifeboard/node-kit'
 import { markdownNoteExtension } from '@lifeboard/note-markdown'
+import { randomizerExtension } from '@lifeboard/randomizer'
 import { skillTreeExtension } from '@lifeboard/skill-tree'
 import { syllabusExtension } from '@lifeboard/syllabus'
 import { zettelkastenExtension } from '@lifeboard/zettelkasten'
@@ -44,6 +45,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	syllabusExtension,
 	zettelkastenExtension,
 	feedsExtension,
+	randomizerExtension,
 ]
 
 /**

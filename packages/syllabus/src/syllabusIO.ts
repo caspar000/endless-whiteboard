@@ -181,6 +181,7 @@ export function exportSyllabus(editor: Editor, goalName?: string): string {
 		const out: Record<string, unknown> = { id: item.itemId, title: item.title }
 		if (item.kind) out.kind = item.kind.toLowerCase()
 		if (item.medium) out.medium = item.medium
+		if (item.cover) out.cover = item.cover
 		if (item.tags.length) out.tags = item.tags
 		if (item.core) out.core = true
 		if (children.length && depth < 16) {

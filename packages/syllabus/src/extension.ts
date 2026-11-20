@@ -42,6 +42,7 @@ export const syllabusExtension: Extension = {
 		'Drop a syllabus .yaml file on a board and it arrives as a draft: a list of each of its tracks, dashed, and a bar over the board to Confirm or Discard it. Nothing else: a tree in the file waits with the syllabus until you make a skill tree from it.',
 		'A list shows a track in reading order. Every entry folds and unfolds to its works and shows its progress, and the next undone entry is lit. Double-click a list to scroll it. The arrow on a row puts a card for that entry on the board.',
 		'Up next is the card to work from: the next step of every active track and twelve weeks of the days you did something.',
+		'With the Randomizer on, a randomizer card can shuffle any track of a syllabus: pick /mu/core and it lands on one of its 1111 albums, with its cover.',
 		"With Skill trees on, you can make a skill tree from a syllabus (Settings › Skill trees, or ⌘K › Make a skill tree): the tree its file came with, or else a path of its entries, each lit once it is done, in any order. Entries and works are drawn around the nodes they are tagged to, and write-ups light those nodes (a node can ask for an item done, written up, or a number of write-ups).",
 		'Below, every syllabus in your vault: rename it, pause it, remove it (with the skill trees made from it), or unfold it to rename, reorder, add and remove its entries. Add syllabus starts an empty one.',
 		'Turning this off hides its tools and commands. Its shapes on your boards keep rendering, and the syllabus stays in your vault.',

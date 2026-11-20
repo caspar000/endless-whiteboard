@@ -192,6 +192,8 @@ export function Syllabus({ go }: SectionProps) {
 					all back out. The bar stays until you press one of the two.
 					No syllabus is built in. Adler's reading list, /mu/core, and the film, theatre and games trees
 					are files in the repo's <code>syllabi/</code> folder: drop one on a board to bring it in.
+					A work can carry a <code>cover</code>, a link to a picture of it (/mu/core's albums have
+					theirs), which the randomizer shows when it shuffles the work's track.
 				</p>
 				<p>
 					Write ids short (<code>homer</code>); they get the document's <code>goal</code> as a prefix (

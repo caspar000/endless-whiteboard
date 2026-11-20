@@ -42,7 +42,7 @@ export const itemNodeDefinition: NodeDefinition<SkillItemProps> = {
 	onCreate: ({ shape }) => {
 		if (shape.props.itemId && getItem(shape.props.itemId)) return null
 		const itemId = shape.props.itemId || makeItemId('item')
-		putItems([{ itemId, title: 'Untitled item', kind: '', medium: '', tags: [], core: false, childRule: 'core', parent: '', children: [], done: false, doneAt: '', draft: '' }])
+		putItems([{ itemId, title: 'Untitled item', kind: '', medium: '', cover: '', tags: [], core: false, childRule: 'core', parent: '', children: [], done: false, doneAt: '', draft: '' }])
 		return shape.props.itemId ? null : { itemId }
 	},
 	defaultSize: { w: ITEM_WIDTH, h: ITEM_HEIGHT },

@@ -29,6 +29,7 @@ const item = (itemId: string, over: Partial<ItemDef> = {}): ItemDef => ({
 	title: itemId,
 	kind: 'Study',
 	medium: 'book',
+	cover: '',
 	tags: [],
 	core: false,
 	childRule: 'core',
@@ -157,6 +158,29 @@ tracks:
 		expect(byId['a/homer/iliad']).toMatchObject({ done: true, doneAt: '2026-10-01', draft: '' })
 		expect(byId['a/homer']!.children).toEqual(['a/homer/iliad', 'a/homer/odyssey', 'a/homer/fragments'])
 		expect(merged.updated).toBe(3)
+	})
+
+	it('gives a ticked album the cover a later file brings, and keeps it when the next file has none (DARK-8)', () => {
+		const cover = 'https://coverartarchive.org/release-group/1795f337-7004-3d35-a995-f7e1b0c9146e/front-500'
+		const withCover = YAML.replace('{ id: iliad, title: Iliad, core: true }', `{ id: iliad, title: Iliad, core: true, cover: "${cover}" }`)
+		homer()
+		setDone('a/homer/iliad', true, '2026-10-01')
+		const merged = mergeDoc(doc(withCover), getItems(), {}, 'board:a')
+		const iliad = merged.items.find((i) => i.itemId === 'a/homer/iliad')
+		expect(iliad).toMatchObject({ cover, done: true, doneAt: '2026-10-01' })
+		putItems(merged.items)
+		const again = mergeDoc(doc(YAML), getItems(), {}, 'board:a')
+		expect(again.items.find((i) => i.itemId === 'a/homer/iliad')?.cover).toBe(cover)
+	})
+
+	it('takes an https: link or a path on the app as a cover, and nothing else', () => {
+		const withCover = (cover: string) => parseSyllabus(YAML.replace('{ id: odyssey, title: Odyssey }', `{ id: odyssey, title: Odyssey, cover: "${cover}" }`))
+		expect(withCover('/covers/mucore/0002.webp').ok).toBe(true)
+		for (const cover of ['covers/odyssey.jpg', 'http://example.com/a.jpg', '//example.com/a.jpg', 'javascript:alert(1)']) {
+			const parsed = withCover(cover)
+			expect(parsed.ok, cover).toBe(false)
+			if (!parsed.ok) expect(parsed.errors[0]).toMatch(/^Track 1 › item 1 › child 2: cover is an https: link/)
+		}
 	})
 })
 

@@ -52,6 +52,18 @@ export function Randomizer({ go }: SectionProps) {
 					feed up to date while it is open, as a feed card does.
 				</p>
 				<p>
+					With the{' '}
+					<Jump to="syllabus" go={go}>
+						Syllabus
+					</Jump>{' '}
+					on, it also lists each track of every syllabus in your vault, under the syllabus's name: pick one
+					and the card shuffles the track's works, ticked or not. Pick <strong>/mu/core</strong> (after
+					dropping <code>syllabi/mucore.yaml</code> on a board) and it shuffles all 1111 albums, each as
+					album, artist and year on its own cover. Most covers come from the web; the few it has no
+					picture for show their square from the /mu/core chart, which is softer. If your /mu/core came
+					in before the covers did, drop the file on a board again: your ticks stay as they are.
+				</p>
+				<p>
 					The name at the top of the card is the source; click it to change to another. Changing it is an
 					ordinary edit, so <Keys keys={['⌘Z']} /> puts the last one back, and the stamps you put on a
 					source's items stay with the card for when you come back to it.

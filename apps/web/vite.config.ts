@@ -61,18 +61,21 @@ export default defineConfig({
 		target: 'es2022',
 		sourcemap: true,
 	},
-	// Opt-in, so plain `pnpm dev` stays the local-only app with no server to reach: run apps/server with
-	// LIFEBOARD_INSECURE_COOKIES=1, then `LIFEBOARD_SERVER_URL=http://127.0.0.1:8790 pnpm dev`.
-	...(process.env.LIFEBOARD_SERVER_URL
-		? {
-				server: {
+	server: {
+		// Oritask's agent machines reach the dev server under these names: <task>-web.sofia.test on
+		// the machine, and the machine's tailnet name for a preview. Vite refuses other hosts.
+		allowedHosts: ['.sofia.test', '.ts.net'],
+		// Opt-in, so plain `pnpm dev` stays the local-only app with no server to reach: run apps/server
+		// with LIFEBOARD_INSECURE_COOKIES=1, then `LIFEBOARD_SERVER_URL=http://127.0.0.1:8790 pnpm dev`.
+		...(process.env.LIFEBOARD_SERVER_URL
+			? {
 					proxy: Object.fromEntries(
 						['/api', '/login', '/logout'].map((path) => [
 							path,
 							{ target: process.env.LIFEBOARD_SERVER_URL, ws: true },
 						])
 					),
-				},
-			}
-		: {}),
+				}
+			: {}),
+	},
 })

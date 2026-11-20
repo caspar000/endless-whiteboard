@@ -19,6 +19,7 @@ Run `python3 mucore_covers.py` here; the YAML and the cut-outs are what ship.
 """
 
 import difflib
+import http.client
 import json
 import os
 import re
@@ -58,9 +59,17 @@ def norm(text):
     return re.sub(r'[^a-z0-9]+', ' ', text.lower()).strip()
 
 
+def core(text):
+    """A title without what is in brackets, `(Remastered 2009)` or `[DFS 7006]`, unless that is all of it."""
+    return norm(re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', ' ', text)) or norm(text)
+
+
 def close(a, b):
-    a, b = norm(a), norm(b)
+    a, b = core(a), core(b)
     if not a or not b:
+        return False
+    # Numbers name the record: Oxygène is not Oxygène 3, nor Volume 1 Volume 2.
+    if re.findall(r'\d+', a) != re.findall(r'\d+', b):
         return False
     short, long = sorted((a, b), key=len)
     return a == b or (len(short) >= 4 and short in long) or difflib.SequenceMatcher(None, a, b).ratio() >= 0.75
@@ -100,7 +109,8 @@ def get(url, head=False):
                 time.sleep(1 + attempt)
                 continue
             return error.code, None
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        except (OSError, http.client.HTTPException, json.JSONDecodeError):
+            # Offline for a moment, a dropped connection, half an answer: try again.
             time.sleep(2 + attempt)
     return 0, None
 

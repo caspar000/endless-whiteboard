@@ -13186,7 +13186,7 @@ button.lb-props__eye:hover {
 	font-family: inherit;
 }
 
-/* The header: the list switch, the count, the stamp and mute buttons. */
+/* The header: what it shuffles, the count, the open, stamp and mute buttons. */
 .lb-rand__head {
 	display: flex;
 	align-items: center;
@@ -13199,32 +13199,37 @@ button.lb-props__eye:hover {
 	align-items: center;
 	gap: 4px;
 }
-.lb-rand__seg {
+.lb-rand__source {
 	display: flex;
-	gap: 2px;
-	padding: 2px;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding: 7px 8px 7px 10px;
+	border: 0;
 	border-radius: 8px;
 	background: var(--lb-surface-2);
-}
-.lb-rand__seg button {
-	padding: 7px 10px;
-	border: 0;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--lb-text-dim);
+	color: var(--lb-text);
 	font-size: 12px;
 	font-weight: 500;
 	line-height: 1;
-	letter-spacing: 0.02em;
 	cursor: pointer;
 	transition: background-color 160ms ease-out, color 160ms ease-out;
 }
-.lb-rand__seg button[aria-checked='true'] {
-	background: var(--lb-surface);
-	color: var(--lb-accent);
-	box-shadow: 0 1px 2px rgb(16 16 28 / 10%), 0 0 0 1px rgb(16 16 28 / 4%);
+.lb-rand__source > svg {
+	flex: none;
+	color: var(--lb-text-dim);
 }
-.lb-rand__seg[aria-disabled='true'] button {
+.lb-rand__source-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* No source yet: the one thing on the card worth pressing. */
+.lb-rand__source--empty,
+.lb-rand__source--empty > svg {
+	color: var(--lb-accent);
+}
+.lb-rand__source[aria-disabled='true'] {
 	cursor: default;
 }
 .lb-rand__count {
@@ -13270,8 +13275,8 @@ button.lb-props__eye:hover {
 	outline-offset: 1px;
 }
 @media (hover: hover) {
-	.lb-rand__seg button[aria-checked='false']:hover {
-		color: var(--lb-text);
+	.lb-rand__source:not([aria-disabled='true']):hover {
+		background: var(--lb-border);
 	}
 	.lb-rand__icon:not([aria-disabled='true']):hover {
 		background: var(--lb-surface-2);
@@ -13905,7 +13910,7 @@ button.lb-props__eye:hover {
 	}
 }
 
-/* The list editor, in a popover beside the card. */
+/* The source picker and the typed list, in a popover beside the card. */
 .lb-rand-editor {
 	display: flex;
 	flex-direction: column;
@@ -13921,6 +13926,21 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-size: 12px;
 	line-height: 1.4;
+}
+.lb-rand-editor__source {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 7px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 13px;
+}
+.lb-rand-editor__source:focus {
+	border-color: var(--lb-accent);
+	outline: none;
 }
 .lb-rand-editor__text {
 	box-sizing: border-box;
@@ -13994,7 +14014,7 @@ button.lb-props__eye:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.lb-rand__seg button,
+	.lb-rand__source,
 	.lb-rand__shuffle,
 	.lb-rand__shuffle-main,
 	.lb-rand__kbd,

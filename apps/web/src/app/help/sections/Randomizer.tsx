@@ -1,4 +1,4 @@
-import { LISTS, Postmark, STAMPS, STAMP_KINDS, flipCount } from '@lifeboard/randomizer'
+import { Postmark, STAMPS, STAMP_KINDS, flipCount } from '@lifeboard/randomizer'
 import { Jump, Keys, Section, type SectionProps } from '../kit'
 
 /**
@@ -22,7 +22,6 @@ function StampsDemo() {
 }
 
 export function Randomizer({ go }: SectionProps) {
-	const { albums, films, books } = LISTS
 	return (
 		<>
 			<StampsDemo />
@@ -32,14 +31,30 @@ export function Randomizer({ go }: SectionProps) {
 					<Jump to="shortcuts" go={go}>
 						⌘K
 					</Jump>
-					. The switch at the top keeps a separate list for {albums.noun}, {films.noun} and {books.noun}.
+					. A new one is empty: it waits for something to shuffle.
 				</p>
 				<p>
-					<strong>Double-click the card</strong> to type the list on show: one item per line, as{' '}
-					<em>Title — Artist — Year</em>. The second and third parts can be left out, and a hyphen with
-					spaces round it, a tab or a <code>|</code> separate as well as a dash, so a list pasted from
-					somewhere else usually just works. Editing the list keeps each item's cover and stamps, as long
-					as its title and {albums.creator.toLowerCase()} stay the same.
+					<strong>Double-click the card</strong>, or click <strong>Choose a source</strong> at its top,
+					and pick what it shuffles. <strong>A list I type</strong> holds anything you like (albums,
+					films, books, places to eat), one per line, as <em>Title — Creator — Year</em>. The second
+					and third parts can be left out, and a hyphen with spaces round it, a tab or a <code>|</code>{' '}
+					separate as well as a dash, so a list pasted from somewhere else usually just works. Editing the
+					list keeps each item's cover and stamps, as long as its title and creator stay the same.
+				</p>
+				<p>
+					With{' '}
+					<Jump to="feeds" go={go}>
+						Feeds
+					</Jump>{' '}
+					on, the same menu lists <strong>All feeds</strong>, each of your categories and each channel:
+					pick one and the card shuffles its videos, each with its thumbnail as the cover. The button
+					beside the count opens the video on show and marks it watched in your feeds. The card keeps the
+					feed up to date while it is open, as a feed card does.
+				</p>
+				<p>
+					The name at the top of the card is the source; click it to change to another. Changing it is an
+					ordinary edit, so <Keys keys={['⌘Z']} /> puts the last one back, and the stamps you put on a
+					source's items stay with the card for when you come back to it.
 				</p>
 				<p>
 					<strong>Drop an image on the card</strong> and it becomes the cover of the item on show. An
@@ -48,8 +63,8 @@ export function Randomizer({ go }: SectionProps) {
 			</Section>
 			<Section title="Shuffling">
 				<p>
-					<strong>Shuffle</strong> flips the cover through the list like a departure board, a clack per
-					flap, and slows to a stop; then the title and the artist rattle through the letter tiles and
+					<strong>Shuffle</strong> flips the cover through what it shuffles like a departure board, a clack per
+					flap, and slows to a stop; then the title and the creator rattle through the letter tiles and
 					settle. With the card selected, <Keys keys={['⌘↵']} /> does the same.
 				</p>
 				<p>

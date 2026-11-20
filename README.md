@@ -445,7 +445,9 @@ while a plain drag resizes and the content lays itself out again. The two compos
 out at `w / scale` and drawn `scale` times over (`nodeScale.ts`), and auto-height multiplies what it
 measures by the scale. The scale lives in the shape's meta (`lifeboard:scale`) rather than its props,
 so no node type needed a migration and a node without it is at 1. It is a CSS transform, which the
-GPU reader refuses, so a scaled node is drawn by the page.
+GPU reader refuses, so a scaled node is drawn by the page. A node whose content is measured in the
+board's own units opts out with `scalable: false` and only resizes: the table, whose kanban and
+calendar stand real cards in lanes worked out from its `w` and `h`.
 
 **Shapes are drawn two ways** (docs/gpu-renderer-plan.md). The page draws them, as elements, until
 more than 64 that the GPU could draw are on screen; then a WebGL2 layer above the shapes takes those

@@ -249,6 +249,13 @@ export interface NodeDefinition<Props extends object = object> {
 	/** `false`: no resize handles. For a node whose size is part of what it is (an index card). */
 	resizable?: boolean
 	/**
+	 * `false`: Shift on a handle resizes it like a plain drag instead of scaling it (DARK-7,
+	 * `nodeScale.ts`). For a node whose content is laid out in the board's own units: a table's
+	 * kanban and calendar stand real cards in their lanes, which a scaled drawing of the lanes would no
+	 * longer line up with.
+	 */
+	scalable?: boolean
+	/**
 	 * `false`: the node may draw outside its box when it isn't being edited, as a sticky note's shadow
 	 * falls past its paper. Its own component then keeps its content inside its bounds itself.
 	 */
@@ -385,7 +392,7 @@ export function createNodeShapeUtil<Props extends object>(
 			 * not turn those into a scale. Each move is computed from the drag's first snapshot, so
 			 * pressing or letting go of Shift mid-drag switches cleanly between the two.
 			 */
-			if (this.editor.inputs.shiftKey && this.editor.isIn('select.resizing')) {
+			if (def.scalable !== false && this.editor.inputs.shiftKey && this.editor.isIn('select.resizing')) {
 				const { scale, factor } = scaleStep(nodeScale(shape), info.scaleX, info.scaleY)
 				// The drag's signs are kept: past the opposite edge the box moves to that side, as any
 				// resize does. Nodes don't draw mirrored, so nothing turns over.
@@ -482,7 +489,7 @@ export function createNodeShapeUtil<Props extends object>(
 			const shape = rawShape as unknown as Shape
 			const isEditing = this.editor.isShapeBeingEdited(shape.id)
 			const Component = def.component
-			const scale = nodeScale(shape)
+			const scale = def.scalable === false ? 1 : nodeScale(shape)
 
 			// Called unconditionally — `enabled` gates the behaviour rather than the hook, so hook
 			// order can never depend on which node type this is.

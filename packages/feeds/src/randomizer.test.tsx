@@ -1,0 +1,131 @@
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
+import { RANDOMIZER_TYPE, randomizerNodeDefinition, type RandomizerProps } from '@lifeboard/randomizer'
+import { useMemo, useRef, useState } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+// The barrel, as the app loads it: this is what registers Feeds with the randomizer.
+import './index'
+import { refreshSources } from './refresh'
+import { addSource, getWatched, replaceCategories, replaceSourceItems, replaceSources, replaceWatched } from './store'
+
+/*
+ * DARK-7's connection, as a person makes it: a YouTube channel read through the app's network bridge
+ * into Feeds, and a randomizer card on the board that is pointed at it, shuffles its videos and opens
+ * one. Nothing is stubbed between the two extensions: the card finds Feeds through the registration
+ * the feeds barrel makes.
+ */
+
+const BEN = 'UCS0N5baNlQWJCUrhCEo8WlA'
+const FEED = `https://www.youtube.com/feeds/videos.xml?channel_id=${BEN}`
+
+/** The channel's feed as YouTube writes it. */
+const CHANNEL = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+ <title>Ben Eater</title>
+ <entry><id>yt:video:benclock5aa</id><yt:videoId>benclock5aa</yt:videoId><title>Breadboard clock part 5</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=benclock5aa"/><published>2026-11-18T14:00:00Z</published></entry>
+ <entry><id>yt:video:benclock4aa</id><yt:videoId>benclock4aa</yt:videoId><title>Breadboard clock part 4</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=benclock4aa"/><published>2026-11-03T15:00:00Z</published></entry>
+</feed>`
+
+let sourceKey = ''
+
+/** A randomizer on a board: the editor writes the card's props and opens its editor, as the real one does. */
+function Board({ onProps }: { onProps: (props: RandomizerProps) => void }) {
+	const [props, setProps] = useState<RandomizerProps>(() => randomizerNodeDefinition.defaultProps())
+	const [editing, setEditing] = useState(false)
+	const shape = { id: 'shape:rand', type: RANDOMIZER_TYPE, x: 0, y: 0, rotation: 0, props: { ...props, w: 360, h: 520 }, meta: {} }
+	const latest = useRef(shape)
+	latest.current = shape
+	onProps(props)
+	const editor = useMemo(
+		() => ({
+			run: (fn: () => void) => fn(),
+			updateShape: ({ props: next }: { props: Partial<RandomizerProps> }) => setProps((p) => ({ ...p, ...next })),
+			getShape: () => latest.current,
+			select: () => {},
+			setEditingShape: (id: string | null) => setEditing(id !== null),
+			addOpenMenu: () => {},
+			deleteOpenMenu: () => {},
+			getShapePageBounds: () => ({ x: 0, y: 0, w: 360, h: 520 }),
+			getViewportScreenBounds: () => ({ x: 0, y: 0, w: 1440, h: 900 }),
+			pageToScreen: (p: { x: number; y: number }) => p,
+			getContainer: () => document.body,
+		}),
+		[]
+	)
+	const Card = randomizerNodeDefinition.component
+	return <Card shape={shape as never} isEditing={editing} editor={editor as never} />
+}
+
+let props: RandomizerProps
+const mount = () => render(<Board onProps={(p) => (props = p)} />)
+const card = () => screen.getByLabelText('Randomizer')
+
+beforeEach(async () => {
+	replaceSources({})
+	replaceCategories({})
+	replaceSourceItems({})
+	replaceWatched({})
+	setNetworkBridge({
+		getJson: async () => null,
+		getBlob: async () => null,
+		getText: async (url): Promise<ExternalText> => (url === FEED ? { ok: true, url, text: CHANNEL } : { ok: false, reason: 'failed', message: `No page at ${url}` }),
+	})
+	const ben = addSource({ provider: 'youtube', feedUrl: FEED, link: `https://www.youtube.com/channel/${BEN}`, title: 'Ben Eater', categories: [] })
+	sourceKey = `feeds:src:${ben.sourceId}`
+	await refreshSources({ force: true })
+	// Reduced motion: the pick fades in rather than flipping through two dozen timed flaps.
+	vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
+})
+
+afterEach(() => {
+	cleanup()
+	vi.unstubAllGlobals()
+	vi.restoreAllMocks()
+})
+
+describe('a randomizer connected to a YouTube channel', () => {
+	it('starts as an empty front waiting for a source, with no Albums, Films or Books', () => {
+		mount()
+		expect(within(card()).getByText('Waiting for a source')).toBeTruthy()
+		expect(within(card()).getByRole('button', { name: 'Choose what to shuffle' })).toBeTruthy()
+		expect(within(card()).queryByRole('radiogroup')).toBeNull()
+		for (const tab of ['Albums', 'Films', 'Books']) expect(within(card()).queryByText(tab)).toBeNull()
+		expect(props.source).toBe('')
+	})
+
+	it("offers the channel among its sources, and shuffles the channel's videos once picked", async () => {
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
+
+		const picker = screen.getByLabelText('Shuffle from') as HTMLSelectElement
+		const offered = Array.from(picker.options).map((o) => o.textContent)
+		expect(offered).toEqual(expect.arrayContaining(['A list I type', 'All feeds', 'Ben Eater']))
+		fireEvent.change(picker, { target: { value: sourceKey } })
+		expect(props.source).toBe(sourceKey)
+		expect(screen.getByText(/2 videos from Ben Eater/)).toBeTruthy()
+		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+
+		// The card now shows the channel: its name on top, its videos counted, the newest on show.
+		expect(within(card()).getByRole('button', { name: 'Shuffling Ben Eater. Change the source' })).toBeTruthy()
+		expect(within(card()).getByText('2 videos')).toBeTruthy()
+		expect(within(card()).getByRole('img', { name: 'Video cover: Breadboard clock part 5 by Ben Eater' })).toBeTruthy()
+
+		fireEvent.click(within(card()).getByRole('button', { name: /^Shuffle/ }))
+		await waitFor(() => expect(props.picks).toEqual([{ source: sourceKey, id: 'yt:benclock4aa' }]))
+		expect(within(card()).getByText('Picked Breadboard clock part 4 by Ben Eater, 3 Nov 2026.')).toBeTruthy()
+	})
+
+	it('opens the video on show on YouTube and marks it watched in Feeds', async () => {
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
+		fireEvent.change(screen.getByLabelText('Shuffle from'), { target: { value: sourceKey } })
+		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+		await act(async () => fireEvent.click(within(card()).getByRole('button', { name: 'Open Breadboard clock part 5' })))
+		expect(open).toHaveBeenCalledWith('https://www.youtube.com/watch?v=benclock5aa', '_blank', 'noopener,noreferrer')
+		expect(getWatched()['yt:benclock5aa']).toBeTruthy()
+	})
+})

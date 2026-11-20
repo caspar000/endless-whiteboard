@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <channel>
+  <title>Hackaday</title>
+  <link>https://hackaday.com</link>
+  <item>
+   <title>A Tiny CRT Clock &amp; Its Driver</title>
+   <link>https://hackaday.com/2026/11/18/a-tiny-crt-clock/</link>
+   <guid isPermaLink="false">https://hackaday.com/?p=812345</guid>
+   <pubDate>Wed, 18 Nov 2026 15:00:00 +0000</pubDate>
+   <media:content url="https://hackaday.com/wp-content/uploads/crt.jpg" medium="image"/>
+  </item>
+  <item>
+   <title><![CDATA[Reverse-Engineering a <Cheap> Multimeter]]></title>
+   <link>/2026/11/17/cheap-multimeter/</link>
+   <dc:date>2026-11-17T09:30:00Z</dc:date>
+   <enclosure url="https://hackaday.com/wp-content/uploads/meter.png" type="image/png" length="1"/>
+  </item>
+  <item>
+   <title>No link and no guid</title>
+  </item>
+ </channel>
+</rss>

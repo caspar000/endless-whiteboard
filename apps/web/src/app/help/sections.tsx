@@ -14,6 +14,7 @@ import {
 	Server,
 	Smartphone,
 	Archive,
+	Rss,
 	Shuffle,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -22,6 +23,7 @@ import { Agent } from './sections/Agent'
 import { Asking } from './sections/Asking'
 import { Books } from './sections/Books'
 import { Dice } from './sections/Dice'
+import { Feeds } from './sections/Feeds'
 import { Notes } from './sections/Notes'
 import { Overview } from './sections/Overview'
 import { Phone } from './sections/Phone'
@@ -189,6 +191,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Archive size={15} />,
 		Component: Zettelkasten,
+	},
+	{
+		id: 'feeds',
+		label: 'Feeds',
+		title: 'Feeds',
+		lede: 'YouTube channels and RSS feeds in one newest-first card, filed under categories you make, so you can see everything or only one topic.',
+		group: 'Extensions',
+		icon: <Rss size={15} />,
+		Component: Feeds,
 	},
 	{
 		id: 'randomizer',

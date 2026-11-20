@@ -12,6 +12,7 @@ import { loadUserBindings } from './app/keymapStore'
 import { loadSavedQueries } from './app/savedQueries'
 import { loadCardLayouts } from './app/cardLayouts'
 import { loadSkillIndex } from './app/skillIndex'
+import { loadFeeds } from './app/feeds'
 import { installIconBridge } from './app/boardLook/iconBridge'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
@@ -62,6 +63,7 @@ registerOperationCommands()
 loadSavedQueries()
 loadCardLayouts()
 loadSkillIndex()
+loadFeeds()
 
 /*
  * The user's keymap, over the defaults the table declares.

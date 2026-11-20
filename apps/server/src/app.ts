@@ -8,6 +8,7 @@ import Fastify, { type FastifyServerOptions } from 'fastify'
 import { registerAdminApi } from './adminApi.ts'
 import { registerApi } from './api.ts'
 import { AssetFiles } from './assets.ts'
+import { ExternalText, registerExternalText } from './externalText.ts'
 import { collectGarbage, scheduleGarbageCollection } from './gc.ts'
 import { registerLinkPreview } from './linkPreview.ts'
 import { registerAuth } from './auth.ts'
@@ -65,6 +66,7 @@ export async function buildApp(config: ServerConfig, options: FastifyServerOptio
 		secureCookies: config.secureCookies,
 	})
 	registerAdminApi(app, { vault, accounts, rooms, thumbnails })
+	registerExternalText(app, new ExternalText())
 	registerLinkPreview(app)
 
 	if (!existsSync(join(config.webDir, 'index.html'))) {

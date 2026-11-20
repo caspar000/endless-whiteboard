@@ -1,6 +1,7 @@
 export * from './assets'
 import { bookReaderExtension } from '@lifeboard/book-reader'
 import { diceExtension } from '@lifeboard/dice'
+import { feedsExtension } from '@lifeboard/feeds'
 import {
 	createNodeShapeUtil,
 	getNodeDefinitions,
@@ -43,6 +44,7 @@ export const SHIPPED_EXTENSIONS: readonly Extension[] = [
 	skillTreeExtension,
 	syllabusExtension,
 	zettelkastenExtension,
+	feedsExtension,
 	randomizerExtension,
 ]
 

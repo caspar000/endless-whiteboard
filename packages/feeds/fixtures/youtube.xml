@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <link rel="self" href="http://www.youtube.com/feeds/videos.xml?channel_id=UCS0N5baNlQWJCUrhCEo8WlA"/>
+ <id>yt:channel:S0N5baNlQWJCUrhCEo8WlA</id>
+ <yt:channelId>S0N5baNlQWJCUrhCEo8WlA</yt:channelId>
+ <title>Ben Eater</title>
+ <link rel="alternate" href="https://www.youtube.com/channel/UCS0N5baNlQWJCUrhCEo8WlA"/>
+ <author>
+  <name>Ben Eater</name>
+  <uri>https://www.youtube.com/channel/UCS0N5baNlQWJCUrhCEo8WlA</uri>
+ </author>
+ <published>2011-10-15T02:37:39+00:00</published>
+ <entry>
+  <id>yt:video:ou2RFTK86eA</id>
+  <yt:videoId>ou2RFTK86eA</yt:videoId>
+  <yt:channelId>UCS0N5baNlQWJCUrhCEo8WlA</yt:channelId>
+  <title>Setting the time on my breadboard clock: Breadboard clock part 5</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=ou2RFTK86eA"/>
+  <author>
+   <name>Ben Eater</name>
+   <uri>https://www.youtube.com/channel/UCS0N5baNlQWJCUrhCEo8WlA</uri>
+  </author>
+  <published>2026-10-18T14:00:12+00:00</published>
+  <updated>2026-10-22T03:04:34+00:00</updated>
+  <media:group>
+   <media:title>Setting the time on my breadboard clock: Breadboard clock part 5</media:title>
+   <media:content url="https://www.youtube.com/v/ou2RFTK86eA?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i4.ytimg.com/vi/ou2RFTK86eA/hqdefault.jpg" width="480" height="360"/>
+   <media:description>…</media:description>
+   <media:community>
+    <media:starRating count="3759" average="5.00" min="1" max="5"/>
+    <media:statistics views="178435"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:ZymtNiyGB_g</id>
+  <yt:videoId>ZymtNiyGB_g</yt:videoId>
+  <yt:channelId>UCS0N5baNlQWJCUrhCEo8WlA</yt:channelId>
+  <title>Building the minutes and seconds for my clock: Breadboard clock part 4</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=ZymtNiyGB_g"/>
+  <author>
+   <name>Ben Eater</name>
+   <uri>https://www.youtube.com/channel/UCS0N5baNlQWJCUrhCEo8WlA</uri>
+  </author>
+  <published>2026-10-03T15:00:21+00:00</published>
+  <updated>2026-10-07T07:47:11+00:00</updated>
+  <media:group>
+   <media:title>Building the minutes and seconds for my clock: Breadboard clock part 4</media:title>
+   <media:content url="https://www.youtube.com/v/ZymtNiyGB_g?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i3.ytimg.com/vi/ZymtNiyGB_g/hqdefault.jpg" width="480" height="360"/>
+   <media:description>…</media:description>
+   <media:community>
+    <media:starRating count="5044" average="5.00" min="1" max="5"/>
+    <media:statistics views="253934"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:gnmrKDpTM7o</id>
+  <yt:videoId>gnmrKDpTM7o</yt:videoId>
+  <yt:channelId>UCS0N5baNlQWJCUrhCEo8WlA</yt:channelId>
+  <title>Dividing a signal by counting: Breadboard clock part 3</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=gnmrKDpTM7o"/>
+  <author>
+   <name>Ben Eater</name>
+   <uri>https://www.youtube.com/channel/UCS0N5baNlQWJCUrhCEo8WlA</uri>
+  </author>
+  <published>2026-09-05T15:00:05+00:00</published>
+  <updated>2026-10-05T13:09:47+00:00</updated>
+  <media:group>
+   <media:title>Dividing a signal by counting: Breadboard clock part 3</media:title>
+   <media:content url="https://www.youtube.com/v/gnmrKDpTM7o?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i4.ytimg.com/vi/gnmrKDpTM7o/hqdefault.jpg" width="480" height="360"/>
+   <media:description>…</media:description>
+   <media:community>
+    <media:starRating count="5788" average="5.00" min="1" max="5"/>
+    <media:statistics views="241280"/>
+   </media:community>
+  </media:group>
+ </entry>
+</feed>

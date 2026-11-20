@@ -18,7 +18,19 @@ export interface NetworkBridge {
 	getJson(url: string): Promise<unknown | null>
 	/** Raw bytes — an image, typically — or `null`. Never throws, for the same reason. */
 	getBlob(url: string): Promise<Blob | null>
+	/**
+	 * A page or feed on another site, as text: what a browser may not read itself when the site sends
+	 * no CORS headers (a YouTube channel's feed). The web app reads it through its server, so without
+	 * one the answer is `unavailable`, which an extension should say rather than call a failure. Never
+	 * throws.
+	 */
+	getText(url: string): Promise<ExternalText>
 }
+
+/** `url` is where the text was read, after redirects. */
+export type ExternalText =
+	| { ok: true; url: string; text: string }
+	| { ok: false; reason: 'unavailable' | 'failed'; message: string }
 
 let bridge: NetworkBridge | null = null
 

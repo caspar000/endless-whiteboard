@@ -190,7 +190,7 @@ export {
 } from './boardKinds'
 
 // The outbound-request seam for extensions that reach the outside world — implemented by the app.
-export { getNetworkBridge, setNetworkBridge, type NetworkBridge } from './network'
+export { getNetworkBridge, setNetworkBridge, type ExternalText, type NetworkBridge } from './network'
 export { getIconBridge, setIconBridge, type IconBridge } from './icons'
 
 // The storage seam for extensions that own binary content — implemented by the app (§4.5).

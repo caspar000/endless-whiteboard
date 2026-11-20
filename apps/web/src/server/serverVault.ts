@@ -223,17 +223,38 @@ export async function uploadServerThumbnail(id: string, theme: ResolvedTheme, bl
 }
 
 /** Settings that follow the vault rather than the device. See `app/vaultSettings.ts`. */
-export type VaultSettingKey = 'savedQueries' | 'disabledExtensions' | 'cardLayouts' | 'skillIndex' | 'skillTracks' | 'skillTrees' | 'syllabusItems' | 'syllabusTracks' | 'syllabusEvidence' | 'syllabusTreePlans'
+export type VaultSettingKey =
+	| 'savedQueries'
+	| 'disabledExtensions'
+	| 'cardLayouts'
+	| 'skillIndex'
+	| 'skillTracks'
+	| 'skillTrees'
+	| 'syllabusItems'
+	| 'syllabusTracks'
+	| 'syllabusEvidence'
+	| 'syllabusTreePlans'
+	| 'feedSources'
+	| 'feedCategories'
+	| 'feedWatched'
 
 export async function getVaultSettings(): Promise<Partial<Record<VaultSettingKey, unknown>>> {
 	return (await (await api('/vault/settings')).json()) as Partial<Record<VaultSettingKey, unknown>>
 }
 
-/** Fire and forget: the local copy is already saved, so a failed push costs only the other devices. */
-export function pushVaultSetting(key: VaultSettingKey, value: unknown): void {
-	if (!available) return
-	void api(`/vault/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }).catch((error) =>
-		console.error(`Lifeboard: could not save ${key} to the server.`, error)
+/**
+ * Fire and forget: the local copy is already saved, so a failed push costs only the other devices.
+ * Resolves to whether the server took it, for a caller that keeps unsent edits to send again
+ * (`feeds.ts`); without a server, `false`. Never rejects.
+ */
+export function pushVaultSetting(key: VaultSettingKey, value: unknown): Promise<boolean> {
+	if (!available) return Promise.resolve(false)
+	return api(`/vault/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }).then(
+		() => true,
+		(error) => {
+			console.error(`Lifeboard: could not save ${key} to the server.`, error)
+			return false
+		}
 	)
 }
 

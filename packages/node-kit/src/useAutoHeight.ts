@@ -22,6 +22,9 @@ import type { Editor } from '@lifeboard/canvas'
  * The write uses `history: 'ignore'`: `h` is a cache derived from `md` and `w`, not user data. Undo
  * does not restore it, which is correct — undoing the *content* re-triggers the observer and the
  * height re-derives. Without this, every keystroke would push an undo entry.
+ *
+ * A scaled node (`nodeScale.ts`) lays its content out at 1 and draws it `scale` times over. RO reports
+ * the layout height, before the transform, so the box's height is that times the scale.
  */
 export function useAutoHeight({
 	editor,
@@ -30,6 +33,7 @@ export function useAutoHeight({
 	currentHeight,
 	enabled,
 	minHeight,
+	scale = 1,
 }: {
 	editor: Editor
 	shapeId: string
@@ -37,12 +41,14 @@ export function useAutoHeight({
 	currentHeight: number
 	enabled: boolean
 	minHeight: number
+	/** The node's scale; the content's height, and the minimum, are both multiplied by it. */
+	scale?: number
 }) {
 	const contentRef = useRef<HTMLDivElement>(null)
 
 	// Read through refs so the observer is created once and never re-subscribes mid-typing.
-	const state = useRef({ currentHeight, enabled, minHeight })
-	state.current = { currentHeight, enabled, minHeight }
+	const state = useRef({ currentHeight, enabled, minHeight, scale })
+	state.current = { currentHeight, enabled, minHeight, scale }
 
 	useEffect(() => {
 		const element = contentRef.current
@@ -54,14 +60,14 @@ export function useAutoHeight({
 			const entry = entries[0]
 			if (!entry) return
 
-			const { enabled: on, minHeight: min, currentHeight: current } = state.current
+			const { enabled: on, minHeight: min, currentHeight: current, scale: by } = state.current
 			if (!on) return
 
 			// Guard 3: a culled or unmounted subtree measures 0, and h must be non-zero.
 			const measured = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
 			if (!(measured > 0)) return
 
-			const next = Math.max(min, Math.round(measured))
+			const next = Math.max(Math.round(min * by), Math.round(measured * by))
 			// Sub-pixel jitter would otherwise write forever.
 			if (Math.abs(next - current) <= 1) return
 

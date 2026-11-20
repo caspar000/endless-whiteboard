@@ -42,7 +42,7 @@ const DOCK_GROUPS: DockTool[][] = [
 			icon: <MousePointer2 size={19} />,
 			kbd: ['V', '1', 'H', '2'],
 			blurb:
-				'Click to select, drag to move or resize. Double-click a note to write in it — double-click always means "edit the content". Tap Space to Quick look it: the board blurs and the node fills the screen. Press the key again, or click the button again, for Hand: drag to pan. You rarely need it — two-finger scroll pans from any tool, and pinch or ⌘-scroll zooms.',
+				'Click to select, drag to move or resize. Hold Shift while dragging a card’s handle (a feed, a randomizer, a syllabus list) to scale it instead, text and all, the way a sticky scales; without Shift it resizes and its content lays itself out again. Double-click a note to write in it — double-click always means "edit the content". Tap Space to Quick look it: the board blurs and the node fills the screen. Press the key again, or click the button again, for Hand: drag to pan. You rarely need it — two-finger scroll pans from any tool, and pinch or ⌘-scroll zooms.',
 		},
 		{
 			id: 'frame',

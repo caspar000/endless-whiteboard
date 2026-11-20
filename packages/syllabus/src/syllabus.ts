@@ -14,6 +14,8 @@ export interface ItemDef {
 	title: string
 	kind: string
 	medium: string
+	/** A picture of it, an `https:` URL or a path the app serves (`/covers/…`), or ''. From its syllabus file: an album's cover, for the randomizer. */
+	cover: string
 	/** Skill node ids this item feeds; its works feed them too. */
 	tags: string[]
 	/** One of the works its parent's `core` rule waits for. */
@@ -101,6 +103,7 @@ export function parseItem(raw: unknown): ItemDef | null {
 		title: str(r.title),
 		kind: str(r.kind),
 		medium: str(r.medium),
+		cover: str(r.cover),
 		tags: strs(r.tags),
 		core: r.core === true,
 		childRule: str(r.childRule) || 'core',
@@ -285,6 +288,7 @@ export function addEntry(trackId: string, title: string): string | null {
 			title: title.trim(),
 			kind: 'Study',
 			medium: '',
+			cover: '',
 			tags: [...track.defaultTags],
 			core: false,
 			childRule: 'core',

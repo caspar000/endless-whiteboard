@@ -21,6 +21,8 @@ export interface DocItem {
 	title: string
 	kind: string
 	medium: string
+	/** A picture of it (an album's cover): an `https:` URL, a path the app serves (`/covers/…`), or ''. */
+	cover: string
 	tags: string[]
 	core: boolean
 	childRule: string
@@ -82,6 +84,9 @@ export function parseSyllabus(source: string): SyllabusResult {
 		const kind = ITEM_KINDS.find((k) => k.toLowerCase() === kindRaw) ?? ''
 		if (kindRaw && !kind) errors.push(`${path}: kind is one of ${ITEM_KINDS.join(', ')}`)
 		const itemId = qualify(prefix, id)
+		// A picture on the web, or one the app serves (/mu/core's covers cut from its chart); anything else shows nothing.
+		const cover = text(value.cover)
+		if (cover && !/^(https:\/\/|\/(?!\/))\S+$/.test(cover)) errors.push(`${path}: cover is an https: link to a picture, or a path on this app such as /covers/mucore/0002.webp`)
 		const ruleRaw = value.childRule
 		const childRule =
 			typeof ruleRaw === 'number' ? formatChildRule({ kind: 'n', n: ruleRaw }) : text(ruleRaw) === 'all' ? 'all' : /^n:\d+$/.test(text(ruleRaw)) ? text(ruleRaw) : 'core'
@@ -93,6 +98,7 @@ export function parseSyllabus(source: string): SyllabusResult {
 			title,
 			kind,
 			medium: text(value.medium).toLowerCase(),
+			cover,
 			tags: list(value.tags).map(tag),
 			core: value.core === true,
 			childRule,

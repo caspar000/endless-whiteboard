@@ -33,6 +33,7 @@ export function mergeDoc(
 			title: item.title,
 			kind: item.kind || had?.kind || '',
 			medium: item.medium || had?.medium || '',
+			cover: item.cover || had?.cover || '',
 			tags,
 			core: item.core,
 			childRule: item.childRule,

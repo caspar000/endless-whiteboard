@@ -77,7 +77,7 @@ export function SourceEditor({ shape, editor }: { shape: NodeShape<RandomizerPro
 								? `${view.count} ${view.count === 1 ? view.kind.one : view.kind.noun} from ${view.name}. Stamps you put on them stay with this card.`
 								: view.type === 'missing'
 									? 'What this card shuffled is gone. Choose another source.'
-									: 'A list you type holds anything: albums, films, books, chores. Or pick one of your feeds and the card shuffles its videos.'}
+									: 'A list you type holds anything: albums, films, books, chores. Or pick one of your feeds, and the card shuffles its videos, or a syllabus, and it shuffles its works.'}
 						</p>
 						<div className="lb-rand-editor__foot">
 							<span />

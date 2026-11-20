@@ -10,6 +10,7 @@ const item = (itemId: string, over: Partial<ItemDef> = {}): ItemDef => ({
 	title: itemId,
 	kind: 'Study',
 	medium: 'book',
+	cover: '',
 	tags: [],
 	core: false,
 	childRule: 'all',

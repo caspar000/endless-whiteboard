@@ -36,6 +36,8 @@ export {
 	type NodeShape,
 	type NodeToolbarIcon,
 } from './registry'
+// A node's scale, set by a Shift-drag on a handle (DARK-7).
+export { MAX_NODE_SCALE, MIN_NODE_SCALE, SCALE_META_KEY, nodeScale, scaleStep } from './nodeScale'
 
 // Commands: the second load-bearing seam. One table of user-invokable actions that every command
 // surface — the ⌘K palette first; Help, keymaps, generated overrides later — reads as a view.

@@ -205,7 +205,7 @@ export const HELP_SECTIONS: HelpSection[] = [
 		id: 'randomizer',
 		label: 'Randomizer',
 		title: 'A randomizer',
-		lede: 'A card that picks something from your lists of albums, films and books. Press Shuffle and the cover flips like a departure board until it lands on one; stamp what you have heard, seen or read, and it leaves the shuffle.',
+		lede: 'A card that picks something at random from whatever you give it: a list you type, or the videos in one of your feeds. Press Shuffle and the cover flips like a departure board until it lands on one; stamp what you have heard, seen or read, and it leaves the shuffle.',
 		group: 'Extensions',
 		icon: <Shuffle size={15} />,
 		Component: Randomizer,

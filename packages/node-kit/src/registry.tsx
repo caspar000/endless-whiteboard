@@ -22,6 +22,7 @@ import {
 import type { ComponentType } from 'react'
 import type { PropertyValue } from './properties/types'
 import type { ShapeProperties } from './properties/values'
+import { SCALE_META_KEY, nodeScale, scaleStep } from './nodeScale'
 import { useAutoHeight } from './useAutoHeight'
 
 /**
@@ -248,6 +249,13 @@ export interface NodeDefinition<Props extends object = object> {
 	/** `false`: no resize handles. For a node whose size is part of what it is (an index card). */
 	resizable?: boolean
 	/**
+	 * `false`: Shift on a handle resizes it like a plain drag instead of scaling it (DARK-7,
+	 * `nodeScale.ts`). For a node whose content is laid out in the board's own units: a table's
+	 * kanban and calendar stand real cards in their lanes, which a scaled drawing of the lanes would no
+	 * longer line up with.
+	 */
+	scalable?: boolean
+	/**
 	 * `false`: the node may draw outside its box when it isn't being edited, as a sticky note's shadow
 	 * falls past its paper. Its own component then keeps its content inside its bounds itself.
 	 */
@@ -375,6 +383,38 @@ export function createNodeShapeUtil<Props extends object>(
 		}
 
 		override onResize(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {
+			/*
+			 * Shift held while dragging a handle scales the node rather than resizing it (DARK-7): the box
+			 * and its content grow together, as a sticky note's do. See `nodeScale.ts`.
+			 *
+			 * Asked of the select tool's resizing state, not of Shift alone, because the editor resizes
+			 * shapes for other reasons too (flipping, stretching, packing) and a key held by chance must
+			 * not turn those into a scale. Each move is computed from the drag's first snapshot, so
+			 * pressing or letting go of Shift mid-drag switches cleanly between the two.
+			 */
+			if (def.scalable !== false && this.editor.inputs.shiftKey && this.editor.isIn('select.resizing')) {
+				const { scale, factor } = scaleStep(nodeScale(shape), info.scaleX, info.scaleY)
+				// The drag's signs are kept: past the opposite edge the box moves to that side, as any
+				// resize does. Nodes don't draw mirrored, so nothing turns over.
+				const resized = resizeBox(shape, {
+					...info,
+					scaleX: (info.scaleX < 0 ? -1 : 1) * factor,
+					scaleY: (info.scaleY < 0 ? -1 : 1) * factor,
+				})
+				return { ...resized, meta: { ...shape.meta, [SCALE_META_KEY]: scale } }
+			}
+
+			const resized = this.resizeContent(shape, info)
+			// A drag that scaled for a while and then let go of Shift goes back to the scale it started
+			// at: the frames that scaled wrote theirs, and a plain resize must not keep it.
+			const live = this.editor.getShape(shape.id)
+			const start = nodeScale(shape)
+			if (live && nodeScale(live) !== start) return { ...resized, meta: { ...shape.meta, [SCALE_META_KEY]: start } }
+			return resized
+		}
+
+		/** A plain resize: the box changes and the content lays itself out again in it. */
+		private resizeContent(shape: TLBaseBoxShape, info: TLResizeInfo<TLBaseBoxShape>) {
 			if (!def.autoHeight) return resizeBox(shape, info)
 
 			/*
@@ -449,6 +489,7 @@ export function createNodeShapeUtil<Props extends object>(
 			const shape = rawShape as unknown as Shape
 			const isEditing = this.editor.isShapeBeingEdited(shape.id)
 			const Component = def.component
+			const scale = def.scalable === false ? 1 : nodeScale(shape)
 
 			// Called unconditionally — `enabled` gates the behaviour rather than the hook, so hook
 			// order can never depend on which node type this is.
@@ -462,6 +503,7 @@ export function createNodeShapeUtil<Props extends object>(
 				currentHeight: shape.props.h,
 				enabled: autoHeightOn,
 				minHeight: def.autoHeight?.minHeight ?? 0,
+				scale,
 			})
 
 			return (
@@ -485,10 +527,24 @@ export function createNodeShapeUtil<Props extends object>(
 					 * auto-height is on, or the ResizeObserver would be measuring the container —
 					 * i.e. this node's own output — and feed back on itself forever.
 					 */}
+					{/*
+					 * A scaled node lays its content out in the box it would have at 1 and draws that
+					 * `scale` times over, from the corner. At 1 the styles are the ones every node had
+					 * before scaling existed, so an unscaled node is drawn exactly as it was.
+					 */}
 					<div
 						ref={contentRef}
 						className="lb-node__content"
-						style={{ width: '100%', height: autoHeightOn ? 'auto' : '100%' }}
+						style={
+							scale === 1
+								? { width: '100%', height: autoHeightOn ? 'auto' : '100%' }
+								: {
+										width: shape.props.w / scale,
+										height: autoHeightOn ? 'auto' : shape.props.h / scale,
+										transform: `scale(${scale})`,
+										transformOrigin: '0 0',
+									}
+						}
 					>
 						<Component shape={shape} isEditing={isEditing} editor={this.editor} />
 					</div>

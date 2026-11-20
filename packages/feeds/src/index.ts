@@ -11,12 +11,17 @@ import { registerFeedProvider } from './providers/registry'
 import { rssProvider } from './providers/rss'
 import { redditProvider, xProvider } from './providers/soon'
 import { youtubeProvider } from './providers/youtube'
+import { registerRandomizerSource } from '@lifeboard/randomizer'
+import { feedsRandomizerSource } from './randomizerSource'
 
 // The platforms, in the order of the sources panel's tabs.
 registerFeedProvider(youtubeProvider)
 registerFeedProvider(rssProvider)
 registerFeedProvider(redditProvider)
 registerFeedProvider(xProvider)
+
+// A randomizer can shuffle a feed's videos (DARK-7).
+registerRandomizerSource(feedsRandomizerSource)
 
 export { feedsExtension } from './extension'
 export { FEED_TYPE, type FeedProps } from './board'

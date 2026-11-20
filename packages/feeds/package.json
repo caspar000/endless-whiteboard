@@ -32,6 +32,7 @@
 	"dependencies": {
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
+		"@lifeboard/randomizer": "workspace:*",
 		"lucide-react": "^1.28.0"
 	}
 }

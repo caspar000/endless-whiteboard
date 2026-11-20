@@ -734,6 +734,9 @@ importers:
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../node-kit
+      '@lifeboard/randomizer':
+        specifier: workspace:*
+        version: link:../randomizer
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.8)
@@ -824,6 +827,12 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
     devDependencies:
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tldraw/store':
         specifier: 5.5.2
         version: 5.5.2(patch_hash=fe7a1c4cc46f4763a2f3bb72e0e0cb164e2835f5fb8b1f7383dd93a46617965a)(react@19.2.8)
@@ -836,6 +845,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: ^30.1.1
+        version: 30.1.1
       react:
         specifier: ^19.2.8
         version: 19.2.8

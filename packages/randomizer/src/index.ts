@@ -13,4 +13,6 @@ export { RANDOMIZER_TYPE, type RandomizerProps } from './props'
 export { SHUFFLE_COMMAND_ID } from './commands'
 /** For the help page, which draws its demo with the real stamps and lists. */
 export { Postmark } from './Postmark'
-export { LISTS, STAMPS, STAMP_KINDS, flipCount, type ListId, type RandomItem, type StampKind } from './model'
+export { STAMPS, STAMP_KINDS, flipCount, type RandomItem, type SourceEntry, type SourceKind, type StampKind } from './model'
+/** For other extensions to offer the card something to shuffle (DARK-7). */
+export { registerRandomizerSource, type RandomizerSource, type SourceChoice } from './sources'

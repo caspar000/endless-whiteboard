@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
 	MAX_SHUFFLE_MS,
-	PICKS_KEPT_PER_LIST,
+	PICKS_KEPT_PER_SOURCE,
+	TYPED_SOURCE,
 	currentItem,
 	flipCount,
 	flipDurations,
@@ -17,15 +18,23 @@ import {
 	postmarkDate,
 	randomIndex,
 	recordPick,
+	oneTypedList,
+	parseSourceKey,
 	shortDate,
+	sourceKey,
+	storeItem,
+	withEntries,
 	type RandomItem,
+	type SourceEntry,
 	type RandomWords,
 	type Stamp,
 } from './model'
 
-const item = (id: string, stamps: Stamp[] = [], list: RandomItem['list'] = 'albums'): RandomItem => ({
+const FEED = 'feeds:all'
+
+const item = (id: string, stamps: Stamp[] = [], source: string = TYPED_SOURCE): RandomItem => ({
 	id,
-	list,
+	source,
 	title: `Title ${id}`,
 	creator: `Artist ${id}`,
 	year: '',
@@ -66,19 +75,19 @@ describe('parseLine', () => {
 describe('mergeList', () => {
 	it('keeps covers and stamps of items still in the list, and adds new lines as items', () => {
 		const kept = { ...item('a', [{ kind: 'unsure', date: '2026-11-02' }]), cover: 'asset:abc' }
-		const film = item('f', [], 'films')
+		const video = item('v', [{ kind: 'liked', date: '2026-11-19' }], FEED)
 		let n = 0
-		const next = mergeList([kept, item('gone'), film], 'albums', 'Title a — Artist a — 1999\nNew one — Someone', () => `new${n++}`)
+		const next = mergeList([kept, item('gone'), video], 'Title a — Artist a — 1999\nNew one — Someone', () => `new${n++}`)
 		expect(next).toEqual([
-			film,
+			video,
 			{ ...kept, year: '1999' },
-			{ id: 'new0', list: 'albums', title: 'New one', creator: 'Someone', year: '', cover: '', stamps: [] },
+			{ id: 'new0', source: TYPED_SOURCE, title: 'New one', creator: 'Someone', year: '', cover: '', stamps: [] },
 		])
 	})
 
 	it('round-trips through the text it shows', () => {
 		const items = [item('a'), { ...item('b'), year: '1978' }]
-		expect(mergeList(items, 'albums', formatList(items, 'albums'))).toEqual(items)
+		expect(mergeList(items, formatList(items))).toEqual(items)
 	})
 
 	it('reads back every line it writes, including the ambiguous two-part ones', () => {
@@ -95,14 +104,14 @@ describe('mergeList', () => {
 	it('keeps the cover and stamps of a year-only item through an unrelated edit', () => {
 		const book: RandomItem = {
 			id: 'b',
-			list: 'books',
+			source: TYPED_SOURCE,
 			title: 'Book',
 			creator: '',
 			year: 'c. 1600',
 			cover: 'asset:abc',
 			stamps: [{ kind: 'liked', date: '2026-11-19' }],
 		}
-		const next = mergeList([book], 'books', `${formatList([book], 'books')}\nAnother — Someone`, () => 'new')
+		const next = mergeList([book], `${formatList([book])}\nAnother — Someone`, () => 'new')
 		expect(next[0]).toEqual(book)
 		expect(next).toHaveLength(2)
 	})
@@ -114,21 +123,21 @@ describe('stamps and the shuffle', () => {
 		expect(isOut(item('a', [{ kind: 'disliked', date: '2026-11-19' }]))).toBe(true)
 		expect(isOut(item('a', [{ kind: 'unsure', date: '2026-11-19' }]))).toBe(false)
 		expect(isOut(item('a', [{ kind: 'unsure', date: '2026-11-02' }, { kind: 'liked', date: '2026-11-19' }]))).toBe(true)
-		const items = [item('a'), item('b', [{ kind: 'liked', date: '2026-11-19' }]), item('c', [], 'films')]
-		expect(inShuffle(items, 'albums').map((i) => i.id)).toEqual(['a'])
+		const items = [item('a'), item('b', [{ kind: 'liked', date: '2026-11-19' }]), item('c', [], FEED)]
+		expect(inShuffle(items, TYPED_SOURCE).map((i) => i.id)).toEqual(['a'])
 	})
 
 	it('never lands on a stamped-out item or the one on show', () => {
 		const items = [item('a'), item('b', [{ kind: 'liked', date: '2026-11-19' }]), item('c'), item('d')]
 		for (let draw = 0; draw < 6; draw++) {
-			const pick = pickNext(items, 'albums', 'a', scripted(draw))
+			const pick = pickNext(items, TYPED_SOURCE, 'a', scripted(draw))
 			expect(['c', 'd']).toContain(pick?.id)
 		}
 	})
 
 	it('returns the only one left, and nothing when every item is out', () => {
-		expect(pickNext([item('a')], 'albums', 'a')?.id).toBe('a')
-		expect(pickNext([item('a', [{ kind: 'disliked', date: '2026-11-19' }])], 'albums', null)).toBeNull()
+		expect(pickNext([item('a')], TYPED_SOURCE, 'a')?.id).toBe('a')
+		expect(pickNext([item('a', [{ kind: 'disliked', date: '2026-11-19' }])], TYPED_SOURCE, null)).toBeNull()
 	})
 })
 
@@ -147,18 +156,18 @@ describe('randomIndex', () => {
 describe('picks', () => {
 	it('shows the newest pick, and the ones before it as last picks', () => {
 		const items = [item('a'), item('b'), item('c')]
-		let picks = recordPick([], { list: 'albums', id: 'b' })
-		picks = recordPick(picks, { list: 'albums', id: 'c' })
-		expect(currentItem(items, picks, 'albums')?.id).toBe('c')
-		expect(lastPicks(items, picks, 'albums').map((i) => i.id)).toEqual(['b'])
+		let picks = recordPick([], { source: TYPED_SOURCE, id: 'b' })
+		picks = recordPick(picks, { source: TYPED_SOURCE, id: 'c' })
+		expect(currentItem(items, picks, TYPED_SOURCE)?.id).toBe('c')
+		expect(lastPicks(items, picks, TYPED_SOURCE).map((i) => i.id)).toEqual(['b'])
 	})
 
-	it('falls back to the first item, and keeps a bounded history per list', () => {
-		expect(currentItem([item('a'), item('b')], [], 'albums')?.id).toBe('a')
-		let picks = recordPick([], { list: 'films', id: 'x' })
-		for (let i = 0; i < 9; i++) picks = recordPick(picks, { list: 'albums', id: String(i) })
-		expect(picks.filter((p) => p.list === 'albums')).toHaveLength(PICKS_KEPT_PER_LIST)
-		expect(picks.some((p) => p.list === 'films')).toBe(true)
+	it('falls back to the first item, and keeps a bounded history per source', () => {
+		expect(currentItem([item('a'), item('b')], [], TYPED_SOURCE)?.id).toBe('a')
+		let picks = recordPick([], { source: FEED, id: 'x' })
+		for (let i = 0; i < 9; i++) picks = recordPick(picks, { source: TYPED_SOURCE, id: String(i) })
+		expect(picks.filter((p) => p.source === TYPED_SOURCE)).toHaveLength(PICKS_KEPT_PER_SOURCE)
+		expect(picks.some((p) => p.source === FEED)).toBe(true)
 	})
 })
 
@@ -192,5 +201,91 @@ describe('dates', () => {
 	it('prints a postmark date and a timeline date', () => {
 		expect(postmarkDate('2026-11-19')).toBe('19 NOV 26')
 		expect(shortDate('2026-11-02')).toBe('2 Nov')
+	})
+})
+
+describe('source keys', () => {
+	it('takes a key apart at its first colon, so a choice may have colons of its own', () => {
+		expect(parseSourceKey(sourceKey('feeds', 'cat:abc'))).toEqual({ sourceId: 'feeds', choiceId: 'cat:abc' })
+	})
+
+	it('reads no source and the typed list as neither', () => {
+		expect(parseSourceKey('')).toBeNull()
+		expect(parseSourceKey(TYPED_SOURCE)).toBeNull()
+	})
+})
+
+describe("another source's entries", () => {
+	const entry = (id: string, over: Partial<SourceEntry> = {}): SourceEntry => ({
+		id,
+		title: `Video ${id}`,
+		creator: 'A channel',
+		year: '12 Nov 2026',
+		cover: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+		url: `https://www.youtube.com/watch?v=${id}`,
+		...over,
+	})
+
+	it('become items in their own order, carrying the stamps and the cover the card put on them', () => {
+		const stamped = { ...item('b', [{ kind: 'unsure', date: '2026-11-19' }], FEED), cover: 'asset:mine' }
+		const items = withEntries([stamped, item('a')], FEED, [entry('a'), entry('b')])
+		expect(items.map((i) => [i.id, i.source])).toEqual([
+			['a', FEED],
+			['b', FEED],
+		])
+		expect(items[0]).toMatchObject({ stamps: [], cover: entry('a').cover, url: entry('a').url })
+		expect(items[1]).toMatchObject({ stamps: stamped.stamps, cover: 'asset:mine' })
+	})
+
+	it('are stored only while stamped or covered, and never with the source\'s url or picture', () => {
+		const [shown] = withEntries([], FEED, [entry('a')])
+		const stamps: Stamp[] = [{ kind: 'liked', date: '2026-11-20' }]
+		const stored = storeItem([], shown!, { stamps })
+		expect(stored).toEqual([{ id: 'a', source: FEED, title: 'Video a', creator: 'A channel', year: '12 Nov 2026', cover: '', stamps }])
+		// Unstamped again, nothing of it is left on the card.
+		const [again] = withEntries(stored, FEED, [entry('a')])
+		expect(storeItem(stored, again!, { stamps: [] })).toEqual([])
+	})
+
+	it('keeps a dropped cover through a later stamp', () => {
+		const [shown] = withEntries([], FEED, [entry('a')])
+		const covered = storeItem([], shown!, { cover: 'asset:mine' })
+		const [again] = withEntries(covered, FEED, [entry('a')])
+		expect(storeItem(covered, again!, { stamps: [{ kind: 'unsure', date: '2026-11-20' }] })[0]?.cover).toBe('asset:mine')
+	})
+
+	it('leave the typed list alone, which is stored whole even unstamped', () => {
+		const typed = item('t')
+		expect(storeItem([typed], typed, { stamps: [] })).toEqual([typed])
+	})
+})
+
+describe('cards from before DARK-7', () => {
+	it('put the three lists into one typed list, the one on show first, keeping every stamp and pick', () => {
+		const stamps = [{ kind: 'liked', date: '2026-11-19' }]
+		const before = {
+			list: 'films',
+			items: [
+				{ id: 'a', list: 'albums', title: 'An album', creator: '', year: '', cover: '', stamps },
+				{ id: 'f', list: 'films', title: 'A film', creator: '', year: '', cover: 'asset:x', stamps: [] },
+			],
+			picks: [
+				{ list: 'albums', id: 'a' },
+				{ list: 'films', id: 'f' },
+			],
+		}
+		const after = oneTypedList(before)
+		expect(after.source).toBe(TYPED_SOURCE)
+		expect(after.items).toEqual([
+			{ id: 'f', source: TYPED_SOURCE, title: 'A film', creator: '', year: '', cover: 'asset:x', stamps: [] },
+			{ id: 'a', source: TYPED_SOURCE, title: 'An album', creator: '', year: '', cover: '', stamps },
+		])
+		// The film was on show, so the card still opens on it.
+		expect(after.picks[0]).toEqual({ source: TYPED_SOURCE, id: 'f' })
+		expect(after.picks).toHaveLength(2)
+	})
+
+	it('leave an empty card waiting for a source, as a new one does', () => {
+		expect(oneTypedList({ list: 'albums', items: [], picks: [] })).toEqual({ source: '', items: [], picks: [] })
 	})
 })

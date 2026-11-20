@@ -81,6 +81,13 @@ export const tableNodeDefinition: NodeDefinition<TableNodeProps> = {
 	// The card sizes itself to the rows it shows. A table whose height is unrelated to its content is
 	// either clipping data or padding empty space, and both look broken.
 	autoHeight: { minHeight: TABLE_MIN_HEIGHT },
+	/*
+	 * Shift resizes a table rather than scaling it (DARK-7). Its kanban and calendar stand the real
+	 * cards of the board in their lanes and days, measured in the board's units from `w` and `h`
+	 * (`views/placement.ts`, `views/interaction.ts`); a scaled drawing of those lanes would no longer
+	 * line up with the cards in them or with where a drop lands.
+	 */
+	scalable: false,
 	component: TableNodeComponent,
 	canEdit: true,
 	// Only consulted for the shape being *edited* (tldraw's `useGestureEvents` checks

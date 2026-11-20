@@ -1,7 +1,7 @@
 import { useAssetUrl } from '@lifeboard/node-kit'
 import type { CSSProperties } from 'react'
 import { hashText, generatedCover } from './generatedCover'
-import { LISTS, type ListId, type RandomItem } from './model'
+import type { RandomItem, SourceKind } from './model'
 import { POSTMARK_CENTRE, Postmark } from './Postmark'
 
 /** How many of an item's stamps the pile draws. The timeline lists every one. */
@@ -14,10 +14,12 @@ const PILE_OPACITY = [0.95, 0.82, 0.72, 0.62, 0.52]
 const isStored = (src: string) => src.startsWith('asset:')
 
 /** Where the image of an item comes from: a dropped picture, one dragged from a page, or drawn. */
-export function useCoverUrl(item: RandomItem, list: ListId): string {
+type CoverShape = SourceKind['shape']
+
+export function useCoverUrl(item: RandomItem, shape: CoverShape): string {
 	const stored = useAssetUrl(isStored(item.cover) ? item.cover : '')
-	if (isStored(item.cover)) return stored ?? generatedCover(item, LISTS[list].shape)
-	return item.cover || generatedCover(item, LISTS[list].shape)
+	if (isStored(item.cover)) return stored ?? generatedCover(item, shape)
+	return item.cover || generatedCover(item, shape)
 }
 
 /**
@@ -60,10 +62,10 @@ export function StampPile({ item, fresh }: { item: RandomItem; fresh: boolean })
  * One item's face, the full size of the window: its cover with its stamps on it. Each half of the
  * split flap shows half of one of these, so the stamps flip with the art.
  */
-export function CoverFace({ item, list, fresh = false }: { item: RandomItem; list: ListId; /** Its latest stamp has just come down. */ fresh?: boolean }) {
-	const url = useCoverUrl(item, list)
+export function CoverFace({ item, shape, fresh = false }: { item: RandomItem; shape: CoverShape; /** Its latest stamp has just come down. */ fresh?: boolean }) {
+	const url = useCoverUrl(item, shape)
 	return (
-		<div className={`lb-rand__face lb-rand__face--${LISTS[list].shape}`}>
+		<div className={`lb-rand__face lb-rand__face--${shape}`}>
 			<img className="lb-rand__img" src={url} alt="" draggable={false} />
 			{item.stamps.length > 0 && <StampPile item={item} fresh={fresh} />}
 		</div>
@@ -71,8 +73,8 @@ export function CoverFace({ item, list, fresh = false }: { item: RandomItem; lis
 }
 
 /** A small cover for the row of last picks, ringed in its latest stamp's ink. */
-export function Thumb({ item, list, ink, label }: { item: RandomItem; list: ListId; ink: string | null; label: string }) {
-	const url = useCoverUrl(item, list)
+export function Thumb({ item, shape, ink, label }: { item: RandomItem; shape: CoverShape; ink: string | null; label: string }) {
+	const url = useCoverUrl(item, shape)
 	return (
 		<li className={ink ? 'lb-rand__thumb lb-rand__thumb--stamped' : 'lb-rand__thumb'} style={ink ? ({ '--lb-rand-ink': ink } as CSSProperties) : undefined} title={label} aria-label={label} role="img">
 			<img src={url} alt="" draggable={false} />

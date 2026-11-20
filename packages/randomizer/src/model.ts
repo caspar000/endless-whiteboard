@@ -1,31 +1,46 @@
 /**
- * What a randomizer card holds, and every rule about it that is not drawing: which list is which, how
- * a typed list becomes items, which items are still in the shuffle, the fair pick, and how long the
- * shuffle takes. Pure, so it is tested without a DOM and the card is left with only the drawing.
+ * What a randomizer card holds, and every rule about it that is not drawing: how a typed list becomes
+ * items, how a source's entries meet the card's stamps, which items are still in the shuffle, the
+ * fair pick, and how long the shuffle takes. Pure, so it is tested without a DOM and the card is left
+ * with only the drawing.
+ *
+ * A card shuffles one **source** (DARK-7): a list typed into it, or whatever another extension offers
+ * (`sources.ts`), such as a feed's videos. Which one is a string, the source key: `''` for none yet,
+ * `list` for the typed list, `<source id>:<choice id>` for the rest.
  */
 
-export const LIST_IDS = ['albums', 'films', 'books'] as const
-export type ListId = (typeof LIST_IDS)[number]
+/** No source chosen yet: the card waits for one. */
+export const NO_SOURCE = ''
+/** The list typed into the card itself. */
+export const TYPED_SOURCE = 'list'
 
-export interface ListKind {
-	/** The switch's label. */
-	label: string
-	/** Plural, for the count: "12 albums". */
+/** How a source's items are spoken of and drawn. */
+export interface SourceKind {
+	/** Plural, for the count: "12 videos". */
 	noun: string
-	/** Singular, for "Stamp this album". */
+	/** Singular, for "Stamp this video". */
 	one: string
-	/** The label over the second row of tiles. */
+	/** The label over the second row of tiles: "Channel". */
 	creator: string
-	/** Shown beside the year: "1978 · LP". */
+	/** Shown beside the year: "1978 · LP". Often ''. */
 	tag: string
-	/** The shape of a generated cover. Album art is square; posters and books are taller than wide. */
+	/** The shape of a cover: square, or taller than wide and set on a mat (a poster, a book). */
 	shape: 'square' | 'poster' | 'book'
 }
 
-export const LISTS: Record<ListId, ListKind> = {
-	albums: { label: 'Albums', noun: 'albums', one: 'album', creator: 'Artist', tag: 'LP', shape: 'square' },
-	films: { label: 'Films', noun: 'films', one: 'film', creator: 'Director', tag: 'Film', shape: 'poster' },
-	books: { label: 'Books', noun: 'books', one: 'book', creator: 'Author', tag: 'Book', shape: 'book' },
+/** A typed list holds anything, so it says nothing about what its items are. */
+export const TYPED_KIND: SourceKind = { noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }
+
+/** The source key for a choice of another extension's source: `feeds:all`. */
+export function sourceKey(sourceId: string, choiceId: string): string {
+	return `${sourceId}:${choiceId}`
+}
+
+/** A source key taken apart, or `null` for none and for the typed list. */
+export function parseSourceKey(key: string): { sourceId: string; choiceId: string } | null {
+	const at = key.indexOf(':')
+	if (at <= 0) return null
+	return { sourceId: key.slice(0, at), choiceId: key.slice(at + 1) }
 }
 
 export const STAMP_KINDS = ['liked', 'disliked', 'unsure'] as const
@@ -57,7 +72,8 @@ export interface Stamp {
 
 export interface RandomItem {
 	id: string
-	list: ListId
+	/** The source key it belongs to: `list` for a typed line, `feeds:all` for a video. */
+	source: string
 	title: string
 	creator: string
 	/** Free text, because "1978", "c. 1600" and "" are all things people write. */
@@ -66,19 +82,21 @@ export interface RandomItem {
 	cover: string
 	/** Oldest first. */
 	stamps: Stamp[]
+	/** Where the item opens (a video). Only a source's entries have one, and it is never stored. */
+	url?: string
 }
 
-/** One shuffle's answer. The newest per list is the one on show; the next few are "Last picks". */
+/** One shuffle's answer. The newest per source is the one on show; the next few are "Last picks". */
 export interface RandomPick {
-	list: ListId
+	source: string
 	id: string
 }
 
 /** The one on show plus the four the design has room for under the button. */
-export const PICKS_KEPT_PER_LIST = 5
+export const PICKS_KEPT_PER_SOURCE = 5
 
-export function itemsOf(items: readonly RandomItem[], list: ListId): RandomItem[] {
-	return items.filter((item) => item.list === list)
+export function itemsOf(items: readonly RandomItem[], source: string): RandomItem[] {
+	return items.filter((item) => item.source === source)
 }
 
 export function latestStamp(item: RandomItem): Stamp | null {
@@ -95,15 +113,15 @@ export function isOut(item: RandomItem): boolean {
  * The items a shuffle may land on. Only the latest stamp counts, which is what makes "Unsure, then
  * Liked" take an item out and "Liked" undone put it back.
  */
-export function inShuffle(items: readonly RandomItem[], list: ListId): RandomItem[] {
-	return itemsOf(items, list).filter((item) => !isOut(item))
+export function inShuffle(items: readonly RandomItem[], source: string): RandomItem[] {
+	return itemsOf(items, source).filter((item) => !isOut(item))
 }
 
-/** The item on show for a list: the newest pick that still exists, or else the list's first item. */
-export function currentItem(items: readonly RandomItem[], picks: readonly RandomPick[], list: ListId): RandomItem | null {
-	const ofList = itemsOf(items, list)
+/** The item on show for a source: the newest pick that still exists, or else the source's first item. */
+export function currentItem(items: readonly RandomItem[], picks: readonly RandomPick[], source: string): RandomItem | null {
+	const ofList = itemsOf(items, source)
 	for (const pick of picks) {
-		if (pick.list !== list) continue
+		if (pick.source !== source) continue
 		const found = ofList.find((item) => item.id === pick.id)
 		if (found) return found
 	}
@@ -111,23 +129,23 @@ export function currentItem(items: readonly RandomItem[], picks: readonly Random
 }
 
 /** The picks before the one on show, newest first, as far as they still exist. */
-export function lastPicks(items: readonly RandomItem[], picks: readonly RandomPick[], list: ListId, count = PICKS_KEPT_PER_LIST - 1): RandomItem[] {
-	const current = currentItem(items, picks, list)
+export function lastPicks(items: readonly RandomItem[], picks: readonly RandomPick[], source: string, count = PICKS_KEPT_PER_SOURCE - 1): RandomItem[] {
+	const current = currentItem(items, picks, source)
 	const out: RandomItem[] = []
 	for (const pick of picks) {
-		if (pick.list !== list || pick.id === current?.id || out.some((item) => item.id === pick.id)) continue
-		const found = items.find((item) => item.id === pick.id && item.list === list)
+		if (pick.source !== source || pick.id === current?.id || out.some((item) => item.id === pick.id)) continue
+		const found = items.find((item) => item.id === pick.id && item.source === source)
 		if (found) out.push(found)
 		if (out.length === count) break
 	}
 	return out
 }
 
-/** Puts a new pick on top, dropping the oldest of that list's beyond what the card shows. */
+/** Puts a new pick on top, dropping the oldest of that source's beyond what the card shows. */
 export function recordPick(picks: readonly RandomPick[], pick: RandomPick): RandomPick[] {
-	const next = [pick, ...picks.filter((p) => !(p.list === pick.list && p.id === pick.id))]
+	const next = [pick, ...picks.filter((p) => !(p.source === pick.source && p.id === pick.id))]
 	let kept = 0
-	return next.filter((p) => p.list !== pick.list || ++kept <= PICKS_KEPT_PER_LIST)
+	return next.filter((p) => p.source !== pick.source || ++kept <= PICKS_KEPT_PER_SOURCE)
 }
 
 /** How random numbers arrive. A parameter so the rejection branch can be tested at all. */
@@ -162,11 +180,11 @@ export function randomIndex(n: number, words: RandomWords = cryptoWords): number
  */
 export function pickNext(
 	items: readonly RandomItem[],
-	list: ListId,
+	source: string,
 	currentId: string | null,
 	words: RandomWords = cryptoWords
 ): RandomItem | null {
-	const pool = inShuffle(items, list)
+	const pool = inShuffle(items, source)
 	const choices = pool.length > 1 ? pool.filter((item) => item.id !== currentId) : pool
 	if (choices.length === 0) return null
 	return choices[randomIndex(choices.length, words)] ?? null
@@ -255,8 +273,8 @@ export function formatLine(item: Pick<RandomItem, 'title' | 'creator' | 'year'>)
 	return title
 }
 
-export function formatList(items: readonly RandomItem[], list: ListId): string {
-	return itemsOf(items, list).map(formatLine).join('\n')
+export function formatList(items: readonly RandomItem[]): string {
+	return itemsOf(items, TYPED_SOURCE).map(formatLine).join('\n')
 }
 
 const keyOf = (title: string, creator: string) => `${title.trim().toLowerCase()}\u0000${creator.trim().toLowerCase()}`
@@ -265,14 +283,11 @@ const keyOf = (title: string, creator: string) => `${title.trim().toLowerCase()}
  * The list as typed, merged over what the card already held for it.
  *
  * Matching is by title and creator, so editing a year keeps an item's cover and stamps, and so does
- * moving its line. A line that matches nothing is a new item. Other lists are left as they were.
+ * moving its line. A line that matches nothing is a new item. What the card keeps for other sources
+ * (stamps on a feed's videos) is left as it was.
  */
-export function mergeList(
-	items: readonly RandomItem[],
-	list: ListId,
-	text: string,
-	newId: () => string = randomId
-): RandomItem[] {
+export function mergeList(items: readonly RandomItem[], text: string, newId: () => string = randomId): RandomItem[] {
+	const list = TYPED_SOURCE
 	const before = itemsOf(items, list)
 	const unused = new Map<string, RandomItem[]>()
 	for (const item of before) {
@@ -285,9 +300,100 @@ export function mergeList(
 		if (!parsed) continue
 		const key = keyOf(parsed.title, parsed.creator)
 		const match = unused.get(key)?.shift()
-		next.push(match ? { ...match, ...parsed } : { id: newId(), list, ...parsed, cover: '', stamps: [] })
+		next.push(match ? { ...match, ...parsed } : { id: newId(), source: list, ...parsed, cover: '', stamps: [] })
 	}
-	return [...items.filter((item) => item.list !== list), ...next]
+	return [...items.filter((item) => item.source !== list), ...next]
+}
+
+/* ------------------------------------------------------------------------ another source's items */
+
+/** One thing a source offers to shuffle: a video, a post, anything with a title. */
+export interface SourceEntry {
+	/** Unique within the source, and lasting: stamps and picks find it again by it. */
+	id: string
+	title: string
+	creator: string
+	year: string
+	/** A picture of it, an `https:` URL, or ''. */
+	cover: string
+	/** Where it opens, or ''. */
+	url: string
+}
+
+/**
+ * A source's entries as the card's items: each with the stamps the card has put on it, and the
+ * picture dropped on it, if any, over the source's own.
+ *
+ * The card stores nothing for an entry it hasn't stamped or covered, so a feed's sixty videos cost
+ * the board nothing until one is stamped.
+ */
+export function withEntries(stored: readonly RandomItem[], source: string, entries: readonly SourceEntry[]): RandomItem[] {
+	const mine = new Map(itemsOf(stored, source).map((item) => [item.id, item]))
+	return entries.map((entry) => {
+		const kept = mine.get(entry.id)
+		return {
+			id: entry.id,
+			source,
+			title: entry.title,
+			creator: entry.creator,
+			year: entry.year,
+			cover: kept?.cover || entry.cover,
+			stamps: kept?.stamps ?? [],
+			...(entry.url ? { url: entry.url } : {}),
+		}
+	})
+}
+
+/**
+ * The card's items with one item changed (stamped, unstamped, given a cover), as they are stored.
+ *
+ * A typed item is stored whole, as it always was. Another source's entry is stored only while it
+ * carries something of the card's own (a stamp, a dropped picture), with its title kept so a stamp
+ * means something on its own; its `url` and the source's picture are the source's, and stay there.
+ */
+export function storeItem(stored: readonly RandomItem[], item: RandomItem, change: Partial<Pick<RandomItem, 'stamps' | 'cover'>>): RandomItem[] {
+	const next = { ...item, ...change }
+	const at = stored.findIndex((s) => s.id === item.id && s.source === item.source)
+	// The item on the card shows the source's picture when none was dropped on it; only a dropped one
+	// is the card's to keep.
+	const ownCover = next.source === TYPED_SOURCE || change.cover !== undefined ? next.cover : (stored[at]?.cover ?? '')
+	const kept: RandomItem = {
+		id: next.id,
+		source: next.source,
+		title: next.title,
+		creator: next.creator,
+		year: next.year,
+		cover: ownCover,
+		stamps: next.stamps,
+	}
+	const keep = next.source === TYPED_SOURCE || kept.stamps.length > 0 || kept.cover !== ''
+	if (at < 0) return keep ? [...stored, kept] : [...stored]
+	return keep ? stored.map((s, i) => (i === at ? kept : s)) : stored.filter((_, i) => i !== at)
+}
+
+/* ------------------------------------------------------------------------ cards made before DARK-7 */
+
+/** What a card stored when it had the Albums / Films / Books switch. */
+export interface ThreeListProps {
+	list?: string
+	items?: Array<Record<string, unknown> & { list?: string }>
+	picks?: Array<Record<string, unknown> & { list?: string }>
+}
+
+/**
+ * A card from before DARK-7, as one typed list: the switch was all that kept the three apart.
+ *
+ * Every item and every stamp is kept. The list that was on show goes first, so the card opens on the
+ * same item it showed; the others follow. A card that held nothing waits for a source, as a new one
+ * does.
+ */
+export function oneTypedList(props: ThreeListProps): { source: string; items: Array<Record<string, unknown>>; picks: Array<Record<string, unknown>> } {
+	const shown = props.list ?? 'albums'
+	const items = props.items ?? []
+	const first = [...items.filter((i) => i.list === shown), ...items.filter((i) => i.list !== shown)]
+	const picks = [...(props.picks ?? []).filter((p) => p.list === shown), ...(props.picks ?? []).filter((p) => p.list !== shown)]
+	const retag = <T extends { list?: string }>({ list: _list, ...rest }: T) => ({ ...rest, source: TYPED_SOURCE })
+	return { source: items.length ? TYPED_SOURCE : NO_SOURCE, items: first.map(retag), picks: picks.map(retag).slice(0, PICKS_KEPT_PER_SOURCE) }
 }
 
 export function randomId(): string {

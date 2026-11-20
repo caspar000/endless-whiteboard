@@ -1,13 +1,13 @@
-import type { ListId, RandomItem, RandomPick } from './model'
+import type { RandomItem, RandomPick } from './model'
 
 export const RANDOMIZER_TYPE = 'node.randomizer'
 
 export interface RandomizerProps {
-	/** Which list is showing: the Albums / Films / Books switch. */
-	list: ListId
-	/** Every list's items, each tagged with its list. */
+	/** What the card shuffles, as a source key (`model.ts`): `''` for none yet, `list`, `feeds:all`. */
+	source: string
+	/** The typed list's items, and whatever the card keeps for other sources' (their stamps). */
 	items: RandomItem[]
-	/** What the shuffles landed on, newest first, a few per list (see `recordPick`). */
+	/** What the shuffles landed on, newest first, a few per source (see `recordPick`). */
 	picks: RandomPick[]
 	/** See registry.tsx: `h` follows the card until a vertical handle pins it. */
 	autoHeight: boolean

@@ -734,6 +734,9 @@ importers:
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../node-kit
+      '@lifeboard/randomizer':
+        specifier: workspace:*
+        version: link:../randomizer
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.8)

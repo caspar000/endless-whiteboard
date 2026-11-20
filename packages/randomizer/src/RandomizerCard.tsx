@@ -1,4 +1,4 @@
-import { stopEventPropagation } from '@lifeboard/canvas'
+import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import {
 	chordsFor,
 	getAssetBridge,
@@ -7,7 +7,7 @@ import {
 	type NodeComponentProps,
 	type NodeShape,
 } from '@lifeboard/node-kit'
-import { Shuffle, Stamp as StampIcon, Volume2, VolumeX } from 'lucide-react'
+import { ChevronDown, ExternalLink, ListPlus, Shuffle, Stamp as StampIcon, Volume2, VolumeX } from 'lucide-react'
 import {
 	memo,
 	useCallback,
@@ -23,10 +23,8 @@ import {
 import { flushSync } from 'react-dom'
 import { SHUFFLE_COMMAND_ID, onShuffleRequest } from './commands'
 import { CoverFace, Thumb } from './Cover'
-import { ListEditor } from './ListEditor'
+import { SourceEditor } from './SourceEditor'
 import {
-	LISTS,
-	LIST_IDS,
 	STAMPS,
 	STAMP_KINDS,
 	currentItem,
@@ -42,12 +40,14 @@ import {
 	pickNext,
 	recordPick,
 	shortDate,
-	type ListId,
+	storeItem,
+	withEntries,
 	type RandomItem,
 	type StampKind,
 } from './model'
 import { Postmark } from './Postmark'
 import type { RandomizerProps } from './props'
+import { resolveSource } from './sources'
 import { clack, isMuted, setMuted, stampThump, subscribeToMuted, thunk, wakeAudio } from './sound'
 import { Tiles, type TilesHandle } from './Tiles'
 
@@ -81,9 +81,30 @@ function chordLabel(chord: string | undefined): string {
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+/** Opens an entry the way its source would, or else its address in a new tab. */
+function openEntry(open: ((entry: { id: string; url: string }) => void) | undefined, item: RandomItem) {
+	if (!item.url) return
+	if (open) open({ id: item.id, url: item.url })
+	else window.open(item.url, '_blank', 'noopener,noreferrer')
+}
+
 function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<RandomizerProps>) {
-	const { list, items, picks } = shape.props
-	const kind = LISTS[list]
+	const { source: list, items: stored, picks } = shape.props
+	/*
+	 * What the card shuffles, read through atoms so a source that changes (a feed reading new videos)
+	 * changes the card. The typed list is the card's own; a source's entries meet the card's stamps
+	 * in `withEntries`.
+	 */
+	const view = useValue(
+		'lifeboard:randomizer-source',
+		() => {
+			const resolved = resolveSource(list)
+			return { ...resolved, entries: resolved.type === 'source' ? (resolved.source?.entries(resolved.choiceId) ?? []) : [] }
+		},
+		[list]
+	)
+	const kind = view.kind
+	const items = view.type === 'source' ? withEntries(stored, list, view.entries) : stored
 	const ofList = itemsOf(items, list)
 	const current = currentItem(items, picks, list)
 	const pool = inShuffle(items, list)
@@ -110,6 +131,13 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	const busyRef = useRef(false)
 	const latestShape = useRef(shape)
 	latestShape.current = shape
+	// The items as the card shows them, for the shuffle, which runs on past the render that started it.
+	const latestItems = useRef(items)
+	latestItems.current = items
+
+	// A source that keeps itself fresh (a feed reading its channels) does so while a card shows it.
+	const { source: watched, choiceId } = view
+	useEffect(() => (watched ? watched.watch?.(choiceId) : undefined), [watched, choiceId])
 
 	// The flap has landed and its pick been written: once the props say so, the card is at rest again.
 	useEffect(() => {
@@ -149,7 +177,8 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 
 	const shuffle = useCallback(async () => {
 		if (busyRef.current) return
-		const { list: activeList, items: allItems, picks: allPicks } = latestShape.current.props
+		const { source: activeList, picks: allPicks } = latestShape.current.props
+		const allItems = latestItems.current
 		const from = currentItem(allItems, allPicks, activeList)
 		const target = pickNext(allItems, activeList, from?.id ?? null)
 		if (!target || target.id === from?.id) return
@@ -193,7 +222,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 			// through the last ten shuffles.
 			const live = editor.getShape(latestShape.current.id) as NodeShape<RandomizerProps> | undefined
 			if (live) {
-				editor.run(() => updateNodeProps(editor, live, { picks: recordPick(live.props.picks, { list: activeList, id: target.id }) }), { history: 'ignore' })
+				editor.run(() => updateNodeProps(editor, live, { picks: recordPick(live.props.picks, { source: activeList, id: target.id }) }), { history: 'ignore' })
 			}
 			setAnnounce(`Picked ${target.title}${target.creator ? ` by ${target.creator}` : ''}${target.year ? `, ${target.year}` : ''}.`)
 			busyRef.current = false
@@ -204,22 +233,12 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 
 	useEffect(() => onShuffleRequest(editor, shape.id, () => void shuffle()), [editor, shape.id, shuffle])
 
-	const selectList = (next: ListId) => {
-		if (busy || next === list) return
+	/** The source picker is the card's editor: the same popover a double-click opens. */
+	const chooseSource = () => {
+		if (busy) return
 		setMenu(null)
-		setJustStamped(null)
-		editor.run(() => updateNodeProps(editor, shape, { list: next }), { history: 'ignore' })
-	}
-
-	const onListKey = (e: KeyboardEvent) => {
-		const i = LIST_IDS.indexOf(list)
-		const step = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0
-		if (!step) return
-		e.preventDefault()
-		e.stopPropagation()
-		const next = LIST_IDS[(i + step + LIST_IDS.length) % LIST_IDS.length]!
-		selectList(next)
-		;(e.currentTarget.querySelector(`[data-list="${next}"]`) as HTMLElement | null)?.focus()
+		editor.select(shape.id)
+		editor.setEditingShape(shape.id)
 	}
 
 	/** A stamp is a real change to the item: one undo entry, like any other edit. */
@@ -228,9 +247,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		if (!current || busy || isOut(current)) return
 		wakeAudio()
 		const date = localDay()
-		updateNodeProps(editor, shape, {
-			items: items.map((item) => (item.id === current.id ? { ...item, stamps: [...item.stamps, { kind: stampKind, date }] } : item)),
-		})
+		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: [...current.stamps, { kind: stampKind, date }] }) })
 		setJustStamped(current.id)
 		setAnnounce(`Stamped ${STAMPS[stampKind].label}. ${current.title} ${STAMPS[stampKind].out ? 'is out of the shuffle' : 'stays in the shuffle'}.`)
 		if (reducedMotion()) stampThump()
@@ -239,9 +256,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 
 	const undoStamp = () => {
 		if (!current || busy || !latest) return
-		updateNodeProps(editor, shape, {
-			items: items.map((item) => (item.id === current.id ? { ...item, stamps: item.stamps.slice(0, -1) } : item)),
-		})
+		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: current.stamps.slice(0, -1) }) })
 		setJustStamped(null)
 		setMenu(null)
 		setAnnounce(`Removed the ${STAMPS[latest.kind].label} stamp from ${current.title}.`)
@@ -313,11 +328,11 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		if (!image || !current) return
 		e.preventDefault()
 		e.stopPropagation()
-		const id = current.id
+		const item = current
 		const cover = 'file' in image && image.file ? await getAssetBridge().store(image.file) : (image.url ?? '')
 		const live = editor.getShape(shape.id) as NodeShape<RandomizerProps> | undefined
 		if (!live || !cover) return
-		updateNodeProps(editor, live, { items: live.props.items.map((item) => (item.id === id ? { ...item, cover } : item)) })
+		updateNodeProps(editor, live, { items: storeItem(live.props.items, item, { cover }) })
 	}
 
 	/* ----------------------------------------------------------------------------- drawing */
@@ -343,27 +358,47 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	const position = current ? ofList.findIndex((item) => item.id === current.id) + 1 : 0
 	const pad2 = (n: number) => String(n).padStart(2, '0')
 
+	// What the window says with nothing to show, by why there is nothing.
+	const [emptyTitle, emptyHint] =
+		view.type === 'none'
+			? ['Waiting for a source', 'Double-click the card, or choose a source above: a list you type, or one of your feeds.']
+			: view.type === 'missing'
+				? ['This source is gone', 'Choose another from the menu above.']
+				: view.type === 'typed'
+					? ['Nothing on the list yet', 'Double-click the card to add things, one per line.']
+					: [`No ${kind.noun} in ${view.name} yet`, 'They show here as soon as it has some.']
+
 	return (
 		<div className={`lb-rand${busy ? ' lb-rand--busy' : ''}`} aria-label="Randomizer">
 			<header className="lb-rand__head" ref={headRef}>
-				<div className="lb-rand__seg" role="radiogroup" aria-label="List" aria-disabled={busy} onKeyDown={onListKey}>
-					{LIST_IDS.map((id) => (
-						<button
-							key={id}
-							type="button"
-							role="radio"
-							data-list={id}
-							aria-checked={id === list}
-							tabIndex={id === list ? 0 : -1}
-							onPointerDown={swallow}
-							onClick={() => selectList(id)}
-						>
-							{LISTS[id].label}
-						</button>
-					))}
-				</div>
+				<button
+					type="button"
+					className={`lb-rand__source${view.type === 'none' ? ' lb-rand__source--empty' : ''}`}
+					aria-haspopup="dialog"
+					aria-label={view.type === 'none' ? 'Choose what to shuffle' : `Shuffling ${view.name}. Change the source`}
+					title="Choose what this card shuffles"
+					aria-disabled={busy}
+					onPointerDown={swallow}
+					onClick={chooseSource}
+				>
+					{view.type === 'none' ? <ListPlus size={14} aria-hidden /> : view.source?.icon ? <view.source.icon size={14} aria-hidden /> : null}
+					<span className="lb-rand__source-name">{view.type === 'none' ? 'Choose a source' : view.name}</span>
+					<ChevronDown size={14} aria-hidden />
+				</button>
 				<div className="lb-rand__head-right">
-					{count}
+					{view.type !== 'none' && count}
+					{current?.url && !busy && (
+						<button
+							type="button"
+							className="lb-rand__icon"
+							aria-label={`Open ${current.title}`}
+							title={`Open this ${kind.one}`}
+							onPointerDown={swallow}
+							onClick={() => openEntry(view.source?.open?.bind(view.source), current)}
+						>
+							<ExternalLink size={16} aria-hidden />
+						</button>
+					)}
 					<button
 						type="button"
 						className="lb-rand__icon"
@@ -436,30 +471,30 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 					{shown ? (
 						<>
 							<div className="lb-rand__half lb-rand__half--top">
-								<CoverFace item={shown} list={list} fresh={fresh} />
+								<CoverFace item={shown} shape={kind.shape} fresh={fresh} />
 							</div>
 							<div className="lb-rand__half lb-rand__half--bottom">
-								<CoverFace item={faces?.bottom ?? shown} list={list} fresh={fresh} />
+								<CoverFace item={faces?.bottom ?? shown} shape={kind.shape} fresh={fresh} />
 								<div className="lb-rand__shade" />
 							</div>
 							<div className="lb-rand__flap" ref={flapRef} style={{ visibility: faces?.flap ? 'visible' : 'hidden' }} aria-hidden="true">
 								<div className="lb-rand__flap-face lb-rand__flap-front">
-									{faces?.flap && <CoverFace item={faces.flap.front} list={list} />}
+									{faces?.flap && <CoverFace item={faces.flap.front} shape={kind.shape} />}
 									<div className="lb-rand__shade" />
 								</div>
 								<div className="lb-rand__flap-face lb-rand__flap-back">
-									{faces?.flap && <CoverFace item={faces.flap.back} list={list} />}
+									{faces?.flap && <CoverFace item={faces.flap.back} shape={kind.shape} />}
 									<div className="lb-rand__shade" />
 								</div>
 							</div>
 							<div className="lb-rand__fade" ref={fadeRef} style={{ visibility: faces?.fade ? 'visible' : 'hidden' }} aria-hidden="true">
-								{faces?.fade && <CoverFace item={faces.fade} list={list} />}
+								{faces?.fade && <CoverFace item={faces.fade} shape={kind.shape} />}
 							</div>
 						</>
 					) : (
 						<div className="lb-rand__empty">
-							<strong>No {kind.noun} yet</strong>
-							<span>Double-click the card to add them, one per line.</span>
+							<strong>{emptyTitle}</strong>
+							<span>{emptyHint}</span>
 						</div>
 					)}
 					<div className="lb-rand__axle" aria-hidden="true" />
@@ -566,7 +601,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 							<Thumb
 								key={item.id}
 								item={item}
-								list={list}
+								shape={kind.shape}
 								ink={stamped ? STAMPS[stamped.kind].ink : null}
 								label={`${item.title}${item.creator ? ` — ${item.creator}` : ''}${stamped ? `, stamped ${STAMPS[stamped.kind].label}` : ''}`}
 							/>
@@ -577,12 +612,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 
 			{isEditing && (
 				<div onPointerDown={stopEventPropagation} onTouchStart={stopEventPropagation}>
-					{/*
-					 * Keyed by list: switching lists while it is open saves the one you were typing into
-					 * and opens the other with its own text, rather than showing one list's text under
-					 * the other's name.
-					 */}
-					<ListEditor key={list} shape={shape} editor={editor} />
+					<SourceEditor shape={shape} editor={editor} />
 				</div>
 			)}
 		</div>
@@ -595,7 +625,7 @@ export const RandomizerCard = memo(
 	(prev, next) =>
 		prev.isEditing === next.isEditing &&
 		prev.shape.id === next.shape.id &&
-		prev.shape.props.list === next.shape.props.list &&
+		prev.shape.props.source === next.shape.props.source &&
 		prev.shape.props.items === next.shape.props.items &&
 		prev.shape.props.picks === next.shape.props.picks
 )

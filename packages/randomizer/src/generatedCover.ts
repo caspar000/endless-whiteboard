@@ -1,4 +1,4 @@
-import type { ListKind, RandomItem } from './model'
+import type { RandomItem, SourceKind } from './model'
 
 /**
  * A cover for an item that has no picture: abstract art drawn from its title, with the title, the
@@ -324,7 +324,7 @@ function matted({ W, H, s }: { W: number; H: number; s: string }): string {
 const cache = new Map<string, string>()
 
 /** The generated cover for an item, as a data URI. Cached by what it draws. */
-export function generatedCover(item: RandomItem, shape: ListKind['shape']): string {
+export function generatedCover(item: RandomItem, shape: SourceKind['shape']): string {
 	const key = `${shape}\u0000${item.title}\u0000${item.creator}\u0000${item.year}`
 	const hit = cache.get(key)
 	if (hit) return hit

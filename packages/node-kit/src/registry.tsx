@@ -17,11 +17,13 @@ import {
 	type TLShapeUtilCanBindOpts,
 	resizeBox,
 	getGpuSnapshots,
+	useValue,
 	type GpuPrimitive,
 } from '@lifeboard/canvas'
 import type { ComponentType } from 'react'
 import type { PropertyValue } from './properties/types'
 import type { ShapeProperties } from './properties/values'
+import { hasCardPopup } from './cardPopup'
 import { SCALE_META_KEY, nodeScale, scaleStep } from './nodeScale'
 import { useAutoHeight } from './useAutoHeight'
 
@@ -511,10 +513,13 @@ export function createNodeShapeUtil<Props extends object>(
 				minHeight: def.autoHeight?.minHeight ?? 0,
 				scale,
 			})
+			// A menu open over the card draws past its box (`cardPopup.ts`).
+			const popup = useValue('lifeboard:node-popup', () => hasCardPopup(shape.id), [shape.id])
 
 			return (
 				<HTMLContainer
 					id={shape.id}
+					data-lb-popup={popup ? '' : undefined}
 					style={{
 						width: shape.props.w,
 						height: shape.props.h,
@@ -525,7 +530,7 @@ export function createNodeShapeUtil<Props extends object>(
 						// Clipped in display mode so content stays inside the card's rounded bounds,
 						// but *not* while editing: the item field editor and rollup config render as
 						// popovers below the node, and `hidden` clipped them out of existence.
-						overflow: isEditing || def.clip === false ? 'visible' : 'hidden',
+						overflow: isEditing || popup || def.clip === false ? 'visible' : 'hidden',
 					}}
 				>
 					{/*
@@ -565,6 +570,8 @@ export function createNodeShapeUtil<Props extends object>(
 	 */
 	class GpuNodeShapeUtil extends NodeShapeUtil {
 		override toGpu(shape: TLBaseBoxShape): GpuPrimitive[] | null {
+			// The page draws a card with a menu open over it: the GPU would draw the card, not the menu.
+			if (hasCardPopup(shape.id)) return null
 			return getGpuSnapshots(this.editor).get(shape as unknown as TLShape) ?? null
 		}
 	}

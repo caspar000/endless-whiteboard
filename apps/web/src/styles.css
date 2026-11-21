@@ -3831,6 +3831,14 @@ div.lb-sidebar__moves {
 .lb-node__content {
 	display: block;
 }
+/*
+ * A card with a menu open over it (node-kit `cardPopup.ts`): the factory stops clipping it, and it is
+ * lifted over the shapes around it so the menu isn't drawn under the next card. Its place in z-order
+ * is the editor's, set inline, so only `!important` outranks it, and only while the menu is up.
+ */
+.tl-shape:has(.tl-html-container[data-lb-popup]) {
+	z-index: 2147483000 !important;
+}
 
 .lb-note {
 	width: 100%;

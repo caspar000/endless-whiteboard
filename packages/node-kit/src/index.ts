@@ -163,6 +163,26 @@ export {
 // A cover for any item, drawn from its title when it has no picture.
 export { generatedCover, hashText } from './generatedCover'
 export { useItemCover } from './itemCover'
+// What extensions say about each other's items (DARK-13): ranked, stamped, and the shape of a cover.
+export {
+	COVER_ASPECTS,
+	aspectRatio,
+	clearItemMarks,
+	foldText,
+	getItemStamps,
+	itemRanked,
+	matchesSearch,
+	registerItemReaction,
+	registerItemStamps,
+	sameText,
+	type ItemReaction,
+	type ItemStamp,
+	type ItemStamps,
+	type RankedItem,
+	type StampKindInfo,
+} from './itemMarks'
+// A menu open over a card draws past its edge (DARK-13).
+export { cardPopupMenuId, hasCardPopup, useCardPopup } from './cardPopup'
 export { SourceSelect } from './SourceSelect'
 // Records kept outside any board, which the app saves to the vault.
 export { keyedStore, type KeyedStore } from './keyedStore'

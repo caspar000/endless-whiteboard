@@ -28,6 +28,7 @@ import {
 	type SourceEntry,
 	type RandomWords,
 	type Stamp,
+	weightedIndex,
 } from './model'
 
 const FEED = 'feeds:all'
@@ -287,5 +288,32 @@ describe('cards from before DARK-7', () => {
 
 	it('leave an empty card waiting for a source, as a new one does', () => {
 		expect(oneTypedList({ list: 'albums', items: [], picks: [] })).toEqual({ source: '', items: [], picks: [] })
+	})
+})
+
+describe('a weighted draw (DARK-11)', () => {
+	it('lands on each index as often as its weight says, from one fair draw over their sum', () => {
+		// Weights 4, 1, 3: draws 0–3 are the first, 4 the second, 5–7 the third.
+		const seen = Array.from({ length: 8 }, (_, d) => weightedIndex([4, 1, 3], scripted(d)))
+		expect(seen).toEqual([0, 0, 0, 0, 1, 2, 2, 2])
+	})
+
+	it('draws evenly when every weight is nothing', () => {
+		expect(weightedIndex([0, 0], scripted(1))).toBe(1)
+	})
+
+	it('picks a weighted source’s items by weight, and others evenly', () => {
+		const heavy = { ...item('h', [], FEED), weight: 3 }
+		const light = { ...item('l', [], FEED), weight: 1 }
+		// Sum 4: draws 0–2 are the heavy one, 3 the light one.
+		expect(pickNext([heavy, light], FEED, null, scripted(2))?.id).toBe('h')
+		expect(pickNext([heavy, light], FEED, null, scripted(3))?.id).toBe('l')
+		expect(pickNext([item('a', [], FEED), item('b', [], FEED)], FEED, null, scripted(1))?.id).toBe('b')
+	})
+
+	it('carries a source’s weight onto the card’s item, never into what it stores', () => {
+		const [shown] = withEntries([], FEED, [{ id: 'a', title: 'A', creator: '', year: '', cover: '', url: '', weight: 4 }])
+		expect(shown?.weight).toBe(4)
+		expect(storeItem([], shown!, { stamps: [{ kind: 'liked', date: '2026-11-21' }] })[0]).not.toHaveProperty('weight')
 	})
 })

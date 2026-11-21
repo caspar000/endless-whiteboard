@@ -167,12 +167,28 @@ const CHOICE_LABELS: Record<StampKind, string> = {
 	unsure: 'Everything I’m unsure of',
 }
 
-/** A stamp's list, newest stamp first. */
+const sameItem = (e: StampedEntry) => `${e.title.trim().toLowerCase()}\u0000${e.creator.trim().toLowerCase()}`
+
+/**
+ * A stamp's list, newest stamp first. One album stamped on two cards (typed into one, shuffled from a
+ * ranking of this very list on another) is one album: of the same title and creator, the newest stamp
+ * says which list it is in, and the first one gives its id, so a ranking of the list keeps its place.
+ */
 export function stampedEntries(all: Stamped, kind: string): SourceEntry[] {
-	return Object.values(all)
-		.filter((e) => e.kind === kind)
-		.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
-		.map((e) => ({ id: e.key, title: e.title, creator: e.creator, year: e.year, cover: e.cover, url: e.url }))
+	const groups = new Map<string, { first: StampedEntry; newest: StampedEntry }>()
+	const later = (a: StampedEntry, b: StampedEntry) => a.date > b.date || (a.date === b.date && a.key > b.key)
+	for (const e of Object.values(all)) {
+		const g = groups.get(sameItem(e))
+		if (!g) groups.set(sameItem(e), { first: e, newest: e })
+		else {
+			if (later(e, g.newest)) g.newest = e
+			if (later(g.first, e)) g.first = e
+		}
+	}
+	return [...groups.values()]
+		.filter((g) => g.newest.kind === kind)
+		.sort((a, b) => b.newest.date.localeCompare(a.newest.date) || a.first.title.localeCompare(b.first.title))
+		.map(({ first: e, newest }) => ({ id: e.key, title: e.title, creator: e.creator, year: e.year, cover: e.cover || newest.cover, url: e.url || newest.url }))
 }
 
 /** "Everything I liked", and the other stamps, for any card that takes a list. */

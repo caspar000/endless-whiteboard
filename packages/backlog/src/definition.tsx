@@ -50,9 +50,11 @@ export const backlogNodeDefinition: NodeDefinition<BacklogProps> = {
 			const keys = shapes.map(sourceKeyOfShape).filter((k): k is string => k !== null)
 			if (!keys.length) return
 			updateBacklog(shape.props.backlogId, (b) => keys.reduceRight((acc, key) => addCollection(acc, key, resolveItemSource(key).source?.label ?? ''), b))
+			// The shapes handed over are as they were picked up; where they are now is the store's.
 			const origin = editor.inputs.originPagePoint
 			const now = editor.inputs.currentPagePoint
-			editor.updateShapes(shapes.map((s) => ({ id: s.id, type: s.type, x: s.x - (now.x - origin.x), y: s.y - (now.y - origin.y) })))
+			const moved = shapes.map((s) => editor.getShape(s.id)).filter((s) => s !== undefined)
+			editor.updateShapes(moved.map((s) => ({ id: s.id, type: s.type, x: s.x - (now.x - origin.x), y: s.y - (now.y - origin.y) })))
 		},
 	},
 }

@@ -178,7 +178,7 @@ const reading: string[] = []
  *
  * A source made of other sources (a backlog holding a ranking, a ranking of a backlog) reads them
  * through here, which is what stops a loop: a key asked for again while it is being read has nothing,
- * so a backlog that holds a ranking of itself lists that ranking's other items once, not forever.
+ * so a backlog that holds a ranking of itself reads that ranking as empty, rather than forever.
  */
 export function sourceEntries(key: string): readonly SourceEntry[] {
 	if (reading.includes(key)) return []

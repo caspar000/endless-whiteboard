@@ -74,6 +74,8 @@ export const rankingSource: ItemSource = {
 	label: 'Rankings',
 	icon: ListOrdered,
 	extensionId: RANKING_EXTENSION_ID,
+	// What it offers is ranked items, to be drawn by their tiers: ranking them is no reason to leave out.
+	ranked: true,
 	choices: () => rankingChoices(rankings.get()),
 	entries: (rankingId) => {
 		const ranking = ranked(rankingId)

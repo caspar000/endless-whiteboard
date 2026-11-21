@@ -114,8 +114,10 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	)
 	const kind = view.kind
 	// What rankings stamped counts here too (DARK-13): a ranked album is Liked, and out of the shuffle.
+	// Not when the card draws from a ranking itself: its items are ranked, and drawn by their tiers.
 	const ranked = useValue('lifeboard:randomizer-ranked', () => getRankedStamps(), [])
-	const items = withRankings(view.type === 'source' ? withEntries(stored, list, view.entries) : stored, (item) => ranked.get(foldedItem(item)) ?? [])
+	const base = view.type === 'source' ? withEntries(stored, list, view.entries) : stored
+	const items = view.source?.ranked ? base : withRankings(base, (item) => ranked.get(foldedItem(item)) ?? [])
 	const ofList = itemsOf(items, list)
 	const current = currentItem(items, picks, list)
 	const pool = inShuffle(items, list)

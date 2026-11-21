@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { setAssetBridge, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
+import { registerItemSource, setAssetBridge, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
 import { RANDOMIZER_TYPE, randomizerNodeDefinition, replaceStamped, type RandomizerProps } from '@lifeboard/randomizer'
 import { useMemo, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -211,6 +211,46 @@ describe('a randomizer connected to a YouTube channel', () => {
 		expect(within(card()).queryByRole('button', { name: 'Undo' })).toBeNull()
 		// Only Record b is left to shuffle to, and the card stored none of it.
 		expect(props.items.every((i) => i.stamps.every((s) => !('ranked' in s)))).toBe(true)
+		act(() => replaceStamped({}))
+	})
+
+	it('still draws from a weighted ranking whose albums were stamped Liked by being ranked (DARK-13)', async () => {
+		// A weighted ranking of two albums, offered as Ranking Tiers offers it: ranked items, by weight.
+		const ranked = [
+			{ id: 'r1', title: 'Kind of Blue', creator: 'Miles Davis', year: '', cover: '', url: '', weight: 4 },
+			{ id: 'r2', title: 'In a Silent Way', creator: 'Miles Davis', year: '', cover: '', url: '', weight: 1 },
+		]
+		registerItemSource({
+			id: 'ranking',
+			label: 'Rankings',
+			ranked: true,
+			choices: () => [{ id: 'jazz', label: 'Jazz, ranked', group: '' }],
+			entries: () => ranked,
+			kind: () => ({ noun: 'albums', one: 'album', creator: 'Artist', tag: '', shape: 'square' }),
+		})
+		// Ranking them stamped both Liked, in the vault.
+		const stamp = (e: (typeof ranked)[number]) => ({
+			key: `ranking/jazz#syllabus:m|${e.id}`,
+			card: 'ranking/jazz',
+			item: `syllabus:m|${e.id}`,
+			source: 'syllabus:m',
+			id: e.id,
+			title: e.title,
+			creator: e.creator,
+			year: '',
+			cover: '',
+			url: '',
+			kind: 'liked' as const,
+			date: '2026-11-21',
+		})
+		act(() => replaceStamped(Object.fromEntries(ranked.map((e) => [stamp(e).key, stamp(e)]))))
+		mount()
+		act(() => setBoardProps((p) => ({ ...p, source: 'ranking:jazz' })))
+		const shuffle = within(card()).getByRole('button', { name: /^Shuffle/ })
+		expect(shuffle.getAttribute('aria-disabled')).toBe('false')
+		expect(within(card()).queryByText(/Ranked, so/)).toBeNull()
+		fireEvent.click(shuffle)
+		await waitFor(() => expect(props.picks[0]?.source).toBe('ranking:jazz'))
 		act(() => replaceStamped({}))
 	})
 })

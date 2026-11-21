@@ -196,6 +196,8 @@ describe('a ranking card', () => {
 		expect(within(band('Often')).getByText('1 in 2')).toBeTruthy()
 		expect(within(band('Rarely')).getByText('1 in 11')).toBeTruthy()
 		expect(rankingSource.choices().map((c) => c.id)).toEqual(['r1'])
+		// Its items are ranked: a randomizer drawing from it doesn't count that as taking them out (DARK-13).
+		expect(rankingSource.ranked).toBe(true)
 		expect(rankingSource.entries('r1').map((e) => [e.id, e.weight])).toEqual([
 			['a1', 4],
 			['a2', 3],

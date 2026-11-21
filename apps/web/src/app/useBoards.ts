@@ -18,6 +18,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import {
 	createServerBoard,
 	deleteServerBoard,
+	deleteUntouchedServerBoard,
 	listServerBoards,
 	updateServerBoard,
 } from '../server/serverVault'
@@ -40,6 +41,11 @@ export interface BoardsApi {
 	/** Sets or clears the board's colour and icon. */
 	setLook(id: string, patch: BoardLookPatch): Promise<void>
 	remove(id: string): Promise<void>
+	/**
+	 * Deletes a server board left untouched (DARK-12), if the server finds it still is. Resolves whether
+	 * it went.
+	 */
+	removeUntouchedServerBoard(id: string): Promise<boolean>
 	/**
 	 * Queues these boards to move: to the server if they are on this device, and back if they are on
 	 * the server. The queue survives a reload and shows its progress (boards/moveQueue.ts).
@@ -161,6 +167,17 @@ export function useBoards(): BoardsApi {
 		[platform, server, isServerBoard, refresh]
 	)
 
+	const removeUntouchedServerBoard = useCallback(
+		async (id: string) => {
+			const deleted = await deleteUntouchedServerBoard(id)
+			if (deleted) await deleteBoardThumbnail(platform.kv, id)
+			await forgetUntouched(platform.kv, id)
+			await refresh()
+			return deleted
+		},
+		[platform, refresh]
+	)
+
 	const move = useCallback((boards: readonly BoardMeta[]) => queueMoves(platform.kv, boards), [platform])
 
 	// Memoized deliberately, not as micro-optimisation: a fresh object literal here would change
@@ -177,10 +194,11 @@ export function useBoards(): BoardsApi {
 			setFavorite,
 			setLook,
 			remove,
+			removeUntouchedServerBoard,
 			move,
 			refresh,
 		}),
-		[boards, loading, server, serverOnline, create, rename, setFavorite, setLook, remove, move, refresh]
+		[boards, loading, server, serverOnline, create, rename, setFavorite, setLook, remove, removeUntouchedServerBoard, move, refresh]
 	)
 }
 

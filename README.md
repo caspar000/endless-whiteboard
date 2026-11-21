@@ -459,8 +459,12 @@ marked untouched in this device's store (`boards/untouchedBoards.ts`) until some
 rename, a colour or icon, any change made in the page, or a change to its shapes, bindings or files
 that sync brings from another device. An edit undone still counts. Leaving it while marked, for another
 board, home, settings or help, or by closing its tab, deletes it as the Delete button would, and a
-reload keeps the mark. `deleteIfUntouched` checks again before it deletes: nothing on the board, and
-the name and look it was made with, read from the server for a server board. Anything it can't check
+reload keeps the mark (one key per board, `untouched:<id>`, so windows can't write back each other's
+marks). `deleteIfUntouched` checks before it deletes, and again after reading the board: the mark,
+nothing on the board, and the name and look it was made with, read from the server for a server board.
+A server board then goes through `DELETE /api/boards/:id?ifUntouched`, which the server refuses (409)
+unless the board is still untitled, with no look and nothing in its room, checked and deleted in one
+step, so an edit another device sent but this one hasn't received keeps it. Anything it can't check
 keeps the board. Kinds of board, the demo, imports, an agent's boards and boards made on another device
 are never marked. An e2e test that makes a board and leaves it before changing anything finds it gone:
 `createBoard(page, name)` renames on the tab first, and `keepBoard(page)` puts something on it.

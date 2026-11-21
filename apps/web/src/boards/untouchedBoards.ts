@@ -14,46 +14,28 @@ import { UNTITLED_BOARD, type BoardMeta } from './boardIndex'
  * something in it or a name someone chose, and a board made before this existed is never marked.
  *
  * Kept in this device's store rather than in memory, so a reload on an untouched board doesn't turn it
- * into a kept one, and read afresh each time, so two windows of the app agree. Other devices never
- * have the mark: a board is only ever deleted by the device that made it.
+ * into a kept one. One key per board, so every window of the app sees the same marks and a mark set
+ * for one board can never write back another's that a second window cleared: each change is one
+ * write to its own key, which the store makes whole. Other devices never have the mark: a board is
+ * only ever deleted by the device that made it, and a server board only if the server agrees.
  */
-const KEY = 'untouchedBoards'
-
-/** Each store's last pending change to the list, so the next one starts from what it wrote. */
-const pending = new WeakMap<KvStore, Promise<unknown>>()
-
-async function read(kv: KvStore): Promise<string[]> {
-	const ids = await kv.get<unknown>(KEY)
-	return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
-}
-
-/** One change at a time, as the board index does (boardIndex.ts `updateBoards`). */
-function update(kv: KvStore, change: (ids: string[]) => string[]): Promise<void> {
-	const run = (pending.get(kv) ?? Promise.resolve()).then(async () => {
-		const ids = await read(kv)
-		const next = change(ids)
-		if (next.length !== ids.length || next.some((id, i) => id !== ids[i])) await kv.set(KEY, next)
-	})
-	pending.set(kv, run.catch(() => {}))
-	return run
-}
+const key = (boardId: string) => `untouched:${boardId}`
 
 export function markUntouched(kv: KvStore, boardId: string): Promise<void> {
-	return update(kv, (ids) => (ids.includes(boardId) ? ids : [...ids, boardId]))
+	return kv.set(key(boardId), true)
 }
 
 /** Something was done to the board, or it is gone: leaving it no longer deletes it. */
 export function forgetUntouched(kv: KvStore, boardId: string): Promise<void> {
-	return update(kv, (ids) => ids.filter((id) => id !== boardId))
+	return kv.delete(key(boardId))
 }
 
 export async function isUntouched(kv: KvStore, boardId: string): Promise<boolean> {
-	await pending.get(kv)
-	return (await read(kv)).includes(boardId)
+	return (await kv.get<boolean>(key(boardId))) === true
 }
 
-/** The records that are a board's content, whoever made them. */
-const CONTENT = new Set<TLRecord['typeName']>(['shape', 'binding', 'asset'])
+/** The records that are a board's content, whoever made them. The server keeps the same list. */
+const CONTENT = new Set<string>(['shape', 'binding', 'asset'])
 
 type Changes = Parameters<Parameters<TLStore['listen']>[0]>[0]['changes']
 
@@ -66,6 +48,11 @@ function changesContent(changes: Changes): boolean {
 /** Whether there is anything on the board: what no automatic delete may ever take. */
 export function hasContent(editor: Pick<Editor, 'store'>): boolean {
 	return editor.store.allRecords().some((record) => CONTENT.has(record.typeName))
+}
+
+/** The same, of a board's records as stored. */
+export function snapshotHasContent(store: Record<string, unknown>): boolean {
+	return Object.values(store).some((record) => CONTENT.has((record as Partial<TLRecord> | null)?.typeName ?? ''))
 }
 
 /**
@@ -98,30 +85,45 @@ export function watchUntouchedBoard(editor: Pick<Editor, 'store'>, boardId: stri
 
 export interface LeftBoard {
 	kv: KvStore
-	/** The board's editor, if it is still mounted. */
-	editor: Pick<Editor, 'store'> | null
+	/**
+	 * Whether the board has nothing on it, as this page can tell now: from its editor while that is
+	 * mounted, otherwise from what is stored. Throws when it can't tell, which keeps the board.
+	 */
+	isEmpty(): Promise<boolean>
 	/** The board as it is now: from the server, for a server board, so a rename elsewhere is seen. */
 	current(): Promise<BoardMeta | undefined>
-	/** Deletes the board, as the Delete button does. */
-	remove(): Promise<void>
+	/**
+	 * Deletes the board, resolving whether it went. A server board goes only if the server, which has
+	 * every device's edits, finds it untouched as it deletes it.
+	 */
+	remove(): Promise<boolean>
 }
 
 /**
  * Deletes a board just left if it is still untouched (DARK-12). Each check stands between the mark and
  * a delete nobody asked for: the mark itself, nothing on the board, and the name and look it was made
- * with, read afresh. Whatever can't be checked keeps the board. Returns whether it was deleted.
+ * with, read afresh. The mark and the board are looked at again after every wait, since an edit can
+ * arrive during one. Whatever can't be checked keeps the board. Resolves whether it was deleted.
  */
 export async function deleteIfUntouched(boardId: string, left: LeftBoard): Promise<boolean> {
-	if (!(await isUntouched(left.kv, boardId))) return false
-	if (left.editor && hasContent(left.editor)) {
-		await forgetUntouched(left.kv, boardId)
+	/** `undefined` when it couldn't be told: kept, and still marked for the next time it is left. */
+	const stillUntouched = async (): Promise<boolean | undefined> => {
+		if (!(await isUntouched(left.kv, boardId))) return false
+		try {
+			return await left.isEmpty()
+		} catch {
+			return undefined
+		}
+	}
+	const untouched = await stillUntouched()
+	if (untouched !== true) {
+		if (untouched === false) await forgetUntouched(left.kv, boardId)
 		return false
 	}
 	let board: BoardMeta | undefined
 	try {
 		board = await left.current()
 	} catch {
-		// Not reachable: kept, and still untouched, for the next time it is left.
 		return false
 	}
 	// A board called anything else was renamed, here or elsewhere.
@@ -129,7 +131,13 @@ export async function deleteIfUntouched(boardId: string, left: LeftBoard): Promi
 		await forgetUntouched(left.kv, boardId)
 		return false
 	}
-	await left.remove()
+	// Again: something may have been done to it while the board was being read.
+	const stillSo = await stillUntouched()
+	if (stillSo !== true) {
+		if (stillSo === false) await forgetUntouched(left.kv, boardId)
+		return false
+	}
+	const deleted = await left.remove()
 	await forgetUntouched(left.kv, boardId)
-	return true
+	return deleted
 }

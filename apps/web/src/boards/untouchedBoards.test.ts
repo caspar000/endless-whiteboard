@@ -11,7 +11,15 @@ import {
 } from '@lifeboard/canvas'
 import type { KvStore } from '../platform/PlatformAdapter'
 import type { BoardMeta } from './boardIndex'
-import { deleteIfUntouched, forgetUntouched, isUntouched, markUntouched, watchUntouchedBoard } from './untouchedBoards'
+import {
+	deleteIfUntouched,
+	forgetUntouched,
+	hasContent,
+	isUntouched,
+	markUntouched,
+	watchUntouchedBoard,
+	type LeftBoard,
+} from './untouchedBoards'
 
 const PAGE = PageRecordType.createId('page')
 
@@ -77,27 +85,44 @@ async function newBoard(id: string, kv = memoryKv()) {
 	return { kv, store, stop }
 }
 
-/** Leaves the board: what App.tsx does when the board on screen changes away from it. */
+/**
+ * Leaves the board: what App.tsx does when the board on screen changes away from it. With no store, the
+ * page can't tell what is on the board.
+ */
 async function leave(
 	id: string,
 	{ kv, store }: { kv: KvStore; store: TLStore | null },
-	current: () => Promise<BoardMeta | undefined> = async () => untitled(id)
+	current: LeftBoard['current'] = async () => untitled(id),
+	remove: () => Promise<boolean> = async () => true
 ) {
-	const removed: string[] = []
+	let removed = 0
 	const deleted = await deleteIfUntouched(id, {
 		kv,
-		editor: store && { store },
+		isEmpty: async () => {
+			if (!store) throw new Error('unreadable')
+			return !hasContent({ store })
+		},
 		current,
-		remove: async () => void removed.push(id),
+		remove: async () => {
+			removed++
+			return remove()
+		},
 	})
-	expect(deleted).toBe(removed.length === 1)
-	return deleted
+	if (deleted) expect(removed).toBe(1)
+	return { deleted, removed }
+}
+
+/** A promise held open until the test lets it go. */
+function held<T>() {
+	let release!: (value: T) => void
+	const promise = new Promise<T>((resolve) => (release = resolve))
+	return { promise, release }
 }
 
 describe('leaving an untitled board', () => {
 	it('deletes it when nothing was done to it', async () => {
 		const board = await newBoard('a')
-		expect(await leave('a', board)).toBe(true)
+		expect((await leave('a', board)).deleted).toBe(true)
 		expect(await isUntouched(board.kv, 'a')).toBe(false)
 	})
 
@@ -108,32 +133,32 @@ describe('leaving an untitled board', () => {
 		const store = openBoard()
 		watchUntouchedBoard({ store }, 'b', kv)
 		await isUntouched(kv, 'b')
-		expect(await leave('b', { kv, store })).toBe(true)
+		expect((await leave('b', { kv, store })).deleted).toBe(true)
 	})
 
 	it('keeps it once it was renamed, even with nothing on it', async () => {
 		const board = await newBoard('c')
 		// A rename forgets the mark (useBoards.ts), whatever the name.
 		await forgetUntouched(board.kv, 'c')
-		expect(await leave('c', board, async () => untitled('c', { name: 'Gym plan' }))).toBe(false)
+		expect((await leave('c', board, async () => untitled('c', { name: 'Gym plan' }))).deleted).toBe(false)
 	})
 
 	it('keeps it when it was renamed on another device', async () => {
 		const board = await newBoard('d')
-		expect(await leave('d', board, async () => untitled('d', { name: 'Gym plan', vault: 'server' }))).toBe(false)
+		expect((await leave('d', board, async () => untitled('d', { name: 'Gym plan', vault: 'server' }))).deleted).toBe(false)
 		expect(await isUntouched(board.kv, 'd')).toBe(false)
 	})
 
 	it('keeps it when it was given a colour or an icon', async () => {
 		const board = await newBoard('e')
-		expect(await leave('e', board, async () => untitled('e', { icon: 'dumbbell' }))).toBe(false)
+		expect((await leave('e', board, async () => untitled('e', { icon: 'dumbbell' }))).deleted).toBe(false)
 	})
 
 	it('keeps it once something was put on it', async () => {
 		const board = await newBoard('f')
 		board.store.put([shape()])
 		settle(board.store)
-		expect(await leave('f', board)).toBe(false)
+		expect((await leave('f', board)).deleted).toBe(false)
 	})
 
 	it('keeps it when what was put on it was changed and taken off again', async () => {
@@ -145,7 +170,7 @@ describe('leaving an untitled board', () => {
 		board.store.remove([item.id])
 		settle(board.store)
 		expect(board.store.get(item.id)).toBeUndefined()
-		expect(await leave('g', board)).toBe(false)
+		expect((await leave('g', board)).deleted).toBe(false)
 	})
 
 	it('keeps it when another device put something on it, and sync brought it here', async () => {
@@ -156,7 +181,7 @@ describe('leaving an untitled board', () => {
 		// Taken away again over there: the board is empty, and still edited.
 		board.store.mergeRemoteChanges(() => board.store.remove([item.id]))
 		settle(board.store)
-		expect(await leave('h', board)).toBe(false)
+		expect((await leave('h', board)).deleted).toBe(false)
 	})
 
 	it('still deletes it when sync brought only the board itself', async () => {
@@ -167,7 +192,7 @@ describe('leaving an untitled board', () => {
 		})
 		settle(board.store)
 		expect(board.store.get(PAGE)!.name).toBe('Page one')
-		expect(await leave('i', board)).toBe(true)
+		expect((await leave('i', board)).deleted).toBe(true)
 	})
 
 	it('keeps a board with anything on it, however it got there', async () => {
@@ -177,7 +202,7 @@ describe('leaving an untitled board', () => {
 		const store = openBoard()
 		store.put([shape()])
 		settle(store)
-		expect(await leave('j', { kv, store })).toBe(false)
+		expect((await leave('j', { kv, store })).deleted).toBe(false)
 	})
 
 	it('keeps it, still untouched, when the server can not be asked', async () => {
@@ -185,11 +210,63 @@ describe('leaving an untitled board', () => {
 		const offline = async (): Promise<BoardMeta | undefined> => {
 			throw new Error('offline')
 		}
-		expect(await leave('k', board, offline)).toBe(false)
+		expect((await leave('k', board, offline)).deleted).toBe(false)
 		expect(await isUntouched(board.kv, 'k')).toBe(true)
 	})
 
+	it('keeps it when an edit arrives while the board is being read', async () => {
+		const board = await newBoard('m')
+		const reading = held<BoardMeta | undefined>()
+		const asked = held<void>()
+		const leaving = leave('m', board, () => (asked.release(), reading.promise))
+		// While the server is asked for the board, another device puts something on it and sync brings it.
+		await asked.promise
+		board.store.mergeRemoteChanges(() => board.store.put([shape()]))
+		settle(board.store)
+		reading.release(untitled('m', { vault: 'server' }))
+		const { deleted, removed } = await leaving
+		expect(deleted).toBe(false)
+		expect(removed).toBe(0)
+	})
+
+	it('keeps it, still marked, when what is on it can not be read', async () => {
+		const { kv } = await newBoard('n')
+		const { deleted, removed } = await leave('n', { kv, store: null })
+		expect(deleted).toBe(false)
+		expect(removed).toBe(0)
+		expect(await isUntouched(kv, 'n')).toBe(true)
+	})
+
+	it('keeps it when the server finds it changed as it deletes', async () => {
+		const board = await newBoard('o')
+		// Sent to the server by another device, and not yet here.
+		const { deleted, removed } = await leave('o', board, async () => untitled('o', { vault: 'server' }), async () => false)
+		expect(removed).toBe(1)
+		expect(deleted).toBe(false)
+		expect(await isUntouched(board.kv, 'o')).toBe(false)
+	})
+
+	it('keeps a mark cleared in one window cleared while another window marks a new board', async () => {
+		// Two windows over one store whose reads and writes each take a turn, as IndexedDB's do.
+		const values = new Map<string, unknown>()
+		const turn = () => new Promise((resolve) => setTimeout(resolve, 0))
+		const shared: KvStore = {
+			get: async <T,>(key: string) => (await turn(), values.get(key) as T | undefined),
+			set: async (key, value) => void (await turn(), values.set(key, value)),
+			delete: async (key) => void (await turn(), values.delete(key)),
+			keys: async () => [...values.keys()],
+		}
+		await markUntouched(shared, 'p')
+		// Window one edits board p while window two makes board q.
+		await Promise.all([forgetUntouched(shared, 'p'), markUntouched(shared, 'q')])
+		expect(await isUntouched(shared, 'p')).toBe(false)
+		expect(await isUntouched(shared, 'q')).toBe(true)
+		// Board p, undone back to empty and left, is kept.
+		const store = openBoard()
+		expect((await leave('p', { kv: shared, store })).deleted).toBe(false)
+	})
+
 	it('leaves a board that was never marked alone', async () => {
-		expect(await leave('l', { kv: memoryKv(), store: openBoard() })).toBe(false)
+		expect((await leave('l', { kv: memoryKv(), store: openBoard() })).deleted).toBe(false)
 	})
 })

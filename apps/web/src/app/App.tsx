@@ -4,7 +4,7 @@ import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { getBoard, listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { markPendingBoardKind } from '../boards/pendingKind'
-import { deleteIfUntouched, markUntouched } from '../boards/untouchedBoards'
+import { deleteIfUntouched, hasContent, markUntouched, snapshotHasContent } from '../boards/untouchedBoards'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
@@ -18,7 +18,7 @@ import {
 } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
 import { getServerBoard, uploadServerThumbnail } from '../server/serverVault'
-import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
+import { readBoardSnapshotResult, TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
 import { watchBoard } from '../agent/boardContext'
@@ -544,11 +544,32 @@ export function App() {
 		const onServer = boardsRef.current.find((board) => board.id === left)?.vault === 'server'
 		void deleteIfUntouched(left, {
 			kv: platform.kv,
-			editor: editors.current.get(left) ?? null,
+			isEmpty: async () => {
+				const editor = editors.current.get(left)
+				if (editor) return !hasContent(editor)
+				// A server board's content is the server's to check, which it does as it deletes.
+				if (onServer) return true
+				const stored = await readBoardSnapshotResult(left)
+				if (stored.status === 'unreadable') throw new Error('The board could not be read.')
+				return stored.status === 'absent' || !snapshotHasContent(stored.snapshot.store)
+			},
 			current: () => (onServer ? getServerBoard(left) : getBoard(platform.kv, left)),
-			remove: () => removeBoard(left),
+			remove: async () => {
+				if (!onServer) {
+					await removeBoard(left)
+					return true
+				}
+				// The server decides first; the tab closes only if the board went.
+				const deleted = await api.removeUntouchedServerBoard(left)
+				if (deleted) {
+					cancelDrainFor(left)
+					warm.current.delete(left)
+					closeTab(left)
+				}
+				return deleted
+			},
 		}).catch((error) => console.error('Lifeboard: could not delete an untouched board.', error))
-	}, [shownBoardId, platform, removeBoard])
+	}, [shownBoardId, platform, api, removeBoard, cancelDrainFor, closeTab])
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on

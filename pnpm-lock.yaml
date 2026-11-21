@@ -163,6 +163,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@lifeboard/backlog':
+        specifier: workspace:*
+        version: link:../../packages/backlog
       '@lifeboard/book-reader':
         specifier: workspace:*
         version: link:../../packages/book-reader
@@ -187,6 +190,9 @@ importers:
       '@lifeboard/randomizer':
         specifier: workspace:*
         version: link:../../packages/randomizer
+      '@lifeboard/ranking-tiers':
+        specifier: workspace:*
+        version: link:../../packages/ranking-tiers
       '@lifeboard/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -297,6 +303,49 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
+
+  packages/backlog:
+    dependencies:
+      '@lifeboard/canvas':
+        specifier: workspace:*
+        version: link:../canvas
+      '@lifeboard/node-kit':
+        specifier: workspace:*
+        version: link:../node-kit
+      lucide-react:
+        specifier: ^1.28.0
+        version: 1.28.0(react@19.2.8)
+    devDependencies:
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tldraw/tlschema':
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: ^30.1.1
+        version: 30.1.1
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -953,8 +1002,54 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
 
+  packages/ranking-tiers:
+    dependencies:
+      '@lifeboard/canvas':
+        specifier: workspace:*
+        version: link:../canvas
+      '@lifeboard/node-kit':
+        specifier: workspace:*
+        version: link:../node-kit
+      lucide-react:
+        specifier: ^1.28.0
+        version: 1.28.0(react@19.2.8)
+    devDependencies:
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tldraw/tlschema':
+        specifier: 5.5.2
+        version: 5.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: ^30.1.1
+        version: 30.1.1
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(jsdom@30.1.1)(vite@8.1.5(@types/node@26.1.2)(terser@5.49.0)(yaml@2.9.1))
+
   packages/schema:
     dependencies:
+      '@lifeboard/backlog':
+        specifier: workspace:*
+        version: link:../backlog
       '@lifeboard/book-reader':
         specifier: workspace:*
         version: link:../book-reader
@@ -976,6 +1071,9 @@ importers:
       '@lifeboard/randomizer':
         specifier: workspace:*
         version: link:../randomizer
+      '@lifeboard/ranking-tiers':
+        specifier: workspace:*
+        version: link:../ranking-tiers
       '@lifeboard/skill-tree':
         specifier: workspace:*
         version: link:../skill-tree

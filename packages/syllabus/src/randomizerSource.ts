@@ -1,5 +1,6 @@
 import type { ItemSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
+import { isTrack, TRACK_TYPE } from './board'
 import { getItems, getTracks, type ItemDef, type TrackDef } from './syllabus'
 
 /**
@@ -97,4 +98,13 @@ export const syllabusRandomizerSource: ItemSource = {
 	choices: () => syllabusChoices(getTracks()),
 	entries: (trackId) => syllabusEntries(getItems(), getTracks(), trackId),
 	kind: (trackId) => syllabusKind(getItems(), getTracks(), trackId),
+	// A track's card on the board is that track: dropped on a backlog, the backlog takes the track (DARK-11).
+	fromShape: {
+		types: [TRACK_TYPE],
+		choiceOf: (shape) => {
+			if (!isTrack(shape)) return null
+			const track = getTracks()[shape.props.trackId]
+			return track && !track.draft ? track.trackId : null
+		},
+	},
 }

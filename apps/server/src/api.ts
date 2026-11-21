@@ -111,6 +111,10 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 	feedSources: (value) => keyedBy(value, 'sourceId'),
 	feedCategories: (value) => keyedBy(value, 'categoryId'),
 	feedWatched: (value) => keyedBy(value, 'itemId'),
+	// Rankings and backlogs (the only copy of them), and everything stamped on a randomizer, keyed by id.
+	rankings: (value) => keyedBy(value, 'rankingId'),
+	backlogs: (value) => keyedBy(value, 'backlogId'),
+	randomizerStamped: (value) => keyedBy(value, 'key'),
 	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
 	skillTrees: (value) =>
 		!!value &&

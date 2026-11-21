@@ -13,6 +13,7 @@
     "gen:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@lifeboard/backlog": "workspace:*",
     "@lifeboard/book-reader": "workspace:*",
     "@lifeboard/canvas": "workspace:*",
     "@lifeboard/canvas-sync": "workspace:*",
@@ -21,6 +22,7 @@
     "@lifeboard/node-kit": "workspace:*",
     "@lifeboard/note-markdown": "workspace:*",
     "@lifeboard/randomizer": "workspace:*",
+    "@lifeboard/ranking-tiers": "workspace:*",
     "@lifeboard/schema": "workspace:*",
     "@lifeboard/skill-tree": "workspace:*",
     "@lifeboard/syllabus": "workspace:*",

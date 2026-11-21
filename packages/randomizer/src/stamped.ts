@@ -1,5 +1,5 @@
-import { atom, type Editor, type TLShape } from '@lifeboard/canvas'
-import { PLAIN_KIND, isExtensionEnabled, sourceEntries, type ItemSource, type SourceEntry } from '@lifeboard/node-kit'
+import type { Editor, TLShape } from '@lifeboard/canvas'
+import { PLAIN_KIND, isExtensionEnabled, keyedStore, sourceEntries, type ItemSource, type SourceEntry } from '@lifeboard/node-kit'
 import { Stamp } from 'lucide-react'
 import { STAMPS, STAMP_KINDS, TYPED_SOURCE, latestStamp, type RandomItem, type StampKind } from './model'
 import { RANDOMIZER_TYPE, type RandomizerProps } from './props'
@@ -47,51 +47,34 @@ const fromThisList = (item: RandomItem) => item.source.startsWith(`${SOURCE_ID}:
 
 type Stamped = Readonly<Record<string, StampedEntry>>
 
-const stamped = atom<Stamped>('lifeboard:randomizer-stamped', {})
-let persist: ((value: Stamped) => void) | null = null
-
-export function getStamped(): Stamped {
-	return stamped.get()
-}
-
-function setStamped(next: Stamped): void {
-	if (JSON.stringify(next) === JSON.stringify(stamped.get())) return
-	stamped.set(next)
-	persist?.(next)
-}
-
-/** Where a change is saved: the app's, set once at startup. */
-export function setStampedPersistence(listener: ((value: Stamped) => void) | null): void {
-	persist = listener
-}
-
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
-/** Loads a stored copy without saving it back. What can't be read is dropped: it comes from storage and other devices. */
-export function replaceStamped(raw: unknown): void {
-	const out: Record<string, StampedEntry> = {}
-	if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-		for (const value of Object.values(raw as Record<string, unknown>)) {
-			if (!value || typeof value !== 'object') continue
-			const e = value as Record<string, unknown>
-			const kind = STAMP_KINDS.find((k) => k === e.kind)
-			if (!str(e.key) || !str(e.id) || !kind) continue
-			out[str(e.key)] = {
-				key: str(e.key),
-				source: str(e.source),
-				id: str(e.id),
-				title: str(e.title),
-				creator: str(e.creator),
-				year: str(e.year),
-				cover: str(e.cover),
-				url: str(e.url),
-				kind,
-				date: str(e.date),
-			}
+const stamped = keyedStore<StampedEntry>(
+	'lifeboard:randomizer-stamped',
+	(e) => {
+		const kind = STAMP_KINDS.find((k) => k === e.kind)
+		if (!str(e.key) || !str(e.id) || !kind) return null
+		return {
+			key: str(e.key),
+			source: str(e.source),
+			id: str(e.id),
+			title: str(e.title),
+			creator: str(e.creator),
+			year: str(e.year),
+			cover: str(e.cover),
+			url: str(e.url),
+			kind,
+			date: str(e.date),
 		}
-	}
-	stamped.set(out)
-}
+	},
+	(e) => e.key
+)
+
+export const getStamped = stamped.get
+/** Loads a stored copy without saving it back. */
+export const replaceStamped = stamped.replace
+/** Where a change is saved: the app's, set once at startup. */
+export const setStampedPersistence = stamped.setPersistence
 
 /**
  * The stamped list after one card went from `before` to `after` (`null` before: a card just opened or
@@ -162,7 +145,7 @@ export function watchStamped(editor: Editor): void {
 	watched.add(editor)
 	const write = (before: readonly RandomItem[] | null, after: readonly RandomItem[]) => {
 		if (!isExtensionEnabled(STAMPED_EXTENSION_ID)) return
-		setStamped(nextStamped(stamped.get(), before, after, entryOf))
+		stamped.set(nextStamped(stamped.get(), before, after, entryOf))
 	}
 	for (const shape of editor.getCurrentPageShapes()) if (shape.type === RANDOMIZER_TYPE) write(null, itemsOf(shape))
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {

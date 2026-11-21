@@ -16,6 +16,7 @@
 		"react-dom": "^19.0.0"
 	},
 	"dependencies": {
+		"@lifeboard/backlog": "workspace:*",
 		"@lifeboard/book-reader": "workspace:*",
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/dice": "workspace:*",
@@ -23,6 +24,7 @@
 		"@lifeboard/node-kit": "workspace:*",
 		"@lifeboard/note-markdown": "workspace:*",
 		"@lifeboard/randomizer": "workspace:*",
+		"@lifeboard/ranking-tiers": "workspace:*",
 		"@lifeboard/skill-tree": "workspace:*",
 		"@lifeboard/syllabus": "workspace:*",
 		"@lifeboard/zettelkasten": "workspace:*"

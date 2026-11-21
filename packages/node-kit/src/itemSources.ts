@@ -1,4 +1,4 @@
-import { atom } from '@lifeboard/canvas'
+import { atom, type TLShape } from '@lifeboard/canvas'
 import type { LucideIcon } from 'lucide-react'
 import { isExtensionEnabled } from './registry'
 
@@ -83,6 +83,15 @@ export interface ItemSource {
 	watch?(choiceId: string): () => void
 	/** Opens an entry, as the source's own card would (a video, marked watched). Without it, its `url` opens in a new tab. */
 	open?(entry: { id: string; url: string }): void
+	/**
+	 * Cards on the board that stand for one of its choices, so dropping one on a card that collects
+	 * sources (a backlog) adds that choice: a syllabus track's card is that track.
+	 */
+	fromShape?: {
+		types: readonly string[]
+		/** The choice a shape of one of those types is, or `null`. */
+		choiceOf(shape: TLShape): string | null
+	}
 }
 
 const sources = atom<readonly ItemSource[]>('lifeboard:item-sources', [])
@@ -146,10 +155,41 @@ export function resolveItemSource(key: string): ResolvedItemSource {
 	return { type: 'source', name: choice.label, kind: source.kind(parsed.choiceId), source, choiceId: parsed.choiceId }
 }
 
-/** A source key's entries now, or none for a key that names nothing. */
+/** The source key a card on the board stands for, from whichever offered source knows it, or `null`. */
+export function sourceKeyOfShape(shape: TLShape): string | null {
+	for (const source of offeredItemSources()) {
+		if (!source.fromShape?.types.includes(shape.type)) continue
+		const choiceId = source.fromShape.choiceOf(shape)
+		if (choiceId !== null) return sourceKey(source.id, choiceId)
+	}
+	return null
+}
+
+/** Whether any offered source knows cards of this type. */
+export function isSourceShapeType(type: string): boolean {
+	return offeredItemSources().some((s) => s.fromShape?.types.includes(type))
+}
+
+/** The keys being read right now, outermost first. */
+const reading: string[] = []
+
+/**
+ * A source key's entries now, or none for a key that names nothing.
+ *
+ * A source made of other sources (a backlog holding a ranking, a ranking of a backlog) reads them
+ * through here, which is what stops a loop: a key asked for again while it is being read has nothing,
+ * so a backlog that holds a ranking of itself lists that ranking's other items once, not forever.
+ */
 export function sourceEntries(key: string): readonly SourceEntry[] {
+	if (reading.includes(key)) return []
 	const resolved = resolveItemSource(key)
-	return resolved.type === 'source' && resolved.source ? resolved.source.entries(resolved.choiceId) : []
+	if (resolved.type !== 'source' || !resolved.source) return []
+	reading.push(key)
+	try {
+		return resolved.source.entries(resolved.choiceId)
+	} finally {
+		reading.pop()
+	}
 }
 
 /* ----------------------------------------------------------------- dragging an item between cards */
@@ -170,8 +210,20 @@ export interface DraggedItem {
 	via: string
 }
 
+/**
+ * The item being dragged from a card in this tab, while it is. A drag's data can only be read on the
+ * drop, so a card that wants to say what is about to land ("Drop to add Solaris") asks here.
+ */
+let inFlight: DraggedItem | null = null
+
+export function draggingItem(): DraggedItem | null {
+	return inFlight
+}
+
 /** Puts an item on a drag. The title also goes as plain text, for anything else it is dropped on. */
 export function setDraggedItem(data: DataTransfer, item: DraggedItem): void {
+	inFlight = item
+	if (typeof document !== 'undefined') document.addEventListener('dragend', () => (inFlight = null), { once: true })
 	data.setData(ITEM_DRAG_TYPE, JSON.stringify(item))
 	data.setData('text/plain', item.entry.creator ? `${item.entry.title} — ${item.entry.creator}` : item.entry.title)
 }

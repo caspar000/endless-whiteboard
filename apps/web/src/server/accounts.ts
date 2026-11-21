@@ -1,6 +1,7 @@
 import { atom, getUserPreferences, setUserPreferences } from '@lifeboard/canvas'
 import { clearSyncCache, listSyncCacheRooms } from '@lifeboard/canvas-sync'
 import { forgetFeeds } from '../app/feeds'
+import { forgetCollections } from '../app/collections'
 import type { KvStore } from '../platform/PlatformAdapter'
 import { forgetServerBoardList, serverApi } from './serverVault'
 
@@ -205,12 +206,13 @@ export async function removeBoardAccess(boardId: string, userId: string | 'me'):
 
 /**
  * Logs out, and leaves nothing of the account's boards on this device: the copies kept for offline
- * use, the remembered board list, and the feeds' sources and categories. The next person to use this
- * browser starts clean.
+ * use, the remembered board list, the feeds' sources and categories, and the rankings and backlogs.
+ * The next person to use this browser starts clean.
  */
 export async function logOut(kv: KvStore): Promise<void> {
 	try {
 		forgetFeeds()
+		forgetCollections()
 		for (const room of await listSyncCacheRooms()) await clearSyncCache(room)
 		await forgetServerBoardList(kv)
 		await kv.delete(ME_KEY)

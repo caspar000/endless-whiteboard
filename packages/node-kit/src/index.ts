@@ -139,9 +139,11 @@ export {
 	ITEM_DRAG_TYPE,
 	PLAIN_KIND,
 	clearItemSources,
+	draggingItem,
 	getDraggedItem,
 	getItemSources,
 	hasDraggedItem,
+	isSourceShapeType,
 	offeredItemSources,
 	parseSourceKey,
 	registerItemSource,
@@ -149,6 +151,7 @@ export {
 	setDraggedItem,
 	sourceEntries,
 	sourceKey,
+	sourceKeyOfShape,
 	type DraggedItem,
 	type ItemSource,
 	type ResolvedItemSource,
@@ -159,6 +162,9 @@ export {
 // A cover for any item, drawn from its title when it has no picture.
 export { generatedCover, hashText } from './generatedCover'
 export { useItemCover } from './itemCover'
+export { SourceSelect } from './SourceSelect'
+// Records kept outside any board, which the app saves to the vault.
+export { keyedStore, type KeyedStore } from './keyedStore'
 // tldraw's own shapes, described well enough for an agent to create one. Not registry entries — see
 // the file's doc comment for why that distinction is load-bearing.
 export { NATIVE_SHAPES, createNativeShape, getNativeShape, type NativeShapeSpec } from './nodes/native'

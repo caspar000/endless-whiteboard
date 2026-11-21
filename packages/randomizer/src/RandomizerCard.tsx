@@ -642,5 +642,6 @@ export const RandomizerCard = memo(
 		prev.shape.id === next.shape.id &&
 		prev.shape.props.source === next.shape.props.source &&
 		prev.shape.props.items === next.shape.props.items &&
-		prev.shape.props.picks === next.shape.props.picks
+		prev.shape.props.picks === next.shape.props.picks &&
+		prev.shape.props.aspect === next.shape.props.aspect
 )

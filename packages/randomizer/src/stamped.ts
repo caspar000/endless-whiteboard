@@ -241,19 +241,26 @@ export const rankingCard = (rankingId: string) => `ranking/${rankingId}`
 
 /**
  * An item ranked stamped Liked, as the stamp button would (DARK-13), under the ranking's own card key.
- * Nothing happens to an item already Liked, or to one ranked from the stamped lists themselves: ranking
- * "Everything I disliked" must not move what it ranks into another list.
+ * Nothing happens to an item already Liked.
+ *
+ * An item ranked from the stamped lists themselves (a ranking of "Everything I'm unsure of") is the
+ * item it was stamped as: its entry's id is that item's key (`stampedEntries`), so the Liked stamp goes
+ * on the same item, from the same source, and the list keeps giving it the same id. A ranking then
+ * finds it where it put it, in the Liked list now (`rankedEntries` in Ranking Tiers keeps it shown).
  */
 export function stampRanked(all: Stamped, item: { entry: SourceEntry; from: string; rankingId: string }, today: string): Stamped {
-	if (parseSourceKey(item.from)?.sourceId === SOURCE_ID) return all
 	const { entry } = item
 	const folded = foldedItem(entry)
 	const latest = Object.values(all)
 		.filter((e) => foldedItem(e) === folded)
 		.reduce<StampedEntry | null>((had, e) => (!had || e.date > had.date || (e.date === had.date && e.key > had.key) ? e : had), null)
 	if (latest?.kind === 'liked') return all
+	const fromStamps = parseSourceKey(item.from)?.sourceId === SOURCE_ID
+	const was = fromStamps ? Object.values(all).find((e) => e.item === entry.id) : undefined
+	const source = was?.source ?? item.from
+	const id = was?.id ?? entry.id
+	const itemKey = was?.item ?? stampedKey(item.from, entry.id)
 	const card = rankingCard(item.rankingId)
-	const itemKey = stampedKey(item.from, entry.id)
 	const key = `${card}#${itemKey}`
 	return {
 		...all,
@@ -261,8 +268,8 @@ export function stampRanked(all: Stamped, item: { entry: SourceEntry; from: stri
 			key,
 			card,
 			item: itemKey,
-			source: item.from,
-			id: entry.id,
+			source,
+			id,
 			title: entry.title,
 			creator: entry.creator,
 			year: entry.year,

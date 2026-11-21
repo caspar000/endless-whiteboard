@@ -5,6 +5,7 @@ import {
 	UNRANKED,
 	addTier,
 	formatOdds,
+	keepsStamped,
 	mergeEntries,
 	moveItem,
 	moveTier,
@@ -196,6 +197,13 @@ describe('stamps on a ranking (DARK-13)', () => {
 		expect(rankedKeys(of('feeds:all', { unsure: true }), 'stamped', KINDS)).toEqual(['feeds:all'])
 		expect(rankedKeys(of('stamped:liked', { unsure: true }), null, [])).toEqual(['stamped:liked'])
 		expect(rankedKeys(of(''), 'stamped', KINDS)).toEqual([])
+	})
+
+	it('keeps a ranked cover of the stamped lists in its tier when its stamp changes, unless that kind is off by hand', () => {
+		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', true)).toBe(true)
+		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', false)).toBe(false)
+		expect(keepsStamped(of('stamped:unsure', { liked: false }), 'liked', 'stamped', true)).toBe(false)
+		expect(keepsStamped(of('feeds:all', { liked: false }), 'liked', 'stamped', true)).toBe(false)
 	})
 
 	it('merges lists as one, each item once', () => {

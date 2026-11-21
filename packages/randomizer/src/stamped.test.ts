@@ -94,8 +94,14 @@ describe('ranking an item (DARK-13)', () => {
 		expect(titles(next, 'unsure')).toEqual([])
 	})
 
-	it('never stamps what a ranking of the stamped lists ranks', () => {
-		expect(stampRanked({}, { entry, from: 'stamped:disliked', rankingId: 'r1' }, today)).toEqual({})
+	it('stamps what a ranking of the stamped lists ranks as the same item, so it keeps its id', () => {
+		const all = nextStamped({}, A, [item('x1', [{ kind: 'unsure', date: '2026-11-01' }], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
+		const [listed] = stampedEntries(all, 'unsure')
+		const next = stampRanked(all, { entry: { ...listed!, year: '', cover: '', url: '' }, from: 'stamped:unsure', rankingId: 'r1' }, today)
+		expect(stampedEntries(next, 'unsure')).toEqual([])
+		const [liked] = stampedEntries(next, 'liked')
+		expect(liked?.id).toBe(listed!.id)
+		expect(Object.values(next).find((e) => e.card === rankingCard('r1'))).toMatchObject({ source: 'feeds:all', id: 'x1', item: listed!.id })
 	})
 
 	it('keeps the ranking’s stamp when a randomizer writes its own', () => {

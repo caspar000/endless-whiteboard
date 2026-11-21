@@ -108,7 +108,9 @@ export function RankingTiers({ go }: SectionProps) {
 					The card's settings choose what it shows. With the Randomizer on, <strong>Show stamped</strong>{' '}
 					has a switch each for Liked, Unsure and Disliked: switch one off and the covers whose latest stamp
 					is that kind leave the ranking, keeping their tier for when you switch it back. A ranking of
-					Everything I liked starts with only Liked on; switch Unsure on too, and it ranks both lists at once.{' '}
+					Everything I liked starts with only Liked on; switch Unsure on too, and it ranks both lists at once.
+					A cover you rank from Everything I'm unsure of is stamped Liked like any other, and stays in the
+					tier you put it in.{' '}
 					<strong>Stamp badges</strong> puts each stamped cover's latest stamp on its corner.
 				</p>
 				<p>

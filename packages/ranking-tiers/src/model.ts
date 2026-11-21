@@ -110,6 +110,27 @@ export function rankedKeys(ranking: Pick<Ranking, 'source' | 'stampFilter'>, sta
 	return [ranking.source, ...others]
 }
 
+/** Whether a ranking ranks the stamped lists themselves (`stampSource` is the id they are offered under). */
+export function ranksStamps(ranking: Pick<Ranking, 'source'>, stampSource: string | null): boolean {
+	const at = ranking.source.indexOf(':')
+	return !!stampSource && at > 0 && ranking.source.slice(0, at) === stampSource
+}
+
+/**
+ * Whether a cover stamped `kind` stays on the ranking. As `showsStamp`, but on a ranking of the stamped
+ * lists a cover already in a tier stays where it is when its stamp changes (ranking it stamps it Liked,
+ * DARK-13), unless its new kind was switched off by hand.
+ */
+export function keepsStamped(ranking: Pick<Ranking, 'source' | 'stampFilter'>, kind: string, stampSource: string | null, placed: boolean): boolean {
+	if (showsStamp(ranking, kind, stampSource)) return true
+	return placed && ranksStamps(ranking, stampSource) && ranking.stampFilter[kind] !== false
+}
+
+/** The ids a ranking has put in tiers, for its current source. */
+export function placedIds(ranking: Pick<Ranking, 'source' | 'placed'>): Set<string> {
+	return new Set(Object.values(ranking.placed[ranking.source] ?? {}).flat())
+}
+
 /** Entries of several lists as one, each id once, in the order the lists give them. */
 export function mergeEntries(lists: ReadonlyArray<readonly SourceEntry[]>): SourceEntry[] {
 	const seen = new Set<string>()

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
+import { setAssetBridge, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
 import { RANDOMIZER_TYPE, randomizerNodeDefinition, type RandomizerProps } from '@lifeboard/randomizer'
 import { useMemo, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -29,11 +29,14 @@ const CHANNEL = `<?xml version="1.0" encoding="UTF-8"?>
 </feed>`
 
 let sourceKey = ''
+/** The board's own props, to change as an undo or another device would. */
+let setBoardProps: (change: (p: RandomizerProps) => RandomizerProps) => void = () => {}
 
 /** A randomizer on a board: the editor writes the card's props and opens its editor, as the real one does. */
 function Board({ onProps }: { onProps: (props: RandomizerProps) => void }) {
 	const [props, setProps] = useState<RandomizerProps>(() => randomizerNodeDefinition.defaultProps())
 	const [editing, setEditing] = useState(false)
+	setBoardProps = setProps
 	const shape = { id: 'shape:rand', type: RANDOMIZER_TYPE, x: 0, y: 0, rotation: 0, props: { ...props, w: 360, h: 520 }, meta: {} }
 	const latest = useRef(shape)
 	latest.current = shape
@@ -145,14 +148,51 @@ describe('a randomizer connected to a YouTube channel', () => {
 		expect(top.querySelector('img')!.classList.contains('lb-rand__img--loading')).toBe(false)
 	})
 
-	it('takes the window shape it is set to (DARK-13)', () => {
+	it('takes the window shape it is set to, as it is changed and when it is undone (DARK-13)', () => {
 		mount()
 		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
 		fireEvent.change(screen.getByLabelText('Shuffle from'), { target: { value: sourceKey } })
+		const stage = () => within(card()).getByRole('img', { name: /^Video cover/ }) as HTMLElement
+		// Only the shape changes, with the editor still open: the window follows at once.
 		fireEvent.change(screen.getByLabelText("The window's shape"), { target: { value: '16:9' } })
 		expect(props.aspect).toBe('16:9')
+		expect(stage().style.aspectRatio).toMatch(/^1\.777/)
+		expect((screen.getByLabelText("The window's shape") as HTMLSelectElement).value).toBe('16:9')
 		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-		const stage = within(card()).getByRole('img', { name: /^Video cover/ }) as HTMLElement
-		expect(stage.style.aspectRatio).toMatch(/^1\.777/)
+		// Undone with the editor closed: square again.
+		act(() => setBoardProps((p) => ({ ...p, aspect: '' })))
+		expect(stage().style.aspectRatio).toBe('')
+	})
+
+	it('shows a placeholder, not the cover before, while a dropped cover is still being fetched (DARK-13)', async () => {
+		// Every face of the card asks for its picture; each waits until the test lets that src through.
+		const waiting = new Map<string, Array<(url: string) => void>>()
+		const resolve = (src: string, url: string) => {
+			for (const done of waiting.get(src) ?? []) done(url)
+			waiting.delete(src)
+		}
+		setAssetBridge({
+			store: async () => '',
+			getBlob: async () => null,
+			resolveUrl: (src) => new Promise((done) => waiting.set(src, [...(waiting.get(src) ?? []), done])),
+		})
+		const typed = (id: string) => ({ id, source: 'list', title: `Record ${id}`, creator: '', year: '', cover: `asset:${id}`, stamps: [] })
+		mount()
+		act(() => setBoardProps((p) => ({ ...p, source: 'list', items: [typed('a'), typed('b')], picks: [{ source: 'list', id: 'a' }] })))
+		const top = () => card().querySelector('.lb-rand__half--top')!
+		expect(top().querySelector('.lb-rand__ph')?.textContent).toBe('Record a')
+		await act(async () => resolve('asset:a', 'blob:a'))
+		fireEvent.load(top().querySelector('img')!)
+		expect(top().querySelector('img')!.getAttribute('src')).toBe('blob:a')
+		expect(top().querySelector('.lb-rand__ph')).toBeNull()
+
+		// The pick moves to b while b's picture is still on its way: b's placeholder, never a's picture.
+		act(() => setBoardProps((p) => ({ ...p, picks: [{ source: 'list', id: 'b' }, ...p.picks] })))
+		expect(top().querySelector('.lb-rand__ph')?.textContent).toBe('Record b')
+		expect(top().querySelector('img')!.getAttribute('src')).not.toBe('blob:a')
+		await act(async () => resolve('asset:b', 'blob:b'))
+		fireEvent.load(top().querySelector('img')!)
+		expect(top().querySelector('img')!.getAttribute('src')).toBe('blob:b')
+		expect(top().querySelector('.lb-rand__ph')).toBeNull()
 	})
 })

@@ -454,6 +454,16 @@ GPU reader refuses, so a scaled node is drawn by the page. A node whose content 
 board's own units opts out with `scalable: false` and only resizes: the table, whose kanban and
 calendar stand real cards in lanes worked out from its `w` and `h`.
 
+**An untitled board you leave untouched is deleted** (DARK-12). A board made with "New board" is
+remembered as untouched (`boards/untouchedBoards.ts`) until something is done to it: a rename, a colour
+or icon, or any change to its content made in the page (the store's `user` changes, so sync from
+elsewhere doesn't count, and an edit undone still counts). Leaving it while untouched, for another
+board, home, settings or help, or by closing its tab, deletes it as the Delete button would. It is
+held in memory only, so a reload forgets it and the board stays. Kinds of board, the demo, imports
+and an agent's boards are never marked. An e2e test that makes a board and leaves it before changing
+anything finds it gone: `createBoard(page, name)` renames on the tab first, and `keepBoard(page)`
+puts something on it.
+
 **Lists cards share are the kit's, not any extension's** (DARK-11). Feeds, the Syllabus, the
 Randomizer's stamps, rankings and backlogs offer their lists through `registerItemSource`
 (`node-kit/src/itemSources.ts`), and the randomizer, Ranking Tiers and Backlog read whatever is there.

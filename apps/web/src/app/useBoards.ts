@@ -10,6 +10,7 @@ import {
 	type BoardMeta,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
+import { forgetUntouched } from '../boards/untouchedBoards'
 import { getMoves, queueMoves, subscribeToMoves, type MoveJob } from '../boards/moveQueue'
 import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
@@ -114,6 +115,8 @@ export function useBoards(): BoardsApi {
 
 	const rename = useCallback(
 		async (id: string, name: string) => {
+			// Any rename keeps the board, even back to the name it had (boards/untouchedBoards.ts).
+			forgetUntouched(id)
 			if (isServerBoard(id)) await updateServerBoard(id, { name })
 			else await renameBoard(platform.kv, id, name)
 			await refresh()
@@ -132,6 +135,7 @@ export function useBoards(): BoardsApi {
 
 	const setLook = useCallback(
 		async (id: string, patch: BoardLookPatch) => {
+			forgetUntouched(id)
 			if (isServerBoard(id)) await updateServerBoard(id, patch)
 			else await setBoardLook(platform.kv, id, patch)
 			await refresh()
@@ -141,6 +145,7 @@ export function useBoards(): BoardsApi {
 
 	const remove = useCallback(
 		async (id: string) => {
+			forgetUntouched(id)
 			const shared = server?.find((board) => board.id === id)
 			if (shared && isSharedWithMe(shared)) {
 				// Not ours to delete: it just leaves this account's list.

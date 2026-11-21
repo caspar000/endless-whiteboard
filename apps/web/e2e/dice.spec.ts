@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { clickInSidebar, countShapes, openBoardFromSidebar, createBoard, gotoFresh, skipFirstRunDemo } from './helpers'
+import { clickInSidebar, countShapes, openBoardFromSidebar, createBoard, gotoFresh, keepBoard, skipFirstRunDemo } from './helpers'
 
 /**
  * The dice tray, and the two things about it that broke during development.
@@ -350,6 +350,8 @@ test.describe('dice', () => {
 
 	test('keeps a roll as a card, with its total as a property, in one undo step', async ({ page }) => {
 		await boardWithTray(page)
+		// Something on it, or leaving it for Settings would delete the untitled board (DARK-12).
+		await keepBoard(page)
 		await clickInSidebar(page, 'Settings')
 		await page.getByRole('button', { name: 'Extensions', exact: true }).click()
 		await page.getByRole('button', { name: 'Dice', exact: true }).click()
@@ -400,6 +402,8 @@ test.describe('dice', () => {
 		page,
 	}) => {
 		await boardWithTray(page)
+		// Something on it, or leaving it for Settings would delete the untitled board (DARK-12).
+		await keepBoard(page)
 
 		await clickInSidebar(page, 'Settings')
 		await page.getByRole('button', { name: 'Extensions', exact: true }).click()

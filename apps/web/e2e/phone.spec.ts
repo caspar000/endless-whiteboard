@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { gotoFresh } from './helpers'
+import { gotoFresh, keepBoard } from './helpers'
 
 /** The phone layout (docs/mobile-plan.md): the chrome a board has below 768px. */
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
@@ -25,6 +25,8 @@ test.describe('phone chrome', () => {
 		await pill(page).click()
 		await page.getByRole('menuitem', { name: 'New board' }).click()
 		await expect(pill(page)).toContainText('Untitled board')
+		// Something on it, or switching away would delete the untitled board (DARK-12).
+		await keepBoard(page)
 
 		await pill(page).click()
 		const list = page.getByRole('menu', { name: 'Open boards' })
@@ -241,6 +243,8 @@ test.describe('phone pages', () => {
 		await pill(page).click()
 		await page.getByRole('menuitem', { name: 'New board' }).click()
 		await expect(pill(page)).toContainText('Untitled board')
+		// Something on it, or going home would delete the untitled board (DARK-12).
+		await keepBoard(page)
 		await pill(page).click()
 		await page.getByRole('menuitem', { name: 'All Boards' }).click()
 		const cards = page.locator('.lb-list__boards > li')

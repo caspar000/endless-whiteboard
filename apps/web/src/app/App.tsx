@@ -4,6 +4,7 @@ import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { markPendingBoardKind } from '../boards/pendingKind'
+import { isUntouched, markUntouched } from '../boards/untouchedBoards'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
@@ -478,6 +479,10 @@ export function App() {
 				// now, so the tab says what it is from the start.
 				markPendingBoardKind(board.id, kind.id)
 				if (kind.boardIcon) await api.setLook(board.id, { icon: kind.boardIcon })
+			} else {
+				// Deleted on the way out if nothing is done to it (boards/untouchedBoards.ts). A kind of board
+				// arrives with its contents and its name, so it is kept like any board you made something on.
+				markUntouched(board.id)
 			}
 			await openBoard(board)
 		},
@@ -524,6 +529,19 @@ export function App() {
 		},
 		[cancelDrainFor, closeTab, api]
 	)
+
+	/**
+	 * Leaving a board made with "New board" that nothing was done to deletes it (DARK-12): for another
+	 * tab, home, settings or help, by closing its tab or by making the next new board. Each of those is
+	 * the board on screen changing, so this watches that rather than every way to leave.
+	 */
+	const shownBoardId = route.view === 'board' ? route.boardId : null
+	const lastShownBoardId = useRef(shownBoardId)
+	useEffect(() => {
+		const left = lastShownBoardId.current
+		lastShownBoardId.current = shownBoardId
+		if (left && left !== shownBoardId && isUntouched(left)) void removeBoard(left)
+	}, [shownBoardId, removeBoard])
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on
@@ -898,6 +916,7 @@ export function App() {
 							<BoardList
 								api={listApi}
 								onOpen={(board) => void openBoard(board)}
+								onNew={() => void createAndOpen()}
 								onNewKind={(kindId) => void createAndOpen(kindId)}
 								mountedIds={mounted.map((board) => board.id)}
 							/>

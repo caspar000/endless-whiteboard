@@ -7,6 +7,7 @@ import {
 	dblclickNode,
 	gotoFresh,
 	noteMarkdown,
+	keepBoard,
 	openBoard,
 	openNodeMenu,
 	openSettings,
@@ -1794,6 +1795,8 @@ test.describe('canvas grid', () => {
 			await backToList(page)
 			await page.getByRole('button', { name: 'New board' }).first().click()
 			await expect(page.locator('.tl-canvas:visible')).toBeVisible()
+			// Something on each, or leaving it for the next would delete the untitled board (DARK-12).
+			await keepBoard(page)
 		}
 
 		expect(await page.locator('.lb-paper').count()).toBeGreaterThanOrEqual(3)

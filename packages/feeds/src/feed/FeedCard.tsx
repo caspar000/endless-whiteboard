@@ -1,4 +1,4 @@
-import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
+import { NodeEditorPopover, useCardPopup, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { CircleCheck, Ellipsis, Eye, EyeOff, FolderPlus, Inbox, ListChecks, Pencil, Play, Plus, RefreshCw, Rss, Settings2, X } from 'lucide-react'
 import { memo, useEffect, useState, type SyntheticEvent } from 'react'
@@ -38,6 +38,8 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 	const show: Show = shape.props.show === 'all' ? 'all' : 'unwatched'
 	const now = useMinute()
 	const [menu, setMenu] = useState(false)
+	// The menu draws past the card's edge while it is open, rather than being cut off by it (DARK-13).
+	useCardPopup(editor, shape.id, menu)
 	const [panelFocus, setPanelFocus] = useState<PanelFocus>(null)
 	const [playing, setPlaying] = useState<FeedItem | null>(null)
 	const [renaming, setRenaming] = useState(false)

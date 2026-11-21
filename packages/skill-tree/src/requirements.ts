@@ -200,7 +200,7 @@ export function evaluateTree(
 				const have = ids.filter((id) => evaluate(id).state === 'unlocked').length
 				const met = have === ids.length
 				if (!met) prerequisitesMet = false
-				statuses.push({ label: `Unlock ${ids.map((id) => byId.get(id)?.name ?? id).join(', ')}`, have, need: ids.length, met })
+				statuses.push({ label: `Unlock ${ids.map((id) => byId.get(id)?.name ?? id).join(', ')}`, have, need: ids.length, met, prerequisite: true })
 			} else if (condition.key === 'manual') {
 				const met = !!node.tickedAt
 				statuses.push({ label: (condition.value as string) || 'Ticked by hand', have: met ? 1 : 0, need: 1, met })
@@ -252,9 +252,14 @@ export function masteryOf(beyond: readonly Evidence[]): Mastery {
 	return { count, tier, nextAt, ships }
 }
 
-/** Fraction of a node's conditions met, for its ring while it is still available. */
+/**
+ * Fraction of a node's conditions met, for its ring while it is still available. Its prerequisites
+ * are left out: a node is only in reach once they are all met, so counting them would fill the ring
+ * before anything was done (DARK-10: /mu/core's "0/1" genres drawn half full).
+ */
 export function conditionFraction(status: NodeStatus): number {
-	const need = status.conditions.reduce((sum, c) => sum + c.need, 0)
+	const own = status.conditions.filter((c) => !c.prerequisite)
+	const need = own.reduce((sum, c) => sum + c.need, 0)
 	if (!need) return status.state === 'unlocked' ? 1 : 0
-	return status.conditions.reduce((sum, c) => sum + Math.min(c.have, c.need), 0) / need
+	return own.reduce((sum, c) => sum + Math.min(c.have, c.need), 0) / need
 }

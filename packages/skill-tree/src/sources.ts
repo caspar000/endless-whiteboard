@@ -51,6 +51,8 @@ export interface ConditionStatus {
 	have: number
 	need: number
 	met: boolean
+	/** Other nodes unlocked first (`node:`): what puts a node in reach, not part of meeting it. */
+	prerequisite?: boolean
 }
 
 /** What a node's evaluation hands a requirement. */

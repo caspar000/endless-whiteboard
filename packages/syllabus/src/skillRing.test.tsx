@@ -45,8 +45,8 @@ const RING = 2 * Math.PI * 44
 
 /** The Ancient node on a board: the skill node's own component, with the little of an editor it reads. */
 function mountAncient() {
-	const props: SkillNodeProps = { ...skillNodeDefinition.defaultProps(), w: 120, h: 120, treeId: 'mucore', nodeId: 'mucore/ancient', name: 'Ancient', icon: 'building-arch' }
-	const shape = { id: 'shape:ancient', type: SKILL_TYPE, x: 0, y: 0, rotation: 0, props, meta: {} }
+	const props: SkillNodeProps = { ...skillNodeDefinition.defaultProps(), treeId: 'mucore', nodeId: 'mucore/ancient', name: 'Ancient', icon: 'building-arch' }
+	const shape = { id: 'shape:ancient', type: SKILL_TYPE, x: 0, y: 0, rotation: 0, props: { ...props, w: 120, h: 120 }, meta: {} }
 	const editor = { getCurrentPageShapes: () => [] }
 	const Node = skillNodeDefinition.component
 	return render(<Node shape={shape as never} isEditing={false} editor={editor as never} />).container

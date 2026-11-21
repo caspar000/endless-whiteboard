@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { TYPED_SOURCE, type RandomItem, type Stamp } from './model'
-import { cardKey, nextStamped, rankingCard, replaceStamped, stampOf, stampRanked, stampedEntries, stampedKey } from './stamped'
+import { TYPED_SOURCE, isOut, withRankings, type RandomItem, type Stamp } from './model'
+import { cardKey, getStamped, nextStamped, rankedStampsOf, rankingCard, replaceStamped, stampOf, stampRanked, stampedEntries, stampedKey } from './stamped'
 
 const item = (id: string, stamps: Stamp[], source = TYPED_SOURCE, extra: Partial<RandomItem> = {}): RandomItem => ({
 	id,
@@ -82,9 +82,22 @@ describe('ranking an item (DARK-13)', () => {
 		expect(stamp).toMatchObject({ card: rankingCard('r1'), source: 'feeds:all', id: 'x1', kind: 'liked', date: today, cover: entry.cover })
 	})
 
-	it('leaves alone an item already Liked, on any card', () => {
+	it('files its own stamp on an item a randomizer already Liked, and keeps it when ranked again', () => {
 		const all = nextStamped({}, A, [item('x1', [liked('2026-11-01')], 'feeds:all', { title: 'solaris', creator: 'Tarkovsky ' })], none)
-		expect(stampRanked(all, { entry, from: 'feeds:all', rankingId: 'r1' }, today)).toBe(all)
+		const next = stampRanked(all, { entry, from: 'feeds:all', rankingId: 'r1' }, today)
+		expect(Object.values(next).filter((e) => e.card === rankingCard('r1'))).toHaveLength(1)
+		expect(stampRanked(next, { entry, from: 'feeds:all', rankingId: 'r1' }, '2026-12-01')).toBe(next)
+	})
+
+	it('takes an album Liked on one card and ranked from Everything I liked out of every other card', () => {
+		// Liked on card A; card B shuffles the same feed and has never stamped it.
+		const all = nextStamped({}, A, [item('x1', [liked('2026-11-01')], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
+		const [listed] = stampedEntries(all, 'liked')
+		replaceStamped(stampRanked(all, { entry: { ...listed!, year: '', cover: '', url: '' }, from: 'stamped:liked', rankingId: 'r1' }, today))
+		const onB = withRankings([item('x1', [], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], (i) => rankedStampsOf(i))
+		expect(isOut(onB[0]!)).toBe(true)
+		expect(titles(getStamped(), 'liked')).toEqual(['Solaris'])
+		replaceStamped({})
 	})
 
 	it('moves one stamped Unsure into Liked', () => {

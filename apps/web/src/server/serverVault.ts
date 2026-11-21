@@ -237,6 +237,9 @@ export type VaultSettingKey =
 	| 'feedSources'
 	| 'feedCategories'
 	| 'feedWatched'
+	| 'rankings'
+	| 'backlogs'
+	| 'randomizerStamped'
 
 export async function getVaultSettings(): Promise<Partial<Record<VaultSettingKey, unknown>>> {
 	return (await (await api('/vault/settings')).json()) as Partial<Record<VaultSettingKey, unknown>>

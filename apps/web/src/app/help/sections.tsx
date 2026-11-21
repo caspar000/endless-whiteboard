@@ -16,6 +16,8 @@ import {
 	Archive,
 	Rss,
 	Shuffle,
+	ListOrdered,
+	Inbox,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
@@ -29,6 +31,8 @@ import { Overview } from './sections/Overview'
 import { Phone } from './sections/Phone'
 import { Properties } from './sections/Properties'
 import { Randomizer } from './sections/Randomizer'
+import { RankingTiers } from './sections/RankingTiers'
+import { Backlog } from './sections/Backlog'
 import { Relations } from './sections/Relations'
 import { Server as ServerSection } from './sections/Server'
 import { Shortcuts } from './sections/Shortcuts'
@@ -209,6 +213,24 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Extensions',
 		icon: <Shuffle size={15} />,
 		Component: Randomizer,
+	},
+	{
+		id: 'ranking-tiers',
+		label: 'Ranking Tiers',
+		title: 'Ranking tiers',
+		lede: 'Sort anything into tiers you name: the albums you liked into how often to hear them, books from S to F. Turn on weighted shuffle and a randomizer draws from it by the tiers’ weights.',
+		group: 'Extensions',
+		icon: <ListOrdered size={15} />,
+		Component: RankingTiers,
+	},
+	{
+		id: 'backlog',
+		label: 'Backlog',
+		title: 'A backlog',
+		lede: 'One card for everything you mean to get to: typed in, dragged from other cards, or a whole syllabus track dropped on it. A randomizer can pick from it.',
+		group: 'Extensions',
+		icon: <Inbox size={15} />,
+		Component: Backlog,
 	},
 	{
 		id: 'shortcuts',

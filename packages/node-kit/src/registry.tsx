@@ -80,6 +80,12 @@ export interface NodeDropSpec<Props extends object> {
 	 * candidates as well.
 	 */
 	accepts(ctx: { editor: Editor; shape: NodeShape<Props> }): boolean
+	/**
+	 * Which types of shape it takes, when not every type: a backlog takes a syllabus track and nothing
+	 * else. tldraw asks the same question of a new or pasted shape over this one, so leaving every other
+	 * type out also keeps them from becoming its children. Every type when left out.
+	 */
+	acceptsType?(type: string): boolean
 	/** What the cursor is over, in page coordinates. `null` for a part of the card that means nothing. */
 	targetAt(ctx: {
 		editor: Editor
@@ -584,7 +590,8 @@ export function createNodeShapeUtil<Props extends object>(
 		 * decides whether a pasted shape can be reparented into this one, which is why it is asked per
 		 * shape rather than answered `true` for the type.
 		 */
-		override canReceiveNewChildrenOfType(shape: TLBaseBoxShape, _type: TLShape['type']): boolean {
+		override canReceiveNewChildrenOfType(shape: TLBaseBoxShape, type: TLShape['type']): boolean {
+			if (drop.acceptsType && !drop.acceptsType(type)) return false
 			return drop.accepts({ editor: this.editor, shape: shape as unknown as Shape })
 		}
 

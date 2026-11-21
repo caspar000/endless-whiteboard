@@ -9,39 +9,17 @@
  * `list` for the typed list, `<source id>:<choice id>` for the rest.
  */
 
+import { PLAIN_KIND, type SourceEntry, type SourceKind } from '@lifeboard/node-kit'
+
 /** No source chosen yet: the card waits for one. */
 export const NO_SOURCE = ''
 /** The list typed into the card itself. */
 export const TYPED_SOURCE = 'list'
 
-/** How a source's items are spoken of and drawn. */
-export interface SourceKind {
-	/** Plural, for the count: "12 videos". */
-	noun: string
-	/** Singular, for "Stamp this video". */
-	one: string
-	/** The label over the second row of tiles: "Channel". */
-	creator: string
-	/** Shown beside the year: "1978 · LP". Often ''. */
-	tag: string
-	/** The shape of a cover: square, or taller than wide and set on a mat (a poster, a book). */
-	shape: 'square' | 'poster' | 'book'
-}
+export { parseSourceKey, sourceKey, type SourceEntry, type SourceKind } from '@lifeboard/node-kit'
 
 /** A typed list holds anything, so it says nothing about what its items are. */
-export const TYPED_KIND: SourceKind = { noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }
-
-/** The source key for a choice of another extension's source: `feeds:all`. */
-export function sourceKey(sourceId: string, choiceId: string): string {
-	return `${sourceId}:${choiceId}`
-}
-
-/** A source key taken apart, or `null` for none and for the typed list. */
-export function parseSourceKey(key: string): { sourceId: string; choiceId: string } | null {
-	const at = key.indexOf(':')
-	if (at <= 0) return null
-	return { sourceId: key.slice(0, at), choiceId: key.slice(at + 1) }
-}
+export const TYPED_KIND: SourceKind = PLAIN_KIND
 
 export const STAMP_KINDS = ['liked', 'disliked', 'unsure'] as const
 export type StampKind = (typeof STAMP_KINDS)[number]
@@ -84,6 +62,8 @@ export interface RandomItem {
 	stamps: Stamp[]
 	/** Where the item opens (a video). Only a source's entries have one, and it is never stored. */
 	url?: string
+	/** How heavily a draw favours it: a weighted ranking's tier (DARK-11). The source's, never stored. */
+	weight?: number
 }
 
 /** One shuffle's answer. The newest per source is the one on show; the next few are "Last picks". */
@@ -175,8 +155,34 @@ export function randomIndex(n: number, words: RandomWords = cryptoWords): number
 }
 
 /**
- * The next pick: any item still in the shuffle, never the one already on show (when there is another
- * to choose). `null` when nothing is left.
+ * An index below `weights.length`, each as likely as its weight (DARK-11): a ranking's "Heavy
+ * rotation" at 4 comes up four times as often as "Rarely" at 1. Weights are whole numbers, so this is
+ * one fair draw over their sum and no rounding favours anything.
+ */
+export function weightedIndex(weights: readonly number[], words: RandomWords = cryptoWords): number {
+	const whole = weights.map((w) => (Number.isFinite(w) ? Math.max(0, Math.round(w)) : 0))
+	const total = whole.reduce((a, b) => a + b, 0)
+	if (total === 0) return randomIndex(weights.length, words)
+	let draw = randomIndex(total, words)
+	for (let i = 0; i < whole.length; i++) {
+		draw -= whole[i]!
+		if (draw < 0) return i
+	}
+	return whole.length - 1
+}
+
+/** Whether a source weighs its items: a ranking with weighted shuffle on. */
+export function isWeighted(items: readonly RandomItem[]): boolean {
+	return items.some((item) => item.weight !== undefined)
+}
+
+/**
+ * The next pick, from the items still in the shuffle. `null` when nothing is left.
+ *
+ * Drawn evenly, it is never the one already on show (when there is another to choose). Drawn by
+ * weight (a ranking with weighted shuffle on), it is from the whole pool, the one on show included:
+ * leaving it out would turn "Heavy rotation, four times as often" into taking turns, two albums of
+ * weights 4 and 1 coming up alternately. The tiers' odds on the ranking are the odds of every draw.
  */
 export function pickNext(
 	items: readonly RandomItem[],
@@ -185,6 +191,7 @@ export function pickNext(
 	words: RandomWords = cryptoWords
 ): RandomItem | null {
 	const pool = inShuffle(items, source)
+	if (isWeighted(pool)) return pool.length ? (pool[weightedIndex(pool.map((item) => item.weight ?? 1), words)] ?? null) : null
 	const choices = pool.length > 1 ? pool.filter((item) => item.id !== currentId) : pool
 	if (choices.length === 0) return null
 	return choices[randomIndex(choices.length, words)] ?? null
@@ -307,19 +314,6 @@ export function mergeList(items: readonly RandomItem[], text: string, newId: () 
 
 /* ------------------------------------------------------------------------ another source's items */
 
-/** One thing a source offers to shuffle: a video, a post, anything with a title. */
-export interface SourceEntry {
-	/** Unique within the source, and lasting: stamps and picks find it again by it. */
-	id: string
-	title: string
-	creator: string
-	year: string
-	/** A picture of it, an `https:` URL, or ''. */
-	cover: string
-	/** Where it opens, or ''. */
-	url: string
-}
-
 /**
  * A source's entries as the card's items: each with the stamps the card has put on it, and the
  * picture dropped on it, if any, over the source's own.
@@ -340,6 +334,7 @@ export function withEntries(stored: readonly RandomItem[], source: string, entri
 			cover: kept?.cover || entry.cover,
 			stamps: kept?.stamps ?? [],
 			...(entry.url ? { url: entry.url } : {}),
+			...(entry.weight !== undefined ? { weight: entry.weight } : {}),
 		}
 	})
 }

@@ -13,6 +13,7 @@ import { loadSavedQueries } from './app/savedQueries'
 import { loadCardLayouts } from './app/cardLayouts'
 import { loadSkillIndex } from './app/skillIndex'
 import { loadFeeds } from './app/feeds'
+import { loadCollections } from './app/collections'
 import { installIconBridge } from './app/boardLook/iconBridge'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
@@ -64,6 +65,7 @@ loadSavedQueries()
 loadCardLayouts()
 loadSkillIndex()
 loadFeeds()
+loadCollections()
 
 /*
  * The user's keymap, over the defaults the table declares.

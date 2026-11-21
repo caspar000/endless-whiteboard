@@ -28,6 +28,7 @@ import {
 	type SourceEntry,
 	type RandomWords,
 	type Stamp,
+	weightedIndex,
 } from './model'
 
 const FEED = 'feeds:all'
@@ -287,5 +288,54 @@ describe('cards from before DARK-7', () => {
 
 	it('leave an empty card waiting for a source, as a new one does', () => {
 		expect(oneTypedList({ list: 'albums', items: [], picks: [] })).toEqual({ source: '', items: [], picks: [] })
+	})
+})
+
+describe('a weighted draw (DARK-11)', () => {
+	it('lands on each index as often as its weight says, from one fair draw over their sum', () => {
+		// Weights 4, 1, 3: draws 0–3 are the first, 4 the second, 5–7 the third.
+		const seen = Array.from({ length: 8 }, (_, d) => weightedIndex([4, 1, 3], scripted(d)))
+		expect(seen).toEqual([0, 0, 0, 0, 1, 2, 2, 2])
+	})
+
+	it('draws evenly when every weight is nothing', () => {
+		expect(weightedIndex([0, 0], scripted(1))).toBe(1)
+	})
+
+	it('picks a weighted source’s items by weight, and others evenly', () => {
+		const heavy = { ...item('h', [], FEED), weight: 3 }
+		const light = { ...item('l', [], FEED), weight: 1 }
+		// Sum 4: draws 0–2 are the heavy one, 3 the light one.
+		expect(pickNext([heavy, light], FEED, null, scripted(2))?.id).toBe('h')
+		expect(pickNext([heavy, light], FEED, null, scripted(3))?.id).toBe('l')
+		expect(pickNext([item('a', [], FEED), item('b', [], FEED)], FEED, null, scripted(1))?.id).toBe('b')
+	})
+
+	it('draws by weight from the whole pool, the one on show included, so the odds hold draw after draw', () => {
+		const heavy = { ...item('h', [], FEED), weight: 4 }
+		const light = { ...item('l', [], FEED), weight: 1 }
+		// With heavy on show, draws 0–3 still land on it: four in five, not every other time.
+		const next = Array.from({ length: 5 }, (_, d) => pickNext([heavy, light], FEED, 'h', scripted(d))?.id)
+		expect(next).toEqual(['h', 'h', 'h', 'h', 'l'])
+		// Over many successive draws, each one from the last, heavy comes up about four times as often.
+		let current: string | null = null
+		const seen = { h: 0, l: 0 }
+		for (let i = 0; i < 4000; i++) {
+			current = pickNext([heavy, light], FEED, current)!.id
+			seen[current as 'h' | 'l']++
+		}
+		expect(seen.h / 4000).toBeGreaterThan(0.75)
+		expect(seen.h / 4000).toBeLessThan(0.85)
+	})
+
+	it('still never repeats the one on show when drawing evenly', () => {
+		const next = Array.from({ length: 4 }, (_, d) => pickNext([item('a', [], FEED), item('b', [], FEED)], FEED, 'a', scripted(d))?.id)
+		expect(next).toEqual(['b', 'b', 'b', 'b'])
+	})
+
+	it('carries a source’s weight onto the card’s item, never into what it stores', () => {
+		const [shown] = withEntries([], FEED, [{ id: 'a', title: 'A', creator: '', year: '', cover: '', url: '', weight: 4 }])
+		expect(shown?.weight).toBe(4)
+		expect(storeItem([], shown!, { stamps: [{ kind: 'liked', date: '2026-11-21' }] })[0]).not.toHaveProperty('weight')
 	})
 })

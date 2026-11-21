@@ -11,7 +11,7 @@ import { registerFeedProvider } from './providers/registry'
 import { rssProvider } from './providers/rss'
 import { redditProvider, xProvider } from './providers/soon'
 import { youtubeProvider } from './providers/youtube'
-import { registerRandomizerSource } from '@lifeboard/randomizer'
+import { registerItemSource } from '@lifeboard/node-kit'
 import { feedsRandomizerSource } from './randomizerSource'
 
 // The platforms, in the order of the sources panel's tabs.
@@ -20,8 +20,9 @@ registerFeedProvider(rssProvider)
 registerFeedProvider(redditProvider)
 registerFeedProvider(xProvider)
 
-// A randomizer can shuffle a feed's videos (DARK-7).
-registerRandomizerSource(feedsRandomizerSource)
+// A randomizer can shuffle a feed's videos (DARK-7), and a ranking or a backlog take them (DARK-11),
+// through the kit's registry: none of them needs Feeds, nor Feeds them.
+registerItemSource(feedsRandomizerSource)
 
 export { feedsExtension } from './extension'
 export { FEED_TYPE, type FeedProps } from './board'

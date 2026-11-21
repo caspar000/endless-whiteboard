@@ -8,7 +8,7 @@
 
 // Registers the node types with tldraw's type system. Side-effect import, kept above the exports.
 import './shape-types'
-import { registerRandomizerSource } from '@lifeboard/randomizer'
+import { registerItemSource } from '@lifeboard/node-kit'
 import { registerTreeSource } from '@lifeboard/skill-tree'
 import { syllabusRandomizerSource } from './randomizerSource'
 import { syllabusTreeSource } from './syllabusSource'
@@ -16,8 +16,9 @@ import { watchTreeNames } from './treeNames'
 
 // The syllabus's entries, write-ups and requirement kinds, for skill trees.
 registerTreeSource(syllabusTreeSource)
-// A randomizer can shuffle a syllabus's works, /mu/core's albums with their covers (DARK-8).
-registerRandomizerSource(syllabusRandomizerSource)
+// A randomizer can shuffle a syllabus's works, /mu/core's albums with their covers (DARK-8), and a
+// ranking or a backlog take them (DARK-11), through the kit's registry.
+registerItemSource(syllabusRandomizerSource)
 // A syllabus and the tree only it feeds go by one name.
 watchTreeNames()
 

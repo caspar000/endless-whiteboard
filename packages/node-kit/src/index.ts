@@ -133,6 +133,39 @@ export { coreOperations, registerCoreOperations } from './ops'
 // For extensions' own operations: which board to act on, and showing the agent at work on it.
 export { BOARD_ID_PARAM, reportAgentWork, resolveEditor, type EditorResult } from './ops/shared'
 export { createNodeShape, textPropFor } from './nodes/insert'
+// Lists of things cards pick from, rank and collect, offered and read by any extension (DARK-11), and
+// the drag that carries one item from a card to another.
+export {
+	ITEM_DRAG_TYPE,
+	PLAIN_KIND,
+	clearItemSources,
+	draggingItem,
+	getDraggedItem,
+	getItemSources,
+	hasDraggedItem,
+	isSourceShapeType,
+	offeredItemSources,
+	parseSourceKey,
+	registerItemSource,
+	resolveItemSource,
+	setDraggedItem,
+	sourceEntries,
+	sourceKey,
+	sourceKeyOfShape,
+	watchSourceKeys,
+	type DraggedItem,
+	type ItemSource,
+	type ResolvedItemSource,
+	type SourceChoice,
+	type SourceEntry,
+	type SourceKind,
+} from './itemSources'
+// A cover for any item, drawn from its title when it has no picture.
+export { generatedCover, hashText } from './generatedCover'
+export { useItemCover } from './itemCover'
+export { SourceSelect } from './SourceSelect'
+// Records kept outside any board, which the app saves to the vault.
+export { keyedStore, type KeyedStore } from './keyedStore'
 // tldraw's own shapes, described well enough for an agent to create one. Not registry entries — see
 // the file's doc comment for why that distinction is load-bearing.
 export { NATIVE_SHAPES, createNativeShape, getNativeShape, type NativeShapeSpec } from './nodes/native'

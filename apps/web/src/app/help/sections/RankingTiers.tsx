@@ -67,6 +67,23 @@ export function RankingTiers({ go }: SectionProps) {
 					ever hidden.
 				</p>
 				<p>
+					The open rail has a <strong>search</strong> field: type part of a title or an artist to find one
+					cover among hundreds, then drag it into a tier.
+				</p>
+				<p>
+					Ranking something counts as liking it. A cover moved from the rail into a tier is stamped{' '}
+					<strong>Liked</strong> as if you had stamped it on a{' '}
+					<Jump to="randomizer" go={go}>
+						randomizer
+					</Jump>
+					, so it joins Everything I liked, and if a{' '}
+					<Jump to="syllabus" go={go}>
+						syllabus
+					</Jump>{' '}
+					has the same work (the same album by the same artist), it is ticked there. Moving it between tiers,
+					or back to the rail, changes neither.
+				</p>
+				<p>
 					<strong>+</strong> at the top adds a tier at the bottom. Click a tier's name to rename it, and use
 					its <strong>⋯</strong> menu to move it up or down or remove it; a removed tier's items go back to
 					the rail. New cards start with the tiers in Settings → Extensions → Ranking Tiers, where you can
@@ -84,6 +101,19 @@ export function RankingTiers({ go }: SectionProps) {
 					With it on, the ranking is in every randomizer's menu, and a randomizer pointed at it draws by
 					those weights: what you put in heavy rotation comes up most. Unranked items stay out of the draw.
 					With it off, a ranking is a ranking, for books or films you only want in order.
+				</p>
+			</Section>
+			<Section title="Stamps and shapes">
+				<p>
+					The card's settings choose what it shows. With the Randomizer on, <strong>Show stamped</strong>{' '}
+					has a switch each for Liked, Unsure and Disliked: switch one off and the covers whose latest stamp
+					is that kind leave the ranking, keeping their tier for when you switch it back. A ranking of
+					Everything I liked starts with only Liked on; switch Unsure on too, and it ranks both lists at once.{' '}
+					<strong>Stamp badges</strong> puts each stamped cover's latest stamp on its corner.
+				</p>
+				<p>
+					<strong>Cover shape</strong> makes every cover square, wide (16:9, for videos), tall (2:3, for
+					posters) or another shape.
 				</p>
 			</Section>
 			<Section title="Where it is kept">

@@ -14300,7 +14300,8 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-dim);
 	font-size: 11px;
 }
-.lb-rank__field input {
+.lb-rank__field input,
+.lb-rank__field select {
 	height: 28px;
 	padding: 0 8px;
 	border: 1px solid var(--lb-border);
@@ -14331,6 +14332,33 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-size: 11px;
 	line-height: 1.4;
+}
+/* Which stamps show (DARK-13): one toggle per kind, in its ink. */
+.lb-rank__stamps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+.lb-rank__stamps legend {
+	width: 100%;
+	margin-bottom: 4px;
+	padding: 0;
+	color: var(--lb-text-dim);
+	font-size: 11px;
+}
+.lb-rank__stamp-toggle {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	cursor: pointer;
+}
+.lb-rank__stamp-toggle input {
+	margin: 0;
+	accent-color: var(--lb-rank-ink);
 }
 
 /* The body: the unranked rail on the left, the bands beside it. */
@@ -14390,12 +14418,48 @@ button.lb-props__eye:hover {
 }
 .lb-rank__rail-list {
 	display: grid;
-	grid-template-columns: repeat(2, 40px);
+	grid-template-columns: repeat(2, var(--lb-rank-small, 40px));
 	gap: 6px;
 }
+.lb-rank--shaped .lb-rank__rail--open {
+	width: max(104px, calc(var(--lb-rank-small) * 2 + 24px));
+}
+/* Searching the unranked (DARK-13). */
+.lb-rank__search {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: calc(100% - 12px);
+	height: 24px;
+	padding: 0 6px;
+	box-sizing: border-box;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-surface);
+	color: var(--lb-text-faint);
+	cursor: text;
+	pointer-events: auto;
+}
+.lb-rank__search:focus-within {
+	border-color: var(--lb-accent);
+}
+.lb-rank__search input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--lb-text);
+	font: 11px var(--lb-font);
+	outline: none;
+}
+.lb-rank__search input::-webkit-search-cancel-button {
+	display: none;
+}
 .lb-rank__rail-more {
-	width: 40px;
-	height: 40px;
+	width: var(--lb-rank-small, 40px);
+	aspect-ratio: var(--lb-rank-aspect, 1);
 	border: 1px dashed var(--lb-border-strong);
 	border-radius: 5px;
 	background: transparent;
@@ -14510,13 +14574,44 @@ button.lb-props__eye:hover {
 	outline-offset: 2px;
 }
 .lb-rank__cover--small {
-	width: 40px;
+	width: var(--lb-rank-small, 40px);
+}
+/* The picture and its badge. */
+.lb-rank__frame {
+	position: relative;
+	display: block;
+}
+.lb-rank__badge {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+	border: 1.5px solid var(--lb-rank-ink);
+	border-radius: 50%;
+	background: var(--lb-surface);
+	color: var(--lb-rank-ink);
+	font: 700 9px/1 var(--lb-font);
+	box-shadow: 0 0 0 1.5px var(--lb-surface), 0 1px 3px rgb(16 16 28 / 25%);
+	pointer-events: none;
+}
+.lb-rank__cover--small .lb-rank__badge {
+	top: -3px;
+	right: -3px;
+	width: 13px;
+	height: 13px;
+}
+.lb-rank__cover--small .lb-rank__badge svg {
+	width: 8px;
+	height: 8px;
 }
 .lb-rank__art,
 .lb-backlog__art {
 	display: block;
 	width: 100%;
-	aspect-ratio: 1;
+	aspect-ratio: var(--lb-rank-aspect, 1);
 	object-fit: cover;
 	border-radius: 5px;
 	background: var(--lb-bg-raised);
@@ -14558,7 +14653,7 @@ button.lb-props__eye:hover {
 .lb-rank__caret {
 	flex: none;
 	width: 2px;
-	height: var(--lb-col-cover);
+	height: calc(var(--lb-col-cover) / var(--lb-rank-aspect, 1));
 	margin: 0 -5px;
 	border-radius: 2px;
 	background: var(--lb-accent);

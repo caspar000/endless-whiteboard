@@ -34,8 +34,11 @@ export async function isUntouched(kv: KvStore, boardId: string): Promise<boolean
 	return (await kv.get<boolean>(key(boardId))) === true
 }
 
-/** The records that are a board's content, whoever made them. The server keeps the same list. */
-const CONTENT = new Set<string>(['shape', 'binding', 'asset'])
+/**
+ * The records that are a board's content, whoever made them: what is drawn on it, its files, and the
+ * comments people left on it. The server keeps the same list.
+ */
+const CONTENT = new Set<string>(['shape', 'binding', 'asset', 'comment-thread', 'comment', 'comment-reaction'])
 
 type Changes = Parameters<Parameters<TLStore['listen']>[0]>[0]['changes']
 
@@ -58,7 +61,7 @@ export function snapshotHasContent(store: Record<string, unknown>): boolean {
 /**
  * Forgets the board as untouched on the first change to its content. Any change made in this page
  * counts (the user's, an agent's), and so does anything another device or member does to the board's
- * shapes, bindings or files and sync brings here. What sync brings as the board opens is the board's
+ * shapes, bindings, files or comments and sync brings here. What sync brings as the board opens is the board's
  * records, not content, on a board nothing was done to. Camera and selection are no edit.
  */
 export function watchUntouchedBoard(editor: Pick<Editor, 'store'>, boardId: string, kv: KvStore): () => void {

@@ -167,6 +167,39 @@ describe('board index', () => {
 		await app.inject({ method: 'PATCH', url: `/api/boards/${coloured.id}`, headers: { cookie }, payload: { color: '#e5484d' } })
 		expect((await deleteIfUntouched(coloured.id)).statusCode).toBe(409)
 
+		// Edited on another device and put back before this one heard of it: still edited, so it stays.
+		const reverted = await createBoard(app, cookie, 'Untitled board')
+		const elsewhere = await connect(port, cookie, reverted.id)
+		const theirPage = elsewhere.allRecords().find((record) => record.typeName === 'page')!
+		const group = elsewhere.schema.types.shape.create({ id: createShapeId('undone'), type: 'group', parentId: theirPage.id, index: 'a1', props: {} } as never) as TLRecord
+		elsewhere.put([group])
+		const roomHas = async (id: string, record: string) =>
+			Boolean((await app.inject({ url: `/api/boards/${id}/snapshot`, headers: { cookie } })).json<{ store: Record<string, TLRecord> }>().store[record])
+		for (let i = 0; i < 250 && !(await roomHas(reverted.id, group.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		elsewhere.remove([group.id])
+		for (let i = 0; i < 250 && (await roomHas(reverted.id, group.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		expect(await roomHas(reverted.id, group.id)).toBe(false)
+		expect((await deleteIfUntouched(reverted.id)).statusCode).toBe(409)
+
+		// Renamed and named back: the same.
+		const renamedBack = await createBoard(app, cookie, 'Untitled board')
+		await app.inject({ method: 'PATCH', url: `/api/boards/${renamedBack.id}`, headers: { cookie }, payload: { name: 'Gym plan' } })
+		await app.inject({ method: 'PATCH', url: `/api/boards/${renamedBack.id}`, headers: { cookie }, payload: { name: 'Untitled board' } })
+		expect((await deleteIfUntouched(renamedBack.id)).statusCode).toBe(409)
+
+		// A comment someone left on an empty page: it stays, comment and all.
+		const commented = await createBoard(app, cookie, 'Untitled board')
+		const commenter = await connect(port, cookie, commented.id)
+		const me = (await app.inject({ url: '/api/me', headers: { cookie } })).json<{ id: string }>().id
+		const pageId = commenter.allRecords().find((record) => record.typeName === 'page')!.id as TLComment['pageId']
+		const thread = createCommentThread({ anchor: { type: 'point', x: 10, y: 20 }, createdBy: me, pageId })
+		const comment = createComment({ authorId: me, body: toRichText('Is this one for the gym?'), pageId, threadId: thread.id })
+		commenter.put([thread, comment] as unknown as TLRecord[])
+		for (let i = 0; i < 250 && !(await roomHas(commented.id, comment.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		expect(await roomHas(commented.id, comment.id)).toBe(true)
+		expect((await deleteIfUntouched(commented.id)).statusCode).toBe(409)
+		expect(await listed(commented.id)).toBe(true)
+
 		// A plain delete is the Delete button's, and asks nothing.
 		expect((await app.inject({ method: 'DELETE', url: `/api/boards/${edited.id}`, headers: { cookie } })).statusCode).toBe(204)
 	})
@@ -418,7 +451,6 @@ describe('assets', () => {
 		await put(app, cookie, hash, bytes)
 		const client = await connect(port, cookie, board.id)
 		client.put([AssetRecordType.create({ type: 'image', props: { name: 'p', src: `asset:${hash}`, w: 1, h: 1, mimeType: 'image/png', isAnimated: false } })])
-		await new Promise((r) => setTimeout(r, 300))
 
 		const zip = unzipSync(new Uint8Array((await app.inject({ url: '/api/export', headers: { cookie } })).rawPayload))
 		const manifest = JSON.parse(new TextDecoder().decode(zip['manifest.json']))
@@ -556,7 +588,6 @@ describe('accounts', () => {
 		await until(() => bobStore.get(page.id) !== undefined)
 		const bobsPage = PageRecordType.create({ name: 'From the viewer', index: 'a6' as never })
 		bobStore.put([bobsPage])
-		await new Promise((r) => setTimeout(r, 300))
 		expect(ownerStore.get(bobsPage.id)).toBeUndefined()
 
 		// The vault sees who has it, and can take the link back.
@@ -597,7 +628,6 @@ describe('accounts', () => {
 
 		// Not someone else's words.
 		putAll(bobStore, [{ ...owners, body: toRichText('Edited by Bob') }])
-		await new Promise((r) => setTimeout(r, 300))
 		expect(richTextToPlainText(read<TLComment>(ownerStore, owners.id)!.body)).toBe('Thanks')
 
 		// Resolving anyone's thread is allowed.

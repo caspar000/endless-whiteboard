@@ -28,8 +28,8 @@ const MAX_HASHES_PER_QUERY = 5000
 
 /** The name the app's "New board" gives. */
 const UNTITLED_BOARD = 'Untitled board'
-/** The records that are a board's content, whoever made them. */
-const CONTENT = new Set(['shape', 'binding', 'asset'])
+/** The records that are a board's content, whoever made them: the app keeps the same list. */
+const CONTENT = new Set(['shape', 'binding', 'asset', 'comment-thread', 'comment', 'comment-reaction'])
 
 const isTheme = (value: string): value is Theme => (THEMES as readonly string[]).includes(value)
 
@@ -450,10 +450,12 @@ export function registerApi(
 	)
 
 	/**
-	 * Whether a board is still as "New board" made it: its name, no colour or icon, and nothing on it as
-	 * the room has it now, which is everything any device has sent. A board that can't be read isn't.
+	 * Whether a board is still as "New board" made it: never renamed and never changed by any device
+	 * (`updated_at` still its `created_at`, so an edit put back counts), its name, no colour or icon, and
+	 * nothing on it as the room has it now. A board that can't be read isn't.
 	 */
 	const isUntouched = (board: ServerBoard): boolean => {
+		if (board.updatedAt !== board.createdAt) return false
 		if (board.name !== UNTITLED_BOARD || board.color || board.icon) return false
 		try {
 			const snapshot = rooms.readSnapshot(board.id)

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+	createComment,
+	createCommentThread,
 	createShapeId,
 	createTLStore,
+	toRichText,
 	defaultBindingUtils,
 	defaultShapeUtils,
 	PageRecordType,
@@ -182,6 +185,22 @@ describe('leaving an untitled board', () => {
 		board.store.mergeRemoteChanges(() => board.store.remove([item.id]))
 		settle(board.store)
 		expect((await leave('h', board)).deleted).toBe(false)
+	})
+
+	it('keeps it when someone left a comment on it from another device', async () => {
+		const board = await newBoard('q')
+		const thread = createCommentThread({ anchor: { type: 'point', x: 10, y: 20 }, createdBy: 'them', pageId: PAGE })
+		const comment = createComment({ authorId: 'them', body: toRichText('For the gym?'), pageId: PAGE, threadId: thread.id })
+		board.store.mergeRemoteChanges(() => board.store.put([thread, comment] as unknown as TLShape[]))
+		settle(board.store)
+		expect(await isUntouched(board.kv, 'q')).toBe(false)
+		// And content the watcher never saw is content just the same.
+		const kv = memoryKv()
+		await markUntouched(kv, 'r')
+		const store = openBoard()
+		store.put([thread] as unknown as TLShape[])
+		settle(store)
+		expect((await leave('r', { kv, store })).deleted).toBe(false)
 	})
 
 	it('still deletes it when sync brought only the board itself', async () => {

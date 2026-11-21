@@ -18,6 +18,7 @@
 		"react-dom": "^19.0.0"
 	},
 	"devDependencies": {
+		"@lifeboard/randomizer": "workspace:*",
 		"@testing-library/dom": "^10.4.1",
 		"@testing-library/react": "^16.3.3",
 		"@tldraw/tlschema": "5.5.2",
@@ -32,7 +33,6 @@
 	"dependencies": {
 		"@lifeboard/canvas": "workspace:*",
 		"@lifeboard/node-kit": "workspace:*",
-		"@lifeboard/randomizer": "workspace:*",
 		"@lifeboard/skill-tree": "workspace:*",
 		"lucide-react": "^1.28.0",
 		"yaml": "^2.9.1"

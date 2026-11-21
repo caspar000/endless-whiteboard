@@ -1,4 +1,4 @@
-import type { RandomizerSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboard/randomizer'
+import type { ItemSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboard/node-kit'
 import { GraduationCap } from 'lucide-react'
 import { getItems, getTracks, type ItemDef, type TrackDef } from './syllabus'
 
@@ -89,7 +89,7 @@ export function syllabusKind(items: Items, tracks: Tracks, trackId: string): Sou
 	return works.length > 0 && works.every(({ work }) => work.medium === 'album') ? ALBUMS : WORKS
 }
 
-export const syllabusRandomizerSource: RandomizerSource = {
+export const syllabusRandomizerSource: ItemSource = {
 	id: 'syllabus',
 	label: 'Syllabi',
 	icon: GraduationCap,

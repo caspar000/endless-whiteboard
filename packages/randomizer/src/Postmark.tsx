@@ -2,8 +2,9 @@ import { useId, type CSSProperties, type ReactNode } from 'react'
 import { STAMPS, postmarkDate, type StampKind } from './model'
 
 /**
- * A round, dated postmark: a ring, the word round the top, the date round the bottom, a small mark in
- * the middle and wavy cancel lines trailing off to the left. Design 2B of DARK-6.
+ * A round, dated postmark: a ring, the word round the top, the date round the bottom and a small mark
+ * in the middle. Design 2B of DARK-6, without the wavy cancel lines it trailed to the left (DARK-11):
+ * the stamp is the ring alone.
  *
  * Drawn twice, the same paths both times: first thick in the board's own background colour, then in
  * ink on top. That first pass is a halo, the same one the board's text wears (`--tl-text-outline`
@@ -22,17 +23,8 @@ const MARKS: Record<StampKind, ReactNode> = {
 	),
 }
 
-/** Where the ring's middle is in the full postmark's 120×68 box. The pile places stamps by it. */
-export const POSTMARK_CENTRE = { x: 86 / 120, y: 0.5 }
-
 const CX = 86
 const CY = 34
-
-function wave(y: number, x0: number) {
-	let d = `M55 ${y}`
-	for (let x = 55; x > x0; x -= 8) d += ' q-2 -2.6 -4 0 t-4 0'
-	return <path d={d} strokeWidth={1.3} strokeLinecap="round" />
-}
 
 export function Postmark({
 	kind,
@@ -43,7 +35,7 @@ export function Postmark({
 }: {
 	kind: StampKind
 	date: string
-	/** The ring alone, for the stamp menu. */
+	/** Without its halo, for the stamp menu. */
 	mini?: boolean
 	className?: string
 	style?: CSSProperties
@@ -52,13 +44,6 @@ export function Postmark({
 	const stamp = STAMPS[kind]
 	const body = (pass: 'halo' | 'ink') => (
 		<g className={`lb-rand-pm__${pass}`} fill="none" stroke="currentColor" filter={pass === 'ink' ? `url(#${id}ink)` : undefined}>
-			{!mini && (
-				<>
-					{wave(25, 10)}
-					{wave(34, 3)}
-					{wave(43, 15)}
-				</>
-			)}
 			<circle cx={CX} cy={CY} r={31} strokeWidth={1.8} />
 			<circle cx={CX} cy={CY} r={29} strokeWidth={0.6} />
 			<circle cx={CX} cy={CY} r={18} strokeWidth={1} />
@@ -83,7 +68,7 @@ export function Postmark({
 		<svg
 			className={className}
 			style={{ ...style, color: stamp.ink }}
-			viewBox={mini ? '52 0 68 68' : '0 0 120 68'}
+			viewBox="52 0 68 68"
 			aria-hidden="true"
 			focusable="false"
 		>

@@ -734,13 +734,13 @@ importers:
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../node-kit
-      '@lifeboard/randomizer':
-        specifier: workspace:*
-        version: link:../randomizer
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.8)
     devDependencies:
+      '@lifeboard/randomizer':
+        specifier: workspace:*
+        version: link:../randomizer
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.2
@@ -1050,9 +1050,6 @@ importers:
       '@lifeboard/node-kit':
         specifier: workspace:*
         version: link:../node-kit
-      '@lifeboard/randomizer':
-        specifier: workspace:*
-        version: link:../randomizer
       '@lifeboard/skill-tree':
         specifier: workspace:*
         version: link:../skill-tree
@@ -1063,6 +1060,9 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
     devDependencies:
+      '@lifeboard/randomizer':
+        specifier: workspace:*
+        version: link:../randomizer
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.2

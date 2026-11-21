@@ -1,9 +1,9 @@
 import { useValue, type Editor } from '@lifeboard/canvas'
-import { NodeEditorPopover, isExtensionEnabled, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
+import { NodeEditorPopover, offeredItemSources, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
 import { useEffect, useRef, useState } from 'react'
 import { NO_SOURCE, TYPED_KIND, TYPED_SOURCE, formatList, itemsOf, mergeList, sourceKey } from './model'
 import type { RandomizerProps } from './props'
-import { getRandomizerSources, resolveSource } from './sources'
+import { resolveSource } from './sources'
 
 /**
  * The card's editor (a double-click, or the source button in its header): what the card shuffles,
@@ -11,16 +11,14 @@ import { getRandomizerSources, resolveSource } from './sources'
  *
  * A source is a plain choice from a menu rather than tabs on the card, because the card doesn't know
  * what sources there are: a typed list is its own, the rest are whatever the enabled extensions offer
- * (`sources.ts`). Changing the source is an ordinary edit, so ⌘Z puts the last one back.
+ * in the kit's registry. Changing the source is an ordinary edit, so ⌘Z puts the last one back.
  */
 export function SourceEditor({ shape, editor }: { shape: NodeShape<RandomizerProps>; editor: Editor }) {
 	const key = shape.props.source
 	const offered = useValue(
 		'lifeboard:randomizer-offered',
 		() =>
-			getRandomizerSources()
-				.filter((s) => !s.extensionId || isExtensionEnabled(s.extensionId))
-				.map((s) => ({ id: s.id, label: s.label, choices: s.choices() })),
+			offeredItemSources().map((s) => ({ id: s.id, label: s.label, choices: s.choices() })),
 		[]
 	)
 	const view = useValue(

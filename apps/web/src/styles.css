@@ -13476,9 +13476,10 @@ button.lb-props__eye:hover {
 }
 .lb-rand-pm {
 	position: absolute;
-	width: 86%;
+	/* The ring is as wide as it was when the wavy lines trailed off it (86% of a 120-wide box). */
+	width: 49%;
 	height: auto;
-	aspect-ratio: 120 / 68;
+	aspect-ratio: 1;
 	overflow: visible;
 }
 .lb-rand-pm__halo {
@@ -13995,9 +13996,9 @@ button.lb-props__eye:hover {
 	margin: 0;
 }
 .lb-demo__rand-pm {
-	width: 180px;
+	width: 102px;
 	height: auto;
-	aspect-ratio: 120 / 68;
+	aspect-ratio: 1;
 	overflow: visible;
 }
 .lb-demo__rand-stamp figcaption {

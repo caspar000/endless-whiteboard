@@ -1,4 +1,4 @@
-import type { RandomizerSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboard/randomizer'
+import type { ItemSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboard/node-kit'
 import { Rss } from 'lucide-react'
 import { newestFirst, orderedCategories, type FeedCategory, type FeedItem, type FeedSource, type SourceItems } from './model'
 import { watchFeeds } from './refresh'
@@ -85,7 +85,7 @@ export function feedKind(sources: Readonly<Record<string, FeedSource>>, categori
 		: { noun: 'posts', one: 'post', creator: 'From', tag: '', shape: 'poster' }
 }
 
-export const feedsRandomizerSource: RandomizerSource = {
+export const feedsRandomizerSource: ItemSource = {
 	id: 'feeds',
 	label: 'Feeds',
 	icon: Rss,

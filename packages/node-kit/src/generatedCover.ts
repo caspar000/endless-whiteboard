@@ -1,4 +1,6 @@
-import type { RandomItem, SourceKind } from './model'
+import type { SourceEntry, SourceKind } from './itemSources'
+
+type Titled = Pick<SourceEntry, 'title' | 'creator' | 'year'>
 
 /**
  * A cover for an item that has no picture: abstract art drawn from its title, with the title, the
@@ -7,6 +9,7 @@ import type { RandomItem, SourceKind } from './model'
  *
  * Ported from the accepted design's prototype (DARK-6, variant 1B), which drew its sample covers this
  * way. It returns an SVG data URI, which is what lets the split-flap halves use it like any image.
+ * In the kit since DARK-11, so a ranking or a backlog draws an item the way a randomizer does.
  */
 
 type Palette = readonly [string, string, string, string]
@@ -253,7 +256,7 @@ interface Look {
 	flip: boolean
 }
 
-function lookFor(item: Pick<RandomItem, 'title' | 'creator'>): Look {
+function lookFor(item: Pick<SourceEntry, 'title' | 'creator'>): Look {
 	const h = hashText(`${item.title}\u0000${item.creator}`)
 	return {
 		c: PALETTES[h % PALETTES.length]!,
@@ -264,7 +267,7 @@ function lookFor(item: Pick<RandomItem, 'title' | 'creator'>): Look {
 	}
 }
 
-function squareCover(item: RandomItem, { c, art, face, r, flip }: Look): string {
+function squareCover(item: Titled, { c, art, face, r, flip }: Look): string {
 	const band = 62
 	const artY = flip ? 0 : band
 	const textY = flip ? 300 - band : 0
@@ -278,7 +281,7 @@ function squareCover(item: RandomItem, { c, art, face, r, flip }: Look): string 
 	)
 }
 
-function posterCover(item: RandomItem, { c, art, face, r }: Look): { W: number; H: number; s: string } {
+function posterCover(item: Titled, { c, art, face, r }: Look): { W: number; H: number; s: string } {
 	const W = 180
 	const H = 270
 	const band = 88
@@ -292,7 +295,7 @@ function posterCover(item: RandomItem, { c, art, face, r }: Look): { W: number; 
 	return { W, H, s }
 }
 
-function bookCover(item: RandomItem, { c, art, face, r }: Look): { W: number; H: number; s: string } {
+function bookCover(item: Titled, { c, art, face, r }: Look): { W: number; H: number; s: string } {
 	const W = 184
 	const H = 276
 	const top = 92
@@ -324,7 +327,7 @@ function matted({ W, H, s }: { W: number; H: number; s: string }): string {
 const cache = new Map<string, string>()
 
 /** The generated cover for an item, as a data URI. Cached by what it draws. */
-export function generatedCover(item: RandomItem, shape: SourceKind['shape']): string {
+export function generatedCover(item: Titled, shape: SourceKind['shape']): string {
 	const key = `${shape}\u0000${item.title}\u0000${item.creator}\u0000${item.year}`
 	const hit = cache.get(key)
 	if (hit) return hit

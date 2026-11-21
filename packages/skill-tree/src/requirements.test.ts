@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateTree, parseRequirements, type TreeNode } from './requirements'
+import { conditionFraction, evaluateTree, parseRequirements, type TreeNode } from './requirements'
 import { registerTreeSource } from './sources'
 
 /** A kind of requirement as a source would add one: met when the node has at least `min` pieces of evidence. */
@@ -76,5 +76,42 @@ describe('requirements', () => {
 	it("asks for the state of another tree's node, and counts it locked when nothing answers", () => {
 		expect(evaluateTree(sit, [], (id) => (id === 'a/single' ? unlocked : undefined)).get('m/steady')!.conditions[0]).toMatchObject({ have: 2, need: 2, met: true })
 		expect(evaluateTree(sit, []).get('m/steady')!.conditions[0]).toMatchObject({ have: 1, need: 2, met: false })
+	})
+
+	/*
+	 * DARK-10. /mu/core's genres hang from a category and ask for albums: in reach as soon as the
+	 * category is, but nothing done until an album is. The ring shows the albums, not the category.
+	 */
+	describe('the ring of a node in reach', () => {
+		const genres: TreeNode[] = [
+			{ nodeId: 'root', name: 'Listen Widely', requires: '' },
+			{ nodeId: 'african', name: 'Sub-Saharan African', requires: '- node: [root]' },
+			{ nodeId: 'indian-ocean', name: 'Indian Ocean', requires: '- node: [african]\n- pieces: 1' },
+			{ nodeId: 'punk', name: 'Punk', requires: '- node: [african]\n- pieces: 4' },
+			{ nodeId: 'ticked', name: 'Ticked', requires: '- node: [root]\n- manual: Heard it' },
+		]
+		const ring = (nodeId: string, evidence: ReturnType<typeof piece>[] = []) => conditionFraction(evaluateTree(genres, evidence).get(nodeId)!)
+		const albums = (n: number, tag: string) => Array.from({ length: n }, (_, i) => piece(`${tag}-${i}`, [tag]))
+
+		it('is empty while nothing is done, its prerequisites met or not', () => {
+			expect(evaluateTree(genres, []).get('indian-ocean')!.state).toBe('available')
+			expect(ring('indian-ocean')).toBe(0)
+			expect(ring('punk')).toBe(0)
+			expect(ring('ticked')).toBe(0)
+		})
+
+		it('fills with what is done, and is full once the node is met', () => {
+			expect(ring('punk', albums(1, 'punk'))).toBe(0.25)
+			expect(ring('punk', albums(3, 'punk'))).toBe(0.75)
+			expect(ring('punk', albums(4, 'punk'))).toBe(1)
+			expect(ring('indian-ocean', albums(1, 'indian-ocean'))).toBe(1)
+		})
+
+		it('still lists the prerequisite among the conditions', () => {
+			expect(evaluateTree(genres, []).get('punk')!.conditions).toEqual([
+				{ label: 'Unlock Sub-Saharan African', have: 1, need: 1, met: true, prerequisite: true },
+				{ label: '4 pieces', have: 0, need: 4, met: false },
+			])
+		})
 	})
 })

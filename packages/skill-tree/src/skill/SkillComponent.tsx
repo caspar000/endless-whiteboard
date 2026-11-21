@@ -41,14 +41,17 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 		<div className={`lb-skillnode lb-skillnode--${state}${done ? ' lb-skillnode--done' : ''} lb-skillnode--${shape.props.kind}${tier ? ` lb-skillnode--tier${tier}` : ''}${draftClass(shape as never) || (draft ? ' lb-draft' : '')}`}>
 			<svg className="lb-skillnode__ring" viewBox="0 0 100 100" aria-hidden>
 				<circle className="lb-skillnode__track" cx="50" cy="50" r="44" />
-				<circle
-					className="lb-skillnode__fill"
-					cx="50"
-					cy="50"
-					r="44"
-					strokeDasharray={`${RING * fraction} ${RING}`}
-					transform="rotate(-90 50 50)"
-				/>
+				{/* Not drawn at nothing: its round cap would still leave a dot at the top. */}
+				{fraction > 0 && (
+					<circle
+						className="lb-skillnode__fill"
+						cx="50"
+						cy="50"
+						r="44"
+						strokeDasharray={`${RING * fraction} ${RING}`}
+						transform="rotate(-90 50 50)"
+					/>
+				)}
 			</svg>
 			<div className={`lb-skillnode__disc${picture ? ' lb-skillnode__disc--picture' : ''}`}>
 				{picture && <img className="lb-skillnode__picture" src={picture} alt="" draggable={false} />}

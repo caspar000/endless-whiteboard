@@ -111,7 +111,8 @@ export function Randomizer({ go }: SectionProps) {
 						Ranking Tiers
 					</Jump>{' '}
 					card is Liked on every randomizer: out of the shuffle, with the stamp on its cover, marked as the
-					ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves it.
+					ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves it. A card
+					drawing from a weighted ranking itself still draws its ranked albums, by their tiers.
 				</p>
 				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in

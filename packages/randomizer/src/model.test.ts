@@ -311,6 +311,28 @@ describe('a weighted draw (DARK-11)', () => {
 		expect(pickNext([item('a', [], FEED), item('b', [], FEED)], FEED, null, scripted(1))?.id).toBe('b')
 	})
 
+	it('draws by weight from the whole pool, the one on show included, so the odds hold draw after draw', () => {
+		const heavy = { ...item('h', [], FEED), weight: 4 }
+		const light = { ...item('l', [], FEED), weight: 1 }
+		// With heavy on show, draws 0–3 still land on it: four in five, not every other time.
+		const next = Array.from({ length: 5 }, (_, d) => pickNext([heavy, light], FEED, 'h', scripted(d))?.id)
+		expect(next).toEqual(['h', 'h', 'h', 'h', 'l'])
+		// Over many successive draws, each one from the last, heavy comes up about four times as often.
+		let current: string | null = null
+		const seen = { h: 0, l: 0 }
+		for (let i = 0; i < 4000; i++) {
+			current = pickNext([heavy, light], FEED, current)!.id
+			seen[current as 'h' | 'l']++
+		}
+		expect(seen.h / 4000).toBeGreaterThan(0.75)
+		expect(seen.h / 4000).toBeLessThan(0.85)
+	})
+
+	it('still never repeats the one on show when drawing evenly', () => {
+		const next = Array.from({ length: 4 }, (_, d) => pickNext([item('a', [], FEED), item('b', [], FEED)], FEED, 'a', scripted(d))?.id)
+		expect(next).toEqual(['b', 'b', 'b', 'b'])
+	})
+
 	it('carries a source’s weight onto the card’s item, never into what it stores', () => {
 		const [shown] = withEntries([], FEED, [{ id: 'a', title: 'A', creator: '', year: '', cover: '', url: '', weight: 4 }])
 		expect(shown?.weight).toBe(4)

@@ -92,7 +92,8 @@ export function Randomizer({ go }: SectionProps) {
 					</Jump>{' '}
 					whose weighted shuffle is on, the card draws by the ranking's tiers instead: an album in a tier
 					weighted 4 comes up four times as often as one in a tier weighted 1, and what isn't ranked stays
-					out of the draw. A{' '}
+					out of the draw. Every draw is from the whole ranking, the album on show included, so a heavy
+					one can come up twice running: that is what its odds mean. A{' '}
 					<Jump to="backlog" go={go}>
 						backlog
 					</Jump>{' '}

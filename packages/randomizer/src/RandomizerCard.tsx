@@ -34,6 +34,7 @@ import {
 	flipSequence,
 	inShuffle,
 	isOut,
+	isWeighted,
 	itemsOf,
 	lastPicks,
 	latestStamp,
@@ -111,7 +112,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	const pool = inShuffle(items, list)
 	const recent = lastPicks(items, picks, list)
 	const latest = current ? latestStamp(current) : null
-	const canShuffle = pool.some((item) => item.id !== current?.id)
+	const canShuffle = isWeighted(pool) ? pool.length > 1 : pool.some((item) => item.id !== current?.id)
 
 	const muted = useSyncExternalStore(subscribeToMuted, isMuted, () => false)
 	const chord = useSyncExternalStore(subscribeToKeymap, () => chordsFor(SHUFFLE_COMMAND_ID)[0] ?? '', () => '')
@@ -182,7 +183,8 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		const allItems = latestItems.current
 		const from = currentItem(allItems, allPicks, activeList)
 		const target = pickNext(allItems, activeList, from?.id ?? null)
-		if (!target || target.id === from?.id) return
+		// A weighted draw may land where it started (`pickNext`): the flaps still run, and stop on it.
+		if (!target || (target.id === from?.id && !isWeighted(itemsOf(allItems, activeList)))) return
 		busyRef.current = true
 		wakeAudio()
 		setMenu(null)

@@ -15,7 +15,7 @@ import { ArrowDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
 import { addCollection, addItem, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
 import type { BacklogProps } from './props'
-import { BACKLOG_SOURCE_ID } from './source'
+import { BACKLOG_SOURCE_ID, watchBacklog } from './source'
 import { backlogOrNew, shapeDropHint, updateBacklog } from './store'
 
 /** Clicks on the card's controls are the card's, not the canvas's: no select, no drag. */
@@ -175,6 +175,9 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const [dropping, setDropping] = useState<{ title: string; creator: string; via: string } | null>(null)
 	const [announce, setAnnounce] = useState('')
 	const addRef = useRef<HTMLInputElement>(null)
+
+	// Its collections keep themselves fresh while the card is shown, as their own cards would.
+	useEffect(() => watchBacklog(backlogId), [backlogId])
 
 	useOpenMenu(editor, `backlog-rename-${shape.id}`, renaming)
 	useOpenMenu(editor, `backlog-add-${shape.id}`, adding)

@@ -1,4 +1,4 @@
-import { atom, type TLShape } from '@lifeboard/canvas'
+import { atom, react, type TLShape } from '@lifeboard/canvas'
 import type { LucideIcon } from 'lucide-react'
 import { isExtensionEnabled } from './registry'
 
@@ -251,5 +251,52 @@ export function getDraggedItem(data: DataTransfer): DraggedItem | null {
 		}
 	} catch {
 		return null
+	}
+}
+
+/* ------------------------------------------------------------------- keeping sources fresh */
+
+/** The keys whose watch is being started right now, outermost first: the same guard as `reading`. */
+const watching: string[] = []
+
+function watchOne(key: string): () => void {
+	if (watching.includes(key)) return () => {}
+	const resolved = resolveItemSource(key)
+	if (resolved.type !== 'source' || !resolved.source?.watch) return () => {}
+	watching.push(key)
+	try {
+		return resolved.source.watch(resolved.choiceId)
+	} finally {
+		watching.pop()
+	}
+}
+
+/**
+ * Keeps the sources a list is made of fresh while it is shown or read: a backlog holding a feed, a
+ * ranking of one. `keys` is read reactively, so a collection added or a source changed is watched from
+ * then on and one taken away is let go. `owner` is the list's own source key: while its parts' watches
+ * start, it counts as being watched, so a backlog holding a ranking of itself doesn't start itself
+ * again. Returns the release.
+ */
+export function watchSourceKeys(owner: string, keys: () => readonly string[]): () => void {
+	const held = new Map<string, () => void>()
+	const stop = react(`lifeboard:watch-sources:${owner}`, () => {
+		const want = new Set(keys().filter(Boolean))
+		watching.push(owner)
+		try {
+			for (const [key, release] of held) {
+				if (want.has(key)) continue
+				release()
+				held.delete(key)
+			}
+			for (const key of want) if (!held.has(key)) held.set(key, watchOne(key))
+		} finally {
+			watching.pop()
+		}
+	})
+	return () => {
+		stop()
+		for (const release of held.values()) release()
+		held.clear()
 	}
 }

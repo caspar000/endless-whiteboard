@@ -1,4 +1,4 @@
-import { PLAIN_KIND, resolveItemSource, sourceEntries, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
+import { PLAIN_KIND, resolveItemSource, sourceEntries, sourceKey, watchSourceKeys, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
 import { ListOrdered } from 'lucide-react'
 import { weightedEntries, type Ranking } from './model'
 import { rankings } from './store'
@@ -44,12 +44,9 @@ export const rankingSource: ItemSource = {
 		const ranking = ranked(rankingId)
 		return ranking ? resolveItemSource(ranking.source).kind : PLAIN_KIND
 	},
-	// An item opens, and keeps itself fresh, as the source it was ranked from would.
-	watch: (rankingId) => {
-		const ranking = ranked(rankingId)
-		const from = ranking ? resolveItemSource(ranking.source) : null
-		return from?.source?.watch?.(from.choiceId) ?? (() => {})
-	},
+	// An item keeps itself fresh, and opens, as the source it was ranked from would; a ranking pointed
+	// at another source while a randomizer draws from it is followed there.
+	watch: (rankingId) => watchSourceKeys(sourceKey(RANKING_SOURCE_ID, rankingId), () => [rankings.one(rankingId)?.source ?? '']),
 	open: (entry) => {
 		for (const ranking of Object.values(rankings.get())) {
 			const from = resolveItemSource(ranking.source)

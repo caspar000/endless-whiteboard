@@ -171,10 +171,18 @@ export function weightedIndex(weights: readonly number[], words: RandomWords = c
 	return whole.length - 1
 }
 
+/** Whether a source weighs its items: a ranking with weighted shuffle on. */
+export function isWeighted(items: readonly RandomItem[]): boolean {
+	return items.some((item) => item.weight !== undefined)
+}
+
 /**
- * The next pick: any item still in the shuffle, never the one already on show (when there is another
- * to choose). `null` when nothing is left. A source that weighs its items (a ranking with weighted
- * shuffle on) has them drawn by weight; anything else is drawn evenly.
+ * The next pick, from the items still in the shuffle. `null` when nothing is left.
+ *
+ * Drawn evenly, it is never the one already on show (when there is another to choose). Drawn by
+ * weight (a ranking with weighted shuffle on), it is from the whole pool, the one on show included:
+ * leaving it out would turn "Heavy rotation, four times as often" into taking turns, two albums of
+ * weights 4 and 1 coming up alternately. The tiers' odds on the ranking are the odds of every draw.
  */
 export function pickNext(
 	items: readonly RandomItem[],
@@ -183,11 +191,10 @@ export function pickNext(
 	words: RandomWords = cryptoWords
 ): RandomItem | null {
 	const pool = inShuffle(items, source)
+	if (isWeighted(pool)) return pool.length ? (pool[weightedIndex(pool.map((item) => item.weight ?? 1), words)] ?? null) : null
 	const choices = pool.length > 1 ? pool.filter((item) => item.id !== currentId) : pool
 	if (choices.length === 0) return null
-	const weighted = choices.some((item) => item.weight !== undefined)
-	const at = weighted ? weightedIndex(choices.map((item) => item.weight ?? 1), words) : randomIndex(choices.length, words)
-	return choices[at] ?? null
+	return choices[randomIndex(choices.length, words)] ?? null
 }
 
 /** How many covers flip past for a list this long: about 24 for a dozen, up to 80 for a backlog. */

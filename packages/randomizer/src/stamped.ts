@@ -9,16 +9,22 @@ import { RANDOMIZER_TYPE, type RandomizerProps } from './props'
  * something a ranking or a backlog can take, through the kit's registry, without knowing a randomizer
  * made it.
  *
- * A card keeps its stamps in its own props, on its own board. This is the vault's copy of the latest
- * stamp of each stamped item, kept up from every board a randomizer is open on (`watchStamped`), so a
- * ranking on another board, or another device, reads the same list. Saved by the app beside the feeds.
+ * A card keeps its stamps in its own props, on its own board. This is the vault's copy of each card's
+ * latest stamp on each item it stamped, kept up from every board a randomizer is open on
+ * (`watchStamped`), so a ranking on another board, or another device, reads the same list. Each card's
+ * stamps are kept apart, so taking one back on one card can never take away another card's: the lists
+ * are worked out from all of them (`stampedEntries`). Saved by the app beside the feeds.
  */
 
 export const STAMPED_EXTENSION_ID = 'lifeboard.randomizer'
 
 export interface StampedEntry {
-	/** `stampedKey(source, id)`: the item, whichever card stamped it. */
+	/** `${card}#${item}`: one card's stamp on one item. */
 	key: string
+	/** The card that stamped it: `<board id>/<shape id>`. */
+	card: string
+	/** `stampedKey(source, id)`: the item, whichever card stamped it. */
+	item: string
 	/** The source key of the card that stamped it (`list` for a typed line, `feeds:all`). */
 	source: string
 	id: string
@@ -27,7 +33,7 @@ export interface StampedEntry {
 	year: string
 	cover: string
 	url: string
-	/** Its latest stamp. */
+	/** The card's latest stamp on it. */
 	kind: StampKind
 	date: string
 }
@@ -39,9 +45,14 @@ export function stampedKey(source: string, id: string): string {
 	return `${source}|${id}`
 }
 
+/** Which card a stamp is from: the board, then the shape, since a shape id is only unique on its board. */
+export function cardKey(boardId: string, shapeId: string): string {
+	return `${boardId}/${shapeId}`
+}
+
 /**
  * A card shuffling "Everything I liked" itself keeps its stamps to itself: written back, a stamp would
- * list the item a second time under the card's source, and taking it back could not restore the first.
+ * list the item a second time under the card's source.
  */
 const fromThisList = (item: RandomItem) => item.source.startsWith(`${SOURCE_ID}:`)
 
@@ -53,9 +64,11 @@ const stamped = keyedStore<StampedEntry>(
 	'lifeboard:randomizer-stamped',
 	(e) => {
 		const kind = STAMP_KINDS.find((k) => k === e.kind)
-		if (!str(e.key) || !str(e.id) || !kind) return null
+		if (!str(e.key) || !str(e.card) || !str(e.item) || !str(e.id) || !kind) return null
 		return {
 			key: str(e.key),
+			card: str(e.card),
+			item: str(e.item),
 			source: str(e.source),
 			id: str(e.id),
 			title: str(e.title),
@@ -77,39 +90,31 @@ export const replaceStamped = stamped.replace
 export const setStampedPersistence = stamped.setPersistence
 
 /**
- * The stamped list after one card went from `before` to `after` (`null` before: a card just opened or
- * made, which can only add).
+ * The stamped list with one card's stamps as that card holds them now: every item whose latest stamp
+ * is there, and nothing else of that card's. Other cards' stamps are left as they are, so an undo on
+ * one card takes back only its own stamp, and a card deleted keeps what it stamped.
  *
- * An item whose latest stamp changed is written with it. One whose stamps were all taken back, or that
- * left the card's list stamped, leaves the list too. An item left alone stays as it is, so a card that
- * never saw a stamp can't take away what another card stamped. Of two cards stamping one feed video,
- * the later stamp is kept.
+ * A stamp the list already has is kept as it is, picture and all, so a change elsewhere on the card
+ * doesn't read the source again for every item.
  */
-export function nextStamped(
-	current: Stamped,
-	before: readonly RandomItem[] | null,
-	after: readonly RandomItem[],
-	entryOf: (item: RandomItem) => SourceEntry | undefined
-): Stamped {
-	const was = new Map((before ?? []).filter((item) => !fromThisList(item)).map((item) => [stampedKey(item.source, item.id), latestStamp(item)]))
-	const next: Record<string, StampedEntry> = { ...current }
-	const seen = new Set<string>()
-	for (const item of after) {
-		if (fromThisList(item)) continue
-		const key = stampedKey(item.source, item.id)
-		seen.add(key)
+export function nextStamped(current: Stamped, card: string, items: readonly RandomItem[], entryOf: (item: RandomItem) => SourceEntry | undefined): Stamped {
+	const next: Record<string, StampedEntry> = {}
+	for (const [key, e] of Object.entries(current)) if (e.card !== card) next[key] = e
+	for (const item of items) {
 		const latest = latestStamp(item)
-		const old = was.get(key)
-		if (before && old?.kind === latest?.kind && old?.date === latest?.date) continue
-		if (!latest) {
-			if (before && old) delete next[key]
+		if (!latest || fromThisList(item)) continue
+		const itemKey = stampedKey(item.source, item.id)
+		const key = `${card}#${itemKey}`
+		const kept = current[key]
+		if (kept && kept.kind === latest.kind && kept.date === latest.date && kept.title === item.title) {
+			next[key] = kept
 			continue
 		}
-		const kept = next[key]
-		if (!before && kept && kept.date > latest.date) continue
 		const entry = entryOf(item)
 		next[key] = {
 			key,
+			card,
+			item: itemKey,
 			source: item.source,
 			id: item.id,
 			title: item.title,
@@ -121,7 +126,6 @@ export function nextStamped(
 			date: latest.date,
 		}
 	}
-	if (before) for (const [key, old] of was) if (old && !seen.has(key)) delete next[key]
 	return next
 }
 
@@ -140,22 +144,19 @@ const watched = new WeakSet<Editor>()
  * undo and redo, and what other devices send. Wired from `onBoardOpen`, once per editor; side effects
  * go when the editor does. While the randomizer is off nothing is written, as with everything it does.
  */
-export function watchStamped(editor: Editor): void {
+export function watchStamped(editor: Editor, boardId: string): void {
 	if (watched.has(editor)) return
 	watched.add(editor)
-	const write = (before: readonly RandomItem[] | null, after: readonly RandomItem[]) => {
+	const write = (shape: TLShape) => {
 		if (!isExtensionEnabled(STAMPED_EXTENSION_ID)) return
-		stamped.set(nextStamped(stamped.get(), before, after, entryOf))
+		stamped.set(nextStamped(stamped.get(), cardKey(boardId, shape.id), itemsOf(shape), entryOf))
 	}
-	for (const shape of editor.getCurrentPageShapes()) if (shape.type === RANDOMIZER_TYPE) write(null, itemsOf(shape))
+	for (const shape of editor.getCurrentPageShapes()) if (shape.type === RANDOMIZER_TYPE) write(shape)
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
-		if (shape.type === RANDOMIZER_TYPE) write(null, itemsOf(shape))
+		if (shape.type === RANDOMIZER_TYPE) write(shape)
 	})
 	editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
-		if (next.type !== RANDOMIZER_TYPE || prev.props === next.props) return
-		const before = itemsOf(prev)
-		const after = itemsOf(next)
-		if (before !== after) write(before, after)
+		if (next.type === RANDOMIZER_TYPE && itemsOf(prev) !== itemsOf(next)) write(next)
 	})
 }
 
@@ -188,7 +189,7 @@ export function stampedEntries(all: Stamped, kind: string): SourceEntry[] {
 	return [...groups.values()]
 		.filter((g) => g.newest.kind === kind)
 		.sort((a, b) => b.newest.date.localeCompare(a.newest.date) || a.first.title.localeCompare(b.first.title))
-		.map(({ first: e, newest }) => ({ id: e.key, title: e.title, creator: e.creator, year: e.year, cover: e.cover || newest.cover, url: e.url || newest.url }))
+		.map(({ first: e, newest }) => ({ id: e.item, title: e.title, creator: e.creator, year: e.year, cover: e.cover || newest.cover, url: e.url || newest.url }))
 }
 
 /** "Everything I liked", and the other stamps, for any card that takes a list. */

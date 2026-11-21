@@ -177,7 +177,9 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 		const id = focusNext.current
 		if (!id) return
 		focusNext.current = null
-		rootRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`)?.focus()
+		Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-item-id]') ?? [])
+			.find((el) => el.dataset.itemId === id)
+			?.focus()
 	})
 
 	// Menus close on a click anywhere else, and on Escape.

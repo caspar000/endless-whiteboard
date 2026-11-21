@@ -152,6 +152,7 @@ export {
 	sourceEntries,
 	sourceKey,
 	sourceKeyOfShape,
+	watchSourceKeys,
 	type DraggedItem,
 	type ItemSource,
 	type ResolvedItemSource,

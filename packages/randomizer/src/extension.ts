@@ -16,7 +16,7 @@ export const randomizerExtension: Extension = {
 	details: [
 		'Add one from the dock’s node picker or with “Add randomizer” in ⌘K. It starts empty, waiting for a source: double-click it, or click “Choose a source” at its top.',
 		'“A list I type” holds anything: one item per line, Title — Creator — Year. With Feeds on, the same menu lists all your feeds, each category and each channel, and the card shuffles their videos, with each thumbnail as its cover. The button beside the count opens the video on show and marks it watched.',
-		'With Ranking Tiers on, a ranking whose weighted shuffle is on is in the menu too, and the card draws from it by its tiers’ weights: a tier weighted 4 comes up four times as often, item for item, as one weighted 1. Unranked items stay out of the draw. With Backlog on, each backlog is in the menu.',
+		'With Ranking Tiers on, a ranking whose weighted shuffle is on is in the menu too, and the card draws from it by its tiers’ weights: a tier weighted 4 comes up four times as often, item for item, as one weighted 1. Unranked items stay out of the draw, and every draw is from the whole ranking, the item on show included, so the odds the ranking shows are the odds of each shuffle. With Backlog on, each backlog is in the menu.',
 		'Shuffle flips through the covers, faster and longer the more there are, and slows to a stop on one; then the title and the creator rattle through the letter tiles and settle. A dozen items get about two dozen flips, a backlog of hundreds up to eighty, and it never takes more than about five seconds. With the card selected, ⌘↵ shuffles it (Settings → Keyboard can move that).',
 		'The sound is made in the browser, a clack for each flap and a thunk when it lands. The speaker button mutes it, and the card remembers.',
 		'Drop an image on the card to make it the cover of the item on show. An item without one gets a cover drawn from its title.',
@@ -31,5 +31,5 @@ export const randomizerExtension: Extension = {
 	nodes: [defineNode(randomizerNodeDefinition)],
 	commands: randomizerCommands,
 	// Keeps "Everything I liked" up from every board a randomizer is on.
-	hooks: { onBoardOpen: ({ editor }) => watchStamped(editor) },
+	hooks: { onBoardOpen: ({ editor, boardId }) => watchStamped(editor, boardId) },
 }

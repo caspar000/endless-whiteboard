@@ -9,8 +9,10 @@ import {
 	resolveItemSource,
 	sourceEntries,
 	sourceKeyOfShape,
+	watchSourceKeys,
 	type ItemSource,
 } from './itemSources'
+import { atom } from '@lifeboard/canvas'
 import { setExtensionEnabled } from './registry'
 
 const source = (id: string, entries: (choiceId: string) => ReturnType<ItemSource['entries']>, extra: Partial<ItemSource> = {}): ItemSource => ({
@@ -78,5 +80,44 @@ describe('an item dragged between cards', () => {
 		expect(getDraggedItem(transfer('not json'))).toBeNull()
 		expect(getDraggedItem(transfer(JSON.stringify({ entry: { id: 'x' } })))).toBeNull()
 		expect(getDraggedItem(transfer(JSON.stringify({ entry: { title: 'No id' } })))).toBeNull()
+	})
+})
+
+describe('keeping a list’s sources fresh', () => {
+	it('watches what a list holds, follows it as it changes, and lets go of all of it at the end', () => {
+		const log: string[] = []
+		registerItemSource(
+			source('feeds', () => [], {
+				choices: () => ['x', 'y'].map((id) => ({ id, label: id, group: '' })),
+				watch: (id) => {
+					log.push(`+${id}`)
+					return () => log.push(`-${id}`)
+				},
+			})
+		)
+		const keys = atom<string[]>('keys', ['feeds:x'])
+		const release = watchSourceKeys('backlog:b', () => keys.get())
+		expect(log).toEqual(['+x'])
+		keys.set(['feeds:x', 'feeds:y'])
+		keys.set(['feeds:y'])
+		expect(log).toEqual(['+x', '+y', '-x'])
+		release()
+		expect(log).toEqual(['+x', '+y', '-x', '-y'])
+	})
+
+	it('doesn’t start a list again from inside itself: a backlog holding a ranking of that backlog', () => {
+		let started = 0
+		registerItemSource(
+			source('backlog', () => [], {
+				watch: () => {
+					started++
+					return watchSourceKeys('backlog:a', () => ['ranking:a'])
+				},
+			})
+		)
+		registerItemSource(source('ranking', () => [], { watch: () => watchSourceKeys('ranking:a', () => ['backlog:a']) }))
+		const release = watchSourceKeys('card', () => ['backlog:a'])
+		expect(started).toBe(1)
+		release()
 	})
 })

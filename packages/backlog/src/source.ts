@@ -1,4 +1,4 @@
-import { resolveItemSource, sourceEntries, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
+import { resolveItemSource, sourceEntries, sourceKey, watchSourceKeys, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
 import { Inbox } from 'lucide-react'
 import { backlogEntries, type Backlog } from './model'
 import { backlogs } from './store'
@@ -20,6 +20,16 @@ export function entriesOfBacklog(backlogId: string) {
 	return backlog ? backlogEntries(backlog, sourceEntries) : []
 }
 
+/**
+ * Keeps a backlog's collections fresh while it is shown or read (a feed in it reads its channels), as
+ * their own cards would: those added later too, and not those taken out.
+ */
+export function watchBacklog(backlogId: string): () => void {
+	return watchSourceKeys(sourceKey(BACKLOG_SOURCE_ID, backlogId), () =>
+		(backlogs.one(backlogId)?.entries ?? []).filter((e) => e.kind === 'collection').map((e) => e.id)
+	)
+}
+
 export const backlogSource: ItemSource = {
 	id: BACKLOG_SOURCE_ID,
 	label: 'Backlogs',
@@ -28,6 +38,7 @@ export const backlogSource: ItemSource = {
 	choices: () => backlogChoices(backlogs.get()),
 	entries: entriesOfBacklog,
 	kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+	watch: watchBacklog,
 	// A collection's item opens as its own source would open it (a feed's video, marked watched).
 	open: (entry) => {
 		const at = entry.id.indexOf('|')

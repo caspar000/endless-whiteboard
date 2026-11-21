@@ -16,7 +16,7 @@ export const backlogExtension: Extension = {
 	details: [
 		'Add a Backlog card from the dock’s node picker or with “Add backlog” in ⌘K. Click its name to rename it.',
 		'+ adds an item you type (Title — creator; it gets a cover drawn from its title), or a whole collection: anything your other extensions offer, such as a syllabus track, a feed or everything you liked on a randomizer.',
-		'Drag a cover onto it from a Ranking Tiers card or another backlog, or drop a syllabus track’s card on it: the track goes in as one collection, a square stack the size of an album, and the track’s card goes back where it was. A collection lists what its source holds now, so what is added to the track later is in the backlog too. Click it to see inside.',
+		'Drag a cover onto it from a Ranking Tiers card, a randomizer’s last picks or another backlog, or drop a syllabus track’s card on it: the track goes in as one collection, a square stack the size of an album, and the track’s card goes back where it was. A collection lists what its source holds now, so what is added to the track later is in the backlog too. Click it to see inside.',
 		'Hover a tile for × to take it out. Four rows show at first; “Show all” shows the rest.',
 		'Each backlog is offered to other cards as a source, everything in it, collections opened out, each thing once: point a randomizer at it to pick what is next, or a Ranking Tiers card to sort it.',
 		'Backlogs are kept in your vault, so every card and device shows the same. Below, delete the ones you no longer need.',

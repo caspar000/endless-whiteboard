@@ -52,7 +52,7 @@ export function Backlog({ go }: SectionProps) {
 					<Jump to="ranking-tiers" go={go}>
 						Ranking Tiers
 					</Jump>{' '}
-					card or another backlog. <strong>Drop a syllabus track's card on it</strong> and the whole track
+					card, a randomizer's last picks or another backlog. <strong>Drop a syllabus track's card on it</strong> and the whole track
 					goes in as one collection, a square stack the size of an album, while the track's card goes back
 					where it was. A collection lists what its source holds now, so what is added to the track later is
 					in the backlog too. Click it to see inside.

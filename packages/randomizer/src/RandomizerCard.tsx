@@ -27,6 +27,7 @@ import { SourceEditor } from './SourceEditor'
 import {
 	STAMPS,
 	STAMP_KINDS,
+	TYPED_SOURCE,
 	currentItem,
 	flipCount,
 	flipDurations,
@@ -603,6 +604,8 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 								item={item}
 								shape={kind.shape}
 								ink={stamped ? STAMPS[stamped.kind].ink : null}
+								from={list === TYPED_SOURCE ? '' : list}
+								via={view.type === 'typed' ? 'Randomizer' : (view.source?.label ?? '')}
 								label={`${item.title}${item.creator ? ` — ${item.creator}` : ''}${stamped ? `, stamped ${STAMPS[stamped.kind].label}` : ''}`}
 							/>
 						)

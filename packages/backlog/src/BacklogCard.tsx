@@ -347,7 +347,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 			{backlog.entries.length === 0 ? (
 				<div className="lb-backlog__empty">
 					<strong>Nothing here yet</strong>
-					<span>Drag a cover here from a ranking or another backlog, drop a syllabus track’s card on it, or add with +.</span>
+					<span>Drag a cover here from a ranking, a randomizer’s last picks or another backlog, drop a syllabus track’s card on it, or add with +.</span>
 				</div>
 			) : (
 				<div className="lb-backlog__grid" role="list" aria-label={`${backlog.name} items`}>

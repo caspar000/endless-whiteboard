@@ -81,11 +81,18 @@ export function addTyped(backlog: Backlog, line: string, newId: () => string = r
 	return { ...backlog, entries: [item, ...backlog.entries] }
 }
 
-/** An item from another card on top; one already here moves to the top rather than twice. */
+const sameWork = (a: Pick<BacklogItem, 'title' | 'creator'>, b: Pick<BacklogItem, 'title' | 'creator'>) =>
+	a.title.trim().toLowerCase() === b.title.trim().toLowerCase() && a.creator.trim().toLowerCase() === b.creator.trim().toLowerCase()
+
+/**
+ * An item from another card on top. One already here moves to the top rather than being there twice,
+ * whichever card it came by: an album dragged from a ranking, then from a randomizer drawing from that
+ * ranking, is one album.
+ */
 export function addItem(backlog: Backlog, entry: SourceEntry, from: string, via: string): Backlog {
 	const id = from ? itemKey(from, entry.id) : entry.id
 	const item: BacklogItem = { kind: 'item', id, title: entry.title, creator: entry.creator, year: entry.year, cover: entry.cover, url: entry.url, via }
-	return { ...backlog, entries: [item, ...backlog.entries.filter((e) => e.id !== id)] }
+	return { ...backlog, entries: [item, ...backlog.entries.filter((e) => e.id !== id && !(e.kind === 'item' && sameWork(e, item)))] }
 }
 
 /** A whole source on top, kept as one; one already here moves to the top. */

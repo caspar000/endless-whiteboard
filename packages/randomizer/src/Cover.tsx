@@ -1,4 +1,4 @@
-import { hashText, useItemCover } from '@lifeboard/node-kit'
+import { hashText, setDraggedItem, useItemCover } from '@lifeboard/node-kit'
 import type { CSSProperties } from 'react'
 import type { RandomItem, SourceKind } from './model'
 import { Postmark } from './Postmark'
@@ -60,11 +60,28 @@ export function CoverFace({ item, shape, fresh = false }: { item: RandomItem; sh
 	)
 }
 
-/** A small cover for the row of last picks, ringed in its latest stamp's ink. */
-export function Thumb({ item, shape, ink, label }: { item: RandomItem; shape: CoverShape; ink: string | null; label: string }) {
+/**
+ * A small cover for the row of last picks, ringed in its latest stamp's ink. It can be dragged onto
+ * another card that takes items (a backlog), as the kit's dragged item (DARK-11).
+ */
+export function Thumb({ item, shape, ink, label, from, via }: { item: RandomItem; shape: CoverShape; ink: string | null; label: string; from: string; via: string }) {
 	const url = useItemCover(item, shape)
 	return (
-		<li className={ink ? 'lb-rand__thumb lb-rand__thumb--stamped' : 'lb-rand__thumb'} style={ink ? ({ '--lb-rand-ink': ink } as CSSProperties) : undefined} title={label} aria-label={label} role="img">
+		<li
+			className={ink ? 'lb-rand__thumb lb-rand__thumb--stamped' : 'lb-rand__thumb'}
+			style={ink ? ({ '--lb-rand-ink': ink } as CSSProperties) : undefined}
+			title={label}
+			aria-label={label}
+			role="img"
+			draggable
+			onPointerDown={(e) => e.stopPropagation()}
+			onDragStart={(e) => {
+				e.stopPropagation()
+				const { id, title, creator, year, cover } = item
+				setDraggedItem(e.dataTransfer, { entry: { id, title, creator, year, cover, url: item.url ?? '' }, from, via })
+				e.dataTransfer.effectAllowed = 'copy'
+			}}
+		>
 			<img src={url} alt="" draggable={false} />
 		</li>
 	)

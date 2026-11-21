@@ -13870,6 +13870,9 @@ button.lb-props__eye:hover {
 .lb-rand__thumb {
 	position: relative;
 	width: 36px;
+	/* Dragged onto a backlog (DARK-11). */
+	pointer-events: auto;
+	cursor: grab;
 	height: 36px;
 	border-radius: 4px;
 	background: var(--lb-surface-2);

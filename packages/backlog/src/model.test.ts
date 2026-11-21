@@ -27,6 +27,12 @@ describe('adding to a backlog', () => {
 		expect(b.entries[0]).toMatchObject({ kind: 'item', via: 'Feeds', title: 'Work 1' })
 	})
 
+	it('keeps one of an album that came by two cards', () => {
+		let b = addItem(newBacklog('b'), entry('1', 'Loveless'), 'stamped:liked', 'Randomizer stamps')
+		b = addItem(b, { ...entry('1', ' loveless ') }, 'ranking:r', 'Rankings')
+		expect(b.entries.map((e) => e.id)).toEqual([itemKey('ranking:r', '1')])
+	})
+
 	it('keeps a whole source as one collection, once', () => {
 		let b = addCollection(newBacklog('b'), 'syllabus:mucore', 'Syllabi')
 		b = addTyped(b, 'Something', nextId)!

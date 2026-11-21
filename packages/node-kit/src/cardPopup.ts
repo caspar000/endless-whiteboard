@@ -12,7 +12,7 @@ import { useEffect } from 'react'
  * that shape over the menu). A menu marks itself `data-card-popup` so its box is measured.
  */
 
-type Box = { x: number; y: number; w: number; h: number }
+export type Box = { x: number; y: number; w: number; h: number }
 
 /** Per editor, what each card with a menu open covers, in page space. */
 const lifted = new WeakMap<Editor, Map<string, Box[]>>()
@@ -32,10 +32,34 @@ function measure(editor: Editor, shapeId: string): Box[] {
 	return boxes
 }
 
+/**
+ * Keeps what a card with a menu open covers up to date for as long as it is open: measured every frame,
+ * and published only when it changed. One menu swapped for another (a tier's options, then another
+ * tier's), a menu that grows, or the card moving all change it without the menu ever closing. A frame's
+ * measure is a few rectangles of one card's menus, and the scene hears only of a real change, so a
+ * menu standing open costs next to nothing. Returns the stop, which publishes `null`.
+ */
+export function watchLifted(measureNow: () => Box[], publish: (boxes: Box[] | null) => void): () => void {
+	let last = ''
+	let frame = 0
+	const tick = () => {
+		const boxes = measureNow()
+		const key = JSON.stringify(boxes)
+		if (key !== last) {
+			last = key
+			publish(boxes)
+		}
+		frame = requestAnimationFrame(tick)
+	}
+	frame = requestAnimationFrame(tick)
+	return () => {
+		cancelAnimationFrame(frame)
+		publish(null)
+	}
+}
+
 /** Tells the GPU layer what a card with a menu open covers now, or (`null`) that it covers nothing. */
 function setLifted(editor: Editor, shapeId: string, boxes: Box[] | null): void {
-	// A stand-in editor (a test's) has no store and no GPU layer to tell.
-	if (!(editor as Partial<Editor>).store) return
 	const mine = lifted.get(editor) ?? new Map<string, Box[]>()
 	lifted.set(editor, mine)
 	if (boxes) mine.set(shapeId, boxes)
@@ -71,12 +95,16 @@ export function useCardPopup(editor: Editor, shapeId: string, isOpen: boolean): 
 		const menuId = cardPopupMenuId(shapeId)
 		setOpen(shapeId, true)
 		editor.addOpenMenu(menuId)
-		// Measured once the menu is drawn.
-		const frame = requestAnimationFrame(() => setLifted(editor, shapeId, measure(editor, shapeId)))
+		// A stand-in editor (a test's) has no store and no GPU layer to tell.
+		const stop = (editor as Partial<Editor>).store
+			? watchLifted(
+					() => measure(editor, shapeId),
+					(boxes) => setLifted(editor, shapeId, boxes)
+				)
+			: () => {}
 		return () => {
-			cancelAnimationFrame(frame)
+			stop()
 			setOpen(shapeId, false)
-			setLifted(editor, shapeId, null)
 			editor.deleteOpenMenu(menuId)
 		}
 	}, [editor, shapeId, isOpen])

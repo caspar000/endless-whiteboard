@@ -2,9 +2,16 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { useState, type ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cardPopupMenuId, hasCardPopup, useCardPopup } from './cardPopup'
+import { cardPopupMenuId, hasCardPopup, useCardPopup, watchLifted, type Box } from './cardPopup'
 import { emptyPropsMigrations } from './migrations'
 import { createNodeShapeUtil, type NodeComponentProps, type NodeDefinition } from './registry'
+
+// The GPU scene, as far as a card with a menu open tells it anything: the boxes it lifts over the layer.
+const lifted = vi.hoisted(() => ({ boxes: [] as Box[] }))
+vi.mock('@lifeboard/canvas', async (importOriginal) => {
+	const real = await importOriginal<typeof import('@lifeboard/canvas')>()
+	return { ...real, getGpuScene: () => ({ lifted: { set: (boxes: Box[]) => void (lifted.boxes = boxes) } }) }
+})
 
 /** The editor as far as a card's menu needs it: the open menus it keeps. */
 function fakeEditor() {
@@ -93,5 +100,86 @@ describe('a node with a menu open over it', () => {
 		act(() => void fireEvent.click(getByRole('button', { name: 'Menu' })))
 		expect(box.style.overflow).toBe('hidden')
 		expect(box.hasAttribute('data-lb-popup')).toBe(false)
+	})
+})
+
+describe('what a card with a menu open lifts over the GPU layer (DARK-13)', () => {
+	/** Animation frames run by hand. */
+	let frames: Array<() => void> = []
+	const runFrame = () => {
+		const now = frames
+		frames = []
+		for (const f of now) f()
+	}
+	beforeEach(() => {
+		frames = []
+		vi.stubGlobal('requestAnimationFrame', (f: () => void) => frames.push(f))
+		vi.stubGlobal('cancelAnimationFrame', () => void (frames = []))
+	})
+
+	it('is published when it changes, and only then, and cleared when the menu closes', () => {
+		let boxes: Box[] = [{ x: 0, y: 0, w: 10, h: 10 }]
+		const published: Array<Box[] | null> = []
+		const stop = watchLifted(
+			() => boxes,
+			(b) => published.push(b)
+		)
+		runFrame()
+		runFrame()
+		expect(published).toEqual([[{ x: 0, y: 0, w: 10, h: 10 }]])
+		boxes = [{ x: 0, y: 0, w: 10, h: 30 }]
+		runFrame()
+		expect(published.at(-1)).toEqual([{ x: 0, y: 0, w: 10, h: 30 }])
+		stop()
+		expect(published.at(-1)).toBeNull()
+		expect(frames).toEqual([])
+	})
+
+	it('follows one tier menu swapped for another without the menu ever closing', () => {
+		// Where each menu sits on screen: the bottom tier's hangs below the card.
+		const RECTS: Record<string, DOMRect> = {
+			top: { left: 50, top: 20, right: 150, bottom: 80 } as DOMRect,
+			bottom: { left: 50, top: 180, right: 150, bottom: 300 } as DOMRect,
+		}
+		const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+			return RECTS[this.dataset.which ?? ''] ?? ({ left: 0, top: 0, right: 0, bottom: 0 } as DOMRect)
+		})
+		const editor = {
+			...fakeEditor(),
+			store: {},
+			getShapePageBounds: () => ({ x: 0, y: 0, w: 200, h: 200 }),
+			screenToPage: (p: { x: number; y: number }) => p,
+		}
+		function TierCard() {
+			const [menu, setMenu] = useState<string | null>(null)
+			useCardPopup(editor as never, 'shape:tiers', menu !== null)
+			return (
+				<div id="shape:tiers">
+					<button type="button" onClick={() => setMenu('top')}>
+						Top options
+					</button>
+					<button type="button" onClick={() => setMenu('bottom')}>
+						Bottom options
+					</button>
+					{menu && <div data-card-popup data-which={menu} />}
+				</div>
+			)
+		}
+		const { getByRole } = render(<TierCard />)
+		act(() => void fireEvent.click(getByRole('button', { name: 'Top options' })))
+		act(runFrame)
+		expect(lifted.boxes).toEqual([
+			{ x: 0, y: 0, w: 200, h: 200 },
+			{ x: 50, y: 20, w: 100, h: 60 },
+		])
+		act(() => void fireEvent.click(getByRole('button', { name: 'Bottom options' })))
+		act(runFrame)
+		expect(lifted.boxes).toEqual([
+			{ x: 0, y: 0, w: 200, h: 200 },
+			{ x: 50, y: 180, w: 100, h: 120 },
+		])
+		cleanup()
+		expect(lifted.boxes).toEqual([])
+		rect.mockRestore()
 	})
 })

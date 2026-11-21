@@ -22,6 +22,8 @@ export const randomizerExtension: Extension = {
 		'Drop an image on the card to make it the cover of the item on show. An item without one gets a cover drawn from its title.',
 		'Stamp the item on show from the stamp button: Liked and Disliked take it out of the shuffle, Unsure leaves it in. Stamps pile up on the cover with their dates, newest on top; click them for the history. Shuffling never stamps anything, and a stamp is an ordinary edit, so ⌘Z (or the Undo beside it) takes it back.',
 		'Where a shuffle lands is not an edit: undo skips it. The card keeps the last few picks under the button.',
+		'The window is square unless the card’s editor sets another shape: 16:9 for videos, 2:3 for posters, and others. A cover that hasn’t loaded in time shows its title on a blank card, never the last picture.',
+		'Ranking something on a Ranking Tiers card stamps it Liked too, so it joins “Everything I liked”.',
 		'Everything you stamp, on any card on any board, is also listed as “Everything I liked”, “Everything I disliked” and “Everything I’m unsure of”, kept in your vault. Any card that takes a list can use them: a Ranking Tiers card can rank what you liked, a Backlog can collect it.',
 		'Turning this off takes the card out of the node picker and ⌘K. Cards already on your boards keep their lists and keep working.',
 	],

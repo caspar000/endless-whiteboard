@@ -1,9 +1,11 @@
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import {
+	aspectRatio,
 	chordsFor,
 	getAssetBridge,
 	subscribeToKeymap,
 	updateNodeProps,
+	useCardPopup,
 	type NodeComponentProps,
 	type NodeShape,
 } from '@lifeboard/node-kit'
@@ -22,7 +24,7 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 import { SHUFFLE_COMMAND_ID, onShuffleRequest } from './commands'
-import { CoverFace, Thumb } from './Cover'
+import { CoverFace, Thumb, preloadCovers } from './Cover'
 import { SourceEditor } from './SourceEditor'
 import {
 	STAMPS,
@@ -92,6 +94,8 @@ function openEntry(open: ((entry: { id: string; url: string }) => void) | undefi
 
 function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<RandomizerProps>) {
 	const { source: list, items: stored, picks } = shape.props
+	// The window's shape (DARK-13): square unless the card is set to another.
+	const ratio = aspectRatio(shape.props.aspect ?? '')
 	/*
 	 * What the card shuffles, read through atoms so a source that changes (a feed reading new videos)
 	 * changes the card. The typed list is the card's own; a source's entries meet the card's stamps
@@ -196,6 +200,8 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		const count = reduce ? 1 : flipCount(listed.length)
 		const sequence = flipSequence(listed.map((item) => item.id), from?.id ?? null, target.id, count)
 		const durations = flipDurations(count)
+		// The covers it will flip through start loading now; any not in by its turn shows a placeholder.
+		preloadCovers(sequence.map((id) => byId.get(id) ?? target))
 		const total = reduce ? 400 : durations.reduce((a, b) => a + b, 0) + 600
 		const progress = fillRef.current?.animate?.([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: total, easing: 'linear', fill: 'forwards' })
 
@@ -264,6 +270,9 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		setMenu(null)
 		setAnnounce(`Removed the ${STAMPS[latest.kind].label} stamp from ${current.title}.`)
 	}
+
+	// A menu draws past the card's edge while it is open, rather than being cut off by it (DARK-13).
+	useCardPopup(editor, shape.id, menu !== null)
 
 	// Menus close on a click anywhere else, and on Escape.
 	const headRef = useRef<HTMLDivElement>(null)
@@ -460,7 +469,8 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 				<span className="lb-rand__pin lb-rand__pin--l" aria-hidden="true" />
 				<span className="lb-rand__pin lb-rand__pin--r" aria-hidden="true" />
 				<div
-					className={`lb-rand__stage${dropping ? ' lb-rand__stage--drop' : ''}`}
+					className={`lb-rand__stage${dropping ? ' lb-rand__stage--drop' : ''}${ratio ? ' lb-rand__stage--shaped' : ''}`}
+					style={ratio ? { aspectRatio: String(ratio) } : undefined}
 					role="img"
 					aria-label={
 						shown

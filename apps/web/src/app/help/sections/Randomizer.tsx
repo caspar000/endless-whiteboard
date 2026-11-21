@@ -100,6 +100,12 @@ export function Randomizer({ go }: SectionProps) {
 					is in the menu too, everything in it at once.
 				</p>
 				<p>
+					A cover that hasn't loaded by the time the flap reaches it shows its title on a blank card rather
+					than the last picture, and the covers a shuffle will flip through start loading as soon as you
+					press it. The card's editor sets the <strong>window</strong>'s shape: square, or 16:9 for videos,
+					2:3 for posters and others, the flap still splitting it in two equal halves.
+				</p>
+				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in
 					your system, the cover fades to the pick instead of flipping.
 				</p>

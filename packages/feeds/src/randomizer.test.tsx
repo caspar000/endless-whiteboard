@@ -128,4 +128,31 @@ describe('a randomizer connected to a YouTube channel', () => {
 		expect(open).toHaveBeenCalledWith('https://www.youtube.com/watch?v=benclock5aa', '_blank', 'noopener,noreferrer')
 		expect(getWatched()['yt:benclock5aa']).toBeTruthy()
 	})
+
+	it('shows a placeholder, never the last picture, while a video’s thumbnail loads (DARK-13)', () => {
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
+		fireEvent.change(screen.getByLabelText('Shuffle from'), { target: { value: sourceKey } })
+		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+
+		const stage = within(card()).getByRole('img', { name: /^Video cover/ })
+		const top = stage.querySelector('.lb-rand__half--top')!
+		expect(top.querySelector('.lb-rand__ph')?.textContent).toBe('Breadboard clock part 5')
+		const picture = top.querySelector('img')!
+		expect(picture.classList.contains('lb-rand__img--loading')).toBe(true)
+		fireEvent.load(picture)
+		expect(top.querySelector('.lb-rand__ph')).toBeNull()
+		expect(top.querySelector('img')!.classList.contains('lb-rand__img--loading')).toBe(false)
+	})
+
+	it('takes the window shape it is set to (DARK-13)', () => {
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
+		fireEvent.change(screen.getByLabelText('Shuffle from'), { target: { value: sourceKey } })
+		fireEvent.change(screen.getByLabelText("The window's shape"), { target: { value: '16:9' } })
+		expect(props.aspect).toBe('16:9')
+		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+		const stage = within(card()).getByRole('img', { name: /^Video cover/ }) as HTMLElement
+		expect(stage.style.aspectRatio).toMatch(/^1\.777/)
+	})
 })

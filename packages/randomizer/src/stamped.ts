@@ -1,7 +1,19 @@
-import type { Editor, TLShape } from '@lifeboard/canvas'
-import { PLAIN_KIND, isExtensionEnabled, keyedStore, sourceEntries, type ItemSource, type SourceEntry } from '@lifeboard/node-kit'
+import { computed, type Editor, type TLShape } from '@lifeboard/canvas'
+import {
+	PLAIN_KIND,
+	foldText,
+	isExtensionEnabled,
+	keyedStore,
+	parseSourceKey,
+	sourceEntries,
+	type ItemReaction,
+	type ItemSource,
+	type ItemStamp,
+	type ItemStamps,
+	type SourceEntry,
+} from '@lifeboard/node-kit'
 import { Stamp } from 'lucide-react'
-import { STAMPS, STAMP_KINDS, TYPED_SOURCE, latestStamp, type RandomItem, type StampKind } from './model'
+import { STAMPS, STAMP_KINDS, TYPED_SOURCE, latestStamp, localDay, type RandomItem, type StampKind } from './model'
 import { RANDOMIZER_TYPE, type RandomizerProps } from './props'
 
 /**
@@ -201,4 +213,78 @@ export const stampedSource: ItemSource = {
 	choices: () => STAMP_KINDS.map((kind) => ({ id: kind, label: CHOICE_LABELS[kind], group: '' })),
 	entries: (kind) => (STAMPS[kind as StampKind] ? stampedEntries(stamped.get(), kind) : []),
 	kind: () => PLAIN_KIND,
+}
+
+/* ------------------------------------------------------------------- what the kit is told (DARK-13) */
+
+const foldedItem = (e: Pick<SourceEntry, 'title' | 'creator'>) => `${foldText(e.title)}\u0000${foldText(e.creator)}`
+
+/** Each item's latest stamp, by its folded title and creator, worked out once per change of the list. */
+const latestByItem = computed('lifeboard:randomizer-stamp-by-item', () => {
+	const out = new Map<string, StampedEntry>()
+	for (const e of Object.values(stamped.get())) {
+		const key = foldedItem(e)
+		const had = out.get(key)
+		if (!had || e.date > had.date || (e.date === had.date && e.key > had.key)) out.set(key, e)
+	}
+	return out
+})
+
+/** An item's latest stamp on any card, or `null`: what a ranking draws on its cover. */
+export function stampOf(entry: Pick<SourceEntry, 'title' | 'creator'>): ItemStamp | null {
+	const e = latestByItem.get().get(foldedItem(entry))
+	return e ? { kind: e.kind, date: e.date } : null
+}
+
+/** Where a ranking's Liked stamps are kept: as a card of their own, so no randomizer's stamps are touched. */
+export const rankingCard = (rankingId: string) => `ranking/${rankingId}`
+
+/**
+ * An item ranked stamped Liked, as the stamp button would (DARK-13), under the ranking's own card key.
+ * Nothing happens to an item already Liked, or to one ranked from the stamped lists themselves: ranking
+ * "Everything I disliked" must not move what it ranks into another list.
+ */
+export function stampRanked(all: Stamped, item: { entry: SourceEntry; from: string; rankingId: string }, today: string): Stamped {
+	if (parseSourceKey(item.from)?.sourceId === SOURCE_ID) return all
+	const { entry } = item
+	const folded = foldedItem(entry)
+	const latest = Object.values(all)
+		.filter((e) => foldedItem(e) === folded)
+		.reduce<StampedEntry | null>((had, e) => (!had || e.date > had.date || (e.date === had.date && e.key > had.key) ? e : had), null)
+	if (latest?.kind === 'liked') return all
+	const card = rankingCard(item.rankingId)
+	const itemKey = stampedKey(item.from, entry.id)
+	const key = `${card}#${itemKey}`
+	return {
+		...all,
+		[key]: {
+			key,
+			card,
+			item: itemKey,
+			source: item.from,
+			id: entry.id,
+			title: entry.title,
+			creator: entry.creator,
+			year: entry.year,
+			cover: entry.cover,
+			url: entry.url,
+			kind: 'liked',
+			date: today,
+		},
+	}
+}
+
+/** A ranked item is a liked one. */
+export const stampedReaction: ItemReaction = {
+	id: 'lifeboard.randomizer.liked-when-ranked',
+	extensionId: STAMPED_EXTENSION_ID,
+	ranked: (item) => stamped.set(stampRanked(stamped.get(), item, localDay())),
+}
+
+/** The stamps, for a ranking's badges and filters. */
+export const itemStamps: ItemStamps = {
+	extensionId: STAMPED_EXTENSION_ID,
+	sourceId: SOURCE_ID,
+	kinds: STAMP_KINDS.map((kind) => ({ id: kind, label: STAMPS[kind].label, ink: STAMPS[kind].ink })),
+	stampOf,
 }

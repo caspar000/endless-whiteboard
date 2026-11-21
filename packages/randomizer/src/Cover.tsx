@@ -1,5 +1,5 @@
-import { hashText, setDraggedItem, useItemCover } from '@lifeboard/node-kit'
-import type { CSSProperties } from 'react'
+import { generatedCover, hashText, setDraggedItem, useItemCover } from '@lifeboard/node-kit'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { RandomItem, SourceKind } from './model'
 import { Postmark } from './Postmark'
 
@@ -52,12 +52,52 @@ export function StampPile({ item, fresh }: { item: RandomItem; fresh: boolean })
  */
 export function CoverFace({ item, shape, fresh = false }: { item: RandomItem; shape: CoverShape; /** Its latest stamp has just come down. */ fresh?: boolean }) {
 	const url = useItemCover(item, shape)
+	const [ready, setReady] = useState<string | null>(null)
+	const [failed, setFailed] = useState<string | null>(null)
+	const img = useRef<HTMLImageElement>(null)
+	// A picture already in the cache is ready before the first paint: no placeholder flashes up.
+	useLayoutEffect(() => {
+		const el = img.current
+		if (el?.complete && el.naturalWidth > 0) setReady(url)
+	}, [url])
+	const src = failed === url ? generatedCover(item, shape) : url
+	const loading = ready !== url && failed !== url
+	/*
+	 * A fresh <img> for each picture (`key`), and a placeholder until it has loaded (DARK-13). Changing
+	 * the `src` of the same element keeps the old picture up until the new one arrives, so a shuffle
+	 * faster than the covers loaded flipped through the same cover again and again.
+	 */
 	return (
 		<div className={`lb-rand__face lb-rand__face--${shape}`}>
-			<img className="lb-rand__img" src={url} alt="" draggable={false} />
+			{loading && (
+				<div className="lb-rand__ph">
+					<span>{item.title}</span>
+				</div>
+			)}
+			<img
+				key={src}
+				ref={img}
+				className={loading ? 'lb-rand__img lb-rand__img--loading' : 'lb-rand__img'}
+				src={src}
+				alt=""
+				draggable={false}
+				onLoad={() => setReady(url)}
+				onError={() => setFailed(url)}
+			/>
 			{item.stamps.length > 0 && <StampPile item={item} fresh={fresh} />}
 		</div>
 	)
+}
+
+/** Starts loading the pictures a shuffle is about to flip through, so they're there when it does. */
+export function preloadCovers(items: readonly RandomItem[]): void {
+	if (typeof Image === 'undefined') return
+	for (const item of items) {
+		if (!item.cover || item.cover.startsWith('asset:')) continue
+		const pic = new Image()
+		pic.decoding = 'async'
+		pic.src = item.cover
+	}
 }
 
 /**

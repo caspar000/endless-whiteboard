@@ -17,7 +17,7 @@ const itemValidator = T.object({
 
 const pickValidator = T.object({ source: T.string, id: T.string })
 
-const versions = createShapePropsMigrationIds(RANDOMIZER_TYPE, { OneSource: 1 })
+const versions = createShapePropsMigrationIds(RANDOMIZER_TYPE, { OneSource: 1, Aspect: 2 })
 
 /** Header, the square window, two rows of tiles, the button and the last picks, at the default width. */
 export const RANDOMIZER_MIN_HEIGHT = 520
@@ -41,6 +41,7 @@ export const randomizerNodeDefinition: NodeDefinition<RandomizerProps> = {
 		items: T.arrayOf(itemValidator),
 		picks: T.arrayOf(pickValidator),
 		autoHeight: T.boolean,
+		aspect: T.string,
 	},
 	migrations: createShapePropsMigrationSequence({
 		sequence: [
@@ -54,9 +55,19 @@ export const randomizerNodeDefinition: NodeDefinition<RandomizerProps> = {
 					Object.assign(before, { source, items, picks })
 				},
 			},
+			{
+				// The window can take another shape than square (DARK-13): a card from before is square.
+				id: versions.Aspect,
+				up(props) {
+					props.aspect = ''
+				},
+				down(props) {
+					delete props.aspect
+				},
+			},
 		],
 	}),
-	defaultProps: () => ({ source: NO_SOURCE, items: [], picks: [], autoHeight: true }),
+	defaultProps: () => ({ source: NO_SOURCE, items: [], picks: [], autoHeight: true, aspect: '' }),
 	defaultSize: { w: 360, h: RANDOMIZER_MIN_HEIGHT },
 	autoHeight: { minHeight: RANDOMIZER_MIN_HEIGHT },
 	component: RandomizerCard,

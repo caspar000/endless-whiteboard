@@ -6,11 +6,14 @@
 // Registers `node.randomizer` with tldraw's *type* system (see shape-types.ts). Imported for its side
 // effect on the module graph; must stay above the value exports.
 import './shape-types'
-import { registerItemSource } from '@lifeboard/node-kit'
-import { stampedSource } from './stamped'
+import { registerItemReaction, registerItemSource, registerItemStamps } from '@lifeboard/node-kit'
+import { itemStamps, stampedReaction, stampedSource } from './stamped'
 
 // "Everything I liked", and the other stamps, for any card that takes a list (DARK-11).
 registerItemSource(stampedSource)
+// A ranked item is stamped Liked, and a ranking can show and filter by stamps (DARK-13).
+registerItemReaction(stampedReaction)
+registerItemStamps(itemStamps)
 
 export { randomizerExtension } from './extension'
 export { randomizerNodeDefinition } from './definition'

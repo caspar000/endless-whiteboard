@@ -1,4 +1,4 @@
-import { generatedCover, hashText, setDraggedItem, useItemCover } from '@lifeboard/node-kit'
+import { generatedCover, hashText, setDraggedItem, useItemCover, useItemCoverState } from '@lifeboard/node-kit'
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { RandomItem, SourceKind } from './model'
 import { Postmark } from './Postmark'
@@ -51,7 +51,8 @@ export function StampPile({ item, fresh }: { item: RandomItem; fresh: boolean })
  * split flap shows half of one of these, so the stamps flip with the art.
  */
 export function CoverFace({ item, shape, fresh = false }: { item: RandomItem; shape: CoverShape; /** Its latest stamp has just come down. */ fresh?: boolean }) {
-	const url = useItemCover(item, shape)
+	// A dropped picture still being fetched from the store is loading too: its drawn cover is no answer.
+	const { url, pending } = useItemCoverState(item, shape)
 	const [ready, setReady] = useState<string | null>(null)
 	const [failed, setFailed] = useState<string | null>(null)
 	const img = useRef<HTMLImageElement>(null)
@@ -61,7 +62,7 @@ export function CoverFace({ item, shape, fresh = false }: { item: RandomItem; sh
 		if (el?.complete && el.naturalWidth > 0) setReady(url)
 	}, [url])
 	const src = failed === url ? generatedCover(item, shape) : url
-	const loading = ready !== url && failed !== url
+	const loading = pending || (ready !== url && failed !== url)
 	/*
 	 * A fresh <img> for each picture (`key`), and a placeholder until it has loaded (DARK-13). Changing
 	 * the `src` of the same element keeps the old picture up until the new one arrives, so a shuffle

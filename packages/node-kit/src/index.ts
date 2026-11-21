@@ -162,7 +162,7 @@ export {
 } from './itemSources'
 // A cover for any item, drawn from its title when it has no picture.
 export { generatedCover, hashText } from './generatedCover'
-export { useItemCover } from './itemCover'
+export { useItemCover, useItemCoverState } from './itemCover'
 // What extensions say about each other's items (DARK-13): ranked, stamped, and the shape of a cover.
 export {
 	COVER_ASPECTS,
@@ -252,6 +252,7 @@ export { getIconBridge, setIconBridge, type IconBridge } from './icons'
 export {
 	getAssetBridge,
 	setAssetBridge,
+	useAsset,
 	useAssetUrl,
 	type AssetBridge,
 } from './assets'

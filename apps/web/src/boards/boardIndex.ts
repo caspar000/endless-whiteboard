@@ -89,7 +89,10 @@ function updateBoards(kv: KvStore, change: (boards: BoardMeta[]) => BoardMeta[])
 	return run
 }
 
-export async function createBoard(kv: KvStore, name = 'Untitled board'): Promise<BoardMeta> {
+/** The name "New board" gives. */
+export const UNTITLED_BOARD = 'Untitled board'
+
+export async function createBoard(kv: KvStore, name = UNTITLED_BOARD): Promise<BoardMeta> {
 	const now = Date.now()
 	const board: BoardMeta = { id: newBoardId(), name, createdAt: now, updatedAt: now }
 	await updateBoards(kv, (boards) => [...boards, board])

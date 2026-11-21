@@ -163,6 +163,12 @@ export async function deleteServerBoard(id: string): Promise<void> {
 	await clearSyncCache(id).catch(() => {})
 }
 
+/** The board as the server has it now, or `undefined` when it has none. Throws when it can't be asked. */
+export async function getServerBoard(id: string): Promise<BoardMeta | undefined> {
+	const board = ((await (await api('/boards')).json()) as ServerBoard[]).find((b) => b.id === id)
+	return board && toMeta(board)
+}
+
 /** Whether the server has this board: how an interrupted move tells which step it reached. */
 export async function serverHasBoard(id: string): Promise<boolean> {
 	return ((await (await api('/boards')).json()) as ServerBoard[]).some((board) => board.id === id)

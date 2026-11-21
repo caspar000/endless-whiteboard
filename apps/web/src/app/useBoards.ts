@@ -8,6 +8,7 @@ import {
 	setBoardLook,
 	type BoardLookPatch,
 	type BoardMeta,
+	UNTITLED_BOARD,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
 import { forgetUntouched } from '../boards/untouchedBoards'
@@ -104,7 +105,7 @@ export function useBoards(): BoardsApi {
 	)
 
 	const create = useCallback(
-		async (name = 'Untitled board') => {
+		async (name = UNTITLED_BOARD) => {
 			// Offline, a new board starts on this device; it can be moved to the server later.
 			const board = server && serverOnline ? await createServerBoard(name) : await createBoard(platform.kv, name)
 			await refresh()
@@ -116,7 +117,7 @@ export function useBoards(): BoardsApi {
 	const rename = useCallback(
 		async (id: string, name: string) => {
 			// Any rename keeps the board, even back to the name it had (boards/untouchedBoards.ts).
-			forgetUntouched(id)
+			await forgetUntouched(platform.kv, id)
 			if (isServerBoard(id)) await updateServerBoard(id, { name })
 			else await renameBoard(platform.kv, id, name)
 			await refresh()
@@ -135,7 +136,7 @@ export function useBoards(): BoardsApi {
 
 	const setLook = useCallback(
 		async (id: string, patch: BoardLookPatch) => {
-			forgetUntouched(id)
+			await forgetUntouched(platform.kv, id)
 			if (isServerBoard(id)) await updateServerBoard(id, patch)
 			else await setBoardLook(platform.kv, id, patch)
 			await refresh()
@@ -145,7 +146,6 @@ export function useBoards(): BoardsApi {
 
 	const remove = useCallback(
 		async (id: string) => {
-			forgetUntouched(id)
 			const shared = server?.find((board) => board.id === id)
 			if (shared && isSharedWithMe(shared)) {
 				// Not ours to delete: it just leaves this account's list.
@@ -155,6 +155,7 @@ export function useBoards(): BoardsApi {
 				await deleteServerBoard(id)
 				await deleteBoardThumbnail(platform.kv, id)
 			} else await deleteBoard(platform, id)
+			await forgetUntouched(platform.kv, id)
 			await refresh()
 		},
 		[platform, server, isServerBoard, refresh]

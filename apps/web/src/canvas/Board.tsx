@@ -633,7 +633,7 @@ function BoardCanvas({
 					const stopTrackingKinds = trackToolKinds(editor)
 					// A board just made with "New board" is deleted on the way out until something is done
 					// to it (boards/untouchedBoards.ts). Last, so nothing the board does as it opens counts.
-					const stopWatchingUntouched = watchUntouchedBoard(editor, board.id)
+					const stopWatchingUntouched = watchUntouchedBoard(editor, board.id, platform.kv)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor

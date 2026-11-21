@@ -2,9 +2,9 @@ import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
-import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
+import { getBoard, listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { markPendingBoardKind } from '../boards/pendingKind'
-import { isUntouched, markUntouched } from '../boards/untouchedBoards'
+import { deleteIfUntouched, markUntouched } from '../boards/untouchedBoards'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
@@ -17,7 +17,7 @@ import {
 	saveBoardThumbnail,
 } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
-import { uploadServerThumbnail } from '../server/serverVault'
+import { getServerBoard, uploadServerThumbnail } from '../server/serverVault'
 import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
@@ -482,11 +482,11 @@ export function App() {
 			} else {
 				// Deleted on the way out if nothing is done to it (boards/untouchedBoards.ts). A kind of board
 				// arrives with its contents and its name, so it is kept like any board you made something on.
-				markUntouched(board.id)
+				await markUntouched(platform.kv, board.id)
 			}
 			await openBoard(board)
 		},
-		[api, openBoard]
+		[api, platform, openBoard]
 	)
 
 	const closeBoardTab = useCallback(
@@ -540,8 +540,15 @@ export function App() {
 	useEffect(() => {
 		const left = lastShownBoardId.current
 		lastShownBoardId.current = shownBoardId
-		if (left && left !== shownBoardId && isUntouched(left)) void removeBoard(left)
-	}, [shownBoardId, removeBoard])
+		if (!left || left === shownBoardId) return
+		const onServer = boardsRef.current.find((board) => board.id === left)?.vault === 'server'
+		void deleteIfUntouched(left, {
+			kv: platform.kv,
+			editor: editors.current.get(left) ?? null,
+			current: () => (onServer ? getServerBoard(left) : getBoard(platform.kv, left)),
+			remove: () => removeBoard(left),
+		}).catch((error) => console.error('Lifeboard: could not delete an untouched board.', error))
+	}, [shownBoardId, platform, removeBoard])
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on

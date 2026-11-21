@@ -86,6 +86,19 @@ export function Randomizer({ go }: SectionProps) {
 					never lands on the one already showing.
 				</p>
 				<p>
+					Pointed at a{' '}
+					<Jump to="ranking-tiers" go={go}>
+						ranking
+					</Jump>{' '}
+					whose weighted shuffle is on, the card draws by the ranking's tiers instead: an album in a tier
+					weighted 4 comes up four times as often as one in a tier weighted 1, and what isn't ranked stays
+					out of the draw. A{' '}
+					<Jump to="backlog" go={go}>
+						backlog
+					</Jump>{' '}
+					is in the menu too, everything in it at once.
+				</p>
+				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in
 					your system, the cover fades to the pick instead of flipping.
 				</p>
@@ -108,6 +121,19 @@ export function Randomizer({ go }: SectionProps) {
 				<p>
 					A stamp is an ordinary edit: <Keys keys={['⌘Z']} />, or the <strong>Undo</strong> beside it,
 					takes it back.
+				</p>
+				<p>
+					Everything you stamp, on any card on any board, is also kept in your vault as{' '}
+					<strong>Everything I liked</strong>, <strong>Everything I disliked</strong> and{' '}
+					<strong>Everything I'm unsure of</strong>. Other cards can use them: rank what you liked with{' '}
+					<Jump to="ranking-tiers" go={go}>
+						Ranking Tiers
+					</Jump>
+					, or collect it in a{' '}
+					<Jump to="backlog" go={go}>
+						Backlog
+					</Jump>
+					. An album stamped on two cards is listed once, under its newest stamp.
 				</p>
 			</Section>
 		</>

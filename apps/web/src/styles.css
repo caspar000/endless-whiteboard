@@ -14966,6 +14966,103 @@ button.lb-props__eye:hover {
 	}
 }
 
+/* Help → Ranking Tiers and → Backlog (DARK-11): the cards as mock-ups from the app's tokens. */
+.lb-demo--tiers {
+	display: grid;
+	gap: 6px;
+	margin-bottom: 24px;
+	padding: 16px;
+}
+.lb-demo__tier {
+	display: grid;
+	grid-template-columns: 110px 28px minmax(0, 1fr) 56px;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 8px;
+	font-size: 12px;
+}
+.lb-demo__tier:nth-child(odd) {
+	background: color-mix(in srgb, var(--lb-text) 3%, transparent);
+}
+.lb-demo__tier-name {
+	font-weight: 600;
+}
+.lb-demo__tier-weight,
+.lb-demo__tier-odds {
+	color: var(--lb-text-dim);
+	font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.lb-demo__tier-odds {
+	text-align: right;
+}
+.lb-demo__tier-covers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-demo__tier-covers i {
+	width: 22px;
+	height: 22px;
+	border-radius: 3px;
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+}
+.lb-demo--backlog {
+	display: grid;
+	grid-template-columns: repeat(3, 96px);
+	justify-content: center;
+	gap: 14px;
+	margin-bottom: 24px;
+	padding: 16px;
+}
+.lb-demo__bl-tile {
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	font-size: 12px;
+}
+.lb-demo__bl-tile figcaption {
+	display: grid;
+}
+.lb-demo__bl-tile figcaption span {
+	color: var(--lb-text-faint);
+	font-size: 10px;
+}
+.lb-demo__bl-thumb {
+	position: relative;
+	display: block;
+	aspect-ratio: 1;
+	border-radius: 6px;
+	background: var(--lb-surface-2);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+}
+.lb-demo__bl-thumb--stack {
+	background: var(--lb-bg-raised);
+}
+.lb-demo__bl-thumb--stack i {
+	position: absolute;
+	top: 20%;
+	width: 52%;
+	aspect-ratio: 1;
+	border-radius: 4px;
+	background: var(--lb-surface-2);
+	box-shadow: 0 0 0 1px var(--lb-border-strong), 0 4px 10px rgb(0 0 0 / 25%);
+}
+.lb-demo__bl-thumb--stack i:nth-child(1) {
+	left: 8%;
+	transform: rotate(-9deg);
+}
+.lb-demo__bl-thumb--stack i:nth-child(2) {
+	left: 24%;
+	top: 15%;
+	transform: rotate(-2deg);
+}
+.lb-demo__bl-thumb--stack i:nth-child(3) {
+	left: 40%;
+	transform: rotate(7deg);
+}
+
 /* ======================================================== floating chrome */
 /* Last in the file, so these win over the dock, dice and tldraw rules they adjust. */
 

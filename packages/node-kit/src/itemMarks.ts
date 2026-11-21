@@ -1,4 +1,4 @@
-import { atom } from '@lifeboard/canvas'
+import { atom, type Editor } from '@lifeboard/canvas'
 import { isExtensionEnabled } from './registry'
 import type { SourceEntry } from './itemSources'
 
@@ -20,6 +20,9 @@ export interface RankedItem {
 	from: string
 	/** The ranking it was ranked in. */
 	rankingId: string
+	/** The board it was ranked on, and the card, so what a reaction puts on the board goes beside it. */
+	editor?: Editor
+	shapeId?: string
 }
 
 export interface ItemReaction {

@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { setAssetBridge, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
-import { RANDOMIZER_TYPE, randomizerNodeDefinition, type RandomizerProps } from '@lifeboard/randomizer'
+import { RANDOMIZER_TYPE, randomizerNodeDefinition, replaceStamped, type RandomizerProps } from '@lifeboard/randomizer'
 import { useMemo, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // The barrel, as the app loads it: this is what registers Feeds with the randomizer.
@@ -194,5 +194,23 @@ describe('a randomizer connected to a YouTube channel', () => {
 		fireEvent.load(top().querySelector('img')!)
 		expect(top().querySelector('img')!.getAttribute('src')).toBe('blob:b')
 		expect(top().querySelector('.lb-rand__ph')).toBeNull()
+	})
+
+	it('takes an album ranked on a Ranking Tiers card out of its shuffle, with the ranking’s stamp (DARK-13)', () => {
+		const typed = (id: string) => ({ id, source: 'list', title: `Record ${id}`, creator: 'Band', year: '', cover: '', stamps: [] })
+		mount()
+		act(() => setBoardProps((p) => ({ ...p, source: 'list', items: [typed('a'), typed('b')], picks: [{ source: 'list', id: 'a' }] })))
+		expect(within(card()).getByRole('button', { name: /^Shuffle/ }).getAttribute('aria-disabled')).toBe('false')
+		// Ranked elsewhere: the vault's stamped list has the ranking's Liked stamp on Record a, by title and artist.
+		act(() =>
+			replaceStamped({
+				'ranking/r1#feeds:all|x': { key: 'ranking/r1#feeds:all|x', card: 'ranking/r1', item: 'feeds:all|x', source: 'feeds:all', id: 'x', title: 'record A', creator: 'band', year: '', cover: '', url: '', kind: 'liked', date: '2026-11-21' },
+			})
+		)
+		expect(within(card()).getByText(/Ranked, so/)).toBeTruthy()
+		expect(within(card()).queryByRole('button', { name: 'Undo' })).toBeNull()
+		// Only Record b is left to shuffle to, and the card stored none of it.
+		expect(props.items.every((i) => i.stamps.every((s) => !('ranked' in s)))).toBe(true)
+		act(() => replaceStamped({}))
 	})
 })

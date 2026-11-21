@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tick } from './ops'
 import { rankedTickReaction, worksFor } from './rankedTick'
 import { getItems, putItems, resetSyllabus, type ItemDef } from './syllabus'
 import { searchTrack } from './track/search'
+
+// The tick as the list makes it, watched: a ranked work is ticked the same way, write-up and all.
+vi.mock('./ops', async (importOriginal) => {
+	const real = await importOriginal<typeof import('./ops')>()
+	return { ...real, tick: vi.fn(real.tick) }
+})
 
 const item = (itemId: string, over: Partial<ItemDef> = {}): ItemDef => ({
 	itemId,
@@ -59,6 +66,14 @@ describe('a ranked item ticks its work (DARK-13)', () => {
 		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Iliad'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1' })
 		expect(getItems()['a/homer/iliad']).toMatchObject({ done: true })
 		expect(getItems()['a/homer/odyssey']).toMatchObject({ done: false })
+	})
+
+	it('files its write-up beside the ranking card it was ranked on, as a tick in the list does', () => {
+		putItems(ITEMS)
+		const editor = {} as never
+		vi.mocked(tick).mockImplementationOnce(() => {})
+		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Odyssey'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', editor, shapeId: 'shape:rank' })
+		expect(tick).toHaveBeenLastCalledWith(editor, 'a/homer/odyssey', true, 'shape:rank')
 	})
 })
 

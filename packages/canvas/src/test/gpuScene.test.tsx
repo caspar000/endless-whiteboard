@@ -195,6 +195,18 @@ describe('the GPU scene, under what the page draws over every shape', () => {
 		scene.above.set([])
 		expect(scene.isDrawn(a)).toBe(true)
 	})
+	it('leaves to the page a shape a card with a menu open overlaps, alongside the property cards (DARK-13)', () => {
+		setRendererMode('gpu')
+		up()
+		const scene = getGpuScene(editor)
+		scene.above.set([{ x: 1000, y: 1000, w: 10, h: 10 }])
+		scene.lifted.set([{ x: 300, y: 30, w: 40, h: 40 }])
+		// Box b, at (300, 0)–(400, 50), is under the menu; box a is not.
+		expect(scene.isDrawn(b)).toBe(false)
+		expect(scene.isDrawn(a)).toBe(true)
+		scene.lifted.set([])
+		expect(scene.isDrawn(b)).toBe(true)
+	})
 })
 
 describe('reading computed colours', () => {

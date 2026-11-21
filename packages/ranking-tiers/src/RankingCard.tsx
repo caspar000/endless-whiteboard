@@ -258,7 +258,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	 */
 	const move = (entry: SourceEntry, from: string, to: string, beforeId: string | null, said?: string) => {
 		change((r) => moveItem(r, entry.id, to, beforeId), said)
-		if (from === UNRANKED && to !== UNRANKED) itemRanked({ entry, from: ranking.source, rankingId })
+		if (from === UNRANKED && to !== UNRANKED) itemRanked({ entry, from: ranking.source, rankingId, editor, shapeId: shape.id })
 	}
 	const tierName = (id: string) => (id === UNRANKED ? 'Unranked' : (ranking.tiers.find((t) => t.id === id)?.name ?? ''))
 
@@ -428,7 +428,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 						<MoreHorizontal size={16} aria-hidden />
 					</button>
 					{typeof menu === 'object' && menu?.tier === tier.id && (
-						<div className="lb-rank__pop lb-rank__tier-menu" role="menu" onPointerDown={swallow}>
+						<div className="lb-rank__pop lb-rank__tier-menu" role="menu" data-card-popup onPointerDown={swallow}>
 							<button type="button" role="menuitem" onClick={() => (setMenu(null), setRenaming(tier.id))}>
 								<Pencil size={14} aria-hidden /> Rename
 							</button>
@@ -538,7 +538,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					<Settings2 size={16} aria-hidden />
 				</button>
 				{settingsOpen && (
-					<div className="lb-rank__pop lb-rank__settings" role="dialog" aria-label="Ranking settings" onPointerDown={swallow} onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+					<div className="lb-rank__pop lb-rank__settings" role="dialog" data-card-popup aria-label="Ranking settings" onPointerDown={swallow} onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
 						<label className="lb-rank__field">
 							<span>Name</span>
 							<input

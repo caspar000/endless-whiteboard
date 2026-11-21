@@ -13,7 +13,7 @@ import {
 	type SourceEntry,
 } from '@lifeboard/node-kit'
 import { Stamp } from 'lucide-react'
-import { STAMPS, STAMP_KINDS, TYPED_SOURCE, latestStamp, localDay, type RandomItem, type StampKind } from './model'
+import { STAMPS, STAMP_KINDS, TYPED_SOURCE, latestStamp, localDay, type RandomItem, type Stamp as CardStamp, type StampKind } from './model'
 import { RANDOMIZER_TYPE, type RandomizerProps } from './props'
 
 /**
@@ -217,6 +217,9 @@ export const stampedSource: ItemSource = {
 
 /* ------------------------------------------------------------------- what the kit is told (DARK-13) */
 
+/** Where a ranking's stamps are filed, as card keys: `ranking/<id>`. */
+const RANKING_CARD = 'ranking/'
+
 const foldedItem = (e: Pick<SourceEntry, 'title' | 'creator'>) => `${foldText(e.title)}\u0000${foldText(e.creator)}`
 
 /** Each item's latest stamp, by its folded title and creator, worked out once per change of the list. */
@@ -236,8 +239,33 @@ export function stampOf(entry: Pick<SourceEntry, 'title' | 'creator'>): ItemStam
 	return e ? { kind: e.kind, date: e.date } : null
 }
 
+/**
+ * The stamps rankings gave, by folded title and creator (DARK-13): what a randomizer card counts as
+ * its own too, so an album ranked on any board is out of every card's shuffle.
+ */
+const rankedByItem = computed('lifeboard:randomizer-ranked-stamps', () => {
+	const out = new Map<string, CardStamp[]>()
+	for (const e of Object.values(stamped.get())) {
+		if (!e.card.startsWith(RANKING_CARD)) continue
+		const key = foldedItem(e)
+		out.set(key, [...(out.get(key) ?? []), { kind: e.kind, date: e.date, ranked: true }])
+	}
+	for (const list of out.values()) list.sort((a, b) => a.date.localeCompare(b.date))
+	return out
+})
+
+/** The stamps rankings gave an item, oldest first. Read reactively. */
+export function rankedStampsOf(item: Pick<SourceEntry, 'title' | 'creator'>): readonly CardStamp[] {
+	return rankedByItem.get().get(foldedItem(item)) ?? []
+}
+
+/** Read reactively: every ranked item's stamps, for a card to look its items up in. */
+export const getRankedStamps = (): ReadonlyMap<string, readonly CardStamp[]> => rankedByItem.get()
+export { foldedItem }
+
+
 /** Where a ranking's Liked stamps are kept: as a card of their own, so no randomizer's stamps are touched. */
-export const rankingCard = (rankingId: string) => `ranking/${rankingId}`
+export const rankingCard = (rankingId: string) => `${RANKING_CARD}${rankingId}`
 
 /**
  * An item ranked stamped Liked, as the stamp button would (DARK-13), under the ranking's own card key.

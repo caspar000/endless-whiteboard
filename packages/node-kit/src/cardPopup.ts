@@ -1,4 +1,4 @@
-import { atom, type Editor } from '@lifeboard/canvas'
+import { atom, getGpuScene, type Editor } from '@lifeboard/canvas'
 import { useEffect } from 'react'
 
 /**
@@ -7,8 +7,41 @@ import { useEffect } from 'react'
  * A node is clipped to its box while it isn't being edited (`registry.tsx`), so its corners stay
  * round and nothing it draws strays over the board. A menu near its bottom edge was clipped with it,
  * cut off half-way down. While a card says a menu is open, the factory lets it draw past its box and
- * lifts it over the shapes around it, and the GPU layer leaves it to the page.
+ * lifts it over the shapes around it, and the GPU layer leaves it to the page, along with any shape
+ * it could draw that the card or its menu overlaps (the layer lies over the page, so it would draw
+ * that shape over the menu). A menu marks itself `data-card-popup` so its box is measured.
  */
+
+type Box = { x: number; y: number; w: number; h: number }
+
+/** Per editor, what each card with a menu open covers, in page space. */
+const lifted = new WeakMap<Editor, Map<string, Box[]>>()
+
+/** The card's box and its open menus', in page space. */
+function measure(editor: Editor, shapeId: string): Box[] {
+	const boxes: Box[] = []
+	const bounds = editor.getShapePageBounds(shapeId as never)
+	if (bounds) boxes.push({ x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h })
+	const el = typeof document === 'undefined' ? null : document.getElementById(shapeId)
+	for (const menu of Array.from(el?.querySelectorAll<HTMLElement>('[data-card-popup]') ?? [])) {
+		const r = menu.getBoundingClientRect()
+		const a = editor.screenToPage({ x: r.left, y: r.top })
+		const b = editor.screenToPage({ x: r.right, y: r.bottom })
+		boxes.push({ x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y })
+	}
+	return boxes
+}
+
+/** Tells the GPU layer what a card with a menu open covers now, or (`null`) that it covers nothing. */
+function setLifted(editor: Editor, shapeId: string, boxes: Box[] | null): void {
+	// A stand-in editor (a test's) has no store and no GPU layer to tell.
+	if (!(editor as Partial<Editor>).store) return
+	const mine = lifted.get(editor) ?? new Map<string, Box[]>()
+	lifted.set(editor, mine)
+	if (boxes) mine.set(shapeId, boxes)
+	else mine.delete(shapeId)
+	getGpuScene(editor).lifted.set([...mine.values()].flat())
+}
 
 const open = atom<ReadonlySet<string>>('lifeboard:card-popups', new Set())
 
@@ -38,8 +71,12 @@ export function useCardPopup(editor: Editor, shapeId: string, isOpen: boolean): 
 		const menuId = cardPopupMenuId(shapeId)
 		setOpen(shapeId, true)
 		editor.addOpenMenu(menuId)
+		// Measured once the menu is drawn.
+		const frame = requestAnimationFrame(() => setLifted(editor, shapeId, measure(editor, shapeId)))
 		return () => {
+			cancelAnimationFrame(frame)
 			setOpen(shapeId, false)
+			setLifted(editor, shapeId, null)
 			editor.deleteOpenMenu(menuId)
 		}
 	}, [editor, shapeId, isOpen])

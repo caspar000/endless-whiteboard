@@ -207,7 +207,7 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 					<Ellipsis size={16} aria-hidden />
 				</button>
 				{menu && (
-					<div className="lb-feed__menu" role="menu" onPointerDown={swallow}>
+					<div className="lb-feed__menu" role="menu" data-card-popup onPointerDown={swallow}>
 						<button type="button" role="menuitem" onClick={() => openPanel(null)}>
 							<Settings2 size={14} aria-hidden /> Manage sources
 						</button>

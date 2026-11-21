@@ -24,6 +24,7 @@ import {
 	sourceKey,
 	storeItem,
 	withEntries,
+	withRankings,
 	type RandomItem,
 	type SourceEntry,
 	type RandomWords,
@@ -337,5 +338,33 @@ describe('a weighted draw (DARK-11)', () => {
 		const [shown] = withEntries([], FEED, [{ id: 'a', title: 'A', creator: '', year: '', cover: '', url: '', weight: 4 }])
 		expect(shown?.weight).toBe(4)
 		expect(storeItem([], shown!, { stamps: [{ kind: 'liked', date: '2026-11-21' }] })[0]).not.toHaveProperty('weight')
+	})
+})
+
+describe('stamps a ranking gave (DARK-13)', () => {
+	const ranked = (date: string): Stamp => ({ kind: 'liked', date, ranked: true })
+
+	it('count on the card: a ranked album is Liked, and out of the shuffle', () => {
+		const items = withRankings([item('a'), item('b')], (i) => (i.id === 'a' ? [ranked('2026-11-21')] : []))
+		expect(isOut(items[0]!)).toBe(true)
+		expect(inShuffle(items, TYPED_SOURCE).map((i) => i.id)).toEqual(['b'])
+	})
+
+	it('sit among the card’s own by day, after the card’s on the same day', () => {
+		const [a] = withRankings([item('a', [{ kind: 'unsure', date: '2026-11-21' }, { kind: 'disliked', date: '2026-11-25' }])], () => [ranked('2026-11-21')])
+		expect(a!.stamps.map((s) => [s.kind, !!s.ranked])).toEqual([
+			['unsure', false],
+			['liked', true],
+			['disliked', false],
+		])
+	})
+
+	it('are never stored on the card', () => {
+		const [a] = withRankings([item('a', [{ kind: 'unsure', date: '2026-11-20' }])], () => [ranked('2026-11-21')])
+		const stored = storeItem([], a!, { stamps: [...a!.stamps, { kind: 'disliked', date: '2026-11-22' }] })
+		expect(stored[0]!.stamps).toEqual([
+			{ kind: 'unsure', date: '2026-11-20' },
+			{ kind: 'disliked', date: '2026-11-22' },
+		])
 	})
 })

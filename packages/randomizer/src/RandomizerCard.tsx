@@ -41,17 +41,20 @@ import {
 	lastPicks,
 	latestStamp,
 	localDay,
+	ownStamps,
 	pickNext,
 	recordPick,
 	shortDate,
 	storeItem,
 	withEntries,
+	withRankings,
 	type RandomItem,
 	type StampKind,
 } from './model'
 import { Postmark } from './Postmark'
 import type { RandomizerProps } from './props'
 import { resolveSource } from './sources'
+import { foldedItem, getRankedStamps } from './stamped'
 import { clack, isMuted, setMuted, stampThump, subscribeToMuted, thunk, wakeAudio } from './sound'
 import { Tiles, type TilesHandle } from './Tiles'
 
@@ -110,7 +113,9 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		[list]
 	)
 	const kind = view.kind
-	const items = view.type === 'source' ? withEntries(stored, list, view.entries) : stored
+	// What rankings stamped counts here too (DARK-13): a ranked album is Liked, and out of the shuffle.
+	const ranked = useValue('lifeboard:randomizer-ranked', () => getRankedStamps(), [])
+	const items = withRankings(view.type === 'source' ? withEntries(stored, list, view.entries) : stored, (item) => ranked.get(foldedItem(item)) ?? [])
 	const ofList = itemsOf(items, list)
 	const current = currentItem(items, picks, list)
 	const pool = inShuffle(items, list)
@@ -256,7 +261,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 		if (!current || busy || isOut(current)) return
 		wakeAudio()
 		const date = localDay()
-		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: [...current.stamps, { kind: stampKind, date }] }) })
+		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: [...ownStamps(current), { kind: stampKind, date }] }) })
 		setJustStamped(current.id)
 		setAnnounce(`Stamped ${STAMPS[stampKind].label}. ${current.title} ${STAMPS[stampKind].out ? 'is out of the shuffle' : 'stays in the shuffle'}.`)
 		if (reducedMotion()) stampThump()
@@ -264,8 +269,9 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	}
 
 	const undoStamp = () => {
-		if (!current || busy || !latest) return
-		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: current.stamps.slice(0, -1) }) })
+		// A ranking's stamp is the ranking's: only the card's own last stamp comes off.
+		if (!current || busy || !latest || latest.ranked) return
+		updateNodeProps(editor, shape, { items: storeItem(stored, current, { stamps: ownStamps(current).slice(0, -1) }) })
 		setJustStamped(null)
 		setMenu(null)
 		setAnnounce(`Removed the ${STAMPS[latest.kind].label} stamp from ${current.title}.`)
@@ -439,7 +445,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 						{muted ? <VolumeX size={16} aria-hidden /> : <Volume2 size={16} aria-hidden />}
 					</button>
 					{menu === 'stamp' && current && (
-						<div className="lb-rand__pop lb-rand__stamp-menu" role="menu" aria-label={`Stamp this ${kind.one}`} onKeyDown={onMenuKey} onPointerDown={swallow}>
+						<div className="lb-rand__pop lb-rand__stamp-menu" role="menu" data-card-popup aria-label={`Stamp this ${kind.one}`} onKeyDown={onMenuKey} onPointerDown={swallow}>
 							<p className="lb-rand__pop-title">Stamp this {kind.one}</p>
 							<div className="lb-rand__stamp-opts">
 								{STAMP_KINDS.map((k, i) => (
@@ -525,7 +531,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 					/>
 				)}
 				{menu === 'history' && current && (
-					<div className="lb-rand__pop lb-rand__history" role="dialog" aria-label="Stamp history" onPointerDown={swallow}>
+					<div className="lb-rand__pop lb-rand__history" role="dialog" data-card-popup aria-label="Stamp history" onPointerDown={swallow}>
 						<p className="lb-rand__pop-title">Stamp history</p>
 						<ol className="lb-rand__timeline">
 							{current.stamps.map((s, i) => (
@@ -533,6 +539,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 									<span className="lb-rand__timeline-dot" style={{ '--lb-rand-ink': STAMPS[s.kind].ink } as CSSProperties} aria-hidden="true" />
 									<span>
 										{STAMPS[s.kind].label} · {shortDate(s.date)}
+										{s.ranked ? ' · ranked' : ''}
 									</span>
 								</li>
 							))}
@@ -562,11 +569,14 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 				<p className="lb-rand__note">
 					<span className="lb-rand__note-ring" style={{ '--lb-rand-ink': STAMPS[latest.kind].ink } as CSSProperties} aria-hidden="true" />
 					<span>
-						Stamped <b>{STAMPS[latest.kind].label}</b> — {STAMPS[latest.kind].out ? 'out of the shuffle.' : 'stays in the shuffle.'}
+						{latest.ranked ? 'Ranked, so ' : 'Stamped '}
+						<b>{STAMPS[latest.kind].label}</b> — {STAMPS[latest.kind].out ? 'out of the shuffle.' : 'stays in the shuffle.'}
 					</span>
-					<button type="button" className="lb-rand__undo" onPointerDown={swallow} onClick={undoStamp}>
-						Undo
-					</button>
+					{!latest.ranked && (
+						<button type="button" className="lb-rand__undo" onPointerDown={swallow} onClick={undoStamp}>
+							Undo
+						</button>
+					)}
 				</p>
 			)}
 			<p className="lb-rand__sr" aria-live="polite">

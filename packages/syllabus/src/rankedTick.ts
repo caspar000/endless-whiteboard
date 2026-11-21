@@ -1,6 +1,8 @@
+import type { TLShapeId } from '@lifeboard/canvas'
 import { foldText, parseSourceKey, type ItemReaction, type SourceEntry } from '@lifeboard/node-kit'
+import { tick } from './ops'
 import { albumParts, syllabusRandomizerSource } from './randomizerSource'
-import { getItems, setDone, type ItemDef } from './syllabus'
+import { getItems, type ItemDef } from './syllabus'
 
 /**
  * Ranking something ticks it in the syllabus (DARK-13): put an album of /mu/core in a tier, and that
@@ -11,8 +13,8 @@ import { getItems, setDone, type ItemDef } from './syllabus'
  * randomizer reads a work (`syllabusEntries`): an album as album and artist, anything else under its
  * entry's name. A side with no creator matches on the title alone.
  *
- * Only the tick: the write-up note a tick in the list files beside it (`ops.ts`) would land on the
- * ranking's board, one per item ranked, so none is made.
+ * A tick as the list makes one (`ops.ts`): the day recorded, and its write-up note filed beside the
+ * ranking card it was ranked on, unless that board has one for it already.
  */
 
 type Items = Readonly<Record<string, ItemDef>>
@@ -43,8 +45,8 @@ export function worksFor(entry: Pick<SourceEntry, 'id' | 'title' | 'creator'>, f
 export const rankedTickReaction: ItemReaction = {
 	id: 'lifeboard.syllabus.done-when-ranked',
 	extensionId: 'lifeboard.syllabus',
-	ranked: ({ entry, from }) => {
+	ranked: ({ entry, from, editor, shapeId }) => {
 		const all = getItems()
-		for (const itemId of worksFor(entry, from, all)) if (!all[itemId]!.done) setDone(itemId, true)
+		for (const itemId of worksFor(entry, from, all)) if (!all[itemId]!.done) tick(editor ?? null, itemId, true, shapeId as TLShapeId | undefined)
 	},
 }

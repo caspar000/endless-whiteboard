@@ -80,8 +80,9 @@ export function RankingTiers({ go }: SectionProps) {
 					<Jump to="syllabus" go={go}>
 						syllabus
 					</Jump>{' '}
-					has the same work (the same album by the same artist), it is ticked there. Moving it between tiers,
-					or back to the rail, changes neither.
+					has the same work (the same album by the same artist), it is ticked there, its write-up note filed
+					beside the ranking. Every randomizer counts the Liked stamp too, so a ranked album is out of their
+					shuffles. Moving it between tiers, or back to the rail, changes none of this.
 				</p>
 				<p>
 					<strong>+</strong> at the top adds a tier at the bottom. Click a tier's name to rename it, and use

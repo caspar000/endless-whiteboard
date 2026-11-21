@@ -240,7 +240,7 @@ describe('a ranking card', () => {
 		fireEvent.dragStart(within(screen.getByRole('list', { name: 'Unranked' })).getAllByRole('listitem')[0]!, { dataTransfer: drag })
 		fireEvent.dragOver(band('Often'), { dataTransfer: drag })
 		fireEvent.drop(band('Often'), { dataTransfer: drag })
-		expect(heard).toEqual([{ entry: albums[3], from: ALBUMS, rankingId: 'r1' }])
+		expect(heard).toEqual([{ entry: albums[3], from: ALBUMS, rankingId: 'r1', editor: expect.anything(), shapeId: 'shape:rank' }])
 
 		// Between tiers, or back to the rail, it is already ranked.
 		fireEvent.keyDown(within(band('Often')).getAllByRole('listitem')[0]!, { key: 'ArrowUp' })

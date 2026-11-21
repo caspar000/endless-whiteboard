@@ -106,6 +106,14 @@ export function Randomizer({ go }: SectionProps) {
 					2:3 for posters and others, the flap still splitting it in two equal halves.
 				</p>
 				<p>
+					An album you rank on a{' '}
+					<Jump to="ranking-tiers" go={go}>
+						Ranking Tiers
+					</Jump>{' '}
+					card is Liked on every randomizer: out of the shuffle, with the stamp on its cover, marked as the
+					ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves it.
+				</p>
+				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in
 					your system, the cover fades to the pick instead of flipping.
 				</p>

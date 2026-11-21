@@ -1,4 +1,4 @@
-import { Jump, Section, type SectionProps } from '../kit'
+import { Jump, Keys, Section, type SectionProps } from '../kit'
 
 /**
  * A collapsed parent with its checklist, and a track with its next row lit.
@@ -114,6 +114,11 @@ export function Syllabus({ go }: SectionProps) {
 					Every entry folds and unfolds to its works and shows its progress, and the next undone entry is
 					lit. On an entry's row the tick finishes its next work, so an entry can be worked through without
 					unfolding it. Drag the card's edge to make it taller; double-click it to scroll inside.
+				</p>
+				<p>
+					Type in the <strong>search</strong> field under the track's name to show only the entries and works
+					whose title has every word you typed. An entry whose works match opens to show just those;
+					<Keys keys={['Esc']} /> clears the search.
 				</p>
 				<p className="lb-help__aside">
 					Order is a guide, not a gate: anything can be ticked at any time. Click a track's state to make it

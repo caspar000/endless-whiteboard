@@ -15886,6 +15886,39 @@ button.lb-props__eye:hover {
 	color: var(--lb-text-faint);
 	font-size: 11px;
 }
+/* Searching the list (DARK-13). */
+.lb-track__search {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	margin-top: 4px;
+	padding: 0 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 6px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text-faint);
+	cursor: text;
+	pointer-events: auto;
+}
+.lb-track__search:focus-within {
+	border-color: var(--lb-accent);
+}
+.lb-track__search input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--lb-text);
+	font: 12px var(--lb-font);
+	outline: none;
+}
+.lb-track__found {
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
 .lb-track__empty {
 	margin: 6px 0 2px;
 	color: var(--lb-text-faint);

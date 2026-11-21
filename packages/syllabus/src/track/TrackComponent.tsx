@@ -1,9 +1,11 @@
 import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
-import { memo, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
+import { Search } from 'lucide-react'
+import { memo, useEffect, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { TRACK_TYPE, type TrackProps, type TrackShape } from '../board'
 import { Tick } from '../item/ItemComponent'
 import { formatProgress, parseOrder } from '../model'
+import { searchTrack, type TrackSearch } from './search'
 import { putCard, tickNext } from '../ops'
 import {
 	cycleTrackState,
@@ -42,16 +44,20 @@ interface RowProps {
 	number?: number
 	/** Controls at the end of the line (moving an entry, while editing). */
 	extra?: ReactNode
+	/** What a search left showing, or `null` with no search. */
+	found: TrackSearch | null
 }
 
 /** One entry of the outline, and its works below it when it is unfolded. */
-function Row({ item, editor, shape, open, next, depth, number, extra }: RowProps) {
+function Row({ item, editor, shape, open, next, depth, number, extra, found }: RowProps) {
 	const all = getItems()
 	const anchor = shape.id as TLShapeId
 	const works = item.children.map((id) => all[id]).filter((w): w is ItemDef => !!w)
 	const done = isItemDone(item.itemId)
 	const progress = works.length ? progressOf(item.itemId) : null
-	const unfolded = works.length > 0 && open.has(item.itemId)
+	// A search unfolds an entry whose works it found, and shows only those, unless the entry itself matched.
+	const shownWorks = found && !found.matched.has(item.itemId) ? works.filter((w) => found.shown.has(w.itemId)) : works
+	const unfolded = works.length > 0 && (open.has(item.itemId) || !!found?.within.has(item.itemId))
 	const step = works.length && !done ? nextLeafOf(item.itemId) : null
 	return (
 		<li className={['lb-track__row', done && 'lb-track__row--done', item.itemId === next && 'lb-track__row--next', item.draft && 'lb-draft'].filter(Boolean).join(' ')}>
@@ -110,8 +116,17 @@ function Row({ item, editor, shape, open, next, depth, number, extra }: RowProps
 			</div>
 			{unfolded && (
 				<ol className="lb-track__works">
-					{works.map((work) => (
-						<Row key={work.itemId} item={work} editor={editor} shape={shape} open={open} next={next} depth={depth + 1} />
+					{shownWorks.map((work) => (
+						<Row
+							key={work.itemId}
+							item={work}
+							editor={editor}
+							shape={shape}
+							open={open}
+							next={next}
+							depth={depth + 1}
+							found={found && !found.matched.has(item.itemId) ? found : null}
+						/>
 					))}
 				</ol>
 			)}
@@ -131,6 +146,17 @@ function TrackComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Tra
 		() => ({ track: getTracks()[shape.props.trackId], items: getItems(), index: getSkillIndex() }),
 		[shape.props.trackId]
 	)
+	const [query, setQuery] = useState('')
+	const [searching, setSearching] = useState(false)
+	// While the search field has the keys, the board's shortcuts stand aside.
+	useEffect(() => {
+		if (!searching) return
+		const id = `track-search-${shape.id}`
+		editor.addOpenMenu(id)
+		return () => {
+			editor.deleteOpenMenu(id)
+		}
+	}, [editor, shape.id, searching])
 	if (!view) {
 		return (
 			<div className="lb-track lb-track--missing">
@@ -144,6 +170,8 @@ function TrackComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Tra
 	const doneCount = entries.filter((e) => isItemDone(e.itemId)).length
 	const next = entries.find((e) => !isItemDone(e.itemId))?.itemId ?? null
 	const open = new Set(parseOrder(shape.props.open))
+	const found = query.trim() ? searchTrack(entries, all, query) : null
+	const listed = entries.map((item, i) => ({ item, number: i + 1 })).filter(({ item }) => !found || found.shown.has(item.itemId))
 
 	const body = (
 		<div className={`lb-track lb-track--${view.state}${view.draft ? ' lb-draft' : ''}`}>
@@ -169,11 +197,36 @@ function TrackComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Tra
 				</span>
 				{!isEditing && entries.length > 12 && <span>double-click to scroll</span>}
 			</div>
+			{entries.length > 0 && (
+				<label className="lb-track__search">
+					<Search size={12} aria-hidden />
+					<input
+						type="search"
+						value={query}
+						placeholder="Search this list"
+						aria-label={`Search ${view.name || 'this track'}`}
+						onPointerDown={swallow}
+						onFocus={() => setSearching(true)}
+						onBlur={() => setSearching(false)}
+						onChange={(e) => setQuery(e.target.value)}
+						onKeyDown={(e) => {
+							e.stopPropagation()
+							if (e.key === 'Escape') {
+								if (query) setQuery('')
+								else e.currentTarget.blur()
+							}
+						}}
+					/>
+					{found && <span className="lb-track__found">{found.count}</span>}
+				</label>
+			)}
 			{entries.length === 0 ? (
 				<p className="lb-track__empty">This track has no entries yet.</p>
+			) : listed.length === 0 ? (
+				<p className="lb-track__empty">Nothing in this list matches “{query.trim()}”.</p>
 			) : (
 				<ol className="lb-track__list">
-					{entries.map((item, i) => (
+					{listed.map(({ item, number }) => (
 						<Row
 							key={item.itemId}
 							item={item}
@@ -182,7 +235,8 @@ function TrackComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Tra
 							open={open}
 							next={next}
 							depth={0}
-							number={i + 1}
+							number={number}
+							found={found}
 							extra={
 								isEditing && (
 									<span className="lb-track__move">

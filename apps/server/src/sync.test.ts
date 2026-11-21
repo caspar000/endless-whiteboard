@@ -200,8 +200,11 @@ describe('board index', () => {
 		expect((await deleteIfUntouched(commented.id)).statusCode).toBe(409)
 		expect(await listed(commented.id)).toBe(true)
 
-		// A plain delete is the Delete button's, and asks nothing.
-		expect((await app.inject({ method: 'DELETE', url: `/api/boards/${edited.id}`, headers: { cookie } })).statusCode).toBe(204)
+		// A plain delete is the Delete button's, and asks nothing. It also leaves the vault as the other
+		// tests expect it, which share its data.
+		for (const board of [edited, renamed, coloured, reverted, renamedBack, commented]) {
+			expect((await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie } })).statusCode).toBe(204)
+		}
 	})
 
 	it('keeps an id it is given, refuses a duplicate, and refuses ids that are not file-safe', async () => {
@@ -451,6 +454,7 @@ describe('assets', () => {
 		await put(app, cookie, hash, bytes)
 		const client = await connect(port, cookie, board.id)
 		client.put([AssetRecordType.create({ type: 'image', props: { name: 'p', src: `asset:${hash}`, w: 1, h: 1, mimeType: 'image/png', isAnimated: false } })])
+		await new Promise((r) => setTimeout(r, 300))
 
 		const zip = unzipSync(new Uint8Array((await app.inject({ url: '/api/export', headers: { cookie } })).rawPayload))
 		const manifest = JSON.parse(new TextDecoder().decode(zip['manifest.json']))
@@ -588,6 +592,7 @@ describe('accounts', () => {
 		await until(() => bobStore.get(page.id) !== undefined)
 		const bobsPage = PageRecordType.create({ name: 'From the viewer', index: 'a6' as never })
 		bobStore.put([bobsPage])
+		await new Promise((r) => setTimeout(r, 300))
 		expect(ownerStore.get(bobsPage.id)).toBeUndefined()
 
 		// The vault sees who has it, and can take the link back.
@@ -628,6 +633,7 @@ describe('accounts', () => {
 
 		// Not someone else's words.
 		putAll(bobStore, [{ ...owners, body: toRichText('Edited by Bob') }])
+		await new Promise((r) => setTimeout(r, 300))
 		expect(richTextToPlainText(read<TLComment>(ownerStore, owners.id)!.body)).toBe('Thanks')
 
 		// Resolving anyone's thread is allowed.

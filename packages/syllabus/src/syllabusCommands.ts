@@ -112,7 +112,7 @@ export const syllabusCommands: readonly Command[] = [
 			if (!editor) return
 			for (const card of editor.getSelectedShapes().filter(isItem)) {
 				const item = getItem(card.props.itemId)
-				if (item && !item.children.length) tick(editor, item.itemId, !item.done, card.id)
+				if (item && !item.children.length) tick(item.itemId, !item.done)
 			}
 		},
 	},
@@ -205,7 +205,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 		id: 'skill.item.complete',
 		title: 'Complete a syllabus item',
 		description:
-			'Ticks (or unticks) a syllabus item by its item id. It is vault data, so every board shows the tick; with a board open, its write-up note is filed there from its template. Only items without works can be ticked; an entry is done when its works are.',
+			'Ticks (or unticks) a syllabus item by its item id. It is vault data, so every board shows the tick. Only items without works can be ticked; an entry is done when its works are.',
 		params: {
 			itemId: { type: 'string', description: 'The item id, e.g. "adler/011-aristotle/poetics".', required: true },
 			done: { type: 'boolean', description: 'False to reopen it. Defaults to true.' },
@@ -214,7 +214,7 @@ export const syllabusOperations: readonly RegisteredOperation[] = [
 			const item = getItem(args.itemId)
 			if (!item) return fail(`No item "${args.itemId}" in the vault.`)
 			if (item.children.length) return fail(`"${item.title}" has works; tick those instead.`)
-			tick(ctx.editor, item.itemId, args.done !== false)
+			tick(item.itemId, args.done !== false)
 			return ok({ itemId: args.itemId, done: args.done !== false })
 		},
 	}),

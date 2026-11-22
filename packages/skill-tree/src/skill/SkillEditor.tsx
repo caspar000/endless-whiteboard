@@ -35,7 +35,7 @@ export function SkillEditor({ skill, editor, status }: { skill: SkillShape; edit
 				.filter((e) => e.tags.includes(skill.props.nodeId) && !e.children.length)
 				.flatMap((e) => {
 					const look = lookOf(e.itemId)
-					return look && (!look.done || look.hollow) ? [{ itemId: e.itemId, title: look.title, done: look.done }] : []
+					return look && !look.done ? [{ itemId: e.itemId, title: look.title, done: look.done }] : []
 				})
 				.slice(0, 8),
 		[skill.props.nodeId]

@@ -13510,8 +13510,13 @@ button.lb-props__eye:hover {
 }
 .lb-rand-pm {
 	position: absolute;
-	/* The ring is as wide as it was when the wavy lines trailed off it (86% of a 120-wide box). */
-	width: 49%;
+	/*
+	 * The ring covers about 80% of the cover (DARK-14): it is 62 of the box's 68 units, so the box is
+	 * 88% of the cover's shorter side. On a cover wider or taller than square, the height cap keeps it
+	 * inside, and the drawing stays round in the middle of the box.
+	 */
+	width: 88%;
+	max-height: 88%;
 	height: auto;
 	aspect-ratio: 1;
 	overflow: visible;
@@ -15853,11 +15858,6 @@ button.lb-props__eye:hover {
 .lb-skill__check:disabled {
 	cursor: default;
 }
-/* Done, but the evidence note is still only its template: ticked, and visibly not yet counted. */
-.lb-skill__check--hollow {
-	accent-color: var(--lb-text-faint);
-	opacity: 0.7;
-}
 .lb-skill__title {
 	flex: 1;
 	min-width: 0;
@@ -17157,14 +17157,11 @@ button.lb-props__eye:hover {
 	overflow: hidden;
 	overflow-wrap: anywhere;
 }
-/* Done: filled with the accent. Done but not yet written up: only its outline. */
+/* Done: filled with the accent. */
 .lb-work--done .lb-work__disc {
 	background: var(--lb-accent-tint);
 	border-color: var(--lb-accent);
 	color: var(--lb-accent);
-}
-.lb-work--hollow .lb-work__disc {
-	background: var(--lb-surface);
 }
 .lb-work--done .lb-work__title {
 	color: var(--lb-text-faint);

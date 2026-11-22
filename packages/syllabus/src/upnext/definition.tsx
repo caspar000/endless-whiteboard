@@ -5,7 +5,7 @@ import {
 	type NodeComponentProps,
 	type NodeDefinition,
 } from '@lifeboard/node-kit'
-import { stopEventPropagation, T, useValue, type TLShapeId } from '@lifeboard/canvas'
+import { stopEventPropagation, T, useValue } from '@lifeboard/canvas'
 import { ListTodo } from 'lucide-react'
 import { memo, type SyntheticEvent } from 'react'
 import { UP_NEXT_TYPE, type UpNextProps } from '../board'
@@ -84,7 +84,7 @@ function UpNextComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Up
 							checked={false}
 							onPointerDown={swallow}
 							onClick={swallow}
-							onChange={() => tick(editor, current.step.itemId, true, shape.id as TLShapeId)}
+							onChange={() => tick(current.step.itemId, true)}
 						/>
 						<span className="lb-upnext__item">
 							<span>{current.step.title}</span>

@@ -1,5 +1,5 @@
 import { NodeEditorPopover, type NodeComponentProps } from '@lifeboard/node-kit'
-import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
+import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import { memo, type PointerEvent, type SyntheticEvent } from 'react'
 import type { SkillItemProps } from '../board'
 import { formatProgress } from '../model'
@@ -10,27 +10,26 @@ import { ItemEditor } from './ItemEditor'
 /** Stops a click on a control from also selecting or dragging the shape. */
 const swallow = (e: SyntheticEvent | PointerEvent) => e.stopPropagation()
 
-/** A tick box for a leaf: hollow when done but not yet written up. */
-export function Tick({ item, editor, anchor }: { item: ItemDef; editor: Editor; anchor: TLShapeId }) {
+/** A tick box for a leaf. An entry's box is ticked by its works. */
+export function Tick({ item }: { item: ItemDef }) {
 	const done = isItemDone(item.itemId)
-	const written = !!getSkillIndex()[item.itemId]?.evidence
 	const parent = item.children.length > 0
 	return (
 		<input
 			type="checkbox"
-			className={`lb-skill__check${done && !parent && !written ? ' lb-skill__check--hollow' : ''}`}
+			className="lb-skill__check"
 			checked={done}
 			disabled={parent}
-			title={parent ? 'Done when its works are' : done && !written ? 'Done, no write-up yet: write in its note to count it' : undefined}
+			title={parent ? 'Done when its works are' : undefined}
 			onPointerDown={swallow}
 			onClick={swallow}
-			onChange={() => tick(editor, item.itemId, !done, anchor)}
+			onChange={() => tick(item.itemId, !done)}
 		/>
 	)
 }
 
 /** Works under an item, each with its tick, and their own works indented below. */
-function Works({ item, editor, anchor, depth = 0 }: { item: ItemDef; editor: Editor; anchor: TLShapeId; depth?: number }) {
+function Works({ item, depth = 0 }: { item: ItemDef; depth?: number }) {
 	const all = getItems()
 	const works = item.children.map((id) => all[id]).filter((w): w is ItemDef => !!w)
 	if (!works.length || depth > 4) return null
@@ -39,11 +38,11 @@ function Works({ item, editor, anchor, depth = 0 }: { item: ItemDef; editor: Edi
 			{works.map((work) => (
 				<li key={work.itemId} className={isItemDone(work.itemId) ? 'lb-skill__li--done' : undefined}>
 					<span className="lb-skill__li-row">
-						<Tick item={work} editor={editor} anchor={anchor} />
+						<Tick item={work} />
 						<span>{work.title || 'Untitled'}</span>
 						{work.core && <span className="lb-skill__core">core</span>}
 					</span>
-					<Works item={work} editor={editor} anchor={anchor} depth={depth + 1} />
+					<Works item={work} depth={depth + 1} />
 				</li>
 			))}
 		</ul>
@@ -58,7 +57,6 @@ function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	// A fresh object per change of the vault or the index, so the card redraws when a work changes too,
 	// not only the item itself.
 	const { item } = useValue('lifeboard:skill-item', () => ({ item: getItems()[shape.props.itemId], index: getSkillIndex() }), [shape.props.itemId])
-	const anchor = shape.id as TLShapeId
 
 	if (!item) {
 		return (
@@ -74,7 +72,7 @@ function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	const body = (
 		<div className={`lb-skill${done ? ' lb-skill--done' : ''}${item.draft ? ' lb-draft' : ''}`}>
 			<div className="lb-skill__row">
-				<Tick item={item} editor={editor} anchor={anchor} />
+				<Tick item={item} />
 				<span className="lb-skill__title">{item.title || 'Untitled item'}</span>
 			</div>
 			<div className="lb-skill__meta">
@@ -88,7 +86,7 @@ function ItemComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 					<span style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
 				</div>
 			)}
-			<Works item={item} editor={editor} anchor={anchor} />
+			<Works item={item} />
 		</div>
 	)
 

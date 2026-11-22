@@ -380,7 +380,8 @@ export function removeEvidence(boardId: string, shapeId: string): void {
 
 /**
  * One item as the evaluators see it: its effective tags (its own and every ancestor's), whether it
- * is done, and whether it counts as evidence (done, a leaf, and a write-up holding something).
+ * is done, and whether it counts as evidence: a work done (DARK-14). It used to ask for a write-up
+ * holding something too, and nothing files those any more, so a ticked work went uncounted.
  */
 export interface IndexEntry {
 	itemId: string
@@ -433,7 +434,7 @@ export function buildIndex(all: Items, notes: Evidence): SkillIndex {
 			tags: tagsOf(item),
 			done,
 			doneAt: leaf ? item.doneAt : done ? latestDoneAt(item, all) : '',
-			evidence: done && leaf && !!note?.written,
+			evidence: done && leaf,
 			method: note?.method ?? '',
 			core: item.core,
 			parentItemId: item.parent,

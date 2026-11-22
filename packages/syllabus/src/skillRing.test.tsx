@@ -98,4 +98,21 @@ describe("a /mu/core genre's ring", () => {
 		expect(caption(node)).toBe('0/2')
 		expect(fill(node)).toBeNull()
 	})
+
+	/*
+	 * DARK-14: Romantic at 1 of its albums ticked showed nothing, because only a written-up note
+	 * counted and a tick no longer files one. A tick alone is progress; a prerequisite still is not.
+	 */
+	it('fills from a tick alone, with no write-up, and only from what is done', () => {
+		const node = mountAncient()
+		expect(fill(node)).toBeNull()
+
+		act(() => void setDone(ALBUM, true, '2026-11-22'))
+		expect(caption(node)).toBe('1/2')
+		expect(fill(node)!.getAttribute('stroke-dasharray')).toBe(`${RING / 2} ${RING}`)
+
+		act(() => void setDone(ALBUM, false))
+		expect(caption(node)).toBe('0/2')
+		expect(fill(node)).toBeNull()
+	})
 })

@@ -5,13 +5,16 @@ import { getItems, getSkillIndex, isItemDone, progressOf } from './syllabus'
 import { syllabusMakers } from './syllabusTrees'
 
 /**
- * The syllabus as a source for skill trees (sources.ts): its write-ups are evidence, its entries and
- * works are what a view draws beside the nodes they are tagged to, nodes can ask for an item written
- * up (`item:`), done (`done:`) or a number of write-ups (`count:`), and every syllabus is something a
- * tree can be made from (syllabusTrees.ts).
+ * The syllabus as a source for skill trees (sources.ts): its works ticked are evidence, its entries
+ * and works are what a view draws beside the nodes they are tagged to, nodes can ask for a work done
+ * (`item:`), an item done (`done:`) or a number of works done (`count:`), and every syllabus is
+ * something a tree can be made from (syllabusTrees.ts).
+ *
+ * A work counts once it is ticked (DARK-14). It used to count only once its write-up note held
+ * something, and ticking no longer files that note.
  */
 
-/** Items done with a write-up, as evidence for the nodes they are tagged to. */
+/** Works done, as evidence for the nodes they are tagged to. */
 const evidence = computed<Evidence[]>('lifeboard:syllabus-evidence-for-trees', () =>
 	Object.values(getSkillIndex())
 		.filter((e) => e.evidence)
@@ -30,8 +33,8 @@ const item: RequirementKind = {
 }
 
 /**
- * An item done: a work ticked, or an entry whose works are done by its rule. Unlike `item:`, no
- * write-up is asked for; a path made from a syllabus lights its nodes this way.
+ * An item done: a work ticked, or an entry whose works are done by its rule. A path made from a
+ * syllabus lights its nodes this way.
  */
 const done: RequirementKind = {
 	key: 'done',
@@ -91,8 +94,6 @@ export const syllabusTreeSource: TreeSource = {
 			title: entry.title,
 			icon: mediumIcon(entry),
 			done,
-			// Done but no write-up yet: done, not yet evidence.
-			hollow: done && !entry.children.length && !getSkillIndex()[itemId]?.evidence,
 			draft: !!entry.draft,
 			progress: entry.children.length ? progressOf(itemId) : null,
 		}

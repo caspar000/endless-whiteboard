@@ -11,7 +11,7 @@ export function SkillTrees({ go }: SectionProps) {
 					the node › Mark as done). Other extensions teach a node more: the{' '}
 					<Jump to="syllabus" go={go}>
 						syllabus
-					</Jump> adds items done and write-ups counted.
+					</Jump> adds items done and works ticked.
 				</p>
 				<p>
 					A node is dim while its prerequisites are locked, outlined once they are open, and lit when its
@@ -56,7 +56,7 @@ export function SkillTrees({ go }: SectionProps) {
 					tree on the board to its skill nodes only and back. Each view remembers where you put its nodes:
 					come back to it and they are where you left them. A work is a small disc with the icon of what it
 					is (a book, a film, an album) and its title below; right-click it, or an entry without works, ›
-					Mark as done. Done fills it in; done but not written up yet leaves only its outline. Right-click
+					Mark as done. Done fills it in. Right-click
 					an entry › Put a card on the board for its checklist. Double-click a skill node, or press Enter,
 					to edit it. You, at the middle of Mastery, is drawn large, and its editor's <strong>Picture</strong>
 					fills it with a picture of you; any skill node can have one.

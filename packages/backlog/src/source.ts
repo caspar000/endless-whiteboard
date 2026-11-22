@@ -1,6 +1,6 @@
 import { resolveItemSource, sourceEntries, sourceKey, watchSourceKeys, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
 import { Inbox } from 'lucide-react'
-import { backlogEntries, type Backlog } from './model'
+import { backlogEntries, collectionKey, type Backlog } from './model'
 import { backlogs } from './store'
 
 export const BACKLOG_EXTENSION_ID = 'lifeboard.backlog'
@@ -26,7 +26,7 @@ export function entriesOfBacklog(backlogId: string) {
  */
 export function watchBacklog(backlogId: string): () => void {
 	return watchSourceKeys(sourceKey(BACKLOG_SOURCE_ID, backlogId), () =>
-		(backlogs.one(backlogId)?.entries ?? []).filter((e) => e.kind === 'collection').map((e) => e.id)
+		(backlogs.one(backlogId)?.entries ?? []).flatMap((e) => (e.kind === 'collection' ? [collectionKey(e)] : []))
 	)
 }
 

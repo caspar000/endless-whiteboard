@@ -14,7 +14,7 @@ import {
 } from '@lifeboard/node-kit'
 import { ArrowDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
-import { addCollection, addItem, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
+import { addCollection, addItem, collectionKey, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_SOURCE_ID, watchBacklog } from './source'
 import { backlogOrNew, shapeDropHint, updateBacklog } from './store'
@@ -86,11 +86,11 @@ function CollectionTile({ collection, open, onToggle, onRemove }: { collection: 
 	const info = useValue(
 		'lifeboard:backlog-collection',
 		() => {
-			const resolved = resolveItemSource(collection.id)
-			const entries = sourceEntries(collection.id)
+			const resolved = resolveItemSource(collectionKey(collection))
+			const entries = sourceEntries(collectionKey(collection))
 			return { name: resolved.name, kind: resolved.kind, gone: resolved.type !== 'source', count: entries.length, first: entries.slice(0, 3) }
 		},
-		[collection.id]
+		[collection.id, collection.key]
 	)
 	return (
 		<div className="lb-backlog__tile lb-backlog__tile--stack" role="listitem">
@@ -131,10 +131,10 @@ function CollectionPanel({ collection }: { collection: BacklogCollection }) {
 	const info = useValue(
 		'lifeboard:backlog-panel',
 		() => {
-			const entries = sourceEntries(collection.id)
-			return { name: resolveItemSource(collection.id).name, count: entries.length, shown: entries.slice(0, PANEL_SHOWN) }
+			const entries = sourceEntries(collectionKey(collection))
+			return { name: resolveItemSource(collectionKey(collection)).name, count: entries.length, shown: entries.slice(0, PANEL_SHOWN) }
 		},
-		[collection.id]
+		[collection.id, collection.key]
 	)
 	return (
 		<div className="lb-backlog__panel" role="region" aria-label={`${info.name}: what it holds`}>

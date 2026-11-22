@@ -155,9 +155,27 @@ describe('a backlog from before backlogs had boards (DARK-14)', () => {
 			stampOf: () => null,
 			scopeToBoard: (key, boardId) => (key === 'stamped:liked' ? `stamped:liked|${boardId}|*` : null),
 		})
+		// The randomizer's lists: the one from before boards, and board 1's, giving the album the same id.
+		const liked = [{ id: 'list|a', title: 'Ran', creator: 'Akira Kurosawa', year: '', cover: '', url: '' }]
+		registerItemSource({
+			id: 'stamped',
+			label: 'Randomizer stamps',
+			choices: () => [],
+			choice: (id) => ({ id, label: id, group: '' }),
+			entries: (id) => (id === 'liked' || id === 'liked|board-1|*' ? liked : []),
+			kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+		})
 		backlogs.put('old', { backlogId: 'old', boardId: '', name: 'Old', entries: [{ kind: 'collection', id: 'stamped:liked', via: 'Randomizer stamps' }, { kind: 'collection', id: TRACK, via: 'Syllabi' }] })
+		// A ranking of the backlog placed the album under the id the backlog gives it.
+		const before = backlogSource.entries('old').map((e) => e.id)
+		expect(before).toContain('stamped:liked|list|a')
 		claimBacklog('old', 'board-1')
-		expect(backlogs.one('old')).toMatchObject({ boardId: 'board-1', entries: [{ id: 'stamped:liked|board-1|*' }, { id: TRACK }] })
+		// It reads board 1's list now, and keeps its id, so its items keep theirs (review #38).
+		expect(backlogs.one('old')).toMatchObject({
+			boardId: 'board-1',
+			entries: [{ id: 'stamped:liked', key: 'stamped:liked|board-1|*' }, { id: TRACK }],
+		})
+		expect(backlogSource.entries('old').map((e) => e.id)).toEqual(before)
 		clearItemMarks()
 	})
 })

@@ -28,10 +28,18 @@ export interface BacklogItem {
 
 export interface BacklogCollection {
 	kind: 'collection'
-	/** The source key it holds, which is also its id here. */
+	/** The source key it holds, which is also its id here: its items' ids start with it. */
 	id: string
+	/**
+	 * The source key it reads, when that is no longer its id (DARK-14): a stamped list from before
+	 * boards, moved onto its board's own list, keeps its id so its items keep theirs.
+	 */
+	key?: string
 	via: string
 }
+
+/** The source key a collection reads. */
+export const collectionKey = (c: Pick<BacklogCollection, 'id' | 'key'>): string => c.key || c.id
 
 export type BacklogEntry = BacklogItem | BacklogCollection
 
@@ -103,7 +111,7 @@ export function addItem(backlog: Backlog, entry: SourceEntry, from: string, via:
 /** A whole source on top, kept as one; one already here moves to the top. */
 export function addCollection(backlog: Backlog, sourceKey: string, via: string): Backlog {
 	const collection: BacklogCollection = { kind: 'collection', id: sourceKey, via }
-	return { ...backlog, entries: [collection, ...backlog.entries.filter((e) => e.id !== sourceKey)] }
+	return { ...backlog, entries: [collection, ...backlog.entries.filter((e) => e.id !== sourceKey && !(e.kind === 'collection' && collectionKey(e) === sourceKey))] }
 }
 
 export function removeEntry(backlog: Backlog, id: string): Backlog {
@@ -130,7 +138,7 @@ export function backlogEntries(backlog: Backlog, entriesOf: (sourceKey: string) 
 	}
 	for (const e of backlog.entries) {
 		if (e.kind === 'item') push({ id: e.id, title: e.title, creator: e.creator, year: e.year, cover: e.cover, url: e.url })
-		else for (const { id, title, creator, year, cover, url } of entriesOf(e.id)) push({ id: itemKey(e.id, id), title, creator, year, cover, url })
+		else for (const { id, title, creator, year, cover, url } of entriesOf(collectionKey(e))) push({ id: itemKey(e.id, id), title, creator, year, cover, url })
 	}
 	return out
 }
@@ -147,7 +155,7 @@ export function readBacklog(raw: Record<string, unknown>): Backlog | null {
 	const entries: BacklogEntry[] = []
 	for (const e of Array.isArray(raw.entries) ? raw.entries : []) {
 		if (!isObject(e) || !str(e.id)) continue
-		if (e.kind === 'collection') entries.push({ kind: 'collection', id: str(e.id), via: str(e.via) })
+		if (e.kind === 'collection') entries.push({ kind: 'collection', id: str(e.id), ...(str(e.key) ? { key: str(e.key) } : {}), via: str(e.via) })
 		else if (e.kind === 'item' && str(e.title))
 			entries.push({ kind: 'item', id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), via: str(e.via) })
 	}

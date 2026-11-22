@@ -1,6 +1,6 @@
 import { atom } from '@lifeboard/canvas'
 import { getItemStamps, keyedStore } from '@lifeboard/node-kit'
-import { newBacklog, readBacklog, type Backlog } from './model'
+import { collectionKey, newBacklog, readBacklog, type Backlog } from './model'
 
 /**
  * Every backlog, kept in the vault (the app saves it beside the feeds), so a randomizer or a ranking on
@@ -25,8 +25,9 @@ export function updateBacklog(backlogId: string, change: (backlog: Backlog) => B
 
 /**
  * A backlog from before DARK-14 belongs to the first board that opens showing it. A collection of a
- * stamped list from before then (everything liked anywhere) becomes its board's own list, so another
- * board's stamps never reach it.
+ * stamped list from before then (everything liked anywhere) reads its board's own list from then on, so
+ * another board's stamps never reach it. It keeps its id, so its items keep theirs, and whatever
+ * ranked or picked them still finds them.
  */
 export function claimBacklog(backlogId: string, boardId: string): void {
 	const backlog = backlogs.one(backlogId)
@@ -35,10 +36,10 @@ export function claimBacklog(backlogId: string, boardId: string): void {
 	const scope = getItemStamps()?.scopeToBoard
 	let moved = false
 	const entries = backlog.entries.map((e) => {
-		const to = e.kind === 'collection' ? (scope?.(e.id, board) ?? null) : null
+		const to = e.kind === 'collection' ? (scope?.(collectionKey(e), board) ?? null) : null
 		if (!to) return e
 		moved = true
-		return { ...e, id: to }
+		return { ...e, key: to }
 	})
 	if (backlog.boardId && !moved) return
 	backlogs.put(backlogId, { ...backlog, boardId: board, entries })

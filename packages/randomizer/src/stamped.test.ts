@@ -133,6 +133,27 @@ describe('a card set to a list from before stamps had boards (DARK-14)', () => {
 	})
 })
 
+describe('an album stamped under different ids on two boards (DARK-14)', () => {
+	it('keeps the id the list from before boards gave it, once the list is one board’s', () => {
+		// Board 2 stamps a typed album as list|b on 1 Nov; board 1 stamps the same album as list|a on 2 Nov.
+		let all = nextStamped({}, B, [item('b', [liked('2026-11-01')], 'list', { title: 'Ran', creator: 'Akira Kurosawa' })], none)
+		all = nextStamped(all, A, [item('a', [liked('2026-11-02')], 'list', { title: 'Ran', creator: 'Akira Kurosawa' })], none)
+		const legacyId = stampedEntries(all, 'liked')[0]!.id
+		expect(legacyId).toBe(stampedKey('list', 'b'))
+
+		// A ranking on board 1 placed it under that id; its list is scoped to board 1, and still gives it.
+		const scoped = scopeToBoard('stamped:liked', 'board-1')!
+		const scope = parseStampedChoice(scoped.slice('stamped:'.length))!.scope!
+		expect(stampedEntries(all, 'liked', scope).map((e) => e.id)).toEqual([legacyId])
+		// And a randomizer's picks and stamps under it move with the card, unchanged.
+		const card = scopedCard({ source: 'stamped:liked', items: [item(legacyId, [disliked('2026-11-03')], 'stamped:liked')], picks: [{ source: 'stamped:liked', id: legacyId }] }, 'board-1')!
+		expect(card.items[0]!.id).toBe(legacyId)
+		expect(card.picks[0]!.id).toBe(legacyId)
+		// Board 2's own list gives the same album the same id.
+		expect(stampedEntries(all, 'liked', { board: 'board-2', origin: 'list' }).map((e) => e.id)).toEqual([legacyId])
+	})
+})
+
 describe('ranking an item (DARK-13, DARK-14)', () => {
 	const entry = { id: 'x1', title: 'Solaris', creator: 'Tarkovsky', year: '1972', cover: 'https://example.test/s.jpg', url: '' }
 	const today = '2026-11-21'

@@ -234,11 +234,21 @@ export const ANY_ORIGIN = '*'
 /**
  * A stamp's list, newest stamp first. One album stamped on two cards (typed into one, shuffled from a
  * ranking of this very list on another) is one album: of the same title and creator, the newest stamp
- * says which list it is in, and the first one gives its id, so a ranking of the list keeps its place.
+ * in the list's scope says which list it is in, and the first one anywhere gives its id, so a ranking
+ * of the list keeps its place.
+ *
+ * The id is the first stamp on any board, not only in the scope (DARK-14): a list from before stamps
+ * had boards, moved onto one board's, then gives each album the id it had, and the rankings, picks and
+ * stamps kept under that id still find it.
  */
 export function stampedEntries(all: Stamped, kind: string, scope?: StampScope): SourceEntry[] {
 	const groups = new Map<string, { first: StampedEntry; newest: StampedEntry }>()
 	const later = (a: StampedEntry, b: StampedEntry) => a.date > b.date || (a.date === b.date && a.key > b.key)
+	const firstAnywhere = new Map<string, StampedEntry>()
+	for (const e of Object.values(all)) {
+		const had = firstAnywhere.get(sameItem(e))
+		if (!had || later(had, e)) firstAnywhere.set(sameItem(e), e)
+	}
 	for (const e of Object.values(all)) {
 		if (scope && (!onBoard(e, scope.board) || (scope.origin !== ANY_ORIGIN && e.source !== scope.origin))) continue
 		const g = groups.get(sameItem(e))
@@ -251,7 +261,14 @@ export function stampedEntries(all: Stamped, kind: string, scope?: StampScope): 
 	return [...groups.values()]
 		.filter((g) => g.newest.kind === kind)
 		.sort((a, b) => b.newest.date.localeCompare(a.newest.date) || a.first.title.localeCompare(b.first.title))
-		.map(({ first: e, newest }) => ({ id: e.item, title: e.title, creator: e.creator, year: e.year, cover: e.cover || newest.cover, url: e.url || newest.url }))
+		.map(({ first: e, newest }) => ({
+			id: (firstAnywhere.get(sameItem(e)) ?? e).item,
+			title: e.title,
+			creator: e.creator,
+			year: e.year,
+			cover: e.cover || newest.cover,
+			url: e.url || newest.url,
+		}))
 }
 
 /**

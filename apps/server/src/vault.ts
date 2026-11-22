@@ -135,13 +135,18 @@ export class Vault {
 		return this.get(id)
 	}
 
+	/*
+	 * A rename and a change to the content each move `updated_at` past `created_at`, even within the
+	 * millisecond the board was made: a board whose two times are equal has never been edited, which is
+	 * what lets one left untouched be deleted (`api.ts`, DARK-12) and an edited one, even put back, not.
+	 */
 	rename(id: string, name: string): ServerBoard | undefined {
-		this.db.prepare('UPDATE boards SET name = ?, updated_at = ? WHERE id = ?').run(name, Date.now(), id)
+		this.db.prepare('UPDATE boards SET name = ?, updated_at = MAX(?, created_at + 1) WHERE id = ?').run(name, Date.now(), id)
 		return this.get(id)
 	}
 
 	touch(id: string, at = Date.now()): void {
-		this.db.prepare('UPDATE boards SET updated_at = ? WHERE id = ?').run(at, id)
+		this.db.prepare('UPDATE boards SET updated_at = MAX(?, created_at + 1) WHERE id = ?').run(at, id)
 	}
 
 	delete(id: string): boolean {

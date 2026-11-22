@@ -42,7 +42,8 @@ function markServerSeen(): void {
 /** A request to the server's API, for the other server modules (`accounts.ts`). Throws on failure. */
 export const serverApi = (path: string, init?: RequestInit) => api(path, init)
 
-async function api(path: string, init?: RequestInit): Promise<Response> {
+/** `accept`: statuses that are an answer rather than a failure, handed back to the caller. */
+async function api(path: string, init?: RequestInit, accept: readonly number[] = []): Promise<Response> {
 	const response = await fetch(`/api${path}`, {
 		...init,
 		headers: { ...(init?.body ? { 'content-type': 'application/json' } : {}), ...init?.headers },
@@ -54,7 +55,7 @@ async function api(path: string, init?: RequestInit): Promise<Response> {
 		window.location.assign(`/login?next=${encodeURIComponent(location.pathname + location.hash)}`)
 		throw new Error('Not logged in.')
 	}
-	if (!response.ok) {
+	if (!response.ok && !accept.includes(response.status)) {
 		const body = (await response.json().catch(() => null)) as { error?: string; choosePassword?: boolean } | null
 		if (body?.choosePassword) {
 			// Someone else set this account's password: the server wants a new one before anything else.
@@ -161,6 +162,23 @@ export async function updateServerBoard(
 export async function deleteServerBoard(id: string): Promise<void> {
 	await api(`/boards/${id}`, { method: 'DELETE' })
 	await clearSyncCache(id).catch(() => {})
+}
+
+/**
+ * Deletes a board left untouched (DARK-12), if the server finds it still is: as "New board" made it, and
+ * with nothing on it from any device. Resolves whether it went.
+ */
+export async function deleteUntouchedServerBoard(id: string): Promise<boolean> {
+	const response = await api(`/boards/${id}?ifUntouched=1`, { method: 'DELETE' }, [409])
+	if (response.status === 409) return false
+	await clearSyncCache(id).catch(() => {})
+	return true
+}
+
+/** The board as the server has it now, or `undefined` when it has none. Throws when it can't be asked. */
+export async function getServerBoard(id: string): Promise<BoardMeta | undefined> {
+	const board = ((await (await api('/boards')).json()) as ServerBoard[]).find((b) => b.id === id)
+	return board && toMeta(board)
 }
 
 /** Whether the server has this board: how an interrupted move tells which step it reached. */

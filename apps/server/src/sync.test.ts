@@ -132,6 +132,81 @@ describe('board index', () => {
 		expect((await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie } })).statusCode).toBe(404)
 	})
 
+	it('deletes a board left untouched only while it still is (DARK-12)', async () => {
+		const { app, port, cookie } = await startServer()
+		const deleteIfUntouched = (id: string) =>
+			app.inject({ method: 'DELETE', url: `/api/boards/${id}?ifUntouched=1`, headers: { cookie } })
+		const listed = async (id: string) =>
+			(await app.inject({ url: '/api/boards', headers: { cookie } })).json<{ id: string }[]>().some((b) => b.id === id)
+
+		// Opened on a device and left as it was made: it goes.
+		const untouched = await createBoard(app, cookie, 'Untitled board')
+		await connect(port, cookie, untouched.id)
+		expect((await deleteIfUntouched(untouched.id)).statusCode).toBe(204)
+		expect(await listed(untouched.id)).toBe(false)
+
+		// Another device put something on it, which the device leaving it hasn't been sent yet: it stays.
+		const edited = await createBoard(app, cookie, 'Untitled board')
+		const other = await connect(port, cookie, edited.id)
+		const page = other.allRecords().find((record) => record.typeName === 'page')!
+		other.put([other.schema.types.shape.create({ id: createShapeId('theirs'), type: 'group', parentId: page.id, index: 'a1', props: {} } as never) as TLRecord])
+		const snapshot = async () => (await app.inject({ url: `/api/boards/${edited.id}/snapshot`, headers: { cookie } })).json<{ store: Record<string, TLRecord> }>()
+		let sent = false
+		for (let i = 0; i < 250 && !sent; i++) {
+			sent = Boolean((await snapshot()).store[createShapeId('theirs')])
+			if (!sent) await new Promise((r) => setTimeout(r, 20))
+		}
+		expect(sent).toBe(true)
+		expect((await deleteIfUntouched(edited.id)).statusCode).toBe(409)
+		expect(await listed(edited.id)).toBe(true)
+
+		// Renamed, or given a look, on any device: it stays.
+		const renamed = await createBoard(app, cookie, 'Gym plan')
+		expect((await deleteIfUntouched(renamed.id)).statusCode).toBe(409)
+		const coloured = await createBoard(app, cookie, 'Untitled board')
+		await app.inject({ method: 'PATCH', url: `/api/boards/${coloured.id}`, headers: { cookie }, payload: { color: '#e5484d' } })
+		expect((await deleteIfUntouched(coloured.id)).statusCode).toBe(409)
+
+		// Edited on another device and put back before this one heard of it: still edited, so it stays.
+		const reverted = await createBoard(app, cookie, 'Untitled board')
+		const elsewhere = await connect(port, cookie, reverted.id)
+		const theirPage = elsewhere.allRecords().find((record) => record.typeName === 'page')!
+		const group = elsewhere.schema.types.shape.create({ id: createShapeId('undone'), type: 'group', parentId: theirPage.id, index: 'a1', props: {} } as never) as TLRecord
+		elsewhere.put([group])
+		const roomHas = async (id: string, record: string) =>
+			Boolean((await app.inject({ url: `/api/boards/${id}/snapshot`, headers: { cookie } })).json<{ store: Record<string, TLRecord> }>().store[record])
+		for (let i = 0; i < 250 && !(await roomHas(reverted.id, group.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		elsewhere.remove([group.id])
+		for (let i = 0; i < 250 && (await roomHas(reverted.id, group.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		expect(await roomHas(reverted.id, group.id)).toBe(false)
+		expect((await deleteIfUntouched(reverted.id)).statusCode).toBe(409)
+
+		// Renamed and named back: the same.
+		const renamedBack = await createBoard(app, cookie, 'Untitled board')
+		await app.inject({ method: 'PATCH', url: `/api/boards/${renamedBack.id}`, headers: { cookie }, payload: { name: 'Gym plan' } })
+		await app.inject({ method: 'PATCH', url: `/api/boards/${renamedBack.id}`, headers: { cookie }, payload: { name: 'Untitled board' } })
+		expect((await deleteIfUntouched(renamedBack.id)).statusCode).toBe(409)
+
+		// A comment someone left on an empty page: it stays, comment and all.
+		const commented = await createBoard(app, cookie, 'Untitled board')
+		const commenter = await connect(port, cookie, commented.id)
+		const me = (await app.inject({ url: '/api/me', headers: { cookie } })).json<{ id: string }>().id
+		const pageId = commenter.allRecords().find((record) => record.typeName === 'page')!.id as TLComment['pageId']
+		const thread = createCommentThread({ anchor: { type: 'point', x: 10, y: 20 }, createdBy: me, pageId })
+		const comment = createComment({ authorId: me, body: toRichText('Is this one for the gym?'), pageId, threadId: thread.id })
+		commenter.put([thread, comment] as unknown as TLRecord[])
+		for (let i = 0; i < 250 && !(await roomHas(commented.id, comment.id)); i++) await new Promise((r) => setTimeout(r, 20))
+		expect(await roomHas(commented.id, comment.id)).toBe(true)
+		expect((await deleteIfUntouched(commented.id)).statusCode).toBe(409)
+		expect(await listed(commented.id)).toBe(true)
+
+		// A plain delete is the Delete button's, and asks nothing. It also leaves the vault as the other
+		// tests expect it, which share its data.
+		for (const board of [edited, renamed, coloured, reverted, renamedBack, commented]) {
+			expect((await app.inject({ method: 'DELETE', url: `/api/boards/${board.id}`, headers: { cookie } })).statusCode).toBe(204)
+		}
+	})
+
 	it('keeps an id it is given, refuses a duplicate, and refuses ids that are not file-safe', async () => {
 		const { app, cookie } = await startServer()
 		const id = crypto.randomUUID()

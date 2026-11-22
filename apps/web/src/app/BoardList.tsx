@@ -52,11 +52,14 @@ function isTyping(target: EventTarget | null): boolean {
 export function BoardList({
 	api,
 	onOpen,
+	onNew,
 	onNewKind,
 	mountedIds,
 }: {
 	api: BoardsApi
 	onOpen: (board: BoardMeta) => void
+	/** Makes and opens an untitled board. The shell's, so every "New board" makes the same one. */
+	onNew: () => void
 	/** Makes and opens a kind of board an extension defines (a Zettelkasten box). */
 	onNewKind?: (kindId: string) => void
 	/** Boards with a live editor, whose previews the shell draws from that editor (app/App.tsx). */
@@ -161,11 +164,6 @@ export function BoardList({
 		}
 	}
 
-	const createAndOpen = async () => {
-		const board = await api.create()
-		onOpen(board)
-	}
-
 	return (
 		<main className="lb-home__main">
 			<header className="lb-home__header">
@@ -182,7 +180,7 @@ export function BoardList({
 								{kind.label}
 							</button>
 						))}
-					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
+					<button className="lb-btn lb-btn--primary" onClick={onNew}>
 						New board
 					</button>
 				</div>
@@ -314,7 +312,7 @@ export function BoardList({
 					<p className="lb-list__hint">
 						Create one, then pick a note or a table from the dock at the bottom of the canvas.
 					</p>
-					<button className="lb-btn lb-btn--primary" onClick={() => void createAndOpen()}>
+					<button className="lb-btn lb-btn--primary" onClick={onNew}>
 						New board
 					</button>
 				</div>

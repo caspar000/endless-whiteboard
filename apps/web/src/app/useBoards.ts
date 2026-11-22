@@ -8,14 +8,17 @@ import {
 	setBoardLook,
 	type BoardLookPatch,
 	type BoardMeta,
+	UNTITLED_BOARD,
 } from '../boards/boardIndex'
 import { deleteBoard } from '../boards/deleteBoard'
+import { forgetUntouched } from '../boards/untouchedBoards'
 import { getMoves, queueMoves, subscribeToMoves, type MoveJob } from '../boards/moveQueue'
 import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import { usePlatform } from '../platform/PlatformContext'
 import {
 	createServerBoard,
 	deleteServerBoard,
+	deleteUntouchedServerBoard,
 	listServerBoards,
 	updateServerBoard,
 } from '../server/serverVault'
@@ -38,6 +41,11 @@ export interface BoardsApi {
 	/** Sets or clears the board's colour and icon. */
 	setLook(id: string, patch: BoardLookPatch): Promise<void>
 	remove(id: string): Promise<void>
+	/**
+	 * Deletes a server board left untouched (DARK-12), if the server finds it still is. Resolves whether
+	 * it went.
+	 */
+	removeUntouchedServerBoard(id: string): Promise<boolean>
 	/**
 	 * Queues these boards to move: to the server if they are on this device, and back if they are on
 	 * the server. The queue survives a reload and shows its progress (boards/moveQueue.ts).
@@ -103,7 +111,7 @@ export function useBoards(): BoardsApi {
 	)
 
 	const create = useCallback(
-		async (name = 'Untitled board') => {
+		async (name = UNTITLED_BOARD) => {
 			// Offline, a new board starts on this device; it can be moved to the server later.
 			const board = server && serverOnline ? await createServerBoard(name) : await createBoard(platform.kv, name)
 			await refresh()
@@ -114,6 +122,8 @@ export function useBoards(): BoardsApi {
 
 	const rename = useCallback(
 		async (id: string, name: string) => {
+			// Any rename keeps the board, even back to the name it had (boards/untouchedBoards.ts).
+			await forgetUntouched(platform.kv, id)
 			if (isServerBoard(id)) await updateServerBoard(id, { name })
 			else await renameBoard(platform.kv, id, name)
 			await refresh()
@@ -132,6 +142,7 @@ export function useBoards(): BoardsApi {
 
 	const setLook = useCallback(
 		async (id: string, patch: BoardLookPatch) => {
+			await forgetUntouched(platform.kv, id)
 			if (isServerBoard(id)) await updateServerBoard(id, patch)
 			else await setBoardLook(platform.kv, id, patch)
 			await refresh()
@@ -150,9 +161,21 @@ export function useBoards(): BoardsApi {
 				await deleteServerBoard(id)
 				await deleteBoardThumbnail(platform.kv, id)
 			} else await deleteBoard(platform, id)
+			await forgetUntouched(platform.kv, id)
 			await refresh()
 		},
 		[platform, server, isServerBoard, refresh]
+	)
+
+	const removeUntouchedServerBoard = useCallback(
+		async (id: string) => {
+			const deleted = await deleteUntouchedServerBoard(id)
+			if (deleted) await deleteBoardThumbnail(platform.kv, id)
+			await forgetUntouched(platform.kv, id)
+			await refresh()
+			return deleted
+		},
+		[platform, refresh]
 	)
 
 	const move = useCallback((boards: readonly BoardMeta[]) => queueMoves(platform.kv, boards), [platform])
@@ -171,10 +194,11 @@ export function useBoards(): BoardsApi {
 			setFavorite,
 			setLook,
 			remove,
+			removeUntouchedServerBoard,
 			move,
 			refresh,
 		}),
-		[boards, loading, server, serverOnline, create, rename, setFavorite, setLook, remove, move, refresh]
+		[boards, loading, server, serverOnline, create, rename, setFavorite, setLook, remove, removeUntouchedServerBoard, move, refresh]
 	)
 }
 

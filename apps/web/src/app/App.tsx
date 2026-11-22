@@ -2,8 +2,9 @@ import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
-import { listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
+import { getBoard, listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
 import { markPendingBoardKind } from '../boards/pendingKind'
+import { deleteIfUntouched, hasContent, markUntouched, snapshotHasContent } from '../boards/untouchedBoards'
 import { Board } from '../canvas/Board'
 import { BoardLookHost } from './boardLook/BoardLookPicker'
 import { assetUploadActivityAt } from '../persistence/assetStore'
@@ -16,8 +17,8 @@ import {
 	saveBoardThumbnail,
 } from '../persistence/thumbnails'
 import { startMoves } from '../boards/moveQueue'
-import { uploadServerThumbnail } from '../server/serverVault'
-import { TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
+import { getServerBoard, uploadServerThumbnail } from '../server/serverVault'
+import { readBoardSnapshotResult, TLDRAW_PERSIST_THROTTLE_MS } from '../persistence/tldrawLocalDb'
 import { usePlatform } from '../platform/PlatformContext'
 import { setAgentBoardApi } from '../agent/boardBridge'
 import { watchBoard } from '../agent/boardContext'
@@ -478,10 +479,14 @@ export function App() {
 				// now, so the tab says what it is from the start.
 				markPendingBoardKind(board.id, kind.id)
 				if (kind.boardIcon) await api.setLook(board.id, { icon: kind.boardIcon })
+			} else {
+				// Deleted on the way out if nothing is done to it (boards/untouchedBoards.ts). A kind of board
+				// arrives with its contents and its name, so it is kept like any board you made something on.
+				await markUntouched(platform.kv, board.id)
 			}
 			await openBoard(board)
 		},
-		[api, openBoard]
+		[api, platform, openBoard]
 	)
 
 	const closeBoardTab = useCallback(
@@ -524,6 +529,47 @@ export function App() {
 		},
 		[cancelDrainFor, closeTab, api]
 	)
+
+	/**
+	 * Leaving a board made with "New board" that nothing was done to deletes it (DARK-12): for another
+	 * tab, home, settings or help, by closing its tab or by making the next new board. Each of those is
+	 * the board on screen changing, so this watches that rather than every way to leave.
+	 */
+	const shownBoardId = route.view === 'board' ? route.boardId : null
+	const lastShownBoardId = useRef(shownBoardId)
+	useEffect(() => {
+		const left = lastShownBoardId.current
+		lastShownBoardId.current = shownBoardId
+		if (!left || left === shownBoardId) return
+		const onServer = boardsRef.current.find((board) => board.id === left)?.vault === 'server'
+		void deleteIfUntouched(left, {
+			kv: platform.kv,
+			isEmpty: async () => {
+				const editor = editors.current.get(left)
+				if (editor) return !hasContent(editor)
+				// A server board's content is the server's to check, which it does as it deletes.
+				if (onServer) return true
+				const stored = await readBoardSnapshotResult(left)
+				if (stored.status === 'unreadable') throw new Error('The board could not be read.')
+				return stored.status === 'absent' || !snapshotHasContent(stored.snapshot.store)
+			},
+			current: () => (onServer ? getServerBoard(left) : getBoard(platform.kv, left)),
+			remove: async () => {
+				if (!onServer) {
+					await removeBoard(left)
+					return true
+				}
+				// The server decides first; the tab closes only if the board went.
+				const deleted = await api.removeUntouchedServerBoard(left)
+				if (deleted) {
+					cancelDrainFor(left)
+					warm.current.delete(left)
+					closeTab(left)
+				}
+				return deleted
+			},
+		}).catch((error) => console.error('Lifeboard: could not delete an untouched board.', error))
+	}, [shownBoardId, platform, api, removeBoard, cancelDrainFor, closeTab])
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on
@@ -898,6 +944,7 @@ export function App() {
 							<BoardList
 								api={listApi}
 								onOpen={(board) => void openBoard(board)}
+								onNew={() => void createAndOpen()}
 								onNewKind={(kindId) => void createAndOpen(kindId)}
 								mountedIds={mounted.map((board) => board.id)}
 							/>

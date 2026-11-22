@@ -56,6 +56,7 @@ import {
 import '@lifeboard/canvas/canvas.css'
 import { STORE_MIGRATIONS } from '@lifeboard/schema'
 import { touchBoard, type BoardMeta } from '../boards/boardIndex'
+import { watchUntouchedBoard } from '../boards/untouchedBoards'
 import { seedDemoBoard } from '../boards/demoBoard'
 import { takePendingBoardKind } from '../boards/pendingKind'
 import { usePlatform } from '../platform/PlatformContext'
@@ -630,6 +631,9 @@ function BoardCanvas({
 					const stopPhoneMode = installPhoneMode(editor)
 					// The kind each tool was last left on, for a second press and the dock's icons.
 					const stopTrackingKinds = trackToolKinds(editor)
+					// A board just made with "New board" is deleted on the way out until something is done
+					// to it (boards/untouchedBoards.ts). Last, so nothing the board does as it opens counts.
+					const stopWatchingUntouched = watchUntouchedBoard(editor, board.id, platform.kv)
 
 					return () => {
 						// Guarded: while a board is draining (see DRAIN_MS in app/App.tsx) its editor
@@ -648,6 +652,7 @@ function BoardCanvas({
 						stopEntrance()
 						stopPhoneMode()
 						stopTrackingKinds()
+						stopWatchingUntouched()
 						stopTracking()
 						stopUploading()
 						stopAuthorship()

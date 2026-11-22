@@ -26,6 +26,11 @@ const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
 /** Enough for every asset on a large board in one question. */
 const MAX_HASHES_PER_QUERY = 5000
 
+/** The name the app's "New board" gives. */
+const UNTITLED_BOARD = 'Untitled board'
+/** The records that are a board's content, whoever made them: the app keeps the same list. */
+const CONTENT = new Set(['shape', 'binding', 'asset', 'comment-thread', 'comment', 'comment-reaction'])
+
 const isTheme = (value: string): value is Theme => (THEMES as readonly string[]).includes(value)
 
 const isName = (value: unknown): value is string =>
@@ -444,8 +449,32 @@ export function registerApi(
 		}
 	)
 
-	app.delete<{ Params: { id: string } }>('/api/boards/:id', async (request, reply) => {
-		if (!access(request, reply, request.params.id, 'member')) return reply
+	/**
+	 * Whether a board is still as "New board" made it: never renamed and never changed by any device
+	 * (`updated_at` still its `created_at`, so an edit put back counts), its name, no colour or icon, and
+	 * nothing on it as the room has it now. A board that can't be read isn't.
+	 */
+	const isUntouched = (board: ServerBoard): boolean => {
+		if (board.updatedAt !== board.createdAt) return false
+		if (board.name !== UNTITLED_BOARD || board.color || board.icon) return false
+		try {
+			const snapshot = rooms.readSnapshot(board.id)
+			return !snapshot || !Object.values(snapshot.store).some((record) => CONTENT.has((record as { typeName?: string }).typeName ?? ''))
+		} catch {
+			return false
+		}
+	}
+
+	/**
+	 * `?ifUntouched` is the app deleting an untitled board left untouched (DARK-12): it goes only while it
+	 * still is, checked and deleted in one step, so an edit another device sent meanwhile keeps it (409).
+	 */
+	app.delete<{ Params: { id: string }; Querystring: { ifUntouched?: string } }>('/api/boards/:id', async (request, reply) => {
+		const found = access(request, reply, request.params.id, 'member')
+		if (!found) return reply
+		if (request.query.ifUntouched !== undefined && !isUntouched(found.board)) {
+			return reply.code(409).send({ error: 'The board has been changed.' })
+		}
 		vault.delete(request.params.id)
 		accounts.forgetBoard(request.params.id)
 		rooms.delete(request.params.id)

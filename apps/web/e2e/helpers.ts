@@ -146,22 +146,29 @@ export async function createBoard(page: Page, name?: string): Promise<void> {
 	await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 	await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Untitled board')
 	if (name) {
-		await backToList(page)
-		// Target the *untitled* row, not "the first row". The list sorts by `updatedAt`, and leaving
-		// a board bumps its timestamp asynchronously — so "first row" is genuinely racy and would
-		// sometimes rename a previously-created board instead, silently making the rest of the test
-		// operate on the wrong board.
-		const row = page.locator('.lb-list__board', { hasText: 'Untitled board' }).first()
-		await expect(row).toBeVisible()
-		await row.getByRole('button', { name: 'Rename' }).click()
-		// Resolved globally, not within `row`: clicking Rename swaps that row's title button for the
-		// input, so the row no longer contains the text "Untitled board" and a row-scoped locator
-		// would never resolve. Only one row can be renaming at a time, so this is unambiguous.
-		const input = page.getByLabel('Board name')
+		// Renamed on its tab, before leaving: an untitled board nothing was done to is deleted on the way
+		// out (DARK-12, boards/untouchedBoards.ts), so going home first would leave nothing to rename.
+		await page.locator('.lb-tabs__tab--active .lb-tabs__label').dblclick()
+		const input = page.locator('.lb-tabs').getByLabel('Board name')
 		await input.fill(name)
 		await input.press('Enter')
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(name)
+		await backToList(page)
 		await expect(page.locator('.lb-list__board', { hasText: name })).toHaveCount(1)
 	}
+}
+
+/**
+ * Puts a box on the board on screen, far from anything a test looks at, so the board is kept when the
+ * test leaves it: an untitled board nothing was done to is deleted on the way out (DARK-12,
+ * `boards/untouchedBoards.ts`).
+ */
+export async function keepBoard(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		;(window as unknown as { editor: { createShapes(shapes: unknown[]): void } }).editor.createShapes([
+			{ type: 'geo', x: -10_000, y: -10_000 },
+		])
+	})
 }
 
 /**

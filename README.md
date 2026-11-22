@@ -454,6 +454,22 @@ GPU reader refuses, so a scaled node is drawn by the page. A node whose content 
 board's own units opts out with `scalable: false` and only resizes: the table, whose kanban and
 calendar stand real cards in lanes worked out from its `w` and `h`.
 
+**An untitled board you leave untouched is deleted** (DARK-12). A board made with "New board" is
+marked untouched in this device's store (`boards/untouchedBoards.ts`) until something is done to it: a
+rename, a colour or icon, any change made in the page, or a change to its shapes, bindings, files or
+comments that sync brings from another device. An edit undone still counts. Leaving it while marked, for another
+board, home, settings or help, or by closing its tab, deletes it as the Delete button would, and a
+reload keeps the mark (one key per board, `untouched:<id>`, so windows can't write back each other's
+marks). `deleteIfUntouched` checks before it deletes, and again after reading the board: the mark,
+nothing on the board, and the name and look it was made with, read from the server for a server board.
+A server board then goes through `DELETE /api/boards/:id?ifUntouched`, which the server refuses (409)
+unless the board was never renamed or changed by any device (its `updatedAt` is still its `createdAt`,
+which every rename and room change moves past), is untitled with no look, and has nothing in its room,
+checked and deleted in one step: an edit another device made, even one it put back, keeps it. Anything it can't check
+keeps the board. Kinds of board, the demo, imports, an agent's boards and boards made on another device
+are never marked. An e2e test that makes a board and leaves it before changing anything finds it gone:
+`createBoard(page, name)` renames on the tab first, and `keepBoard(page)` puts something on it.
+
 **Lists cards share are the kit's, not any extension's** (DARK-11). Feeds, the Syllabus, the
 Randomizer's stamps, rankings and backlogs offer their lists through `registerItemSource`
 (`node-kit/src/itemSources.ts`), and the randomizer, Ranking Tiers and Backlog read whatever is there.

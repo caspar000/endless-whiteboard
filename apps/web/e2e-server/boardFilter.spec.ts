@@ -18,12 +18,13 @@ test('the board list filters between the server and this device, and cards say w
 		await allBoards()
 		await page.getByRole('button', { name: 'New board' }).first().click()
 		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Untitled board')
+		// Renamed on its tab, before leaving: an untitled board nothing was done to is deleted on the way
+		// out (DARK-12).
+		await page.locator('.lb-tabs__tab--active .lb-tabs__label').dblclick()
+		await page.locator('.lb-tabs').getByLabel('Board name').fill(name)
+		await page.locator('.lb-tabs').getByLabel('Board name').press('Enter')
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText(name)
 		await allBoards()
-		const card = page.locator('.lb-list__board', { hasText: 'Untitled board' }).first()
-		await card.hover()
-		await card.getByRole('button', { name: 'Rename' }).click()
-		await page.getByLabel('Board name').fill(name)
-		await page.getByLabel('Board name').press('Enter')
 		await expect(page.locator('.lb-list__board', { hasText: name })).toHaveCount(1)
 	}
 	await rename('Filter up there')

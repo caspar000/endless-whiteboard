@@ -5,6 +5,7 @@ import {
 	createBoard,
 	createNote,
 	gotoFresh,
+	keepBoard,
 	noteMarkdown,
 	openBoardFromSidebar,
 	openSettings,
@@ -89,6 +90,8 @@ test.describe('keymap', () => {
 		await expect.poll(async () => await currentTool(page)).toBe('draw')
 		await page.keyboard.press('v')
 		await expect.poll(async () => await currentTool(page)).toBe('select')
+		// Something on it, or leaving it for Settings would delete the untitled board (DARK-12).
+		await keepBoard(page)
 
 		await openSettings(page, 'Keyboard')
 		await rebind(page, 'Eraser', 'Control+Alt+8')

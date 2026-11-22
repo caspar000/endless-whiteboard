@@ -1,0 +1,101 @@
+pos	artist	album	year	confidence	note
+1	Watain	Sworn to the Dark		ok	row: new to black metal, start here
+2	Behexen	My Soul For His Glory		ok	row: new to black metal, start here
+3	Arckanum	Sviga Læ		ok	row: new to black metal, start here
+4	Naglfar	Harvest		ok	row: new to black metal, start here
+5	Acrimonious	Sunyata		ok	row: new to black metal, start here
+6	Mgła	With Hearts Toward None		ok	row: new to black metal, start here
+7	Armagedda	Ond Spiritism		ok	row: new to black metal, start here
+8	Domgård	Myrkviðr		ok	row: new to black metal, start here
+9	Dissection	Storm of the Light's Bane		ok	row: new to black metal, start here
+10	Secrets of the Moon	Seven Bells		ok	row: new to black metal, start here; chart swaps artist and album
+11	Ascension	Consolamentum		ok	row: expand your taste
+12	Carpe Noctem	In Terra Profugus		ok	row: expand your taste
+13	Acherontas	Amenti - Ψαλμοί Αίματος και Θανάτου		unsure	row: expand your taste; caption cut off
+14	Valkyrja	The Invocation Of Demise		ok	row: expand your taste
+15	Kvlt ov Hiob	Thy Kingly Mask		ok	row: expand your taste
+16	Chaos Invocation	Black Mirror Hours		ok	row: expand your taste
+17	Order of Orias	Inverse		ok	row: expand your taste
+18	Katharsis	Fourth Reich		ok	row: expand your taste
+19	Lunar Aurora	Andacht		ok	row: expand your taste
+20	Nocternity	Onyx		ok	row: expand your taste
+21	Inquisition	Obscure Verses for the Multiverse		ok	row: heavy riffs and fast; caption cut off, completed
+22	Ravencult	Morbid Blood		ok	row: heavy riffs and fast
+23	Arckanum	ÞÞÞÞÞÞÞÞÞÞÞ		ok	row: heavy riffs and fast
+24	Sargeist	Let the Devil In		ok	row: heavy riffs and fast
+25	Svartrit	II		ok	row: heavy riffs and fast
+26	Horna	Musta Kaipuu		ok	row: heavy riffs and fast
+27	Flagellant	Monuments		ok	row: heavy riffs and fast
+28	Pestilential Shadows	Depths		ok	row: heavy riffs and fast
+29	Setherial	Death Triumphant		ok	row: heavy riffs and fast
+30	Inferno	Black Devotion		ok	row: heavy riffs and fast
+31	Domgård	I Nifelhels Skygd		ok	row: obscure
+32	Dråpsnatt	Hymner till Undergången		ok	row: obscure
+33	Stilla	Till Stilla Falla		ok	row: obscure
+34	Bekëth Nexëhmü	De Dunkla Herrarna		ok	row: obscure
+35	Temple Nightside	Prophecies of Malevolence		ok	row: obscure
+36	Myrkr	Black Illumination		ok	row: obscure
+37	Hetroertzen	Exaltation Of Wisdom		ok	row: obscure
+38	Avichi	The Divine Tragedy		ok	row: obscure
+39	Nattfog	Mustan Auringon Riitti		ok	row: obscure
+40	Hädanfärd	Smutsiga Sinnen		ok	row: obscure
+41	Nightbringer / Dødsengel	Nightbringer / Dødsengel		ok	row: mandatory splits, split
+42	Nightbringer / Acherontas	The Ruins of Edom		ok	row: mandatory splits, split
+43	Horna / Behexen	Horna / Behexen		ok	row: mandatory splits, split
+44	Domgård / Cursed 13	Domgård / Cursed 13		ok	row: mandatory splits, split
+45	Arckanum / Svartsyn	Kaos Svarta Mar / Skinning the Weak		unsure	row: mandatory splits, split; caption cut off
+46	Sargeist / Horned Almighty	In Ruin & Despair / To the Lord of Fire		unsure	row: mandatory splits, split; caption cut off
+47	Exordium / Mgła	Crushing the Holy Trinity (Holy Spirit)		ok	row: mandatory splits, split; caption cut off, completed
+48	Beherit / Archgoat	Messe des Morts / Angelcunt		ok	row: mandatory splits, split
+49	Pseudogod / Blaze of Perdition	In Void and Serpent the Spirit Dwells		unsure	row: mandatory splits, split; caption cut off
+50	Legion of Doom / Stutthof	Brotherhood of Drakkonian Reign		unsure	row: mandatory splits, split; caption cut off
+51	Blaze of Perdition	The Hierophant		ok	row: a mix of albums
+52	Satanic Warmaster	Strength & Honour		ok	row: a mix of albums
+53	Slidhr	Deluge		ok	row: a mix of albums
+54	Heretoir	Heretoir		ok	row: a mix of albums
+55	Ogdru Jahad	I		ok	row: a mix of albums
+56	Irkallian Oracle	Grave Ekstasis		ok	row: a mix of albums
+57	AYAT	Six Years Of Dormant Hatred		ok	row: a mix of albums
+58	Impenetrable Darkness	Loyalty in Blackness		ok	row: a mix of albums
+59	Galdr	Ancient Lights From The Stars		ok	row: a mix of albums
+60	Celestial Bloodshed	Cursed, Scarred And Forever Possessed		ok	row: a mix of albums; caption cut off, completed
+61	Darkspace	Dark Space II		ok	row: a mix of albums
+62	Ondskapt	Arisen from the Ashes		ok	row: a mix of albums
+63	Blodsrit	Helveteshymner		ok	row: a mix of albums
+64	Silencer	Death - Pierce Me		ok	row: a mix of albums
+65	Mortifera	Vastiia Tenebrd Mortifera		ok	row: a mix of albums
+66	Austere	To Lay Like Old Ashes		ok	row: a mix of albums
+67	Woods of Desolation	Torn Beyond Reason		ok	row: a mix of albums
+68	Drudkh	Blood in Our Wells		ok	row: a mix of albums
+69	Vemod	Venter på stormene		ok	row: a mix of albums
+70	Nåstrond	Toteslaut		ok	row: a mix of albums
+71	Venus Star	Nigredo Expulsion		ok	row: a mix of albums
+72	Moonspell	Under Satanae		ok	row: a mix of albums
+73	Serpent Noir	Seeing Through The Shadows of Death		unsure	row: a mix of albums; caption cut off
+74	Thy Darkened Shade	Eternvs Mos, Nex Ritvs		ok	row: a mix of albums
+75	Nosvrolok	The Luciferian Doctrine		ok	row: a mix of albums
+76	Kill	No Catharsis		ok	row: a mix of albums
+77	Various Artists	March to the Black Holocaust		ok	row: a mix of albums, compilation
+78	Andhord	Revelation		ok	row: a mix of albums
+79	LvxCælis	Mysteria Mystica Maxima XXIII		ok	row: a mix of albums
+80	Nekrokult	Posterma Expiratio Humanorum		ok	row: a mix of albums
+81	Sons of Fenris	Death Rune		ok	row: EPs and demos
+82	Surtr	Weraldion Testautaz		ok	row: EPs and demos
+83	Nawaharjan	Into the Void		ok	row: EPs and demos
+84	Myling	Sotpuke		ok	row: EPs and demos
+85	Gnosis of the Witch	Dauðr Burðr Þrysvar		ok	row: EPs and demos
+86	Mare	Spheres Like Death		ok	row: EPs and demos
+87	Void Meditation Cult	Sulfurous Prayers		ok	row: EPs and demos
+88	Wormlust	The Feral Wisdom		ok	row: EPs and demos
+89	Dødsengel	Dødsengel		ok	row: EPs and demos
+90	Vi	De Praestigiis Daemonum		ok	row: EPs and demos
+91	Fides Inversa	Hanc Aciem Sola Retundit Virtus		ok	row: long albums; caption cut off, completed
+92	Svartidauði	Flesh Cathedral		ok	row: long albums
+93	Cultes des Ghoules	Henbane		ok	row: long albums
+94	Nightbringer	Hierophany of the Open Grave		ok	row: long albums
+95	Subvertio Deus	Psalms of Perdition		ok	row: long albums
+96	Necros Christos	Doom of the Occult		ok	row: long albums
+97	The Ruins of Beverast	Rain Upon the Impure		ok	row: long albums
+98	Midnight Odyssey	Funerals From The Astral Sphere		ok	row: long albums; caption cut off, completed
+99	Elysian Blaze	Blood Geometry		ok	row: long albums
+100	Dødsengel	Imperator		ok	row: long albums

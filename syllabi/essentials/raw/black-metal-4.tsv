@@ -1,0 +1,213 @@
+pos	artist	album	year	confidence	note
+1	Venom	Black Metal		ok	section: First Wave Black Metal
+2	Hellhammer	Satanic Rites		ok	section: First Wave Black Metal
+3	Mercyful Fate	Melissa		ok	section: First Wave Black Metal
+4	Mayhem	Deathcrush		ok	section: First Wave Black Metal
+5	Sabbat	Envenom		ok	section: First Wave Black Metal
+6	Bulldozer	The Day of Wrath		ok	section: First Wave Black Metal
+7	Bathory	Bathory		ok	section: First Wave Black Metal
+8	Celtic Frost	To Mega Therion		ok	section: First Wave Black Metal
+9	Sarcófago	I.N.R.I.		ok	section: First Wave Black Metal
+10	Sodom	In the Sign of Evil		ok	section: First Wave Black Metal; the chart names two releases for one square: In the Sign of Evil + Obsessed by Cruelty
+11	Sodom	Obsessed by Cruelty		ok	section: First Wave Black Metal; the chart names two releases for one square: In the Sign of Evil + Obsessed by Cruelty
+12	Mayhem	De Mysteriis Dom Sathanas		ok	section: Second Wave Black Metal
+13	Darkthrone	Transilvanian Hunger		ok	section: Second Wave Black Metal
+14	Burzum	Hvis lyset tar oss		ok	section: Second Wave Black Metal
+15	Satyricon	Dark Medieval Times		ok	section: Second Wave Black Metal
+16	Forgotten Woods	As the Wolves Gather		ok	section: Second Wave Black Metal
+17	Immortal	Pure Holocaust		ok	section: Second Wave Black Metal
+18	Emperor	In the Nightside Eclipse		ok	section: Second Wave Black Metal
+19	Enslaved	Frost		ok	section: Second Wave Black Metal
+20	Gorgoroth	Pentagram		ok	section: Second Wave Black Metal
+21	In the Woods...	HEart Of The Ages		ok	section: Second Wave Black Metal
+22	Paysage d'Hiver	Paysage d'Hiver		ok	section: Atmospheric Black Metal, demo
+23	Lurker of Chalice	Lurker of Chalice		ok	section: Atmospheric Black Metal
+24	Walknut	Graveforests and their Shadows		ok	section: Atmospheric Black Metal
+25	Forteresse	Métal Noir Québécois		ok	section: Atmospheric Black Metal
+26	Lunar Aurora	Elixir of Sorrow		ok	section: Atmospheric Black Metal
+27	Deep Mountains	Lake of Solace		ok	section: Atmospheric Black Metal
+28	ColdWorld	Melancholie²		ok	section: Atmospheric Black Metal
+29	The Ruins of Beverast	Rain Upon the Impure		ok	section: Atmospheric Black Metal
+30	Darkspace	Darkspace III		ok	section: Atmospheric Black Metal
+31	Elderwind	The Magic of Nature		ok	section: Atmospheric Black Metal
+32	Summoning	Stronghold		ok	section: Symphonic Black Metal
+33	Dimmu Borgir	Stormblåst		ok	section: Symphonic Black Metal
+34	Chthonic	Takasago Army		ok	section: Symphonic Black Metal
+35	Caladan Brood	Echoes of Battle		ok	section: Symphonic Black Metal
+36	Stormlord	Mare Nostrum		ok	section: Symphonic Black Metal
+37	Arcturus	Aspera Hiems Symfonia		ok	section: Symphonic Black Metal
+38	Limbonic Art	Moon in the Scorpio		ok	section: Symphonic Black Metal
+39	Aquilus	Griseus		ok	section: Symphonic Black Metal
+40	Obtained Enslavement	Witchcraft		ok	section: Symphonic Black Metal
+41	Mirrorthrone	Carriers of Dust		ok	section: Symphonic Black Metal
+42	Dissection	Storm of the Light's Bane		ok	section: Melodic Black Metal
+43	Windir	Arntor		ok	section: Melodic Black Metal
+44	Sad Legend	Sad Legend		ok	section: Melodic Black Metal
+45	Dawn	Slaughtersun (Crown of the Triarchy)		ok	section: Melodic Black Metal
+46	Dark Fortress	Eidolon		ok	section: Melodic Black Metal
+47	Rotting Christ	Triarchy of the Lost Lovers		ok	section: Melodic Black Metal
+48	Thy Serpent	Forests of Witchery		ok	section: Melodic Black Metal
+49	Melechesh	Sphynx		ok	section: Melodic Black Metal
+50	Vinterland	Welcome My Last Chapter		ok	section: Melodic Black Metal
+51	Catamenia	Chaos Born		ok	section: Melodic Black Metal
+52	Gris	Il était une forêt...		ok	section: Depressive Black Metal
+53	Shining	V - Halmstad		ok	section: Depressive Black Metal
+54	Silencer	Death - Pierce Me		ok	section: Depressive Black Metal
+55	Xasthur	To Violate the Oblivious		ok	section: Depressive Black Metal
+56	Nyktalgia	Nyktalgia		ok	section: Depressive Black Metal
+57	Trist	Zrcadlení melancholie		ok	section: Depressive Black Metal
+58	Lifelover	Konkurs		ok	section: Depressive Black Metal
+59	Totalselfhatred	Totalselfhatred		ok	section: Depressive Black Metal
+60	Leviathan	The Tenth Sub Level of Suicide		ok	section: Depressive Black Metal
+61	Make a Change... Kill Yourself	II		ok	section: Depressive Black Metal
+62	Ulver	Bergtatt - Et eeventyr i 5 capitler		ok	section: Pagan Black Metal
+63	Nokturnal Mortum	Голос Сталі		ok	section: Pagan Black Metal
+64	Saor	Aura		ok	section: Pagan Black Metal
+65	Kampfar	Mellom Skogkledde Aaser		ok	section: Pagan Black Metal
+66	Primordial	A Journey's End		ok	section: Pagan Black Metal
+67	Drudkh	Autumn Aurora		ok	section: Pagan Black Metal
+68	Negură Bunget	OM		ok	section: Pagan Black Metal
+69	Moonsorrow	Jumalten Aika		ok	section: Pagan Black Metal
+70	Kroda	Fimbulvinter		ok	section: Pagan Black Metal
+71	Wyrd	Heathen		ok	section: Pagan Black Metal
+72	Ulver	Nattens madrigal		ok	section: Raw Black Metal
+73	Mütiilation	Vampires of Black Imperial Blood		ok	section: Raw Black Metal
+74	Endstille	Navigator		ok	section: Raw Black Metal
+75	Judas Iscariot	Heaven In Flames		ok	section: Raw Black Metal
+76	Behexen	By the Blessing of Satan		ok	section: Raw Black Metal
+77	Vlad Tepes	March to the Black Holocaust		ok	section: Raw Black Metal
+78	Marduk	Panzer Division Marduk		ok	section: Raw Black Metal
+79	S.V.E.S.T.	Urfaust		ok	section: Raw Black Metal
+80	Beherit	Drawing Down the Moon		ok	section: Raw Black Metal
+81	Satanic Warmaster	Strength & Honour		ok	section: Raw Black Metal
+82	Alrakis	Alpha Eri		ok	section: Space Black Metal
+83	Progenie Terrestre Pura	U.M.A.		ok	section: Space Black Metal
+84	Mesarthim	Isolate		ok	section: Space Black Metal
+85	Inquisition	Ominous Doctrines of the Perpetual Mystical Macrocosm		ok	section: Space Black Metal; caption cut off, completed
+86	Oranssi Pazuzu	Muukalainen puhuu		ok	section: Space Black Metal
+87	Midnight Odyssey	Funerals From The Astral Sphere		ok	section: Space Black Metal
+88	Spectral Lore	III		ok	section: Space Black Metal
+89	Hellébore	Anouof thwo		unsure	section: Space Black Metal
+90	Mare Cognitum	Phobos Monolith		ok	section: Space Black Metal
+91	Omega Centauri	Universum Infinitum		ok	section: Space Black Metal
+92	Blasphemy	Fallen Angel of Doom		ok	section: War Metal
+93	Archgoat	Whore of Bethlehem		ok	section: War Metal
+94	Goatpenis	Depleted Ammunition		ok	section: War Metal
+95	Black Witchery	Desecration Of The Holy Kingdom		ok	section: War Metal
+96	Ill Omened	Conflagration Roaring Hell		ok	section: War Metal
+97	Teitanblood	Seven Chalices		ok	section: War Metal
+98	Revenge	Victory.Intolerance.Mastery		ok	section: War Metal
+99	Genocide Shrines	Manipura Imperial Deathevokovil		ok	section: War Metal
+100	Nuclearhammer	Serpentine Hermetic Lucifer		ok	section: War Metal
+101	Axis of Advance	The List		ok	section: War Metal
+102	Alcest	Écailles de lune		ok	section: Blackgaze
+103	Deafheaven	Sunbather		ok	section: Blackgaze
+104	Austere	To Lay Like Old Ashes		ok	section: Blackgaze
+105	An Autumn for Crippled Children	Lost		ok	section: Blackgaze
+106	Harakiri for the Sky	Aokigahara		ok	section: Blackgaze
+107	Ghost Bath	Moonlover		ok	section: Blackgaze
+108	Woods of Desolation	As The Stars		ok	section: Blackgaze
+109	Lantlôs	.neon		ok	section: Blackgaze
+110	Botanist	VI: Flora		ok	section: Blackgaze
+111	Vagrond	Temporal		ok	section: Blackgaze
+112	Blut aus Nord	777 Sect(s)		ok	section: Industrial Black Metal
+113	CSSABA	Underground lo-fi Songs		ok	section: Industrial Black Metal
+114	Thorns	Thorns		ok	section: Industrial Black Metal
+115	Samael	Passage		ok	section: Industrial Black Metal
+116	The CNK	Ultraviolence über Alles		ok	section: Industrial Black Metal
+117	Dødheimsgard	666 international		ok	section: Industrial Black Metal
+118	The Axis of Perdition	Deleted Scenes from the Transition Hospital		ok	section: Industrial Black Metal; caption cut off, completed
+119	Anaal Nathrakh	Hell Is Empty, and All the Devils Are Here		ok	section: Industrial Black Metal; caption cut off, completed
+120	Mysticum	In the Streams of Inferno		ok	section: Industrial Black Metal
+121	Liturgy	Immortal Life		ok	section: Industrial Black Metal
+122	Liturgy	Aesthethica		ok	section: Avant-Garde Black Metal
+123	The Meads of Asphodel	Exhuming the Grave of Yeshua		ok	section: Avant-Garde Black Metal
+124	Zeal and Ardor	Devil is Fine		ok	section: Avant-Garde Black Metal
+125	Fanisk	Noontide		ok	section: Avant-Garde Black Metal
+126	Jute Gyte	Perdurance		ok	section: Avant-Garde Black Metal
+127	Ved Buens Ende	Written In Waters		ok	section: Avant-Garde Black Metal
+128	Sigh	Hail Horror Hail		ok	section: Avant-Garde Black Metal
+129	Deathspell Omega	FAS - Ite, Maledicti, in Ignem Aeternum		ok	section: Avant-Garde Black Metal; caption cut off, completed
+130	Thy Catafalque	Microcosmos		ok	section: Avant-Garde Black Metal
+131	Arcturus	La Masquerade Infernale		ok	section: Avant-Garde Black Metal
+132	Dopamine	Dopamine		ok	section: Instrumental Black Metal, EP
+133	Violet Cold	Magic Night		ok	section: Instrumental Black Metal
+134	Aluk Todolo	Occult Rock		ok	section: Instrumental Black Metal
+135	Orrery	Nine Odes to Oblivion		ok	section: Instrumental Black Metal
+136	Eldrig	Mysterion		ok	section: Instrumental Black Metal
+137	Antestor	The Forsaken		ok	section: Unblack Metal
+138	Horde	Hellig Usvart		ok	section: Unblack Metal
+139	Agathothodion	Traum Von Gott		ok	section: Unblack Metal
+140	Frost Like Ashes	Tophet		ok	section: Unblack Metal
+141	Vaakevandring	Vaakevandring		ok	section: Unblack Metal
+142	Wolves in the Throne Room	Two Hunters		ok	section: Cascadian Black Metal
+143	Skagos	Ást		ok	section: Cascadian Black Metal
+144	Ash Borer	Ash Borer		ok	section: Cascadian Black Metal
+145	Fell Voices	Fell Voices		ok	section: Cascadian Black Metal
+146	Fauna	Rain		ok	section: Cascadian Black Metal
+147	Moëvöt	Ezleyfbdrehtr Vepreub Zuerfl...		unsure	section: Black Ambient; caption cut off
+148	Phya	The Haunted House		ok	section: Black Ambient
+149	Blut aus Nord	MoRT		ok	section: Black Ambient
+150	Gnaw Their Tongues	L'Arrivée De La Terne Mort Triomphante		ok	section: Black Ambient; caption cut off, completed
+151	Mrtyu	Ornate Shroud		ok	section: Black Ambient
+152	Depressive Silence	Depressive Silence II		ok	section: Dungeon Synth
+153	Mortiis	Født til å herske		ok	section: Dungeon Synth
+154	Burzum	Hlidskjalf		ok	section: Dungeon Synth
+155	Erang	Another World Another Time		ok	section: Dungeon Synth
+156	Jääportit	Kauan koskematon		ok	section: Dungeon Synth
+157	Striborg	Solitude		ok	section: Outsider Black Metal
+158	Todesstoß	Todesstoß		ok	section: Outsider Black Metal
+159	Njiqahdda	Nji. Njiijn. Njiiijn.		ok	section: Outsider Black Metal
+160	Vorak	Triumph Of The Will		ok	section: Outsider Black Metal
+161	Furze	UTD		ok	section: Outsider Black Metal
+162	Mayhem	Live in Leipzig		ok	section: Live Albums, live
+163	Blasphemy	Live Ritual - Friday the 13th		ok	section: Live Albums, live
+164	Dark Funeral	De Profundis Clamavi ad te Domine		ok	section: Live Albums, live
+165	Gorgoroth	True Norwegian Black Metal		ok	section: Live Albums, live
+166	Emperor	Emperial Live Ceremony		ok	section: Live Albums, live
+167	Liturgy	The Ark Work		ok	section: Black Metal Influenced
+168	Behemoth	The Satanist		ok	section: Black Metal Influenced
+169	Arcturus	The Sham Mirrors		ok	section: Black Metal Influenced
+170	Alcest	Souvenirs d'un autre Monde		ok	section: Black Metal Influenced
+171	Agalloch	The Mantle		ok	section: Black Metal Influenced
+172	Stalaggh	Projekt Misanthropia		ok	section: Blackened Noise
+173	Wold	Screech Owl		ok	section: Blackened Noise
+174	Gnaw Their Tongues	Reeking Pained And Shuddering		ok	section: Blackened Noise
+175	Nahvalr	Nahvalr		ok	section: Blackened Noise
+176	Sutekh Hexen	Luciform		ok	section: Blackened Noise
+177	Iskra	Iskra		ok	section: Others, Red Anarchist Black Metal
+178	Skagos	Ást		ok	section: Others, Red Anarchist Black Metal
+179	Profecium	Socialismo Satánico		ok	section: Others, Red Anarchist Black Metal
+180	Jarost Marksa	We the People		ok	section: Others, Red Anarchist Black Metal
+181	Wolves in the Throne Room	Black Cascade		ok	section: Others, Red Anarchist Black Metal
+182	Fanisk	Noontide		ok	section: Others, National Socialist Black Metal
+183	Kristallnacht	Warspirit		ok	section: Others, National Socialist Black Metal
+184	Nokturnal Mortum	Goat Horns		ok	section: Others, National Socialist Black Metal
+185	Goatmoon	Death Before Dishonour		ok	section: Others, National Socialist Black Metal
+186	Hate Forest	Purity		ok	section: Others, National Socialist Black Metal
+187	Hellward	Heavy Fvckn Black		ok	section: Others, Black 'n' Roll
+188	Abigail	Intercourse and Lust		ok	section: Others, Black 'n' Roll
+189	Darkthrone	The Underground Resistance		ok	section: Others, Black 'n' Roll
+190	Satyricon	Now, Diabolical		ok	section: Others, Black 'n' Roll
+191	Chapel	Satan's Rock 'n' Roll		ok	section: Others, Black 'n' Roll
+192	Peste Noire	La Sanie des Siècles		ok	section: Others, Hooligan Black Metal
+193	Baise ma hache	Le Grand Suicide		ok	section: Others, Hooligan Black Metal
+194	Sale freux	L'exil		ok	section: Others, Hooligan Black Metal
+195	Liturgy	Aesthethica		ok	section: Others, Transcendental Black Metal
+196	Liturgy	Renihilation		ok	section: Others, Transcendental Black Metal
+197	Liturgy	The Ark Work		ok	section: Others, Transcendental Black Metal
+198	Krallice	Hyperion		ok	section: Others, Transcendental Black Metal
+199	Yellow Eyes	Stillicide		ok	section: Others, Transcendental Black Metal
+200	Kvelertak	Kvelertak		ok	section: Others, Blackened Crust Punk
+201	Infernal Stronghold	Godless Noise		ok	section: Others, Blackened Crust Punk
+202	Darkthrone	F.O.A.D.		ok	section: Others, Blackened Crust Punk
+203	Young and in the Way	I Am Not What I Am		ok	section: Others, Blackened Crust Punk
+204	The Secret	Solve et Coagula		ok	section: Others, Blackened Crust Punk
+205	Avec Tristesse	How Innocence Dies		ok	section: Others, Gothic Black Metal
+206	Arcane Grail	आर्याशाङ्गो मार्गो: Ninefold Path to the Innocence		unsure	section: Others, Gothic Black Metal
+207	Cradle of Filth	Dusk... and Her Embrace		ok	section: Others, Gothic Black Metal
+208	Dismal Euphony	Autumn Leaves - The Rebellion of Tides		ok	section: Others, Gothic Black Metal
+209	Rotting Christ	A Dead Poem		ok	section: Others, Gothic Black Metal
+210	Ritualistic Infanticide Necrofuck	Make Black Metal Great Again		ok	section: Others, Satirical Black Metal
+211	I'm In A Coffin	One Last Final Action		ok	section: Others, Satirical Black Metal
+212	Impaled Northern Moonforest	Impaled Northern Moonforest		ok	section: Others, Satirical Black Metal

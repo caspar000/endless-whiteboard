@@ -1,0 +1,281 @@
+pos	artist	album	year	confidence	note
+1	The Mothers of Invention	Freak Out!		ok	section: Psychedelic Rock
+2	The Byrds	Fifth Dimension		ok	section: Psychedelic Rock
+3	The Yardbirds	Yardbirds (Roger the Engineer)		ok	section: Psychedelic Rock
+4	The Doors	The Doors		ok	section: Psychedelic Rock
+5	The 13th Floor Elevators	The Psychedelic Sounds Of		ok	section: Psychedelic Rock
+6	The Beatles	Sgt. Pepper's Lonely Hearts Club Band		ok	section: Psychedelic Rock
+7	The Red Crayola	The Parable of Arable Land		ok	section: Psychedelic Rock
+8	Cream	Disraeli Gears		ok	section: Psychedelic Rock
+9	Pink Floyd	The Piper at the Gates of Dawn		ok	section: Psychedelic Rock
+10	Fifty Foot Hose	Cauldron		ok	section: Psychedelic Rock
+11	The United States of America	The United States of America		ok	section: Psychedelic Rock
+12	Os Mutantes	Os Mutantes		ok	section: Psychedelic Rock
+13	Silver Apples	Silver Apples		ok	section: Psychedelic Rock
+14	The White Noise	An Electric Storm		ok	section: Psychedelic Rock
+15	Les Rallizes Dénudés	'77 Live		ok	section: Psychedelic Rock
+16	The Jimi Hendrix Experience	Are You Experienced		ok	section: Acid, Heavy, Jam
+17	Jefferson Airplane	After Bathing at Baxter's		ok	section: Acid, Heavy, Jam
+18	Blue Cheer	Vincebus Eruptum		ok	section: Acid, Heavy, Jam
+19	Iron Butterfly	In-A-Gadda-Da-Vida		ok	section: Acid, Heavy, Jam
+20	Grateful Dead	Live/Dead		ok	section: Acid, Heavy, Jam
+21	Quintessence	In Blissful Company		ok	section: Raga, Latin, Funk, Afro, Zam
+22	Santana	Abraxas		ok	section: Raga, Latin, Funk, Afro, Zam
+23	Funkadelic	Maggot Brain		ok	section: Raga, Latin, Funk, Afro, Zam
+24	Ofege	Try and Love		ok	section: Raga, Latin, Funk, Afro, Zam
+25	Amanaz	Africa		ok	section: Raga, Latin, Funk, Afro, Zam
+26	Hawkwind	Hawkwind		ok	section: Space
+27	Hawkwind	Space Ritual		ok	section: Space
+28	Gong	Flying Teapot		ok	section: Space
+29	Eloy	Ocean		ok	section: Space
+30	Ozric Tentacles	Ozric Tentacles		ok	section: Space
+31	Hapshash & The Coloured Coat	Featuring the Human Host and the Heavy Metal Kids		ok	section: Krautrock
+32	Amon Düül II	Yeti		ok	section: Krautrock
+33	Kraftwerk	Kraftwerk		ok	section: Krautrock
+34	Can	Tago Mago		ok	section: Krautrock
+35	Ash Ra Tempel	Ash Ra Tempel		ok	section: Krautrock
+36	Faust	Faust		ok	section: Krautrock
+37	Deuter	D		ok	section: Krautrock
+38	Neu!	Neu!		ok	section: Krautrock
+39	Can	Future Days		ok	section: Krautrock
+40	Faust	Faust IV		ok	section: Krautrock
+41	Tangerine Dream	Alpha Centauri		ok	section: Progressive Electronic
+42	Kraftwerk	Autobahn		ok	section: Progressive Electronic
+43	Tangerine Dream	Phaedra		ok	section: Progressive Electronic
+44	Harmonia	Musik von Harmonia		ok	section: Progressive Electronic
+45	Jean Michel Jarre	Oxygène		ok	section: Progressive Electronic
+46	Led Zeppelin	Led Zeppelin		ok	section: Hard Rock
+47	The Who	Who's Next		ok	section: Hard Rock
+48	Deep Purple	Machine Head		ok	section: Hard Rock
+49	Van Halen	Van Halen		ok	section: Hard Rock
+50	AC/DC	Back in Black		ok	section: Hard Rock
+51	Black Sabbath	Paranoid		ok	section: Heavy Metal
+52	Judas Priest	Sad Wings of Destiny		ok	section: Heavy Metal
+53	Motörhead	Ace of Spades		ok	section: Heavy Metal
+54	Iron Maiden	The Number of the Beast		ok	section: Heavy Metal
+55	Venom	Black Metal		ok	section: Heavy Metal
+56	T. Rex	Electric Warrior		ok	section: Glam Rock
+57	David Bowie	The Rise and Fall of Ziggy Stardust and the Spiders from Mars		ok	section: Glam Rock
+58	Alice Cooper	Billion Dollar Babies		ok	section: Glam Rock
+59	New York Dolls	New York Dolls		ok	section: Glam Rock
+60	Sparks	Kimono My House		ok	section: Glam Rock
+61	Roxy Music	Roxy Music		ok	section: Art Rock
+62	Eno	Here Come the Warm Jets		ok	section: Art Rock
+63	David Bowie	Low		ok	section: Art Rock
+64	King Crimson	Discipline		ok	section: Art Rock
+65	David Sylvian	Brilliant Trees		ok	section: Art Rock
+66	Boston	Boston		ok	section: AOR
+67	Foreigner	Foreigner		ok	section: AOR
+68	Journey	Escape		ok	section: AOR
+69	Toto	IV		ok	section: AOR
+70	Asia	Asia		ok	section: AOR
+71	The Nice	Ars Longa Vita Brevis		ok	section: British First Wave
+72	Procol Harum	Shine On Brightly		ok	section: British First Wave
+73	King Crimson	In the Court of the Crimson King		ok	section: British First Wave
+74	King Crimson	Lizard		ok	section: British First Wave
+75	Yes	The Yes Album		ok	section: British First Wave
+76	Pink Floyd	Meddle		ok	section: British First Wave
+77	Van der Graaf Generator	Pawn Hearts		ok	section: British First Wave
+78	Gentle Giant	Octopus		ok	section: British First Wave
+79	Jethro Tull	Thick as a Brick		ok	section: British First Wave
+80	Yes	Close to the Edge		ok	section: British First Wave
+81	King Crimson	Larks' Tongues in Aspic		ok	section: British First Wave
+82	Mike Oldfield	Tubular Bells		ok	section: British First Wave
+83	Genesis	Selling England by the Pound		ok	section: British First Wave
+84	Emerson, Lake & Palmer	Brain Salad Surgery		ok	section: British First Wave
+85	Camel	Mirage		ok	section: British First Wave
+86	Supertramp	Crime of the Century		ok	section: British First Wave
+87	King Crimson	Red		ok	section: British First Wave
+88	Renaissance	Scheherazade and Other Stories		ok	section: British First Wave
+89	Pink Floyd	Animals		ok	section: British First Wave
+90	The Alan Parsons Project	I Robot		ok	section: British First Wave
+91	Il Balletto Di Bronzo	Ys		ok	section: Italian First Wave
+92	Premiata Forneria Marconi	Per Un Amico		ok	section: Italian First Wave
+93	Banco del Mutuo Soccorso	Darwin!		ok	section: Italian First Wave
+94	Le Orme	Felona e Sorona		ok	section: Italian First Wave
+95	Museo Rosenbach	Zarathustra		ok	section: Italian First Wave
+96	Osanna	Palepoli		ok	section: Italian First Wave
+97	Biglietto per L'Inferno	Biglietto per L'Inferno		ok	section: Italian First Wave
+98	Arti & Mestieri	Tilt (Immagini per un orecchio)		ok	section: Italian First Wave
+99	Locanda delle Fate	Forse Le Lucciole Non Si Amano Più		ok	section: Italian First Wave
+100	Goblin	Suspiria		ok	section: Italian First Wave
+101	Bo Hansson	Sagan Om Ringen		ok	section: Other First Wave
+102	Focus	Focus II		ok	section: Other First Wave
+103	Aphrodite's Child	666		ok	section: Other First Wave
+104	Älgarnas Trädgård	Framtiden Är Ett Svävande Skepp, Förankrat I Forntiden		ok	section: Other First Wave
+105	Far Out	日本人 (Nihonjin)		ok	section: Other First Wave
+106	Todd Rundgren's Utopia	Todd Rundgren's Utopia		ok	section: Other First Wave
+107	Invisible	El Jardín de los Presentes		ok	section: Other First Wave
+108	Kansas	Leftoverture		ok	section: Other First Wave
+109	Eloy	Ocean		ok	section: Other First Wave
+110	Bubu	Anabelas		ok	section: Other First Wave
+111	Arco Iris	Sudamérica o el Regreso a la Aurora		ok	section: Andean Rock
+112	Wara	El Inca		ok	section: Andean Rock
+113	Los Grillos	Vibraciones latinoamericanas		ok	section: Andean Rock
+114	Los Jaivas	Los Jaivas (El Indio)		ok	section: Andean Rock
+115	Los Jaivas	Alturas de Machu Picchu		ok	section: Andean Rock
+116	Triana	El Patio		ok	section: Andalusian Rock
+117	Veneno	Veneno		ok	section: Andalusian Rock
+118	Imán Califato Independiente	Imán Califato Independiente		ok	section: Andalusian Rock
+119	Mezquita	Recuerdos de mi tierra		ok	section: Andalusian Rock
+120	Medina Azahara	Medina Azahara		ok	section: Andalusian Rock
+121	Marillion	Misplaced Childhood		ok	section: Neo-Prog
+122	IQ	The Wake		ok	section: Neo-Prog
+123	Pendragon	The Masquerade Overture		ok	section: Neo-Prog
+124	Arena	The Visitor		ok	section: Neo-Prog
+125	Frost*	Milliontown		ok	section: Neo-Prog
+126	Devil Doll	The Girl Who Was... Death		ok	section: Progressive Rock Revival
+127	Änglagård	Hybris		ok	section: Progressive Rock Revival
+128	Echolyn	As the World		ok	section: Progressive Rock Revival
+129	The Flower Kings	Stardust We Are		ok	section: Progressive Rock Revival
+130	Spock's Beard	V		ok	section: Progressive Rock Revival
+131	Transatlantic	Bridge Across Forever		ok	section: Progressive Rock Revival
+132	The Watch	Vacuum		ok	section: Progressive Rock Revival
+133	Wobbler	Hinterland		ok	section: Progressive Rock Revival
+134	The Tangent	A Place in the Queue		ok	section: Progressive Rock Revival
+135	Phideaux	Doomsday Afternoon		ok	section: Progressive Rock Revival
+136	Moon Safari	Blomljud		ok	section: Progressive Rock Revival
+137	Big Big Train	The Underfall Yard		ok	section: Progressive Rock Revival
+138	Astra	The Weirding		ok	section: Progressive Rock Revival
+139	Steven Wilson	The Raven That Refused to Sing (And Other Stories)		ok	section: Progressive Rock Revival
+140	Beardfish	+4626-Comfortzone		ok	section: Progressive Rock Revival
+141	The Mothers of Invention	Absolutely Free		ok	section: Jazz-Rock
+142	Frank Zappa	Hot Rats		ok	section: Jazz-Rock
+143	Colosseum	Valentyne Suite		ok	section: Jazz-Rock
+144	Xhol Caravan	Electrip		ok	section: Jazz-Rock
+145	Catapilla	Catapilla		ok	section: Jazz-Rock
+146	Out of Focus	Out of Focus		ok	section: Jazz-Rock
+147	Embryo	Steig aus		ok	section: Jazz-Rock
+148	Area	Arbeit Macht Frei		ok	section: Jazz-Rock
+149	Pekka Pohjola	Harakka Bialoipokku		ok	section: Jazz-Rock
+150	La Máquina de Hacer Pájaros	La Máquina de Hacer Pájaros		ok	section: Jazz-Rock
+151	Blood, Sweat & Tears	Child Is Father to the Man		ok	section: Horn Rock
+152	Chicago Transit Authority	Chicago Transit Authority		ok	section: Horn Rock
+153	Chicago	Chicago (II)		ok	section: Horn Rock
+154	Steely Dan	Aja		ok	section: Horn Rock
+155	Various Artists	Horn Rock & Funky Guitar Grooves (1968-1974)		ok	section: Horn Rock
+156	The Soft Machine	The Soft Machine		ok	section: Canterbury Scene
+157	The Soft Machine	Third		ok	section: Canterbury Scene
+158	Caravan	In the Land of Grey and Pink		ok	section: Canterbury Scene
+159	Gong	Camembert Electrique		ok	section: Canterbury Scene
+160	Robert Wyatt	Rock Bottom		ok	section: Canterbury Scene
+161	Moving Gelatine Plates	The World of Genius Hans		ok	section: Canterbury Scene
+162	Henry Cow	The Henry Cow Legend		ok	section: Canterbury Scene
+163	Hatfield and the North	The Rotters' Club		ok	section: Canterbury Scene
+164	Picchio dal Pozzo	Picchio dal Pozzo		ok	section: Canterbury Scene
+165	National Health	Of Queues and Cures		ok	section: Canterbury Scene
+166	The Mothers of Invention	Uncle Meat		ok	section: Avant-Prog
+167	Samla Mammas Manna	Måltid		ok	section: Avant-Prog
+168	Albert Marcœur	Albert Marcœur		ok	section: Avant-Prog
+169	Henry Cow	In Praise of Learning		ok	section: Avant-Prog
+170	Art Zoyd 3	Symphonie Pour Le Jour Où Brûleront Les Cités		ok	section: Avant-Prog
+171	Etron Fou Leloublan	Batelages		ok	section: Avant-Prog
+172	Stormy Six	L'apprendista		ok	section: Avant-Prog
+173	Univers Zéro	Hérésie		ok	section: Avant-Prog
+174	Art Bears	Winter Songs		ok	section: Avant-Prog
+175	Aqsak Maboul	Un Peu De L'Âme Des Bandits		ok	section: Avant-Prog
+176	Arrigo Barnabé	Clara Crocodilo		ok	section: Avant-Prog
+177	Kultivator	Barndomens Stigar		ok	section: Avant-Prog
+178	Present	Le Poison Qui Rend Fou		ok	section: Avant-Prog
+179	Thinking Plague	In This Life		ok	section: Avant-Prog
+180	U Totem	U Totem		ok	section: Avant-Prog
+181	5uu's	Hunger's Teeth		ok	section: Avant-Prog
+182	Tipographica	God Says I Can't Dance		ok	section: Avant-Prog
+183	Ground-Zero	Plays Standards		ok	section: Avant-Prog
+184	The Science Group	A Mere Coincidence		ok	section: Avant-Prog
+185	Rich Woodson's Ellipsis	Control and Resistance		ok	section: Avant-Prog
+186	Alamaailman Vasarat	Käärmelautakunta		ok	section: Avant-Prog
+187	Sleepytime Gorilla Museum	Of Natural History		ok	section: Avant-Prog
+188	Rational Diet	At Work		ok	section: Avant-Prog
+189	Make a Rising	Infinite Ellipse and Head With Open Fontanel		ok	section: Avant-Prog
+190	Birds and Buildings	Bantam to Behemoth		ok	section: Avant-Prog
+191	Magma	Magma		ok	section: Zeuhl
+192	Magma	Mëkanïk Dëstruktïẁ Kömmandöh		ok	section: Zeuhl
+193	Zao	Z=7L		ok	section: Zeuhl
+194	Magma	Üdü Ẁüdü		ok	section: Zeuhl
+195	Weidorje	Weidorje		ok	section: Zeuhl
+196	Archaïa	Archaïa		ok	section: Zeuhl
+197	Eskaton	4 Visions		ok	section: Zeuhl
+198	Dün	Eros		ok	section: Zeuhl
+199	Eider Stellaire	Eider Stellaire		ok	section: Zeuhl
+200	Shub-Niggurath	Les morts vont vite		ok	section: Zeuhl
+201	Ruins	Ruins (1986-1992)		ok	section: Brutal Prog
+202	Bondage Fruit	Bondage Fruit		ok	section: Brutal Prog
+203	Happy Family	Happy Family		ok	section: Brutal Prog
+204	Koenjihyakkei	Angherr Shisspa		ok	section: Brutal Prog
+205	Sajjanu	Pechiku!!		ok	section: Brutal Prog
+206	The Flying Luttenbachers	Infection and Decline		ok	section: Brutal Prog
+207	Orthrelm	2nd 18_04 Norildivoth Crallos-Lomrixth Urthiln		ok	section: Brutal Prog
+208	Yowie	Cryptooology		ok	section: Brutal Prog
+209	Upsilon Acrux	Volucris Avis Dirae-Arum		ok	section: Brutal Prog
+210	Zs	New Slaves		ok	section: Brutal Prog
+211	The Beach Boys	Pet Sounds		ok	section: Baroque Pop
+212	Love	Forever Changes		ok	section: Baroque Pop
+213	The Moody Blues	Days of Future Passed		ok	section: Baroque Pop
+214	The Zombies	Odessey and Oracle		ok	section: Baroque Pop
+215	The Beach Boys	The Smile Sessions		ok	section: Baroque Pop
+216	The Pentangle	Basket of Light		ok	section: Progressive Folk
+217	Third Ear Band	Third Ear Band		ok	section: Progressive Folk
+218	Roy Harper	Stormcock		ok	section: Progressive Folk
+219	Comus	First Utterance		ok	section: Progressive Folk
+220	Harmonium	Les Cinq Saisons		ok	section: Progressive Folk
+221	Electric Light Orchestra	Eldorado		ok	section: Progressive Pop
+222	10cc	The Original Soundtrack		ok	section: Progressive Pop
+223	Klaatu	3:47 E.S.T.		ok	section: Progressive Pop
+224	Electric Light Orchestra	Out of the Blue		ok	section: Progressive Pop
+225	Supertramp	Breakfast in America		ok	section: Progressive Pop
+226	Rush	2112		ok	section: Cross-Genre Prog
+227	Cardiacs	A Little Man and a House and the Whole World Window		ok	section: Cross-Genre Prog
+228	Kingston Wall	II		ok	section: Cross-Genre Prog
+229	Cardiacs	Sing to God		ok	section: Cross-Genre Prog
+230	King Gizzard and the Lizard Wizard	Polygondwanaland		ok	section: Cross-Genre Prog
+231	Mansun	Six		ok	section: Alt-Prog
+232	Coheed and Cambria	In Keeping Secrets of Silent Earth: 3		ok	section: Alt-Prog
+233	The Mars Volta	De-Loused in the Comatorium		ok	section: Alt-Prog
+234	The Dear Hunter	Act I: The Lake South, the River North		ok	section: Alt-Prog
+235	Thank You Scientist	Maps of Non-Existent Places		ok	section: Alt-Prog
+236	Porcupine Tree	Stupid Dream		ok	section: Post-Prog
+237	Anathema	Judgement		ok	section: Post-Prog
+238	dredg	El Cielo		ok	section: Post-Prog
+239	Gazpacho	Night		ok	section: Post-Prog
+240	The Pineapple Thief	Your Wilderness		ok	section: Post-Prog
+241	Fates Warning	Awaken the Guardian		ok	section: Progressive Metal (Mainline)
+242	Queensrÿche	Operation: Mindcrime		ok	section: Progressive Metal (Mainline)
+243	Dream Theater	Images and Words		ok	section: Progressive Metal (Mainline)
+244	Symphony X	The Divine Wings of Tragedy		ok	section: Progressive Metal (Mainline)
+245	Shadow Gallery	Tyranny		ok	section: Progressive Metal (Mainline)
+246	Pain of Salvation	Remedy Lane		ok	section: Progressive Metal (Mainline)
+247	Ayreon	The Human Equation		ok	section: Progressive Metal (Mainline)
+248	Riverside	Second Life Syndrome		ok	section: Progressive Metal (Mainline)
+249	Leprous	Bilateral		ok	section: Progressive Metal (Mainline)
+250	Haken	The Mountain		ok	section: Progressive Metal (Mainline)
+251	Voivod	Dimension Hatröss		ok	section: Progressive Metal (Cross-Genre)
+252	Opeth	Blackwater Park		ok	section: Progressive Metal (Cross-Genre)
+253	Sigh	Imaginary Sonicscape		ok	section: Progressive Metal (Cross-Genre)
+254	Mastodon	Leviathan		ok	section: Progressive Metal (Cross-Genre)
+255	Between the Buried and Me	Colors		ok	section: Progressive Metal (Cross-Genre)
+256	Devin Townsend	Ocean Machine: Biomech		ok	section: Progressive Metal (Cross-Genre)
+257	Tool	Lateralus		ok	section: Progressive Metal (Cross-Genre)
+258	Porcupine Tree	Fear of a Blank Planet		ok	section: Progressive Metal (Cross-Genre)
+259	Karnivool	Sound Awake		ok	section: Progressive Metal (Cross-Genre)
+260	Katatonia	The Fall of Hearts		ok	section: Progressive Metal (Cross-Genre)
+261	Meshuggah	Destroy Erase Improve		ok	section: Djent
+262	Kobong	Chmury nie było		ok	section: Djent
+263	Meshuggah	Catch Thirtythree		ok	section: Djent
+264	Periphery	Periphery		ok	section: Djent
+265	TesseracT	Altered State		ok	section: Djent
+266	Miles Davis	In a Silent Way		ok	section: Jazz Fusion
+267	Mahavishnu Orchestra	Birds of Fire		ok	section: Jazz Fusion
+268	Herbie Hancock	Head Hunters		ok	section: Jazz Fusion
+269	Return to Forever	Romantic Warrior		ok	section: Jazz Fusion
+270	Weather Report	Heavy Weather		ok	section: Jazz Fusion
+271	Don Caballero	For Respect		ok	section: Math Rock
+272	Shellac	At Action Park		ok	section: Math Rock
+273	Don Caballero	What Burns Never Returns		ok	section: Math Rock
+274	Hella	Hold Your Horse Is		ok	section: Math Rock
+275	Tera Melos	Tera Melos		ok	section: Math Rock
+276	Slint	Spiderland		ok	section: Post-Rock
+277	Bark Psychosis	Hex		ok	section: Post-Rock
+278	Mogwai	Mogwai Young Team		ok	section: Post-Rock
+279	Godspeed You! Black Emperor	Lift Your Skinny Fists Like Antennas to Heaven		ok	section: Post-Rock
+280	Explosions in the Sky	The Earth Is Not a Cold Dead Place		ok	section: Post-Rock

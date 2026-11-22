@@ -5,10 +5,12 @@ import { watchFeeds } from './refresh'
 import { getCategories, getSourceItems, getSources, setWatched } from './store'
 
 /**
- * Feeds as something a randomizer can shuffle (DARK-7): every post, a category's, or one channel's.
- * The randomizer knows nothing of feeds; this is the whole of the connection.
+ * Feeds as something a randomizer can shuffle (DARK-7): every post, or a category's. The randomizer
+ * knows nothing of feeds; this is the whole of the connection.
  *
- * A choice is `all`, `cat:<category id>` or `src:<source id>`. Every post a source keeps is in the
+ * A choice is `all` or `cat:<category id>`. One channel alone is not offered (DARK-14): a shuffle is
+ * for a mix, and one channel is better browsed on its card. A card set to one before (`src:<source
+ * id>`) keeps drawing from it. Every post a source keeps is in the
  * shuffle, watched or not: a randomizer is for "what next" over the whole backlog, and what to leave
  * out is what its stamps are for.
  */
@@ -31,15 +33,9 @@ export function sourcesOfChoice(sources: Readonly<Record<string, FeedSource>>, c
 	return null
 }
 
-/** What a choice can be: all feeds, then the categories in chip order, then each source by name. */
-export function feedChoices(sources: Readonly<Record<string, FeedSource>>, categories: Readonly<Record<string, FeedCategory>>): SourceChoice[] {
-	return [
-		{ id: ALL, label: 'All feeds', group: '' },
-		...orderedCategories(categories).map((c) => ({ id: `${CATEGORY}${c.categoryId}`, label: c.name, group: 'Categories' })),
-		...Object.values(sources)
-			.sort((a, b) => a.title.localeCompare(b.title))
-			.map((s) => ({ id: `${SOURCE}${s.sourceId}`, label: s.title, group: 'Channels and feeds' })),
-	]
+/** What a choice can be: all feeds, then the categories in chip order. Never one channel alone. */
+export function feedChoices(categories: Readonly<Record<string, FeedCategory>>): SourceChoice[] {
+	return [{ id: ALL, label: 'All feeds', group: '' }, ...orderedCategories(categories).map((c) => ({ id: `${CATEGORY}${c.categoryId}`, label: c.name, group: 'Categories' }))]
 }
 
 /** "12 Nov 2026": a video's date, where an album has its year. */
@@ -90,7 +86,7 @@ export const feedsRandomizerSource: ItemSource = {
 	label: 'Feeds',
 	icon: Rss,
 	extensionId: 'lifeboard.feeds',
-	choices: () => feedChoices(getSources(), getCategories()),
+	choices: () => feedChoices(getCategories()),
 	entries: (choiceId) => feedEntries(getSources(), getCategories(), getSourceItems(), choiceId),
 	kind: (choiceId) => feedKind(getSources(), getCategories(), choiceId),
 	// The same refresh a feed card keeps going while it is open.

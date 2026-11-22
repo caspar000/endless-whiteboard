@@ -75,8 +75,9 @@ beforeEach(async () => {
 		getBlob: async () => null,
 		getText: async (url): Promise<ExternalText> => (url === FEED ? { ok: true, url, text: CHANNEL } : { ok: false, reason: 'failed', message: `No page at ${url}` }),
 	})
-	const ben = addSource({ provider: 'youtube', feedUrl: FEED, link: `https://www.youtube.com/channel/${BEN}`, title: 'Ben Eater', categories: [] })
-	sourceKey = `feeds:src:${ben.sourceId}`
+	addSource({ provider: 'youtube', feedUrl: FEED, link: `https://www.youtube.com/channel/${BEN}`, title: 'Ben Eater', categories: [] })
+	// Every feed: one channel alone is not offered (DARK-14), and Ben Eater is the only one here.
+	sourceKey = 'feeds:all'
 	await refreshSources({ force: true })
 	// Reduced motion: the pick fades in rather than flipping through two dozen timed flaps.
 	vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
@@ -98,20 +99,21 @@ describe('a randomizer connected to a YouTube channel', () => {
 		expect(props.source).toBe('')
 	})
 
-	it("offers the channel among its sources, and shuffles the channel's videos once picked", async () => {
+	it("offers all feeds but never the channel alone, and shuffles the feeds' videos once picked", async () => {
 		mount()
 		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
 
 		const picker = screen.getByLabelText('Shuffle from') as HTMLSelectElement
 		const offered = Array.from(picker.options).map((o) => o.textContent)
-		expect(offered).toEqual(expect.arrayContaining(['A list I type', 'All feeds', 'Ben Eater']))
+		expect(offered).toEqual(expect.arrayContaining(['A list I type', 'All feeds']))
+		expect(offered).not.toContain('Ben Eater')
 		fireEvent.change(picker, { target: { value: sourceKey } })
 		expect(props.source).toBe(sourceKey)
-		expect(screen.getByText(/2 videos from Ben Eater/)).toBeTruthy()
+		expect(screen.getByText(/2 videos from All feeds/)).toBeTruthy()
 		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
-		// The card now shows the channel: its name on top, its videos counted, the newest on show.
-		expect(within(card()).getByRole('button', { name: 'Shuffling Ben Eater. Change the source' })).toBeTruthy()
+		// The card now shows the feeds: their name on top, its videos counted, the newest on show.
+		expect(within(card()).getByRole('button', { name: 'Shuffling All feeds. Change the source' })).toBeTruthy()
 		expect(within(card()).getByText('2 videos')).toBeTruthy()
 		expect(within(card()).getByRole('img', { name: 'Video cover: Breadboard clock part 5 by Ben Eater' })).toBeTruthy()
 

@@ -46,8 +46,8 @@ export function Randomizer({ go }: SectionProps) {
 					<Jump to="feeds" go={go}>
 						Feeds
 					</Jump>{' '}
-					on, the same menu lists <strong>All feeds</strong>, each of your categories and each channel:
-					pick one and the card shuffles its videos, each with its thumbnail as the cover. The button
+					on, the same menu lists <strong>All feeds</strong> and each of your categories, never one channel
+					alone, since a shuffle is for a mix: pick one and the card shuffles its videos, each with its thumbnail as the cover. The button
 					beside the count opens the video on show and marks it watched in your feeds. The card keeps the
 					feed up to date while it is open, as a feed card does.
 				</p>

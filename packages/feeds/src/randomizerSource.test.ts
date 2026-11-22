@@ -22,13 +22,10 @@ const ITEMS = {
 }
 
 describe('feeds as a randomizer source', () => {
-	it('offers all feeds, each category, and each channel by name', () => {
-		expect(feedChoices(SOURCES, CATEGORIES)).toEqual([
+	it('offers all feeds and each category, never one channel alone (DARK-14)', () => {
+		expect(feedChoices(CATEGORIES)).toEqual([
 			{ id: 'all', label: 'All feeds', group: '' },
 			{ id: 'cat:ee', label: 'Electronics', group: 'Categories' },
-			{ id: 'src:blog', label: 'A blog', group: 'Channels and feeds' },
-			{ id: 'src:ben', label: 'Ben Eater', group: 'Channels and feeds' },
-			{ id: 'src:eev', label: 'EEVblog', group: 'Channels and feeds' },
 		])
 	})
 

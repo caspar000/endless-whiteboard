@@ -100,6 +100,21 @@ export function Randomizer({ go }: SectionProps) {
 					is in the menu too, everything in it at once.
 				</p>
 				<p>
+					A cover that hasn't loaded by the time the flap reaches it shows its title on a blank card rather
+					than the last picture, and the covers a shuffle will flip through start loading as soon as you
+					press it. The card's editor sets the <strong>window</strong>'s shape: square, or 16:9 for videos,
+					2:3 for posters and others, the flap still splitting it in two equal halves.
+				</p>
+				<p>
+					An album you rank on a{' '}
+					<Jump to="ranking-tiers" go={go}>
+						Ranking Tiers
+					</Jump>{' '}
+					card is Liked on every randomizer: out of the shuffle, with the stamp on its cover, marked as the
+					ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves it. A card
+					drawing from a weighted ranking itself still draws its ranked albums, by their tiers.
+				</p>
+				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in
 					your system, the cover fades to the pick instead of flipping.
 				</p>

@@ -80,6 +80,12 @@ export class GpuScene {
 	 */
 	readonly above: Atom<readonly { x: number; y: number; w: number; h: number }[]> = atom('gpu above', [])
 	/**
+	 * Set by the app too: what a shape lifted over all the others draws, in page space (a card with a
+	 * menu open over it, DARK-13). It is drawn above the shapes after it in z-order, so a shape the GPU
+	 * could draw that it overlaps stays the page's, or the layer would draw that shape over the menu.
+	 */
+	readonly lifted: Atom<readonly { x: number; y: number; w: number; h: number }[]> = atom('gpu lifted', [])
+	/**
 	 * The editor's rendering list, set only when it's a different list: it's worked out from the store's
 	 * queries, which the camera (a record) wakes on every frame of a pan, and every computed of the scene
 	 * built on it then checked each shape's caches to find nothing had changed.
@@ -303,7 +309,7 @@ export class GpuScene {
 						else cells.set(k, [box])
 					}
 				}
-				for (const a of this.above.get()) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
+				for (const a of [...this.above.get(), ...this.lifted.get()]) mark({ x: a.x - grow, y: a.y - grow, maxX: a.x + a.w + grow, maxY: a.y + a.h + grow })
 				const order = this.near.get()
 				// Off screen shapes too: following culling made a pan redo this, and with it every shape's
 				// answer, each time culling moved. It's redone when what's drawn changes.

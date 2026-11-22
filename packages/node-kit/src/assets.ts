@@ -42,21 +42,29 @@ export function getAssetBridge(): AssetBridge {
  * yet", which is also what it must render for the brief window before a first resolve lands.
  */
 export function useAssetUrl(src: string): string | null {
-	const [url, setUrl] = useState<string | null>(null)
+	return useAsset(src).url
+}
+
+/**
+ * An `asset:` src resolved, with whether it is still resolving. The URL is kept with the src it was
+ * resolved for: while a new src resolves, the last one's URL is not this one's, so a card moving from
+ * one dropped picture to another shows none, and knows it is waiting, rather than showing the old one
+ * (DARK-13).
+ */
+export function useAsset(src: string): { url: string | null; pending: boolean } {
+	const [resolved, setResolved] = useState<{ src: string; url: string | null } | null>(null)
 	useEffect(() => {
-		if (!src) {
-			setUrl(null)
-			return
-		}
+		if (!src) return
 		let cancelled = false
 		void getAssetBridge()
 			.resolveUrl(src)
-			.then((resolved) => {
-				if (!cancelled) setUrl(resolved)
+			.then((url) => {
+				if (!cancelled) setResolved({ src, url })
 			})
 		return () => {
 			cancelled = true
 		}
 	}, [src])
-	return src ? url : null
+	const mine = !!src && resolved?.src === src
+	return { url: mine ? resolved.url : null, pending: !!src && !mine }
 }

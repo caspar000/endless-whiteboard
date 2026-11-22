@@ -81,6 +81,12 @@ export interface ItemSource {
 	 * every quarter of an hour). Returns the card's release.
 	 */
 	watch?(choiceId: string): () => void
+	/**
+	 * Its entries are what rankings ranked (a weighted ranking, DARK-13). Ranking an item counts as liking
+	 * it, which takes it out of a randomizer's shuffle; a source made of ranked items is where a randomizer
+	 * draws them on purpose, so those stamps don't take its own entries out.
+	 */
+	ranked?: boolean
 	/** Opens an entry, as the source's own card would (a video, marked watched). Without it, its `url` opens in a new tab. */
 	open?(entry: { id: string; url: string }): void
 	/**

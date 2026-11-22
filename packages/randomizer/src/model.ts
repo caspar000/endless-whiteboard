@@ -46,6 +46,12 @@ export interface Stamp {
 	kind: StampKind
 	/** The local day it was stamped, `YYYY-MM-DD`. A postmark is dated to the day, not the second. */
 	date: string
+	/**
+	 * Stamped by ranking the item on a Ranking Tiers card (DARK-13), not on this card. It counts here
+	 * as any stamp does (out of the shuffle, on the cover), but it is the vault's, and never stored on
+	 * the card (`storeItem` leaves it out, `withRankings` puts it in).
+	 */
+	ranked?: boolean
 }
 
 export interface RandomItem {
@@ -359,12 +365,31 @@ export function storeItem(stored: readonly RandomItem[], item: RandomItem, chang
 		creator: next.creator,
 		year: next.year,
 		cover: ownCover,
-		stamps: next.stamps,
+		stamps: next.stamps.filter((s) => !s.ranked),
 	}
 	const keep = next.source === TYPED_SOURCE || kept.stamps.length > 0 || kept.cover !== ''
 	if (at < 0) return keep ? [...stored, kept] : [...stored]
 	return keep ? stored.map((s, i) => (i === at ? kept : s)) : stored.filter((_, i) => i !== at)
 }
+
+/**
+ * The card's items with the stamps rankings gave them (DARK-13) among their own, by day, a ranking's
+ * after the card's on the same day. A ranked album is Liked on every card: out of the shuffle, with the
+ * stamp on its cover.
+ */
+export function withRankings(items: readonly RandomItem[], rankedOf: (item: RandomItem) => readonly Stamp[]): RandomItem[] {
+	return items.map((item) => {
+		const ranked = rankedOf(item)
+		if (!ranked.length) return item
+		const stamps = [...item.stamps.map((s, i) => ({ s, i })), ...ranked.map((s, i) => ({ s: { ...s, ranked: true }, i: item.stamps.length + i }))]
+			.sort((a, b) => a.s.date.localeCompare(b.s.date) || a.i - b.i)
+			.map(({ s }) => s)
+		return { ...item, stamps }
+	})
+}
+
+/** The card's own stamps on an item, without those rankings gave it. */
+export const ownStamps = (item: RandomItem): Stamp[] => item.stamps.filter((s) => !s.ranked)
 
 /* ------------------------------------------------------------------------ cards made before DARK-7 */
 

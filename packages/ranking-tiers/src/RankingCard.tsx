@@ -1,18 +1,42 @@
 import { stopEventPropagation, useValue, type Editor } from '@lifeboard/canvas'
 import {
+	COVER_ASPECTS,
 	NodeEditorPopover,
 	SourceSelect,
+	aspectRatio,
+	getItemStamps,
+	itemRanked,
+	matchesSearch,
 	resolveItemSource,
 	setDraggedItem,
 	sourceEntries,
+	useCardPopup,
 	useItemCover,
+	type ItemStamp,
 	type NodeComponentProps,
 	type NodeShape,
 	type SourceEntry,
 	type SourceKind,
 } from '@lifeboard/node-kit'
-import { ArrowDown, ArrowUp, ChevronDown, ListPlus, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Settings2, Trash2 } from 'lucide-react'
-import { Fragment, memo, useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type SyntheticEvent } from 'react'
+import {
+	ArrowDown,
+	ArrowUp,
+	ChevronDown,
+	CircleHelp,
+	Heart,
+	ListPlus,
+	MoreHorizontal,
+	PanelLeftClose,
+	PanelLeftOpen,
+	Pencil,
+	Plus,
+	Search,
+	Settings2,
+	Trash2,
+	X,
+	type LucideIcon,
+} from 'lucide-react'
+import { Fragment, memo, useEffect, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type SyntheticEvent } from 'react'
 import {
 	MAX_TIERS,
 	MAX_WEIGHT,
@@ -26,13 +50,14 @@ import {
 	removeTier,
 	renameTier,
 	setTierWeight,
+	showsStamp,
 	tierShares,
 	type Band,
 	type Ranking,
 } from './model'
 import { getPrefs, setPrefs } from './prefs'
 import type { RankingProps } from './props'
-import { RANKING_SOURCE_ID } from './source'
+import { RANKING_SOURCE_ID, rankedEntries } from './source'
 import { rankingOrNew, updateRanking } from './store'
 
 /** Clicks on the card's controls are the card's, not the canvas's: no select, no drag. */
@@ -86,11 +111,25 @@ function Die({ weight }: { weight: number }) {
 }
 
 /** One cover: its picture, title and creator. Dragged anywhere: between tiers, or onto a backlog. */
+/** The marks the stamps the randomizer gives wear on a badge; any other kind wears its first letter. */
+const BADGE_MARKS: Record<string, LucideIcon> = { liked: Heart, disliked: X, unsure: CircleHelp }
+
+/** A cover's latest stamp, as a small round badge in its ink (DARK-13). */
+function Badge({ stamp }: { stamp: { kind: string; label: string; ink: string } }) {
+	const Mark = BADGE_MARKS[stamp.kind]
+	return (
+		<span className="lb-rank__badge" style={{ '--lb-rank-ink': stamp.ink } as CSSProperties} title={stamp.label} aria-hidden="true">
+			{Mark ? <Mark size={10} strokeWidth={2.6} /> : stamp.label.charAt(0)}
+		</span>
+	)
+}
+
 function Cover({
 	entry,
 	shape,
 	small = false,
 	tier,
+	badge,
 	onDragStart,
 	onKey,
 }: {
@@ -98,11 +137,13 @@ function Cover({
 	shape: SourceKind['shape']
 	small?: boolean
 	tier: string
+	/** Its latest stamp, when the ranking shows badges. */
+	badge?: { kind: string; label: string; ink: string } | null
 	onDragStart: (e: DragEvent, entry: SourceEntry) => void
 	onKey: (e: KeyboardEvent, entry: SourceEntry, tier: string) => void
 }) {
 	const url = useItemCover(entry, shape)
-	const label = `${entry.title}${entry.creator ? `, ${entry.creator}` : ''}`
+	const label = `${entry.title}${entry.creator ? `, ${entry.creator}` : ''}${badge ? `. Stamped ${badge.label}` : ''}`
 	return (
 		<div
 			className={small ? 'lb-rank__cover lb-rank__cover--small' : 'lb-rank__cover'}
@@ -117,7 +158,10 @@ function Cover({
 			onDragStart={(e) => onDragStart(e, entry)}
 			onKeyDown={(e) => onKey(e, entry, tier)}
 		>
-			<img className="lb-rank__art" src={url} alt="" draggable={false} loading="lazy" />
+			<span className="lb-rank__frame">
+				<img className="lb-rank__art" src={url} alt="" draggable={false} loading="lazy" />
+				{badge && <Badge stamp={badge} />}
+			</span>
 			{!small && (
 				<span className="lb-rank__cap">
 					<span className="lb-rank__title">{entry.title}</span>
@@ -147,9 +191,10 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 		'lifeboard:ranking-source',
 		() => {
 			const resolved = resolveItemSource(ranking.source)
-			return { ...resolved, entries: resolved.type === 'source' ? sourceEntries(ranking.source) : [] }
+			const ranked = resolved.type === 'source' ? rankedEntries(ranking) : { entries: [], stamps: new Map<string, ItemStamp>() }
+			return { ...resolved, ...ranked, stampKinds: getItemStamps() }
 		},
-		[ranking.source]
+		[ranking]
 	)
 	const view = rankingView(ranking, source.entries)
 	const shares = tierShares(view.bands)
@@ -157,6 +202,8 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 
 	const [railOpen, setRailOpen] = useState(false)
 	const [railShown, setRailShown] = useState(RAIL_PAGE)
+	const [query, setQuery] = useState('')
+	const [searching, setSearching] = useState(false)
 	const [renaming, setRenaming] = useState<string | null>(null)
 	const [menu, setMenu] = useState<'settings' | { tier: string } | null>(null)
 	const [dropAt, setDropAt] = useState<DropAt | null>(null)
@@ -165,8 +212,10 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	const rootRef = useRef<HTMLDivElement>(null)
 	const focusNext = useRef<string | null>(null)
 
-	useOpenMenu(editor, `ranking-menu-${shape.id}`, menu !== null)
+	// A menu draws past the card's edge while it is open, rather than being cut off by it.
+	useCardPopup(editor, shape.id, menu !== null)
 	useOpenMenu(editor, `ranking-rename-${shape.id}`, renaming !== null)
+	useOpenMenu(editor, `ranking-search-${shape.id}`, searching)
 
 	// A source that keeps itself fresh (a feed reading its channels) does so while a card shows it.
 	const { source: watched, choiceId } = source
@@ -202,6 +251,14 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	const change = (fn: (r: Ranking) => Ranking | null, said?: string) => {
 		updateRanking(rankingId, fn)
 		if (said) setAnnounce(said)
+	}
+	/**
+	 * A move, said aloud. An item that goes from Unranked into a tier is ranked: the other extensions
+	 * hear of it (DARK-13), so it is stamped Liked and ticked in its syllabus.
+	 */
+	const move = (entry: SourceEntry, from: string, to: string, beforeId: string | null, said?: string) => {
+		change((r) => moveItem(r, entry.id, to, beforeId), said)
+		if (from === UNRANKED && to !== UNRANKED) itemRanked({ entry, from: ranking.source, rankingId, editor, shapeId: shape.id })
 	}
 	const tierName = (id: string) => (id === UNRANKED ? 'Unranked' : (ranking.tiers.find((t) => t.id === id)?.name ?? ''))
 
@@ -260,8 +317,10 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 			const at = dropTarget(e, tier)
 			dragging.current = null
 			setDropAt(null)
-			const title = source.entries.find((entry) => entry.id === id)?.title ?? 'It'
-			change((r) => moveItem(r, id, at.tier, at.beforeId), `${title} moved to ${tierName(at.tier)}.`)
+			const entry = source.entries.find((en) => en.id === id)
+			if (!entry) return
+			const from = view.unranked.some((en) => en.id === id) ? UNRANKED : 'tier'
+			move(entry, from, at.tier, at.beforeId, `${entry.title} moved to ${tierName(at.tier)}.`)
 		},
 	})
 
@@ -286,12 +345,19 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 		if (!to) return
 		if (to === UNRANKED) setRailOpen(true)
 		focusNext.current = entry.id
-		change((r) => moveItem(r, entry.id, to), `${entry.title} moved to ${tierName(to)}.`)
+		move(entry, tier, to, null, `${entry.title} moved to ${tierName(to)}.`)
 	}
 
 	/* ----------------------------------------------------------------------------- drawing */
 
 	const coverProps = { shape: kind.shape, onDragStart, onKey }
+	const kinds = source.stampKinds?.kinds ?? []
+	const badgeOf = (entry: SourceEntry) => {
+		if (!ranking.badges) return null
+		const stamp = source.stamps.get(entry.id)
+		const info = stamp && kinds.find((k) => k.id === stamp.kind)
+		return info ? { kind: info.id, label: info.label, ink: info.ink } : null
+	}
 	const caret = <span className="lb-rank__caret" aria-hidden="true" />
 
 	const band = ({ tier, items }: Band, i: number) => {
@@ -362,7 +428,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 						<MoreHorizontal size={16} aria-hidden />
 					</button>
 					{typeof menu === 'object' && menu?.tier === tier.id && (
-						<div className="lb-rank__pop lb-rank__tier-menu" role="menu" onPointerDown={swallow}>
+						<div className="lb-rank__pop lb-rank__tier-menu" role="menu" data-card-popup onPointerDown={swallow}>
 							<button type="button" role="menuitem" onClick={() => (setMenu(null), setRenaming(tier.id))}>
 								<Pencil size={14} aria-hidden /> Rename
 							</button>
@@ -399,7 +465,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					{items.map((entry) => (
 						<Fragment key={entry.id}>
 							{target && dropAt?.beforeId === entry.id && caret}
-							<Cover entry={entry} tier={tier.id} {...coverProps} />
+							<Cover entry={entry} tier={tier.id} badge={badgeOf(entry)} {...coverProps} />
 						</Fragment>
 					))}
 					{target && dropAt?.beforeId === null && items.length > 0 && caret}
@@ -412,9 +478,19 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	const settingsOpen = menu === 'settings'
 	const canAdd = ranking.tiers.length < MAX_TIERS
 	const total = source.entries.length
+	const unranked = query ? view.unranked.filter((entry) => matchesSearch(entry, query)) : view.unranked
+	// A cover of another shape keeps about the area of a square one: wider and shorter, or narrower and taller.
+	const ratio = aspectRatio(ranking.aspect)
+	const shapeStyle = ratio
+		? ({
+				'--lb-rank-aspect': ratio,
+				'--lb-col-cover': `${Math.round(80 * Math.sqrt(ratio))}px`,
+				'--lb-rank-small': `${Math.round(40 * Math.sqrt(ratio))}px`,
+			} as CSSProperties)
+		: undefined
 
 	return (
-		<div className="lb-rank" ref={rootRef} aria-label="Ranking tiers">
+		<div className={ratio ? 'lb-rank lb-rank--shaped' : 'lb-rank'} style={shapeStyle} ref={rootRef} aria-label="Ranking tiers">
 			<header className="lb-rank__head">
 				<button
 					type="button"
@@ -462,7 +538,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					<Settings2 size={16} aria-hidden />
 				</button>
 				{settingsOpen && (
-					<div className="lb-rank__pop lb-rank__settings" role="dialog" aria-label="Ranking settings" onPointerDown={swallow} onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
+					<div className="lb-rank__pop lb-rank__settings" role="dialog" data-card-popup aria-label="Ranking settings" onPointerDown={swallow} onKeyDown={(e) => e.key !== 'Escape' && e.stopPropagation()}>
 						<label className="lb-rank__field">
 							<span>Name</span>
 							<input
@@ -491,6 +567,40 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 									<small>“20%” rather than “1 in 5”, on every ranking.</small>
 								</span>
 							</label>
+						)}
+						<label className="lb-rank__field">
+							<span>Cover shape</span>
+							<select value={ranking.aspect} onChange={(e) => change((r) => ({ ...r, aspect: e.target.value }))}>
+								{COVER_ASPECTS.map((a) => (
+									<option key={a.id} value={a.id}>
+										{a.id ? a.label : 'Square (auto)'}
+									</option>
+								))}
+							</select>
+						</label>
+						{kinds.length > 0 && (
+							<>
+								<fieldset className="lb-rank__stamps">
+									<legend>Show stamped</legend>
+									{kinds.map((k) => (
+										<label key={k.id} className="lb-rank__stamp-toggle" style={{ '--lb-rank-ink': k.ink } as CSSProperties}>
+											<input
+												type="checkbox"
+												checked={showsStamp(ranking, k.id, source.stampKinds?.sourceId ?? null)}
+												onChange={(e) => change((r) => ({ ...r, stampFilter: { ...r.stampFilter, [k.id]: e.target.checked } }))}
+											/>
+											<span>{k.label}</span>
+										</label>
+									))}
+								</fieldset>
+								<label className="lb-rank__check">
+									<input type="checkbox" checked={ranking.badges} onChange={(e) => change((r) => ({ ...r, badges: e.target.checked }))} />
+									<span>
+										<b>Stamp badges</b>
+										<small>Each stamped cover wears its latest stamp.</small>
+									</span>
+								</label>
+							</>
 						)}
 					</div>
 				)}
@@ -524,17 +634,43 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 							<span className="lb-rank__rail-n">{view.unranked.length}</span>
 							<span className="lb-rank__rail-label">Unranked</span>
 						</button>
+						{railOpen && view.unranked.length > 0 && (
+							<label className="lb-rank__search">
+								<Search size={12} aria-hidden />
+								<input
+									type="search"
+									value={query}
+									placeholder="Search"
+									aria-label="Search unranked"
+									onPointerDown={swallow}
+									onFocus={() => setSearching(true)}
+									onBlur={() => setSearching(false)}
+									onChange={(e) => {
+										setQuery(e.target.value)
+										setRailShown(RAIL_PAGE)
+									}}
+									onKeyDown={(e) => {
+										e.stopPropagation()
+										if (e.key === 'Escape') {
+											if (query) setQuery('')
+											else e.currentTarget.blur()
+										}
+									}}
+								/>
+							</label>
+						)}
 						{railOpen && (
 							<div className="lb-rank__rail-list" role="list" aria-label="Unranked">
-								{view.unranked.slice(0, railShown).map((entry) => (
-									<Cover key={entry.id} entry={entry} tier={UNRANKED} small {...coverProps} />
+								{unranked.slice(0, railShown).map((entry) => (
+									<Cover key={entry.id} entry={entry} tier={UNRANKED} small badge={badgeOf(entry)} {...coverProps} />
 								))}
-								{view.unranked.length > railShown && (
+								{unranked.length > railShown && (
 									<button type="button" className="lb-rank__rail-more" onPointerDown={swallow} onClick={() => setRailShown(railShown + RAIL_PAGE)}>
-										+{view.unranked.length - railShown}
+										+{unranked.length - railShown}
 									</button>
 								)}
 								{view.unranked.length === 0 && <span className="lb-rank__rail-empty">All sorted</span>}
+								{view.unranked.length > 0 && unranked.length === 0 && <span className="lb-rank__rail-empty">Nothing matches</span>}
 							</div>
 						)}
 					</aside>

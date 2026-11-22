@@ -5,15 +5,19 @@ import {
 	UNRANKED,
 	addTier,
 	formatOdds,
+	keepsStamped,
+	mergeEntries,
 	moveItem,
 	moveTier,
 	newRanking,
 	nextWeight,
+	rankedKeys,
 	rankingView,
 	readRanking,
 	removeTier,
 	renameTier,
 	setTierWeight,
+	showsStamp,
 	tierShares,
 	weightedEntries,
 	type Ranking,
@@ -171,5 +175,48 @@ describe('a stored ranking', () => {
 	it('writes Settings’ tiers so they read back the same', () => {
 		const tiers = parseTiers('Heavy rotation × 4\nOften x 3\nRarely')
 		expect(parseTiers(formatTiers(tiers))).toEqual(tiers)
+	})
+})
+
+describe('stamps on a ranking (DARK-13)', () => {
+	const KINDS = ['liked', 'disliked', 'unsure']
+	const of = (source: string, stampFilter: Record<string, boolean> = {}) => ({ source, stampFilter })
+
+	it('shows every stamp on a ranking of anything else, until one is switched off', () => {
+		expect(KINDS.map((k) => showsStamp(of('feeds:all'), k, 'stamped'))).toEqual([true, true, true])
+		expect(showsStamp(of('feeds:all', { disliked: false }), 'disliked', 'stamped')).toBe(false)
+	})
+
+	it('shows only the list a ranking of the stamped lists was pointed at, as before, until more are switched on', () => {
+		expect(KINDS.map((k) => showsStamp(of('stamped:liked'), k, 'stamped'))).toEqual([true, false, false])
+		expect(rankedKeys(of('stamped:liked'), 'stamped', KINDS)).toEqual(['stamped:liked'])
+		expect(rankedKeys(of('stamped:liked', { unsure: true }), 'stamped', KINDS)).toEqual(['stamped:liked', 'stamped:unsure'])
+	})
+
+	it('reads only its own source when nothing stamps, or it ranks something else', () => {
+		expect(rankedKeys(of('feeds:all', { unsure: true }), 'stamped', KINDS)).toEqual(['feeds:all'])
+		expect(rankedKeys(of('stamped:liked', { unsure: true }), null, [])).toEqual(['stamped:liked'])
+		expect(rankedKeys(of(''), 'stamped', KINDS)).toEqual([])
+	})
+
+	it('keeps a ranked cover of the stamped lists in its tier when its stamp changes, unless that kind is off by hand', () => {
+		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', true)).toBe(true)
+		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', false)).toBe(false)
+		expect(keepsStamped(of('stamped:unsure', { liked: false }), 'liked', 'stamped', true)).toBe(false)
+		expect(keepsStamped(of('feeds:all', { liked: false }), 'liked', 'stamped', true)).toBe(false)
+	})
+
+	it('merges lists as one, each item once', () => {
+		expect(mergeEntries([[entry('a'), entry('b')], [entry('b'), entry('c')]]).map((e) => e.id)).toEqual(['a', 'b', 'c'])
+	})
+
+	it('keeps its filters, badges and cover shape through a save, and starts without them', () => {
+		const r = { ...ranked(), stampFilter: { liked: true, disliked: false }, badges: true, aspect: '16:9' }
+		expect(readRanking(JSON.parse(JSON.stringify(r)))).toEqual(r)
+		expect(readRanking({ rankingId: 'x', tiers: [{ id: 't', name: 'T', weight: 1 }], stampFilter: { liked: 'yes', unsure: false } })).toMatchObject({
+			stampFilter: { unsure: false },
+			badges: false,
+			aspect: '',
+		})
 	})
 })

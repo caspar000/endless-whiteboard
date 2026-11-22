@@ -1,5 +1,5 @@
 import { useValue, type Editor } from '@lifeboard/canvas'
-import { NodeEditorPopover, offeredItemSources, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
+import { COVER_ASPECTS, NodeEditorPopover, offeredItemSources, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
 import { useEffect, useRef, useState } from 'react'
 import { NO_SOURCE, TYPED_KIND, TYPED_SOURCE, formatList, itemsOf, mergeList, sourceKey } from './model'
 import type { RandomizerProps } from './props'
@@ -39,9 +39,28 @@ export function SourceEditor({ shape, editor }: { shape: NodeShape<RandomizerPro
 	return (
 		<NodeEditorPopover shape={shape} editor={editor} width={380} side="right">
 			<div className="lb-rand-editor">
-				<label className="lb-rand-editor__label" htmlFor={`${shape.id}-source`}>
-					Shuffle from
-				</label>
+				<div className="lb-rand-editor__row">
+					<label className="lb-rand-editor__label" htmlFor={`${shape.id}-source`}>
+						Shuffle from
+					</label>
+					<label className="lb-rand-editor__shape">
+						<span>Window</span>
+						<select
+							value={shape.props.aspect ?? ''}
+							aria-label="The window's shape"
+							onChange={(e) => {
+								const live = editor.getShape(shape.id) as NodeShape<RandomizerProps> | undefined
+								if (live) updateNodeProps(editor, live, { aspect: e.target.value })
+							}}
+						>
+							{COVER_ASPECTS.map((a) => (
+								<option key={a.id} value={a.id}>
+									{a.id ? a.label : 'Square (auto)'}
+								</option>
+							))}
+						</select>
+					</label>
+				</div>
 				<select id={`${shape.id}-source`} className="lb-rand-editor__source" value={key} autoFocus={key !== TYPED_SOURCE} onChange={(e) => choose(e.target.value)}>
 					{key === NO_SOURCE && (
 						<option value={NO_SOURCE} disabled>

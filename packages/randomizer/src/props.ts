@@ -11,4 +11,6 @@ export interface RandomizerProps {
 	picks: RandomPick[]
 	/** See registry.tsx: `h` follows the card until a vertical handle pins it. */
 	autoHeight: boolean
+	/** The window's shape, as the kit's `COVER_ASPECTS` names it: '' is square (DARK-13). */
+	aspect: string
 }

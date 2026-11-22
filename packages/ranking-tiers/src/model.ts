@@ -32,6 +32,16 @@ export interface Ranking {
 	tiers: Tier[]
 	/** Per source key, per tier id, the ids of the items in it, in order. Anything else is unranked. */
 	placed: Record<string, Record<string, string[]>>
+	/**
+	 * Per stamp kind (`liked`, `unsure`, `disliked`), whether covers whose latest stamp is that kind are
+	 * shown (DARK-13). A kind not in here is shown, but on a ranking of the stamped lists only the list
+	 * it is pointed at is (`showsStamp`). Hidden covers keep their tier.
+	 */
+	stampFilter: Record<string, boolean>
+	/** Each stamped cover wears its latest stamp. */
+	badges: boolean
+	/** The covers' shape, as the kit's `COVER_ASPECTS` names it: '' is square. */
+	aspect: string
 }
 
 export const MAX_TIERS = 8
@@ -67,7 +77,72 @@ export function newRanking(rankingId: string, tiers: ReadonlyArray<Pick<Tier, 'n
 		weighted: false,
 		tiers: tiers.slice(0, MAX_TIERS).map((t, i) => ({ id: `t${i + 1}`, name: t.name, weight: clampWeight(t.weight) })),
 		placed: {},
+		stampFilter: {},
+		badges: false,
+		aspect: '',
 	}
+}
+
+/* ------------------------------------------------------------------------------------ stamps */
+
+/**
+ * Whether covers stamped `kind` show on this ranking. Its own choice if it made one; else every kind,
+ * except on a ranking of the stamped lists (`stampSource`, the source id they are offered under), where
+ * only the list it was pointed at shows, as it did before there were filters.
+ */
+export function showsStamp(ranking: Pick<Ranking, 'source' | 'stampFilter'>, kind: string, stampSource: string | null): boolean {
+	const chosen = ranking.stampFilter[kind]
+	if (chosen !== undefined) return chosen
+	const at = ranking.source.indexOf(':')
+	if (stampSource && at > 0 && ranking.source.slice(0, at) === stampSource) return ranking.source.slice(at + 1) === kind
+	return true
+}
+
+/**
+ * The source keys a ranking reads: its own, and on a ranking of the stamped lists, the list of every
+ * other kind it shows, so Liked and Unsure can be ranked together.
+ */
+export function rankedKeys(ranking: Pick<Ranking, 'source' | 'stampFilter'>, stampSource: string | null, kinds: readonly string[]): string[] {
+	if (!ranking.source) return []
+	const at = ranking.source.indexOf(':')
+	if (!stampSource || at <= 0 || ranking.source.slice(0, at) !== stampSource) return [ranking.source]
+	const others = kinds.filter((k) => `${stampSource}:${k}` !== ranking.source && showsStamp(ranking, k, stampSource)).map((k) => `${stampSource}:${k}`)
+	return [ranking.source, ...others]
+}
+
+/** Whether a ranking ranks the stamped lists themselves (`stampSource` is the id they are offered under). */
+export function ranksStamps(ranking: Pick<Ranking, 'source'>, stampSource: string | null): boolean {
+	const at = ranking.source.indexOf(':')
+	return !!stampSource && at > 0 && ranking.source.slice(0, at) === stampSource
+}
+
+/**
+ * Whether a cover stamped `kind` stays on the ranking. As `showsStamp`, but on a ranking of the stamped
+ * lists a cover already in a tier stays where it is when its stamp changes (ranking it stamps it Liked,
+ * DARK-13), unless its new kind was switched off by hand.
+ */
+export function keepsStamped(ranking: Pick<Ranking, 'source' | 'stampFilter'>, kind: string, stampSource: string | null, placed: boolean): boolean {
+	if (showsStamp(ranking, kind, stampSource)) return true
+	return placed && ranksStamps(ranking, stampSource) && ranking.stampFilter[kind] !== false
+}
+
+/** The ids a ranking has put in tiers, for its current source. */
+export function placedIds(ranking: Pick<Ranking, 'source' | 'placed'>): Set<string> {
+	return new Set(Object.values(ranking.placed[ranking.source] ?? {}).flat())
+}
+
+/** Entries of several lists as one, each id once, in the order the lists give them. */
+export function mergeEntries(lists: ReadonlyArray<readonly SourceEntry[]>): SourceEntry[] {
+	const seen = new Set<string>()
+	const out: SourceEntry[] = []
+	for (const list of lists) {
+		for (const e of list) {
+			if (seen.has(e.id)) continue
+			seen.add(e.id)
+			out.push(e)
+		}
+	}
+	return out
 }
 
 /* ------------------------------------------------------------------------------------ reading */
@@ -216,5 +291,17 @@ export function readRanking(raw: Record<string, unknown>): Ranking | null {
 			placed[key] = out
 		}
 	}
-	return { rankingId, name: str(raw.name), source: str(raw.source), weighted: raw.weighted === true, tiers, placed }
+	const stampFilter: Record<string, boolean> = {}
+	if (isObject(raw.stampFilter)) for (const [kind, on] of Object.entries(raw.stampFilter)) if (typeof on === 'boolean') stampFilter[kind] = on
+	return {
+		rankingId,
+		name: str(raw.name),
+		source: str(raw.source),
+		weighted: raw.weighted === true,
+		tiers,
+		placed,
+		stampFilter,
+		badges: raw.badges === true,
+		aspect: str(raw.aspect),
+	}
 }

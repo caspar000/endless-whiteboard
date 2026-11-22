@@ -57,6 +57,13 @@ export interface StampedEntry {
 	/** The card's latest stamp on it. */
 	kind: StampKind
 	date: string
+	/**
+	 * The id this board's lists give the item, when it is not the first stamp's (DARK-14): the id the
+	 * list from before boards gave it, pinned as that list is moved onto the board (`pinLegacyIds`), so
+	 * what was ranked, picked or stamped under it keeps finding it whatever other boards stamp later.
+	 * Carried to the board's later stamps of the same item.
+	 */
+	alias?: string
 }
 
 const SOURCE_ID = 'stamped'
@@ -113,6 +120,7 @@ const stamped = keyedStore<StampedEntry>(
 			url: str(e.url),
 			kind,
 			date: str(e.date),
+			...(str(e.alias) ? { alias: str(e.alias) } : {}),
 		}
 	},
 	(e) => e.key
@@ -135,6 +143,10 @@ export const setStampedPersistence = stamped.setPersistence
 export function nextStamped(current: Stamped, card: string, items: readonly RandomItem[], entryOf: (item: RandomItem) => SourceEntry | undefined): Stamped {
 	const next: Record<string, StampedEntry> = {}
 	for (const [key, e] of Object.entries(current)) if (e.card !== card) next[key] = e
+	// The ids this board pinned (DARK-14), so a new stamp on an album it pinned keeps the album's id.
+	const board = boardOfCard(card)
+	const pinned = new Map<string, string>()
+	for (const e of Object.values(current)) if (e.alias && e.board === board && board) pinned.set(sameItem(e), e.alias)
 	for (const item of items) {
 		const latest = latestStamp(item)
 		if (!latest || fromThisList(item)) continue
@@ -146,10 +158,12 @@ export function nextStamped(current: Stamped, card: string, items: readonly Rand
 			continue
 		}
 		const entry = entryOf(item)
+		const alias = pinned.get(sameItem(item))
 		next[key] = {
+			...(alias ? { alias } : {}),
 			key,
 			card,
-			board: boardOfCard(card),
+			board,
 			item: itemKey,
 			source: item.source,
 			id: item.id,
@@ -188,14 +202,13 @@ export function watchStamped(editor: Editor, boardId: string): void {
 		stamped.set(nextStamped(stamped.get(), cardKey(boardId, shape.id), itemsOf(shape), entryOf))
 	}
 	// Cards set to a list from before DARK-14 move onto this board's own, with no undo step: nobody changed them.
-	const scoped = editor
-		.getCurrentPageShapes()
+	const scoped = (isExtensionEnabled(STAMPED_EXTENSION_ID) ? editor.getCurrentPageShapes() : [])
 		.filter((shape) => shape.type === RANDOMIZER_TYPE)
 		.flatMap((shape) => {
 			const props = scopedCard(shape.props as RandomizerProps, boardId)
 			return props ? [{ id: shape.id, type: RANDOMIZER_TYPE, props }] : []
 		})
-	if (scoped.length && isExtensionEnabled(STAMPED_EXTENSION_ID)) editor.run(() => editor.updateShapes(scoped as never), { history: 'ignore' })
+	if (scoped.length) editor.run(() => editor.updateShapes(scoped as never), { history: 'ignore' })
 	for (const shape of editor.getCurrentPageShapes()) if (shape.type === RANDOMIZER_TYPE) write(shape)
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
 		if (shape.type === RANDOMIZER_TYPE) write(shape)
@@ -216,7 +229,7 @@ const LEGACY_LABELS: Record<StampKind, string> = {
 	unsure: 'Everything I’m unsure of',
 }
 
-const sameItem = (e: StampedEntry) => `${e.title.trim().toLowerCase()}\u0000${e.creator.trim().toLowerCase()}`
+const sameItem = (e: Pick<StampedEntry, 'title' | 'creator'>) => `${e.title.trim().toLowerCase()}\u0000${e.creator.trim().toLowerCase()}`
 
 /** Which stamps a list holds: one board's, from one source. Leave it out for every stamp anywhere (a list from before DARK-14). */
 export interface StampScope {
@@ -237,17 +250,16 @@ export const ANY_ORIGIN = '*'
  * in the list's scope says which list it is in, and the first one anywhere gives its id, so a ranking
  * of the list keeps its place.
  *
- * The id is the first stamp on any board, not only in the scope (DARK-14): a list from before stamps
- * had boards, moved onto one board's, then gives each album the id it had, and the rankings, picks and
- * stamps kept under that id still find it.
+ * A board's list gives an album the id its board pinned for it, if it pinned one (`pinLegacyIds`):
+ * then what was ranked, picked or stamped under the id the list from before boards gave it keeps
+ * finding it, whatever another board stamps or takes back later (DARK-14).
  */
 export function stampedEntries(all: Stamped, kind: string, scope?: StampScope): SourceEntry[] {
 	const groups = new Map<string, { first: StampedEntry; newest: StampedEntry }>()
 	const later = (a: StampedEntry, b: StampedEntry) => a.date > b.date || (a.date === b.date && a.key > b.key)
-	const firstAnywhere = new Map<string, StampedEntry>()
+	const pinned = new Map<string, string>()
 	for (const e of Object.values(all)) {
-		const had = firstAnywhere.get(sameItem(e))
-		if (!had || later(had, e)) firstAnywhere.set(sameItem(e), e)
+		if (scope && e.alias && e.board === scope.board) pinned.set(sameItem(e), e.alias)
 	}
 	for (const e of Object.values(all)) {
 		if (scope && (!onBoard(e, scope.board) || (scope.origin !== ANY_ORIGIN && e.source !== scope.origin))) continue
@@ -262,7 +274,7 @@ export function stampedEntries(all: Stamped, kind: string, scope?: StampScope): 
 		.filter((g) => g.newest.kind === kind)
 		.sort((a, b) => b.newest.date.localeCompare(a.newest.date) || a.first.title.localeCompare(b.first.title))
 		.map(({ first: e, newest }) => ({
-			id: (firstAnywhere.get(sameItem(e)) ?? e).item,
+			id: pinned.get(sameItem(e)) ?? e.item,
 			title: e.title,
 			creator: e.creator,
 			year: e.year,
@@ -331,11 +343,50 @@ export const stampedSource: ItemSource = {
 	},
 }
 
-/** A list key from before DARK-14 (`stamped:liked`) as the same list of one board's stamps; `null` for any other key. */
+/**
+ * The ids the list from before DARK-14 gave the albums a board stamped, pinned on that board's stamps
+ * where its own lists would give another (`alias`). The old list gives an album its first stamp
+ * anywhere; a board's list, its first stamp there. So a card moved from the one to the other finds
+ * every album under the id it kept, and keeps finding it: the pin is the board's, and no stamp another
+ * board gives or takes back later moves it. Pins once: an album already pinned is left as it is.
+ */
+export function pinLegacyIds(all: Stamped, boardId: string): Stamped {
+	const later = (a: StampedEntry, b: StampedEntry) => a.date > b.date || (a.date === b.date && a.key > b.key)
+	const firstAnywhere = new Map<string, StampedEntry>()
+	const firstHere = new Map<string, StampedEntry>()
+	const pinnedHere = new Set<string>()
+	for (const e of Object.values(all)) {
+		const item = sameItem(e)
+		const anywhere = firstAnywhere.get(item)
+		if (!anywhere || later(anywhere, e)) firstAnywhere.set(item, e)
+		if (!onBoard(e, boardId)) continue
+		const here = firstHere.get(item)
+		if (!here || later(here, e)) firstHere.set(item, e)
+		if (e.alias && e.board === boardId) pinnedHere.add(item)
+	}
+	let next: Record<string, StampedEntry> | null = null
+	for (const [key, e] of Object.entries(all)) {
+		const item = sameItem(e)
+		if (e.board !== boardId || pinnedHere.has(item)) continue
+		const legacy = firstAnywhere.get(item)!.item
+		if (legacy === firstHere.get(item)?.item) continue
+		next ??= { ...all }
+		next[key] = { ...e, alias: legacy }
+	}
+	return next ?? all
+}
+
+/**
+ * A list key from before DARK-14 (`stamped:liked`) as the same list of one board's stamps, or `null`
+ * for any other key. Pins the old list's ids on the board's stamps first (`pinLegacyIds`), so what was
+ * kept under them still finds its albums.
+ */
 export function scopeToBoard(key: string, boardId: string): string | null {
 	if (!boardId || !key.startsWith(`${SOURCE_ID}:`)) return null
 	const parsed = parseStampedChoice(key.slice(SOURCE_ID.length + 1))
-	return parsed && !parsed.scope ? `${SOURCE_ID}:${stampedChoiceId(parsed.kind, { board: boardId, origin: ANY_ORIGIN })}` : null
+	if (!parsed || parsed.scope) return null
+	stamped.set(pinLegacyIds(stamped.get(), boardId))
+	return `${SOURCE_ID}:${stampedChoiceId(parsed.kind, { board: boardId, origin: ANY_ORIGIN })}`
 }
 
 /**

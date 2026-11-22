@@ -1,0 +1,35 @@
+pos	artist	album	year	confidence	note
+1	Bob Marley and the Wailers	Catch A Fire		ok	section: Roots Reggae
+2	The Congos	Heart of the Congos		ok	section: Roots Reggae
+3	Peter Tosh	Legalize It		ok	section: Roots Reggae
+4	Black Uhuru	Showcase		ok	section: Roots Reggae
+5	Max Romeo & the Upsetters	War Ina Babylon		ok	section: Roots Reggae
+6	Burning Spear	Marcus Garvey		ok	section: Roots Reggae; chart writes "Martin Garvey"
+7	The Gladiators	Trenchtown Mix Up		ok	section: Roots Reggae
+8	Culture	Two Sevens Clash		ok	section: Roots Reggae
+9	The Abyssinians	Satta Massagana		ok	section: Roots Reggae
+10	Toots and the Maytals	Monkey Man		ok	section: Roots Reggae
+11	Desmond Dekker	The Best of/Rockin' Steady		ok	section: Rocksteady
+12	Desmond Dekker and the Aces	Israelites		ok	section: Rocksteady
+13	The Heptones	On Top		ok	section: Rocksteady
+14	Alton Ellis	Sings Rock and Soul		ok	section: Rocksteady
+15	The Paragons	On the Beach		ok	section: Rocksteady
+16	Yellowman	Mister Yellowman		ok	section: Dancehall
+17	Barrington Levy	Englishman		ok	section: Dancehall
+18	Eek-A-Mouse	Wa-Do-Dem		ok	section: Dancehall
+19	Wayne Smith	Sleng Teng		ok	section: Dancehall
+20	Ini Kamoze	Ini Kamoze		ok	section: Dancehall
+21	Lee Perry and the Upsetters	Super Ape		ok	section: Dub
+22	Scientist	Rids the World of the Evil Curse of the Vampires		ok	section: Dub
+23	The Upsetters	14 Dub Blackboard Jungle		ok	section: Dub
+24	King Tubby	Dub From the Roots		ok	section: Dub
+25	Augustus Pablo	This Is Augustus Pablo		ok	section: Dub
+26	The Skatalites	Ska-Boo-Da-Ba		ok	section: Jamaican Ska
+27	The Upsetters	Return of Django		ok	section: Jamaican Ska
+28	Carlos Malcolm & His Afro-Jamaican Rhythms	Ska-Mania		ok	section: Jamaican Ska
+29	Don Drummond	In Memory Of		ok	section: Jamaican Ska
+30	Prince Buster	I Feel the Spirit		ok	section: Jamaican Ska
+31	Junior Delahaye	Reggae		ok	section: Lovers Rock
+32	Gregory Isaacs	Night Nurse		ok	section: Lovers Rock
+33	Dadawah	Peace and Love		ok	section: Nyahbinghi
+34	Various Artists	Churchical Chants of the Nyabingi		ok	section: Nyahbinghi

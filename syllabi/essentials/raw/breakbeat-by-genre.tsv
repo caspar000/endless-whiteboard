@@ -1,0 +1,68 @@
+pos	artist	album	year	confidence	note
+# Columns: General (4 wide), Hardcore, Big beat, Progressive, Nu skool, 2010/11. The Hall of Fame column shows people, not albums.
+1	Plump DJs	A Plump Saturday Night		ok	column: General
+2	The Crystal Method	Vegas		ok	column: General
+3	Break Machine	Break Dance Party		ok	column: General
+4	Rock Steady Crew	Ready For Battle		ok	column: General
+5	Altern 8	Full On... Mask Hysteria		ok	column: Hardcore
+6	Acen	75 Minutes		ok	column: Hardcore
+7	Fatboy Slim	You've Come A Long Way, Baby		ok	column: Big beat
+8	The Prodigy	MFTJG		ok	column: Big beat; Music for the Jilted Generation
+9	Evil Nine	You Can Be Special Too		ok	column: Progressive
+10	Hybrid	I Choose Noise		ok	column: Progressive
+11	Future Funk Squad	Disorder Of Skill		ok	column: Nu skool
+12	Krafty Kuts	Freakshow		ok	column: Nu skool
+13	Mindscape	Bounce		ok	column: 2010/11
+14	Commercial Suicide	Presents Break		ok	column: 2010/11
+15	Freq Nasty	Freqs Geeks & Mutilations		ok	column: General
+16	Überzone	Faith In The Future		ok	column: General
+17	Richie Rich	I Can Make You Dance		ok	column: General
+18	Depth Charge	Nine Deadly Venoms		ok	column: General
+19	The Prodigy	Experience		ok	column: Hardcore
+20	Shut Up and Dance	Death Is Not The End		ok	column: Hardcore
+21	Freestylers	Raw As Fuck		ok	column: Big beat
+22	The Chemical Brothers	Dig Your Own Hole		ok	column: Big beat
+23	Sasha	Airdrawndagger		ok	column: Progressive
+24	Hyper	We Control		ok	column: Progressive
+25	Bomfunk MCs	Reverse Psychology		ok	column: Nu skool
+26	The Qemists	Join The Q		ok	column: Nu skool
+27	Basement Freaks	Something Freaky		ok	column: 2010/11
+28	The Qemists	Soundsystem		ok	column: 2010/11
+29	Groove Armada	Vertigo		ok	column: General
+30	Luke Vibert	Big Soup		ok	column: General
+31	Cirrus	Drop The Break		ok	column: General
+32	FC/Kahuna	Machine Says Yes		ok	column: General
+33	Ratpack	The History		ok	column: Hardcore
+34	Bizarre Inc.	Energique		ok	column: Hardcore
+35	Mint Royale	On The Ropes		ok	column: Big beat
+36	Fluke	Oto		ok	column: Big beat
+37	Way Out West	Way out West		ok	column: Progressive
+38	NuBreed	The Original		ok	column: Progressive
+39	Drumattic Twins	Hammer+Tongs		ok	column: Nu skool
+40	Lee Coombs	Light & Dark		ok	column: Nu skool
+41	Hybrid	Disappear Here		ok	column: 2010/11
+42	Badboe	Break The Funk		ok	column: 2010/11
+43	Chocolate Weasel	Spaghettification		ok	column: General
+44	Jacknife Lee	Muy Rico!		ok	column: General
+45	Asian Dub Foundation	Facts And Fiction		ok	column: General
+46	Pills	Electrocaine		ok	column: General
+47	2 Bad Mice	Kaotic Chemistry		ok	column: Hardcore
+48	The House Crew	We Are Hardcore		ok	column: Hardcore
+49	The Crystal Method	Tweekend		ok	column: Big beat
+50	Propellerheads	Decksandrumsandrockandroll		ok	column: Big beat
+51	Momu	Momu		ok	column: Progressive
+52	Tipper	Wobble Factor		ok	column: Progressive
+53	Meat Katie	Vibrator		ok	column: Nu skool
+54	Minuit	The 88		ok	column: Nu skool
+55	Lionrock	City Delirious		ok	column: General
+56	Amon Tobin	Foley Room		ok	column: General
+57	Mucho Macho	The Limehouse Link		ok	column: General
+58	Capricorn	Lost In Jellywood		ok	column: General
+59	Reche & Recall	XTC		ok	column: Hardcore
+60	Krome & Time	Sound For the Underground		ok	column: Hardcore
+61	Junkie XL	Big Sound Of The Drags		ok	column: Big beat
+62	Meat Katie	Long To Belong		ok	column: Big beat
+63	Elite Force	Modern Primitive		ok	column: Progressive
+64	Deekline & Wizard	Breaks, Beats And Blondes		ok	column: Progressive
+65	Freeland	Cope		ok	column: Nu skool
+66	Aquasky	Teamplayers		ok	column: Nu skool

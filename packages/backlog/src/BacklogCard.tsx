@@ -162,7 +162,8 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId, boardId), [backlogId, boardId])
 	const total = useValue(
 		'lifeboard:backlog-total',
-		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(e.id).length), 0),
+		// A collection counts what its source key holds: a list from before boards reads its board's (DARK-14).
+		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(collectionKey(e)).length), 0),
 		[backlog]
 	)
 	const shapeHint = useValue('lifeboard:backlog-shape-hint', () => {
@@ -237,7 +238,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 
 	const tile = (entry: BacklogEntry, i: number) => {
 		const remove = () =>
-			change((b) => removeEntry(b, entry.id), `${entry.kind === 'item' ? entry.title : resolveItemSource(entry.id).name} removed from ${backlog.name}.`)
+			change((b) => removeEntry(b, entry.id), `${entry.kind === 'item' ? entry.title : resolveItemSource(collectionKey(entry)).name} removed from ${backlog.name}.`)
 		const cell =
 			entry.kind === 'item' ? (
 				<ItemTile key={entry.id} item={entry} onRemove={remove} />

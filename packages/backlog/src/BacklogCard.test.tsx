@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { ITEM_DRAG_TYPE, clearItemMarks, clearItemSources, offeredItemSources, registerItemSource, registerItemStamps, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
+import { atom } from '@lifeboard/canvas'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { backlogNodeDefinition } from './definition'
 import { itemKey } from './model'
@@ -177,5 +178,27 @@ describe('a backlog from before backlogs had boards (DARK-14)', () => {
 		})
 		expect(backlogSource.entries('old').map((e) => e.id)).toEqual(before)
 		clearItemMarks()
+	})
+})
+
+describe('a backlog moved onto its board’s stamped list (DARK-14)', () => {
+	it('counts only its board’s stamps in its header, whatever another board likes', () => {
+		const album = (id: string): SourceEntry => ({ id, title: id, creator: '', year: '', cover: '', url: '' })
+		// Board 1 liked one album; board 2 liked another, and goes on liking.
+		const onBoard2 = atom<SourceEntry[]>('test:board-2-likes', [album('b2-first')])
+		registerItemSource({
+			id: 'stamped',
+			label: 'Randomizer stamps',
+			choices: () => [],
+			choice: (id) => ({ id, label: 'Liked', group: '' }),
+			entries: (id) => (id === 'liked|board-1|*' ? [album('b1-only')] : id === 'liked' ? [album('b1-only'), ...onBoard2.get()] : []),
+			kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+		})
+		backlogs.put('b1', { backlogId: 'b1', boardId: 'board-1', name: 'To hear', entries: [{ kind: 'collection', id: 'stamped:liked', key: 'stamped:liked|board-1|*', via: 'Randomizer stamps' }] })
+		mount()
+		const count = () => screen.getByLabelText('To hear').querySelector('.lb-backlog__count')!.textContent
+		expect(count()).toBe('1')
+		act(() => onBoard2.set([...onBoard2.get(), album('b2-second')]))
+		expect(count()).toBe('1')
 	})
 })

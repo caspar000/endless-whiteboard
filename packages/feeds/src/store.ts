@@ -139,14 +139,17 @@ export const watchedOn = (boardId: string) => onBoard(watched.get(), boardId, (w
 /**
  * Gives a board its own copy of the feeds from before DARK-14, once, as a board with a feed card opens:
  * the sources, the categories they are filed under, what was watched, and the posts already read, so
- * the card opens as it was. Each board's copy then goes its own way. Returns whether it copied.
+ * the card opens as it was. Each board's copy then goes its own way.
+ *
+ * Returns the old category ids with the board's copies of them, for the board's feed cards to follow
+ * (`remapFeedCards`), or `null` when nothing was copied.
  */
-export function claimFeeds(boardId: string): boolean {
-	if (!boardId) return false
+export function claimFeeds(boardId: string): ReadonlyMap<string, string> | null {
+	if (!boardId) return null
 	const oldSources = Object.values(sources.get()).filter((s) => !s.boardId)
 	const oldCategories = Object.values(categories.get()).filter((c) => !c.boardId)
-	if (!oldSources.length && !oldCategories.length) return false
-	if ([...oldSources, ...oldCategories].some((r) => r.claimedBy?.includes(boardId))) return false
+	if (!oldSources.length && !oldCategories.length) return null
+	if ([...oldSources, ...oldCategories].some((r) => r.claimedBy?.includes(boardId))) return null
 	const at = new Date().toISOString()
 	const nextCategories: Record<string, FeedCategory> = { ...categories.get() }
 	const categoryIds = new Map<string, string>()
@@ -172,7 +175,7 @@ export function claimFeeds(boardId: string): boolean {
 	sources.set(nextSources)
 	items.set(nextItems)
 	watched.set(nextWatched)
-	return true
+	return categoryIds
 }
 
 function readItem(raw: unknown): FeedItem | null {
@@ -291,19 +294,6 @@ export function setWatched(boardId: string, itemIds: readonly string[], on: bool
 		else delete next[key]
 	}
 	watched.set(pruneWatched(next))
-}
-
-/**
- * Marks a post watched on every board that follows its source: what a randomizer opens says nothing of
- * which board's feed it came by, so it is watched wherever it is listed.
- */
-export function setWatchedWherever(itemId: string): void {
-	const boards = new Set(
-		Object.values(sources.get())
-			.filter((s) => items.get()[s.sourceId]?.items.some((i) => i.itemId === itemId))
-			.map((s) => s.boardId)
-	)
-	for (const boardId of boards) setWatched(boardId, [itemId], true)
 }
 
 /* --------------------------------------------------------------------------------------- posts */

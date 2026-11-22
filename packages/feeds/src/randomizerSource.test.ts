@@ -72,12 +72,13 @@ describe('feeds as a randomizer source', () => {
 		expect(feedKind(SOURCES, CATEGORIES, 'all:b1')).toMatchObject({ noun: 'posts' })
 	})
 
-	it('opens a video in a new tab and marks it watched on the boards that list it, as the feed card does', () => {
+	it('opens a video in a new tab and marks it watched on the board it was opened from only, as the feed card does', () => {
 		replaceWatched({})
-		replaceSources({ ...SOURCES, other: src('other', 'Elsewhere', [], 'rss', 'b2') })
-		replaceSourceItems(ITEMS)
+		// Board b2 follows the same channel and has the same video, unwatched.
+		replaceSources({ ...SOURCES, other: src('other', 'Ben Eater', [], 'youtube', 'b2') })
+		replaceSourceItems({ ...ITEMS, other: kept('other', [post('yt:b1', '2026-11-19T08:00:00Z')]) })
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-		feedsRandomizerSource.open?.({ id: 'yt:b1', url: 'https://www.youtube.com/watch?v=b1' })
+		feedsRandomizerSource.open?.({ id: 'yt:b1', url: 'https://www.youtube.com/watch?v=b1' }, 'b1')
 		expect(open).toHaveBeenCalledWith('https://www.youtube.com/watch?v=b1', '_blank', 'noopener,noreferrer')
 		expect(watchedOn('b1')['yt:b1']).toBeTruthy()
 		expect(watchedOn('b2')['yt:b1']).toBeUndefined()

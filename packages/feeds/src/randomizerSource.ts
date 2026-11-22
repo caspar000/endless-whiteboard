@@ -2,7 +2,7 @@ import type { ItemSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboa
 import { Rss } from 'lucide-react'
 import { newestFirst, orderedCategories, type FeedCategory, type FeedItem, type FeedSource, type SourceItems } from './model'
 import { watchFeeds } from './refresh'
-import { categoriesOn, getCategories, getSourceItems, getSources, setWatchedWherever } from './store'
+import { categoriesOn, getCategories, getSourceItems, getSources, setWatched } from './store'
 
 /**
  * Feeds as something a randomizer can shuffle (DARK-7): every post, or a category's. The randomizer
@@ -115,9 +115,10 @@ export const feedsRandomizerSource: ItemSource = {
 	kind: (choiceId) => feedKind(getSources(), getCategories(), choiceId),
 	// The same refresh a feed card keeps going while it is open.
 	watch: () => watchFeeds(),
-	// As a feed card opens a post: in a new tab, and marked watched on the boards that list it.
-	open: ({ id, url }) => {
+	// As a feed card opens a post: in a new tab, and marked watched on the board it was opened from,
+	// and no other: another board's feed keeps it unwatched until it is watched there (DARK-14).
+	open: ({ id, url }, boardId) => {
 		window.open(url, '_blank', 'noopener,noreferrer')
-		setWatchedWherever(id)
+		setWatched(boardId, [id], true)
 	},
 }

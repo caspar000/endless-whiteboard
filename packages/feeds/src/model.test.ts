@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FEED_TYPE, remapFeedCards } from './board'
 import { checkCategoryName, feedItems, mergeItems, nextColor, pruneWatched, timeAgo, unwatchedCount, type FeedCategory, type FeedItem, type FeedSource, type SourceItems } from './model'
 import {
 	addCategory,
@@ -175,7 +176,8 @@ describe('the store', () => {
 		replaceSourceItems({ old: kept('old', [item('o1', 'old', '2026-11-01T00:00:00Z')]) })
 		replaceWatched({ o1: { itemId: 'o1', at: new Date().toISOString() } })
 
-		expect(claimFeeds('b1')).toBe(true)
+		const ids = claimFeeds('b1')
+		expect(ids?.size).toBe(1)
 		const [copy] = Object.values(sourcesOn('b1'))
 		const [category] = Object.values(categoriesOn('b1'))
 		expect(copy).toMatchObject({ title: 'old', feedUrl: 'https://f/old', boardId: 'b1', categories: [category!.categoryId] })
@@ -185,15 +187,15 @@ describe('the store', () => {
 
 		// Once: a board that has its copy, even one it changed since, gets no second.
 		removeSource(copy!.sourceId)
-		expect(claimFeeds('b1')).toBe(false)
+		expect(claimFeeds('b1')).toBeNull()
 		expect(sourcesOn('b1')).toEqual({})
 		// Another board gets its own; the old ones stay, for the randomizers set to them.
-		expect(claimFeeds('b2')).toBe(true)
+		expect(claimFeeds('b2')).not.toBeNull()
 		expect(Object.keys(sourcesOn('b2'))).toHaveLength(1)
 		expect(getSources().old?.claimedBy).toEqual(['b1', 'b2'])
 		// And the marks survive a save.
 		replaceSources(JSON.parse(JSON.stringify(getSources())))
-		expect(claimFeeds('b2')).toBe(false)
+		expect(claimFeeds('b2')).toBeNull()
 	})
 
 	it('drops what it cannot read when loading a stored copy', () => {
@@ -201,5 +203,18 @@ describe('the store', () => {
 		expect(Object.keys(getSources())).toEqual(['ok'])
 		replaceSourceItems({ s: { sourceId: 's', fetchedAt: '', items: [item('a', 's', ''), { itemId: 'no url' }], error: '' } })
 		expect(getSourceItems().s!.items).toHaveLength(1)
+	})
+
+	it('keeps a board’s cards on the categories they were set to, as the board’s copies of them (DARK-14)', () => {
+		replaceCategories({
+			ee: { categoryId: 'ee', name: 'EE', color: 'blue', order: 0 },
+			music: { categoryId: 'music', name: 'Music', color: 'pink', order: 1 },
+		})
+		replaceSources({ old: { ...src('old', ['ee', 'music']), boardId: undefined } })
+		const ids = claimFeeds('b1')!
+		const card = (id: string, categoryId: string) => ({ id, type: FEED_TYPE, props: { name: 'Feed', categoryId, show: 'unwatched' } })
+		const updates = remapFeedCards([card('shape:ee', 'ee'), card('shape:music', 'music'), card('shape:all', ''), { id: 'shape:note', type: 'note', props: {} }], ids)
+		const named = Object.fromEntries(updates.map((u) => [u.id, categoriesOn('b1')[u.props.categoryId]?.name]))
+		expect(named).toEqual({ 'shape:ee': 'EE', 'shape:music': 'Music' })
 	})
 })

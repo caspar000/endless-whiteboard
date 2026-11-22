@@ -89,10 +89,10 @@ function chordLabel(chord: string | undefined): string {
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** Opens an entry the way its source would, or else its address in a new tab. */
-function openEntry(open: ((entry: { id: string; url: string }) => void) | undefined, item: RandomItem) {
+/** Opens an entry the way its source would, from this card's board, or else its address in a new tab. */
+function openEntry(open: ((entry: { id: string; url: string }, boardId: string) => void) | undefined, item: RandomItem, boardId: string) {
 	if (!item.url) return
-	if (open) open({ id: item.id, url: item.url })
+	if (open) open({ id: item.id, url: item.url }, boardId)
 	else window.open(item.url, '_blank', 'noopener,noreferrer')
 }
 
@@ -417,7 +417,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 							aria-label={`Open ${current.title}`}
 							title={`Open this ${kind.one}`}
 							onPointerDown={swallow}
-							onClick={() => openEntry(view.source?.open?.bind(view.source), current)}
+							onClick={() => openEntry(view.source?.open?.bind(view.source), current, boardId)}
 						>
 							<ExternalLink size={16} aria-hidden />
 						</button>

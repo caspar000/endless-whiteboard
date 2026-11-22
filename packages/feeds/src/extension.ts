@@ -2,7 +2,7 @@ import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { Rss } from 'lucide-react'
 import { feedCommands } from './commands'
 import { feedNodeDefinition } from './feed/definition'
-import { FEED_TYPE } from './board'
+import { FEED_TYPE, remapFeedCards } from './board'
 import { FeedSettings } from './FeedSettings'
 import { claimFeeds } from './store'
 
@@ -32,8 +32,13 @@ export const feedsExtension: Extension = {
 	settings: { title: 'Sources and categories', Component: FeedSettings },
 	hooks: {
 		// A board with a feed card gets its own copy of the feeds from before boards had their own (DARK-14).
+		// Its cards set to a category stay on the board's copy of it, with no undo step: nobody changed them.
 		onBoardOpen: ({ editor, boardId }) => {
-			if (editor.getCurrentPageShapes().some((s) => s.type === FEED_TYPE)) claimFeeds(boardId)
+			const shapes = editor.getCurrentPageShapes()
+			if (!shapes.some((s) => s.type === FEED_TYPE)) return
+			const categoryIds = claimFeeds(boardId)
+			const updates = categoryIds ? remapFeedCards(shapes, categoryIds) : []
+			if (updates.length) editor.run(() => editor.updateShapes(updates as never), { history: 'ignore' })
 		},
 	},
 }

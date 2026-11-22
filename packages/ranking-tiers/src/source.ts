@@ -114,10 +114,10 @@ export const rankingSource: ItemSource = {
 			return r ? keysOf(r) : []
 		})
 	},
-	open: (entry) => {
+	open: (entry, boardId) => {
 		for (const ranking of Object.values(rankings.get())) {
 			const from = resolveItemSource(ranking.source)
-			if (from.source?.open && sourceEntries(ranking.source).some((e) => e.id === entry.id)) return from.source.open(entry)
+			if (from.source?.open && sourceEntries(ranking.source).some((e) => e.id === entry.id)) return from.source.open(entry, boardId)
 		}
 		window.open(entry.url, '_blank', 'noopener,noreferrer')
 	},

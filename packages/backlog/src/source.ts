@@ -44,10 +44,10 @@ export const backlogSource: ItemSource = {
 	kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
 	watch: watchBacklog,
 	// A collection's item opens as its own source would open it (a feed's video, marked watched).
-	open: (entry) => {
+	open: (entry, boardId) => {
 		const at = entry.id.indexOf('|')
 		const from = at > 0 ? resolveItemSource(entry.id.slice(0, at)) : null
-		if (from?.source?.open) return from.source.open({ id: entry.id.slice(at + 1), url: entry.url })
+		if (from?.source?.open) return from.source.open({ id: entry.id.slice(at + 1), url: entry.url }, boardId)
 		window.open(entry.url, '_blank', 'noopener,noreferrer')
 	},
 }

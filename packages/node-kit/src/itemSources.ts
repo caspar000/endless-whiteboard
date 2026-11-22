@@ -96,8 +96,11 @@ export interface ItemSource {
 	 * draws them on purpose, so those stamps don't take its own entries out.
 	 */
 	ranked?: boolean
-	/** Opens an entry, as the source's own card would (a video, marked watched). Without it, its `url` opens in a new tab. */
-	open?(entry: { id: string; url: string }): void
+	/**
+	 * Opens an entry, as the source's own card would (a video, marked watched), from a card on `boardId`:
+	 * what it marks is that board's (DARK-14). Without it, its `url` opens in a new tab.
+	 */
+	open?(entry: { id: string; url: string }, boardId: string): void
 	/**
 	 * Cards on the board that stand for one of its choices, so dropping one on a card that collects
 	 * sources (a backlog) adds that choice: a syllabus track's card is that track.

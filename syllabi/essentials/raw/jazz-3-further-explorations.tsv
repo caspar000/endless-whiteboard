@@ -1,0 +1,93 @@
+pos	artist	album	year	confidence	note
+1	Nat King Cole	The Best of the Nat King Cole Trio		ok	section: Piano Trios
+2	Art Tatum Trio	Art Tatum Trio		ok	section: Piano Trios
+3	Oscar Peterson	Plays Duke Ellington		ok	section: Piano Trios
+4	Erroll Garner	Concert By The Sea		ok	section: Piano Trios
+5	Bud Powell	Jazz Giant		ok	section: Piano Trios
+6	Ahmad Jamal	But Not For Me		ok	section: Piano Trios
+7	Herbie Nichols	Herbie Nichols Trio		ok	section: Piano Trios
+8	Wynton Kelly	Wynton Kelly!		ok	section: Piano Trios
+9	Bill Evans Trio	The Complete Live At The Village Vanguard 1961		ok	section: Piano Trios
+10	McCoy Tyner	Inception		ok	section: Piano Trios
+11	Chick Corea	Now He Sings Now He Sobs		ok	section: Piano Trios
+12	Keith Jarrett	The Mourning of a Star		ok	section: Piano Trios
+13	Harold Mabern Trio	Straight Street		ok	section: Piano Trios
+14	Keith Jarrett	At The Blue Note		ok	section: Piano Trios
+15	Brad Mehldau	The Art Of The Trio Volume 2		ok	section: Piano Trios
+16	The Bad Plus	These Are The Vistas		ok	section: Piano Trios
+17	Esbjörn Svensson Trio	Leucocyte		ok	section: Piano Trios
+18	Fred Hersch Trio	Alive at the Vanguard		ok	section: Piano Trios
+19	Stan Kenton	New Concepts of Artistry in Rhythm		ok	section: Big Band
+20	Duke Ellington	Ellington At Newport 1956 (Complete)		ok	section: Big Band
+21	Dizzy Gillespie	World Statesman		ok	section: Big Band
+22	Miles Davis	Miles Ahead		ok	section: Big Band
+23	Gerry Mulligan	At the Village Vanguard		ok	section: Big Band
+24	Buddy Rich	Swingin' New Big Band		ok	section: Big Band
+25	Thad Jones	Consummation		ok	section: Big Band
+26	Charles Mingus	Let My Children Hear Music		ok	section: Big Band
+27	Toshiko Akiyoshi	Long Yellow Road		ok	section: Big Band
+28	Bill Holman	The Bill Holman Band		ok	section: Big Band
+29	Bob Curnow's L.A. Big Band	Music of Pat Metheny & Lyle Mays		ok	section: Big Band
+30	Mingus Big Band	Nostalgia In Times Square		ok	section: Big Band
+31	Dave Holland Big Band	What Goes Around		ok	section: Big Band
+32	Chris Potter and the DR Big Band	Transatlantic		ok	section: Big Band
+33	Kenny Wheeler Big Band	The Long Waiting		ok	section: Big Band
+34	Fire! Orchestra	Exit!		ok	section: Big Band
+35	Billie Holiday	Billie Holiday Sings		ok	section: Vocal Jazz
+36	Sarah Vaughan	No Count Sarah		ok	section: Vocal Jazz
+37	Frank Sinatra	In the Wee Small Hours		ok	section: Vocal Jazz
+38	Ella Fitzgerald	Twelve Nights In Hollywood		ok	section: Vocal Jazz
+39	Mark Murphy	Rah!		ok	section: Vocal Jazz
+40	Lambert, Hendricks & Ross	The Hottest New Group In Jazz		ok	section: Vocal Jazz
+41	Flora Purim	Butterfly Dreams		ok	section: Vocal Jazz
+42	Al Jarreau	Jarreau		ok	section: Vocal Jazz
+43	Diane Schuur	Diane Schuur And The Count Basie Orchestra		ok	section: Vocal Jazz
+44	Kurt Elling	This Time It's Love		ok	section: Vocal Jazz
+45	Cyrille Aimée	Live at Smalls		ok	section: Vocal Jazz
+46	João Gilberto	Chega De Saudade		ok	section: Bossa Nova/Brazilian
+47	Stan Getz	Jazz Samba Encore!		ok	section: Bossa Nova/Brazilian
+48	Vinicius de Moraes	Vinicius & Odette Lara		ok	section: Bossa Nova/Brazilian
+49	Baden Powell	Tristeza On Guitar		ok	section: Bossa Nova/Brazilian
+50	Herbie Mann & Joao Gilberto	With Antonio Carlos Jobim		ok	section: Bossa Nova/Brazilian
+51	Stan Getz & João Gilberto	Getz/Gilberto		ok	section: Bossa Nova/Brazilian
+52	Antônio Carlos Jobim	Wave		ok	section: Bossa Nova/Brazilian
+53	Milton Nascimento	Courage		ok	section: Bossa Nova/Brazilian
+54	Moacir Santos	The Maestro		ok	section: Bossa Nova/Brazilian
+55	Sergio Mendes & Brasil '66	Herb Alpert Presents Sergio Mendes & Brasil '66		ok	section: Bossa Nova/Brazilian
+56	Clare Fischer and Salsa Picante	Machaca		ok	section: Bossa Nova/Brazilian
+57	Eliane Elias	Eliane Elias Sings Jobim		ok	section: Bossa Nova/Brazilian
+58	Charlie Christian	Solo Flight (1939-1941)		ok	section: Jazz Guitar
+59	Django Reinhardt	Djangology		ok	section: Jazz Guitar
+60	Herb Ellis	Ellis in Wonderland		ok	section: Jazz Guitar
+61	Wes Montgomery	The Incredible Jazz Guitar of Wes Montgomery		ok	section: Jazz Guitar
+62	Grant Green	Idle Moments		ok	section: Jazz Guitar
+63	Bill Evans & Jim Hall	Undercurrent		ok	section: Jazz Guitar
+64	Joe Pass	Virtuoso		ok	section: Jazz Guitar
+65	Miles Davis	In A Silent Way		ok	section: Jazz Guitar
+66	Pat Metheny	Bright Size Life		ok	section: Jazz Guitar
+67	John Scofield	Out Like a Light		ok	section: Jazz Guitar
+68	Kurt Rosenwinkel and OJM	Our Secret World		ok	section: Jazz Guitar
+69	Jonathan Kreisberg	Shadowless		ok	section: Jazz Guitar
+70	Tito Puente	Dancemania		ok	section: Mambo/Salsa
+71	Pérez Prado	Voodoo Suite		ok	section: Mambo/Salsa
+72	Willie Colón	El Malo		ok	section: Mambo/Salsa
+73	Héctor Lavoe	La Voz		ok	section: Mambo/Salsa
+74	Willie Colón & Rubén Blades	Siembra		ok	section: Mambo/Salsa
+75	Ray Barretto	Indestructible		ok	section: Mambo/Salsa
+76	Fania All Stars	Our Latin Thing (Nuestra Cosa)		ok	section: Mambo/Salsa
+77	Willie Colón	Lo Mato		ok	section: Mambo/Salsa
+78	Brian Lynch	Conclave		ok	section: Mambo/Salsa
+79	Pulpo	Hot Bread		ok	section: Mambo/Salsa
+80	Bio Ritmo	Biónico		ok	section: Mambo/Salsa
+81	Thelonious Monk	Thelonious Monk Trio		ok	section: Monk's Music
+82	Thelonious Monk	Brilliant Corners		ok	section: Monk's Music
+83	Thelonious Monk	Alone In San Francisco		ok	section: Monk's Music
+84	Thelonious Monk	Monk's Dream		ok	section: Monk's Music
+85	Johnny Griffin	Lookin' at Monk!		ok	section: Monk's Music
+86	Bud Powell	A Portrait of Thelonious		ok	section: Monk's Music
+87	Paul Motian	Monk in Motian		ok	section: Monk's Music
+88	Anthony Braxton	Six Monk's Compositions		ok	section: Monk's Music
+89	The Bill Holman Band	Brilliant Corners		ok	section: Monk's Music
+90	Esbjörn Svensson Trio	Plays Monk		ok	section: Monk's Music
+91	Peter Bernstein Trio	Monk		ok	section: Monk's Music
+92	Fred Hersch	Plays Monk		ok	section: Monk's Music

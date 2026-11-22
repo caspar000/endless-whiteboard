@@ -1,0 +1,66 @@
+pos	artist	album	year	confidence	note
+1	Louis Armstrong	Hot Fives and Hot Sevens		ok	section: Traditional Jazz/Early Swing
+2	Original Dixieland Jazz Band	Tiger Rag		ok	section: Traditional Jazz/Early Swing
+3	Bix Beiderbecke	Bixology		ok	section: Traditional Jazz/Early Swing
+4	Fletcher Henderson	1924-1938		ok	section: Traditional Jazz/Early Swing
+5	Jelly Roll Morton	Jelly Roll Blues		ok	section: Traditional Jazz/Early Swing
+6	Duke Ellington	Early Ellington (1927-1934)		ok	section: Swing/Big Band
+7	Count Basie	The Best Of Early Basie		ok	section: Swing/Big Band
+8	Benny Goodman and his Orchestra	The Essential Benny Goodman		ok	section: Swing/Big Band
+9	Tommy Dorsey & His Orchestra	Sentimental Swing		ok	section: Swing/Big Band
+10	Glenn Miller	The Complete Glenn Miller and His Orchestra		ok	section: Swing/Big Band; caption cut off, completed
+11	Charlie Parker	Omnibook		ok	section: Bebop
+12	Clifford Brown	Study In Brown		ok	section: Bebop
+13	Dizzy Gillespie	Groovin' High		ok	section: Bebop
+14	The Quintet	Jazz at Massey Hall		ok	section: Bebop
+15	Bud Powell	Jazz Giant		ok	section: Bebop
+16	Gerry Mulligan Sextet	Night Lights		ok	section: Cool Jazz
+17	Miles Davis	Birth of the Cool		ok	section: Cool Jazz
+18	Chet Baker	Chet Baker Sings		ok	section: Cool Jazz
+19	Stan Getz	West Coast Jazz		ok	section: Cool Jazz
+20	The Modern Jazz Quartet	Django		ok	section: Cool Jazz
+21	Art Blakey	A Night at Birdland, Volume 1		ok	section: Hard Bop
+22	Horace Silver	Horace Silver And The Jazz Messengers		ok	section: Hard Bop
+23	Hank Mobley	Roll Call		ok	section: Hard Bop
+24	Lee Morgan	The Sidewinder		ok	section: Hard Bop
+25	Cannonball Adderley	Presenting Cannonball Adderley		ok	section: Hard Bop
+26	Miles Davis	Kind of Blue		ok	section: Late 50s/Early 60s
+27	Bill Evans Trio	The Complete Live At The Village Vanguard 1961		ok	section: Late 50s/Early 60s; caption cut off, completed
+28	John Coltrane	Giant Steps		ok	section: Late 50s/Early 60s
+29	Sonny Rollins	Saxophone Colossus		ok	section: Late 50s/Early 60s
+30	Grant Green	Idle Moments		ok	section: Late 50s/Early 60s
+31	Herbie Hancock	Maiden Voyage		ok	section: Modal Jazz
+32	Miles Davis	E.S.P.		ok	section: Modal Jazz
+33	John Coltrane	Live At The Village Vanguard		ok	section: Modal Jazz
+34	Wayne Shorter	Speak No Evil		ok	section: Modal Jazz
+35	Joe Henderson	Page One		ok	section: Modal Jazz
+36	Ornette Coleman	The Shape of Jazz to Come		ok	section: Avant-Garde
+37	Charles Mingus	Mingus Ah Um		ok	section: Avant-Garde
+38	Andrew Hill	Point of Departure		ok	section: Avant-Garde
+39	Eric Dolphy	Iron Man		ok	section: Avant-Garde
+40	Yusef Lateef	Cry!/Tender		ok	section: Avant-Garde
+41	Albert Ayler	Spiritual Unity		ok	section: Free Jazz
+42	Ornette Coleman	Free Jazz		ok	section: Free Jazz
+43	Cecil Taylor	Unit Structures		ok	section: Free Jazz
+44	John Coltrane	Meditations		ok	section: Free Jazz
+45	Peter Brötzmann	Machine Gun		ok	section: Free Jazz
+46	Miles Davis	Bitches Brew		ok	section: Fusion
+47	Chick Corea	Light As A Feather		ok	section: Fusion
+48	Herbie Hancock	Headhunters		ok	section: Fusion
+49	Weather Report	Heavy Weather		ok	section: Fusion
+50	Tony Williams Lifetime	Emergency!		ok	section: Fusion
+51	Pat Metheny Group	American Garage		ok	section: 80s
+52	Keith Jarrett	Standards, Volume 1		ok	section: 80s
+53	Dave Holland Quintet	Jumpin' In		ok	section: 80s
+54	Michael Brecker	Michael Brecker		ok	section: 80s
+55	Chick Corea Elektric Band	The Chick Corea Elektric Band		ok	section: 80s
+56	Brad Mehldau	The Art of the Trio, Vol. 2: Live at the Village Vanguard		ok	section: 90s; caption cut off, completed
+57	Naked City	Radio		ok	section: 90s
+58	Medeski, Martin and Wood	It's A Jungle In Here		ok	section: 90s
+59	Michael Brecker	Tales From The Hudson		ok	section: 90s
+60	Esbjörn Svensson Trio	Plays Monk		ok	section: 90s
+61	Alex Sipiagin	Destinations Unknown		ok	section: 2000-Present
+62	Dave Holland	Extended Play: Live at Birdland		ok	section: 2000-Present
+63	Fred Hersch Trio	Alive at the Vanguard		ok	section: 2000-Present
+64	Jonathan Kreisberg	Shadowless		ok	section: 2000-Present
+65	Rudresh Mahanthappa	Gamak		ok	section: 2000-Present

@@ -15,8 +15,11 @@ export function SourceSelect({
 	exclude = [],
 	placeholder = 'Choose a source…',
 	autoFocus,
+	boardId,
 }: {
 	id?: string
+	/** The board the card is on: sources whose lists belong to boards offer only its own. */
+	boardId: string
 	/** A source key, or '' for none yet. */
 	value: string
 	onChange: (key: string) => void
@@ -29,8 +32,8 @@ export function SourceSelect({
 		() =>
 			offeredItemSources()
 				.filter((s) => !exclude.includes(s.id))
-				.map((s) => ({ id: s.id, label: s.label, choices: s.choices() })),
-		[exclude.join()]
+				.map((s) => ({ id: s.id, label: s.label, choices: s.choices(boardId) })),
+		[exclude.join(), boardId]
 	)
 	const listed = offered.some((s) => s.choices.some((c) => sourceKey(s.id, c.id) === value))
 	return (

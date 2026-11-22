@@ -1,6 +1,7 @@
 import { useValue, type Editor } from '@lifeboard/canvas'
 import {
 	SourceSelect,
+	boardIdOf,
 	draggingItem,
 	getDraggedItem,
 	hasDraggedItem,
@@ -13,7 +14,7 @@ import {
 } from '@lifeboard/node-kit'
 import { ArrowDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
-import { addCollection, addItem, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
+import { addCollection, addItem, collectionKey, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_SOURCE_ID, watchBacklog } from './source'
 import { backlogOrNew, shapeDropHint, updateBacklog } from './store'
@@ -85,11 +86,11 @@ function CollectionTile({ collection, open, onToggle, onRemove }: { collection: 
 	const info = useValue(
 		'lifeboard:backlog-collection',
 		() => {
-			const resolved = resolveItemSource(collection.id)
-			const entries = sourceEntries(collection.id)
+			const resolved = resolveItemSource(collectionKey(collection))
+			const entries = sourceEntries(collectionKey(collection))
 			return { name: resolved.name, kind: resolved.kind, gone: resolved.type !== 'source', count: entries.length, first: entries.slice(0, 3) }
 		},
-		[collection.id]
+		[collection.id, collection.key]
 	)
 	return (
 		<div className="lb-backlog__tile lb-backlog__tile--stack" role="listitem">
@@ -130,10 +131,10 @@ function CollectionPanel({ collection }: { collection: BacklogCollection }) {
 	const info = useValue(
 		'lifeboard:backlog-panel',
 		() => {
-			const entries = sourceEntries(collection.id)
-			return { name: resolveItemSource(collection.id).name, count: entries.length, shown: entries.slice(0, PANEL_SHOWN) }
+			const entries = sourceEntries(collectionKey(collection))
+			return { name: resolveItemSource(collectionKey(collection)).name, count: entries.length, shown: entries.slice(0, PANEL_SHOWN) }
 		},
-		[collection.id]
+		[collection.id, collection.key]
 	)
 	return (
 		<div className="lb-backlog__panel" role="region" aria-label={`${info.name}: what it holds`}>
@@ -156,10 +157,13 @@ function CollectionPanel({ collection }: { collection: BacklogCollection }) {
 
 function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const { backlogId } = shape.props
-	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId), [backlogId])
+	// The board this card is on (DARK-14): a backlog made here belongs to it.
+	const boardId = boardIdOf(editor)
+	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId, boardId), [backlogId, boardId])
 	const total = useValue(
 		'lifeboard:backlog-total',
-		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(e.id).length), 0),
+		// A collection counts what its source key holds: a list from before boards reads its board's (DARK-14).
+		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(collectionKey(e)).length), 0),
 		[backlog]
 	)
 	const shapeHint = useValue('lifeboard:backlog-shape-hint', () => {
@@ -183,7 +187,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	useOpenMenu(editor, `backlog-add-${shape.id}`, adding)
 
 	const change = (fn: Parameters<typeof updateBacklog>[1], said: string) => {
-		updateBacklog(backlogId, fn)
+		updateBacklog(backlogId, fn, boardId)
 		setAnnounce(said)
 	}
 
@@ -234,7 +238,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 
 	const tile = (entry: BacklogEntry, i: number) => {
 		const remove = () =>
-			change((b) => removeEntry(b, entry.id), `${entry.kind === 'item' ? entry.title : resolveItemSource(entry.id).name} removed from ${backlog.name}.`)
+			change((b) => removeEntry(b, entry.id), `${entry.kind === 'item' ? entry.title : resolveItemSource(collectionKey(entry)).name} removed from ${backlog.name}.`)
 		const cell =
 			entry.kind === 'item' ? (
 				<ItemTile key={entry.id} item={entry} onRemove={remove} />
@@ -338,6 +342,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 						id={`${shape.id}-collection`}
 						value=""
 						exclude={[BACKLOG_SOURCE_ID]}
+						boardId={boardId}
 						placeholder="A syllabus track, a feed, everything you liked…"
 						onChange={(key) => {
 							const resolved = resolveItemSource(key)

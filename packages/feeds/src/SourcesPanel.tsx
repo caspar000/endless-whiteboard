@@ -7,15 +7,15 @@ import { readText, reading, refreshSources } from './refresh'
 import {
 	addCategory,
 	addSource,
-	getCategories,
+	categoriesOn,
 	getSourceItems,
-	getSources,
-	getWatched,
 	moveCategory,
 	removeCategory,
 	removeSource,
 	renameCategory,
 	setSourceInCategory,
+	sourcesOn,
+	watchedOn,
 } from './store'
 
 /** A category's hue, for `--lb-opt-h`: the chip system every option chip uses. */
@@ -25,20 +25,20 @@ export const categoryStyle = (category: FeedCategory) => ({ '--lb-opt-h': HUES[c
 export type PanelFocus = 'add' | 'category' | null
 
 /**
- * Where sources and categories are kept: beside a feed card while it is edited, and on the extension's
- * page in Settings. Both show the same vault data, so a change in one is a change in every card.
+ * Where a board's sources and categories are kept (DARK-14: each board has its own), beside a feed card
+ * while it is edited: every feed card on the board shows the same ones.
  */
-export function SourcesPanel({ focus = null, fileInto = '', onClose }: { focus?: PanelFocus; fileInto?: string; onClose?: () => void }) {
+export function SourcesPanel({ boardId, focus = null, fileInto = '', onClose }: { boardId: string; focus?: PanelFocus; fileInto?: string; onClose?: () => void }) {
 	const data = useValue(
 		'lifeboard:feed-panel',
 		() => ({
-			sources: Object.values(getSources()).sort((a, b) => a.title.localeCompare(b.title)),
-			categories: orderedCategories(getCategories()),
+			sources: Object.values(sourcesOn(boardId)).sort((a, b) => a.title.localeCompare(b.title)),
+			categories: orderedCategories(categoriesOn(boardId)),
 			items: getSourceItems(),
-			watched: getWatched(),
+			watched: watchedOn(boardId),
 			reading: reading.get(),
 		}),
-		[]
+		[boardId]
 	)
 	const counts = (categoryId: string) => data.sources.filter((s) => s.categories.includes(categoryId)).length
 
@@ -67,7 +67,7 @@ export function SourcesPanel({ focus = null, fileInto = '', onClose }: { focus?:
 						<CategoryRow key={category.categoryId} category={category} count={counts(category.categoryId)} first={i === 0} last={i === data.categories.length - 1} />
 					))}
 				</ul>
-				<NewCategory autoFocus={focus === 'category'} />
+				<NewCategory boardId={boardId} autoFocus={focus === 'category'} />
 			</section>
 
 			<section className="lb-feeds-panel__section" aria-label="Your sources">
@@ -139,7 +139,7 @@ export function SourcesPanel({ focus = null, fileInto = '', onClose }: { focus?:
 				</ul>
 			</section>
 
-			<AddSource autoFocus={focus === 'add'} categories={data.categories} fileInto={fileInto} unavailable={data.reading.unavailable} />
+			<AddSource boardId={boardId} autoFocus={focus === 'add'} categories={data.categories} fileInto={fileInto} unavailable={data.reading.unavailable} />
 		</div>
 	)
 }
@@ -214,7 +214,7 @@ function CategoryRow({ category, count, first, last }: { category: FeedCategory;
 	)
 }
 
-function NewCategory({ autoFocus }: { autoFocus: boolean }) {
+function NewCategory({ boardId, autoFocus }: { boardId: string; autoFocus: boolean }) {
 	const [open, setOpen] = useState(autoFocus)
 	const [name, setName] = useState('')
 	const [error, setError] = useState('')
@@ -222,7 +222,7 @@ function NewCategory({ autoFocus }: { autoFocus: boolean }) {
 		if (autoFocus) setOpen(true)
 	}, [autoFocus])
 	const create = () => {
-		const made = addCategory(name)
+		const made = addCategory(boardId, name)
 		if ('error' in made) return setError(made.error)
 		setName('')
 		setError('')
@@ -267,7 +267,19 @@ function NewCategory({ autoFocus }: { autoFocus: boolean }) {
 	)
 }
 
-function AddSource({ autoFocus, categories, fileInto, unavailable }: { autoFocus: boolean; categories: FeedCategory[]; fileInto: string; unavailable: string }) {
+function AddSource({
+	boardId,
+	autoFocus,
+	categories,
+	fileInto,
+	unavailable,
+}: {
+	boardId: string
+	autoFocus: boolean
+	categories: FeedCategory[]
+	fileInto: string
+	unavailable: string
+}) {
 	const providers = getFeedProviders()
 	const [kind, setKind] = useState(() => providers.find((p) => p.available)?.id ?? '')
 	const [input, setInput] = useState('')
@@ -301,7 +313,7 @@ function AddSource({ autoFocus, categories, fileInto, unavailable }: { autoFocus
 		const found = await provider.resolve(input, readText)
 		setBusy(false)
 		if ('error' in found) return setError(found.error)
-		const source = addSource({ ...found, provider: provider.id, categories: into ? [into] : [] })
+		const source = addSource(boardId, { ...found, provider: provider.id, categories: into ? [into] : [] })
 		setInput('')
 		const where = categories.find((c) => c.categoryId === into)
 		setAdded(where ? `${source.title} added to ${where.name}.` : `${source.title} added.`)

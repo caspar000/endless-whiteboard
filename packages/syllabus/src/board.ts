@@ -34,15 +34,6 @@ export function isTrack(shape: TLShape | undefined | null): shape is TrackShape 
 	return shape?.type === TRACK_TYPE
 }
 
-/** The note filed as this item's write-up, if there is one on this board. */
-export function evidenceNoteFor(editor: Editor, itemId: string): TLShape | undefined {
-	if (!itemId) return undefined
-	return editor
-		.getCurrentPageShapes()
-		// `node.markdown` is the notes package's type; this package doesn't import its shape types.
-		.find((shape) => (shape.type as string) === NOTE_TYPE && readText(shape, 'evidenceOf') === itemId)
-}
-
 export const UP_NEXT_TYPE = 'node.upNext'
 
 export interface UpNextProps {

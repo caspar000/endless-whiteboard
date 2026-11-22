@@ -89,10 +89,10 @@ function Row({ item, editor, shape, open, next, depth, number, extra, found }: R
 						title={step ? `Ticks "${step.title}"` : undefined}
 						onPointerDown={swallow}
 						onClick={swallow}
-						onChange={() => tickNext(editor, item.itemId, anchor)}
+						onChange={() => tickNext(item.itemId)}
 					/>
 				) : (
-					<Tick item={item} editor={editor} anchor={anchor} />
+					<Tick item={item} />
 				)}
 				<span className="lb-track__title">
 					{item.title || 'Untitled'}

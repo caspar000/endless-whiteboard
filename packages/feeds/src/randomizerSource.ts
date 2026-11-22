@@ -2,24 +2,32 @@ import type { ItemSource, SourceChoice, SourceEntry, SourceKind } from '@lifeboa
 import { Rss } from 'lucide-react'
 import { newestFirst, orderedCategories, type FeedCategory, type FeedItem, type FeedSource, type SourceItems } from './model'
 import { watchFeeds } from './refresh'
-import { getCategories, getSourceItems, getSources, setWatched } from './store'
+import { categoriesOn, getCategories, getSourceItems, getSources, setWatched } from './store'
 
 /**
- * Feeds as something a randomizer can shuffle (DARK-7): every post, a category's, or one channel's.
- * The randomizer knows nothing of feeds; this is the whole of the connection.
+ * Feeds as something a randomizer can shuffle (DARK-7): every post, or a category's. The randomizer
+ * knows nothing of feeds; this is the whole of the connection.
  *
- * A choice is `all`, `cat:<category id>` or `src:<source id>`. Every post a source keeps is in the
+ * A choice is `all:<board id>`, every feed of a board, or `cat:<category id>`, which belongs to a board
+ * already (DARK-14: feeds are a board's). One channel alone is not offered (DARK-14): a shuffle is for
+ * a mix, and one channel is better browsed on its card. A card set to one before keeps drawing from it,
+ * as one set to `all` keeps drawing from the feeds from before boards had their own. Every post a source keeps is in the
  * shuffle, watched or not: a randomizer is for "what next" over the whole backlog, and what to leave
  * out is what its stamps are for.
  */
 
 const ALL = 'all'
+const ALL_ON = 'all:'
 const CATEGORY = 'cat:'
 const SOURCE = 'src:'
 
 /** The sources a choice covers, or `null` when it names a category or a source that is gone. */
 export function sourcesOfChoice(sources: Readonly<Record<string, FeedSource>>, categories: Readonly<Record<string, FeedCategory>>, choiceId: string): FeedSource[] | null {
-	if (choiceId === ALL) return Object.values(sources)
+	if (choiceId === ALL) return Object.values(sources).filter((s) => !s.boardId)
+	if (choiceId.startsWith(ALL_ON)) {
+		const boardId = choiceId.slice(ALL_ON.length)
+		return Object.values(sources).filter((s) => s.boardId === boardId)
+	}
 	if (choiceId.startsWith(CATEGORY)) {
 		const categoryId = choiceId.slice(CATEGORY.length)
 		return categories[categoryId] ? Object.values(sources).filter((s) => s.categories.includes(categoryId)) : null
@@ -31,15 +39,26 @@ export function sourcesOfChoice(sources: Readonly<Record<string, FeedSource>>, c
 	return null
 }
 
-/** What a choice can be: all feeds, then the categories in chip order, then each source by name. */
-export function feedChoices(sources: Readonly<Record<string, FeedSource>>, categories: Readonly<Record<string, FeedCategory>>): SourceChoice[] {
+/** What a choice on a board can be: all its feeds, then its categories in chip order. Never one channel alone. */
+export function feedChoices(boardId: string, categories: Readonly<Record<string, FeedCategory>>): SourceChoice[] {
 	return [
-		{ id: ALL, label: 'All feeds', group: '' },
+		{ id: `${ALL_ON}${boardId}`, label: 'All feeds', group: '' },
 		...orderedCategories(categories).map((c) => ({ id: `${CATEGORY}${c.categoryId}`, label: c.name, group: 'Categories' })),
-		...Object.values(sources)
-			.sort((a, b) => a.title.localeCompare(b.title))
-			.map((s) => ({ id: `${SOURCE}${s.sourceId}`, label: s.title, group: 'Channels and feeds' })),
 	]
+}
+
+/** One choice by its id, on any board, or `null` when it is gone. */
+export function feedChoice(sources: Readonly<Record<string, FeedSource>>, categories: Readonly<Record<string, FeedCategory>>, choiceId: string): SourceChoice | null {
+	if (choiceId === ALL || choiceId.startsWith(ALL_ON)) return { id: choiceId, label: 'All feeds', group: '' }
+	if (choiceId.startsWith(CATEGORY)) {
+		const category = categories[choiceId.slice(CATEGORY.length)]
+		return category ? { id: choiceId, label: category.name, group: 'Categories' } : null
+	}
+	if (choiceId.startsWith(SOURCE)) {
+		const source = sources[choiceId.slice(SOURCE.length)]
+		return source ? { id: choiceId, label: source.title, group: 'Channels and feeds' } : null
+	}
+	return null
 }
 
 /** "12 Nov 2026": a video's date, where an album has its year. */
@@ -90,14 +109,16 @@ export const feedsRandomizerSource: ItemSource = {
 	label: 'Feeds',
 	icon: Rss,
 	extensionId: 'lifeboard.feeds',
-	choices: () => feedChoices(getSources(), getCategories()),
+	choices: (boardId) => feedChoices(boardId, categoriesOn(boardId)),
+	choice: (choiceId) => feedChoice(getSources(), getCategories(), choiceId),
 	entries: (choiceId) => feedEntries(getSources(), getCategories(), getSourceItems(), choiceId),
 	kind: (choiceId) => feedKind(getSources(), getCategories(), choiceId),
 	// The same refresh a feed card keeps going while it is open.
 	watch: () => watchFeeds(),
-	// As a feed card opens a post: in a new tab, and marked watched.
-	open: ({ id, url }) => {
+	// As a feed card opens a post: in a new tab, and marked watched on the board it was opened from,
+	// and no other: another board's feed keeps it unwatched until it is watched there (DARK-14).
+	open: ({ id, url }, boardId) => {
 		window.open(url, '_blank', 'noopener,noreferrer')
-		setWatched([id], true)
+		setWatched(boardId, [id], true)
 	},
 }

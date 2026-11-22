@@ -1,12 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { registerItemSource, setAssetBridge, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
+import { registerItemSource, setAssetBridge, setBoardOf, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
 import { RANDOMIZER_TYPE, randomizerNodeDefinition, replaceStamped, type RandomizerProps } from '@lifeboard/randomizer'
 import { useMemo, useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // The barrel, as the app loads it: this is what registers Feeds with the randomizer.
 import './index'
 import { refreshSources } from './refresh'
-import { addSource, getWatched, replaceCategories, replaceSourceItems, replaceSources, replaceWatched } from './store'
+import { addSource, replaceCategories, replaceSourceItems, replaceSources, replaceWatched, watchedOn } from './store'
 
 /*
  * DARK-7's connection, as a person makes it: a YouTube channel read through the app's network bridge
@@ -57,6 +57,8 @@ function Board({ onProps }: { onProps: (props: RandomizerProps) => void }) {
 		}),
 		[]
 	)
+	// On board b1, as the app says as it opens (DARK-14).
+	setBoardOf(editor as never, 'b1')
 	const Card = randomizerNodeDefinition.component
 	return <Card shape={shape as never} isEditing={editing} editor={editor as never} />
 }
@@ -75,8 +77,9 @@ beforeEach(async () => {
 		getBlob: async () => null,
 		getText: async (url): Promise<ExternalText> => (url === FEED ? { ok: true, url, text: CHANNEL } : { ok: false, reason: 'failed', message: `No page at ${url}` }),
 	})
-	const ben = addSource({ provider: 'youtube', feedUrl: FEED, link: `https://www.youtube.com/channel/${BEN}`, title: 'Ben Eater', categories: [] })
-	sourceKey = `feeds:src:${ben.sourceId}`
+	addSource('b1', { provider: 'youtube', feedUrl: FEED, link: `https://www.youtube.com/channel/${BEN}`, title: 'Ben Eater', categories: [] })
+	// Every feed: one channel alone is not offered (DARK-14), and Ben Eater is the only one here.
+	sourceKey = 'feeds:all:b1'
 	await refreshSources({ force: true })
 	// Reduced motion: the pick fades in rather than flipping through two dozen timed flaps.
 	vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
@@ -98,20 +101,21 @@ describe('a randomizer connected to a YouTube channel', () => {
 		expect(props.source).toBe('')
 	})
 
-	it("offers the channel among its sources, and shuffles the channel's videos once picked", async () => {
+	it("offers all feeds but never the channel alone, and shuffles the feeds' videos once picked", async () => {
 		mount()
 		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to shuffle' }))
 
 		const picker = screen.getByLabelText('Shuffle from') as HTMLSelectElement
 		const offered = Array.from(picker.options).map((o) => o.textContent)
-		expect(offered).toEqual(expect.arrayContaining(['A list I type', 'All feeds', 'Ben Eater']))
+		expect(offered).toEqual(expect.arrayContaining(['A list I type', 'All feeds']))
+		expect(offered).not.toContain('Ben Eater')
 		fireEvent.change(picker, { target: { value: sourceKey } })
 		expect(props.source).toBe(sourceKey)
-		expect(screen.getByText(/2 videos from Ben Eater/)).toBeTruthy()
+		expect(screen.getByText(/2 videos from All feeds/)).toBeTruthy()
 		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
-		// The card now shows the channel: its name on top, its videos counted, the newest on show.
-		expect(within(card()).getByRole('button', { name: 'Shuffling Ben Eater. Change the source' })).toBeTruthy()
+		// The card now shows the feeds: their name on top, its videos counted, the newest on show.
+		expect(within(card()).getByRole('button', { name: 'Shuffling All feeds. Change the source' })).toBeTruthy()
 		expect(within(card()).getByText('2 videos')).toBeTruthy()
 		expect(within(card()).getByRole('img', { name: 'Video cover: Breadboard clock part 5 by Ben Eater' })).toBeTruthy()
 
@@ -129,7 +133,7 @@ describe('a randomizer connected to a YouTube channel', () => {
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null)
 		await act(async () => fireEvent.click(within(card()).getByRole('button', { name: 'Open Breadboard clock part 5' })))
 		expect(open).toHaveBeenCalledWith('https://www.youtube.com/watch?v=benclock5aa', '_blank', 'noopener,noreferrer')
-		expect(getWatched()['yt:benclock5aa']).toBeTruthy()
+		expect(watchedOn('b1')['yt:benclock5aa']).toBeTruthy()
 	})
 
 	it('shows a placeholder, never the last picture, while a video’s thumbnail loads (DARK-13)', () => {

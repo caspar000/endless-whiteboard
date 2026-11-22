@@ -1,11 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { ITEM_DRAG_TYPE, clearItemSources, offeredItemSources, registerItemSource, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
+import { ITEM_DRAG_TYPE, clearItemMarks, clearItemSources, offeredItemSources, registerItemSource, registerItemStamps, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
+import { atom } from '@lifeboard/canvas'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { backlogNodeDefinition } from './definition'
 import { itemKey } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_EXTENSION_ID, backlogSource } from './source'
-import { backlogs } from './store'
+import { backlogs, claimBacklog } from './store'
 
 /*
  * The card as a person uses it, rendered: typed in, a cover dropped on it from another card, a whole
@@ -132,14 +133,72 @@ describe('a backlog card', () => {
 		expect(within(tiles()[0]!).getByText('/mu/core')).toBeTruthy()
 	})
 
-	it('is a source for other cards while Backlog is on, everything in it at once', () => {
+	it('is a source for other cards on its board while Backlog is on, everything in it at once', () => {
 		mount()
-		act(() => backlogs.put('b1', { backlogId: 'b1', name: 'To hear', entries: [{ kind: 'collection', id: TRACK, via: 'Syllabi' }] }))
-		expect(backlogSource.choices()).toEqual([{ id: 'b1', label: 'To hear', group: '' }])
+		act(() => backlogs.put('b1', { backlogId: 'b1', boardId: 'board-1', name: 'To hear', entries: [{ kind: 'collection', id: TRACK, via: 'Syllabi' }] }))
+		expect(backlogSource.choices('board-1')).toEqual([{ id: 'b1', label: 'To hear', group: '' }])
+		// Another board's cards are not offered it (DARK-14), though one already on it still reads it.
+		expect(backlogSource.choices('board-2')).toEqual([])
+		expect(backlogSource.choice?.('b1')).toEqual({ id: 'b1', label: 'To hear', group: '' })
 		expect(backlogSource.entries('b1')).toHaveLength(30)
 		expect(offeredItemSources().map((s) => s.id)).toContain('backlog')
 		act(() => setExtensionEnabled(BACKLOG_EXTENSION_ID, false))
 		expect(offeredItemSources().map((s) => s.id)).not.toContain('backlog')
 		expect(within(screen.getByLabelText('To hear')).getByText('/mu/core')).toBeTruthy()
+	})
+})
+
+describe('a backlog from before backlogs had boards (DARK-14)', () => {
+	it('belongs to the board that opens showing it, and a stamped list it collected becomes that board’s', () => {
+		registerItemStamps({
+			sourceId: 'stamped',
+			kinds: [{ id: 'liked', label: 'Liked', ink: '#2f9e44' }],
+			stampOf: () => null,
+			scopeToBoard: (key, boardId) => (key === 'stamped:liked' ? `stamped:liked|${boardId}|*` : null),
+		})
+		// The randomizer's lists: the one from before boards, and board 1's, giving the album the same id.
+		const liked = [{ id: 'list|a', title: 'Ran', creator: 'Akira Kurosawa', year: '', cover: '', url: '' }]
+		registerItemSource({
+			id: 'stamped',
+			label: 'Randomizer stamps',
+			choices: () => [],
+			choice: (id) => ({ id, label: id, group: '' }),
+			entries: (id) => (id === 'liked' || id === 'liked|board-1|*' ? liked : []),
+			kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+		})
+		backlogs.put('old', { backlogId: 'old', boardId: '', name: 'Old', entries: [{ kind: 'collection', id: 'stamped:liked', via: 'Randomizer stamps' }, { kind: 'collection', id: TRACK, via: 'Syllabi' }] })
+		// A ranking of the backlog placed the album under the id the backlog gives it.
+		const before = backlogSource.entries('old').map((e) => e.id)
+		expect(before).toContain('stamped:liked|list|a')
+		claimBacklog('old', 'board-1')
+		// It reads board 1's list now, and keeps its id, so its items keep theirs (review #38).
+		expect(backlogs.one('old')).toMatchObject({
+			boardId: 'board-1',
+			entries: [{ id: 'stamped:liked', key: 'stamped:liked|board-1|*' }, { id: TRACK }],
+		})
+		expect(backlogSource.entries('old').map((e) => e.id)).toEqual(before)
+		clearItemMarks()
+	})
+})
+
+describe('a backlog moved onto its board’s stamped list (DARK-14)', () => {
+	it('counts only its board’s stamps in its header, whatever another board likes', () => {
+		const album = (id: string): SourceEntry => ({ id, title: id, creator: '', year: '', cover: '', url: '' })
+		// Board 1 liked one album; board 2 liked another, and goes on liking.
+		const onBoard2 = atom<SourceEntry[]>('test:board-2-likes', [album('b2-first')])
+		registerItemSource({
+			id: 'stamped',
+			label: 'Randomizer stamps',
+			choices: () => [],
+			choice: (id) => ({ id, label: 'Liked', group: '' }),
+			entries: (id) => (id === 'liked|board-1|*' ? [album('b1-only')] : id === 'liked' ? [album('b1-only'), ...onBoard2.get()] : []),
+			kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+		})
+		backlogs.put('b1', { backlogId: 'b1', boardId: 'board-1', name: 'To hear', entries: [{ kind: 'collection', id: 'stamped:liked', key: 'stamped:liked|board-1|*', via: 'Randomizer stamps' }] })
+		mount()
+		const count = () => screen.getByLabelText('To hear').querySelector('.lb-backlog__count')!.textContent
+		expect(count()).toBe('1')
+		act(() => onBoard2.set([...onBoard2.get(), album('b2-second')]))
+		expect(count()).toBe('1')
 	})
 })

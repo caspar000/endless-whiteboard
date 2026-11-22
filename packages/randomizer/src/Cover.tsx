@@ -23,8 +23,9 @@ export function StampPile({ item, fresh }: { item: RandomItem; fresh: boolean })
 			{shown.map((stamp, i) => {
 				const age = shown.length - 1 - i
 				const h = hashText(`${item.id}${stamp.kind}${stamp.date}${first + i}`)
-				const spread = age === 0 ? 4 : 14
-				const x = 52 + (((h % 1000) / 1000) * 2 - 1) * spread
+				// Close round the middle: a ring this big (80% of the cover) would leave it if thrown as wide as before.
+				const spread = age === 0 ? 2 : 6
+				const x = 50 + (((h % 1000) / 1000) * 2 - 1) * spread
 				const y = 50 + ((((h >>> 10) % 1000) / 1000) * 2 - 1) * spread
 				const tilt = -14 + ((h >>> 20) % 26)
 				return (

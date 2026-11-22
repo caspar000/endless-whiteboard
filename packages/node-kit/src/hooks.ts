@@ -1,4 +1,5 @@
 import type { Editor, TLShape } from '@lifeboard/canvas'
+import { setBoardOf } from './boards'
 import { readShapeProperties } from './properties/values'
 import type { PropertyValue } from './properties/types'
 import { isExtensionEnabled } from './registry'
@@ -131,6 +132,8 @@ function fire<C>(name: keyof BoardHooks, ctx: C, pick: (hooks: HookSet) => ((ctx
 }
 
 export function fireBoardOpen(ctx: BoardOpenContext): void {
+	// Before any hook, and even while one is firing: a card asks which board it is on as it draws.
+	setBoardOf(ctx.editor, ctx.boardId)
 	fire('onBoardOpen', ctx, (hooks) => hooks.onBoardOpen?.bind(hooks))
 }
 

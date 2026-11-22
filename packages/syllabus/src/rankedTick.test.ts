@@ -4,7 +4,7 @@ import { rankedTickReaction, worksFor } from './rankedTick'
 import { getItems, putItems, resetSyllabus, type ItemDef } from './syllabus'
 import { searchTrack } from './track/search'
 
-// The tick as the list makes it, watched: a ranked work is ticked the same way, write-up and all.
+// The tick as the list makes it, watched: a ranked work is ticked the same way.
 vi.mock('./ops', async (importOriginal) => {
 	const real = await importOriginal<typeof import('./ops')>()
 	return { ...real, tick: vi.fn(real.tick) }
@@ -63,17 +63,19 @@ describe('a ranked item ticks its work (DARK-13)', () => {
 
 	it('ticks it in the vault, once', () => {
 		putItems(ITEMS)
-		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Iliad'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1' })
+		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Iliad'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', boardId: 'board-1' })
 		expect(getItems()['a/homer/iliad']).toMatchObject({ done: true })
 		expect(getItems()['a/homer/odyssey']).toMatchObject({ done: false })
 	})
 
-	it('files its write-up beside the ranking card it was ranked on, as a tick in the list does', () => {
+	it('ticks it as a tick in the list does, and puts nothing on the board (DARK-14)', () => {
 		putItems(ITEMS)
-		const editor = {} as never
-		vi.mocked(tick).mockImplementationOnce(() => {})
-		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Odyssey'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', editor, shapeId: 'shape:rank' })
-		expect(tick).toHaveBeenLastCalledWith(editor, 'a/homer/odyssey', true, 'shape:rank')
+		const createShape = vi.fn()
+		const editor = { createShape, run: (fn: () => void) => fn() } as never
+		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Odyssey'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', boardId: 'board-1', editor, shapeId: 'shape:rank' })
+		expect(tick).toHaveBeenLastCalledWith('a/homer/odyssey', true)
+		expect(getItems()['a/homer/odyssey']).toMatchObject({ done: true })
+		expect(createShape).not.toHaveBeenCalled()
 	})
 })
 

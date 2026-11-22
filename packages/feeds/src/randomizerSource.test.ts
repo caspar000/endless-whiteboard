@@ -1,12 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FeedCategory, FeedItem, FeedSource, SourceItems } from './model'
 import { feedChoices, feedEntries, feedKind, feedsRandomizerSource, sourcesOfChoice } from './randomizerSource'
-import { getWatched, replaceWatched } from './store'
+import { replaceSourceItems, replaceSources, replaceWatched, watchedOn } from './store'
 
 const post = (itemId: string, published: string, thumbnail = ''): FeedItem => ({ itemId, sourceId: '', title: `Post ${itemId}`, url: `https://x/${itemId}`, published, thumbnail })
-const src = (sourceId: string, title: string, categories: string[], provider = 'youtube'): FeedSource => ({ sourceId, provider, feedUrl: `https://f/${sourceId}`, link: '', title, categories, addedAt: '' })
+const src = (sourceId: string, title: string, categories: string[], provider = 'youtube', boardId = 'b1'): FeedSource => ({
+	sourceId,
+	provider,
+	feedUrl: `https://f/${sourceId}`,
+	link: '',
+	title,
+	categories,
+	addedAt: '',
+	boardId,
+})
 const kept = (sourceId: string, items: FeedItem[]): SourceItems => ({ sourceId, fetchedAt: '2026-11-19T00:00:00Z', items, error: '' })
-const cat = (categoryId: string, name: string, order: number): FeedCategory => ({ categoryId, name, color: 'blue', order })
+const cat = (categoryId: string, name: string, order: number): FeedCategory => ({ categoryId, name, color: 'blue', order, boardId: 'b1' })
 
 const SOURCES = {
 	ben: src('ben', 'Ben Eater', ['ee']),
@@ -22,14 +31,19 @@ const ITEMS = {
 }
 
 describe('feeds as a randomizer source', () => {
-	it('offers all feeds, each category, and each channel by name', () => {
-		expect(feedChoices(SOURCES, CATEGORIES)).toEqual([
-			{ id: 'all', label: 'All feeds', group: '' },
+	it('offers a board’s feeds and each of its categories, never one channel alone (DARK-14)', () => {
+		expect(feedChoices('b1', CATEGORIES)).toEqual([
+			{ id: 'all:b1', label: 'All feeds', group: '' },
 			{ id: 'cat:ee', label: 'Electronics', group: 'Categories' },
-			{ id: 'src:blog', label: 'A blog', group: 'Channels and feeds' },
-			{ id: 'src:ben', label: 'Ben Eater', group: 'Channels and feeds' },
-			{ id: 'src:eev', label: 'EEVblog', group: 'Channels and feeds' },
 		])
+	})
+
+	it('draws all feeds of its own board only, and all of those from before boards had feeds for a card set to them', () => {
+		const sources = { ...SOURCES, other: src('other', 'Elsewhere', [], 'rss', 'b2'), old: src('old', 'Before', [], 'rss', '') }
+		const items = { ...ITEMS, other: kept('other', [post('o1', '2026-11-01T00:00:00Z')]), old: kept('old', [post('x1', '2026-11-01T00:00:00Z')]) }
+		expect(feedEntries(sources, CATEGORIES, items, 'all:b1').map((e) => e.id)).toEqual(['yt:b1', 'yt:e1', 'p1'])
+		expect(feedEntries(sources, CATEGORIES, items, 'all:b2').map((e) => e.id)).toEqual(['o1'])
+		expect(feedEntries(sources, CATEGORIES, items, 'all').map((e) => e.id)).toEqual(['x1'])
 	})
 
 	it("gives a category's videos newest first, once each, as entries with their channel, day, picture and address", () => {
@@ -43,7 +57,7 @@ describe('feeds as a randomizer source', () => {
 			cover: 'https://i.ytimg.com/vi/b1/mqdefault.jpg',
 			url: 'https://x/yt:b1',
 		})
-		expect(feedEntries(SOURCES, CATEGORIES, ITEMS, 'all').map((e) => e.id)).toEqual(['yt:b1', 'yt:e1', 'p1'])
+		expect(feedEntries(SOURCES, CATEGORIES, ITEMS, 'all:b1').map((e) => e.id)).toEqual(['yt:b1', 'yt:e1', 'p1'])
 		expect(feedEntries(SOURCES, CATEGORIES, ITEMS, 'src:blog').map((e) => e.id)).toEqual(['p1'])
 	})
 
@@ -55,15 +69,19 @@ describe('feeds as a randomizer source', () => {
 
 	it('speaks of videos when every source is a YouTube channel, and of posts otherwise', () => {
 		expect(feedKind(SOURCES, CATEGORIES, 'cat:ee')).toMatchObject({ noun: 'videos', creator: 'Channel' })
-		expect(feedKind(SOURCES, CATEGORIES, 'all')).toMatchObject({ noun: 'posts' })
+		expect(feedKind(SOURCES, CATEGORIES, 'all:b1')).toMatchObject({ noun: 'posts' })
 	})
 
-	it('opens a video in a new tab and marks it watched, as the feed card does', () => {
+	it('opens a video in a new tab and marks it watched on the board it was opened from only, as the feed card does', () => {
 		replaceWatched({})
+		// Board b2 follows the same channel and has the same video, unwatched.
+		replaceSources({ ...SOURCES, other: src('other', 'Ben Eater', [], 'youtube', 'b2') })
+		replaceSourceItems({ ...ITEMS, other: kept('other', [post('yt:b1', '2026-11-19T08:00:00Z')]) })
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-		feedsRandomizerSource.open?.({ id: 'yt:b1', url: 'https://www.youtube.com/watch?v=b1' })
+		feedsRandomizerSource.open?.({ id: 'yt:b1', url: 'https://www.youtube.com/watch?v=b1' }, 'b1')
 		expect(open).toHaveBeenCalledWith('https://www.youtube.com/watch?v=b1', '_blank', 'noopener,noreferrer')
-		expect(getWatched()['yt:b1']).toBeTruthy()
+		expect(watchedOn('b1')['yt:b1']).toBeTruthy()
+		expect(watchedOn('b2')['yt:b1']).toBeUndefined()
 		open.mockRestore()
 	})
 })

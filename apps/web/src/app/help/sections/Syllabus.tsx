@@ -92,10 +92,8 @@ export function Syllabus({ go }: SectionProps) {
 					in the tree, and on every other board.
 				</p>
 				<p>
-					Tick a work and it records the day, and a <strong>write-up note</strong> appears beside whatever
-					you ticked from, started from a template for its medium: Adler's four questions for a book, the
-					study sheet for a film, the five passes for a game. Write in the note and the tick counts as
-					evidence. A tick whose note is still only the template shows hollow: done, but not written up.
+					Tick a work and it records the day. Nothing is added to the board: the tick alone counts, in
+					its list, on Up next, and toward every skill node the work is tagged to.
 				</p>
 			</Section>
 
@@ -152,9 +150,9 @@ export function Syllabus({ go }: SectionProps) {
 				</p>
 				<p>
 					A tree view showing everything draws the syllabus's entries and works around the skill nodes they
-					are tagged to. Tag an item with a node's id and its write-ups count there. A node can ask for a
-					particular item written up (<code>- item: adler/homer</code>), done (<code>- done: adler/homer</code>),
-					or a number of written-up items tagged to it (<code>- count: {'{'} min: 3 {'}'}</code>, which can
+					are tagged to. Tag an item with a node's id and its works ticked count there, filling the node's
+					ring as they do. A node can ask for a particular work (<code>- item: adler/homer</code>), an item
+					done (<code>- done: adler/homer</code>), or a number of works done under it (<code>- count: {'{'} min: 3 {'}'}</code>, which can
 					also filter by kind, medium or method). Right-click an entry or work in a tree › Mark as done, or ›
 					Put a card on the board.
 				</p>

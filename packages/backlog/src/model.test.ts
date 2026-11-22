@@ -68,7 +68,7 @@ describe('a backlog as a source', () => {
 	it('is read back whole from storage, and what can’t be read is dropped', () => {
 		const b = addCollection(addItem(newBacklog('b'), entry('1'), 'feeds:all', 'Feeds'), 'syllabus:mucore', 'Syllabi')
 		expect(readBacklog(JSON.parse(JSON.stringify(b)))).toEqual(b)
-		expect(readBacklog({ backlogId: 'b', entries: [{ kind: 'item', id: 'x' }, { kind: 'odd', id: 'y' }, 3] })).toEqual({ backlogId: 'b', name: 'Backlog', entries: [] })
+		expect(readBacklog({ backlogId: 'b', entries: [{ kind: 'item', id: 'x' }, { kind: 'odd', id: 'y' }, 3] })).toEqual({ backlogId: 'b', boardId: '', name: 'Backlog', entries: [] })
 		expect(readBacklog({})).toBeNull()
 	})
 })

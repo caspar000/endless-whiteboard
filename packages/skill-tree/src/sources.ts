@@ -39,8 +39,6 @@ export interface TreeItemLook {
 	title: string
 	icon: LucideIcon
 	done: boolean
-	/** Done, but not yet evidence: drawn as an outline. */
-	hollow: boolean
 	draft: boolean
 	/** Works done of all, for an item with works. */
 	progress: { done: number; total: number } | null

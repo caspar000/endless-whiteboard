@@ -20,7 +20,9 @@ export interface RankedItem {
 	from: string
 	/** The ranking it was ranked in. */
 	rankingId: string
-	/** The board it was ranked on, and the card, so what a reaction puts on the board goes beside it. */
+	/** The board it was ranked on (DARK-14): a stamp it gives belongs to that board. `''` when not known. */
+	boardId: string
+	/** The board's editor, and the card. */
 	editor?: Editor
 	shapeId?: string
 }
@@ -76,8 +78,17 @@ export interface ItemStamps {
 	 */
 	sourceId: string
 	kinds: readonly StampKindInfo[]
-	/** An item's latest stamp, by its title and creator, wherever it was stamped. Read reactively. */
-	stampOf(entry: Pick<SourceEntry, 'title' | 'creator'>): ItemStamp | null
+	/**
+	 * An item's latest stamp on a board, by its title and creator (DARK-14: a stamp belongs to the board
+	 * it was given on). Read reactively.
+	 */
+	stampOf(entry: Pick<SourceEntry, 'title' | 'creator'>, boardId: string): ItemStamp | null
+	/**
+	 * A list key from before stamps had boards (`stamped:liked`, everything liked anywhere), as the same
+	 * list of one board's stamps, or `null` for any other key (DARK-14). A card on that board set to the
+	 * old list is moved onto it as the board opens, so another board's stamps never reach it.
+	 */
+	scopeToBoard?(key: string, boardId: string): string | null
 }
 
 const stamps = atom<ItemStamps | null>('lifeboard:item-stamps', null)

@@ -6,6 +6,7 @@ import {
 	type Editor,
 	type TLStoreSnapshot,
 } from '@lifeboard/canvas'
+import { setBoardOf } from '@lifeboard/node-kit'
 import { STORE_MIGRATIONS } from '@lifeboard/schema'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -176,6 +177,9 @@ function OffscreenBoard({
 				hideUi
 				autoFocus={false}
 				onMount={(editor) => {
+					// Its board, so cards that show a board's own things (DARK-14: feeds, rankings, stamps)
+					// draw that board's. No hook hears it open: nothing may change a board drawn for a preview.
+					setBoardOf(editor, board.id)
 					// The app's theme, so the preview matches the cards around it. The canvas keeps its own
 					// colour preference, shared by every editor, which only follows the app once a board has
 					// been open (App tells mounted editors); until then it can be anything.

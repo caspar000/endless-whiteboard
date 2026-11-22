@@ -101,14 +101,19 @@ describe('drafts', () => {
 describe('buildIndex', () => {
 	const note = (itemId: string, written: boolean): EvidenceEntry => ({ itemId, boardId: 'b', shapeId: `shape:${itemId}`, written, method: 'analytical' })
 
-	it('gives works their parent tags, counts a tick as evidence only when written up, and leaves drafts out', () => {
+	it('gives works their parent tags, counts a work ticked as evidence with or without a write-up, and leaves drafts out', () => {
 		homer()
 		putItems([item('d/draft', { draft: 'board:a' })])
 		setDone('a/homer/iliad', true, '2026-10-01')
 		setDone('a/homer/odyssey', true, '2026-10-05')
 		const index = buildIndex(getItems(), { x: note('a/homer/iliad', true), y: note('a/homer/odyssey', false) })
 		expect(index['a/homer/iliad']).toMatchObject({ tags: ['a/epic'], evidence: true, method: 'analytical', position: 0 })
-		expect(index['a/homer/odyssey']).toMatchObject({ evidence: false, position: 1 })
+		// DARK-14: a tick counts on its own; nothing files a write-up any more.
+		expect(index['a/homer/odyssey']).toMatchObject({ evidence: true, position: 1 })
+		expect(buildIndex(getItems(), {})['a/homer/odyssey']).toMatchObject({ evidence: true })
+		setDone('a/homer/odyssey', false)
+		expect(buildIndex(getItems(), {})['a/homer/odyssey']).toMatchObject({ evidence: false })
+		setDone('a/homer/odyssey', true, '2026-10-05')
 		// A parent is done by its rule, on the day its last work was done, and is never evidence itself.
 		expect(index['a/homer']).toMatchObject({ done: true, doneAt: '2026-10-05', evidence: false, hasChildren: true })
 		expect(index['d/draft']).toBeUndefined()

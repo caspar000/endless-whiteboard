@@ -1,5 +1,5 @@
 import { atom } from '@lifeboard/canvas'
-import { DEFAULT_TIERS, MAX_TIERS, clampWeight, type Tier } from './model'
+import { DEFAULT_TIERS, MAX_TIERS, clampWeight, type Tier, type TierStart } from './model'
 
 /**
  * Ranking Tiers' own settings, this device's (Settings → Extensions → Ranking Tiers): how odds are
@@ -8,8 +8,8 @@ import { DEFAULT_TIERS, MAX_TIERS, clampWeight, type Tier } from './model'
 export interface RankingPrefs {
 	/** Odds as "20%" rather than "1 in 5". */
 	percent: boolean
-	/** What a new card starts with, top first. */
-	tiers: ReadonlyArray<Pick<Tier, 'name' | 'weight'>>
+	/** What a new card starts with, top first. Tiers written in Settings have no colour or icon; the defaults do. */
+	tiers: readonly TierStart[]
 }
 
 const KEY = 'lifeboard:ranking-tiers:prefs'

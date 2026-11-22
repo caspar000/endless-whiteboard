@@ -1,6 +1,7 @@
 import { stopEventPropagation, useValue } from '@lifeboard/canvas'
 import {
 	aspectRatio,
+	boardIdOf,
 	chordsFor,
 	getAssetBridge,
 	subscribeToKeymap,
@@ -54,7 +55,7 @@ import {
 import { Postmark } from './Postmark'
 import type { RandomizerProps } from './props'
 import { resolveSource } from './sources'
-import { foldedItem, getRankedStamps } from './stamped'
+import { getRankedStamps, rankedStampsIn } from './stamped'
 import { clack, isMuted, setMuted, stampThump, subscribeToMuted, thunk, wakeAudio } from './sound'
 import { Tiles, type TilesHandle } from './Tiles'
 
@@ -88,10 +89,10 @@ function chordLabel(chord: string | undefined): string {
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** Opens an entry the way its source would, or else its address in a new tab. */
-function openEntry(open: ((entry: { id: string; url: string }) => void) | undefined, item: RandomItem) {
+/** Opens an entry the way its source would, from this card's board, or else its address in a new tab. */
+function openEntry(open: ((entry: { id: string; url: string }, boardId: string) => void) | undefined, item: RandomItem, boardId: string) {
 	if (!item.url) return
-	if (open) open({ id: item.id, url: item.url })
+	if (open) open({ id: item.id, url: item.url }, boardId)
 	else window.open(item.url, '_blank', 'noopener,noreferrer')
 }
 
@@ -115,9 +116,11 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 	const kind = view.kind
 	// What rankings stamped counts here too (DARK-13): a ranked album is Liked, and out of the shuffle.
 	// Not when the card draws from a ranking itself: its items are ranked, and drawn by their tiers.
+	// Those given on this board (DARK-14): a ranking on another board is no reason to leave out.
 	const ranked = useValue('lifeboard:randomizer-ranked', () => getRankedStamps(), [])
+	const boardId = boardIdOf(editor)
 	const base = view.type === 'source' ? withEntries(stored, list, view.entries) : stored
-	const items = view.source?.ranked ? base : withRankings(base, (item) => ranked.get(foldedItem(item)) ?? [])
+	const items = view.source?.ranked ? base : withRankings(base, (item) => rankedStampsIn(ranked, item, boardId))
 	const ofList = itemsOf(items, list)
 	const current = currentItem(items, picks, list)
 	const pool = inShuffle(items, list)
@@ -414,7 +417,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 							aria-label={`Open ${current.title}`}
 							title={`Open this ${kind.one}`}
 							onPointerDown={swallow}
-							onClick={() => openEntry(view.source?.open?.bind(view.source), current)}
+							onClick={() => openEntry(view.source?.open?.bind(view.source), current, boardId)}
 						>
 							<ExternalLink size={16} aria-hidden />
 						</button>

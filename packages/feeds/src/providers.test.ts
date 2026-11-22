@@ -17,6 +17,7 @@ const source = (over: Partial<FeedSource> = {}): FeedSource => ({
 	title: 'Ben Eater',
 	categories: [],
 	addedAt: '',
+	boardId: '',
 	...over,
 })
 

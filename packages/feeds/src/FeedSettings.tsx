@@ -1,10 +1,14 @@
-import { SourcesPanel } from './SourcesPanel'
-
-/** The extension's page in Settings: the same sources and categories a feed card shows beside it. */
+/**
+ * The extension's page in Settings. Sources and categories belong to each board (DARK-14), so they are
+ * kept beside the board's feed card, not here.
+ */
 export function FeedSettings() {
 	return (
 		<div className="lb-feeds-settings">
-			<SourcesPanel />
+			<p className="lb-feeds-panel__hint">
+				Each board has its own channels, feeds and categories. Double-click a feed card, or use its ⋯ menu, to add, file and remove that board’s. A board that had a feed card before keeps a copy of the
+				ones you had then.
+			</p>
 		</div>
 	)
 }

@@ -15,16 +15,16 @@ export const randomizerExtension: Extension = {
 		'A card that picks at random from whatever you give it: a list you type, or the videos in one of your feeds. Press Shuffle and the cover flips like a departure board, clacking, until it lands on one.',
 	details: [
 		'Add one from the dock’s node picker or with “Add randomizer” in ⌘K. It starts empty, waiting for a source: double-click it, or click “Choose a source” at its top.',
-		'“A list I type” holds anything: one item per line, Title — Creator — Year. With Feeds on, the same menu lists all your feeds, each category and each channel, and the card shuffles their videos, with each thumbnail as its cover. The button beside the count opens the video on show and marks it watched.',
-		'With Ranking Tiers on, a ranking whose weighted shuffle is on is in the menu too, and the card draws from it by its tiers’ weights: a tier weighted 4 comes up four times as often, item for item, as one weighted 1. Unranked items stay out of the draw, and every draw is from the whole ranking, the item on show included, so the odds the ranking shows are the odds of each shuffle. With Backlog on, each backlog is in the menu.',
+		'“A list I type” holds anything: one item per line, Title — Creator — Year. With Feeds on, the same menu lists all your feeds and each category (never one channel alone: a shuffle is for a mix), and the card shuffles their videos, with each thumbnail as its cover. The button beside the count opens the video on show and marks it watched.',
+		'With Ranking Tiers on, each tier of the board’s rankings is in the menu (“Albums, ranked: Heavy rotation”), and a ranking whose weighted shuffle is on is there whole too, drawn by its tiers’ weights: a tier weighted 4 comes up four times as often, item for item, as one weighted 1. Unranked items stay out of the draw, and every draw is from the whole ranking, the item on show included, so the odds the ranking shows are the odds of each shuffle. With Backlog on, each of the board’s backlogs is in the menu. The menu lists only what is on this board.',
 		'Shuffle flips through the covers, faster and longer the more there are, and slows to a stop on one; then the title and the creator rattle through the letter tiles and settle. A dozen items get about two dozen flips, a backlog of hundreds up to eighty, and it never takes more than about five seconds. With the card selected, ⌘↵ shuffles it (Settings → Keyboard can move that).',
 		'The sound is made in the browser, a clack for each flap and a thunk when it lands. The speaker button mutes it, and the card remembers.',
 		'Drop an image on the card to make it the cover of the item on show. An item without one gets a cover drawn from its title.',
 		'Stamp the item on show from the stamp button: Liked and Disliked take it out of the shuffle, Unsure leaves it in. Stamps pile up on the cover with their dates, newest on top; click them for the history. Shuffling never stamps anything, and a stamp is an ordinary edit, so ⌘Z (or the Undo beside it) takes it back.',
 		'Where a shuffle lands is not an edit: undo skips it. The card keeps the last few picks under the button.',
 		'The window is square unless the card’s editor sets another shape: 16:9 for videos, 2:3 for posters, and others. A cover that hasn’t loaded in time shows its title on a blank card, never the last picture.',
-		'Ranking something on a Ranking Tiers card stamps it Liked too, so it joins “Everything I liked”, and every randomizer counts that stamp: the album is out of the shuffle, its stamp on the cover.',
-		'Everything you stamp, on any card on any board, is also listed as “Everything I liked”, “Everything I disliked” and “Everything I’m unsure of”, kept in your vault. Any card that takes a list can use them: a Ranking Tiers card can rank what you liked, a Backlog can collect it.',
+		'What you stamp lands in the rank queue of the board’s Ranking Tiers cards, to drag into a tier. Ranking an album nobody stamped stamps it Liked, and every randomizer on that board counts that stamp: the album is out of the shuffle, its stamp on the cover. One you had stamped keeps its stamp.',
+		'What you stamp is also listed in your vault, a list for each board, source and stamp: “Liked on /mu/core”, “Unsure on /mu/core”, “Disliked on /mu/core”. Any card on the board that takes a list can use them: a Ranking Tiers card can rank one, a Backlog can collect it.',
 		'Turning this off takes the card out of the node picker and ⌘K. Cards already on your boards keep their lists and keep working.',
 	],
 	icon: Shuffle,
@@ -32,6 +32,6 @@ export const randomizerExtension: Extension = {
 	author: 'Lifeboard',
 	nodes: [defineNode(randomizerNodeDefinition)],
 	commands: randomizerCommands,
-	// Keeps "Everything I liked" up from every board a randomizer is on.
+	// Keeps the stamped lists up from every board a randomizer is on.
 	hooks: { onBoardOpen: ({ editor, boardId }) => watchStamped(editor, boardId) },
 }

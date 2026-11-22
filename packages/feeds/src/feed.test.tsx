@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
+import { setBoardOf, setNetworkBridge, type ExternalText } from '@lifeboard/node-kit'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeedProps } from './board'
@@ -7,7 +7,7 @@ import { FeedCard } from './feed/FeedCard'
 import './index'
 import { reading, REFRESH_MS } from './refresh'
 import { SourcesPanel } from './SourcesPanel'
-import { getCategories, getSourceItems, getSources, getWatched, replaceCategories, replaceSourceItems, replaceSources, replaceWatched } from './store'
+import { getCategories, getSourceItems, getSources, replaceCategories, replaceSourceItems, replaceSources, replaceWatched, watchedOn } from './store'
 
 /*
  * The extension as a person uses it: the sources panel and a feed card mounted together, sites
@@ -61,6 +61,8 @@ function Card() {
 		select: () => {},
 		setEditingShape: () => {},
 	}
+	// On board b1, as the app says as it opens (DARK-14).
+	setBoardOf(editor as never, 'b1')
 	const shape = { id: 'shape:feed', type: 'node.feed', props: { ...props, w: 420, h: 600 } }
 	return <FeedCard shape={shape as never} isEditing={false} editor={editor as never} />
 }
@@ -69,7 +71,7 @@ function mount() {
 	render(
 		<>
 			<div data-testid="panel">
-				<SourcesPanel />
+				<SourcesPanel boardId="b1" />
 			</div>
 			<div data-testid="card">
 				<Card />
@@ -191,14 +193,14 @@ describe('the feeds extension', () => {
 		await waitFor(() => expect(rows()).toHaveLength(2))
 
 		fireEvent.click(card.getByRole('link', { name: /Breadboard clock part 5/ }))
-		expect(Object.keys(getWatched())).toEqual(['yt:benclock5aa'])
+		expect(Object.keys(watchedOn('b1'))).toEqual(['yt:benclock5aa'])
 		// Still listed under the pointer that opened it, without its dot.
 		expect(rows()).toHaveLength(2)
 		expect(card.getByRole('button', { name: 'Mark "Breadboard clock part 5" unwatched' })).toBeTruthy()
 
 		fireEvent.click(card.getByRole('button', { name: 'Mark "Breadboard clock part 4" watched' }))
 		fireEvent.click(card.getByRole('button', { name: 'Mark "Breadboard clock part 5" unwatched' }))
-		expect(Object.keys(getWatched())).toEqual(['yt:benclock4aa'])
+		expect(Object.keys(watchedOn('b1'))).toEqual(['yt:benclock4aa'])
 		expect(chip(card, /^All/).textContent).toBe('All1')
 	})
 

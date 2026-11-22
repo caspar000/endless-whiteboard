@@ -13510,8 +13510,13 @@ button.lb-props__eye:hover {
 }
 .lb-rand-pm {
 	position: absolute;
-	/* The ring is as wide as it was when the wavy lines trailed off it (86% of a 120-wide box). */
-	width: 49%;
+	/*
+	 * The ring covers about 80% of the cover (DARK-14): it is 62 of the box's 68 units, so the box is
+	 * 88% of the cover's shorter side. On a cover wider or taller than square, the height cap keeps it
+	 * inside, and the drawing stays round in the middle of the box.
+	 */
+	width: 88%;
+	max-height: 88%;
 	height: auto;
 	aspect-ratio: 1;
 	overflow: visible;
@@ -14333,32 +14338,20 @@ button.lb-props__eye:hover {
 	font-size: 11px;
 	line-height: 1.4;
 }
-/* Which stamps show (DARK-13): one toggle per kind, in its ink. */
+/* What the queue shows (DARK-14): a switch per stamp, in its ink. */
 .lb-rank__stamps {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px 12px;
+	display: grid;
+	gap: 0;
 	margin: 0;
 	padding: 0;
 	border: 0;
 }
 .lb-rank__stamps legend {
-	width: 100%;
-	margin-bottom: 4px;
+	margin-bottom: 2px;
 	padding: 0;
-	color: var(--lb-text-dim);
-	font-size: 11px;
-}
-.lb-rank__stamp-toggle {
-	display: flex;
-	align-items: center;
-	gap: 5px;
+	color: var(--lb-text);
 	font-size: 12px;
-	cursor: pointer;
-}
-.lb-rank__stamp-toggle input {
-	margin: 0;
-	accent-color: var(--lb-rank-ink);
+	font-weight: 600;
 }
 
 /* The body: the unranked rail on the left, the bands beside it. */
@@ -14696,6 +14689,647 @@ button.lb-props__eye:hover {
 }
 
 /* The source picker, in a popover beside the card. */
+/* ===================================================== ranking: queue, tier looks, shelf (DARK-14) */
+
+/* Tiers | Shelf, in the card's header. */
+.lb-rank__seg {
+	display: inline-flex;
+	flex: none;
+	margin-right: 4px;
+	padding: 2px;
+	border: 1px solid var(--lb-border);
+	border-radius: 7px;
+	background: var(--lb-bg-raised);
+}
+.lb-rank__seg button {
+	height: 22px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--lb-text-dim) !important;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+}
+.lb-rank__seg button[aria-pressed='true'] {
+	background: var(--lb-surface-2);
+	color: var(--lb-text) !important;
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+.lb-rank__seg button[aria-pressed='false']:hover {
+	color: var(--lb-text) !important;
+}
+
+/* A tier's colours and icon, on the banded rows. */
+.lb-rank__band--colored,
+.lb-rank__band--colored:nth-child(odd) {
+	background: color-mix(in srgb, var(--lb-tier-bg) 16%, transparent);
+}
+.lb-rank__band--bordered {
+	border-color: var(--lb-tier-border);
+	border-width: 2px;
+}
+.lb-rank__band--colored .lb-rank__tier-icon {
+	color: var(--lb-tier-bg);
+}
+.lb-rank__tier-icon {
+	flex: none;
+	color: var(--lb-text-dim);
+}
+
+/* The look section of a tier's menu: two rows of swatches and the icons. */
+.lb-rank__tier-menu {
+	width: 236px;
+}
+.lb-rank__look {
+	display: grid;
+	gap: 5px;
+	margin: 2px 0 4px;
+	padding: 6px 8px 8px;
+	border-top: 1px solid var(--lb-border);
+	border-bottom: 1px solid var(--lb-border);
+}
+.lb-rank__look-label {
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-rank__swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+.lb-rank__swatch {
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px rgb(255 255 255 / 25%);
+	cursor: pointer;
+}
+.lb-rank__swatch--none {
+	background:
+		linear-gradient(135deg, transparent 45%, var(--lb-text-faint) 45% 55%, transparent 55%),
+		var(--lb-surface);
+	box-shadow: inset 0 0 0 1px var(--lb-border);
+}
+.lb-rank__swatch[aria-checked='true'] {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+.lb-rank__icon-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 3px;
+}
+.lb-rank__icon-pick {
+	display: grid;
+	place-items: center;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--lb-text-dim) !important;
+	cursor: pointer;
+}
+.lb-rank__icon-pick:hover {
+	background: var(--lb-surface-2);
+	color: var(--lb-text) !important;
+}
+.lb-rank__icon-pick[aria-checked='true'] {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent) !important;
+}
+
+/* The queue's three switches, in the card's settings. */
+.lb-rank__stamps-hint {
+	display: block;
+	margin-bottom: 4px;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	line-height: 1.4;
+}
+.lb-rank__switch {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 26px;
+	cursor: pointer;
+}
+.lb-rank__switch-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--lb-rank-ink);
+}
+.lb-rank__switch-name {
+	flex: 1;
+}
+.lb-rank__switch input {
+	appearance: none;
+	position: relative;
+	width: 28px;
+	height: 16px;
+	margin: 0;
+	border-radius: 8px;
+	background: var(--lb-border);
+	cursor: pointer;
+	transition: background-color 160ms ease;
+}
+.lb-rank__switch input::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+	transition: transform 160ms ease;
+}
+.lb-rank__switch input:checked {
+	background: var(--lb-accent);
+}
+.lb-rank__switch input:checked::after {
+	transform: translateX(12px);
+}
+.lb-rank__switch input:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 2px;
+}
+
+/* The queue, above the banded rows. */
+.lb-rank__queue {
+	display: grid;
+	gap: 8px;
+	padding: 8px 8px 10px;
+	border: 1px dashed var(--lb-border);
+	border-radius: 10px;
+}
+.lb-rank__queue--target {
+	border-color: var(--lb-accent);
+	background: var(--lb-accent-tint);
+}
+.lb-rank__queue-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--lb-text-dim);
+}
+.lb-rank__queue-name {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-rank__queue-hint {
+	margin-left: auto;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+
+/* A cover just dropped settles into place with a small wobble. */
+@keyframes lb-rank-settle {
+	0% {
+		transform: translateY(-14px) rotate(4deg);
+	}
+	55% {
+		transform: translateY(0) rotate(-2.5deg);
+	}
+	78% {
+		transform: translateY(0) rotate(1.2deg);
+	}
+	100% {
+		transform: none;
+	}
+}
+.lb-rank__cover--settle {
+	transform-origin: 50% 100%;
+	animation: lb-rank-settle 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.lb-rank__cover--bare {
+	gap: 0;
+}
+
+/*
+ * The shelf (design 1A, "Wooden bookcase"): a walnut cabinet, a plank for each tier with a brass
+ * nameplate in its colour, and the queue as a record crate on top. Wood in both themes, as furniture is.
+ */
+.lb-rank--shelf {
+	--lb-shelf-grain-h:
+		repeating-linear-gradient(180deg, rgb(0 0 0 / 10%) 0 1px, transparent 1px 4px),
+		repeating-linear-gradient(178.6deg, rgb(255 226 190 / 5%) 0 2px, transparent 2px 9px),
+		repeating-linear-gradient(181.2deg, rgb(0 0 0 / 9%) 0 3px, transparent 3px 17px);
+	--lb-shelf-grain-v:
+		repeating-linear-gradient(90deg, rgb(0 0 0 / 10%) 0 1px, transparent 1px 4px),
+		repeating-linear-gradient(88.6deg, rgb(255 226 190 / 5%) 0 2px, transparent 2px 9px),
+		repeating-linear-gradient(91.2deg, rgb(0 0 0 / 9%) 0 3px, transparent 3px 17px);
+}
+.lb-shelf {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: 0 6px 4px;
+}
+.lb-shelf__top {
+	position: relative;
+	z-index: 3;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 0 18px;
+}
+.lb-shelf__hint {
+	max-width: 30ch;
+	margin: 0 0 10px;
+	color: var(--lb-text-faint);
+	font-size: 12px;
+	line-height: 1.5;
+}
+.lb-shelf__crate {
+	position: relative;
+	display: grid;
+	flex: none;
+	width: min(300px, 100%);
+	height: 92px;
+	margin-left: auto;
+}
+.lb-shelf__crate > * {
+	grid-area: 1 / 1;
+}
+.lb-shelf__crate-back {
+	align-self: end;
+	height: 66px;
+	margin: 0 10px;
+	border-radius: 2px 2px 0 0;
+	background:
+		linear-gradient(180deg, rgb(0 0 0 / 55%), rgb(0 0 0 / 20%) 40%, rgb(0 0 0 / 55%)),
+		var(--lb-shelf-grain-h),
+		linear-gradient(180deg, #9b7244, #7f5b33);
+}
+.lb-shelf__crate--target {
+	filter: drop-shadow(0 0 12px rgb(255 210 130 / 45%));
+}
+.lb-shelf__crate-items {
+	z-index: 1;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	align-self: end;
+	height: 100%;
+	padding: 0 22px 10px;
+}
+.lb-shelf__crate-items .lb-rank__cover {
+	width: 60px;
+	transform: rotate(var(--lb-tilt, -3deg));
+	transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.lb-shelf__crate-items .lb-rank__cover:nth-child(even) {
+	--lb-tilt: 3deg;
+}
+.lb-shelf__crate-items .lb-rank__cover + .lb-rank__cover {
+	margin-left: -24px;
+}
+.lb-shelf__crate-items .lb-rank__cover:hover,
+.lb-shelf__crate-items .lb-rank__cover:focus-visible {
+	z-index: 20 !important;
+	transform: translateY(-16px) rotate(0deg);
+}
+.lb-shelf__crate-items .lb-rank__art {
+	border-radius: 2px;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%), 4px 2px 8px rgb(0 0 0 / 50%);
+}
+.lb-shelf__crate-empty {
+	margin-bottom: 52px;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+	white-space: nowrap;
+}
+.lb-shelf__crate-front {
+	z-index: 2;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	align-self: end;
+	height: 46px;
+	margin: 0 4px;
+	pointer-events: none;
+	background:
+		var(--lb-shelf-grain-h),
+		linear-gradient(180deg, #dcae78 0, #c3925c 18px, #7a5530 20px, #1a110b 20px 25px, #d6a872 25px, #bd8c57 44px, #7a5530 46px);
+	box-shadow: 0 8px 8px -4px rgb(0 0 0 / 55%);
+}
+.lb-shelf__crate-label {
+	display: flex;
+	align-items: center;
+	height: 20px;
+	color: rgb(44 24 10 / 82%);
+	font: 800 12px/1 'Arial Narrow', Impact, sans-serif;
+	letter-spacing: 0.22em;
+	text-shadow: 0 1px 0 rgb(255 230 190 / 35%);
+	text-transform: uppercase;
+}
+.lb-shelf__crate-more {
+	z-index: 4;
+	align-self: end;
+	justify-self: end;
+	margin: 0 14px 12px 0;
+	height: 22px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 999px;
+	background: rgb(18 12 8 / 82%);
+	color: #fff4d6 !important;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+}
+/* The whole queue, laid out flat under the crate while it is open. */
+.lb-shelf__spill {
+	position: relative;
+	z-index: 3;
+	margin: 0 18px 10px auto;
+	padding: 10px;
+	max-width: 100%;
+	border-radius: 6px;
+	background: var(--lb-shelf-grain-h), linear-gradient(180deg, #9b7244, #7f5b33);
+	box-shadow: 0 8px 14px -6px rgb(0 0 0 / 55%);
+	box-sizing: border-box;
+}
+.lb-shelf__spill-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.lb-shelf__spill-list .lb-rank__cover {
+	width: 56px;
+}
+.lb-shelf__spill-list .lb-rank__art {
+	border-radius: 2px;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%), 3px 2px 6px rgb(0 0 0 / 45%);
+}
+.lb-shelf__cabinet {
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 30px 44px -20px rgb(0 0 0 / 70%);
+}
+.lb-shelf__crown {
+	position: relative;
+	z-index: 2;
+	height: 14px;
+	margin: 0 -6px;
+	border-radius: 3px 3px 1px 1px;
+	background:
+		var(--lb-shelf-grain-h),
+		linear-gradient(180deg, #8d603d 0, #6d4629 30%, #573720 75%, #2f1d10 100%);
+	box-shadow: inset 0 1px 0 rgb(255 225 185 / 22%), 0 3px 4px rgb(0 0 0 / 55%);
+}
+.lb-shelf__carcass {
+	padding: 0 16px;
+	background:
+		var(--lb-shelf-grain-v),
+		linear-gradient(90deg, #4a2d19, #5d3a21 22%, #52331d 47%, #64412a 71%, #4c2f1b);
+	box-shadow: inset 1px 0 0 rgb(255 225 185 / 12%), inset -1px 0 0 rgb(0 0 0 / 40%);
+}
+.lb-shelf__bay {
+	position: relative;
+	z-index: 0;
+	background:
+		var(--lb-shelf-grain-v),
+		linear-gradient(180deg, #24180f, #1a110b);
+}
+/* A shelf whose menu is open sits above the shelves below it, so the menu isn't drawn under them. */
+.lb-shelf__bay:has(.lb-rank__tier-menu) {
+	z-index: 5;
+}
+.lb-shelf__row {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	min-height: calc(var(--lb-col-cover) / var(--lb-rank-aspect, 1) + 18px);
+	padding: 12px 14px 0;
+	margin-bottom: -6px;
+	box-shadow:
+		inset 8px 0 12px -6px rgb(0 0 0 / 85%),
+		inset -8px 0 12px -6px rgb(0 0 0 / 85%),
+		inset 0 14px 14px -12px rgb(0 0 0 / 90%);
+	transition: background-color 220ms ease;
+}
+.lb-shelf__bay--target .lb-shelf__row {
+	background: linear-gradient(0deg, color-mix(in srgb, var(--lb-tier-plate) 30%, transparent), transparent 80%);
+}
+.lb-shelf__row--open {
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+}
+.lb-shelf__row .lb-rank__cover {
+	position: relative;
+	transform-origin: 50% 100%;
+}
+.lb-shelf__row .lb-rank__art {
+	border-radius: 2px;
+	transform: perspective(520px) rotateX(5deg);
+	transform-origin: 50% 100%;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%), 5px 3px 9px rgb(0 0 0 / 50%);
+}
+.lb-shelf__row .lb-rank__cover:hover .lb-rank__art {
+	transform: perspective(520px) rotateX(5deg) translateY(-4px);
+}
+.lb-shelf__row .lb-rank__cover::after {
+	content: '';
+	position: absolute;
+	right: 4%;
+	bottom: -5px;
+	left: 4%;
+	z-index: -1;
+	height: 10px;
+	background: radial-gradient(ellipse at center, rgb(0 0 0 / 70%), transparent 70%);
+}
+.lb-shelf__caret {
+	align-self: stretch;
+	height: auto;
+	background: linear-gradient(180deg, #fff0c4, #e0ad52);
+	box-shadow: 0 0 10px rgb(255 210 120 / 80%);
+}
+.lb-shelf__empty {
+	display: grid;
+	place-items: center;
+	width: var(--lb-col-cover);
+	aspect-ratio: var(--lb-rank-aspect, 1);
+	margin-bottom: 6px;
+	padding: 6px;
+	box-sizing: border-box;
+	border: 1.5px dashed rgb(240 220 190 / 28%);
+	border-radius: 3px;
+	color: rgb(240 224 200 / 70%);
+	font-size: 11px;
+	text-align: center;
+}
+.lb-shelf__stack {
+	position: relative;
+	display: grid;
+	flex: none;
+	width: var(--lb-col-cover);
+	aspect-ratio: var(--lb-rank-aspect, 1);
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+.lb-shelf__stack > * {
+	grid-area: 1 / 1;
+}
+.lb-shelf__sleeve {
+	align-self: end;
+	width: calc(100% - 10px);
+	overflow: hidden;
+	border-radius: 2px;
+	transform-origin: 0 100%;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 45%), 4px 2px 8px rgb(0 0 0 / 55%);
+	transition: transform 220ms ease;
+}
+.lb-shelf__sleeve img {
+	display: block;
+	width: 100%;
+	aspect-ratio: var(--lb-rank-aspect, 1);
+	object-fit: cover;
+}
+.lb-shelf__sleeve:nth-child(1) {
+	transform: rotate(9deg) translateX(8px);
+}
+.lb-shelf__sleeve:nth-child(2) {
+	transform: rotate(5deg) translateX(4px);
+}
+.lb-shelf__stack:hover .lb-shelf__sleeve:nth-child(1),
+.lb-shelf__stack--target .lb-shelf__sleeve:nth-child(1) {
+	transform: rotate(13deg) translateX(12px);
+}
+.lb-shelf__stack-n {
+	z-index: 1;
+	place-self: center;
+	padding: 3px 8px;
+	border-radius: 999px;
+	background: rgb(18 12 8 / 78%);
+	color: #fff4d6;
+	font-size: 12px;
+	font-weight: 600;
+}
+.lb-shelf__fold {
+	display: flex;
+	flex: none;
+	align-items: center;
+	align-self: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 5px;
+	background: rgb(0 0 0 / 35%);
+	color: #f3dfb4 !important;
+	font-size: 11px;
+	cursor: pointer;
+}
+.lb-shelf__plank {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	height: 30px;
+	padding: 0 8px 0 12px;
+	border-top: 6px solid #7d5333;
+	background:
+		var(--lb-shelf-grain-h),
+		linear-gradient(180deg, #8a5c39 0, #6e4729 14%, #5f3c22 86%, #3a2313 100%);
+	box-shadow:
+		inset 0 2px 0 color-mix(in srgb, var(--lb-tier-border, var(--lb-tier-plate)) 80%, #000),
+		inset 0 3px 0 rgb(255 225 185 / 14%),
+		0 7px 10px -3px rgb(0 0 0 / 70%);
+}
+.lb-shelf__plate {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	height: 22px;
+	padding: 0 5px;
+	border-radius: 3px;
+	background: linear-gradient(180deg, #f3dc9c 0%, #d4ab5c 35%, #a07531 62%, #c99c4f 86%, #e6c47e 100%);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%), inset 0 -1px 0 rgb(0 0 0 / 30%), 0 1px 2px rgb(0 0 0 / 60%);
+}
+.lb-shelf__screw {
+	flex: none;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 35% 35%, #fff3cf, #8a6526 70%);
+}
+.lb-shelf__enamel {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 16px;
+	padding: 0 8px;
+	border-radius: 2px;
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--lb-tier-plate) 88%, #fff),
+		var(--lb-tier-plate) 45%,
+		color-mix(in srgb, var(--lb-tier-plate) 82%, #000)
+	);
+	box-shadow: inset 0 1px 2px rgb(0 0 0 / 50%);
+	color: #fff9ee;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	line-height: 1;
+	text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.lb-shelf__enamel .lb-rank__tier-icon {
+	color: inherit;
+}
+.lb-shelf__plate-n {
+	padding-left: 6px;
+	border-left: 1px solid rgb(255 255 255 / 35%);
+	font-variant-numeric: tabular-nums;
+}
+.lb-shelf__plank .lb-rank__menu-btn {
+	width: 30px;
+	height: 22px;
+	border-radius: 5px;
+	background: linear-gradient(180deg, rgb(0 0 0 / 32%), rgb(0 0 0 / 18%));
+	box-shadow: inset 0 1px 2px rgb(0 0 0 / 50%), 0 1px 0 rgb(255 225 185 / 14%);
+	color: #f3dfb4 !important;
+}
+.lb-shelf__plank .lb-rank__tier-menu {
+	top: 30px;
+	right: 8px;
+	color: var(--lb-text);
+	text-transform: none;
+}
+.lb-shelf__plinth {
+	height: 18px;
+	margin: 0 -3px;
+	border-radius: 0 0 3px 3px;
+	background:
+		var(--lb-shelf-grain-h),
+		linear-gradient(180deg, #5d3b21, #3b2413);
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-rank__cover--settle,
+	.lb-shelf__sleeve,
+	.lb-shelf__crate-items .lb-rank__cover {
+		animation: none;
+		transition: none;
+	}
+}
+
 .lb-rank-editor {
 	display: flex;
 	flex-direction: column;
@@ -15852,11 +16486,6 @@ button.lb-props__eye:hover {
 }
 .lb-skill__check:disabled {
 	cursor: default;
-}
-/* Done, but the evidence note is still only its template: ticked, and visibly not yet counted. */
-.lb-skill__check--hollow {
-	accent-color: var(--lb-text-faint);
-	opacity: 0.7;
 }
 .lb-skill__title {
 	flex: 1;
@@ -17157,14 +17786,11 @@ button.lb-props__eye:hover {
 	overflow: hidden;
 	overflow-wrap: anywhere;
 }
-/* Done: filled with the accent. Done but not yet written up: only its outline. */
+/* Done: filled with the accent. */
 .lb-work--done .lb-work__disc {
 	background: var(--lb-accent-tint);
 	border-color: var(--lb-accent);
 	color: var(--lb-accent);
-}
-.lb-work--hollow .lb-work__disc {
-	background: var(--lb-surface);
 }
 .lb-work--done .lb-work__title {
 	color: var(--lb-text-faint);

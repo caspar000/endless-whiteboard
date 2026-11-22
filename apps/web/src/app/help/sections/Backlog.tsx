@@ -72,8 +72,8 @@ export function Backlog({ go }: SectionProps) {
 					at it to pick what is next, or a Ranking Tiers card to sort it.
 				</p>
 				<p>
-					Backlogs are kept in your vault, so every card and device shows the same, and a copy of the card
-					shows the same backlog. Settings → Extensions → Backlog lists them all, to delete the ones you no
+					A backlog belongs to the board it was made on: only cards there are offered it. It is kept in your
+					vault, so every device shows the same, and a copy of the card shows the same backlog. Settings → Extensions → Backlog lists them all, to delete the ones you no
 					longer need.
 				</p>
 			</Section>

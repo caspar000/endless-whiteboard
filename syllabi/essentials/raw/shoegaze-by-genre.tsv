@@ -1,0 +1,5 @@
+pos	artist	album	year	confidence	note
+# The rest of the chart is a sorted list of about 200 artist names with no albums, so only the three "start here" albums are recorded.
+1	Slowdive	Souvlaki		ok	section: Start Here
+2	Ride	Nowhere		ok	section: Start Here
+3	My Bloody Valentine	Loveless		ok	section: Start Here

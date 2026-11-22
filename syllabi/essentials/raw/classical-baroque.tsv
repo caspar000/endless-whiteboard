@@ -1,0 +1,18 @@
+pos	artist	album	year	confidence	note
+# Classical: artist is the composer, album is the work, note gives the performers of the recording shown.
+1	Monteverdi	L'Orfeo		ok	performers: John Eliot Gardiner
+2	Jean-Baptiste Lully	Les Divertissements de Versailles		ok	performers: William Christie / Les Arts Florissants
+3	Corelli	Violin Sonatas Op. 5, Nos. 1-6		ok	performers: Lucy van Dael
+4	Vivaldi	Eleven Concertos		ok	performers: Anner Bylsma / Tafelmusik / Jeanne Lamon
+5	Vivaldi	The Vivaldi Album		ok	performers: Cecilia Bartoli / Il Giardino Armonico
+6	Purcell	Dido and Aeneas		ok	performers: Taverner Choir and Players / Andrew Parrott
+7	Purcell	Essential Purcell		ok	performers: The King's Consort / Robert King
+8	Scarlatti	Horowitz Plays Scarlatti		ok	performers: Vladimir Horowitz
+9	Handel	Messiah		ok	performers: Trevor Pinnock / The English Concert & Choir
+10	J.S. Bach	Suites for Solo Cello		ok	performers: János Starker
+11	J.S. Bach	The Art of Fugue		ok	performers: Emerson String Quartet
+12	J.S. Bach	Die Kunst der Fuge		ok	performers: Musica Antiqua Köln / Goebel
+13	Telemann	Complete Violin Concertos Vol. 1		ok	performers: L'Orfeo Barockorchester
+14	C.P.E. Bach	Symphonies; Cello Concertos		ok	performers: Anner Bylsma / Orchestra of the Age of Enlightenment / Gustav Leonhardt
+15	Various	Music of the Baroque Era		ok	Naxos compilation
+16	J.S. Bach	The Goldberg Variations		ok	performers: Glenn Gould

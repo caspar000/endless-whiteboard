@@ -1,0 +1,9 @@
+pos	artist	album	year	confidence	note
+# Single pieces, not albums. Phase 2 needs to pick a recording for each, or leave them out.
+1	Anonymous	Hurrian Hymn to Nikkal		ok	piece, ~1400 BC
+2	Anonymous	Katolophyromai		ok	piece, ~200 BC
+3	Anonymous	The Epitaph of Seikilos		ok	piece, ~100 AD
+4	Anonymous	Delphic Hymns		ok	piece, 128 BC
+5	Horace	Carmen Saeculare		ok	piece, 17 BC
+6	Mesomedes	Hymns of Mesomedes		ok	piece, ~100 AD
+7	Anonymous	Oxyrhynchus Hymn		ok	piece, ~200 AD

@@ -1,0 +1,50 @@
+pos	artist	album	year	confidence	note
+# Mostly cassette tapes; "Solo Tape" and "Underground Tape" are fan titles, so many will not match a release.
+1	Mack Daddy Ju	Solo Tape		ok	section: DJ Squeeky & Gangstashit
+2	Tom Skee Mask	Solo Tape		ok	section: DJ Squeeky & Gangstashit
+3	DJ Squeeky	Summer Mix, Part III		ok	section: DJ Squeeky & Gangstashit
+4	Criminal Manne	Solo Tape		ok	section: DJ Squeeky & Gangstashit
+5	Ow7law Tha Masque Mane	Solo Tape		ok	section: DJ Squeeky & Gangstashit
+6	Yo Lynch	Caughtcha Slippin		ok	section: DJ Squeeky & Gangstashit
+7	DJ Zirk	Nuttin But Killaz		ok	section: DJ Zirk & 2 Thick
+8	Primo	Down For My Crown		ok	section: DJ Zirk & 2 Thick
+9	Mr. Tinimaine	19 Tini 5		ok	section: DJ Zirk & 2 Thick
+10	Buckshots	Strapped With Them Thangs		ok	section: DJ Zirk & 2 Thick
+11	Lil Grove	Solo Tape		ok	section: DJ Zirk & 2 Thick
+12	Kilo G & DJ Zirk	Solo Tape		ok	section: DJ Zirk & 2 Thick
+13	DJ Paul	Volume 16: 4 Da Summa Of 94		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+14	Project Pat	Solo Tape		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+15	Da Koopsta Knicca	Da Devil's Playground		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+16	Juicy J	Volume 9MM: It's On		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+17	Triple Six Mafia	Smoked Out, Loced Out		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+18	Lil Fly	From Da Darkness Of Da Kut		ok	section: DJ Paul / Juicy J & Triple Six Mafia
+19	Skimask Troopaz	Underground Tape		ok	section: Skinny Pimp & Gimisum Family
+20	Gimisum Family	Gimisum Dungeon		ok	section: Skinny Pimp & Gimisum Family
+21	Lady Bee	Strictly For That Nigga		ok	section: Skinny Pimp & Gimisum Family
+22	Big Hill	Management		ok	section: Skinny Pimp & Gimisum Family
+23	Lil Gin	Shake Junt		ok	section: Skinny Pimp & Gimisum Family; aka The Serpent Step Son
+24	Lil Yo	Youngsta's On A Come Up		ok	section: Skinny Pimp & Gimisum Family
+25	Blackout	Dreamworld		ok	section: Blackout & Playa Posse & Snubnoze
+26	Guice	Ashes Off My Blunt		ok	section: Blackout & Playa Posse & Snubnoze
+27	Lil Slim	Robbery's My Specialty		ok	section: Blackout & Playa Posse & Snubnoze
+28	Terror	It's Whateva		ok	section: Blackout & Playa Posse & Snubnoze
+29	Mongotti	Solo Tape		ok	section: Blackout & Playa Posse & Snubnoze
+30	Mayz Road Kartel	Mayz Road Kartel		ok	section: Blackout & Playa Posse & Snubnoze
+31	Player 1 & Bloody Bones	Crime Rate Sky High		ok	section: DJ Sound & The Frayserclick
+32	DJ Sound	Volume 10: Hatred		ok	section: DJ Sound & The Frayserclick
+33	MC Money & Gangsta Gold	Da Hard Ov Frayser		ok	section: DJ Sound & The Frayserclick
+34	Dirty Red & Lil Bay	Blood In - Blood Out		ok	section: DJ Sound & The Frayserclick
+35	DJ Sound	Volume 9: Negative Thoughts		ok	section: DJ Sound & The Frayserclick
+36	Frayserclick	Broken Halo		ok	section: DJ Sound & The Frayserclick; aka DJ Sound Volume 11
+37	Tommy Wright III	On The Run		ok	section: Tommy Wright III & Street Smart
+38	N.O.D.	Niggaz Of Destruction		ok	section: Tommy Wright III & Street Smart
+39	Ten Wanted Men	Wanted: Dead Or Alive		ok	section: Tommy Wright III & Street Smart
+40	Hardcore Montana	Shit Is On		ok	section: Tommy Wright III & Street Smart
+41	Lo Key	Test My Nutz		ok	section: Tommy Wright III & Street Smart
+42	Riverside Click	Runnin In The Wind		ok	section: Tommy Wright III & Street Smart
+43	Red Dog	Comin Real Wit It		ok	section: Shawty Pimp & Big Pimpin
+44	Shawty Pimp	H.A.N.		ok	section: Shawty Pimp & Big Pimpin
+45	Lil West	Solo Tape		ok	section: Shawty Pimp & Big Pimpin
+46	Shawty Pimp	Da Substance		ok	section: Shawty Pimp & Big Pimpin
+47	Shawty Pimp	Volume 1: Somethin To Chief To		ok	section: Shawty Pimp & Big Pimpin
+48	MC Spade & Shawty Pimp	Volume 1		ok	section: Shawty Pimp & Big Pimpin

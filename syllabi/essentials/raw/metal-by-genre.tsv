@@ -1,0 +1,101 @@
+pos	artist	album	year	confidence	note
+1	Ghost	Opus Eponymous	2010	ok	section: heavy metal
+2	Mercyful Fate	Melissa	1983	ok	section: heavy metal
+3	Slough Feg	Traveller	2003	ok	section: heavy metal
+4	Iron Maiden	Powerslave	1984	ok	section: heavy metal
+5	Judas Priest	Screaming for Vengeance	1982	ok	section: heavy metal
+6	Manilla Road	Crystal Logic	1983	ok	section: heavy metal
+7	Satan	Court in the Act	1983	ok	section: heavy metal
+8	Helstar	Nosferatu	1989	ok	section: heavy metal
+9	Black Sabbath	Paranoid	1970	ok	section: heavy metal
+10	Dio	Holy Diver	1983	ok	section: heavy metal
+11	Artillery	By Inheritance	1990	ok	section: thrash metal
+12	Dark Angel	Darkness Descends	1986	ok	section: thrash metal
+13	Kreator	Coma of Souls	1990	ok	section: thrash metal
+14	Sadus	Illusions/Chemical Exposure	1988	ok	section: thrash metal
+15	Megadeth	Rust in Peace	1990	ok	section: thrash metal
+16	Metallica	Ride the Lightning	1984	ok	section: thrash metal
+17	Sodom	Agent Orange	1989	ok	section: thrash metal
+18	Coroner	No More Color	1986	ok	section: thrash metal
+19	Sepultura	Beneath the Remains	1989	ok	section: thrash metal
+20	Municipal Waste	Hazardous Mutation	2005	ok	section: thrash metal
+21	Kamelot	The Black Halo	2005	ok	section: power metal
+22	Iced Earth	Horror Show	2001	ok	section: power metal
+23	Evergrey	Recreation Day	2003	ok	section: power metal
+24	Hibria	Defying the Rules	2004	ok	section: power metal
+25	Lost Horizon	A Flame to the Ground Beneath	2003	ok	section: power metal
+26	Helloween	Keeper of the Seven Keys Part II	1988	ok	section: power metal
+27	Blind Guardian	Imaginations from the Other Side	1995	ok	section: power metal
+28	Avantasia	The Metal Opera	2001	ok	section: power metal
+29	Running Wild	Black Hand Inn	1994	ok	section: power metal
+30	Gamma Ray	Land of the Free	1995	ok	section: power metal
+31	Drudkh	Autumn Aurora	2004	ok	section: black metal
+32	Sigh	Imaginary Sonicscape	2001	ok	section: black metal
+33	Obtained Enslavement	Witchcraft	1997	ok	section: black metal
+34	Negură Bunget	Om	2006	ok	section: black metal
+35	Ulver	Bergtatt	1994	ok	section: black metal
+36	Burzum	Hvis Lyset Tar Oss	1994	ok	section: black metal
+37	Emperor	Anthems to the Welkin at Dusk	1998	ok	section: black metal
+38	Dissection	Storm of the Light's Bane	1995	ok	section: black metal
+39	Diabolical Masquerade	Nightwork	1998	ok	section: black metal
+40	Bathory	Blood Fire Death	1988	ok	section: black metal
+41	Atheist	Unquestionable Presence	1991	ok	section: death metal
+42	Dismember	Like an Ever Flowing Stream	1991	ok	section: death metal
+43	Cryptopsy	None So Vile	1996	ok	section: death metal
+44	Autopsy	Mental Funeral	1991	ok	section: death metal
+45	Immolation	Close to a World Below	2000	ok	section: death metal
+46	Lykathea Aflame	Elvenefris	2000	ok	section: death metal
+47	Death	Symbolic	1995	ok	section: death metal
+48	Gorguts	Obscura	1998	ok	section: death metal
+49	Carcass	Necroticism	1991	ok	section: death metal
+50	The Chasm	Farseeing the Paranormal Abysm	2009	ok	section: death metal
+51	Candlemass	Epicus Doomicus Metallicus	1986	ok	section: doom/sludge
+52	Electric Wizard	Dopethrone	2000	ok	section: doom/sludge
+53	My Dying Bride	The Dreadful Hours	2001	ok	section: doom/sludge
+54	Reverend Bizarre	In the Rectory of the Bizarre Reverend	2002	ok	section: doom/sludge
+55	Neurosis	Through Silver in Blood	1996	ok	section: doom/sludge
+56	Acid Bath	When the Kite String Pops	1994	ok	section: doom/sludge
+57	Katatonia	Brave Murder Day	1996	ok	section: doom/sludge
+58	Draconian	Arcane Rain Fell	2005	ok	section: doom/sludge
+59	The Gathering	Mandylion	1995	ok	section: doom/sludge
+60	Warning	Watching from a Distance	2006	ok	section: doom/sludge
+61	Åsmegin	Hin Vordende Sod & Sø	2003	ok	section: folk/pagan
+62	Falkenbach	Magni Blandinn Ok Megintiri	1998	ok	section: folk/pagan
+63	Moonsorrow	Kivenkantaja	2003	ok	section: folk/pagan
+64	Wolfchant	A Pagan Storm	2007	ok	section: folk/pagan
+65	Thyfing	Vansinnesvisor	2002	ok	section: folk/pagan
+66	Primordial	To the Nameless Dead	2007	ok	section: folk/pagan
+67	Agalloch	The Mantle	2002	ok	section: folk/pagan
+68	Ensiferum	Iron	2004	ok	section: folk/pagan
+69	Skyclad	Prince of the Poverty Line	1994	ok	section: folk/pagan
+70	Forefather	Steadfast	2008	ok	section: folk/pagan
+71	Fates Warning	Awaken the Guardian	1986	ok	section: progressive
+72	maudlin of the Well	Bath	2001	ok	section: progressive
+73	Dream Theater	Images and Words	1992	ok	section: progressive
+74	Pain of Salvation	Remedy Lane	2002	ok	section: progressive
+75	Devin Townsend	Ocean Machine: Biomech	1997	ok	section: progressive
+76	Ne Obliviscaris	The Aurora Veil	2007	ok	section: progressive
+77	Orphaned Land	Mabool	2004	ok	section: progressive
+78	Arcturus	The Sham Mirrors	2002	ok	section: progressive
+79	Subterranean Masquerade	Suspended Animation Dreams	2005	ok	section: progressive
+80	Opeth	Still Life	1999	ok	section: progressive
+81	Amon Amarth	With Oden on Our Side	2006	ok	section: melodic death
+82	At the Gates	Slaughter of the Soul	1995	ok	section: melodic death
+83	Edge of Sanity	Crimson II	2003	ok	section: melodic death
+84	Wintersun	Wintersun	2004	ok	section: melodic death
+85	In Flames	The Jester Race	1996	ok	section: melodic death
+86	Dark Tranquillity	The Gallery	1995	ok	section: melodic death
+87	Scar Symmetry	Pitch Black Progress	2006	ok	section: melodic death
+88	Arsis	A Celebration of Guilt	2004	ok	section: melodic death
+89	Into Eternity	Buried in Oblivion	2004	ok	section: melodic death
+90	Vehemence	God Was Created	2002	ok	section: melodic death
+91	Assück	Misery Index	1996	ok	section: grindcore
+92	Insect Warfare	World Extermination	2007	ok	section: grindcore
+93	Discordance Axis	The Inalienable Dreamless	2000	ok	section: grindcore
+94	Repulsion	Horrified	1986	ok	section: grindcore
+95	Terrorizer	World Downfall	1989	ok	section: grindcore
+96	Napalm Death	From Enslavement to Obliteration	1988	ok	section: grindcore
+97	Phobia	Cruel	2006	ok	section: grindcore
+98	Pig Destroyer	Prowler in the Yard	2001	ok	section: grindcore
+99	Rotten Sound	Exit	2005	ok	section: grindcore
+100	Wormrot	Abuse	2009	ok	section: grindcore

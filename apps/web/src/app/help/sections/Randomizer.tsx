@@ -93,11 +93,14 @@ export function Randomizer({ go }: SectionProps) {
 					whose weighted shuffle is on, the card draws by the ranking's tiers instead: an album in a tier
 					weighted 4 comes up four times as often as one in a tier weighted 1, and what isn't ranked stays
 					out of the draw. Every draw is from the whole ranking, the album on show included, so a heavy
-					one can come up twice running: that is what its odds mean. A{' '}
+					one can come up twice running: that is what its odds mean. Any one tier of a ranking is in the
+					menu too, weighted or not: <strong>Albums, ranked: Heavy rotation</strong> shuffles only that
+					tier. A{' '}
 					<Jump to="backlog" go={go}>
 						backlog
 					</Jump>{' '}
-					is in the menu too, everything in it at once.
+					is in the menu as well, everything in it at once. The menu lists only what is on this board: its
+					rankings, backlogs, stamps and feeds.
 				</p>
 				<p>
 					A cover that hasn't loaded by the time the flap reaches it shows its title on a blank card rather
@@ -106,13 +109,14 @@ export function Randomizer({ go }: SectionProps) {
 					2:3 for posters and others, the flap still splitting it in two equal halves.
 				</p>
 				<p>
-					An album you rank on a{' '}
+					An album nobody stamped that you rank on a{' '}
 					<Jump to="ranking-tiers" go={go}>
 						Ranking Tiers
 					</Jump>{' '}
-					card is Liked on every randomizer: out of the shuffle, with the stamp on its cover, marked as the
-					ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves it. A card
-					drawing from a weighted ranking itself still draws its ranked albums, by their tiers.
+					card is Liked on every randomizer on that board: out of the shuffle, with the stamp on its cover,
+					marked as the ranking's in the stamp history. It is the ranking's stamp, so the card's Undo leaves
+					it. One you had already stamped keeps that stamp. A card drawing from a ranking itself still draws
+					its ranked albums.
 				</p>
 				<p>
 					The speaker button mutes the sound, and the card remembers. With reduced motion switched on in
@@ -139,17 +143,19 @@ export function Randomizer({ go }: SectionProps) {
 					takes it back.
 				</p>
 				<p>
-					Everything you stamp, on any card on any board, is also kept in your vault as{' '}
-					<strong>Everything I liked</strong>, <strong>Everything I disliked</strong> and{' '}
-					<strong>Everything I'm unsure of</strong>. Other cards can use them: rank what you liked with{' '}
+					What you stamp is also kept in your vault, a list for each board, source and stamp: on the board
+					where you stamped /mu/core's albums, <strong>Liked on /mu/core</strong>,{' '}
+					<strong>Unsure on /mu/core</strong> and <strong>Disliked on /mu/core</strong>. Another board has
+					its own. Other cards on the board can use them: a{' '}
 					<Jump to="ranking-tiers" go={go}>
 						Ranking Tiers
-					</Jump>
-					, or collect it in a{' '}
+					</Jump>{' '}
+					card puts what you stamped in its rank queue, ready to drag into a tier, or ranks one of the lists
+					itself; a{' '}
 					<Jump to="backlog" go={go}>
 						Backlog
-					</Jump>
-					. An album stamped on two cards is listed once, under its newest stamp.
+					</Jump>{' '}
+					collects one. An album stamped on two cards is listed once, under its newest stamp.
 				</p>
 			</Section>
 		</>

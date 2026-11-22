@@ -577,7 +577,8 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 
 	const settingsOpen = menu === 'settings'
 	const canAdd = ranking.tiers.length < MAX_TIERS
-	const total = source.entries.length
+	// What the card shows: in tiers, waiting in the queue, or in the rail. Covers of a stamp switched off are not counted.
+	const total = view.bands.reduce((n, b) => n + b.items.length, 0) + queue.length + rail.length
 	const railShownList = query ? rail.filter((entry) => matchesSearch(entry, query)) : rail
 	// A cover of another shape keeps about the area of a square one: wider and shorter, or narrower and taller.
 	const ratio = aspectRatio(ranking.aspect)

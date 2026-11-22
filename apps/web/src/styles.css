@@ -15055,9 +15055,15 @@ button.lb-props__eye:hover {
 	box-shadow: inset 1px 0 0 rgb(255 225 185 / 12%), inset -1px 0 0 rgb(0 0 0 / 40%);
 }
 .lb-shelf__bay {
+	position: relative;
+	z-index: 0;
 	background:
 		var(--lb-shelf-grain-v),
 		linear-gradient(180deg, #24180f, #1a110b);
+}
+/* A shelf whose menu is open sits above the shelves below it, so the menu isn't drawn under them. */
+.lb-shelf__bay:has(.lb-rank__tier-menu) {
+	z-index: 5;
 }
 .lb-shelf__row {
 	position: relative;

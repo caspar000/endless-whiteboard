@@ -13,7 +13,7 @@ import { dropTrackFromPlans, plansOf } from './treePlans'
  * - Otherwise **a path of its entries**: a root named for the syllabus, then one node per entry, each
  *   growing from the one before (`after`, which asks nothing) and lit once its entry is done (`done:`),
  *   in any order. The node stands for its entry (`item`), so a view showing everything hangs the
- *   entry's works from it, and the entry is tagged to it, so its write-ups count toward it.
+ *   entry's works from it, and the entry is tagged to it, so its works ticked count toward it.
  */
 
 export const makerId = (trackId: string) => `syllabus:${trackId}`
@@ -99,7 +99,7 @@ function makerFor(track: TrackDef): TreeMaker {
 			return { trees: [pathTree(track)], from: [makerId(track.trackId)] }
 		},
 		made(trees) {
-			// Each entry of a path tagged to its node: its works are drawn there, and its write-ups count toward it.
+			// Each entry of a path tagged to its node: its works are drawn there, and its works ticked count toward it.
 			const items = getItems()
 			const tagged: ItemDef[] = []
 			for (const node of trees.flatMap((t) => t.nodes)) {

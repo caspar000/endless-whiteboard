@@ -100,8 +100,9 @@ export function Feeds(_: SectionProps) {
 					the category chips under its name to file it or take it out.
 				</p>
 				<p className="lb-help__aside">
-					Sources, categories and what you've watched are kept in your vault, so every feed card on every
-					board and device shows the same. Settings › Extensions › Feeds has the same panel.
+					Each board has its own sources, categories and what you've watched, kept in your vault, so every
+					feed card on that board, on any device, shows the same. A board that had a feed card before boards
+					had feeds of their own keeps a copy of what you had then.
 				</p>
 			</Section>
 

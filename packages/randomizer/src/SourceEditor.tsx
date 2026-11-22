@@ -1,5 +1,5 @@
 import { useValue, type Editor } from '@lifeboard/canvas'
-import { COVER_ASPECTS, NodeEditorPopover, offeredItemSources, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
+import { COVER_ASPECTS, NodeEditorPopover, boardIdOf, offeredItemSources, updateNodeProps, type NodeShape } from '@lifeboard/node-kit'
 import { useEffect, useRef, useState } from 'react'
 import { NO_SOURCE, TYPED_KIND, TYPED_SOURCE, formatList, itemsOf, mergeList, sourceKey } from './model'
 import type { RandomizerProps } from './props'
@@ -15,11 +15,12 @@ import { resolveSource } from './sources'
  */
 export function SourceEditor({ shape, editor }: { shape: NodeShape<RandomizerProps>; editor: Editor }) {
 	const key = shape.props.source
+	// What this board has (DARK-14): its rankings, backlogs, stamps and feeds, never another board's.
+	const boardId = boardIdOf(editor)
 	const offered = useValue(
 		'lifeboard:randomizer-offered',
-		() =>
-			offeredItemSources().map((s) => ({ id: s.id, label: s.label, choices: s.choices() })),
-		[]
+		() => offeredItemSources().map((s) => ({ id: s.id, label: s.label, choices: s.choices(boardId) })),
+		[boardId]
 	)
 	const view = useValue(
 		'lifeboard:randomizer-editing',

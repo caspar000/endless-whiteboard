@@ -6,10 +6,10 @@ import { backlogs } from './store'
 export const BACKLOG_EXTENSION_ID = 'lifeboard.backlog'
 export const BACKLOG_SOURCE_ID = 'backlog'
 
-/** Every backlog that holds anything, by name. */
-export function backlogChoices(all: Readonly<Record<string, Backlog>>): SourceChoice[] {
+/** Every backlog on a board that holds anything, by name (DARK-14: never another board's). */
+export function backlogChoices(all: Readonly<Record<string, Backlog>>, boardId: string): SourceChoice[] {
 	return Object.values(all)
-		.filter((b) => b.entries.length > 0)
+		.filter((b) => b.entries.length > 0 && b.boardId === boardId)
 		.map((b) => ({ id: b.backlogId, label: b.name, group: '' }))
 		.sort((a, b) => a.label.localeCompare(b.label))
 }
@@ -35,7 +35,11 @@ export const backlogSource: ItemSource = {
 	label: 'Backlogs',
 	icon: Inbox,
 	extensionId: BACKLOG_EXTENSION_ID,
-	choices: () => backlogChoices(backlogs.get()),
+	choices: (boardId) => backlogChoices(backlogs.get(), boardId),
+	choice: (backlogId) => {
+		const backlog = backlogs.one(backlogId)
+		return backlog ? { id: backlogId, label: backlog.name, group: '' } : null
+	},
 	entries: entriesOfBacklog,
 	kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
 	watch: watchBacklog,

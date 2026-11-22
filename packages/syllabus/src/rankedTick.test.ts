@@ -63,7 +63,7 @@ describe('a ranked item ticks its work (DARK-13)', () => {
 
 	it('ticks it in the vault, once', () => {
 		putItems(ITEMS)
-		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Iliad'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1' })
+		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Iliad'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', boardId: 'board-1' })
 		expect(getItems()['a/homer/iliad']).toMatchObject({ done: true })
 		expect(getItems()['a/homer/odyssey']).toMatchObject({ done: false })
 	})
@@ -72,7 +72,7 @@ describe('a ranked item ticks its work (DARK-13)', () => {
 		putItems(ITEMS)
 		const createShape = vi.fn()
 		const editor = { createShape, run: (fn: () => void) => fn() } as never
-		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Odyssey'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', editor, shapeId: 'shape:rank' })
+		rankedTickReaction.ranked!({ entry: { ...entry('x', 'Odyssey'), year: '', cover: '', url: '' }, from: 'feeds:all', rankingId: 'r1', boardId: 'board-1', editor, shapeId: 'shape:rank' })
 		expect(tick).toHaveBeenLastCalledWith('a/homer/odyssey', true)
 		expect(getItems()['a/homer/odyssey']).toMatchObject({ done: true })
 		expect(createShape).not.toHaveBeenCalled()

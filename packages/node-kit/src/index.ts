@@ -71,6 +71,7 @@ export {
 	type PropertyChangeContext,
 	type ShapeCreateContext,
 } from './hooks'
+export { boardIdOf, setBoardOf } from './boards'
 
 // The user's keymap, layered over the table's defaults. `Command.kbd` is the default; this decides
 // what a key actually does, and is the only place a chord becomes a command id.

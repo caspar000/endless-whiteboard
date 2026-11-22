@@ -5,7 +5,6 @@ import {
 	UNRANKED,
 	addTier,
 	formatOdds,
-	keepsStamped,
 	mergeEntries,
 	moveItem,
 	moveTier,
@@ -16,14 +15,19 @@ import {
 	readRanking,
 	removeTier,
 	renameTier,
+	setTierLook,
 	setTierWeight,
 	showsStamp,
+	siblingList,
+	splitUnranked,
+	emptyTier,
+	plateColor,
 	tierShares,
 	weightedEntries,
 	type Ranking,
 } from './model'
 import { getPrefs, parseTiers, formatTiers } from './prefs'
-import { rankingChoices } from './source'
+import { rankingChoices, tierChoiceId } from './source'
 
 const entry = (id: string) => ({ id, title: `Album ${id}`, creator: 'Artist', year: '', cover: '', url: '' })
 const entries = ['a', 'b', 'c', 'd', 'e'].map(entry)
@@ -152,9 +156,16 @@ describe('weights and odds', () => {
 		])
 	})
 
-	it('is offered to randomizers only with weighted shuffle on, and a source chosen', () => {
-		const all = { r1: { ...r, weighted: true }, r2: { ...r, rankingId: 'r2' }, r3: { ...newRanking('r3'), weighted: true } }
-		expect(rankingChoices(all).map((c) => c.id)).toEqual(['r1'])
+	it('is offered whole only with weighted shuffle on, a tier at a time always, and only on its own board (DARK-14)', () => {
+		const on = (x: Ranking) => ({ ...x, boardId: 'b1' })
+		const all = { r1: on({ ...r, weighted: true }), r2: on({ ...r, rankingId: 'r2' }), r3: on({ ...newRanking('r3'), weighted: true }), r4: { ...r, rankingId: 'r4', boardId: 'b2' } }
+		const ids = rankingChoices(all, 'b1').map((c) => c.id)
+		expect(ids).toContain('r1')
+		expect(ids).not.toContain('r2')
+		expect(ids).toContain(tierChoiceId('r2', 't1'))
+		expect(ids.some((id) => id.startsWith('r3'))).toBe(false)
+		expect(ids.some((id) => id.startsWith('r4'))).toBe(false)
+		expect(rankingChoices(all, 'b2').map((c) => c.id)).toEqual(r.tiers.map((t) => tierChoiceId('r4', t.id)))
 	})
 })
 
@@ -168,7 +179,9 @@ describe('a stored ranking', () => {
 		expect(readRanking({ rankingId: '' })).toBeNull()
 		expect(readRanking({ rankingId: 'x', tiers: [] })).toBeNull()
 		const read = readRanking({ rankingId: 'x', tiers: [{ id: 't', name: 'T', weight: 'lots' }, { name: 'no id' }], placed: { k: { t: ['a', 3] }, bad: 4 } })
-		expect(read?.tiers).toEqual([{ id: 't', name: 'T', weight: 1 }])
+		expect(read?.tiers).toEqual([{ id: 't', name: 'T', weight: 1, color: '', border: '', icon: '' }])
+		// Made before DARK-14: no board until one claims it, and drawn as tiers.
+		expect(read).toMatchObject({ boardId: '', display: 'tiers' })
 		expect(read?.placed).toEqual({ k: { t: ['a'] } })
 	})
 
@@ -178,7 +191,7 @@ describe('a stored ranking', () => {
 	})
 })
 
-describe('stamps on a ranking (DARK-13)', () => {
+describe('stamps on a ranking (DARK-13, DARK-14)', () => {
 	const KINDS = ['liked', 'disliked', 'unsure']
 	const of = (source: string, stampFilter: Record<string, boolean> = {}) => ({ source, stampFilter })
 
@@ -187,10 +200,18 @@ describe('stamps on a ranking (DARK-13)', () => {
 		expect(showsStamp(of('feeds:all', { disliked: false }), 'disliked', 'stamped')).toBe(false)
 	})
 
-	it('shows only the list a ranking of the stamped lists was pointed at, as before, until more are switched on', () => {
+	it('shows only the kind a ranking of a stamped list was pointed at, until more are switched on', () => {
+		const list = 'stamped:liked|b1|syllabus:mucore'
+		expect(KINDS.map((k) => showsStamp(of(list), k, 'stamped'))).toEqual([true, false, false])
 		expect(KINDS.map((k) => showsStamp(of('stamped:liked'), k, 'stamped'))).toEqual([true, false, false])
-		expect(rankedKeys(of('stamped:liked'), 'stamped', KINDS)).toEqual(['stamped:liked'])
-		expect(rankedKeys(of('stamped:liked', { unsure: true }), 'stamped', KINDS)).toEqual(['stamped:liked', 'stamped:unsure'])
+		expect(showsStamp(of(list, { unsure: true }), 'unsure', 'stamped')).toBe(true)
+	})
+
+	it('reads every kind of the same stamped list, so a cover whose stamp changes is still found', () => {
+		const list = 'stamped:liked|b1|syllabus:mucore'
+		expect(siblingList(list, 'stamped', 'unsure')).toBe('stamped:unsure|b1|syllabus:mucore')
+		expect(rankedKeys(of(list), 'stamped', KINDS)).toEqual([list, 'stamped:disliked|b1|syllabus:mucore', 'stamped:unsure|b1|syllabus:mucore'])
+		expect(rankedKeys(of('stamped:liked'), 'stamped', KINDS)).toEqual(['stamped:liked', 'stamped:disliked', 'stamped:unsure'])
 	})
 
 	it('reads only its own source when nothing stamps, or it ranks something else', () => {
@@ -199,24 +220,63 @@ describe('stamps on a ranking (DARK-13)', () => {
 		expect(rankedKeys(of(''), 'stamped', KINDS)).toEqual([])
 	})
 
-	it('keeps a ranked cover of the stamped lists in its tier when its stamp changes, unless that kind is off by hand', () => {
-		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', true)).toBe(true)
-		expect(keepsStamped(of('stamped:unsure'), 'liked', 'stamped', false)).toBe(false)
-		expect(keepsStamped(of('stamped:unsure', { liked: false }), 'liked', 'stamped', true)).toBe(false)
-		expect(keepsStamped(of('feeds:all', { liked: false }), 'liked', 'stamped', true)).toBe(false)
+	it('puts the stamped of a shown kind in the queue, newest first, the never stamped in the rail, and the hidden nowhere', () => {
+		const stamps: Record<string, { kind: string; date: string }> = {
+			a: { kind: 'liked', date: '2026-11-01' },
+			b: { kind: 'disliked', date: '2026-11-03' },
+			d: { kind: 'unsure', date: '2026-11-05' },
+		}
+		const split = (shown: string[]) => splitUnranked(entries, (e) => stamps[e.id], (k) => shown.includes(k))
+		const all = split(KINDS)
+		expect(all.queue.map((e) => e.id)).toEqual(['d', 'b', 'a'])
+		expect(all.rail.map((e) => e.id)).toEqual(['c', 'e'])
+		// Unsure and Disliked switched off: the queue holds only the liked, and they wait nowhere else.
+		const likedOnly = split(['liked'])
+		expect(likedOnly.queue.map((e) => e.id)).toEqual(['a'])
+		expect(likedOnly.rail.map((e) => e.id)).toEqual(['c', 'e'])
 	})
 
 	it('merges lists as one, each item once', () => {
 		expect(mergeEntries([[entry('a'), entry('b')], [entry('b'), entry('c')]]).map((e) => e.id)).toEqual(['a', 'b', 'c'])
 	})
 
-	it('keeps its filters, badges and cover shape through a save, and starts without them', () => {
-		const r = { ...ranked(), stampFilter: { liked: true, disliked: false }, badges: true, aspect: '16:9' }
+	it('keeps its filters, badges, cover shape, board, display and tier looks through a save, and starts without them', () => {
+		const r = setTierLook(
+			{ ...ranked(), stampFilter: { liked: true, disliked: false }, badges: true, aspect: '16:9', boardId: 'b1', display: 'shelf' as const },
+			't2',
+			{ color: 'plum', border: 'teal', icon: 'star' }
+		)
 		expect(readRanking(JSON.parse(JSON.stringify(r)))).toEqual(r)
 		expect(readRanking({ rankingId: 'x', tiers: [{ id: 't', name: 'T', weight: 1 }], stampFilter: { liked: 'yes', unsure: false } })).toMatchObject({
 			stampFilter: { unsure: false },
 			badges: false,
 			aspect: '',
 		})
+	})
+})
+
+describe('a tier’s look (DARK-14)', () => {
+	it('starts the listening tiers with colours and icons, and any tier can change them', () => {
+		const r = newRanking('r1')
+		expect(r.tiers.map((t) => [t.color, t.icon])).toEqual([
+			['ember', 'flame'],
+			['teal', 'repeat'],
+			['amber', 'clock'],
+			['slate', 'moon'],
+		])
+		const changed = setTierLook(r, 't1', { border: 'rose' })
+		expect(changed.tiers[0]).toMatchObject({ color: 'ember', border: 'rose', icon: 'flame' })
+		expect(addTier(r, 'Plain')!.tiers[4]).toMatchObject({ color: '', border: '', icon: '' })
+	})
+
+	it('gives a shelf without a colour a nameplate of its own', () => {
+		expect(plateColor({ color: 'plum' }, 0)).toBe('#7a3f8c')
+		expect(plateColor({ color: '' }, 0)).not.toBe(plateColor({ color: '' }, 1))
+	})
+
+	it('takes everything off a tier, back to unranked', () => {
+		const r = moveItem(moveItem(ranked(), 'a', 't1'), 'b', 't1')
+		expect(ids(emptyTier(r, 't1'))[0]).toEqual([])
+		expect(rankingView(emptyTier(r, 't1'), entries).unranked.map((e) => e.id)).toEqual(['a', 'b', 'c', 'd', 'e'])
 	})
 })

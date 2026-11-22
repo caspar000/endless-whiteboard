@@ -1,11 +1,24 @@
 /**
- * What a feed is made of. Sources and categories are vault data (`store.ts`): every feed card on every
- * board reads the same ones. The posts are what the sources last said, kept on this device only, since
- * any device can read them again.
+ * What a feed is made of. Sources, categories and watched marks are vault data (`store.ts`), and each
+ * belongs to a board (DARK-14): every feed card on that board reads the same ones, and another board has
+ * its own. The posts are what the sources last said, kept on this device only, since any device can
+ * read them again.
+ *
+ * Those stored before boards had feeds of their own have no board (`boardId: ''`). Every board with a
+ * feed card is given a copy of them as it opens (`claimFeeds`), and they are kept for the randomizers
+ * already set to them.
  */
 
+/** Which boards have taken their copy of a source or category from before DARK-14. */
+export interface Claimed {
+	/** '' for one from before DARK-14, which belongs to no board. */
+	boardId: string
+	/** On one from before DARK-14: the boards it has been copied to. */
+	claimedBy?: string[]
+}
+
 /** Something you follow: a YouTube channel, an RSS feed. */
-export interface FeedSource {
+export interface FeedSource extends Claimed {
 	sourceId: string
 	/** The provider that reads it (`providers/registry.ts`): `youtube`, `rss`. */
 	provider: string
@@ -20,7 +33,7 @@ export interface FeedSource {
 }
 
 /** A group of sources you made and named: "Electrical Engineering". */
-export interface FeedCategory {
+export interface FeedCategory extends Claimed {
 	categoryId: string
 	name: string
 	/** One of `CATEGORY_COLORS`. */
@@ -29,11 +42,16 @@ export interface FeedCategory {
 	order: number
 }
 
-/** A post you have watched or read, by its item id, and when. */
+/** A post you have watched or read on a board, by its item id, and when. */
 export interface WatchedEntry {
 	itemId: string
 	at: string
+	/** '' for a mark from before DARK-14. */
+	boardId: string
 }
+
+/** Where a watched mark is kept: by board and item, or by item alone for one from before DARK-14. */
+export const watchedKey = (boardId: string, itemId: string) => (boardId ? `${boardId}|${itemId}` : itemId)
 
 /** One video or post. */
 export interface FeedItem {

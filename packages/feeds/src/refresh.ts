@@ -29,12 +29,22 @@ function setReading(sourceId: string, on: boolean): void {
 	reading.set({ sourceIds: next, unavailable })
 }
 
+/**
+ * Reads a source, and gives what it read to every source of the same feed: boards each follow a feed
+ * as a source of their own (DARK-14), and it is read once for all of them.
+ */
 async function readSource(sourceId: string): Promise<'unavailable' | void> {
 	const source = getSources()[sourceId]
 	const provider = source && getFeedProvider(source.provider)
 	if (!source) return
-	if (!provider?.available) return recordRead(sourceId, { error: 'This kind of source can no longer be read.' })
-	setReading(sourceId, true)
+	const same = Object.values(getSources())
+		.filter((s) => s.feedUrl === source.feedUrl)
+		.map((s) => s.sourceId)
+	const record = (result: Parameters<typeof recordRead>[1]) => {
+		for (const id of same) recordRead(id, 'items' in result ? { items: result.items.map((i) => ({ ...i, sourceId: id })) } : result)
+	}
+	if (!provider?.available) return record({ error: 'This kind of source can no longer be read.' })
+	for (const id of same) setReading(id, true)
 	try {
 		const result = await readText(source.feedUrl)
 		if (!result.ok) {
@@ -42,13 +52,13 @@ async function readSource(sourceId: string): Promise<'unavailable' | void> {
 				reading.set({ ...reading.get(), unavailable: result.message })
 				return 'unavailable'
 			}
-			return recordRead(sourceId, { error: result.message })
+			return record({ error: result.message })
 		}
 		if (reading.get().unavailable) reading.set({ ...reading.get(), unavailable: '' })
 		const items = provider.parse(result.text, source)
-		recordRead(sourceId, items ? { items } : { error: "What's at this address is no longer a feed." })
+		record(items ? { items } : { error: "What's at this address is no longer a feed." })
 	} finally {
-		setReading(sourceId, false)
+		for (const id of same) setReading(id, false)
 	}
 }
 
@@ -63,6 +73,8 @@ export async function refreshSources({ force = false, only }: { force?: boolean;
 		.filter((s) => !only || only.includes(s.sourceId))
 		.filter((s) => !reading.get().sourceIds.has(s.sourceId))
 		.filter((s) => force || now - Date.parse(getSourceItems()[s.sourceId]?.fetchedAt || '0') >= REFRESH_MS)
+		// One read a feed, however many boards follow it: the read is shared out (`readSource`).
+		.filter((s, i, all) => all.findIndex((o) => o.feedUrl === s.feedUrl) === i)
 		.map((s) => s.sourceId)
 	let stop = false
 	const next = async (): Promise<void> => {

@@ -4,6 +4,7 @@ import {
 	NodeEditorPopover,
 	SourceSelect,
 	aspectRatio,
+	boardIdOf,
 	getItemStamps,
 	itemRanked,
 	matchesSearch,
@@ -24,6 +25,7 @@ import {
 	ChevronDown,
 	CircleHelp,
 	Heart,
+	Inbox,
 	ListPlus,
 	MoreHorizontal,
 	PanelLeftClose,
@@ -33,15 +35,18 @@ import {
 	Search,
 	Settings2,
 	Trash2,
+	Undo2,
 	X,
 	type LucideIcon,
 } from 'lucide-react'
 import { Fragment, memo, useEffect, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type SyntheticEvent } from 'react'
 import {
+	DISPLAYS,
 	MAX_TIERS,
 	MAX_WEIGHT,
 	UNRANKED,
 	addTier,
+	emptyTier,
 	formatOdds,
 	moveItem,
 	moveTier,
@@ -49,28 +54,30 @@ import {
 	rankingView,
 	removeTier,
 	renameTier,
+	setTierLook,
 	setTierWeight,
 	showsStamp,
+	splitUnranked,
 	tierShares,
 	type Band,
+	type Display,
 	type Ranking,
 } from './model'
 import { getPrefs, setPrefs } from './prefs'
 import type { RankingProps } from './props'
+import { QUEUE, ShelfView, type DropAt } from './ShelfView'
 import { RANKING_SOURCE_ID, rankedEntries } from './source'
 import { rankingOrNew, updateRanking } from './store'
+import { IconGrid, Swatches, TierIcon, tierStyle } from './tierLook'
 
 /** Clicks on the card's controls are the card's, not the canvas's: no select, no drag. */
 const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
-/** How many unranked covers the open rail shows before "Show more": a syllabus can hold a thousand. */
+/** How many unranked covers the open rail, or the queue, shows before "Show more": a syllabus can hold a thousand. */
 const RAIL_PAGE = 24
 
-/** Where a drag over the card would put the item: a tier (or the rail), before an item or at the end. */
-interface DropAt {
-	tier: string
-	beforeId: string | null
-}
+/** Where a cover dropped on a zone goes: the queue and the rail are both "not in a tier". */
+const placeOf = (zone: string) => (zone === QUEUE ? UNRANKED : zone)
 
 /** The pips of a die, for a weight of 1 to 5, on a 20-unit face. */
 const PIPS: Record<number, Array<[number, number]>> = {
@@ -110,7 +117,6 @@ function Die({ weight }: { weight: number }) {
 	)
 }
 
-/** One cover: its picture, title and creator. Dragged anywhere: between tiers, or onto a backlog. */
 /** The marks the stamps the randomizer gives wear on a badge; any other kind wears its first letter. */
 const BADGE_MARKS: Record<string, LucideIcon> = { liked: Heart, disliked: X, unsure: CircleHelp }
 
@@ -124,45 +130,60 @@ function Badge({ stamp }: { stamp: { kind: string; label: string; ink: string } 
 	)
 }
 
+/** One cover: its picture, title and creator. Dragged anywhere: between tiers, onto a shelf, or onto a backlog. */
 function Cover({
 	entry,
 	shape,
 	small = false,
+	bare = false,
 	tier,
 	badge,
+	settling = false,
+	z,
+	onSettled,
 	onDragStart,
 	onKey,
 }: {
 	entry: SourceEntry
 	shape: SourceKind['shape']
 	small?: boolean
+	/** The picture alone, as on a shelf: its title goes in a tooltip. */
+	bare?: boolean
 	tier: string
 	/** Its latest stamp, when the ranking shows badges. */
 	badge?: { kind: string; label: string; ink: string } | null
+	/** Just dropped: it settles into place with a small wobble. */
+	settling?: boolean
+	/** Its place in a pile (the crate), front highest. */
+	z?: number
+	onSettled: () => void
 	onDragStart: (e: DragEvent, entry: SourceEntry) => void
 	onKey: (e: KeyboardEvent, entry: SourceEntry, tier: string) => void
 }) {
 	const url = useItemCover(entry, shape)
 	const label = `${entry.title}${entry.creator ? `, ${entry.creator}` : ''}${badge ? `. Stamped ${badge.label}` : ''}`
+	const className = ['lb-rank__cover', small && 'lb-rank__cover--small', bare && 'lb-rank__cover--bare', settling && 'lb-rank__cover--settle'].filter(Boolean).join(' ')
 	return (
 		<div
-			className={small ? 'lb-rank__cover lb-rank__cover--small' : 'lb-rank__cover'}
+			className={className}
 			data-item-id={entry.id}
 			draggable
 			tabIndex={0}
 			role="listitem"
 			aria-roledescription="draggable cover"
 			aria-label={`${label}. Drag, or press up and down to change tier, left and right to reorder.`}
-			title={small ? label : undefined}
+			title={small || bare ? label : undefined}
+			style={z === undefined ? undefined : { zIndex: z }}
 			onPointerDown={swallow}
 			onDragStart={(e) => onDragStart(e, entry)}
 			onKeyDown={(e) => onKey(e, entry, tier)}
+			onAnimationEnd={settling ? onSettled : undefined}
 		>
 			<span className="lb-rank__frame">
 				<img className="lb-rank__art" src={url} alt="" draggable={false} loading="lazy" />
 				{badge && <Badge stamp={badge} />}
 			</span>
-			{!small && (
+			{!small && !bare && (
 				<span className="lb-rank__cap">
 					<span className="lb-rank__title">{entry.title}</span>
 					{entry.creator && <span className="lb-rank__creator">{entry.creator}</span>}
@@ -185,7 +206,9 @@ function useOpenMenu(editor: Editor, id: string, open: boolean) {
 
 function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<RankingProps>) {
 	const { rankingId } = shape.props
-	const ranking = useValue('lifeboard:ranking', () => rankingOrNew(rankingId), [rankingId])
+	// The board this card is on (DARK-14): a ranking made here belongs to it, and reads its stamps.
+	const boardId = boardIdOf(editor)
+	const ranking = useValue('lifeboard:ranking', () => rankingOrNew(rankingId, boardId), [rankingId, boardId])
 	const percent = useValue('lifeboard:ranking-percent', () => getPrefs().percent, [])
 	const source = useValue(
 		'lifeboard:ranking-source',
@@ -199,14 +222,20 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	const view = rankingView(ranking, source.entries)
 	const shares = tierShares(view.bands)
 	const kind = source.kind
+	const stampSource = source.stampKinds?.sourceId ?? null
+	// What isn't in a tier: stamped and shown waits in the queue, never stamped in the rail (DARK-14).
+	const { queue, rail } = splitUnranked(view.unranked, (entry) => source.stamps.get(entry.id), (k) => showsStamp(ranking, k, stampSource))
+	const display: Display = ranking.display === 'shelf' ? 'shelf' : 'tiers'
 
 	const [railOpen, setRailOpen] = useState(false)
 	const [railShown, setRailShown] = useState(RAIL_PAGE)
+	const [queueShown, setQueueShown] = useState(RAIL_PAGE)
 	const [query, setQuery] = useState('')
 	const [searching, setSearching] = useState(false)
 	const [renaming, setRenaming] = useState<string | null>(null)
 	const [menu, setMenu] = useState<'settings' | { tier: string } | null>(null)
 	const [dropAt, setDropAt] = useState<DropAt | null>(null)
+	const [settling, setSettling] = useState<string | null>(null)
 	const [announce, setAnnounce] = useState('')
 	const dragging = useRef<string | null>(null)
 	const rootRef = useRef<HTMLDivElement>(null)
@@ -249,18 +278,19 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 	}, [menu])
 
 	const change = (fn: (r: Ranking) => Ranking | null, said?: string) => {
-		updateRanking(rankingId, fn)
+		updateRanking(rankingId, fn, boardId)
 		if (said) setAnnounce(said)
 	}
 	/**
-	 * A move, said aloud. An item that goes from Unranked into a tier is ranked: the other extensions
-	 * hear of it (DARK-13), so it is stamped Liked and ticked in its syllabus.
+	 * A move, said aloud. An item that goes from Unranked (the queue or the rail) into a tier is ranked:
+	 * the other extensions hear of it (DARK-13), so it is ticked in its syllabus, and stamped Liked only
+	 * if nothing has stamped it yet (DARK-14). Between tiers, nothing is said to anyone.
 	 */
 	const move = (entry: SourceEntry, from: string, to: string, beforeId: string | null, said?: string) => {
 		change((r) => moveItem(r, entry.id, to, beforeId), said)
-		if (from === UNRANKED && to !== UNRANKED) itemRanked({ entry, from: ranking.source, rankingId, editor, shapeId: shape.id })
+		if (from === UNRANKED && to !== UNRANKED) itemRanked({ entry, from: ranking.source, rankingId, boardId: ranking.boardId || boardId, editor, shapeId: shape.id })
 	}
-	const tierName = (id: string) => (id === UNRANKED ? 'Unranked' : (ranking.tiers.find((t) => t.id === id)?.name ?? ''))
+	const tierName = (id: string) => (id === UNRANKED ? 'Unranked' : id === QUEUE ? 'the rank queue' : (ranking.tiers.find((t) => t.id === id)?.name ?? ''))
 
 	const chooseSource = () => {
 		setMenu(null)
@@ -294,7 +324,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 			const r = c.getBoundingClientRect()
 			return e.clientY < r.top || (e.clientY <= r.bottom && e.clientX < r.left + r.width / 2)
 		})
-		return { tier, beforeId: tier === UNRANKED ? null : (before?.dataset.itemId ?? null) }
+		return { tier, beforeId: placeOf(tier) === UNRANKED ? null : (before?.dataset.itemId ?? null) }
 	}
 
 	const zoneProps = (tier: string) => ({
@@ -320,18 +350,19 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 			const entry = source.entries.find((en) => en.id === id)
 			if (!entry) return
 			const from = view.unranked.some((en) => en.id === id) ? UNRANKED : 'tier'
-			move(entry, from, at.tier, at.beforeId, `${entry.title} moved to ${tierName(at.tier)}.`)
+			move(entry, from, placeOf(at.tier), at.beforeId, `${entry.title} moved to ${tierName(at.tier)}.`)
+			setSettling(entry.id)
 		},
 	})
 
-	/** Up and down change tier (the rail is below the last), left and right reorder within one. */
+	/** Up and down change tier (the queue is above the first, the rail below the last), left and right reorder within one. */
 	const onKey = (e: KeyboardEvent, entry: SourceEntry, tier: string) => {
 		if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
 		e.preventDefault()
 		e.stopPropagation()
-		const zones = [...ranking.tiers.map((t) => t.id), UNRANKED]
+		const zones = [QUEUE, ...ranking.tiers.map((t) => t.id), UNRANKED]
 		if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-			if (tier === UNRANKED) return
+			if (placeOf(tier) === UNRANKED) return
 			const items = view.bands.find((b) => b.tier.id === tier)?.items ?? []
 			const at = items.findIndex((i) => i.id === entry.id)
 			const before = e.key === 'ArrowLeft' ? items[at - 1] : items[at + 2]
@@ -342,15 +373,14 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 			return
 		}
 		const to = zones[zones.indexOf(tier) + (e.key === 'ArrowDown' ? 1 : -1)]
-		if (!to) return
-		if (to === UNRANKED) setRailOpen(true)
+		if (!to || placeOf(to) === placeOf(tier)) return
+		if (to === UNRANKED && !source.stamps.has(entry.id)) setRailOpen(true)
 		focusNext.current = entry.id
-		move(entry, tier, to, null, `${entry.title} moved to ${tierName(to)}.`)
+		move(entry, placeOf(tier), placeOf(to), null, `${entry.title} moved to ${tierName(to)}.`)
 	}
 
 	/* ----------------------------------------------------------------------------- drawing */
 
-	const coverProps = { shape: kind.shape, onDragStart, onKey }
 	const kinds = source.stampKinds?.kinds ?? []
 	const badgeOf = (entry: SourceEntry) => {
 		if (!ranking.badges) return null
@@ -358,13 +388,99 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 		const info = stamp && kinds.find((k) => k.id === stamp.kind)
 		return info ? { kind: info.id, label: info.label, ink: info.ink } : null
 	}
+	const cover = (entry: SourceEntry, tier: string, extra: { small?: boolean; bare?: boolean; z?: number } = {}) => (
+		<Cover
+			key={entry.id}
+			entry={entry}
+			tier={tier}
+			shape={kind.shape}
+			badge={badgeOf(entry)}
+			settling={settling === entry.id}
+			onSettled={() => setSettling(null)}
+			onDragStart={onDragStart}
+			onKey={onKey}
+			{...extra}
+		/>
+	)
 	const caret = <span className="lb-rank__caret" aria-hidden="true" />
 
-	const band = ({ tier, items }: Band, i: number) => {
+	/** A tier's ⋯ and its menu: rename, its look, move it, empty it, remove it. */
+	const tierMenu = ({ tier, items }: Band, i: number) => {
+		const open = typeof menu === 'object' && menu?.tier === tier.id
+		return (
+			<>
+				<button
+					type="button"
+					className="lb-rank__icon lb-rank__menu-btn"
+					aria-label={`${tier.name} options`}
+					aria-haspopup="menu"
+					aria-expanded={open}
+					onPointerDown={swallow}
+					onClick={() => setMenu(open ? null : { tier: tier.id })}
+				>
+					<MoreHorizontal size={16} aria-hidden />
+				</button>
+				{open && (
+					<div className="lb-rank__pop lb-rank__tier-menu" role="menu" data-card-popup onPointerDown={swallow}>
+						<button type="button" role="menuitem" onClick={() => (setMenu(null), setRenaming(tier.id))}>
+							<Pencil size={14} aria-hidden /> Rename
+						</button>
+						<div className="lb-rank__look">
+							<span className="lb-rank__look-label">Background</span>
+							<Swatches label={`${tier.name} background`} value={tier.color} onPick={(color) => change((r) => setTierLook(r, tier.id, { color }))} />
+							<span className="lb-rank__look-label">Border</span>
+							<Swatches label={`${tier.name} border`} value={tier.border} onPick={(border) => change((r) => setTierLook(r, tier.id, { border }))} />
+							<span className="lb-rank__look-label">Icon</span>
+							<IconGrid value={tier.icon} onPick={(icon) => change((r) => setTierLook(r, tier.id, { icon }))} />
+						</div>
+						<button type="button" role="menuitem" disabled={i === 0} onClick={() => (setMenu(null), change((r) => moveTier(r, tier.id, -1), `${tier.name} moved up.`))}>
+							<ArrowUp size={14} aria-hidden /> Move up
+						</button>
+						<button
+							type="button"
+							role="menuitem"
+							disabled={i === ranking.tiers.length - 1}
+							onClick={() => (setMenu(null), change((r) => moveTier(r, tier.id, 1), `${tier.name} moved down.`))}
+						>
+							<ArrowDown size={14} aria-hidden /> Move down
+						</button>
+						<button
+							type="button"
+							role="menuitem"
+							disabled={items.length === 0}
+							onClick={() => (setMenu(null), change((r) => emptyTier(r, tier.id), `${tier.name} emptied. Its ${kind.noun} are unranked again.`))}
+						>
+							<Undo2 size={14} aria-hidden /> Take all off this tier
+						</button>
+						<button
+							type="button"
+							role="menuitem"
+							className="lb-rank__danger"
+							disabled={ranking.tiers.length <= 1}
+							title={ranking.tiers.length <= 1 ? 'A ranking keeps one tier at least' : undefined}
+							onClick={() => (setMenu(null), change((r) => removeTier(r, tier.id), `${tier.name} removed. Its ${kind.noun} are unranked.`))}
+						>
+							<Trash2 size={14} aria-hidden /> Remove tier
+						</button>
+					</div>
+				)}
+			</>
+		)
+	}
+
+	const band = (b: Band, i: number) => {
+		const { tier, items } = b
 		const target = dropAt?.tier === tier.id
 		return (
-			<section key={tier.id} className={target ? 'lb-rank__band lb-rank__band--target' : 'lb-rank__band'} aria-label={`${tier.name} tier`} {...zoneProps(tier.id)}>
+			<section
+				key={tier.id}
+				className={`lb-rank__band${target ? ' lb-rank__band--target' : ''}${tier.color ? ' lb-rank__band--colored' : ''}${tier.border ? ' lb-rank__band--bordered' : ''}`}
+				style={tierStyle(tier, i)}
+				aria-label={`${tier.name} tier`}
+				{...zoneProps(tier.id)}
+			>
 				<div className="lb-rank__band-head">
+					<TierIcon id={tier.icon} />
 					{renaming === tier.id ? (
 						<input
 							className="lb-rank__name-input"
@@ -416,45 +532,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 							{formatOdds(shares[i] ?? 0, percent)}
 						</span>
 					)}
-					<button
-						type="button"
-						className="lb-rank__icon lb-rank__menu-btn"
-						aria-label={`${tier.name} options`}
-						aria-haspopup="menu"
-						aria-expanded={typeof menu === 'object' && menu?.tier === tier.id}
-						onPointerDown={swallow}
-						onClick={() => setMenu(typeof menu === 'object' && menu?.tier === tier.id ? null : { tier: tier.id })}
-					>
-						<MoreHorizontal size={16} aria-hidden />
-					</button>
-					{typeof menu === 'object' && menu?.tier === tier.id && (
-						<div className="lb-rank__pop lb-rank__tier-menu" role="menu" data-card-popup onPointerDown={swallow}>
-							<button type="button" role="menuitem" onClick={() => (setMenu(null), setRenaming(tier.id))}>
-								<Pencil size={14} aria-hidden /> Rename
-							</button>
-							<button type="button" role="menuitem" disabled={i === 0} onClick={() => (setMenu(null), change((r) => moveTier(r, tier.id, -1), `${tier.name} moved up.`))}>
-								<ArrowUp size={14} aria-hidden /> Move up
-							</button>
-							<button
-								type="button"
-								role="menuitem"
-								disabled={i === ranking.tiers.length - 1}
-								onClick={() => (setMenu(null), change((r) => moveTier(r, tier.id, 1), `${tier.name} moved down.`))}
-							>
-								<ArrowDown size={14} aria-hidden /> Move down
-							</button>
-							<button
-								type="button"
-								role="menuitem"
-								className="lb-rank__danger"
-								disabled={ranking.tiers.length <= 1}
-								title={ranking.tiers.length <= 1 ? 'A ranking keeps one tier at least' : undefined}
-								onClick={() => (setMenu(null), change((r) => removeTier(r, tier.id), `${tier.name} removed. Its ${kind.noun} are unranked.`))}
-							>
-								<Trash2 size={14} aria-hidden /> Remove tier
-							</button>
-						</div>
-					)}
+					{tierMenu(b, i)}
 				</div>
 				{ranking.weighted && (
 					<div className="lb-rank__share" aria-hidden="true">
@@ -465,7 +543,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					{items.map((entry) => (
 						<Fragment key={entry.id}>
 							{target && dropAt?.beforeId === entry.id && caret}
-							<Cover entry={entry} tier={tier.id} badge={badgeOf(entry)} {...coverProps} />
+							{cover(entry, tier.id)}
 						</Fragment>
 					))}
 					{target && dropAt?.beforeId === null && items.length > 0 && caret}
@@ -475,22 +553,46 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 		)
 	}
 
+	/** The queue as a strip above the tiers: what you stamped, waiting to be put in one. */
+	const queueStrip = (
+		<section className={dropAt?.tier === QUEUE ? 'lb-rank__queue lb-rank__queue--target' : 'lb-rank__queue'} aria-label={`Rank queue, ${queue.length} waiting`} {...zoneProps(QUEUE)}>
+			<div className="lb-rank__queue-head">
+				<Inbox size={14} aria-hidden />
+				<span className="lb-rank__queue-name">Rank queue</span>
+				<span className="lb-rank__n">{queue.length}</span>
+				<span className="lb-rank__queue-hint">{queue.length ? 'Drag into a tier' : `What you stamp lands here`}</span>
+			</div>
+			{queue.length > 0 && (
+				<div className="lb-rank__covers lb-rank__queue-list" role="list" aria-label="Rank queue">
+					{queue.slice(0, queueShown).map((entry) => cover(entry, QUEUE))}
+					{queue.length > queueShown && (
+						<button type="button" className="lb-rank__rail-more" onPointerDown={swallow} onClick={() => setQueueShown(queueShown + RAIL_PAGE)}>
+							+{queue.length - queueShown}
+						</button>
+					)}
+				</div>
+			)}
+		</section>
+	)
+
 	const settingsOpen = menu === 'settings'
 	const canAdd = ranking.tiers.length < MAX_TIERS
 	const total = source.entries.length
-	const unranked = query ? view.unranked.filter((entry) => matchesSearch(entry, query)) : view.unranked
+	const railShownList = query ? rail.filter((entry) => matchesSearch(entry, query)) : rail
 	// A cover of another shape keeps about the area of a square one: wider and shorter, or narrower and taller.
 	const ratio = aspectRatio(ranking.aspect)
+	const coverPx = ratio ? Math.round(80 * Math.sqrt(ratio)) : 80
 	const shapeStyle = ratio
 		? ({
 				'--lb-rank-aspect': ratio,
-				'--lb-col-cover': `${Math.round(80 * Math.sqrt(ratio))}px`,
+				'--lb-col-cover': `${coverPx}px`,
 				'--lb-rank-small': `${Math.round(40 * Math.sqrt(ratio))}px`,
 			} as CSSProperties)
 		: undefined
+	const setDisplay = (next: Display) => next !== display && change((r) => ({ ...r, display: next }), `Shown as ${next === 'shelf' ? 'a shelf' : 'tiers'}.`)
 
 	return (
-		<div className={ratio ? 'lb-rank lb-rank--shaped' : 'lb-rank'} style={shapeStyle} ref={rootRef} aria-label="Ranking tiers">
+		<div className={`lb-rank lb-rank--${display}${ratio ? ' lb-rank--shaped' : ''}`} style={shapeStyle} ref={rootRef} aria-label="Ranking tiers">
 			<header className="lb-rank__head">
 				<button
 					type="button"
@@ -505,12 +607,19 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					<span className="lb-rank__source-name">{source.type === 'none' ? 'Choose what to rank' : source.name}</span>
 					<ChevronDown size={14} aria-hidden />
 				</button>
-				<span className="lb-rank__grow" />
 				{source.type === 'source' && (
 					<span className="lb-rank__count">
 						{total} {total === 1 ? kind.one : kind.noun}
 					</span>
 				)}
+				<span className="lb-rank__grow" />
+				<div className="lb-rank__seg" role="group" aria-label="Display">
+					{DISPLAYS.map((d) => (
+						<button key={d.id} type="button" aria-pressed={display === d.id} onPointerDown={swallow} onClick={() => setDisplay(d.id)}>
+							{d.label}
+						</button>
+					))}
+				</div>
 				<button
 					type="button"
 					className="lb-rank__icon"
@@ -552,6 +661,34 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 								onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
 							/>
 						</label>
+						<label className="lb-rank__field">
+							<span>Display</span>
+							<select value={display} onChange={(e) => setDisplay(e.target.value as Display)}>
+								{DISPLAYS.map((d) => (
+									<option key={d.id} value={d.id}>
+										{d.id === 'shelf' ? 'Shelf: a bookcase, one shelf a tier' : 'Tiers: banded rows'}
+									</option>
+								))}
+							</select>
+						</label>
+						{kinds.length > 0 && (
+							<fieldset className="lb-rank__stamps">
+								<legend>Rank queue shows</legend>
+								<small className="lb-rank__stamps-hint">What you stamp on a randomizer waits in the queue until you drag it into a tier. Covers already in a tier always stay.</small>
+								{kinds.map((k) => (
+									<label key={k.id} className="lb-rank__switch" style={{ '--lb-rank-ink': k.ink } as CSSProperties}>
+										<span className="lb-rank__switch-dot" aria-hidden="true" />
+										<span className="lb-rank__switch-name">{k.label}</span>
+										<input
+											type="checkbox"
+											role="switch"
+											checked={showsStamp(ranking, k.id, stampSource)}
+											onChange={(e) => change((r) => ({ ...r, stampFilter: { ...r.stampFilter, [k.id]: e.target.checked } }))}
+										/>
+									</label>
+								))}
+							</fieldset>
+						)}
 						<label className="lb-rank__check">
 							<input type="checkbox" checked={ranking.weighted} onChange={(e) => change((r) => ({ ...r, weighted: e.target.checked }))} />
 							<span>
@@ -579,28 +716,13 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 							</select>
 						</label>
 						{kinds.length > 0 && (
-							<>
-								<fieldset className="lb-rank__stamps">
-									<legend>Show stamped</legend>
-									{kinds.map((k) => (
-										<label key={k.id} className="lb-rank__stamp-toggle" style={{ '--lb-rank-ink': k.ink } as CSSProperties}>
-											<input
-												type="checkbox"
-												checked={showsStamp(ranking, k.id, source.stampKinds?.sourceId ?? null)}
-												onChange={(e) => change((r) => ({ ...r, stampFilter: { ...r.stampFilter, [k.id]: e.target.checked } }))}
-											/>
-											<span>{k.label}</span>
-										</label>
-									))}
-								</fieldset>
-								<label className="lb-rank__check">
-									<input type="checkbox" checked={ranking.badges} onChange={(e) => change((r) => ({ ...r, badges: e.target.checked }))} />
-									<span>
-										<b>Stamp badges</b>
-										<small>Each stamped cover wears its latest stamp.</small>
-									</span>
-								</label>
-							</>
+							<label className="lb-rank__check">
+								<input type="checkbox" checked={ranking.badges} onChange={(e) => change((r) => ({ ...r, badges: e.target.checked }))} />
+								<span>
+									<b>Stamp badges</b>
+									<small>Each stamped cover wears its latest stamp.</small>
+								</span>
+							</label>
 						)}
 					</div>
 				)}
@@ -612,7 +734,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 					<span>
 						{source.type === 'missing'
 							? 'Choose another source from the menu above.'
-							: 'Choose a source above: everything you liked, a backlog, a feed or a syllabus. Then drag its covers into tiers.'}
+							: 'Choose a source above: an album list, a backlog, a feed, a syllabus. What you stamp from it on a randomizer waits in the queue, to drag into tiers.'}
 					</span>
 				</div>
 			) : (
@@ -626,15 +748,15 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 							type="button"
 							className="lb-rank__rail-toggle"
 							aria-expanded={railOpen}
-							aria-label={`Unranked, ${view.unranked.length}. ${railOpen ? 'Collapse' : 'Expand'}`}
+							aria-label={`Unranked, ${rail.length}. ${railOpen ? 'Collapse' : 'Expand'}`}
 							onPointerDown={swallow}
 							onClick={() => setRailOpen(!railOpen)}
 						>
 							{railOpen ? <PanelLeftClose size={16} aria-hidden /> : <PanelLeftOpen size={16} aria-hidden />}
-							<span className="lb-rank__rail-n">{view.unranked.length}</span>
+							<span className="lb-rank__rail-n">{rail.length}</span>
 							<span className="lb-rank__rail-label">Unranked</span>
 						</button>
-						{railOpen && view.unranked.length > 0 && (
+						{railOpen && rail.length > 0 && (
 							<label className="lb-rank__search">
 								<Search size={12} aria-hidden />
 								<input
@@ -661,20 +783,35 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 						)}
 						{railOpen && (
 							<div className="lb-rank__rail-list" role="list" aria-label="Unranked">
-								{unranked.slice(0, railShown).map((entry) => (
-									<Cover key={entry.id} entry={entry} tier={UNRANKED} small badge={badgeOf(entry)} {...coverProps} />
-								))}
-								{unranked.length > railShown && (
+								{railShownList.slice(0, railShown).map((entry) => cover(entry, UNRANKED, { small: true }))}
+								{railShownList.length > railShown && (
 									<button type="button" className="lb-rank__rail-more" onPointerDown={swallow} onClick={() => setRailShown(railShown + RAIL_PAGE)}>
-										+{unranked.length - railShown}
+										+{railShownList.length - railShown}
 									</button>
 								)}
-								{view.unranked.length === 0 && <span className="lb-rank__rail-empty">All sorted</span>}
-								{view.unranked.length > 0 && unranked.length === 0 && <span className="lb-rank__rail-empty">Nothing matches</span>}
+								{rail.length === 0 && <span className="lb-rank__rail-empty">{queue.length ? 'The rest wait in the queue' : 'All sorted'}</span>}
+								{rail.length > 0 && railShownList.length === 0 && <span className="lb-rank__rail-empty">Nothing matches</span>}
 							</div>
 						)}
 					</aside>
-					<div className="lb-rank__bands">{view.bands.map(band)}</div>
+					{display === 'shelf' ? (
+						<ShelfView
+							bands={view.bands}
+							queue={queue}
+							kind={kind}
+							coverPx={coverPx}
+							dropAt={dropAt}
+							zoneProps={zoneProps}
+							renderCover={(entry, zone, z) => cover(entry, zone, { bare: true, z })}
+							tierMenu={tierMenu}
+							hasStamps={kinds.length > 0}
+						/>
+					) : (
+						<div className="lb-rank__bands">
+							{kinds.length > 0 && queueStrip}
+							{view.bands.map(band)}
+						</div>
+					)}
 				</div>
 			)}
 			<p className="lb-rank__sr" aria-live="polite">
@@ -683,7 +820,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 
 			{isEditing && (
 				<div onPointerDown={stopEventPropagation} onTouchStart={stopEventPropagation}>
-					<SourcePicker shape={shape} editor={editor} ranking={ranking} />
+					<SourcePicker shape={shape} editor={editor} ranking={ranking} boardId={boardId} />
 				</div>
 			)}
 		</div>
@@ -691,7 +828,7 @@ function RankingCardImpl({ shape, isEditing, editor }: NodeComponentProps<Rankin
 }
 
 /** The card's editor (a double-click, or the source button): what it ranks. */
-function SourcePicker({ shape, editor, ranking }: { shape: NodeShape<RankingProps>; editor: Editor; ranking: Ranking }) {
+function SourcePicker({ shape, editor, ranking, boardId }: { shape: NodeShape<RankingProps>; editor: Editor; ranking: Ranking; boardId: string }) {
 	const count = useValue('lifeboard:ranking-picker', () => sourceEntries(ranking.source).length, [ranking.source])
 	const kind = resolveItemSource(ranking.source).kind
 	return (
@@ -704,13 +841,14 @@ function SourcePicker({ shape, editor, ranking }: { shape: NodeShape<RankingProp
 					id={`${shape.id}-source`}
 					value={ranking.source}
 					exclude={[RANKING_SOURCE_ID]}
+					boardId={boardId}
 					autoFocus
-					onChange={(key) => updateRanking(ranking.rankingId, (r) => ({ ...r, source: key }))}
+					onChange={(key) => updateRanking(ranking.rankingId, (r) => ({ ...r, source: key }), boardId)}
 				/>
 				<p className="lb-rank-editor__hint">
 					{ranking.source
 						? `${count} ${count === 1 ? kind.one : kind.noun}. Each source keeps its own tiers: switch back, and they are as you left them.`
-						: 'Anything the other extensions offer: everything you liked on a randomizer, a backlog, a feed, a syllabus.'}
+						: 'Anything the other extensions offer on this board: an album list, a backlog, a feed, a syllabus, or what you stamped on a randomizer.'}
 				</p>
 				<div className="lb-rank-editor__foot">
 					<button type="button" className="lb-rank-editor__done" onClick={() => editor.setEditingShape(null)}>

@@ -31,6 +31,8 @@ export { getFeedProvider, getFeedProviders, registerFeedProvider, type FeedProvi
 export {
 	addCategory,
 	addSource,
+	categoriesOn,
+	claimFeeds,
 	getCategories,
 	getSourceItems,
 	getSources,
@@ -43,4 +45,6 @@ export {
 	setSourceItemsPersistence,
 	setSourcesPersistence,
 	setWatchedPersistence,
+	sourcesOn,
+	watchedOn,
 } from './store'

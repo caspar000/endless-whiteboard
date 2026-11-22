@@ -1,5 +1,5 @@
 import { T } from '@lifeboard/canvas'
-import { createShapePropsMigrationSequence, isSourceShapeType, resolveItemSource, sourceKeyOfShape, type NodeDefinition } from '@lifeboard/node-kit'
+import { boardIdOf, createShapePropsMigrationSequence, isSourceShapeType, resolveItemSource, sourceKeyOfShape, type NodeDefinition } from '@lifeboard/node-kit'
 import { Inbox } from 'lucide-react'
 import { BacklogCard } from './BacklogCard'
 import { addCollection, randomId } from './model'
@@ -49,7 +49,7 @@ export const backlogNodeDefinition: NodeDefinition<BacklogProps> = {
 		apply: ({ editor, shape, shapes }) => {
 			const keys = shapes.map(sourceKeyOfShape).filter((k): k is string => k !== null)
 			if (!keys.length) return
-			updateBacklog(shape.props.backlogId, (b) => keys.reduceRight((acc, key) => addCollection(acc, key, resolveItemSource(key).source?.label ?? ''), b))
+			updateBacklog(shape.props.backlogId, (b) => keys.reduceRight((acc, key) => addCollection(acc, key, resolveItemSource(key).source?.label ?? ''), b), boardIdOf(editor))
 			// The shapes handed over are as they were picked up; where they are now is the store's.
 			const origin = editor.inputs.originPagePoint
 			const now = editor.inputs.currentPagePoint

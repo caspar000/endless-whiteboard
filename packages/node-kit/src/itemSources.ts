@@ -70,8 +70,17 @@ export interface ItemSource {
 	icon?: LucideIcon
 	/** The extension that offers it. While that is off it isn't offered, though a card already on it keeps working, as its nodes do. */
 	extensionId?: string
-	/** What it can be pointed at now. */
-	choices(): readonly SourceChoice[]
+	/**
+	 * What it can be pointed at now, from a card on `boardId` (DARK-14): a source whose lists belong to
+	 * boards (rankings, backlogs, stamps, feeds) offers only that board's. `''` is a board nobody named.
+	 * A choice's id still names its list alone, so `entries` needs no board.
+	 */
+	choices(boardId: string): readonly SourceChoice[]
+	/**
+	 * One choice by its id, on whichever board it is, or `null` when it is gone: what a card already
+	 * pointed at it shows. Without it, the choices of no board in particular (`choices('')`) are searched.
+	 */
+	choice?(choiceId: string): SourceChoice | null
 	/** What a choice holds now, in its own order. Empty for a choice that is gone. */
 	entries(choiceId: string): readonly SourceEntry[]
 	/** How a choice's items are spoken of: "videos" for YouTube channels. */
@@ -156,7 +165,7 @@ export function resolveItemSource(key: string): ResolvedItemSource {
 	const parsed = parseSourceKey(key)
 	if (!parsed) return { type: 'none', name: 'No source yet', kind: PLAIN_KIND, source: null, choiceId: '' }
 	const source = sources.get().find((s) => s.id === parsed.sourceId) ?? null
-	const choice = source?.choices().find((c) => c.id === parsed.choiceId)
+	const choice = source ? (source.choice ? source.choice(parsed.choiceId) : source.choices('').find((c) => c.id === parsed.choiceId)) : null
 	if (!source || !choice) return { type: 'missing', name: source ? `${source.label}: gone` : 'Source unavailable', kind: PLAIN_KIND, source, choiceId: parsed.choiceId }
 	return { type: 'source', name: choice.label, kind: source.kind(parsed.choiceId), source, choiceId: parsed.choiceId }
 }

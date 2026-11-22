@@ -8,6 +8,7 @@ import {
 	registerItemReaction,
 	registerItemSource,
 	registerItemStamps,
+	setBoardOf,
 	setExtensionEnabled,
 	type RankedItem,
 	type SourceEntry,
@@ -49,6 +50,8 @@ function Board({ rankingId }: { rankingId: string }) {
 		}),
 		[]
 	)
+	// The board it is on, as the app says it when the board opens (DARK-14).
+	setBoardOf(editor as never, 'board-1')
 	const Card = rankingNodeDefinition.component
 	return <Card shape={shape as never} isEditing={editing} editor={editor as never} />
 }
@@ -187,7 +190,10 @@ describe('a ranking card', () => {
 		act(() => rankings.put('r1', { ...ranking(), placed: { [ALBUMS]: { t1: ['a1'], t2: ['a2', 'a3'], t4: ['a4'] } } }))
 		expect(within(card()).queryByText('1 in 3')).toBeNull()
 		expect(within(band('Often')).queryByRole('button', { name: /weight/ })).toBeNull()
-		expect(rankingSource.choices()).toEqual([])
+		// Unweighted, a randomizer can still draw from one tier at a time (DARK-14), but not the whole.
+		expect(rankingSource.choices('board-1').map((c) => c.id)).not.toContain('r1')
+		expect(rankingSource.choices('board-1').map((c) => c.label)).toContain('My albums, ranked: Often')
+		expect(rankingSource.entries('r1#t2').map((e) => e.id)).toEqual(['a2', 'a3'])
 
 		fireEvent.click(within(card()).getByRole('button', { name: 'Ranking settings' }))
 		fireEvent.click(screen.getByRole('checkbox', { name: /Weighted shuffle/ }))
@@ -195,7 +201,9 @@ describe('a ranking card', () => {
 		expect(within(band('Heavy rotation')).getByText('1 in 3')).toBeTruthy()
 		expect(within(band('Often')).getByText('1 in 2')).toBeTruthy()
 		expect(within(band('Rarely')).getByText('1 in 11')).toBeTruthy()
-		expect(rankingSource.choices().map((c) => c.id)).toEqual(['r1'])
+		expect(rankingSource.choices('board-1').map((c) => c.id)[0]).toBe('r1')
+		// Never on another board.
+		expect(rankingSource.choices('board-2')).toEqual([])
 		// Its items are ranked: a randomizer drawing from it doesn't count that as taking them out (DARK-13).
 		expect(rankingSource.ranked).toBe(true)
 		expect(rankingSource.entries('r1').map((e) => [e.id, e.weight])).toEqual([
@@ -242,7 +250,7 @@ describe('a ranking card', () => {
 		fireEvent.dragStart(within(screen.getByRole('list', { name: 'Unranked' })).getAllByRole('listitem')[0]!, { dataTransfer: drag })
 		fireEvent.dragOver(band('Often'), { dataTransfer: drag })
 		fireEvent.drop(band('Often'), { dataTransfer: drag })
-		expect(heard).toEqual([{ entry: albums[3], from: ALBUMS, rankingId: 'r1', editor: expect.anything(), shapeId: 'shape:rank' }])
+		expect(heard).toEqual([{ entry: albums[3], from: ALBUMS, rankingId: 'r1', boardId: 'board-1', editor: expect.anything(), shapeId: 'shape:rank' }])
 
 		// Between tiers, or back to the rail, it is already ranked.
 		fireEvent.keyDown(within(band('Often')).getAllByRole('listitem')[0]!, { key: 'ArrowUp' })
@@ -250,17 +258,8 @@ describe('a ranking card', () => {
 		expect(heard).toHaveLength(1)
 	})
 
-	it('shows stamp badges, hides the stamps switched off, and shapes its covers', () => {
-		const stamps: Record<string, string> = { 'Album 1': 'liked', 'Album 2': 'disliked' }
-		registerItemStamps({
-			sourceId: 'stamped',
-			kinds: [
-				{ id: 'liked', label: 'Liked', ink: '#2f9e44' },
-				{ id: 'disliked', label: 'Disliked', ink: '#e03131' },
-				{ id: 'unsure', label: 'Unsure', ink: '#f08c00' },
-			],
-			stampOf: (e) => (stamps[e.title] ? { kind: stamps[e.title]!, date: '2026-11-01' } : null),
-		})
+	it('shows stamp badges, keeps a cover in its tier whatever is switched off, and shapes its covers', () => {
+		stampAlbums({ 'Album 1': 'liked', 'Album 2': 'disliked' })
 		rankAlbums()
 		act(() => rankings.put('r1', { ...ranking(), placed: { [ALBUMS]: { t1: ['a1', 'a2', 'a3'] } } }))
 		expect(within(band('Heavy rotation')).getAllByRole('listitem')[0]!.getAttribute('aria-label')).not.toMatch(/Stamped/)
@@ -269,61 +268,127 @@ describe('a ranking card', () => {
 		fireEvent.click(screen.getByRole('checkbox', { name: /Stamp badges/ }))
 		expect(within(band('Heavy rotation')).getAllByRole('listitem')[0]!.getAttribute('aria-label')).toMatch(/Stamped Liked/)
 
-		fireEvent.click(screen.getByRole('checkbox', { name: 'Disliked' }))
-		expect(coversIn('Heavy rotation')).toEqual(['a1', 'a3'])
-		fireEvent.click(screen.getByRole('checkbox', { name: 'Disliked' }))
+		// The switches choose what waits in the queue: a cover already in a tier stays put (DARK-14).
+		fireEvent.click(screen.getByRole('switch', { name: 'Disliked' }))
 		expect(coversIn('Heavy rotation')).toEqual(['a1', 'a2', 'a3'])
 
 		fireEvent.change(screen.getByLabelText('Cover shape'), { target: { value: '16:9' } })
 		expect(ranking().aspect).toBe('16:9')
 		expect(card().style.getPropertyValue('--lb-rank-aspect')).toBe(String(16 / 9))
 	})
+})
 
-	it('stamps Liked what it ranks from a stamped list, and keeps it in the tier it was put in', () => {
-		// The randomizer's stamped lists, as it offers them: an item is in the list of its latest stamp.
-		const latest = atom<Record<string, string>>('test:stamps', { 'Album 1': 'unsure', 'Album 2': 'unsure', 'Album 3': 'liked' })
-		const KINDS = [
-			{ id: 'liked', label: 'Liked', ink: '#2f9e44' },
-			{ id: 'disliked', label: 'Disliked', ink: '#e03131' },
-			{ id: 'unsure', label: 'Unsure', ink: '#f08c00' },
-		]
-		registerItemSource({
-			id: 'stamped',
-			label: 'Randomizer stamps',
-			choices: () => KINDS.map((k) => ({ id: k.id, label: `Everything ${k.label}`, group: '' })),
-			entries: (kind) => albums.filter((a) => latest.get()[a.title] === kind),
-			kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
-		})
-		registerItemStamps({ sourceId: 'stamped', kinds: KINDS, stampOf: (e) => (latest.get()[e.title] ? { kind: latest.get()[e.title]!, date: '2026-11-01' } : null) })
-		registerItemReaction({ id: 'test.like', ranked: ({ entry }) => latest.set({ ...latest.get(), [entry.title]: 'liked' }) })
+/** Stamps the randomizer would have given, by title, and the kinds it gives. */
+function stampAlbums(stamps: Record<string, string>, dates: Record<string, string> = {}) {
+	const KINDS = [
+		{ id: 'liked', label: 'Liked', ink: '#2f9e44' },
+		{ id: 'disliked', label: 'Disliked', ink: '#e03131' },
+		{ id: 'unsure', label: 'Unsure', ink: '#f08c00' },
+	]
+	const latest = atom<Record<string, string>>('test:stamps', stamps)
+	const seen: string[] = []
+	registerItemStamps({
+		sourceId: 'stamped',
+		kinds: KINDS,
+		stampOf: (e, boardId) => {
+			seen.push(boardId)
+			const kind = latest.get()[e.title]
+			return kind ? { kind, date: dates[e.title] ?? '2026-11-01' } : null
+		},
+	})
+	return { latest, seen }
+}
 
-		render(<Board rankingId="r1" />)
-		fireEvent.click(within(card()).getByRole('button', { name: 'Choose what to rank' }))
-		fireEvent.change(screen.getByLabelText('Rank from'), { target: { value: 'stamped:unsure' } })
-		fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-		fireEvent.click(within(card()).getByRole('button', { name: /^Unranked/ }))
-		fireEvent.change(within(card()).getByRole('searchbox', { name: 'Search unranked' }), { target: { value: 'Album 2' } })
+const queued = () => within(within(card()).getByRole('list', { name: 'Rank queue' })).queryAllByRole('listitem').map((el) => el.getAttribute('data-item-id'))
+const railed = () => within(screen.getByRole('list', { name: 'Unranked' })).queryAllByRole('listitem').map((el) => el.getAttribute('data-item-id'))
+
+describe('the rank queue (DARK-14)', () => {
+	it('holds what was stamped, newest first, ready to drag into a tier, and the rail the rest', () => {
+		const { seen } = stampAlbums({ 'Album 1': 'liked', 'Album 2': 'unsure', 'Album 3': 'disliked' }, { 'Album 1': '2026-11-01', 'Album 2': '2026-11-03', 'Album 3': '2026-11-02' })
+		rankAlbums()
+		expect(queued()).toEqual(['a2', 'a3', 'a1'])
+		// The stamps are this board's.
+		expect(new Set(seen)).toEqual(new Set(['board-1']))
+		fireEvent.click(within(card()).getByRole('button', { name: /^Unranked, 2/ }))
+		expect(railed()).toEqual(['a4', 'a5'])
+
 		const drag = dataTransfer()
-		fireEvent.dragStart(within(screen.getByRole('list', { name: 'Unranked' })).getAllByRole('listitem')[0]!, { dataTransfer: drag })
+		fireEvent.dragStart(within(within(card()).getByRole('list', { name: 'Rank queue' })).getAllByRole('listitem')[0]!, { dataTransfer: drag })
 		fireEvent.dragOver(band('Often'), { dataTransfer: drag })
 		fireEvent.drop(band('Often'), { dataTransfer: drag })
-
-		expect(latest.get()['Album 2']).toBe('liked')
 		expect(coversIn('Often')).toEqual(['a2'])
-		// The rest of the list is as it was: Album 1 still waits, and Album 3, Liked but never ranked here, isn't brought in.
-		fireEvent.change(within(card()).getByRole('searchbox', { name: 'Search unranked' }), { target: { value: '' } })
-		expect(within(screen.getByRole('list', { name: 'Unranked' })).getAllByRole('listitem').map((el) => el.getAttribute('data-item-id'))).toEqual(['a1'])
+		expect(queued()).toEqual(['a3', 'a1'])
+	})
 
-		// Liked switched on brings in every Liked item; switched off by hand, it hides the ranked one too,
-		// keeping its tier for when it is switched on again.
+	it('shows only the kinds switched on, and all of them again once switched back', () => {
+		stampAlbums({ 'Album 1': 'liked', 'Album 2': 'unsure', 'Album 3': 'disliked' })
+		rankAlbums()
 		fireEvent.click(within(card()).getByRole('button', { name: 'Ranking settings' }))
-		const liked = () => screen.getByRole('checkbox', { name: 'Liked' })
-		expect(liked()).toHaveProperty('checked', false)
-		fireEvent.click(liked())
-		expect(within(screen.getByRole('list', { name: 'Unranked' })).getAllByRole('listitem').map((el) => el.getAttribute('data-item-id'))).toEqual(['a1', 'a3'])
-		fireEvent.click(liked())
-		expect(coversIn('Often')).toEqual([])
-		fireEvent.click(liked())
-		expect(coversIn('Often')).toEqual(['a2'])
+		fireEvent.click(screen.getByRole('switch', { name: 'Unsure' }))
+		fireEvent.click(screen.getByRole('switch', { name: 'Disliked' }))
+		expect(queued()).toEqual(['a1'])
+		expect(ranking().stampFilter).toEqual({ unsure: false, disliked: false })
+		fireEvent.click(screen.getByRole('switch', { name: 'Unsure' }))
+		fireEvent.click(screen.getByRole('switch', { name: 'Disliked' }))
+		expect(queued().sort()).toEqual(['a1', 'a2', 'a3'])
+	})
+
+	it('is not stamped again by moving between tiers, and only tells the others when it leaves the queue', () => {
+		const heard: RankedItem[] = []
+		registerItemReaction({ id: 'test.heard', ranked: (item) => void heard.push(item) })
+		stampAlbums({ 'Album 1': 'liked' })
+		rankAlbums()
+		fireEvent.keyDown(within(within(card()).getByRole('list', { name: 'Rank queue' })).getAllByRole('listitem')[0]!, { key: 'ArrowDown' })
+		expect(coversIn('Heavy rotation')).toEqual(['a1'])
+		fireEvent.keyDown(within(band('Heavy rotation')).getAllByRole('listitem')[0]!, { key: 'ArrowDown' })
+		fireEvent.keyDown(within(band('Often')).getAllByRole('listitem')[0]!, { key: 'ArrowDown' })
+		expect(coversIn('Now and then')).toEqual(['a1'])
+		expect(heard).toHaveLength(1)
+		// Up past the first tier, it waits in the queue again.
+		act(() => rankings.put('r1', { ...ranking(), placed: { [ALBUMS]: { t1: ['a1'] } } }))
+		fireEvent.keyDown(within(band('Heavy rotation')).getAllByRole('listitem')[0]!, { key: 'ArrowUp' })
+		expect(queued()).toEqual(['a1'])
+	})
+})
+
+describe('a tier’s look and the shelf (DARK-14)', () => {
+	it('takes a background, a border and an icon from its menu', () => {
+		rankAlbums()
+		fireEvent.click(within(band('Often')).getByRole('button', { name: 'Often options' }))
+		fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Often background' })).getByRole('radio', { name: 'Plum' }))
+		fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Often border' })).getByRole('radio', { name: 'Rose' }))
+		fireEvent.click(screen.getByRole('radio', { name: 'Trophy' }))
+		expect(ranking().tiers[1]).toMatchObject({ color: 'plum', border: 'rose', icon: 'trophy' })
+		expect(band('Often').style.getPropertyValue('--lb-tier-bg')).toBe('#7a3f8c')
+		expect(band('Often').style.getPropertyValue('--lb-tier-border')).toBe('#a8436a')
+		fireEvent.click(screen.getByRole('radio', { name: 'No icon' }))
+		expect(ranking().tiers[1]!.icon).toBe('')
+	})
+
+	it('draws as a bookcase, a shelf a tier with the crate on top, and still moves covers by dragging', () => {
+		stampAlbums({ 'Album 1': 'liked' })
+		rankAlbums()
+		fireEvent.click(within(within(card()).getByRole('group', { name: 'Display' })).getByRole('button', { name: 'Shelf' }))
+		expect(ranking().display).toBe('shelf')
+		expect(card().classList.contains('lb-rank--shelf')).toBe(true)
+		expect(within(card()).getAllByRole('region').map((r) => r.getAttribute('aria-label'))).toEqual([
+			'Rank queue, 1 waiting',
+			'Heavy rotation tier',
+			'Often tier',
+			'Now and then tier',
+			'Rarely tier',
+		])
+		expect(within(band('Often')).getByText('Often')).toBeTruthy()
+
+		const drag = dataTransfer()
+		fireEvent.dragStart(within(within(card()).getByRole('list', { name: 'Rank queue' })).getAllByRole('listitem')[0]!, { dataTransfer: drag })
+		fireEvent.dragOver(band('Rarely'), { dataTransfer: drag })
+		fireEvent.drop(band('Rarely'), { dataTransfer: drag })
+		expect(coversIn('Rarely')).toEqual(['a1'])
+		// It settles with a wobble.
+		expect(within(band('Rarely')).getAllByRole('listitem')[0]!.className).toMatch(/lb-rank__cover--settle/)
+
+		fireEvent.click(within(card()).getByRole('button', { name: 'Tiers' }))
+		expect(ranking().display).toBe('tiers')
 	})
 })

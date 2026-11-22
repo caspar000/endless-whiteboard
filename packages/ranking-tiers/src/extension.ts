@@ -1,8 +1,10 @@
 import { defineNode, type Extension } from '@lifeboard/node-kit'
 import { ListOrdered } from 'lucide-react'
 import { rankingNodeDefinition } from './definition'
+import { RANKING_TYPE, type RankingProps } from './props'
 import { RankingSettings } from './RankingSettings'
 import { RANKING_EXTENSION_ID } from './source'
+import { claimRanking } from './store'
 
 /**
  * Ranking Tiers (DARK-11): the items of any source sorted into tiers you name, and, if you want, a
@@ -29,4 +31,12 @@ export const rankingTiersExtension: Extension = {
 	author: 'Lifeboard',
 	nodes: [defineNode(rankingNodeDefinition)],
 	settings: { title: 'Odds, tiers and your rankings', Component: RankingSettings },
+	hooks: {
+		// A ranking from before DARK-14 belongs to the board whose card shows it, the first time it opens.
+		onBoardOpen: ({ editor, boardId }) => {
+			for (const shape of editor.getCurrentPageShapes()) {
+				if (shape.type === RANKING_TYPE) claimRanking((shape.props as RankingProps).rankingId, boardId)
+			}
+		},
+	},
 }

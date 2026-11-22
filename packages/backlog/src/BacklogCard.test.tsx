@@ -132,10 +132,13 @@ describe('a backlog card', () => {
 		expect(within(tiles()[0]!).getByText('/mu/core')).toBeTruthy()
 	})
 
-	it('is a source for other cards while Backlog is on, everything in it at once', () => {
+	it('is a source for other cards on its board while Backlog is on, everything in it at once', () => {
 		mount()
-		act(() => backlogs.put('b1', { backlogId: 'b1', name: 'To hear', entries: [{ kind: 'collection', id: TRACK, via: 'Syllabi' }] }))
-		expect(backlogSource.choices()).toEqual([{ id: 'b1', label: 'To hear', group: '' }])
+		act(() => backlogs.put('b1', { backlogId: 'b1', boardId: 'board-1', name: 'To hear', entries: [{ kind: 'collection', id: TRACK, via: 'Syllabi' }] }))
+		expect(backlogSource.choices('board-1')).toEqual([{ id: 'b1', label: 'To hear', group: '' }])
+		// Another board's cards are not offered it (DARK-14), though one already on it still reads it.
+		expect(backlogSource.choices('board-2')).toEqual([])
+		expect(backlogSource.choice?.('b1')).toEqual({ id: 'b1', label: 'To hear', group: '' })
 		expect(backlogSource.entries('b1')).toHaveLength(30)
 		expect(offeredItemSources().map((s) => s.id)).toContain('backlog')
 		act(() => setExtensionEnabled(BACKLOG_EXTENSION_ID, false))

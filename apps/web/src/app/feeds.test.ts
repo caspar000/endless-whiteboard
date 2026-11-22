@@ -51,8 +51,8 @@ beforeEach(() => {
 describe('feeds across a reload', { timeout: 20_000 }, () => {
 	it('keeps a category and a source made just before the page closes', async () => {
 		const first = await openApp()
-		const added = (first.feeds.addCategory('Electrical Engineering') as { categoryId: string }).categoryId
-		first.feeds.addSource({ provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: [added] })
+		const added = (first.feeds.addCategory('b1', 'Electrical Engineering') as { categoryId: string }).categoryId
+		first.feeds.addSource('b1', { provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: [added] })
 		// No timers run: the page is gone at once.
 		const second = await openApp()
 		expect(categoryNames(second.feeds)).toEqual(['Electrical Engineering'])
@@ -63,7 +63,7 @@ describe('feeds across a reload', { timeout: 20_000 }, () => {
 	it("sends an edit the server never took again, rather than taking the server's older copy", async () => {
 		serverTakes = false
 		const first = await openApp()
-		first.feeds.addCategory('Music')
+		first.feeds.addCategory('b1', 'Music')
 		await settle()
 
 		serverTakes = true
@@ -81,7 +81,7 @@ describe('feeds across a reload', { timeout: 20_000 }, () => {
 
 	it("takes the vault's copy when everything here was sent", async () => {
 		const first = await openApp()
-		first.feeds.addCategory('Old name')
+		first.feeds.addCategory('b1', 'Old name')
 		await settle()
 		const second = await openApp()
 		second.app.applyRemoteFeeds({ feedCategories: { c1: { categoryId: 'c1', name: 'From another device', color: 'blue', order: 0 } } }, 'vault-a')
@@ -94,8 +94,8 @@ describe('feeds across a reload', { timeout: 20_000 }, () => {
 		const a = await openApp()
 		a.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
 		serverTakes = false
-		a.feeds.addCategory('A only')
-		a.feeds.addSource({ provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
+		a.feeds.addCategory('b1', 'A only')
+		a.feeds.addSource('b1', { provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
 		await settle()
 		expect(storage.get('lifeboard:feedUnsent:feedSources')).toBe('1')
 
@@ -115,7 +115,7 @@ describe('feeds across a reload', { timeout: 20_000 }, () => {
 	it("seeds a new vault with nothing of another vault's", async () => {
 		const a = await openApp()
 		a.app.applyRemoteFeeds({ feedCategories: {}, feedSources: {}, feedWatched: {} }, 'vault-a')
-		a.feeds.addCategory('A only')
+		a.feeds.addCategory('b1', 'A only')
 		await settle()
 		const b = await openApp()
 		pushes.length = 0
@@ -131,8 +131,8 @@ describe('feeds across a reload', { timeout: 20_000 }, () => {
 		const a = await openApp()
 		a.app.applyRemoteFeeds({}, 'vault-a')
 		serverTakes = false
-		a.feeds.addCategory('A only')
-		a.feeds.addSource({ provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
+		a.feeds.addCategory('b1', 'A only')
+		a.feeds.addSource('b1', { provider: 'youtube', feedUrl: 'https://f/a', link: '', title: 'A private channel', categories: [] })
 		a.app.forgetFeeds()
 		expect(categoryNames(a.feeds)).toEqual([])
 		expect([...storage.keys()].filter((k) => k.startsWith('lifeboard:feed'))).toEqual([])

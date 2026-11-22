@@ -1,6 +1,7 @@
 import { useValue, type Editor } from '@lifeboard/canvas'
 import {
 	SourceSelect,
+	boardIdOf,
 	draggingItem,
 	getDraggedItem,
 	hasDraggedItem,
@@ -156,7 +157,9 @@ function CollectionPanel({ collection }: { collection: BacklogCollection }) {
 
 function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const { backlogId } = shape.props
-	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId), [backlogId])
+	// The board this card is on (DARK-14): a backlog made here belongs to it.
+	const boardId = boardIdOf(editor)
+	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId, boardId), [backlogId, boardId])
 	const total = useValue(
 		'lifeboard:backlog-total',
 		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(e.id).length), 0),
@@ -183,7 +186,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	useOpenMenu(editor, `backlog-add-${shape.id}`, adding)
 
 	const change = (fn: Parameters<typeof updateBacklog>[1], said: string) => {
-		updateBacklog(backlogId, fn)
+		updateBacklog(backlogId, fn, boardId)
 		setAnnounce(said)
 	}
 
@@ -338,6 +341,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 						id={`${shape.id}-collection`}
 						value=""
 						exclude={[BACKLOG_SOURCE_ID]}
+						boardId={boardId}
 						placeholder="A syllabus track, a feed, everything you liked…"
 						onChange={(key) => {
 							const resolved = resolveItemSource(key)

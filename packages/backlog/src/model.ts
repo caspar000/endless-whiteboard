@@ -37,6 +37,11 @@ export type BacklogEntry = BacklogItem | BacklogCollection
 
 export interface Backlog {
 	backlogId: string
+	/**
+	 * The board it belongs to (DARK-14): only cards there are offered it. '' for one made before
+	 * backlogs had boards, until the board showing it opens (`claimBacklog`).
+	 */
+	boardId: string
 	name: string
 	/** Newest first. */
 	entries: BacklogEntry[]
@@ -50,8 +55,8 @@ export function randomId(): string {
 	return Array.from(out, (n) => n.toString(36)).join('')
 }
 
-export function newBacklog(backlogId: string): Backlog {
-	return { backlogId, name: DEFAULT_NAME, entries: [] }
+export function newBacklog(backlogId: string, boardId = ''): Backlog {
+	return { backlogId, boardId, name: DEFAULT_NAME, entries: [] }
 }
 
 /** An item's id: the same item dragged in twice, or also in a collection, is one item. */
@@ -146,5 +151,5 @@ export function readBacklog(raw: Record<string, unknown>): Backlog | null {
 		else if (e.kind === 'item' && str(e.title))
 			entries.push({ kind: 'item', id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), via: str(e.via) })
 	}
-	return { backlogId, name: str(raw.name) || DEFAULT_NAME, entries }
+	return { backlogId, boardId: str(raw.boardId), name: str(raw.name) || DEFAULT_NAME, entries }
 }

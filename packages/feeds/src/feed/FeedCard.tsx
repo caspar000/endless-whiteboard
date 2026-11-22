@@ -1,4 +1,4 @@
-import { NodeEditorPopover, useCardPopup, type NodeComponentProps } from '@lifeboard/node-kit'
+import { NodeEditorPopover, boardIdOf, useCardPopup, type NodeComponentProps } from '@lifeboard/node-kit'
 import { stopEventPropagation, useValue, type Editor, type TLShapeId } from '@lifeboard/canvas'
 import { CircleCheck, Ellipsis, Eye, EyeOff, FolderPlus, Inbox, ListChecks, Pencil, Play, Plus, RefreshCw, Rss, Settings2, X } from 'lucide-react'
 import { memo, useEffect, useState, type SyntheticEvent } from 'react'
@@ -6,7 +6,7 @@ import { FEED_TYPE, type FeedProps } from '../board'
 import { feedItems, orderedCategories, sourcesIn, timeAgo, unwatchedCount, type FeedItem, type Show } from '../model'
 import { getFeedProvider } from '../providers/registry'
 import { reading, refreshSources, watchFeeds } from '../refresh'
-import { getCategories, getSourceItems, getSources, getWatched, setWatched } from '../store'
+import { categoriesOn, getSourceItems, setWatched, sourcesOn, watchedOn } from '../store'
 import { categoryStyle, SourcesPanel, type PanelFocus } from '../SourcesPanel'
 
 /** Clicks on the card's controls are the control's, not the start of a drag or a selection. */
@@ -55,15 +55,17 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 		setPanelFocus(null)
 	}, [isEditing])
 
+	// The board this card is on (DARK-14): it shows that board's sources, categories and watched marks.
+	const boardId = boardIdOf(editor)
 	const data = useValue(
 		'lifeboard:feed-card',
 		() => {
-			const sources = getSources()
-			const categories = getCategories()
+			const sources = sourcesOn(boardId)
+			const categories = categoriesOn(boardId)
 			// A category deleted elsewhere: the card falls back to All rather than to an empty list.
 			const active = categories[categoryId] ? categoryId : ''
 			const items = getSourceItems()
-			const watched = getWatched()
+			const watched = watchedOn(boardId)
 			return {
 				sources,
 				active,
@@ -74,7 +76,7 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 				counts: Object.fromEntries(['', ...Object.keys(categories)].map((id) => [id, unwatchedCount(sources, items, watched, id)])),
 			}
 		},
-		[categoryId]
+		[categoryId, boardId]
 	)
 	const posts = feedItems(data.sources, data.items, data.watched, { categoryId: data.active, show, keep: kept })
 	const inView = sourcesIn(data.sources, data.active)
@@ -90,11 +92,12 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 	}
 	const markWatched = (item: FeedItem, on: boolean) => {
 		if (show === 'unwatched') setKept((k) => new Set(k).add(item.itemId))
-		setWatched([item.itemId], on)
+		setWatched(boardId, [item.itemId], on)
 	}
 	const markAllWatched = () => {
 		setMenu(false)
 		setWatched(
+			boardId,
 			posts.filter((p) => !data.watched[p.itemId]).map((p) => p.itemId),
 			true
 		)
@@ -358,7 +361,7 @@ function FeedCardImpl({ shape, isEditing, editor }: NodeComponentProps<FeedProps
 			{body}
 			{!renaming && (
 				<NodeEditorPopover shape={shape} editor={editor} width={340} side="right">
-					<SourcesPanel focus={panelFocus} fileInto={data.active} onClose={() => editor.setEditingShape(null)} />
+					<SourcesPanel boardId={boardId} focus={panelFocus} fileInto={data.active} onClose={() => editor.setEditingShape(null)} />
 				</NodeEditorPopover>
 			)}
 		</div>

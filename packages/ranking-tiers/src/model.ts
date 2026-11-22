@@ -1,4 +1,4 @@
-import type { SourceEntry } from '@lifeboard/node-kit'
+import type { ItemStamp, SourceEntry } from '@lifeboard/node-kit'
 
 /**
  * A ranking (DARK-11): the items of one source, sorted into tiers you name, such as "Heavy rotation",
@@ -12,6 +12,11 @@ import type { SourceEntry } from '@lifeboard/node-kit'
  * Weighted shuffle is a choice per ranking, off unless turned on. Then each tier carries a weight, the
  * card shows each tier's odds, and the ranking is offered to randomizers, which draw its items by their
  * tier's weight. Off, it is a ranking and nothing more.
+ *
+ * DARK-14: a ranking belongs to the board it was made on. What you stamp waits in its queue until you
+ * drag it into a tier, and the stamp filters choose only what the queue shows: a cover put in a tier
+ * stays there. Each tier can wear a colour, a border and an icon, and the card draws as banded rows
+ * (`tiers`) or as a bookcase (`shelf`), one shelf a tier.
  */
 
 export interface Tier {
@@ -19,10 +24,28 @@ export interface Tier {
 	name: string
 	/** 1 to `MAX_WEIGHT`: how many times as often as a tier of weight 1 an item of it is drawn. */
 	weight: number
+	/** Its row's background colour (`TIER_COLORS`), or '' for the card's own. */
+	color: string
+	/** Its row's border colour (`TIER_COLORS`), or '' for none. */
+	border: string
+	/** Its icon (`TIER_ICONS` in tierLook.tsx), or '' for none. */
+	icon: string
 }
+
+/** How a ranking is drawn: banded rows, or a bookcase with a shelf for each tier. */
+export const DISPLAYS = [
+	{ id: 'tiers', label: 'Tiers' },
+	{ id: 'shelf', label: 'Shelf' },
+] as const
+export type Display = (typeof DISPLAYS)[number]['id']
 
 export interface Ranking {
 	rankingId: string
+	/**
+	 * The board it belongs to (DARK-14): only a card there offers it to a randomizer. '' for one made
+	 * before rankings had boards, until the board showing it opens (`claimRanking`).
+	 */
+	boardId: string
 	/** Its name in a randomizer's menu and in Settings. '' says it after its source. */
 	name: string
 	/** What it ranks, as a source key. '' for nothing yet. */
@@ -33,15 +56,16 @@ export interface Ranking {
 	/** Per source key, per tier id, the ids of the items in it, in order. Anything else is unranked. */
 	placed: Record<string, Record<string, string[]>>
 	/**
-	 * Per stamp kind (`liked`, `unsure`, `disliked`), whether covers whose latest stamp is that kind are
-	 * shown (DARK-13). A kind not in here is shown, but on a ranking of the stamped lists only the list
-	 * it is pointed at is (`showsStamp`). Hidden covers keep their tier.
+	 * Per stamp kind (`liked`, `unsure`, `disliked`), whether covers whose latest stamp is that kind wait
+	 * in the queue (DARK-13, DARK-14). A kind not in here is shown, but on a ranking of a stamped list
+	 * only that list's kind is (`showsStamp`). A cover already in a tier stays there whatever its stamp.
 	 */
 	stampFilter: Record<string, boolean>
 	/** Each stamped cover wears its latest stamp. */
 	badges: boolean
 	/** The covers' shape, as the kit's `COVER_ASPECTS` names it: '' is square. */
 	aspect: string
+	display: Display
 }
 
 export const MAX_TIERS = 8
@@ -49,13 +73,41 @@ export const MAX_WEIGHT = 5
 /** Where an item is when it is in no tier. */
 export const UNRANKED = 'unranked'
 
+/** What a new tier is made from: its name and weight, and its look if it has one. */
+export type TierStart = Pick<Tier, 'name' | 'weight'> & Partial<Pick<Tier, 'color' | 'border' | 'icon'>>
+
 /** The tiers a new ranking starts with, unless Settings says otherwise: listening tiers, heaviest first. */
-export const DEFAULT_TIERS: ReadonlyArray<Pick<Tier, 'name' | 'weight'>> = [
-	{ name: 'Heavy rotation', weight: 4 },
-	{ name: 'Often', weight: 3 },
-	{ name: 'Now and then', weight: 2 },
-	{ name: 'Rarely', weight: 1 },
+export const DEFAULT_TIERS: readonly TierStart[] = [
+	{ name: 'Heavy rotation', weight: 4, color: 'ember', icon: 'flame' },
+	{ name: 'Often', weight: 3, color: 'teal', icon: 'repeat' },
+	{ name: 'Now and then', weight: 2, color: 'amber', icon: 'clock' },
+	{ name: 'Rarely', weight: 1, color: 'slate', icon: 'moon' },
 ]
+
+/**
+ * The colours a tier's row and border can take, by id: the bookcase design's nameplate enamels, and
+ * two more. A tier stores the id, so the shades can be retuned without touching rankings.
+ */
+export const TIER_COLORS = [
+	{ id: 'ember', label: 'Ember', value: '#b23a2a' },
+	{ id: 'amber', label: 'Amber', value: '#96690f' },
+	{ id: 'moss', label: 'Moss', value: '#2f6b3a' },
+	{ id: 'teal', label: 'Teal', value: '#1f7a6e' },
+	{ id: 'sky', label: 'Sky', value: '#2f6fa8' },
+	{ id: 'slate', label: 'Slate', value: '#44558a' },
+	{ id: 'plum', label: 'Plum', value: '#7a3f8c' },
+	{ id: 'rose', label: 'Rose', value: '#a8436a' },
+] as const
+
+/** A colour id's shade, or `null` for none or one that is unknown. */
+export function tierColor(id: string): string | null {
+	return TIER_COLORS.find((c) => c.id === id)?.value ?? null
+}
+
+/** The colour a tier's nameplate wears on the shelf: its own, or one by its place, so no two neighbours match. */
+export function plateColor(tier: Pick<Tier, 'color'>, index: number): string {
+	return tierColor(tier.color) ?? TIER_COLORS[(index * 3) % TIER_COLORS.length]!.value
+}
 
 export function randomId(): string {
 	const out = new Uint32Array(2)
@@ -69,17 +121,26 @@ export const clampWeight = (w: number): number => (Number.isFinite(w) ? Math.max
  * A ranking nobody has changed yet. Its tiers' ids are their places (`t1`, `t2`), so a card drawing one
  * before it is stored draws the same one each time; tiers added later get random ids.
  */
-export function newRanking(rankingId: string, tiers: ReadonlyArray<Pick<Tier, 'name' | 'weight'>> = DEFAULT_TIERS): Ranking {
+export function newRanking(rankingId: string, tiers: readonly TierStart[] = DEFAULT_TIERS, boardId = ''): Ranking {
 	return {
 		rankingId,
+		boardId,
 		name: '',
 		source: '',
 		weighted: false,
-		tiers: tiers.slice(0, MAX_TIERS).map((t, i) => ({ id: `t${i + 1}`, name: t.name, weight: clampWeight(t.weight) })),
+		tiers: tiers.slice(0, MAX_TIERS).map((t, i) => ({
+			id: `t${i + 1}`,
+			name: t.name,
+			weight: clampWeight(t.weight),
+			color: t.color ?? '',
+			border: t.border ?? '',
+			icon: t.icon ?? '',
+		})),
 		placed: {},
 		stampFilter: {},
 		badges: false,
 		aspect: '',
+		display: 'tiers',
 	}
 }
 
@@ -93,37 +154,41 @@ export function newRanking(rankingId: string, tiers: ReadonlyArray<Pick<Tier, 'n
 export function showsStamp(ranking: Pick<Ranking, 'source' | 'stampFilter'>, kind: string, stampSource: string | null): boolean {
 	const chosen = ranking.stampFilter[kind]
 	if (chosen !== undefined) return chosen
-	const at = ranking.source.indexOf(':')
-	if (stampSource && at > 0 && ranking.source.slice(0, at) === stampSource) return ranking.source.slice(at + 1) === kind
-	return true
+	const list = stampedList(ranking.source, stampSource)
+	return list ? list.kind === kind : true
 }
 
 /**
- * The source keys a ranking reads: its own, and on a ranking of the stamped lists, the list of every
- * other kind it shows, so Liked and Unsure can be ranked together.
+ * A stamped list's key taken apart: its kind, and what follows it (`|<board>|<source>`, DARK-14), or
+ * `null` for a key that is no stamped list. A list from before DARK-14 is its kind alone.
  */
-export function rankedKeys(ranking: Pick<Ranking, 'source' | 'stampFilter'>, stampSource: string | null, kinds: readonly string[]): string[] {
+export function stampedList(key: string, stampSource: string | null): { kind: string; rest: string } | null {
+	const prefix = `${stampSource}:`
+	if (!stampSource || !key.startsWith(prefix)) return null
+	const choice = key.slice(prefix.length)
+	const bar = choice.indexOf('|')
+	return bar < 0 ? { kind: choice, rest: '' } : { kind: choice.slice(0, bar), rest: choice.slice(bar) }
+}
+
+/** The same stamped list, of another kind: Liked on /mu/core to Unsure on /mu/core. */
+export function siblingList(key: string, stampSource: string, kind: string): string {
+	const list = stampedList(key, stampSource)
+	return `${stampSource}:${kind}${list?.rest ?? ''}`
+}
+
+/**
+ * The source keys a ranking reads: its own, and on a ranking of a stamped list, the same list of every
+ * other kind, so a cover whose stamp changed is still found, and Liked and Unsure can be ranked together.
+ */
+export function rankedKeys(ranking: Pick<Ranking, 'source'>, stampSource: string | null, kinds: readonly string[]): string[] {
 	if (!ranking.source) return []
-	const at = ranking.source.indexOf(':')
-	if (!stampSource || at <= 0 || ranking.source.slice(0, at) !== stampSource) return [ranking.source]
-	const others = kinds.filter((k) => `${stampSource}:${k}` !== ranking.source && showsStamp(ranking, k, stampSource)).map((k) => `${stampSource}:${k}`)
-	return [ranking.source, ...others]
+	if (!stampSource || !ranksStamps(ranking, stampSource)) return [ranking.source]
+	return [ranking.source, ...kinds.map((k) => siblingList(ranking.source, stampSource, k)).filter((key) => key !== ranking.source)]
 }
 
 /** Whether a ranking ranks the stamped lists themselves (`stampSource` is the id they are offered under). */
 export function ranksStamps(ranking: Pick<Ranking, 'source'>, stampSource: string | null): boolean {
-	const at = ranking.source.indexOf(':')
-	return !!stampSource && at > 0 && ranking.source.slice(0, at) === stampSource
-}
-
-/**
- * Whether a cover stamped `kind` stays on the ranking. As `showsStamp`, but on a ranking of the stamped
- * lists a cover already in a tier stays where it is when its stamp changes (ranking it stamps it Liked,
- * DARK-13), unless its new kind was switched off by hand.
- */
-export function keepsStamped(ranking: Pick<Ranking, 'source' | 'stampFilter'>, kind: string, stampSource: string | null, placed: boolean): boolean {
-	if (showsStamp(ranking, kind, stampSource)) return true
-	return placed && ranksStamps(ranking, stampSource) && ranking.stampFilter[kind] !== false
+	return stampedList(ranking.source, stampSource) !== null
 }
 
 /** The ids a ranking has put in tiers, for its current source. */
@@ -156,6 +221,30 @@ export interface RankingView {
 	bands: Band[]
 	/** In the source's own order. */
 	unranked: SourceEntry[]
+}
+
+/** What isn't in a tier yet, split (DARK-14): what you stamped waits in the queue, the rest in the rail. */
+export interface Unranked {
+	/** Stamped, of a kind the ranking shows: newest stamp first. */
+	queue: SourceEntry[]
+	/** Never stamped, in the source's own order. */
+	rail: SourceEntry[]
+}
+
+/**
+ * The unranked split into the queue and the rail. A cover stamped a kind the ranking doesn't show is in
+ * neither: switch Disliked off and the disliked wait nowhere, until it is switched back on.
+ */
+export function splitUnranked(unranked: readonly SourceEntry[], stampOf: (entry: SourceEntry) => ItemStamp | null | undefined, shows: (kind: string) => boolean): Unranked {
+	const queue: Array<{ entry: SourceEntry; date: string; at: number }> = []
+	const rail: SourceEntry[] = []
+	unranked.forEach((entry, at) => {
+		const stamp = stampOf(entry)
+		if (!stamp) rail.push(entry)
+		else if (shows(stamp.kind)) queue.push({ entry, date: stamp.date, at })
+	})
+	queue.sort((a, b) => b.date.localeCompare(a.date) || a.at - b.at)
+	return { queue: queue.map((q) => q.entry), rail }
 }
 
 /**
@@ -225,8 +314,20 @@ export function moveItem(ranking: Ranking, itemId: string, to: string, beforeId:
 /** A tier below the last, of the lightest weight. `null` at `MAX_TIERS`. */
 export function addTier(ranking: Ranking, name: string, newId: () => string = randomId): Ranking | null {
 	if (ranking.tiers.length >= MAX_TIERS) return null
-	const tier: Tier = { id: newId(), name: name.trim() || 'New tier', weight: 1 }
+	const tier: Tier = { id: newId(), name: name.trim() || 'New tier', weight: 1, color: '', border: '', icon: '' }
 	return { ...ranking, tiers: [...ranking.tiers, tier] }
+}
+
+/** A tier's colour, border or icon changed (DARK-14). An unknown colour or icon is stored as none. */
+export function setTierLook(ranking: Ranking, tierId: string, look: Partial<Pick<Tier, 'color' | 'border' | 'icon'>>): Ranking {
+	return { ...ranking, tiers: ranking.tiers.map((t) => (t.id === tierId ? { ...t, ...look } : t)) }
+}
+
+/** Everything in a tier back to unranked, for the current source: stamped covers return to the queue. */
+export function emptyTier(ranking: Ranking, tierId: string): Ranking {
+	const placed = { ...(ranking.placed[ranking.source] ?? {}) }
+	delete placed[tierId]
+	return { ...ranking, placed: { ...ranking.placed, [ranking.source]: placed } }
 }
 
 export function renameTier(ranking: Ranking, tierId: string, name: string): Ranking {
@@ -276,7 +377,7 @@ export function readRanking(raw: Record<string, unknown>): Ranking | null {
 	if (!rankingId) return null
 	const tiers = (Array.isArray(raw.tiers) ? raw.tiers : [])
 		.filter(isObject)
-		.map((t) => ({ id: str(t.id), name: str(t.name), weight: clampWeight(Number(t.weight)) }))
+		.map((t) => ({ id: str(t.id), name: str(t.name), weight: clampWeight(Number(t.weight)), color: str(t.color), border: str(t.border), icon: str(t.icon) }))
 		.filter((t) => t.id)
 		.slice(0, MAX_TIERS)
 	if (!tiers.length) return null
@@ -295,6 +396,7 @@ export function readRanking(raw: Record<string, unknown>): Ranking | null {
 	if (isObject(raw.stampFilter)) for (const [kind, on] of Object.entries(raw.stampFilter)) if (typeof on === 'boolean') stampFilter[kind] = on
 	return {
 		rankingId,
+		boardId: str(raw.boardId),
 		name: str(raw.name),
 		source: str(raw.source),
 		weighted: raw.weighted === true,
@@ -303,5 +405,6 @@ export function readRanking(raw: Record<string, unknown>): Ranking | null {
 		stampFilter,
 		badges: raw.badges === true,
 		aspect: str(raw.aspect),
+		display: DISPLAYS.some((d) => d.id === raw.display) ? (raw.display as Display) : 'tiers',
 	}
 }

@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { TYPED_SOURCE, isOut, withRankings, type RandomItem, type Stamp } from './model'
-import { cardKey, getStamped, nextStamped, rankedStampsOf, rankingCard, replaceStamped, stampOf, stampRanked, stampedEntries, stampedKey } from './stamped'
+import {
+	cardKey,
+	getStamped,
+	nextStamped,
+	parseStampedChoice,
+	rankedStampsOf,
+	rankingCard,
+	replaceStamped,
+	stampOf,
+	stampRanked,
+	stampedChoiceId,
+	stampedChoices,
+	stampedEntries,
+	stampedKey,
+} from './stamped'
 
 const item = (id: string, stamps: Stamp[], source = TYPED_SOURCE, extra: Partial<RandomItem> = {}): RandomItem => ({
 	id,
@@ -71,64 +85,85 @@ describe('the stamped list', () => {
 	})
 })
 
-describe('ranking an item (DARK-13)', () => {
+describe('a list per board and per source (DARK-14)', () => {
+	const mucore = (id: string, stamps: Stamp[]) => item(id, stamps, 'syllabus:mucore')
+
+	it('offers each source stamped from on this board, never another board’s', () => {
+		let all = nextStamped({}, A, [mucore('a', [liked('2026-11-01')]), item('t', [liked('2026-11-01')])], none)
+		all = nextStamped(all, B, [item('v', [liked('2026-11-02')], 'feeds:all')], none)
+		const ids = stampedChoices(all, 'board-1').map((c) => c.id)
+		expect(ids).toContain(stampedChoiceId('liked', { board: 'board-1', origin: 'syllabus:mucore' }))
+		expect(ids).toContain(stampedChoiceId('unsure', { board: 'board-1', origin: 'list' }))
+		expect(ids.some((id) => id.includes('feeds:all'))).toBe(false)
+		expect(stampedChoices(all, 'board-1').find((c) => c.id.endsWith('|list'))?.label).toBe('Liked on my lists')
+	})
+
+	it('lists only what was stamped from that source on that board', () => {
+		let all = nextStamped({}, A, [mucore('a', [liked('2026-11-01')]), item('t', [liked('2026-11-01')])], none)
+		all = nextStamped(all, B, [mucore('b', [liked('2026-11-02')])], none)
+		const onOne = stampedEntries(all, 'liked', { board: 'board-1', origin: 'syllabus:mucore' }).map((e) => e.title)
+		expect(onOne).toEqual(['Title a'])
+		expect(stampedEntries(all, 'liked', { board: 'board-2', origin: 'syllabus:mucore' }).map((e) => e.title)).toEqual(['Title b'])
+		// A list from before DARK-14 still holds everything, for a card already set to one.
+		expect(titles(all, 'liked').sort()).toEqual(['Title a', 'Title b', 'Title t'])
+		expect(parseStampedChoice('liked')).toEqual({ kind: 'liked' })
+	})
+})
+
+describe('ranking an item (DARK-13, DARK-14)', () => {
 	const entry = { id: 'x1', title: 'Solaris', creator: 'Tarkovsky', year: '1972', cover: 'https://example.test/s.jpg', url: '' }
 	const today = '2026-11-21'
+	const ranked = (all: Parameters<typeof stampRanked>[0], boardId = 'board-1') => stampRanked(all, { entry, from: 'feeds:all', rankingId: 'r1', boardId }, today)
 
-	it('stamps it Liked, under the ranking’s own card, so it is in “Everything I liked”', () => {
-		const all = stampRanked({}, { entry, from: 'feeds:all', rankingId: 'r1' }, today)
-		expect(titles(all, 'liked')).toEqual(['Solaris'])
+	it('stamps an item nobody stamped Liked, on the ranking’s board, under the ranking’s own card', () => {
+		const all = ranked({})
 		const [stamp] = Object.values(all)
-		expect(stamp).toMatchObject({ card: rankingCard('r1'), source: 'feeds:all', id: 'x1', kind: 'liked', date: today, cover: entry.cover })
+		expect(stamp).toMatchObject({ card: rankingCard('r1'), board: 'board-1', source: 'feeds:all', id: 'x1', kind: 'liked', date: today, cover: entry.cover })
+		expect(stampedEntries(all, 'liked', { board: 'board-1', origin: 'feeds:all' }).map((e) => e.title)).toEqual(['Solaris'])
 	})
 
-	it('files its own stamp on an item a randomizer already Liked, and keeps it when ranked again', () => {
-		const all = nextStamped({}, A, [item('x1', [liked('2026-11-01')], 'feeds:all', { title: 'solaris', creator: 'Tarkovsky ' })], none)
-		const next = stampRanked(all, { entry, from: 'feeds:all', rankingId: 'r1' }, today)
-		expect(Object.values(next).filter((e) => e.card === rankingCard('r1'))).toHaveLength(1)
-		expect(stampRanked(next, { entry, from: 'feeds:all', rankingId: 'r1' }, '2026-12-01')).toBe(next)
+	it('never stamps again an item already stamped on its board, whatever the stamp', () => {
+		for (const stamp of [liked('2026-11-01'), disliked('2026-11-01'), { kind: 'unsure' as const, date: '2026-11-01' }]) {
+			const all = nextStamped({}, A, [item('x1', [stamp], 'feeds:all', { title: 'solaris', creator: 'Tarkovsky ' })], none)
+			expect(ranked(all)).toBe(all)
+		}
+		// Ranked again, or moved between tiers, by the same ranking: still the one stamp.
+		const once = ranked({})
+		expect(ranked(once)).toBe(once)
 	})
 
-	it('takes an album Liked on one card and ranked from Everything I liked out of every other card', () => {
-		// Liked on card A; card B shuffles the same feed and has never stamped it.
-		const all = nextStamped({}, A, [item('x1', [liked('2026-11-01')], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
-		const [listed] = stampedEntries(all, 'liked')
-		replaceStamped(stampRanked(all, { entry: { ...listed!, year: '', cover: '', url: '' }, from: 'stamped:liked', rankingId: 'r1' }, today))
-		const onB = withRankings([item('x1', [], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], (i) => rankedStampsOf(i))
-		expect(isOut(onB[0]!)).toBe(true)
-		expect(titles(getStamped(), 'liked')).toEqual(['Solaris'])
+	it('stamps it on its own board when only another board has stamped it', () => {
+		const all = nextStamped({}, B, [item('x1', [disliked('2026-11-01')], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
+		expect(Object.values(ranked(all)).filter((e) => e.board === 'board-1')).toHaveLength(1)
+	})
+
+	it('takes an item ranked on a board out of that board’s randomizers, and no other board’s', () => {
+		replaceStamped(ranked({}))
+		const card = [item('x1', [], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })]
+		expect(isOut(withRankings(card, (i) => rankedStampsOf(i, 'board-1'))[0]!)).toBe(true)
+		expect(isOut(withRankings(card, (i) => rankedStampsOf(i, 'board-2'))[0]!)).toBe(false)
 		replaceStamped({})
 	})
 
-	it('moves one stamped Unsure into Liked', () => {
-		const all = nextStamped({}, A, [item('x1', [{ kind: 'unsure', date: '2026-11-01' }], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
-		const next = stampRanked(all, { entry, from: 'feeds:all', rankingId: 'r1' }, today)
-		expect(titles(next, 'liked')).toEqual(['Solaris'])
-		expect(titles(next, 'unsure')).toEqual([])
-	})
-
-	it('stamps what a ranking of the stamped lists ranks as the same item, so it keeps its id', () => {
-		const all = nextStamped({}, A, [item('x1', [{ kind: 'unsure', date: '2026-11-01' }], 'feeds:all', { title: 'Solaris', creator: 'Tarkovsky' })], none)
-		const [listed] = stampedEntries(all, 'unsure')
-		const next = stampRanked(all, { entry: { ...listed!, year: '', cover: '', url: '' }, from: 'stamped:unsure', rankingId: 'r1' }, today)
-		expect(stampedEntries(next, 'unsure')).toEqual([])
-		const [liked] = stampedEntries(next, 'liked')
-		expect(liked?.id).toBe(listed!.id)
-		expect(Object.values(next).find((e) => e.card === rankingCard('r1'))).toMatchObject({ source: 'feeds:all', id: 'x1', item: listed!.id })
-	})
-
 	it('keeps the ranking’s stamp when a randomizer writes its own', () => {
-		const all = stampRanked({}, { entry, from: 'feeds:all', rankingId: 'r1' }, today)
-		const next = nextStamped(all, A, [item('b', [liked('2026-11-02')])], none)
+		const next = nextStamped(ranked({}), A, [item('b', [liked('2026-11-02')])], none)
 		expect(titles(next, 'liked').sort()).toEqual(['Solaris', 'Title b'])
 	})
 })
 
-describe('an item’s latest stamp, for a ranking’s badges', () => {
-	it('is found by title and creator, case and spacing aside', () => {
+describe('an item’s latest stamp, for a ranking’s badges and queue', () => {
+	it('is found by title and creator, case and spacing aside, on its own board only', () => {
 		replaceStamped(nextStamped({}, A, [item('a', [liked('2026-11-01'), disliked('2026-11-03')])], none))
-		expect(stampOf({ title: 'title A', creator: 'artist a' })).toEqual({ kind: 'disliked', date: '2026-11-03' })
-		expect(stampOf({ title: 'Something else', creator: '' })).toBeNull()
+		expect(stampOf({ title: 'title A', creator: 'artist a' }, 'board-1')).toEqual({ kind: 'disliked', date: '2026-11-03' })
+		expect(stampOf({ title: 'title A', creator: 'artist a' }, 'board-2')).toBeNull()
+		expect(stampOf({ title: 'Something else', creator: '' }, 'board-1')).toBeNull()
+		replaceStamped({})
+	})
+
+	it('counts a ranking’s stamp from before stamps had boards on every board', () => {
+		replaceStamped({ old: { key: 'old', card: rankingCard('r0'), item: 'feeds:all|x', source: 'feeds:all', id: 'x', title: 'Old', creator: '', year: '', cover: '', url: '', kind: 'liked', date: '2026-10-01' } })
+		expect(getStamped().old?.board).toBe('')
+		expect(stampOf({ title: 'Old', creator: '' }, 'board-7')).toEqual({ kind: 'liked', date: '2026-10-01' })
 		replaceStamped({})
 	})
 })

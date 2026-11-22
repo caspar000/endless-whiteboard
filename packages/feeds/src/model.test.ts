@@ -3,6 +3,8 @@ import { checkCategoryName, feedItems, mergeItems, nextColor, pruneWatched, time
 import {
 	addCategory,
 	addSource,
+	categoriesOn,
+	claimFeeds,
 	getCategories,
 	getSourceItems,
 	getSources,
@@ -18,10 +20,12 @@ import {
 	replaceWatched,
 	setSourceInCategory,
 	setWatched,
+	sourcesOn,
+	watchedOn,
 } from './store'
 
 const item = (itemId: string, sourceId: string, published: string): FeedItem => ({ itemId, sourceId, title: itemId, url: `https://x/${itemId}`, published, thumbnail: '' })
-const src = (sourceId: string, categories: string[]): FeedSource => ({ sourceId, provider: 'youtube', feedUrl: `https://f/${sourceId}`, link: '', title: sourceId, categories, addedAt: '' })
+const src = (sourceId: string, categories: string[], boardId = 'b1'): FeedSource => ({ sourceId, provider: 'youtube', feedUrl: `https://f/${sourceId}`, link: '', title: sourceId, categories, addedAt: '', boardId })
 const kept = (sourceId: string, items: FeedItem[]): SourceItems => ({ sourceId, fetchedAt: '2026-11-19T00:00:00Z', items, error: '' })
 
 const SOURCES = { eevblog: src('eevblog', ['ee']), beneater: src('beneater', ['ee', 'computers']), twelvetone: src('twelvetone', ['music']), loose: src('loose', []) }
@@ -42,7 +46,7 @@ describe('the feed', () => {
 	})
 
 	it('leaves out what was watched, unless asked to show it or to keep it', () => {
-		const watched = { e1: { itemId: 'e1', at: '2026-11-19T00:00:00Z' } }
+		const watched = { e1: { itemId: 'e1', at: '2026-11-19T00:00:00Z', boardId: 'b1' } }
 		expect(feedItems(SOURCES, ITEMS, watched, { categoryId: 'ee', show: 'unwatched' }).map((i) => i.itemId)).toEqual(['b1', 'e2'])
 		expect(feedItems(SOURCES, ITEMS, watched, { categoryId: 'ee', show: 'all' }).map((i) => i.itemId)).toEqual(['b1', 'e1', 'e2'])
 		expect(feedItems(SOURCES, ITEMS, watched, { categoryId: 'ee', show: 'unwatched', keep: new Set(['e1']) }).map((i) => i.itemId)).toEqual(['b1', 'e1', 'e2'])
@@ -69,7 +73,7 @@ describe('the feed', () => {
 
 	it('drops watched marks once their posts are long gone', () => {
 		const now = new Date('2026-11-19T00:00:00Z')
-		const marks = { fresh: { itemId: 'fresh', at: '2026-11-01T00:00:00Z' }, stale: { itemId: 'stale', at: '2026-01-01T00:00:00Z' } }
+		const marks = { fresh: { itemId: 'fresh', at: '2026-11-01T00:00:00Z', boardId: 'b1' }, stale: { itemId: 'stale', at: '2026-01-01T00:00:00Z', boardId: 'b1' } }
 		expect(Object.keys(pruneWatched(marks, now))).toEqual(['fresh'])
 	})
 
@@ -84,7 +88,7 @@ describe('the feed', () => {
 })
 
 describe('categories', () => {
-	const cat = (categoryId: string, name: string, color: string, order = 0): FeedCategory => ({ categoryId, name, color, order })
+	const cat = (categoryId: string, name: string, color: string, order = 0): FeedCategory => ({ categoryId, name, color, order, boardId: 'b1' })
 
 	it('takes a tidy name nobody else has', () => {
 		const all = { ee: cat('ee', 'Electrical Engineering', 'blue') }
@@ -109,10 +113,13 @@ describe('the store', () => {
 	})
 
 	it('makes, renames, orders and deletes categories; a deleted one leaves its sources be', () => {
-		const ee = addCategory('Electrical Engineering') as FeedCategory
-		const music = addCategory('Music') as FeedCategory
-		expect(addCategory('music')).toHaveProperty('error')
-		expect(Object.values(getCategories()).map((c) => [c.name, c.order])).toEqual([
+		const ee = addCategory('b1', 'Electrical Engineering') as FeedCategory
+		const music = addCategory('b1', 'Music') as FeedCategory
+		expect(addCategory('b1', 'music')).toHaveProperty('error')
+		// Another board makes its own, and may give it the same name.
+		expect(addCategory('b2', 'Music')).not.toHaveProperty('error')
+		expect(Object.values(categoriesOn('b2')).map((c) => c.name)).toEqual(['Music'])
+		expect(Object.values(categoriesOn('b1')).map((c) => [c.name, c.order])).toEqual([
 			['Electrical Engineering', 0],
 			['Music', 1],
 		])
@@ -121,7 +128,7 @@ describe('the store', () => {
 		expect(renameCategory(ee.categoryId, 'EE')).toBeNull()
 		expect(getCategories()[ee.categoryId]!.name).toBe('EE')
 
-		const source = addSource({ provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: [ee.categoryId] })
+		const source = addSource('b1', { provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: [ee.categoryId] })
 		setSourceInCategory(source.sourceId, music.categoryId, true)
 		expect(getSources()[source.sourceId]!.categories).toEqual([ee.categoryId, music.categoryId])
 		removeCategory(ee.categoryId)
@@ -129,12 +136,18 @@ describe('the store', () => {
 		expect(getSources()[source.sourceId]!.categories).toEqual([music.categoryId])
 	})
 
-	it('files a feed added twice into both places, as one source', () => {
-		const a = addSource({ provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: ['ee'] })
-		const b = addSource({ provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: ['repair'] })
+	it('files a feed added twice to a board into both places, as one source; another board follows it on its own', () => {
+		const a = addSource('b1', { provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: ['ee'] })
+		const b = addSource('b1', { provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: ['repair'] })
 		expect(b.sourceId).toBe(a.sourceId)
 		expect(Object.keys(getSources())).toHaveLength(1)
 		expect(getSources()[a.sourceId]!.categories).toEqual(['ee', 'repair'])
+		recordRead(a.sourceId, { items: [item('v', a.sourceId, '2026-11-01T00:00:00Z')] })
+		const other = addSource('b2', { provider: 'youtube', feedUrl: 'https://f/1', link: '', title: 'EEVblog', categories: [] })
+		expect(other.sourceId).not.toBe(a.sourceId)
+		expect(Object.keys(sourcesOn('b2'))).toEqual([other.sourceId])
+		// Its posts already read are the new board's from the start.
+		expect(getSourceItems()[other.sourceId]?.items.map((i) => [i.itemId, i.sourceId])).toEqual([['v', other.sourceId]])
 	})
 
 	it('records reads: new posts merged in, and a failure keeps what was there', () => {
@@ -147,10 +160,40 @@ describe('the store', () => {
 		expect(getSourceItems().s).toBeUndefined()
 	})
 
-	it('marks watched and unwatched', () => {
-		setWatched(['a', 'b'], true)
-		setWatched(['a'], false)
-		expect(Object.keys(getWatched())).toEqual(['b'])
+	it('marks watched and unwatched, on one board only', () => {
+		setWatched('b1', ['a', 'b'], true)
+		setWatched('b1', ['a'], false)
+		expect(Object.keys(watchedOn('b1'))).toEqual(['b'])
+		expect(watchedOn('b2')).toEqual({})
+		replaceWatched(JSON.parse(JSON.stringify(getWatched())))
+		expect(Object.keys(watchedOn('b1'))).toEqual(['b'])
+	})
+
+	it('gives each board with a feed card its own copy of the feeds from before DARK-14, once (DARK-14)', () => {
+		replaceCategories({ ee: { categoryId: 'ee', name: 'EE', color: 'blue', order: 0 } })
+		replaceSources({ old: { ...src('old', ['ee']), boardId: undefined } })
+		replaceSourceItems({ old: kept('old', [item('o1', 'old', '2026-11-01T00:00:00Z')]) })
+		replaceWatched({ o1: { itemId: 'o1', at: new Date().toISOString() } })
+
+		expect(claimFeeds('b1')).toBe(true)
+		const [copy] = Object.values(sourcesOn('b1'))
+		const [category] = Object.values(categoriesOn('b1'))
+		expect(copy).toMatchObject({ title: 'old', feedUrl: 'https://f/old', boardId: 'b1', categories: [category!.categoryId] })
+		expect(category).toMatchObject({ name: 'EE', boardId: 'b1' })
+		expect(getSourceItems()[copy!.sourceId]?.items.map((i) => i.itemId)).toEqual(['o1'])
+		expect(Object.keys(watchedOn('b1'))).toEqual(['o1'])
+
+		// Once: a board that has its copy, even one it changed since, gets no second.
+		removeSource(copy!.sourceId)
+		expect(claimFeeds('b1')).toBe(false)
+		expect(sourcesOn('b1')).toEqual({})
+		// Another board gets its own; the old ones stay, for the randomizers set to them.
+		expect(claimFeeds('b2')).toBe(true)
+		expect(Object.keys(sourcesOn('b2'))).toHaveLength(1)
+		expect(getSources().old?.claimedBy).toEqual(['b1', 'b2'])
+		// And the marks survive a save.
+		replaceSources(JSON.parse(JSON.stringify(getSources())))
+		expect(claimFeeds('b2')).toBe(false)
 	})
 
 	it('drops what it cannot read when loading a stored copy', () => {

@@ -5,6 +5,8 @@ import {
 	getStamped,
 	nextStamped,
 	parseStampedChoice,
+	scopeToBoard,
+	scopedCard,
 	rankedStampsOf,
 	rankingCard,
 	replaceStamped,
@@ -107,6 +109,27 @@ describe('a list per board and per source (DARK-14)', () => {
 		// A list from before DARK-14 still holds everything, for a card already set to one.
 		expect(titles(all, 'liked').sort()).toEqual(['Title a', 'Title b', 'Title t'])
 		expect(parseStampedChoice('liked')).toEqual({ kind: 'liked' })
+	})
+})
+
+describe('a card set to a list from before stamps had boards (DARK-14)', () => {
+	it('moves onto its board’s own list as the board opens, so another board’s stamps never reach it', () => {
+		// Card A, on board 1, shuffles "Everything I liked", and keeps its picks and own stamps under it.
+		const legacy = { source: 'stamped:liked', items: [item('list|x', [disliked('2026-11-01')], 'stamped:liked'), item('t', [], 'list')], picks: [{ source: 'stamped:liked', id: 'list|x' }] }
+		const moved = scopedCard(legacy, 'board-1')!
+		expect(moved.source).toBe(`stamped:${stampedChoiceId('liked', { board: 'board-1', origin: '*' })}`)
+		expect(moved.items.map((i) => i.source)).toEqual([moved.source, 'list'])
+		expect(moved.picks).toEqual([{ source: moved.source, id: 'list|x' }])
+		expect(scopedCard({ ...legacy, source: moved.source }, 'board-1')).toBeNull()
+		expect(scopeToBoard('feeds:all', 'board-1')).toBeNull()
+
+		// What is liked on board 1, from any source, is in it; what is liked on board 2 after it is not.
+		let all = nextStamped({}, A, [item('a', [liked('2026-11-01')]), item('v', [liked('2026-11-02')], 'feeds:all')], none)
+		all = nextStamped(all, B, [item('b', [liked('2026-11-23')])], none)
+		const scope = parseStampedChoice(moved.source.slice('stamped:'.length))!.scope!
+		expect(stampedEntries(all, 'liked', scope).map((e) => e.title).sort()).toEqual(['Title a', 'Title v'])
+		// The same items keep their ids, so a ranking's placements still find them.
+		expect(stampedEntries(all, 'liked', scope).map((e) => e.id).sort()).toEqual(stampedEntries(all, 'liked').filter((e) => e.title !== 'Title b').map((e) => e.id).sort())
 	})
 })
 

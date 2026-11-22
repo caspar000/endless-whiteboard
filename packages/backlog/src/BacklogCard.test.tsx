@@ -1,11 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { ITEM_DRAG_TYPE, clearItemSources, offeredItemSources, registerItemSource, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
+import { ITEM_DRAG_TYPE, clearItemMarks, clearItemSources, offeredItemSources, registerItemSource, registerItemStamps, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { backlogNodeDefinition } from './definition'
 import { itemKey } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_EXTENSION_ID, backlogSource } from './source'
-import { backlogs } from './store'
+import { backlogs, claimBacklog } from './store'
 
 /*
  * The card as a person uses it, rendered: typed in, a cover dropped on it from another card, a whole
@@ -144,5 +144,20 @@ describe('a backlog card', () => {
 		act(() => setExtensionEnabled(BACKLOG_EXTENSION_ID, false))
 		expect(offeredItemSources().map((s) => s.id)).not.toContain('backlog')
 		expect(within(screen.getByLabelText('To hear')).getByText('/mu/core')).toBeTruthy()
+	})
+})
+
+describe('a backlog from before backlogs had boards (DARK-14)', () => {
+	it('belongs to the board that opens showing it, and a stamped list it collected becomes that board’s', () => {
+		registerItemStamps({
+			sourceId: 'stamped',
+			kinds: [{ id: 'liked', label: 'Liked', ink: '#2f9e44' }],
+			stampOf: () => null,
+			scopeToBoard: (key, boardId) => (key === 'stamped:liked' ? `stamped:liked|${boardId}|*` : null),
+		})
+		backlogs.put('old', { backlogId: 'old', boardId: '', name: 'Old', entries: [{ kind: 'collection', id: 'stamped:liked', via: 'Randomizer stamps' }, { kind: 'collection', id: TRACK, via: 'Syllabi' }] })
+		claimBacklog('old', 'board-1')
+		expect(backlogs.one('old')).toMatchObject({ boardId: 'board-1', entries: [{ id: 'stamped:liked|board-1|*' }, { id: TRACK }] })
+		clearItemMarks()
 	})
 })

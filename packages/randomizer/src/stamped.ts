@@ -187,6 +187,15 @@ export function watchStamped(editor: Editor, boardId: string): void {
 		if (!isExtensionEnabled(STAMPED_EXTENSION_ID)) return
 		stamped.set(nextStamped(stamped.get(), cardKey(boardId, shape.id), itemsOf(shape), entryOf))
 	}
+	// Cards set to a list from before DARK-14 move onto this board's own, with no undo step: nobody changed them.
+	const scoped = editor
+		.getCurrentPageShapes()
+		.filter((shape) => shape.type === RANDOMIZER_TYPE)
+		.flatMap((shape) => {
+			const props = scopedCard(shape.props as RandomizerProps, boardId)
+			return props ? [{ id: shape.id, type: RANDOMIZER_TYPE, props }] : []
+		})
+	if (scoped.length && isExtensionEnabled(STAMPED_EXTENSION_ID)) editor.run(() => editor.updateShapes(scoped as never), { history: 'ignore' })
 	for (const shape of editor.getCurrentPageShapes()) if (shape.type === RANDOMIZER_TYPE) write(shape)
 	editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
 		if (shape.type === RANDOMIZER_TYPE) write(shape)
@@ -212,9 +221,15 @@ const sameItem = (e: StampedEntry) => `${e.title.trim().toLowerCase()}\u0000${e.
 /** Which stamps a list holds: one board's, from one source. Leave it out for every stamp anywhere (a list from before DARK-14). */
 export interface StampScope {
 	board: string
-	/** The source key they were stamped from: `syllabus:mucore`, `list` for typed lines. */
+	/** The source key they were stamped from: `syllabus:mucore`, `list` for typed lines; `ANY_ORIGIN` for every one. */
 	origin: string
 }
+
+/**
+ * A list of one board's stamps from any source: what a card set to a list from before DARK-14
+ * ("Everything I liked") is moved onto as its board opens (`scopeToBoard`). Never offered otherwise.
+ */
+export const ANY_ORIGIN = '*'
 
 /**
  * A stamp's list, newest stamp first. One album stamped on two cards (typed into one, shuffled from a
@@ -225,7 +240,7 @@ export function stampedEntries(all: Stamped, kind: string, scope?: StampScope): 
 	const groups = new Map<string, { first: StampedEntry; newest: StampedEntry }>()
 	const later = (a: StampedEntry, b: StampedEntry) => a.date > b.date || (a.date === b.date && a.key > b.key)
 	for (const e of Object.values(all)) {
-		if (scope && (!onBoard(e, scope.board) || e.source !== scope.origin)) continue
+		if (scope && (!onBoard(e, scope.board) || (scope.origin !== ANY_ORIGIN && e.source !== scope.origin))) continue
 		const g = groups.get(sameItem(e))
 		if (!g) groups.set(sameItem(e), { first: e, newest: e })
 		else {
@@ -266,6 +281,7 @@ function stampedChoice(choiceId: string): SourceChoice | null {
 	const parsed = parseStampedChoice(choiceId)
 	if (!parsed) return null
 	if (!parsed.scope) return { id: choiceId, label: LEGACY_LABELS[parsed.kind], group: '' }
+	if (parsed.scope.origin === ANY_ORIGIN) return { id: choiceId, label: `${KIND_LABELS[parsed.kind]} on this board`, group: '' }
 	const from = originName(parsed.scope.origin)
 	return { id: choiceId, label: `${KIND_LABELS[parsed.kind]} on ${from}`, group: from }
 }
@@ -294,8 +310,30 @@ export const stampedSource: ItemSource = {
 	},
 	kind: (choiceId) => {
 		const origin = parseStampedChoice(choiceId)?.scope?.origin
-		return origin && origin !== TYPED_SOURCE ? resolveItemSource(origin).kind : PLAIN_KIND
+		return origin && origin !== TYPED_SOURCE && origin !== ANY_ORIGIN ? resolveItemSource(origin).kind : PLAIN_KIND
 	},
+}
+
+/** A list key from before DARK-14 (`stamped:liked`) as the same list of one board's stamps; `null` for any other key. */
+export function scopeToBoard(key: string, boardId: string): string | null {
+	if (!boardId || !key.startsWith(`${SOURCE_ID}:`)) return null
+	const parsed = parseStampedChoice(key.slice(SOURCE_ID.length + 1))
+	return parsed && !parsed.scope ? `${SOURCE_ID}:${stampedChoiceId(parsed.kind, { board: boardId, origin: ANY_ORIGIN })}` : null
+}
+
+/**
+ * A randomizer set to a list from before DARK-14, moved onto its board's own: its source, and the
+ * stamps and picks it keeps under it. `null` when it isn't set to one.
+ */
+export function scopedCard(props: Pick<RandomizerProps, 'source' | 'items' | 'picks'>, boardId: string): Pick<RandomizerProps, 'source' | 'items' | 'picks'> | null {
+	const to = scopeToBoard(props.source, boardId)
+	if (!to) return null
+	const from = props.source
+	return {
+		source: to,
+		items: props.items.map((i) => (i.source === from ? { ...i, source: to } : i)),
+		picks: props.picks.map((p) => (p.source === from ? { ...p, source: to } : p)),
+	}
 }
 
 /* ------------------------------------------------------------------- what the kit is told (DARK-13) */
@@ -418,4 +456,5 @@ export const itemStamps: ItemStamps = {
 	sourceId: SOURCE_ID,
 	kinds: STAMP_KINDS.map((kind) => ({ id: kind, label: STAMPS[kind].label, ink: STAMPS[kind].ink })),
 	stampOf,
+	scopeToBoard,
 }

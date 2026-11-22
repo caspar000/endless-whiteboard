@@ -1,5 +1,5 @@
 import { atom } from '@lifeboard/canvas'
-import { keyedStore } from '@lifeboard/node-kit'
+import { getItemStamps, keyedStore } from '@lifeboard/node-kit'
 import { newBacklog, readBacklog, type Backlog } from './model'
 
 /**
@@ -23,10 +23,25 @@ export function updateBacklog(backlogId: string, change: (backlog: Backlog) => B
 	if (next) backlogs.put(backlogId, next.boardId || !boardId ? next : { ...next, boardId })
 }
 
-/** A backlog from before DARK-14 belongs to the first board that opens showing it. */
+/**
+ * A backlog from before DARK-14 belongs to the first board that opens showing it. A collection of a
+ * stamped list from before then (everything liked anywhere) becomes its board's own list, so another
+ * board's stamps never reach it.
+ */
 export function claimBacklog(backlogId: string, boardId: string): void {
 	const backlog = backlogs.one(backlogId)
-	if (backlog && !backlog.boardId && boardId) backlogs.put(backlogId, { ...backlog, boardId })
+	if (!backlog || !boardId) return
+	const board = backlog.boardId || boardId
+	const scope = getItemStamps()?.scopeToBoard
+	let moved = false
+	const entries = backlog.entries.map((e) => {
+		const to = e.kind === 'collection' ? (scope?.(e.id, board) ?? null) : null
+		if (!to) return e
+		moved = true
+		return { ...e, id: to }
+	})
+	if (backlog.boardId && !moved) return
+	backlogs.put(backlogId, { ...backlog, boardId: board, entries })
 }
 
 /**

@@ -16,10 +16,11 @@ import {
 import { useMemo, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { rankingNodeDefinition } from './definition'
+import { newRanking } from './model'
 import { setPrefs } from './prefs'
 import type { RankingProps } from './props'
 import { RANKING_EXTENSION_ID, rankingSource } from './source'
-import { rankings } from './store'
+import { claimRanking, rankings } from './store'
 
 /*
  * The card as a person uses it, rendered: a source chosen from the picker, covers moved between tiers
@@ -390,5 +391,23 @@ describe('a tier’s look and the shelf (DARK-14)', () => {
 
 		fireEvent.click(within(card()).getByRole('button', { name: 'Tiers' }))
 		expect(ranking().display).toBe('tiers')
+	})
+})
+
+describe('a ranking from before rankings had boards (DARK-14)', () => {
+	it('belongs to the board that opens showing it, and a stamped list from before becomes that board’s, tiers and all', () => {
+		registerItemStamps({
+			sourceId: 'stamped',
+			kinds: [{ id: 'liked', label: 'Liked', ink: '#2f9e44' }],
+			stampOf: () => null,
+			scopeToBoard: (key, boardId) => (key === 'stamped:liked' ? `stamped:liked|${boardId}|*` : null),
+		})
+		rankings.put('old', { ...newRanking('old'), source: 'stamped:liked', placed: { 'stamped:liked': { t1: ['x'] } } })
+		claimRanking('old', 'board-1')
+		expect(rankings.one('old')).toMatchObject({ boardId: 'board-1', source: 'stamped:liked|board-1|*', placed: { 'stamped:liked|board-1|*': { t1: ['x'] } } })
+		// Opened again, or on another board where a copy of its card is: as it is.
+		const once = rankings.one('old')
+		claimRanking('old', 'board-2')
+		expect(rankings.one('old')).toBe(once)
 	})
 })

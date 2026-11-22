@@ -411,3 +411,25 @@ describe('a ranking from before rankings had boards (DARK-14)', () => {
 		expect(rankings.one('old')).toBe(once)
 	})
 })
+
+describe('a full crate (DARK-14)', () => {
+	it('opens into the whole queue, so every stamped cover can be dragged onto a shelf', () => {
+		albums = Array.from({ length: 11 }, (_, i) => album(i + 1))
+		stampAlbums(Object.fromEntries(albums.map((a) => [a.title, 'liked'])), Object.fromEntries(albums.map((a, i) => [a.title, `2026-11-${String(30 - i).padStart(2, '0')}`])))
+		rankAlbums()
+		fireEvent.click(within(within(card()).getByRole('group', { name: 'Display' })).getByRole('button', { name: 'Shelf' }))
+		expect(queued()).toHaveLength(10)
+		expect(queued()).not.toContain('a11')
+
+		fireEvent.click(within(card()).getByRole('button', { name: 'Show all 11 waiting' }))
+		expect(queued()).toHaveLength(11)
+		const drag = dataTransfer()
+		fireEvent.dragStart(within(within(card()).getByRole('list', { name: 'Rank queue' })).getAllByRole('listitem').find((el) => el.getAttribute('data-item-id') === 'a11')!, { dataTransfer: drag })
+		fireEvent.dragOver(band('Often'), { dataTransfer: drag })
+		fireEvent.drop(band('Often'), { dataTransfer: drag })
+		expect(coversIn('Often')).toEqual(['a11'])
+		// Ten left: they fit the crate again.
+		expect(within(card()).queryByRole('button', { name: /Show all|Put the queue back/ })).toBeNull()
+		expect(queued()).toHaveLength(10)
+	})
+})

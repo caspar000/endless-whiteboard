@@ -32,8 +32,8 @@ export const QUEUE = 'queue'
 /** Room inside a shelf, either side, and between covers. */
 const PAD = 14
 const GAP = 12
-/** The most covers the crate draws: the rest wait behind them, counted on its label. */
-const CRATE_SHOWS = 10
+/** The most covers the crate draws. More, and "+N" opens the whole queue beside it. */
+export const CRATE_SHOWS = 10
 
 const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
@@ -97,7 +97,11 @@ export function ShelfView({
 		setOpen(next)
 	}
 	const caret = <span className="lb-rank__caret lb-shelf__caret" aria-hidden="true" />
-	const crate = queue.slice(0, CRATE_SHOWS)
+	// A full crate opens into the whole queue, laid out flat under it, so every cover can be dragged.
+	const [crateOpen, setCrateOpen] = useState(false)
+	const spills = queue.length > CRATE_SHOWS
+	const spilled = spills && crateOpen
+	const crate = spilled ? [] : queue.slice(0, CRATE_SHOWS)
 
 	return (
 		<div className="lb-shelf">
@@ -110,15 +114,34 @@ export function ShelfView({
 						{...zoneProps(QUEUE)}
 					>
 						<div className="lb-shelf__crate-back" />
-						<div className="lb-shelf__crate-items" role="list" aria-label="Rank queue">
+						<div className="lb-shelf__crate-items" role={spilled ? undefined : 'list'} aria-label={spilled ? undefined : 'Rank queue'}>
 							{crate.map((entry, i) => renderCover(entry, QUEUE, crate.length - i))}
 							{queue.length === 0 && <span className="lb-shelf__crate-empty">Crate empty: new stamps land here</span>}
 						</div>
 						<div className="lb-shelf__crate-front">
 							<span className="lb-shelf__crate-label">Rank queue · {queue.length}</span>
 						</div>
+						{spills && (
+							<button
+								type="button"
+								className="lb-shelf__crate-more"
+								aria-expanded={spilled}
+								aria-label={spilled ? 'Put the queue back in the crate' : `Show all ${queue.length} waiting`}
+								onPointerDown={swallow}
+								onClick={() => setCrateOpen(!spilled)}
+							>
+								{spilled ? 'Close' : `+${queue.length - CRATE_SHOWS}`}
+							</button>
+						)}
 					</section>
 				</div>
+			)}
+			{hasStamps && spilled && (
+				<section className="lb-shelf__spill" aria-label={`Rank queue, all ${queue.length}`} {...zoneProps(QUEUE)}>
+					<div className="lb-shelf__spill-list" role="list" aria-label="Rank queue">
+						{queue.map((entry) => renderCover(entry, QUEUE))}
+					</div>
+				</section>
 			)}
 			<div className="lb-shelf__cabinet">
 				<div className="lb-shelf__crown" />

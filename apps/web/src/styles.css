@@ -15031,6 +15031,45 @@ button.lb-props__eye:hover {
 	text-shadow: 0 1px 0 rgb(255 230 190 / 35%);
 	text-transform: uppercase;
 }
+.lb-shelf__crate-more {
+	z-index: 4;
+	align-self: end;
+	justify-self: end;
+	margin: 0 14px 12px 0;
+	height: 22px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 999px;
+	background: rgb(18 12 8 / 82%);
+	color: #fff4d6 !important;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+}
+/* The whole queue, laid out flat under the crate while it is open. */
+.lb-shelf__spill {
+	position: relative;
+	z-index: 3;
+	margin: 0 18px 10px auto;
+	padding: 10px;
+	max-width: 100%;
+	border-radius: 6px;
+	background: var(--lb-shelf-grain-h), linear-gradient(180deg, #9b7244, #7f5b33);
+	box-shadow: 0 8px 14px -6px rgb(0 0 0 / 55%);
+	box-sizing: border-box;
+}
+.lb-shelf__spill-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.lb-shelf__spill-list .lb-rank__cover {
+	width: 56px;
+}
+.lb-shelf__spill-list .lb-rank__art {
+	border-radius: 2px;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 40%), 3px 2px 6px rgb(0 0 0 / 45%);
+}
 .lb-shelf__cabinet {
 	display: flex;
 	flex-direction: column;

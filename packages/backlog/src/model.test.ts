@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addCollection, addItem, addTyped, backlogEntries, itemKey, newBacklog, parseTyped, readBacklog, removeEntry, renameBacklog, type Backlog } from './model'
+import { addCollection, addItem, addTyped, backlogEntries, itemKey, newBacklog, parseTyped, readBacklog, removeEntry, renameBacklog, whereIs, workKey, type Backlog } from './model'
 
 const entry = (id: string, title = `Work ${id}`) => ({ id, title, creator: 'Someone', year: '', cover: '', url: '' })
 let n = 0
@@ -45,6 +45,43 @@ describe('adding to a backlog', () => {
 		expect(removeEntry(b, 'syllabus:mucore').entries).toEqual([])
 		expect(renameBacklog(b, '  To watch ').name).toBe('To watch')
 		expect(renameBacklog(b, '  ').name).toBe('Backlog')
+	})
+})
+
+describe('the same thing twice', () => {
+	const album = (id: string, title: string, creator: string) => ({ id, title, creator, year: '', cover: '', url: '' })
+
+	it('is one thing however it is spelled: case, accents, punctuation, a leading "the" and brackets aside', () => {
+		expect(workKey({ title: 'Filosofem (Remastered)', creator: 'Burzum' })).toBe(workKey({ title: 'filosofem', creator: 'BURZUM' }))
+		expect(workKey({ title: 'The Queen Is Dead', creator: 'The Smiths' })).toBe(workKey({ title: 'Queen Is Dead', creator: 'Smiths' }))
+		expect(workKey({ title: 'Ágætis byrjun', creator: 'Sigur Rós' })).toBe(workKey({ title: 'Agaetis Byrjun', creator: 'Sigur Ros' }))
+		expect(workKey({ title: 'Hvis lyset tar oss', creator: 'Burzum' })).not.toBe(workKey({ title: 'Filosofem', creator: 'Burzum' }))
+		// Brackets that are the whole title still count.
+		expect(workKey({ title: '(I)', creator: 'X' })).not.toBe(workKey({ title: '(II)', creator: 'X' }))
+	})
+
+	it('is listed once: an item and a collection holding it, or two collections holding the same', () => {
+		let b = addItem(newBacklog('b'), album('x', 'Filosofem', 'Burzum'), 'ranking:r', 'Rankings')
+		b = addCollection(b, 'syllabus:mucore', 'Syllabi')
+		b = addCollection(b, 'syllabus:node:mucore/black-metal', 'Syllabi')
+		const held: Record<string, ReturnType<typeof album>[]> = {
+			'syllabus:mucore': [album('1', 'Filosofem (Remastered)', 'Burzum'), album('2', 'Transilvanian Hunger', 'Darkthrone'), album('3', 'Dummy', 'Portishead')],
+			'syllabus:node:mucore/black-metal': [album('2', 'Transilvanian Hunger', 'Darkthrone'), album('4', 'Deathcrush', 'Mayhem')],
+		}
+		const listed = backlogEntries(b, (key) => held[key] ?? [])
+		expect(listed.map((e) => e.title)).toEqual(['Transilvanian Hunger', 'Deathcrush', 'Filosofem (Remastered)', 'Dummy'])
+	})
+
+	it('says where it already is, and moves a typed one already here to the top', () => {
+		let b = addTyped(newBacklog('b'), 'Late Spring — Yasujirō Ozu', () => 't1')!
+		b = addTyped(b, 'Mirror — Andrei Tarkovsky', () => 't2')!
+		b = addCollection(b, 'syllabus:mucore', 'Syllabi')
+		const held = (key: string) => (key === 'syllabus:mucore' ? [album('1', 'Dummy', 'Portishead')] : [])
+		expect(whereIs(b, held, { title: 'dummy', creator: 'portishead' })?.id).toBe('syllabus:mucore')
+		expect(whereIs(b, held, { title: 'Late spring', creator: 'Yasujiro Ozu' })?.id).toBe('typed|t1')
+		expect(whereIs(b, held, { title: 'Stalker', creator: 'Andrei Tarkovsky' })).toBeNull()
+		const again = addTyped(b, 'late spring - yasujiro ozu', () => 't3')!
+		expect(again.entries.map((e) => e.id)).toEqual(['typed|t1', 'syllabus:mucore', 'typed|t2'])
 	})
 })
 

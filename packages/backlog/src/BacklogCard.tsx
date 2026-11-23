@@ -14,7 +14,7 @@ import {
 } from '@lifeboard/node-kit'
 import { ArrowDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
-import { addCollection, addItem, collectionKey, addTyped, removeEntry, renameBacklog, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
+import { addCollection, addItem, backlogEntries, collectionKey, addTyped, parseTyped, removeEntry, renameBacklog, whereIs, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_SOURCE_ID, watchBacklog } from './source'
 import { backlogOrNew, shapeDropHint, updateBacklog } from './store'
@@ -162,8 +162,9 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const backlog = useValue('lifeboard:backlog', () => backlogOrNew(backlogId, boardId), [backlogId, boardId])
 	const total = useValue(
 		'lifeboard:backlog-total',
-		// A collection counts what its source key holds: a list from before boards reads its board's (DARK-14).
-		() => backlog.entries.reduce((n, e) => n + (e.kind === 'item' ? 1 : sourceEntries(collectionKey(e)).length), 0),
+		// Each thing once, however many collections hold it; a collection counts what its source key
+		// holds, so a list from before boards reads its board's (DARK-14).
+		() => backlogEntries(backlog, sourceEntries).length,
 		[backlog]
 	)
 	const shapeHint = useValue('lifeboard:backlog-shape-hint', () => {
@@ -178,6 +179,13 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 	const [openId, setOpenId] = useState<string | null>(null)
 	const [dropping, setDropping] = useState<{ title: string; creator: string; via: string } | null>(null)
 	const [announce, setAnnounce] = useState('')
+	// Said on the card for a few seconds: something added that the backlog already held.
+	const [notice, setNotice] = useState('')
+	useEffect(() => {
+		if (!notice) return
+		const timer = setTimeout(() => setNotice(''), 4000)
+		return () => clearTimeout(timer)
+	}, [notice])
 	const addRef = useRef<HTMLInputElement>(null)
 
 	// Its collections keep themselves fresh while the card is shown, as their own cards would.
@@ -191,6 +199,18 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 		setAnnounce(said)
 	}
 
+	/**
+	 * Where this backlog already has a thing, said, or '' when it is new here. In a collection it is
+	 * left there: adding it again would show it twice. As an item, adding it moves it to the top.
+	 */
+	const already = (thing: { title: string; creator: string }): { said: string; add: boolean } | null => {
+		const at = whereIs(backlog, sourceEntries, thing)
+		if (!at) return null
+		const what = `${thing.title}${thing.creator ? ` by ${thing.creator}` : ''}`
+		if (at.kind === 'item') return { said: `${what} was already in ${backlog.name}: moved to the top.`, add: true }
+		return { said: `${what} is already in ${backlog.name}, in ${resolveItemSource(collectionKey(at)).name}.`, add: false }
+	}
+
 	const commitAdd = () => {
 		const line = addRef.current?.value ?? ''
 		if (!line.trim()) {
@@ -198,7 +218,13 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 			addRef.current?.focus()
 			return
 		}
-		change((b) => addTyped(b, line), `${line.split(/\s+[—–-]\s+/)[0]} added to ${backlog.name}.`)
+		const parsed = parseTyped(line)
+		const had = parsed && already(parsed)
+		if (had) {
+			if (had.add) change((b) => addTyped(b, line), had.said)
+			else setAnnounce(had.said)
+			setNotice(had.said)
+		} else change((b) => addTyped(b, line), `${line.split(/\s+[—–-]\s+/)[0]} added to ${backlog.name}.`)
 		if (addRef.current) addRef.current.value = ''
 		setAddError('')
 		addRef.current?.focus()
@@ -222,7 +248,10 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 		if (!dragged) return
 		e.preventDefault()
 		e.stopPropagation()
-		change((b) => addItem(b, dragged.entry, dragged.from, dragged.via), `${dragged.entry.title} added to ${backlog.name}.`)
+		const had = already(dragged.entry)
+		if (had) setNotice(had.said)
+		if (had && !had.add) setAnnounce(had.said)
+		else change((b) => addItem(b, dragged.entry, dragged.from, dragged.via), had?.said ?? `${dragged.entry.title} added to ${backlog.name}.`)
 	}
 
 	/* ----------------------------------------------------------------------------- drawing */
@@ -403,6 +432,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 					</span>
 				</div>
 			)}
+			{notice && <p className="lb-backlog__notice">{notice}</p>}
 			<p className="lb-backlog__sr" aria-live="polite">
 				{announce}
 			</p>

@@ -10,7 +10,8 @@ import type { SourceEntry } from '@lifeboard/node-kit'
  * track is in the backlog too.
  *
  * Offered to other cards as a source (`source.ts`), a backlog is everything it holds, collections
- * opened out, each thing once.
+ * opened out, each thing once. "Once" is by id and by `workKey`: the same album typed in, dragged in
+ * and held by a collection, or held by two collections (/mu/core and its Black Metal node), is one.
  */
 
 export interface BacklogItem {
@@ -88,16 +89,55 @@ export function parseTyped(line: string): Pick<BacklogItem, 'title' | 'creator' 
 	return { title, creator: second, year: third }
 }
 
-/** A typed item on top. `null` when the line has no title. */
+/** Letters that keep their mark through NFKD: Ágætis, Lustmørd, Hliðskjálf. */
+const LETTERS: Readonly<Record<string, string>> = { æ: 'ae', ø: 'o', œ: 'oe', ð: 'd', þ: 'th', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' }
+
+/** Text as a backlog compares it: case, accents, punctuation, a leading "the" and what is in brackets set aside. */
+function plain(text: string): string {
+	const folded = text
+		.normalize('NFKD')
+		.replace(/\p{M}/gu, '')
+		.toLowerCase()
+		.replace(/[æøœðþßłđı]/g, (c) => LETTERS[c] ?? c)
+	const bare = folded.replace(/\s*[([][^)\]]*[)\]]/g, ' ')
+	return (bare.trim() ? bare : folded).replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/^the /, '')
+}
+
+/**
+ * What makes two things the same thing here, whichever way they came in: "Filosofem (Remastered)" by
+ * "Burzum" and "filosofem" by "BURZUM" are one album, "The Smiths" and "Smiths" one artist.
+ */
+export function workKey(thing: Pick<SourceEntry, 'title' | 'creator'>): string {
+	return `${plain(thing.creator)}\t${plain(thing.title)}`
+}
+
+const sameWork = (a: Pick<BacklogItem, 'title' | 'creator'>, b: Pick<BacklogItem, 'title' | 'creator'>) => workKey(a) === workKey(b)
+
+/** A typed item on top; one already here moves to the top instead. `null` when the line has no title. */
 export function addTyped(backlog: Backlog, line: string, newId: () => string = randomId): Backlog | null {
 	const parsed = parseTyped(line)
 	if (!parsed) return null
-	const item: BacklogItem = { kind: 'item', id: `typed|${newId()}`, ...parsed, cover: '', url: '', via: '' }
-	return { ...backlog, entries: [item, ...backlog.entries] }
+	const had = backlog.entries.find((e): e is BacklogItem => e.kind === 'item' && sameWork(e, parsed))
+	const item: BacklogItem = had ?? { kind: 'item', id: `typed|${newId()}`, ...parsed, cover: '', url: '', via: '' }
+	return { ...backlog, entries: [item, ...backlog.entries.filter((e) => e !== had)] }
 }
 
-const sameWork = (a: Pick<BacklogItem, 'title' | 'creator'>, b: Pick<BacklogItem, 'title' | 'creator'>) =>
-	a.title.trim().toLowerCase() === b.title.trim().toLowerCase() && a.creator.trim().toLowerCase() === b.creator.trim().toLowerCase()
+/**
+ * The entry already holding this thing, by `workKey`: an item, or a collection whose source has it.
+ * `null` when it is new here. What a card says when something is added twice.
+ */
+export function whereIs(
+	backlog: Backlog,
+	entriesOf: (sourceKey: string) => readonly SourceEntry[],
+	thing: Pick<SourceEntry, 'title' | 'creator'>
+): BacklogEntry | null {
+	const key = workKey(thing)
+	return (
+		backlog.entries.find((e) =>
+			e.kind === 'item' ? workKey(e) === key : entriesOf(collectionKey(e)).some((x) => workKey(x) === key)
+		) ?? null
+	)
+}
 
 /**
  * An item from another card on top. One already here moves to the top rather than being there twice,
@@ -133,9 +173,12 @@ export function renameBacklog(backlog: Backlog, name: string): Backlog {
 export function backlogEntries(backlog: Backlog, entriesOf: (sourceKey: string) => readonly SourceEntry[]): SourceEntry[] {
 	const out: SourceEntry[] = []
 	const seen = new Set<string>()
+	const works = new Set<string>()
 	const push = (entry: SourceEntry) => {
-		if (seen.has(entry.id)) return
+		const work = workKey(entry)
+		if (seen.has(entry.id) || works.has(work)) return
 		seen.add(entry.id)
+		works.add(work)
 		out.push(entry)
 	}
 	for (const e of backlog.entries) {

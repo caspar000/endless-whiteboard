@@ -86,6 +86,28 @@ describe('a backlog card', () => {
 		expect(backlog().entries[0]?.id).toBe(itemKey('feeds:all', 'v1'))
 	})
 
+	it('says so, and adds nothing, when something it already holds is added again', () => {
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Add to the backlog' }))
+		fireEvent.change(screen.getByLabelText('Or a whole collection'), { target: { value: TRACK } })
+		// Dropped: an album the /mu/core collection already holds, spelled another way.
+		const drag = dataTransfer({ entry: { id: 'r1', title: 'ALBUM 3 (Remastered)', creator: 'band', year: '', cover: '', url: '' }, from: 'ranking:r', via: 'Rankings' })
+		fireEvent.dragOver(card(), { dataTransfer: drag })
+		fireEvent.drop(card(), { dataTransfer: drag })
+		const notice = () => card().querySelector('.lb-backlog__notice')?.textContent
+		expect(notice()).toBe('ALBUM 3 (Remastered) by band is already in Backlog, in /mu/core.')
+		expect(backlog().entries.map((e) => e.id)).toEqual([TRACK])
+		// Typed: one already here as an item moves to the top.
+		const field = screen.getByRole('textbox', { name: 'Add an item' })
+		fireEvent.change(field, { target: { value: 'Mirror' } })
+		fireEvent.keyDown(field, { key: 'Enter' })
+		fireEvent.change(field, { target: { value: 'mirror' } })
+		fireEvent.keyDown(field, { key: 'Enter' })
+		expect(notice()).toBe('mirror was already in Backlog: moved to the top.')
+		expect(backlog().entries).toHaveLength(2)
+		expect(within(card()).getByText('31')).toBeTruthy()
+	})
+
 	it('keeps a whole syllabus track as one tile, in the same square cell as an album', () => {
 		mount()
 		fireEvent.click(within(card()).getByRole('button', { name: 'Add to the backlog' }))

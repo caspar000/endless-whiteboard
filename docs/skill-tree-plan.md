@@ -117,8 +117,9 @@ The fourth phase. Mastery is one tree per vault, `mastery`, built in Settings â€
   first, as its last child when the other pillar comes next round You and its first when it comes
   before, so it sits on the side facing the other (`towardOtherParents`, `wholeLayout.ts`). Both
   pillars draw a line to it.
-- **Lighting:** a pillar is lit once any node in a tree under it is unlocked, and its ring is the
-  share of those nodes unlocked; You is the same across all of them. Until then they draw as in reach.
+- **Lighting:** a pillar is lit once any node in a tree under it is unlocked, and its ring is how
+  much of everything under it is done (see *Rings*, under States); You is the same across all of
+  them. Until then they draw as in reach.
 - **On a board:** *Add Mastery to this board* (âŒ˜K) makes Mastery if the vault has none and puts its
   view right of what is on the board. Settings has no board open, so the builder points there.
 - **Gone:** *Gather every tree around a Mastery node*, and the `mastery` option of the layout
@@ -325,7 +326,7 @@ room is free (slow, and children land far out).
   `title`), so nothing was transcribed from the image.
 - **Shape:** one track, "/mu/core" (its tree has the same name), of 84 family units in chart order ("Rock: Metal"), each holding
   its recordings as a collapsed checklist ("Thrash Metal: Metallica - Master of Puppets (1986)").
-  The tree is a root, 16 categories as pillars (their rings show how much below is unlocked), and a
+  The tree is a root, 16 categories as pillars (their rings show how much below is done), and a
   node per family asking for a fifth of its recordings written up. The four categories with one
   family (Prehistoric, Ancient, Central Asian, Indigenous American) are one node. A habit asks for
   three albums a week. "Import /mu/core (1111 recordings)" brings it in as a draft.
@@ -739,6 +740,18 @@ so moving a node to another board cannot change what it requires.
 | Available | Prerequisites met, own conditions not | Outlined, with a progress fraction ("2/3 Practice") |
 | Unlocked | All conditions met | Lit |
 | Bronze / Silver / Gold | 3 / 10 / 25 pieces of evidence tagged here *after* unlocking, each tier including at least one Ship | A ring that fills toward the next tier |
+
+**Rings** (DARK-15, `tree/fill.ts`) show how much of what a node stands for is done, at any depth,
+not how close it is to unlocking:
+
+- A node with a list of its own (a syllabus entry tagged to it) fills by its works done: /mu/core's
+  Romantic, 1 album of 25, is "1/25", before and after it unlocks at 5.
+- Every node growing from a node, and every tree hung on it, is an equal share of it; its own list,
+  or its own conditions (a hand tick), is one more. Western Classical's 8 genres are 1/8 each, so one
+  album each in Romantic, Classical and Baroque (1/25, 1/10, 1/20) fill it 2.375%, captioned "2.4%".
+  The root, a pillar and You are the same one level up.
+- A path's steps (`after`) are shares of the node the path starts from, not halves of the step before.
+- A node with none of these keeps the table above: its requirement, then its mastery tier.
 
 An edge lights when both its ends are unlocked. The three available nodes closest to unlocking pulse.
 The hover card lists the items that would advance the node, and the node's history (each piece of

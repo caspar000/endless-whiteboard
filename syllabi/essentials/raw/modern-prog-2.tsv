@@ -1,0 +1,183 @@
+pos	artist	album	year	confidence	note
+1	Spock's Beard	V		ok	section: Traditional/symphonic prog
+2	Transatlantic	Bridge Across Forever		ok	section: Traditional/symphonic prog
+3	Neal Morse	?		ok	section: Traditional/symphonic prog
+4	Diagonal	Diagonal		ok	section: Traditional/symphonic prog
+5	The Flower Kings	Desolation Rose		ok	section: Traditional/symphonic prog
+6	Phideaux	Doomsday Afternoon		ok	section: Traditional/symphonic prog
+7	Anekdoten	Until All The Ghosts Are Gone		ok	section: Traditional/symphonic prog
+8	Big Big Train	The Underfall Yard		ok	section: Traditional/symphonic prog
+9	Beardfish	Sleeping In Traffic: Part Two		ok	section: Traditional/symphonic prog
+10	Änglagård	Viljans Öga		ok	section: Traditional/symphonic prog
+11	Steven Wilson	The Raven That Refused to Sing (and Other Stories)		ok	section: Traditional/symphonic prog
+12	echolyn	mei		ok	section: Traditional/symphonic prog
+13	Moon Safari	[Blomljud]		ok	section: Traditional/symphonic prog
+14	Discipline.	To Shatter All Accord		ok	section: Traditional/symphonic prog
+15	Astra	The Weirding		ok	section: Traditional/symphonic prog
+16	Motorpsycho and Ståle Storløkken	The Death Defying Unicorn		ok	section: Traditional/symphonic prog
+17	The Tangent	A Place In The Queue		ok	section: Traditional/symphonic prog
+18	The Watch	Vacuum		ok	section: Traditional/symphonic prog
+19	Premiata Forneria Marconi	Stati Di Immaginazione		ok	section: Traditional/symphonic prog
+20	La Coscienza Di Zeno	La Coscienza di Zeno		ok	section: Traditional/symphonic prog
+21	Unreal City	Il Paese Del Tramonto		ok	section: Traditional/symphonic prog
+22	IQ	Dark Matter		ok	section: Neo-prog + Atmospheric prog
+23	Arena	Contagion		ok	section: Neo-prog + Atmospheric prog
+24	Pendragon	Pure		ok	section: Neo-prog + Atmospheric prog
+25	RPWL	World Through My Eyes		ok	section: Neo-prog + Atmospheric prog
+26	Sylvan	Posthumous Silence		ok	section: Neo-prog + Atmospheric prog
+27	Frost*	Milliontown		ok	section: Neo-prog + Atmospheric prog
+28	Kino	Picture		ok	section: Neo-prog + Atmospheric prog
+29	Marillion	Marbles		ok	section: Neo-prog + Atmospheric prog
+30	Galahad	Empires Never Last		ok	section: Neo-prog + Atmospheric prog
+31	It Bites	The Tall Ships		ok	section: Neo-prog + Atmospheric prog
+32	Quidam	Alone Together		ok	section: Neo-prog + Atmospheric prog
+33	Anubis	A Tower of Silence		ok	section: Neo-prog + Atmospheric prog
+34	Mystery	The World Is a Game		ok	section: Neo-prog + Atmospheric prog
+35	Airbag	All Rights Removed		ok	section: Neo-prog + Atmospheric prog
+36	The Gathering	If_then_else		ok	section: Neo-prog + Atmospheric prog
+37	Nosound	Sol29		ok	section: Neo-prog + Atmospheric prog
+38	Gazpacho	Night		ok	section: Neo-prog + Atmospheric prog
+39	Lunatic Soul	Lunatic Soul		ok	section: Neo-prog + Atmospheric prog
+40	Anathema	We're Here Because We're Here		ok	section: Neo-prog + Atmospheric prog
+41	Antimatter	Leaving Eden		ok	section: Neo-prog + Atmospheric prog
+42	Archive	Controlling Crowds		ok	section: Neo-prog + Atmospheric prog
+43	Oceansize	Effloresce		ok	section: Alternative prog
+44	dredg	El Cielo		ok	section: Alternative prog
+45	Muse	Origin of Symmetry		ok	section: Alternative prog
+46	The Mars Volta	Frances the Mute		ok	section: Alternative prog
+47	The Pineapple Thief	Tightly Unwound		ok	section: Alternative prog
+48	Amplifier	Amplifier		ok	section: Alternative prog
+49	Coheed and Cambria	In Keeping Secrets of Silent Earth: 3		ok	section: Alternative prog
+50	The Dear Hunter	Act II: The Meaning Of, And All Things Regarding Ms. Leading		ok	section: Alternative prog
+51	Dead Letter Circus	This Is The Warning		ok	section: Alternative prog
+52	Karnivool	Sound Awake		ok	section: Alternative prog
+53	Cog	The New Normal		ok	section: Alternative prog
+54	The Butterfly Effect	Final Conversation Of Kings		ok	section: Alternative prog
+55	Pure Reason Revolution	The Dark Third		ok	section: Alternative prog
+56	Rishloo	Feathergun		ok	section: Alternative prog
+57	Mew	And the Glass Handed Kites		ok	section: Alternative prog
+58	Fair to Midland	Fables From a Mayfly: What I Tell You Three Times Is True		ok	section: Alternative prog
+59	The Fall of Troy	Doppelganger		ok	section: Alternative prog
+60	Dream the Electric Sleep	Heretics		ok	section: Alternative prog
+61	The Sound of Animals Fighting	Tiger & the Duke		ok	section: Alternative prog
+62	The Receiving End of Sirens	Between the Heart and the Synapse		ok	section: Alternative prog
+63	Gospel	The Moon Is a Dead World		ok	section: Alternative prog
+64	Porcupine Tree	Fear of a Blank Planet		ok	section: Heavy prog
+65	Riverside	Second Life Syndrome		ok	section: Heavy prog
+66	Votum	Metafiction		ok	section: Heavy prog
+67	Demians	Building An Empire		ok	section: Heavy prog
+68	Tool	Lateralus		ok	section: Heavy prog
+69	Pain of Salvation	The Perfect Element, Part I		ok	section: Heavy prog
+70	Sieges Even	The Art Of Navigating By The Stars		ok	section: Heavy prog
+71	Caligula's Horse	The Tide, The Thief & River's End		ok	section: Heavy prog
+72	Arcane	Known/Learned		ok	section: Heavy prog
+73	A.C.T.	Last Epic		ok	section: Heavy prog
+74	CMX	Talvikuningas		ok	section: Heavy prog
+75	Indukti	S.U.S.A.R.		ok	section: Heavy prog
+76	Wolverine	Still		ok	section: Heavy prog
+77	Soen	Cognitive		ok	section: Heavy prog
+78	Dream Theater	Six Degrees of Inner Turbulence		ok	section: Traditional + Power prog metal
+79	Haken	Visions		ok	section: Traditional + Power prog metal
+80	OSI	Office of Strategic Influence		ok	section: Traditional + Power prog metal
+81	Threshold	Hypothetical		ok	section: Traditional + Power prog metal
+82	Seventh Wonder	Mercy Falls		ok	section: Traditional + Power prog metal
+83	Circus Maximus	Isolate		ok	section: Traditional + Power prog metal
+84	Devin Townsend	Terria		ok	section: Traditional + Power prog metal
+85	Nevermore	This Godless Endeavor		ok	section: Traditional + Power prog metal
+86	Mastodon	Crack the Skye		ok	section: Traditional + Power prog metal
+87	Ayreon	The Human Equation		ok	section: Traditional + Power prog metal
+88	Ark	Burn the Sun		ok	section: Traditional + Power prog metal
+89	Wuthering Heights	Far From The Madding Crowd		ok	section: Traditional + Power prog metal
+90	Hammers of Misfortune	The Locust Years		ok	section: Traditional + Power prog metal
+91	Voyager	I Am the Revolution		ok	section: Traditional + Power prog metal
+92	Symphony X	The Odyssey		ok	section: Traditional + Power prog metal
+93	Galneryus	Resurrection		ok	section: Traditional + Power prog metal
+94	Evergrey	In Search of Truth		ok	section: Traditional + Power prog metal
+95	Theocracy	As The World Bleeds		ok	section: Traditional + Power prog metal
+96	Shaman	Ritual		ok	section: Traditional + Power prog metal
+97	Pharaoh	The Longest Night		ok	section: Traditional + Power prog metal
+98	Angra	Temple of Shadows		ok	section: Traditional + Power prog metal
+99	Meshuggah	Catch 33		ok	section: Other prog metal
+100	Vektor	Outer Isolation		ok	section: Other prog metal
+101	Gorguts	Colored Sands		ok	section: Other prog metal
+102	Beyond Creation	The Aura		ok	section: Other prog metal
+103	Cynic	Traced in Air		ok	section: Other prog metal
+104	Leprous	Bilateral		ok	section: Other prog metal
+105	Enslaved	Below The Lights		ok	section: Other prog metal
+106	Negură Bunget	Om		ok	section: Other prog metal
+107	Orphaned Land	Mabool		ok	section: Other prog metal
+108	Ne Obliviscaris	Portal Of I		ok	section: Other prog metal
+109	Persefone	Core		ok	section: Other prog metal
+110	Opeth	Blackwater Park		ok	section: Other prog metal
+111	Gojira	From Mars to Sirius		ok	section: Other prog metal
+112	Edge of Sanity	Crimson II		ok	section: Other prog metal
+113	Disillusion	Back To Times of Splendor		ok	section: Other prog metal
+114	Kalisia	Cybion		ok	section: Other prog metal
+115	Alchemist	Organasm		ok	section: Other prog metal
+116	Extol	Undeceived		ok	section: Other prog metal
+117	Cormorant	Dwellings		ok	section: Other prog metal
+118	Amorphis	Skyforger		ok	section: Other prog metal
+119	Sigh	Imaginary Sonicscape		ok	section: Other prog metal
+120	Unexpect	Fables of the Sleepless Empire		ok	section: Other prog metal
+121	Subterranean Masquerade	Suspended Animation Dreams		ok	section: Other prog metal
+122	Thy Catafalque	Rengeteg		ok	section: Other prog metal
+123	Arcturus	The Sham Mirrors		ok	section: Other prog metal
+124	maudlin of the Well	Bath		ok	section: Other prog metal
+125	Green Carnation	Light Of Day, Day Of Darkness		ok	section: Other prog metal
+126	Novembre	Novembrine Waltz		ok	section: Other prog metal
+127	Between the Buried and Me	Colors		ok	section: Prog metalcore + Djent
+128	Protest the Hero	Kezia		ok	section: Prog metalcore + Djent
+129	Burst	Lazarus Bird		ok	section: Prog metalcore + Djent
+130	Sikth	Death of a Dead Day		ok	section: Prog metalcore + Djent
+131	The Human Abstract	Nocturne		ok	section: Prog metalcore + Djent
+132	After the Burial	Rareform		ok	section: Prog metalcore + Djent
+133	The Contortionist	Exoplanet		ok	section: Prog metalcore + Djent
+134	Periphery	Periphery II		ok	section: Prog metalcore + Djent
+135	Uneven Structure	Februus		ok	section: Prog metalcore + Djent
+136	TesseracT	One		ok	section: Prog metalcore + Djent
+137	Skyharbor	Guiding Lights		ok	section: Prog metalcore + Djent
+138	Textures	Silhouettes		ok	section: Prog metalcore + Djent
+139	Animals as Leaders	Animals As Leaders		ok	section: Prog metalcore + Djent
+140	Cloudkicker	The Discovery		ok	section: Prog metalcore + Djent
+141	toe	The Book About My Idle Plot on a Vague Anxiety		ok	section: Math Rock/Post-Rock/Post-Metal
+142	Battles	Mirrored		ok	section: Math Rock/Post-Rock/Post-Metal
+143	65daysofstatic	The Fall of Math		ok	section: Math Rock/Post-Rock/Post-Metal
+144	Frodus	And We Washed Our Weapons in the Sea		ok	section: Math Rock/Post-Rock/Post-Metal
+145	Abilene	Abilene		ok	section: Math Rock/Post-Rock/Post-Metal
+146	Minus the Bear	Highly Refined Pirates		ok	section: Math Rock/Post-Rock/Post-Metal
+147	Lite	Phantasia		ok	section: Math Rock/Post-Rock/Post-Metal
+148	Godspeed You! Black Emperor	Lift Your Skinny Fists Like Antennas to Heaven		ok	section: Math Rock/Post-Rock/Post-Metal
+149	Mogwai	Happy Songs for Happy People		ok	section: Math Rock/Post-Rock/Post-Metal
+150	Sigur Rós	( )		ok	section: Math Rock/Post-Rock/Post-Metal
+151	Swans	The Seer		ok	section: Math Rock/Post-Rock/Post-Metal
+152	Crippled Black Phoenix	I, Vigilante		ok	section: Math Rock/Post-Rock/Post-Metal
+153	Do Make Say Think	& Yet & Yet		ok	section: Math Rock/Post-Rock/Post-Metal
+154	Russian Circles	Station		ok	section: Math Rock/Post-Rock/Post-Metal
+155	Sólstafir	Svartir Sandar		ok	section: Math Rock/Post-Rock/Post-Metal
+156	The Ocean	Pelagial		ok	section: Math Rock/Post-Rock/Post-Metal
+157	Blindead	Affliction XXIX II MXMVI		ok	section: Math Rock/Post-Rock/Post-Metal
+158	Neurosis	A Sun That Never Sets		ok	section: Math Rock/Post-Rock/Post-Metal
+159	Isis	Panopticon		ok	section: Math Rock/Post-Rock/Post-Metal
+160	Cult Of Luna	Somewhere Along The Highway		ok	section: Math Rock/Post-Rock/Post-Metal
+161	Rosetta	The Galilean Satellites		ok	section: Math Rock/Post-Rock/Post-Metal
+162	Magma	K.A		ok	section: Avant-prog/Zeuhl
+163	Koenjihyakkei	Angherr Shisspa		ok	section: Avant-prog/Zeuhl
+164	Univers Zéro	Clivages		ok	section: Avant-prog/Zeuhl
+165	Guapo	Five Suns		ok	section: Avant-prog/Zeuhl
+166	Ske	1000 Autunni		ok	section: Avant-prog/Zeuhl
+167	One Shot	Ewaz Vader		ok	section: Avant-prog/Zeuhl
+168	Kayo Dot	Choirs of the Eye		ok	section: Avant-prog/Zeuhl
+169	Merkabah	Moloch		ok	section: Avant-prog/Zeuhl
+170	Present	Barbaro (Ma Non Troppo)		ok	section: Avant-prog/Zeuhl
+171	Sleepytime Gorilla Museum	Of Natural History		ok	section: Avant-prog/Zeuhl
+172	Robert Wyatt	Cuckooland		ok	section: Avant-prog/Zeuhl
+173	Tigran Hamasyan	Mockroot		ok	section: Avant-prog/Zeuhl
+174	Birds and Buildings	Bantam to Behemoth		ok	section: Avant-prog/Zeuhl
+175	Rational Diet	At Work		ok	section: Avant-prog/Zeuhl
+176	Alamaailman Vasarat	Käärmelautakunta		ok	section: Avant-prog/Zeuhl
+177	Yugen	Labirinto d'acqua		ok	section: Avant-prog/Zeuhl
+178	Miasma & The Carousel Of Headless Horses	Perils		ok	section: Avant-prog/Zeuhl
+179	Estradasphere	Palace Of Mirrors		ok	section: Avant-prog/Zeuhl
+180	Universal Totem Orchestra	The Magus		ok	section: Avant-prog/Zeuhl
+181	Pocket Orchestra	Knebnagäuje		ok	section: Avant-prog/Zeuhl
+182	Volapük	Polyglöt		ok	section: Avant-prog/Zeuhl

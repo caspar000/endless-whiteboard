@@ -23,6 +23,12 @@ const MAX_ASSET_BYTES = 200 * 1024 * 1024
 const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
 /** A card's preview: 600 px on its long edge, as WebP. Far under this. */
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
+/**
+ * The largest vault setting sent whole. Fastify's default (1 MiB) is below a big syllabus: /mu/core
+ * with the /mu/ Essential Charts is about 6 MB of items. Changes to it go by PATCH, a few entries at a
+ * time; only the first save after an import, or a vault seeded from a device, sends it all.
+ */
+const MAX_SETTING_BYTES = 32 * 1024 * 1024
 /** Enough for every asset on a large board in one question. */
 const MAX_HASHES_PER_QUERY = 5000
 
@@ -69,6 +75,23 @@ function keyedBy(value: unknown, key: string): boolean {
 	)
 }
 
+/**
+ * The settings stored as entries keyed by id, each entry naming its id in this field: these can be
+ * changed a few entries at a time (PATCH), as well as sent whole.
+ */
+const KEYED_SETTINGS: Record<string, string> = {
+	syllabusItems: 'itemId',
+	syllabusTracks: 'trackId',
+	syllabusEvidence: 'itemId',
+	syllabusTreePlans: 'treeId',
+	feedSources: 'sourceId',
+	feedCategories: 'categoryId',
+	feedWatched: 'itemId',
+	rankings: 'rankingId',
+	backlogs: 'backlogId',
+	randomizerStamped: 'key',
+}
+
 const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 	disabledExtensions: isStringArray,
 	savedQueries: (value) =>
@@ -107,19 +130,19 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 			(entry) => !!entry && typeof entry === 'object' && typeof (entry as { trackId?: unknown }).trackId === 'string'
 		),
 	// The syllabus: items and tracks keyed by id (the only copy of them), and the write-ups boards found.
-	syllabusItems: (value) => keyedBy(value, 'itemId'),
-	syllabusTracks: (value) => keyedBy(value, 'trackId'),
-	syllabusEvidence: (value) => keyedBy(value, 'itemId'),
+	syllabusItems: (value) => keyedBy(value, KEYED_SETTINGS.syllabusItems!),
+	syllabusTracks: (value) => keyedBy(value, KEYED_SETTINGS.syllabusTracks!),
+	syllabusEvidence: (value) => keyedBy(value, KEYED_SETTINGS.syllabusEvidence!),
 	// The tree each syllabus file came with, kept unused until a tree is made from the syllabus, keyed by tree id.
-	syllabusTreePlans: (value) => keyedBy(value, 'treeId'),
+	syllabusTreePlans: (value) => keyedBy(value, KEYED_SETTINGS.syllabusTreePlans!),
 	// Feeds: the sources and categories (the only copy of them) and the posts marked watched, keyed by id.
-	feedSources: (value) => keyedBy(value, 'sourceId'),
-	feedCategories: (value) => keyedBy(value, 'categoryId'),
-	feedWatched: (value) => keyedBy(value, 'itemId'),
+	feedSources: (value) => keyedBy(value, KEYED_SETTINGS.feedSources!),
+	feedCategories: (value) => keyedBy(value, KEYED_SETTINGS.feedCategories!),
+	feedWatched: (value) => keyedBy(value, KEYED_SETTINGS.feedWatched!),
 	// Rankings and backlogs (the only copy of them), and everything stamped on a randomizer, keyed by id.
-	rankings: (value) => keyedBy(value, 'rankingId'),
-	backlogs: (value) => keyedBy(value, 'backlogId'),
-	randomizerStamped: (value) => keyedBy(value, 'key'),
+	rankings: (value) => keyedBy(value, KEYED_SETTINGS.rankings!),
+	backlogs: (value) => keyedBy(value, KEYED_SETTINGS.backlogs!),
+	randomizerStamped: (value) => keyedBy(value, KEYED_SETTINGS.randomizerStamped!),
 	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
 	skillTrees: (value) =>
 		!!value &&
@@ -658,12 +681,41 @@ export function registerApi(
 
 	app.put<{ Params: { key: string }; Body: { value?: unknown } }>(
 		'/api/vault/settings/:key',
+		{ bodyLimit: MAX_SETTING_BYTES },
 		async (request, reply) => {
 			// `hasOwn`, or `constructor` and friends would arrive from the prototype as validators.
 			const valid = Object.hasOwn(VAULT_SETTINGS, request.params.key) ? VAULT_SETTINGS[request.params.key] : undefined
 			if (!valid) return reply.code(404).send({ error: 'No such setting.' })
 			if (!valid(request.body?.value)) return reply.code(400).send({ error: 'Not a valid value for that setting.' })
 			vault.setSetting(me(request).vaultId, request.params.key, request.body!.value)
+			return reply.code(204).send()
+		}
+	)
+
+	/**
+	 * Some entries of a keyed setting changed: `set` puts entries by id, `delete` removes ids. Sending
+	 * the whole of a big syllabus on every tick would be megabytes; this is the tick. Node runs the
+	 * read, merge and write without a break, so two requests can't interleave.
+	 */
+	app.patch<{ Params: { key: string }; Body: { set?: unknown; delete?: unknown } }>(
+		'/api/vault/settings/:key',
+		{ bodyLimit: MAX_SETTING_BYTES },
+		async (request, reply) => {
+			const { key } = request.params
+			const field = Object.hasOwn(KEYED_SETTINGS, key) ? KEYED_SETTINGS[key] : undefined
+			if (!field) return reply.code(404).send({ error: 'No such setting, or not one kept by id.' })
+			const set = request.body?.set ?? {}
+			const remove = request.body?.delete ?? []
+			if (!keyedBy(set, field) || !isStringArray(remove)) return reply.code(400).send({ error: 'Not a valid change for that setting.' })
+			const { vaultId } = me(request)
+			const stored = vault.setting(vaultId, key)
+			const gone = new Set(remove)
+			// fromEntries defines plain properties: an id of "__proto__" stays an id, not a prototype.
+			const next = Object.fromEntries([
+				...Object.entries(stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {}).filter(([id]) => !gone.has(id)),
+				...Object.entries(set as Record<string, unknown>),
+			])
+			vault.setSetting(vaultId, key, next)
 			return reply.code(204).send()
 		}
 	)

@@ -16,6 +16,10 @@ export interface ItemDef {
 	medium: string
 	/** A picture of it, an `https:` URL or a path the app serves (`/covers/…`), or ''. From its syllabus file: an album's cover, for the randomizer. */
 	cover: string
+	/** Where it opens (an album's YouTube search), an `https:` URL, or ''. From its syllabus file, for the randomizer. */
+	url: string
+	/** How many tracks an album has, or 0 when not known. From its syllabus file, for the randomizer. */
+	tracks: number
 	/** Skill node ids this item feeds; its works feed them too. */
 	tags: string[]
 	/** One of the works its parent's `core` rule waits for. */
@@ -104,6 +108,8 @@ export function parseItem(raw: unknown): ItemDef | null {
 		kind: str(r.kind),
 		medium: str(r.medium),
 		cover: str(r.cover),
+		url: str(r.url),
+		tracks: typeof r.tracks === 'number' && Number.isInteger(r.tracks) && r.tracks > 0 ? r.tracks : 0,
 		tags: strs(r.tags),
 		core: r.core === true,
 		childRule: str(r.childRule) || 'core',
@@ -289,6 +295,8 @@ export function addEntry(trackId: string, title: string): string | null {
 			kind: 'Study',
 			medium: '',
 			cover: '',
+			url: '',
+			tracks: 0,
 			tags: [...track.defaultTags],
 			core: false,
 			childRule: 'core',

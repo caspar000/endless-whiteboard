@@ -23,6 +23,10 @@ export interface DocItem {
 	medium: string
 	/** A picture of it (an album's cover): an `https:` URL, a path the app serves (`/covers/…`), or ''. */
 	cover: string
+	/** Where it opens: an `https:` URL (an album's YouTube search), or ''. */
+	url: string
+	/** How many tracks an album has, or 0. */
+	tracks: number
 	tags: string[]
 	core: boolean
 	childRule: string
@@ -87,6 +91,11 @@ export function parseSyllabus(source: string): SyllabusResult {
 		// A picture on the web, or one the app serves (/mu/core's covers cut from its chart); anything else shows nothing.
 		const cover = text(value.cover)
 		if (cover && !/^(https:\/\/|\/(?!\/))\S+$/.test(cover)) errors.push(`${path}: cover is an https: link to a picture, or a path on this app such as /covers/mucore/0002.webp`)
+		const url = text(value.url)
+		if (url && !/^https:\/\/\S+$/.test(url)) errors.push(`${path}: url is an https: link`)
+		const tracksRaw = value.tracks
+		const tracks = typeof tracksRaw === 'number' && Number.isInteger(tracksRaw) && tracksRaw > 0 ? tracksRaw : 0
+		if (tracksRaw !== undefined && !tracks) errors.push(`${path}: tracks is a whole number above 0`)
 		const ruleRaw = value.childRule
 		const childRule =
 			typeof ruleRaw === 'number' ? formatChildRule({ kind: 'n', n: ruleRaw }) : text(ruleRaw) === 'all' ? 'all' : /^n:\d+$/.test(text(ruleRaw)) ? text(ruleRaw) : 'core'
@@ -99,6 +108,8 @@ export function parseSyllabus(source: string): SyllabusResult {
 			kind,
 			medium: text(value.medium).toLowerCase(),
 			cover,
+			url,
+			tracks,
 			tags: list(value.tags).map(tag),
 			core: value.core === true,
 			childRule,

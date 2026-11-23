@@ -279,6 +279,22 @@ export function pushVaultSetting(key: VaultSettingKey, value: unknown): Promise<
 	)
 }
 
+/**
+ * Some entries of a setting kept by id changed (`syllabusItems` and the like): sends just those, so a
+ * tick on a syllabus of thousands of items is one entry, not the whole of it. Like `pushVaultSetting`,
+ * resolves to whether the server took it and never rejects.
+ */
+export function patchVaultSetting(key: VaultSettingKey, change: { set: Record<string, unknown>; delete: string[] }): Promise<boolean> {
+	if (!available) return Promise.resolve(false)
+	return api(`/vault/settings/${key}`, { method: 'PATCH', body: JSON.stringify(change) }).then(
+		() => true,
+		(error) => {
+			console.error(`Lifeboard: could not save ${key} to the server.`, error)
+			return false
+		}
+	)
+}
+
 const downloads = new Map<string, Promise<Blob | null>>()
 
 /**

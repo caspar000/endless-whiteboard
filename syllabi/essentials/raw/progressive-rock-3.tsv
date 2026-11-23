@@ -1,0 +1,134 @@
+pos	artist	album	year	confidence	note
+1	King Crimson	In the Court of the Crimson King		ok	
+2	King Crimson	Discipline		ok	
+3	King Crimson	In the Wake of Poseidon		ok	
+4	King Crimson	Lizard		ok	
+5	King Crimson	Islands		ok	
+6	King Crimson	Starless and Bible Black		ok	
+7	Genesis	Selling England By the Pound		ok	
+8	Genesis	Nursery Cryme		ok	
+9	Genesis	Trespass		ok	
+10	Genesis	A Trick of the Tail		ok	
+11	Genesis	The Lamb Lies Down on Broadway		ok	
+12	Genesis	Foxtrot		ok	
+13	Electric Light Orchestra	No Answer		ok	
+14	Electric Light Orchestra	ELO 2		ok	
+15	Electric Light Orchestra	Face the Music		ok	
+16	Gentle Giant	Gentle Giant		ok	
+17	Gentle Giant	Acquiring the Taste		ok	
+18	Gentle Giant	Octopus		ok	
+19	Emerson, Lake & Palmer	Emerson, Lake & Palmer		ok	
+20	Emerson, Lake & Palmer	Tarkus		ok	
+21	Emerson, Lake & Palmer	Trilogy		ok	
+22	Emerson, Lake & Palmer	Brain Salad Surgery		ok	
+23	Gila	Gila		ok	
+24	Farmyard	Farmyard		ok	
+25	Jethro Tull	Aqualung		ok	
+26	Jethro Tull	A Passion Play		ok	
+27	Jethro Tull	Thick As A Brick		ok	
+28	Jethro Tull	Crest of a Knave		ok	
+29	Jethro Tull	Minstrel in the Gallery		ok	
+30	Jethro Tull	Stormwatch		ok	
+31	Leviathan	Leviathan		ok	
+32	Gordian Knot	Gordian Knot		ok	
+33	Gordian Knot	Emergent		ok	
+34	High Tide	Sea Shanties		ok	
+35	Kalacakra	Crawling to Lhasa		ok	
+36	Jan Dukes de Grey	Mice and Rats in the Loft		ok	
+37	Underground & Beyond	Lucifer Was		ok	
+38	Aphrodite's Child	It's Five O'Clock		ok	
+39	Aphrodite's Child	666		ok	
+40	Giles, Giles and Fripp	The Cheerful Insanity of Giles, Giles and Fripp		ok	
+41	Mahavishnu Orchestra	Birds of Fire		ok	
+42	Mahavishnu Orchestra	The Inner Mounting Flame		ok	
+43	Mike Oldfield	Tubular Bells		ok	
+44	Mike Oldfield	Ommadawn		ok	
+45	Iron Maiden	Maiden Voyage		unsure	the chart writes Iron Maiden; this is the 1969 UK band, not the metal band
+46	Omega	Hall of the Floaters in the Sky		ok	
+47	Omega	200 Years After The Last War		ok	
+48	Porcupine Tree	Deadwing		ok	
+49	Pink Floyd	Animals		ok	
+50	Pink Floyd	Meddle		ok	
+51	Pink Floyd	Atom Heart Mother		ok	
+52	Premiata Forneria Marconi	Storia di Un Minuto		ok	
+53	Premiata Forneria Marconi	Per Un Amico		ok	
+54	Premiata Forneria Marconi	L'isola di niente		ok	
+55	Procol Harum	A Salty Dog		ok	
+56	Procol Harum	Home		ok	
+57	Procol Harum	Shine On Brightly		ok	
+58	Quatermass	Quatermass		ok	
+59	Arzachel	Arzachel		ok	
+60	Alphataurus	Alphataurus		ok	
+61	Arthur Brown	The Crazy World of Arthur Brown		ok	
+62	Atomic Rooster	Death Walks Behind You		ok	
+63	Focus	Moving Waves		ok	
+64	Focus	III		ok	
+65	Focus	Mother Focus		ok	
+66	Ugly Custard	Ugly Custard		ok	
+67	Camel	Mirage		ok	
+68	Camel	The Snow Goose		ok	
+69	Camel	Moonmadness		ok	
+70	Camel	A Nod and a Wink		ok	
+71	Caravan	If I Could Do It All Over Again, I'd Do It All Over You		ok	
+72	Caravan	Caravan		ok	
+73	Caravan	In The Land of Grey and Pink		ok	
+74	Egg	Egg		ok	
+75	Egg	The Civil Surface		ok	
+76	Bacamarte	Depois do Fim		ok	
+77	Pain of Salvation	Be		ok	
+78	Svanfridur	What's Hidden There		ok	
+79	Rush	Hemispheres		ok	
+80	Rush	2112		ok	
+81	Rush	Caress of Steel		ok	
+82	Rush	A Farewell to Kings		ok	
+83	Rush	Signals		ok	
+84	Rush	Moving Pictures		ok	
+85	Soft Machine	Third		ok	
+86	Soft Machine	Fourth		ok	
+87	Soft Machine	The Soft Machine		ok	
+88	Soft Machine	Volume Two		unsure	chart writes "Second"
+89	Steve Hackett	Please Don't Touch		ok	
+90	Steve Hackett	Voyage of the Acolyte		ok	
+91	Steve Hackett	Spectral Mornings		ok	
+92	The Wilde Flowers	The Wilde Flowers		ok	
+93	Titus Groan	Titus Groan		ok	
+94	Tool	Lateralus		ok	
+95	Triumvirat	Pompeii		ok	
+96	Triumvirat	Spartacus		ok	
+97	Van der Graaf Generator	Pawn Hearts		ok	
+98	Van der Graaf Generator	H To He Who Am the Only One		ok	
+99	Out of Focus	Hot Roads		ok	
+100	Capability Brown	Voice		ok	
+101	Gong	Camembert Electrique		ok	
+102	Gong	Flying Teapot		ok	
+103	Gong	Angel's Egg		ok	
+104	Amon Düül II	Phallus Dei		ok	
+105	Amon Düül II	Tanz Der Lemminge		ok	
+106	Semiramis	Dedicato a Frazz		ok	
+107	Robert Fripp	Exposure		ok	
+108	Fripp & Eno	(No Pussyfooting)		ok	
+109	Yes	Fragile		ok	
+110	Yes	Close to the Edge		ok	
+111	Yes	Relayer		ok	
+112	Yes	Going for the One		ok	
+113	Yes	The Yes Album		ok	
+114	Yes	Tormato		ok	
+115	King Crimson	Beat		ok	
+116	King Crimson	Red		ok	
+117	King Crimson	THRAK		ok	
+118	King Crimson	The ConstruKction of Light		ok	
+119	King Crimson	The Power To Believe		ok	
+120	King Crimson	Three of a Perfect Pair		ok	
+121	Genesis	Wind & Wuthering		ok	
+122	Utopia	Todd Rundgren's Utopia		ok	
+123	Todd Rundgren	A Wizard, A True Star		ok	
+124	Frumpy	By The Way		ok	
+125	Frumpy	Frumpy 2		ok	
+126	Frumpy	All Will Be Changed		ok	
+127	Satin Whale	Desert Places		ok	
+128	Gryphon	Red Queen to Gryphon Three		ok	
+129	Gryphon	Gryphon		ok	
+130	Gryphon	Raindance		ok	
+131	Änglagård	Hybris		ok	
+132	Epilog	Epilog		ok	
+133	King Crimson	Larks' Tongues In Aspic		ok	

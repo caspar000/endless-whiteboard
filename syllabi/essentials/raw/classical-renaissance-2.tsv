@@ -1,0 +1,28 @@
+pos	artist	album	year	confidence	note
+# Classical: artist is the composer, album is the mass, note gives the performers of the recording shown.
+1	Anonymous	Missa Caput		ok	performers: Gothic Voices
+2	Guillaume Du Fay	Missa Ave Regina Caelorum		ok	performers: Cantica Symphonia
+3	Johannes Ockeghem	Missa Mi-Mi		ok	performers: The Hilliard Ensemble
+4	Johannes Ockeghem	Missa Fors Seulement		ok	performers: Schola Discantus
+5	Antoine Busnoys	Missa L'homme Armé		ok	performers: The Binchois Consort
+6	Jacob Obrecht	Missa Sicut Spinam Rosam		ok	performers: Diabolus in Musica
+7	Jacob Obrecht	Missa Rose Playsante		ok	performers: The Sound and the Fury
+8	Jacob Obrecht	Missa Malheur Me Bat		ok	performers: The Clerks' Group
+9	Josquin des Prez	Missa Hercules Dux Ferrariae		ok	performers: New London Chamber Choir
+10	Josquin des Prez	Missa Malheur Me Bat		ok	performers: The Clerks' Group
+11	Josquin des Prez	Missa De Beata Virgine		ok	performers: A Sei Voci
+12	Antoine Brumel	Missa Berzerette Savoyenne		ok	performers: Chanticleer
+13	Pierre de la Rue	Missa O Salutaris Hostia		ok	performers: The Sound and the Fury
+14	Pierre de la Rue	Missa Incessament		ok	performers: Amarcord
+15	Alexander Agricola	Missa In Myne Zyn		ok	performers: Capilla Flamenca
+16	Jean Mouton	Missa Tu Es Petrus		ok	performers: The Brabant Ensemble
+17	Pierre Moulu	Missa Missus Est Gabriel Angelus		ok	performers: The Brabant Ensemble
+18	Adrian Willaert	Missa Mente Tota		ok	performers: Cinquecento
+19	Nicolas Gombert	Missa Media Vita		ok	performers: The Hilliard Ensemble
+20	Nicolas Gombert	Missa Quam Pulchra Es		ok	performers: The Sound and the Fury
+21	Philippe Verdelot	Missa Philomena Praevia		ok	performers: Delitiae Musicae
+22	Jacob Clemens non Papa	Missa Gaude Lux Donatiane		ok	performers: The Choir of the Church of the Advent
+23	Jacobus Vaet	Missa Ego Flos Campi		ok	performers: Cinquecento
+24	Giovanni Pierluigi da Palestrina	Missa Repleatur Os Meum		ok	performers: Delitiae Musicae
+25	Giovanni Pierluigi da Palestrina	Missa Ad Coenam Agni		ok	performers: The Brabant Ensemble
+26	Philippe Rogier	Missa Ego Sum Qui Sum		ok	performers: The Choir of King's College London

@@ -119,8 +119,8 @@ export function Thumb({ item, shape, ink, label, from, via }: { item: RandomItem
 			onPointerDown={(e) => e.stopPropagation()}
 			onDragStart={(e) => {
 				e.stopPropagation()
-				const { id, title, creator, year, cover } = item
-				setDraggedItem(e.dataTransfer, { entry: { id, title, creator, year, cover, url: item.url ?? '' }, from, via })
+				const { id, title, creator, year, cover, detail } = item
+				setDraggedItem(e.dataTransfer, { entry: { id, title, creator, year, cover, url: item.url ?? '', ...(detail ? { detail } : {}) }, from, via })
 				e.dataTransfer.effectAllowed = 'copy'
 			}}
 		>

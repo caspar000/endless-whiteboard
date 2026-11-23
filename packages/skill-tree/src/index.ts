@@ -41,6 +41,7 @@ export {
 } from './sources'
 export { evaluateTree, masteryOf, parseRequirements, type Condition, type NodeStatus, type TreeNode } from './requirements'
 export { prerequisitesOf } from './tree/prerequisites'
+export { parentsOf, reachFrom, treeGraph, type TreeGraph } from './views'
 export { treeStatus } from './tree/status'
 export {
 	forgetMaker,

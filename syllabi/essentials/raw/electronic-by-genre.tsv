@@ -1,0 +1,106 @@
+pos	artist	album	year	confidence	note
+1	Aphex Twin	Richard D. James Album		ok	column: IDM
+2	Various Artists	Artificial Intelligence		ok	column: IDM, compilation
+3	Mouse on Mars	Laora Tahiti		ok	column: IDM
+4	Squarepusher	Hard Normal Daddy		ok	column: IDM
+5	Autechre	Tri Repetae		ok	column: IDM
+6	Tricky	Maxinquaye		ok	column: Trip-Hop
+7	Portishead	Dummy		ok	column: Trip-Hop
+8	Massive Attack	Blue Lines		ok	column: Trip-Hop
+9	Morcheeba	Big Calm		ok	column: Trip-Hop
+10	Lamb	Lamb		ok	column: Trip-Hop, s/t
+11	Global Communication	76:14		ok	column: Ambient
+12	Brian Eno	Music for Airports		ok	column: Ambient
+13	Helios	Eingya		ok	column: Ambient
+14	Tangerine Dream	Rubycon		ok	column: Ambient
+15	Aphex Twin	Selected Ambient Works 85-92		ok	column: Ambient
+16	In Slaughter Natives	Enter Now the World		ok	column: Dark Ambient
+17	Desiderii Marginis	Deadbeat		ok	column: Dark Ambient
+18	Biosphere	Substrata		ok	column: Dark Ambient
+19	Steve Roach	Magnificent Void		ok	column: Dark Ambient
+20	Robert Rich	Stalker		ok	column: Dark Ambient
+21	I-F	Fucking Consumer		ok	column: Electro
+22	Afrika Bambaataa	Planet Rock		ok	column: Electro
+23	Cybotron	Clear		ok	column: Electro
+24	Dopplereffekt	Gesamtkunstwerk		ok	column: Electro
+25	Drexciya	Harnessed the Storm		ok	column: Electro
+26	The Orb	The Orb's Adventures Beyond the Ultraworld		ok	column: House
+27	Bomb the Bass	Beat Dis		ok	column: House
+28	The KLF	The White Room		ok	column: House
+29	Daft Punk	Homework		ok	column: House
+30	Mylo	Destroy Rock & Roll		ok	column: House
+31	Ken Ishii	Jelly Tones		ok	column: Techno
+32	Derrick May	Innovator		ok	column: Techno
+33	Jeff Mills	Waveform Transmission		ok	column: Techno
+34	Robert Hood	Minimal Nation		ok	column: Techno
+35	Underworld	Dubnobasswithmyheadman		ok	column: Techno
+36	Kraftwerk	The Man-Machine		ok	column: Essential
+37	Klaus Schulze	Irrlicht		ok	column: Essential
+38	Jean Michel Jarre	Oxygène		ok	column: Essential
+39	Throbbing Gristle	The 2nd Annual Report		ok	column: Essential
+40	Karlheinz Stockhausen	Gesang der Jünglinge		ok	column: Essential
+41	Underworld	Second Toughest in the Infants		ok	column: Trance
+42	Age of Love	Age of Love		ok	column: Trance
+43	Sasha & Digweed	Northern Exposure		ok	column: Trance
+44	Dance 2 Trance	Moon Spirits		ok	column: Trance
+45	Paul Oakenfold	Tranceport		ok	column: Trance
+46	Shpongle	Are You Shpongled?		ok	column: Psy/Goa
+47	Cosmosis	Cosmology		ok	column: Psy/Goa
+48	Hallucinogen	Twisted		ok	column: Psy/Goa
+49	Crop Circles	Tetrahedron		ok	column: Psy/Goa
+50	Astral Projection	Trust in Trance		ok	column: Psy/Goa
+51	Goldie	Timeless		ok	column: Jungle/DnB
+52	Photek	Form & Function		ok	column: Jungle/DnB
+53	Bizzy B	Retrospective		unsure	column: Jungle/DnB; caption cut off
+54	Ed Rush	Wormhole		ok	column: Jungle/DnB
+55	London Elektricity	Billion Dollar Gravy		ok	column: Jungle/DnB
+56	Flex Busterman	The Horrible Plans		ok	column: Chiptune
+57	Maktone	Maktone		ok	column: Chiptune, s/t
+58	Anamanaguchi	Dawn Metropolis		ok	column: Chiptune
+59	Sabrepulse	Chipbreak Wars		ok	column: Chiptune
+60	Bit Shifter	Information Chase		ok	column: Chiptune
+61	Ratpack	Fantazia 1992		ok	column: Rave
+62	The Prodigy	Experience		ok	column: Rave
+63	Various Artists	Rave '92		ok	column: Rave, compilation
+64	Various Artists	Classic Rave		ok	column: Rave, compilation
+65	Altern-8	Full On... Mask Hysteria		ok	column: Rave
+66	Kid Koala	Some of My Best Friends Are DJs		ok	column: Turntablism; caption cut off, completed
+67	Cut Chemist	The Audience's Listening		ok	column: Turntablism
+68	Invisibl Skratch Piklz	The Shiggar Fraggar Show		ok	column: Turntablism
+69	Birdy Nam Nam	Birdy Nam Nam		ok	column: Turntablism, s/t
+70	Beat Junkies	World Famous Beat Junkies		ok	column: Turntablism; caption cut off, completed
+71	Air	Moon Safari		ok	column: Downtempo
+72	Röyksopp	Melody A.M.		ok	column: Downtempo
+73	Bonobo	Black Sands		ok	column: Downtempo
+74	Nightmares on Wax	Smokers Delight		ok	column: Downtempo
+75	Amon Tobin	Bricolage		ok	column: Downtempo
+76	Burial	Untrue		ok	column: Dubstep
+77	Digital Mystikz	Return II Space		ok	column: Dubstep
+78	Boxcutter	Glyphic		ok	column: Dubstep
+79	Silkie	City Limits Vol. 1		ok	column: Dubstep
+80	Mount Kimbie	Crooks & Lovers		ok	column: Dubstep
+81	The Prodigy	Music for the Jilted Generation		ok	column: Big/Break
+82	The Chemical Brothers	Dig Your Own Hole		ok	column: Big/Break
+83	Fatboy Slim	You've Come a Long Way, Baby		ok	column: Big/Break
+84	Propellerheads	Decksandrumsandrockandroll		ok	column: Big/Break
+85	The Crystal Method	Tweekend		ok	column: Big/Break
+86	Venetian Snares	Rossz Csillag Alatt Született		ok	column: Breakcore
+87	Hrvatski	Swarm & Dither		ok	column: Breakcore
+88	Frog Pocket	Come on Primates		ok	column: Breakcore
+89	Alec Empire	The Destroyer		ok	column: Breakcore
+90	Bomb 20	Field Manual		ok	column: Breakcore
+91	DJ Shadow	Endtroducing.....		ok	column: Sample/Inst
+92	RJD2	Deadringer		ok	column: Sample/Inst
+93	The Avalanches	Since I Left You		ok	column: Sample/Inst
+94	UNKLE	Psyence Fiction		ok	column: Sample/Inst
+95	Coldcut	Sound Mirrors		ok	column: Sample/Inst
+96	Alva Noto	Xerrox Vol. 2		ok	column: Experimental
+97	Björk	Homogenic		ok	column: Experimental
+98	Fuck Buttons	Tarot Sport		ok	column: Experimental
+99	Black Moth Super Rainbow	Eating Us		ok	column: Experimental
+100	Flying Lotus	Cosmogramma		ok	column: Experimental
+101	Depeche Mode	Violator		ok	column: Synthpop
+102	Gary Numan	The Pleasure Principle		ok	column: Synthpop
+103	New Order	Power, Corruption & Lies		ok	column: Synthpop
+104	The Knife	Silent Shout		ok	column: Synthpop
+105	Ladytron	604		ok	column: Synthpop

@@ -1,0 +1,101 @@
+pos	artist	album	year	confidence	note
+1	The Moody Blues	Days of Future Passed	1967	ok	style: Orchestral
+2	Family	Music in a Doll's House	1968	ok	style: Rock
+3	Frank Zappa	Uncle Meat	1969	ok	style: Jazz-Rock
+4	King Crimson	In the Court of the Crimson King	1969	ok	style: Symphonic
+5	Soft Machine	Third	1970	ok	style: Canterbury
+6	Amon Düül II	Yeti	1970	ok	style: Krautrock
+7	Comus	First Utterance	1970	ok	style: Folk
+8	Van der Graaf Generator	Pawn Hearts	1971	ok	style: Symphonic
+9	Faust	Faust	1971	ok	style: Krautrock
+10	Pink Floyd	Meddle	1971	ok	style: Psychedelic
+11	Caravan	In the Land of Grey and Pink	1971	ok	style: Canterbury
+12	Mahavishnu Orchestra	The Inner Mounting Flame	1971	ok	style: Jazz-Rock
+13	Can	Tago Mago	1971	ok	style: Krautrock
+14	Yes	Close to the Edge	1972	ok	style: Symphonic
+15	Premiata Forneria Marconi	Per un Amico	1972	ok	style: Symphonic
+16	Gentle Giant	Octopus	1972	ok	style: Rock
+17	Jethro Tull	Thick as a Brick	1972	ok	style: Folk
+18	Banco del Mutuo Soccorso	Darwin!	1972	ok	style: Symphonic
+19	Aphrodite's Child	666	1972	ok	style: Psychedelic
+20	Nektar	A Tab in the Ocean	1972	ok	
+21	Wishbone Ash	Argus	1972	ok	style: Punk
+22	Samla Mammas Manna	Måltid	1973	ok	style: Punk
+23	Museo Rosenbach	Zarathustra	1973	ok	style: Symphonic
+24	Gong	Flying Teapot	1973	ok	style: Canterbury/Space
+25	Area	Arbeit Macht Frei	1973	ok	style: Jazz-Rock
+26	Genesis	Selling England by the Pound	1973	ok	style: Rock
+27	Mike Oldfield	Tubular Bells	1973	ok	style: Minimalism
+28	Emerson, Lake & Palmer	Brain Salad Surgery	1973	ok	style: Symphonic
+29	Magma	Mëkanïk Dëstruktïẁ Kömmandöh	1973	ok	style: Zeuhl
+30	King Crimson	Larks' Tongues in Aspic	1973	ok	style: Experimental
+31	Supertramp	Crime of the Century	1974	ok	style: Pop
+32	Robert Wyatt	Rock Bottom	1974	ok	style: Singer/Songwriter
+33	Arti e Mestieri	Tilt	1974	ok	style: Jazz-Rock
+34	King Crimson	Red	1974	ok	style: Heavy
+35	Tangerine Dream	Phaedra	1974	ok	style: Electronic
+36	Gryphon	Red Queen to Gryphon Three	1974	ok	style: Folk
+37	Slapp Happy	Desperate Straights	1975	ok	style: Pop
+38	Henry Cow	In Praise of Learning	1975	ok	style: Avant
+39	Harmonium	Les Cinq Saisons	1975	ok	style: Folk
+40	Hatfield and the North	The Rotters' Club	1975	ok	style: Canterbury
+41	Albert Marcœur	Album à Colorier	1976	ok	style: Singer/Songwriter
+42	Picchio dal Pozzo	Picchio dal Pozzo	1976	ok	style: Canterbury
+43	Hermann Szobel	Szobel	1976	ok	style: Jazz-Rock
+44	Locanda delle Fate	Forse le lucciole non si amano più	1977	ok	style: Symphonic
+45	Etron Fou Leloublan	Batelages	1977	ok	style: Punk
+46	Eloy	Ocean	1977	ok	style: Symphonic Space
+47	Bubu	Anabelas	1978	ok	style: Avant Symphonic
+48	National Health	Of Queues and Cures	1978	ok	style: Jazz-Rock
+49	Aksak Maboul	Un Peu de L'Âme des Bandits	1980	ok	style: Avant
+50	Eskaton	4 Visions	1981	ok	style: Zeuhl
+51	Dün	Eros	1981	ok	style: Zeuhl
+52	Kultivator	Barndomens Stigar	1981	ok	style: Avant
+53	Rush	Moving Pictures	1981	ok	style: Heavy
+54	Univers Zéro	Ceux du Dehors	1982	ok	style: Avant
+55	Bacamarte	Depois do Fim	1983	ok	style: Folk/Symphonic
+56	Present	Le Poison Qui Rend Fou	1985	ok	style: Avant
+57	Marillion	Misplaced Childhood	1985	ok	style: Neo
+58	After Dinner	Paradise of Replica	1989	ok	style: Pop
+59	Thinking Plague	In This Life	1989	ok	style: Avant
+60	Uz Jsme Doma	Uprostřed Slov	1990	ok	style: Punk
+61	U Totem	U Totem	1990	ok	style: Avant
+62	Ozric Tentacles	Erpland	1990	ok	style: Ambient
+63	Änglagård	Hybris	1992	ok	style: Symphonic
+64	Kingston Wall	II	1993	ok	style: Psychedelic
+65	5uu's	Hunger's Teeth	1994	ok	style: Avant
+66	Happy Family	Happy Family	1995	ok	style: Brutal
+67	Ruins	Hyderomastgroningem	1995	ok	style: Math Punk
+68	Cardiacs	Sing to God	1996	ok	style: Punk
+69	Tipographica	God Says I Can't Dance	1996	ok	style: Jazz-Rock
+70	Dragon Blue	Hades Park	1998	ok	style: Turntable
+71	Mansun	Six	1998	ok	style: Alternative
+72	Harpy	Speech on the Radio	1999	ok	style: Vocal
+73	Rich Woodson's Ellipsis	Control and Resistance	2000	ok	style: Math Jazz
+74	Cheval de Frise	Cheval de Frise	2000	ok	style: Math Folk
+75	Porcupine Tree	In Absentia	2002	ok	style: Heavy
+76	Akihisa Tsuboy & Natsuki Kido Duo	Era	2002	ok	style: Folk
+77	The Flying Luttenbachers	Systems Emerge from Complete Disorder	2003	ok	style: Brutal; caption cut off, completed
+78	The Mars Volta	De-Loused in the Comatorium	2003	ok	style: Post-Hardcore
+79	Yowie	Cryptooology	2004	ok	style: Extreme Math Rock
+80	Mike Keneally	The Universe Will Provide	2004	ok	style: Orchestral
+81	The Fiery Furnaces	Blueberry Boat	2004	ok	style: Pop
+82	Upsilon Acrux	Volucris Avis Dirae-Arum	2004	ok	style: Brutal
+83	IQ	Dark Matter	2004	ok	style: Neo
+84	Koenjihyakkei	Angherr Shisspa	2005	ok	style: Zeuhl
+85	Pak	Motel	2005	ok	style: Punk
+86	Ahleuchatistas	What You Will	2006	ok	style: Math Rock
+87	The Dear Hunter	Act I	2006	ok	style: Indie
+88	Sylvan	Posthumous Silence	2006	ok	style: Heavy
+89	Oceansize	Frames	2007	ok	style: Alternative
+90	Salle Gaveau	Alloy	2007	ok	style: Tango
+91	Make a Rising	Infinite Ellipse	2008	ok	style: Avant Pop
+92	You Slut!	Critical Meat	2008	ok	style: Punk
+93	Sajjanu	Pechiku!!	2009	ok	style: Extreme Math Rock
+94	Karnivool	Sound Awake	2009	ok	style: Alternative
+95	World's End Girlfriend	Seven Idiots	2010	ok	style: Fusion
+96	Pepe Deluxé	Queen of the Wave	2012	ok	style: Pop
+97	Perhaps	Volume One	2012	ok	style: Math Prog
+98	Rhùn	Fanfare du Chaos	2013	ok	style: Zeuhl
+99	Birds and Buildings	Multipurpose Trap	2013	ok	style: Jazz-Rock
+100	Dream the Electric Sleep	Heretics	2014	ok	style: Alternative

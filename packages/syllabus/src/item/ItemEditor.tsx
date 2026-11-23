@@ -25,6 +25,8 @@ export function ItemEditor({ item }: { item: ItemDef }) {
 				kind: '',
 				medium: item.medium === 'book' ? 'work' : item.medium,
 				cover: '',
+				url: '',
+				tracks: 0,
 				tags: [],
 				core: false,
 				childRule: 'core',

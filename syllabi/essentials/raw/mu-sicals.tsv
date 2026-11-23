@@ -1,0 +1,27 @@
+pos	artist	album	year	confidence	note
+# Musical cast recordings, recognised from the covers.
+1	Original London Cast	Les Misérables		cover	cast recording
+2	Original Broadway Cast	Next to Normal		cover	cast recording
+3	Original Cast	The Phantom of the Opera		cover	cast recording
+4	Original Broadway Cast	Rent		cover	cast recording; cover shows "Hits from the Musical"
+5	Original Broadway Cast	The Producers		cover	cast recording
+6	Original Cast	West Side Story		cover	cast recording
+7	New Broadway Cast	Anything Goes		cover	cast recording
+8	Original Cast	Bloody Bloody Andrew Jackson		cover	cast recording
+9	Original Broadway Cast	A Chorus Line		cover	cast recording
+10	Original Broadway Cast	Wicked		cover	cast recording
+11	Original Broadway Cast	Avenue Q		cover	cast recording
+12	Original Broadway Cast	Fiddler on the Roof		cover	cast recording
+13	Original Broadway Cast	Company		cover	cast recording
+14	Broadway Revival Cast	Sweeney Todd		cover	cast recording, Patti LuPone and Michael Cerveris
+15	Original Cast	Oklahoma!		cover	cast recording
+16	Original Cast	The Last Five Years		cover	cast recording; cover shows the film
+17	Original Broadway Cast	The Light in the Piazza		cover	cast recording
+18	Original Broadway Cast	Into the Woods		cover	cast recording
+19	Original Broadway Cast	Beauty and the Beast		cover	cast recording
+20	Original Broadway Cast	The Music Man		cover	cast recording
+21	Original Broadway Cast	The 25th Annual Putnam County Spelling Bee		cover	cast recording
+22	Original Broadway Cast	Grey Gardens		cover	cast recording
+23	Original Broadway Cast	Spring Awakening		cover	cast recording
+24	Original London Cast	Miss Saigon		cover	cast recording
+25	Original Broadway Cast	Monty Python's Spamalot		cover	cast recording

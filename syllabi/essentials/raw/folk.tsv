@@ -1,0 +1,104 @@
+pos	artist	album	year	confidence	note
+1	Woody Guthrie	Dust Bowl Ballads		ok	section: Pre 60's
+2	Odetta	Odetta Sings Ballads and Blues		ok	section: Pre 60's
+3	Various Artists	Back Roads to Cold Mountain		ok	section: Pre 60's, compilation
+4	The Kingston Trio	Here We Go Again		ok	section: Pre 60's
+5	Lonnie Donegan	Lonnie Donegan Showcase		ok	section: Pre 60's
+6	Pete Seeger	With Voices Together We Sing		ok	section: Pre 60's
+7	Shirley Collins	Sweet England		ok	section: Pre 60's
+8	Steve Benbow	Sings English Folk Songs		ok	section: Pre 60's
+9	The Weavers	Travelling On		ok	section: Pre 60's
+10	Harry Belafonte	Calypso		ok	section: Pre 60's
+11	Burl Ives	The Return of the Wayfaring Stranger		ok	section: Pre 60's
+12	The Almanac Singers	Songs For John Doe		ok	section: Pre 60's
+13	Carolyn Hester	Scarlet Ribbons		ok	section: Pre 60's
+14	Liam Clancy	The Lark in the Morning		ok	section: Pre 60's
+15	Leadbelly	Leadbelly Sings Folk Songs		ok	section: Pre 60's
+16	A.L. Lloyd	The Old Bush Songs		ok	section: Pre 60's
+17	Ramblin' Jack Elliott	Ramblin' Jack Elliott in London		ok	section: Pre 60's
+18	Pete Seeger	The Pete Seeger Sampler		ok	section: Pre 60's
+19	Fred Neil	Bleecker & Macdougal		ok	section: 60's
+20	Tim Buckley	Goodbye & Hello		ok	section: 60's
+21	Phil Ochs	Pleasures of the Harbor		ok	section: 60's
+22	Tim Hardin	Tim Hardin 2		ok	section: 60's
+23	Jackson C. Frank	Jackson C. Frank		ok	section: 60's
+24	Buffalo Springfield	Again		ok	section: 60's
+25	Bob Dylan	The Freewheelin' Bob Dylan		ok	section: 60's
+26	Van Morrison	Astral Weeks		ok	section: 60's
+27	Joni Mitchell	Clouds		ok	section: 60's
+28	Leonard Cohen	Songs of Leonard Cohen		ok	section: 60's
+29	Karen Dalton	It's So Hard to Tell Who's Going to Love You the Best		ok	section: 60's
+30	Bob Dylan	Blonde On Blonde		ok	section: 60's
+31	Fairport Convention	Liege & Lief		ok	section: 60's
+32	Bert Jansch	Bert Jansch		ok	section: 60's
+33	Skip Spence	Oar		ok	section: 60's
+34	The Band	Music from Big Pink		ok	section: 60's
+35	Pentangle	Basket of Light		ok	section: 60's
+36	The Incredible String Band	The Hangman's Beautiful Daughter		ok	section: 60's
+37	Donovan	Sunshine Superman		ok	section: 60's
+38	Ralph McTell	Eight Frames a Second		ok	section: 60's
+39	Doc Watson	Doc Watson		ok	section: 60's
+40	Nick Drake	Five Leaves Left		ok	section: 60's
+41	Bob Dylan	Bringing It All Back Home		ok	section: 60's
+42	Shirley Collins	Anthems in Eden		ok	section: 60's
+43	John Fahey	The Transfiguration of Blind Joe Death		ok	section: 60's
+44	Odetta	Sings Bob Dylan		ok	section: 60's
+45	Davy Graham	Folk, Blues & Beyond		ok	section: 60's
+46	Joan Baez	Joan Baez		ok	section: 60's
+47	Marianne Faithfull	North Country Maid		ok	section: 60's
+48	Nico	Chelsea Girl		ok	section: 60's
+49	Martin Carthy	Martin Carthy		ok	section: 60's
+50	Simon & Garfunkel	Bookends		ok	section: 60's
+51	Fapardokly	Fapardokly		ok	section: 60's
+52	Bridget St John	Ask Me No Questions		ok	section: 60's
+53	Leonard Cohen	Songs From a Room		ok	section: 60's
+54	Fairport Convention	Unhalfbricking		ok	section: 60's
+55	Jackson Browne	Late for the Sky		ok	section: 70's
+56	Sibylle Baier	Colour Green		ok	section: 70's
+57	C.O.B.	Spirit of Love		ok	section: 70's
+58	Cat Stevens	Tea For The Tillerman		ok	section: 70's
+59	Bob Dylan	Blood On The Tracks		ok	section: 70's
+60	Roy Harper	Stormcock		ok	section: 70's
+61	Cat Stevens	Teaser & The Firecat		ok	section: 70's
+62	Leonard Cohen	Songs of Love and Hate		ok	section: 70's
+63	Nick Drake	Pink Moon		ok	section: 70's
+64	Neil Young	Harvest		ok	section: 70's
+65	Joni Mitchell	Blue		ok	section: 70's
+66	Trees	On The Shore		ok	section: 70's
+67	Tom Waits	Closing Time		ok	section: 70's
+68	Simon & Garfunkel	Bridge over Troubled Water		ok	section: 70's
+69	Vashti Bunyan	Just Another Diamond Day		ok	section: 70's
+70	Anne Briggs	The Time Has Come		ok	section: 70's
+71	Judee Sill	Judee Sill		ok	section: 70's
+72	Richard and Linda Thompson	I Want To See The Bright Lights Tonight		ok	section: 70's
+73	Crosby, Stills, Nash & Young	Deja Vu		ok	section: 70's
+74	John Martyn	Bless the Weather		ok	section: 70's
+75	Sandy Denny	Sandy		ok	section: 70's
+76	Steeleye Span	Parcel of Rogues		ok	section: 70's
+77	James Taylor	Sweet Baby James		ok	section: 70's
+78	Linda Perhacs	Parallelograms		ok	section: 70's
+79	Badly Drawn Boy	The Hour of Bewilderbeast		ok	section: 90's - Present
+80	The Burns Unit	Side Show		ok	section: 90's - Present
+81	Fleet Foxes	Fleet Foxes		ok	section: 90's - Present
+82	David Francey	Torn Screen Door		ok	section: 90's - Present
+83	Cat Power	Moon Pix		ok	section: 90's - Present
+84	Chumbawamba	The Boy Bands Have Won		ok	section: 90's - Present
+85	Vashti Bunyan	Lookaftering		ok	section: 90's - Present
+86	Bob Dylan	Modern Times		ok	section: 90's - Present
+87	John Fahey	Red Cross		ok	section: 90's - Present
+88	Kate Rusby	Sleepless		ok	section: 90's - Present
+89	Bon Iver	For Emma, Forever Ago		ok	section: 90's - Present
+90	José González	Veneer		ok	section: 90's - Present
+91	Seth Lakeman	Freedom Fields		ok	section: 90's - Present
+92	Lucinda Williams	Car Wheels on a Gravel Road		ok	section: 90's - Present
+93	Robert Plant & Alison Krauss	Raising Sand		ok	section: 90's - Present
+94	Ani DiFranco	Not a Pretty Girl		ok	section: 90's - Present
+95	Greg Brown	Further In		ok	section: 90's - Present
+96	Richard Shindell	Vuelta		ok	section: 90's - Present
+97	Joanna Newsom	Ys		ok	section: 90's - Present
+98	Dave Carter and Tracy Grammer	Drum Hat Buddha		ok	section: 90's - Present
+99	Indigo Girls	Nomads Indians Saints		ok	section: 90's - Present
+100	Iva Bittová	Bílé inferno		ok	section: 90's - Present
+101	Vetiver	Vetiver		ok	section: 90's - Present
+102	Josephine Foster	Hazel Eyes, I Will Lead You		ok	section: 90's - Present
+103	Nic Jones	Penguin Eggs		ok	the chart's note recommends it for the 80s

@@ -1,0 +1,8 @@
+pos	artist	album	year	confidence	note
+# The chart lists album titles only. Artists are filled in only where certain; the rest are left for Phase 2 to look up.
+1		Spred Luv LP		unsure	artist not on the chart
+2	Moor Mother	Fetish Bones		ok	artist not on the chart
+3		Negro		unsure	artist not on the chart
+4		N A U S E A		unsure	artist not on the chart
+5		Oblivion Access		unsure	artist not on the chart
+6	clipping.	There Existed an Addiction to Blood		ok	artist not on the chart; title cut off, completed

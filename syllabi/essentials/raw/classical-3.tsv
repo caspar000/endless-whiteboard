@@ -1,0 +1,62 @@
+pos	artist	album	year	confidence	note
+# Classical: artist is the composer, album is the work, note gives the performers. Years are the recording's.
+1	Bach	Mass in B Minor	1985	ok	performers: Gardiner / English Baroque & Monteverdi Choir
+2	Beethoven	9 Symphonies	1963	ok	performers: Karajan / BPO
+3	Mozart	Requiem	1967	ok	performers: Davis / BBC Orch.
+4	Hildegard von Bingen	Canticles of Ecstasy	1994	ok	performers: Sequentia
+5	Perotin	Perotin	1989	ok	performers: Hilliard Ensemble
+6	Various	Miserere / Missa Papae Marcelli / Vox Patris caelestis	2005	ok	performers: Phillips / Tallis Scholars
+7	Vivaldi	Il cimento dell'armonia e dell'inventione	2001	ok	performers: Biondi / Europa Galante
+8	Handel	Water Music & Fireworks Music	2001	ok	performers: Gardiner / English Baroque
+9	Handel	Messiah	1988	ok	performers: Pinnock / English Concert & Choir
+10	Bach	6 Brandenburg Concertos & 4 Orchestral Suites	1988	ok	performers: Pinnock / English Concert
+11	Bach	The Goldberg Variations	1956	ok	performers: Gould
+12	Bach	Sonatas & Partitas for Solo Violin	1993	ok	performers: Grumiaux
+13	Mozart	Piano Concertos 20, 21, 25 & 27	1997	ok	performers: Gulda / Abbado / Wiener Phil.
+14	Mozart	Don Giovanni	1987	ok	performers: Giulini / Philharmonia Orch. & Chorus
+15	Mozart	Symphonies 35-41	1995	ok	performers: Böhm / Berliner Phil.
+16	Beethoven	Complete Piano Sonatas	1978	ok	performers: Brendel
+17	Beethoven	Late String Quartets	1977	ok	performers: Quartetto Italiano
+18	Schubert	Symphony No. 9	1982	ok	performers: Solti / Wiener Phil.
+19	Schubert	String Quartets 13-15; Piano Quintets	1997	ok	performers: Alban Berg Quartet / various
+20	Berlioz	Symphonie fantastique	1964	ok	performers: Bernstein / NYP
+21	Chopin	Nocturnes	1987	ok	performers: Rubinstein
+22	Wagner	Tristan und Isolde	1953	ok	performers: Furtwängler / Philharmonia Orch.
+23	Verdi	Requiem	1964	ok	performers: Giulini / Philharmonia Orch. & Choir
+24	Brahms	Complete Quintets	1995	ok	performers: Haas / Berlin Phil. Octet
+25	Brahms	Ein Deutsches Requiem	1962	ok	performers: Klemperer / Philharmonia Orch. & Chorus
+26	Brahms	Symphony No. 4	1998	ok	performers: Kleiber / Wiener Phil.
+27	Tchaikovsky	Symphonies 4-6	1987	ok	performers: Mravinsky / Leningrad Phil.
+28	Dvořák	Symphony No. 9	1974	ok	performers: Kubelík / BPO
+29	Dvořák	Cello Concerto & Variations on a Rococo Theme	1969	ok	performers: Rostropovich / Karajan / BPO; caption cut off, completed
+30	Grieg	Peer Gynt	1958	ok	performers: Beecham / Royal Phil. / Beecham Choral Society
+31	Mahler	Complete Edition	2010	ok	performers: various
+32	R. Strauss	Vier Letzte Lieder; Tod und Verklärung; Metamorphosen	1995	ok	performers: Karajan / BPO
+33	Scriabin	Scriabin Recital	2003	ok	performers: Sofronitsky
+34	Rachmaninov	Piano Concertos 1-5	1995	ok	performers: Ashkenazy / Previn / LSO
+35	Various	Pictures at an Exhibition, Night on Bald Mountain and Other...	1994	unsure	performers: Reiner / CSO; caption cut off
+36	Various	Début Recital	1961	ok	performers: Argerich
+37	Debussy	La Mer; Images; Nocturnes; Jeux; Printemps; Prélude à l'après-midi d'un faune	1999	ok	performers: Dutoit / MSO; caption cut off, completed
+38	Satie	3 Gymnopédies & Other Piano Works	1984	ok	performers: Rogé
+39	Ravel	Orchestral Works	1991	ok	performers: Boulez / Cleveland Orch. / NYP
+40	Ives	Symphonies 1-4 & Other Orchestral Works	2002	ok	performers: Tilson Thomas / Concertgebouw / CSO; caption cut off, completed
+41	Schoenberg / Webern / Berg	Piano Works	2001	ok	performers: Uchida / Boulez / Cleveland Orch.
+42	Bartók	6 String Quartets	1997	ok	performers: Takács Quartet
+43	Bartók	Concerto for Orchestra; Hungarian Sketches; Music for Strings, Percussion and Celesta	1993	ok	performers: Reiner / CSO; caption cut off, completed
+44	Stravinsky	Petrushka & Le Sacre du printemps	1992	ok	performers: Boulez / Cleveland Orch.
+45	Prokofiev	Piano Concertos 1-5	1975	ok	performers: Ashkenazy / Previn / LSO
+46	Shostakovich	Symphony No. 15; From Jewish Folk Poetry	1987	ok	performers: Haitink / LPO / Concertgebouw; caption cut off, completed
+47	Shostakovich	String Quartets & Piano Quintet	1994	ok	performers: Richter / Borodin Quartet
+48	Messiaen	Turangalîla Symphony & L'ascension	2000	ok	performers: Wit / Polish NRSO
+49	Messiaen	Quatuor pour la fin du temps	1988	ok	performers: Yordanoff / Tétard / Desurmont / Barenboim; caption cut off, completed
+50	Ligeti	Requiem; Lontano; Continuum	1968	ok	performers: various
+51	Stockhausen	Gesang der Jünglinge & Kontakte	1963	ok	performers: Stockhausen
+52	Penderecki	Matrix 5	1994	ok	performers: various
+53	Górecki	Symphony No. 3	1992	ok	performers: Upshaw / Zinman / London Sinfonietta
+54	Terry Riley	A Rainbow in Curved Air	1969	ok	performers: Riley
+55	Pärt	Tabula Rasa	1984	ok	performers: Schnittke / various
+56	Reich	Works 1965-1995	1997	ok	performers: various
+57	Glass	Einstein on the Beach	1979	ok	performers: Glass
+58	Meredith Monk	Dolmen Music	1981	ok	performers: Monk
+59	Glenn Branca	Symphony No. 1 (Tonal Plexus)	1983	ok	performers: Branca
+60	Rhys Chatham	An Angel Moves too Fast to See	2002	ok	performers: various

@@ -1,0 +1,102 @@
+pos	artist	album	year	confidence	note
+# Covers only, no captions: albums recognised from the covers.
+1	Candlemass	Epicus Doomicus Metallicus		cover	section: Traditional
+2	Pentagram	Relentless		cover	section: Traditional
+3	Trouble	Psalm 9		cover	section: Traditional
+4	Pagan Altar	Volume 1		cover	section: Traditional
+5	Reverend Bizarre	In the Rectory of the Bizarre Reverend		cover	section: Traditional
+6	Solitude Aeturnus	Through the Darkest Hour		cover	section: Traditional
+7	Uncle Acid & the Deadbeats	Blood Lust		cover	section: Traditional
+8	Paul Chain	Alkahest		cover	section: Traditional
+9	Witchfinder General	Death Penalty		cover	section: Traditional
+10	The Obsessed	Lunar Womb		cover	section: Traditional
+11	Kyuss	Welcome to Sky Valley		cover	section: Stoner
+12	Electric Wizard	Dopethrone		cover	section: Stoner
+13	Sleep	Dopesmoker		cover	section: Stoner
+14	Boris	Pink		cover	section: Stoner
+15	Down	NOLA		cover	section: Stoner
+16	Windhand	Soma		unsure	section: Stoner
+17	Trouble	Manic Frustration		cover	section: Stoner
+18	Cathedral	The Ethereal Mirror		cover	section: Stoner
+19	Melvins	Stoner Witch		cover	section: Stoner
+20	Acrimony	Tumuli Shroomaroom		cover	section: Stoner
+21	Mastodon	Leviathan		cover	section: Sludge
+22	Melvins	Houdini		cover	section: Sludge
+23	Acid Bath	When the Kite String Pops		cover	section: Sludge
+24	Eyehategod	Take as Needed for Pain		cover	section: Sludge
+25	Black Flag	My War		cover	section: Sludge
+26	Baroness	Red Album		cover	section: Sludge
+27	Harvey Milk	Courtesy and Good Will Toward Men		cover	section: Sludge
+28	Ufomammut	Snailking		cover	section: Sludge
+29	Crowbar	Sonic Excess in Its Purest Form		cover	section: Sludge
+30	Lento	The Ruin of Nova Roma		cover	section: Sludge
+31	Isis	Panopticon		cover	section: Atmospheric
+32	Cult of Luna	Somewhere Along the Highway		cover	section: Atmospheric
+33	Neurosis	Through Silver in Blood		cover	section: Atmospheric
+34	Rosetta	Wake/Lift		unsure	section: Atmospheric
+35	The Ocean	Precambrian		cover	section: Atmospheric
+36	Minsk	With Echoes in the Movement of Stone		cover	section: Atmospheric
+37	Blindead	Affliction XXIX II MXMVI		cover	section: Atmospheric
+38	Ghost Brigade	Isolation Songs		cover	section: Atmospheric
+39	Sólstafir	Köld		cover	section: Atmospheric
+40	Jesu	Silver		unsure	section: Atmospheric
+41	Boris & Sunn O)))	Altar		unsure	section: Drone
+42	The Angelic Process	Weighing Souls with Sand		cover	section: Drone
+43	Melvins	Lysol		cover	section: Drone
+44	Earth	Hex; Or Printing in the Infernal Method		unsure	section: Drone
+45	Earth	Earth 2		cover	section: Drone
+46	Nadja	Touched		cover	section: Drone
+47	Corrupted	El Mundo Frío		cover	section: Drone
+48	Sunn O)))	Monoliths & Dimensions		cover	section: Drone
+49	Om	God Is Good		unsure	section: Drone
+50	Om	Advaitic Songs		unsure	section: Drone
+51	diSEMBOWELMENT	Transcendence into the Peripheral		cover	section: Death
+52	Katatonia	Brave Murder Day		cover	section: Death
+53	My Dying Bride	Turn Loose the Swans		cover	section: Death
+54	Anathema	Serenades		unsure	section: Death
+55	Slumber	Fallout		cover	section: Death
+56	Saturnus	Paradise Belongs to You		cover	section: Death
+57	October Tide	Rain Without End		cover	section: Death
+58	Ataraxie	L'Être et la nausée		unsure	section: Death
+59	Winter	Into Darkness		cover	section: Death
+60	Bell Witch	Longing		unsure	section: Death
+61	Skepticism	Stormcrowfleet		cover	section: Funeral
+62	Esoteric	Metamorphogenesis		cover	section: Funeral
+63	Shape of Despair	Angels of Distress		cover	section: Funeral
+64	Worship	Last CD Before Doomsday		cover	section: Funeral
+65	Evoken	Antithesis of Light		cover	section: Funeral
+66	Mournful Congregation	The Monad of Creation		cover	section: Funeral
+67	Thergothon	Stream from the Heavens		cover	section: Funeral
+68	Ahab	The Call of the Wretched Sea		cover	section: Funeral
+69	Colosseum	Chapter 1: Delirium		cover	section: Funeral
+70	Ea	Ea Taesse		cover	section: Funeral
+71	Tiamat	Wildhoney		cover	section: Gothic
+72	The Gathering	Mandylion		cover	section: Gothic
+73	Paradise Lost	Draconian Times		cover	section: Gothic
+74	My Dying Bride	The Angel and the Dark River		cover	section: Gothic
+75	Type O Negative	Bloody Kisses		cover	section: Gothic
+76	Moonspell	Wolfheart		cover	section: Gothic
+77	Virgin Black	Requiem - Mezzo Forte		cover	section: Gothic
+78	Draconian	Where Lovers Mourn		cover	section: Gothic
+79	Lake of Tears	Forever Autumn		cover	section: Gothic
+80	Sentenced	The Cold White Light		cover	section: Gothic
+81	Celtic Frost	Monotheist		cover	section: Extras
+82	Hooded Menace	Effigies of Evil		unsure	section: Extras
+83	Yob	Catharsis		unsure	section: Extras
+84	Saint Vitus	Born Too Late		cover	section: Extras
+85	Mael Mórdha	Gealtacht Mael Mórdha		unsure	section: Extras
+86	Novembre	Classica		cover	section: Extras
+87	Solstice	New Dark Age		cover	section: Extras
+88	Witchcraft	Firewood		unsure	section: Extras
+89	Chelsea Wolfe	Abyss		unsure	section: Extras
+90	Triptykon	Melana Chasmata		cover	section: Extras
+91	Black Sabbath	The Complete Albums 1970-1978		cover	section: Extras, box set
+92	The 3rd and the Mortal	Tears Laid in Earth		cover	section: Extras
+93	Void of Silence	Human Antithesis		cover	section: Extras
+94	Warhorse	As Heaven Turns to Ash		cover	section: Extras
+95	Yob	The Illusion of Motion		cover	section: Extras
+96	While Heaven Wept	Of Empires Forlorn		cover	section: Extras
+97	Funeral	From These Wounds		cover	section: Extras
+98	Ufomammut	Idolum		unsure	section: Extras
+99	Mondo Generator	III The Dead Planet		unsure	section: Extras
+100	Kylesa	Static Tensions		cover	section: Extras

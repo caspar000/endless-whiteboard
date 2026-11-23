@@ -58,6 +58,13 @@ export function Backlog({ go }: SectionProps) {
 					in the backlog too. Click it to see inside.
 				</p>
 				<p>
+					<strong>Nothing goes in twice.</strong> An album is the same album however it is spelled: case,
+					accents, punctuation, a leading “The” and anything in brackets (“Remastered”) set aside. Add one
+					the backlog already holds and the card says where: one already there as its own tile moves to
+					the top, and one a collection holds stays in the collection. The count at the top counts each
+					thing once, however many collections hold it.
+				</p>
+				<p>
 					Hover a tile for <strong>×</strong> to take it out. Four rows show at first; <strong>Show all</strong>{' '}
 					shows the rest.
 				</p>

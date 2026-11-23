@@ -161,6 +161,12 @@ export class Vault {
 		return Object.fromEntries(rows.map((row) => [row.key, JSON.parse(row.value)]))
 	}
 
+	/** One setting's stored value, or undefined when it is unset. */
+	setting(vaultId: string, key: string): unknown {
+		const row = this.db.prepare('SELECT value FROM settings WHERE vault_id = ? AND key = ?').get(vaultId, key) as { value: string } | undefined
+		return row ? JSON.parse(row.value) : undefined
+	}
+
 	setSetting(vaultId: string, key: string, value: unknown): void {
 		this.db
 			.prepare('INSERT INTO settings (vault_id, key, value) VALUES (?, ?, ?) ON CONFLICT DO UPDATE SET value = excluded.value')

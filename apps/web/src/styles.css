@@ -15424,6 +15424,15 @@ button.lb-props__eye:hover {
 	color: var(--lb-danger);
 	font-size: 11px;
 }
+/* Something added that the backlog already held: said on the card for a few seconds. */
+.lb-backlog__notice {
+	margin: 8px 0 0;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--lb-surface) 88%, var(--lb-accent));
+	color: var(--lb-text);
+	font-size: 12px;
+}
 .lb-backlog__add .lb-source-select {
 	font-size: 12px;
 }

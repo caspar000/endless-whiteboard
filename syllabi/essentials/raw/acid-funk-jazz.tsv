@@ -1,0 +1,38 @@
+pos	artist	album	year	confidence	note
+# No captions: artists and some titles are printed on the covers, the rest recognised from the cover.
+1	6ix Toys	6ix Toys		unsure	only the artist is on the cover
+2	Azaxx	The Exotic Delight Bay		cover	
+3	Cookin' on 3 Burners	Baked, Broiled & Fried		cover	
+4	De-Phazz	Godsdog		cover	
+5	Diesler	Tracks on the Rocks		cover	
+6	DJ Cam Quartet	Stay		unsure	title from the cover text
+7	4hero	Play With The Changes		cover	
+8	Breakestra	The Live Mix Part 2		unsure	cover shows "456"
+9	Bugz in the Attic	Homecookin' - Do What You Wanna		unsure	compilation
+10	Dual Control	Left or Right		cover	
+11	DuFunk	Shake It		cover	
+12	Xploding Plastix	The Donca Matic Singalongs		cover	
+13	zero dB	Heavyweight Gringos		unsure	
+14	Yesterdays New Quintet	Angles Without Edges		unsure	title not on the cover
+15	Trio Valore	Return of the Iron Monkey		cover	
+16	Bobo and the Second Lines	Bobo and the Second Lines		unsure	small print
+17	The Sound Stylistics	Play Deep Funk		cover	
+18	The Sweet Vandals	The Sweet Vandals		cover	
+19	The Quantic Soul Orchestra	Tropidelico		cover	
+20	Flow Dynamics	Flow Dynamics		unsure	title not on the cover
+21	Jafrosax	Jafrosax		unsure	title not on the cover
+22	The Hot 8 Brass Band	Rock With the Hot 8 Brass Band		cover	
+23	Jazz & Milk	Breaks		cover	compilation
+24	Jazzanova	Jazzanova		unsure	cover lettering only
+25	Jazztronik	Samurai		cover	
+26	Jon Kennedy	We're Just Waiting for You Now		cover	
+27	Koop	Sons of Koop		cover	
+28	Kraak & Smaak	Boogie Angst		cover	
+29	Diplomats of Solid Sound	What Goes Around Comes Around		cover	
+30	Kyoto Jazz Massive	Spirit of the Sun		cover	
+31	The Haggis Horns	Hot Damn!		cover	
+32	Skalpel	Konfusion		cover	
+33	Natural Self	My Heart Beats Like a Drum		cover	
+34	Lanu	Lanu		unsure	title not on the cover
+35	Nostalgia 77	The Garden		cover	
+36	The Bamboos	4		cover	

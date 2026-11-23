@@ -13,16 +13,21 @@ import {
 	setTracksPersistence,
 	setTreePlansPersistence,
 } from '@lifeboard/syllabus'
-import { pushVaultSetting } from '../server/serverVault'
+import { patchVaultSetting, pushVaultSetting, type VaultSettingKey } from '../server/serverVault'
 
 /**
  * The syllabus index (docs/skill-tree-plan.md, "The index"), kept like saved card layouts:
  * localStorage as the cache that makes the first render right, the server vault as the truth once it
  * answers.
  *
- * Throttled, unlike the layouts: the index changes with every keystroke in an evidence note, and each
- * write is the whole index. A second of delay costs nothing, since every open board keeps its own
- * part of the index current and rescans when it opens.
+ * Throttled, unlike the layouts: the index changes with every keystroke in an evidence note. A second
+ * of delay costs nothing, since every open board keeps its own part of the index current and rescans
+ * when it opens.
+ *
+ * The syllabus's items, tracks and evidence are sent as their changes, not whole: /mu/core with the
+ * /mu/ Essential Charts is over 12,000 items, about 6 MB, and a tick changes one of them. Each store
+ * replaces an entry's object when it changes it, so an entry that is not the object last sent is
+ * one to send.
  */
 const WAIT_MS = 1000
 
@@ -32,13 +37,37 @@ const WAIT_MS = 1000
  * them); the write-up copies are rebuilt by any board that opens.
  */
 const STORES = [
-	{ key: 'syllabusItems', cacheKey: 'lifeboard:syllabusItems', get: getItems, replace: replaceItems, listen: setItemsPersistence },
-	{ key: 'syllabusTracks', cacheKey: 'lifeboard:syllabusTracks', get: getTracks, replace: replaceTracks, listen: setTracksPersistence },
-	{ key: 'syllabusEvidence', cacheKey: 'lifeboard:syllabusEvidence', get: getEvidence, replace: replaceEvidence, listen: setEvidencePersistence },
+	{ key: 'syllabusItems', cacheKey: 'lifeboard:syllabusItems', get: getItems, replace: replaceItems, listen: setItemsPersistence, byChange: true },
+	{ key: 'syllabusTracks', cacheKey: 'lifeboard:syllabusTracks', get: getTracks, replace: replaceTracks, listen: setTracksPersistence, byChange: true },
+	{ key: 'syllabusEvidence', cacheKey: 'lifeboard:syllabusEvidence', get: getEvidence, replace: replaceEvidence, listen: setEvidencePersistence, byChange: true },
 	// The tree each syllabus file came with, kept unused until a tree is made from the syllabus.
-	{ key: 'syllabusTreePlans', cacheKey: 'lifeboard:syllabusTreePlans', get: getTreePlans, replace: replaceTreePlans, listen: setTreePlansPersistence },
-	{ key: 'skillTrees', cacheKey: 'lifeboard:skillTrees', get: getTreeDefs, replace: replaceTreeDefs, listen: setTreeDefsPersistence },
+	{ key: 'syllabusTreePlans', cacheKey: 'lifeboard:syllabusTreePlans', get: getTreePlans, replace: replaceTreePlans, listen: setTreePlansPersistence, byChange: false },
+	{ key: 'skillTrees', cacheKey: 'lifeboard:skillTrees', get: getTreeDefs, replace: replaceTreeDefs, listen: setTreeDefsPersistence, byChange: false },
 ] as const
+
+type Keyed = Readonly<Record<string, unknown>>
+
+/** What the server holds of each store sent by its changes, as last sent or received; absent until known. */
+const onServer = new Map<VaultSettingKey, Keyed>()
+
+/**
+ * Sends a store sent by its changes: the entries that differ from what the server holds, and the ids
+ * it no longer has. Until the server's copy is known (before the vault answers) it goes whole, as
+ * every store did before. A send that fails leaves `onServer` as it was, so the next one carries its
+ * changes too.
+ */
+export function sendChanges(key: VaultSettingKey, value: Keyed): void {
+	const known = onServer.get(key)
+	if (!known) {
+		void pushVaultSetting(key, value).then((ok) => ok && onServer.set(key, value))
+		return
+	}
+	const set: Record<string, unknown> = {}
+	for (const [id, entry] of Object.entries(value)) if (known[id] !== entry) set[id] = entry
+	const gone = Object.keys(known).filter((id) => !Object.hasOwn(value, id))
+	if (!Object.keys(set).length && !gone.length) return
+	void patchVaultSetting(key, { set, delete: gone }).then((ok) => ok && onServer.set(key, value))
+}
 
 export function loadSkillIndex(): void {
 	for (const store of STORES) {
@@ -55,7 +84,8 @@ export function loadSkillIndex(): void {
 				timer = null
 				const value = store.get()
 				cache(store.cacheKey, value)
-				pushVaultSetting(store.key, value)
+				if (store.byChange) sendChanges(store.key, value)
+				else pushVaultSetting(store.key, value)
 			}, WAIT_MS)
 		})
 	}
@@ -74,10 +104,12 @@ export function applyRemoteSkillIndex(remote: Partial<Record<(typeof STORES)[num
 	for (const store of STORES) {
 		const value = remote[store.key]
 		if (value === undefined) {
-			pushVaultSetting(store.key, store.get())
+			if (store.byChange) sendChanges(store.key, store.get())
+			else pushVaultSetting(store.key, store.get())
 			continue
 		}
 		store.replace(value)
 		cache(store.cacheKey, store.get())
+		if (store.byChange) onServer.set(store.key, store.get())
 	}
 }

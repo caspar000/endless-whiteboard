@@ -68,6 +68,8 @@ export interface RandomItem {
 	stamps: Stamp[]
 	/** Where the item opens (a video). Only a source's entries have one, and it is never stored. */
 	url?: string
+	/** The source's line beside the year ("11 tracks"). Never stored. */
+	detail?: string
 	/** How heavily a draw favours it: a weighted ranking's tier (DARK-11). The source's, never stored. */
 	weight?: number
 }
@@ -340,6 +342,7 @@ export function withEntries(stored: readonly RandomItem[], source: string, entri
 			cover: kept?.cover || entry.cover,
 			stamps: kept?.stamps ?? [],
 			...(entry.url ? { url: entry.url } : {}),
+			...(entry.detail ? { detail: entry.detail } : {}),
 			...(entry.weight !== undefined ? { weight: entry.weight } : {}),
 		}
 	})

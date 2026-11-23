@@ -564,7 +564,7 @@ function RandomizerCardImpl({ shape, isEditing, editor }: NodeComponentProps<Ran
 				<div>
 					<div className="lb-rand__row-label">
 						<span>{kind.creator}</span>
-						<span className="lb-rand__meta">{current ? [current.year, kind.tag].filter(Boolean).join(' · ') : ''}</span>
+						<span className="lb-rand__meta">{current ? [current.year, current.detail, kind.tag].filter(Boolean).join(' · ') : ''}</span>
 					</div>
 					<Tiles count={CREATOR_TILES} text={current?.creator ?? ''} frozen={busy} className="lb-rand__tiles lb-rand__tiles--creator" handle={creatorTiles} />
 				</div>

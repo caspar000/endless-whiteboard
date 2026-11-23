@@ -1,0 +1,18 @@
+pos	artist	album	year	confidence	note
+# Classical: artist is the composer, album is the work, note gives the performers of the recording shown.
+1	Gluck	Orphée et Euridice		ok	performers: Ryan Brown / Opera Lafayette
+2	Salieri	Overtures		ok	performers: Michael Dittrich / Slovak Radio Symphony Orchestra
+3	Haydn	The 12 London Symphonies		ok	performers: Eugen Jochum / London Philharmonic Orchestra
+4	Haydn	String Quartets Op. 76		ok	performers: Kodály Quartet
+5	Pergolesi	Stabat Mater		ok	performers: Christopher Hogwood / The Academy of Ancient Music
+6	Cherubini	Requiem		ok	performers: Martin Pearlman / Boston Baroque
+7	Clementi	The Complete Piano Sonatas Vol. 1		ok	performers: Howard Shelley
+8	Mozart	Great Piano Concertos (Nos. 20-25)		ok	performers: Vladimir Ashkenazy / Philharmonia Orchestra
+9	Mozart	Symphonies Nos. 40 & 41 "Jupiter"		ok	performers: Bernstein / Wiener Philharmoniker
+10	Mozart	Le Nozze di Figaro		ok	performers: Sir Georg Solti / London Philharmonic Orchestra
+11	Mozart	Don Giovanni		ok	performers: Herbert von Karajan / Berliner Philharmoniker
+12	Mozart	Requiem		ok	performers: Sir Georg Solti / Wiener Philharmoniker
+13	Beethoven	Piano Sonatas		ok	performers: Arthur Rubinstein
+14	Beethoven	The Violin Sonatas		ok	performers: Itzhak Perlman / Vladimir Ashkenazy
+15	Beethoven	The Late String Quartets		ok	performers: Emerson String Quartet
+16	Beethoven	The 9 Symphonies		ok	performers: Leonard Bernstein

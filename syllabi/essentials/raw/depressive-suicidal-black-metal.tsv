@@ -1,0 +1,89 @@
+pos	artist	album	year	confidence	note
+1	Trist	Zrcadlení melancholie		ok	section: Long, monotonous, and apathetic
+2	Dodsferd	Suicide and the Rest of Your Kind Will Follow		ok	section: Long, monotonous, and apathetic
+3	Nyktalgia	Nyktalgia		ok	section: Long, monotonous, and apathetic
+4	Lyrinx	Ending the Circle of Life		ok	section: Long, monotonous, and apathetic
+5	Wigrid	Hoffnungstod		ok	section: Long, monotonous, and apathetic
+6	Hypothermia	Rakbladsvalsen		ok	section: Long, monotonous, and apathetic
+7	Abyssic Hate	Suicidal Emotions		ok	section: Long, monotonous, and apathetic
+8	Make a Change... Kill Yourself	Make a Change... Kill Yourself		ok	section: Long, monotonous, and apathetic
+9	Gris	Il était une forêt...		ok	section: Atmospheric
+10	Krohm	The Haunting Presence		ok	section: Atmospheric
+11	Xasthur	To Violate the Oblivious		ok	section: Atmospheric
+12	Leviathan	The Tenth Sub Level of Suicide		ok	section: Atmospheric
+13	Striborg	Autumnal Melancholy		ok	section: Atmospheric
+14	Sombres Forêts	Royaume De Glace		ok	section: Atmospheric
+15	I Shalt Become	Wanderings		ok	section: Atmospheric
+16	Zuriaake	Afterimage of Autumn		ok	section: Atmospheric
+17	Silencer	Death - Pierce Me		ok	section: Faster, progressive
+18	Totalselfhatred	Totalselfhatred		ok	section: Faster, progressive
+19	Malvery	Mortal Entrenchment In Requiem		ok	section: Faster, progressive
+20	Shining	V - Halmstad		ok	section: Faster, progressive
+21	Thy Light	Suici.De.pression		ok	section: Faster, progressive
+22	Anti	The Insignificance Of Life		ok	section: Faster, progressive
+23	Mortifera	Vastiia Tenebrd Mortifera		ok	section: Faster, progressive
+24	Joyless	Unlimited Hate		ok	section: Faster, progressive
+25	Bethlehem	Dictius Te Necare		ok	section: Doom Metal Influenced
+26	Gravekeeper	Gravekeeper		ok	section: Doom Metal Influenced
+27	Dysthymia	The Shivering Opus		ok	section: Doom Metal Influenced
+28	Licht Erlischt...	...And Below, the Retrograde Disciples		ok	section: Doom Metal Influenced
+29	Forgotten Tomb	Songs to Leave		ok	section: Doom Metal Influenced
+30	Deinonychus	The Silence of December		ok	section: Doom Metal Influenced
+31	Mourning Dawn	Mourning Dawn		ok	section: Doom Metal Influenced
+32	Belmez	Berserker		ok	section: Doom Metal Influenced
+33	Lifelover	Konkurs		ok	section: Post-Punk Influenced
+34	Amesoeurs	Ruines Humaines		ok	section: Post-Punk Influenced
+35	Psychonaut 4	Have a Nice Trip		ok	section: Post-Punk Influenced
+36	INTIG	Empty		ok	section: Post-Punk Influenced
+37	Apati	Eufori		ok	section: Post-Punk Influenced
+38	Frail	Brilliant Darkness		ok	section: Post-Punk Influenced
+39	Hateful Abandon	Famine (or Into the Bellies of Worms)		ok	section: Post-Punk Influenced
+40	Knarkaren	...put uninspired title here...		ok	section: Post-Punk Influenced
+41	Ghost Bath	Moonlover		ok	section: Post-Rock Influenced
+42	Hypothermia	Gråtoner		ok	section: Post-Rock Influenced
+43	Sadness	Somewhere Along Our Memory		ok	section: Post-Rock Influenced
+44	Dopamine	Dying Away in the Deep Fall		ok	section: Post-Rock Influenced
+45	Ethereal Shroud	They Became the Falling Ash		ok	section: Funeral Doom Influenced
+46	Nortt	Ligfærd		ok	section: Funeral Doom Influenced
+47	Elysian Blaze	Levitating The Carnal		ok	section: Funeral Doom Influenced
+48	Abyssmal Sorrow	Lament		ok	section: Funeral Doom Influenced
+49	Austere	To Lay Like Old Ashes		ok	section: Blackgaze
+50	Trancelike Void	Unveiling the Silent Arms of Despair		ok	section: Blackgaze
+51	Hexenmeister / Bergrizen	Complaint of Dying Years		ok	section: Blackgaze
+52	Heretoir	Existenz		ok	section: Blackgaze
+53	Dreariness	My Mind is too Weak to Forget		ok	section: Blackgaze
+54	An Autumn for Crippled Children	Lost		ok	section: Blackgaze
+55	Mélancolie	Wasted Years		ok	section: Blackgaze
+56	Self-Inflicted Violence	A Perception Of Matter and Energy		ok	section: Blackgaze
+57	Pensées Nocturnes	Vacuum		ok	section: Avant-Garde, Experimental
+58	Lonesummer	There are Few Tomorrows for Feeding Our Worries		ok	section: Avant-Garde, Experimental
+59	Animus	Poems for the Aching, Swords for the Infuriated		ok	section: Avant-Garde, Experimental
+60	Smorzando	Smrad		ok	section: Avant-Garde, Experimental
+61	Todesstoß	Todesstoß		ok	section: Avant-Garde, Experimental
+62	Agathothodion	Traum Von Gott		ok	section: Avant-Garde, Experimental
+63	Sebastian Crugley	Transient Life		ok	section: Avant-Garde, Experimental
+64	Kanashimi	Romantik Suicide		ok	section: Avant-Garde, Experimental
+65	Lifelover	Dekadens		ok	section: Misc. EPs
+66	Life is Pain	Bloody Melancholy		ok	section: Misc. EPs
+67	Xasthur	Xasthur		ok	section: Misc. EPs
+68	Trist	Nostalgie		ok	section: Misc. EPs
+69	Strid	End of Life		ok	section: Proto DSBM
+70	Bethlehem	Thy Pale Dominion		ok	section: Proto DSBM
+71	Forgotten Woods	As the Wolves Gather		ok	section: Proto DSBM
+72	Nidhoggr	Ravens Over the Road of the Kings		ok	section: Proto DSBM
+73	Worthless Life	Conscious in Coma		ok	section: Symphonic
+74	Mist Of Misery	Absence		ok	section: Symphonic
+75	Worthless Life	Woods of Sorrow		ok	section: Symphonic
+76	Worthless Life	Dark October		ok	section: Symphonic
+77	Inferi	Shores of Sorrow		ok	section: Misc.
+78	Sui Caedere	Thrène		ok	section: Misc.
+79	Veil	Dolor		ok	section: Misc.
+80	Xasthur	Xasthur/Leviathan		ok	section: Misc., split
+81	Nachtvorst	Stills		ok	section: Misc.
+82	Hypothermia	Lead Yourself to Failure		ok	section: Misc.
+83	Sortsind	Sår		ok	section: Misc.
+84	Be Persecuted	I.I		ok	section: Misc.
+85	And End...	Between Light And Lies		ok	section: Selected Bandcamp Releases
+86	Coffinshade	In the Darkness I Shall Dwell		ok	section: Selected Bandcamp Releases
+87	Overwrought	Disorder		ok	section: Selected Bandcamp Releases
+88	Alldrig	Uncontrolled dreams of exploding skies		ok	section: Selected Bandcamp Releases

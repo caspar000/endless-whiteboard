@@ -1,0 +1,32 @@
+pos	artist	album	year	confidence	note
+# Classical: artist is the composer, album is the work, note gives the performers of the recording shown.
+1	Bach	Mass in B minor		ok	performers: Masaaki Suzuki / Bach Collegium Japan
+2	Bach	Goldberg-Variationen		ok	performers: Glenn Gould
+3	Bartók	Concerto for Orchestra / Music for Strings, Percussion and Celesta		ok	performers: Ferenc Fricsay / Radio-Symphonie-Orchester Berlin / RIAS-Symphonie-Orchester Berlin
+4	Beethoven	Symphony No. 9		ok	performers: Arturo Toscanini / NBC Symphony Orchestra / Robert Shaw Chorale
+5	Beethoven & Mozart	Piano Concertos		ok	performers: Leon Fleisher / George Szell / Cleveland Orchestra
+6	Brahms, Tchaikovsky & Bach	Violin Concertos		ok	performers: David Oistrakh
+7	Bruckner	Symphony No. 7		ok	performers: Heinz Rögner / Rundfunk-Sinfonie-Orchester Berlin
+8	Chopin	Etudes, Op. 25 / Piano Sonata No. 2 / Berceuse		ok	performers: Maurizio Pollini
+9	Debussy	Piano Music		ok	performers: Claudio Arrau
+10	Josquin	Missa Pange Lingua / Motets		ok	performers: Bernard Fabre-Garrus / A Sei Voci
+11	Dvořák, Smetana & Liszt	Symphony No. 9 / Vltava / Les Préludes		ok	performers: Ferenc Fricsay / Berliner Philharmoniker
+12	Händel	Dixit Dominus		ok	performers: Marc Minkowski / Les Musiciens du Louvre
+13	Janáček	Piano Works		ok	performers: Rudolf Firkušný / Rafael Kubelík / Sinfonieorchester des Bayerischen Rundfunks
+14	Mahler	Symphony No. 2		ok	performers: Otto Klemperer / Philharmonia Orchestra / Philharmonia Chorus
+15	Mozart	Le Nozze di Figaro		ok	performers: Erich Kleiber / Wiener Philharmoniker
+16	Mozart	Symphonies Nos. 40 & 41		ok	performers: Nikolaus Harnoncourt / Royal Concertgebouw Orchestra
+17	Mussorgsky	Night on Bare Mountain / Pictures at an Exhibition		ok	performers: René Leibowitz / Royal Philharmonic Orchestra
+18	Prokofiev & Ravel	Violin Sonatas		ok	performers: Shlomo Mintz / Yefim Bronfman
+19	Rachmaninoff & Tchaikovsky	Piano Concerto No. 3 / Piano Concerto No. 1		ok	performers: Martha Argerich / Kirill Kondrashin / Riccardo Chailly / Radio-Symphonie-Orchester Berlin
+20	Schönberg, Berg & Webern	Piano Concerto / Piano Pieces		ok	performers: Mitsuko Uchida / Pierre Boulez / Cleveland Orchestra
+21	Schubert & Schumann	Wanderer Fantasy / Fantasy in C major / Papillons		ok	performers: Sviatoslav Richter
+22	Haydn	String Quartets Op. 76, 77 & 103		ok	performers: Amadeus Quartet
+23	Schubert	Winterreise		ok	performers: Josef Greindl / Hertha Klust
+24	Schütz	Symphoniae Sacrae III		ok	performers: Konrad Junghänel / Cantus Cölln / Concerto Palatino
+25	Stravinsky & Scriabin	Le Sacre du Printemps / Le Poème de l'extase		ok	performers: Valery Gergiev / Kirov Orchestra
+26	Boulez, Prokofiev, Stravinsky & Webern	Piano Sonata No. 2 / Piano Sonata No. 7 / Variations / Pétrouchka		ok	performers: Maurizio Pollini
+27	Tchaikovsky	Symphonies Nos. 4 - 6		ok	performers: Evgeny Mravinsky / Leningrad Philharmonic Orchestra
+28	Verdi	Otello		ok	performers: Carlos Kleiber / Orchestra e coro del Teatro alla Scala
+29	Vivaldi	Il cimento dell'armonia e dell'inventione		ok	performers: Alice Harnoncourt / Nikolaus Harnoncourt / Concentus Musicus Wien
+30	Liszt	Études d'exécution transcendante		ok	performers: Boris Berezovsky

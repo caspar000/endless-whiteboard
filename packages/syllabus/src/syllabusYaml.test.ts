@@ -50,6 +50,15 @@ describe('parseSyllabus', () => {
 		expect(homer.children.map((c) => c.itemId)).toEqual(['adler/homer/iliad', 'adler/homer/odyssey'])
 	})
 
+	it("reads a work's link and track count, and refuses ones that aren't", () => {
+		const album = (fields: string) => `goal: m\nname: M\ntracks:\n  - id: t\n    items:\n      - { id: a, title: "A - B", ${fields} }\n`
+		const a = parsed(album('url: "https://www.youtube.com/results?search_query=a+b", tracks: 11')).tracks[0]!.items[0]!
+		expect([a.url, a.tracks]).toEqual(['https://www.youtube.com/results?search_query=a+b', 11])
+		expect([parsed(album('medium: album')).tracks[0]!.items[0]!.url, parsed(album('medium: album')).tracks[0]!.items[0]!.tracks]).toEqual(['', 0])
+		const bad = parseSyllabus(album('url: "http://example.com", tracks: 0'))
+		expect(bad.ok ? [] : bad.errors).toEqual(['Track 1 › item 1: url is an https: link', 'Track 1 › item 1: tracks is a whole number above 0'])
+	})
+
 	it('keeps ids that already name a goal, and lists them in the order', () => {
 		const track = parsed(SOURCE).tracks[0]!
 		expect(track.trackId).toBe('adler/greeks')

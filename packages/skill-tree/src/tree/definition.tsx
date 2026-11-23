@@ -8,7 +8,8 @@ import { recalculate } from './viewSync'
 import { makeItemId } from '../ids'
 import { TIERS } from '../requirements'
 import { treeStatus } from './status'
-import { boardTrees, reachFrom, treeGraph } from '../views'
+import { allItems } from '../sources'
+import { boardTrees, MAX_SHOWN_ITEMS, reachFrom, treeGraph, viewContents } from '../views'
 
 const keepKeys = (e: KeyboardEvent) => e.stopPropagation()
 const swallow = (e: SyntheticEvent) => e.stopPropagation()
@@ -47,8 +48,15 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 	const nodes = isEditing ? rootChoices(editor, shape.props.treeId) : []
 	const set = (props: Partial<SkillTreeProps>) => editor.updateShape({ id: shape.id, type: TREE_TYPE, props } as never)
 
+	// A tree too big to draw whole (MAX_SHOWN_ITEMS) shows its skill nodes whatever its view: say so.
+	const tooMany = useValue(
+		'lifeboard:skill-tree-too-many',
+		() => viewContents(treeGraph(boardTrees(editor)), allItems(), { ...shape.props, mode: 'all' }).tooMany,
+		[editor, shape.props.treeId, shape.props.root]
+	)
+
 	const header = shape as unknown as TreeShape
-	const mode = shape.props.mode
+	const mode = tooMany ? 'overview' : shape.props.mode
 	const button = (label: string, title: string, run: () => void) => (
 		<button
 			type="button"
@@ -74,7 +82,13 @@ function TreeComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Skil
 			</span>
 			<div className="lb-skilltree__bar">
 				<span className="lb-skilltree__mode">{mode === 'all' ? 'Everything' : 'Skill nodes'}</span>
-				{mode !== 'all' && button('Show all', 'Every entry and work of this tree, however many', () => setView(editor, header, 'all'))}
+				{tooMany ? (
+					<span className="lb-skilltree__mode" title={`Showing all would put ${tooMany.toLocaleString()} cards on the board; past ${MAX_SHOWN_ITEMS.toLocaleString()} a tree shows its skill nodes only`}>
+						· {tooMany.toLocaleString()} works, too many to show all
+					</span>
+				) : (
+					mode !== 'all' && button('Show all', 'Every entry and work of this tree, however many', () => setView(editor, header, 'all'))
+				)}
 				{mode !== 'overview' && button('Back', 'Back to the skill nodes', () => setView(editor, header, 'overview'))}
 				{button('Re-calculate', 'Lay this arrangement out again from scratch', () => recalculate(editor, header))}
 			</div>

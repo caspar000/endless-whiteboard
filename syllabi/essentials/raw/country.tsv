@@ -1,0 +1,29 @@
+pos	artist	album	year	confidence	note
+1	Johnny Cash	At Folsom Prison		ok	section: Traditional
+2	Hank Williams	40 Greatest Hits		ok	section: Traditional, compilation
+3	Willie Nelson	Red Headed Stranger		ok	section: Traditional
+4	Carter Family	Can the Circle Be Unbroken		ok	section: Traditional
+5	Loretta Lynn	Van Lear Rose		ok	section: Traditional
+6	Bob Dylan	Nashville Skyline		ok	section: Traditional
+7	Dolly Parton	Coat of Many Colors		ok	section: Traditional
+8	Merle Haggard	Swinging Doors		ok	section: Traditional
+9	George Jones	I Am What I Am		ok	section: Traditional
+10	Roger Miller	The Return of Roger Miller		ok	section: Traditional
+11	Patsy Cline	Sentimentally Yours		ok	section: Traditional
+12	Jimmie Rodgers	The Essential Jimmie Rodgers		ok	section: Traditional, compilation
+13	Ray Charles	Modern Sounds in Country & Western		ok	section: Traditional
+14	Elvis Presley	Elvis Presley		ok	section: Traditional
+15	Flying Burrito Brothers	Gilded Palace of Sin		ok	section: Country Rock
+16	Neil Young	Harvest		ok	section: Country Rock
+17	Emmylou Harris	Pieces of the Sky		ok	section: Country Rock
+18	The Byrds	Turn! Turn! Turn!		ok	section: Country Rock
+19	The Band	Music from Big Pink		ok	section: Country Rock
+20	Dwight Yoakam	Guitars, Cadillacs, Etc., Etc.		ok	section: Country Rock
+21	The Grateful Dead	American Beauty		ok	section: Country Rock
+22	Uncle Tupelo	No Depression		ok	section: Alt-Country
+23	Lucinda Williams	Car Wheels on a Gravel Road		ok	section: Alt-Country
+24	Whiskeytown	Faithless Street		ok	section: Alt-Country
+25	The Mekons	Fear and Whiskey		ok	section: Alt-Country
+26	Billy Bragg & Wilco	Mermaid Avenue		ok	section: Alt-Country
+27	The Jayhawks	Tomorrow the Green Grass		ok	section: Alt-Country
+28	Blitzen Trapper	Wild Mountain Nation		ok	section: Alt-Country

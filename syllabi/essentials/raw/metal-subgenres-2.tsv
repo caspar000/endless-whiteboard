@@ -1,0 +1,1001 @@
+pos	artist	album	year	confidence	note
+1	Atomic Rooster	Death Walks Behind You		ok	section: Heavy Psych
+2	Bang	Bang		ok	section: Heavy Psych
+3	Bloodrock	Bloodrock		ok	section: Heavy Psych
+4	Blue Cheer	Vincebus Eruptum		ok	section: Heavy Psych
+5	Budgie	Never Turn Your Back on a Friend		ok	section: Heavy Psych
+6	Buffalo	Volcanic Rock		ok	section: Heavy Psych
+7	Captain Beyond	Captain Beyond		ok	section: Heavy Psych
+8	Coven	Witchcraft Destroys Minds and Reaps Souls		ok	section: Heavy Psych
+9	Cream	Disraeli Gears		ok	section: Heavy Psych
+10	Crow	Crow Music		ok	section: Heavy Psych
+11	Dust	Hard Attack		ok	section: Heavy Psych
+12	Grand Funk Railroad	Grand Funk		ok	section: Heavy Psych
+13	Iron Butterfly	Heavy		ok	section: Heavy Psych
+14	Jimi Hendrix	Are You Experienced?		ok	section: Heavy Psych
+15	Leaf Hound	Growers of Mushroom		ok	section: Heavy Psych
+16	Lucifer's Friend	Lucifer's Friend		ok	section: Heavy Psych
+17	Sir Lord Baltimore	Kingdom Come		ok	section: Heavy Psych
+18	Stray	Stray		ok	section: Heavy Psych
+19	T2	It'll All Work Out In Boomland		ok	section: Heavy Psych
+20	Vanilla Fudge	Vanilla Fudge		ok	section: Heavy Psych
+21	AC/DC	Back In Black		ok	section: Hard Rock
+22	Aerosmith	Rocks		ok	section: Hard Rock
+23	Alice Cooper	Billion Dollar Babies		ok	section: Hard Rock
+24	Bad Company	Bad Company		ok	section: Hard Rock
+25	Blue Öyster Cult	Secret Treaties		ok	section: Hard Rock
+26	Deep Purple	Deep Purple In Rock		ok	section: Hard Rock
+27	Kiss	Destroyer		ok	section: Hard Rock
+28	Led Zeppelin	Led Zeppelin		ok	section: Hard Rock
+29	Nazareth	Hair of the Dog		ok	section: Hard Rock
+30	Queen	A Night at the Opera		ok	section: Hard Rock
+31	Rainbow	Rising		ok	section: Hard Rock
+32	Rush	Moving Pictures		ok	section: Hard Rock
+33	Scorpions	Blackout		ok	section: Hard Rock
+34	Ted Nugent	Ted Nugent		ok	section: Hard Rock
+35	The Who	Who's Next		ok	section: Hard Rock
+36	Thin Lizzy	Jailbreak		ok	section: Hard Rock
+37	UFO	Phenomenon		ok	section: Hard Rock
+38	Uriah Heep	Demons and Wizards		ok	section: Hard Rock
+39	Van Halen	Van Halen		ok	section: Hard Rock
+40	ZZ Top	Tres Hombres		ok	section: Hard Rock
+41	Blue Murder	Blue Murder		ok	section: Glam Metal
+42	Cinderella	Long Cold Winter		ok	section: Glam Metal
+43	Def Leppard	Pyromania		ok	section: Glam Metal
+44	Dokken	Back for the Attack		ok	section: Glam Metal
+45	Faster Pussycat	Faster Pussycat		ok	section: Glam Metal
+46	Guns N' Roses	Appetite for Destruction		ok	section: Glam Metal
+47	Krokus	Headhunter		ok	section: Glam Metal
+48	L.A. Guns	Cocked & Loaded		ok	section: Glam Metal
+49	Mötley Crüe	Shout at the Devil		ok	section: Glam Metal
+50	Poison	Open Up and Say... Ahh!		ok	section: Glam Metal
+51	Quiet Riot	Metal Health		ok	section: Glam Metal
+52	Ratt	Out of the Cellar		ok	section: Glam Metal
+53	Skid Row	Skid Row		ok	section: Glam Metal
+54	Stryper	To Hell With The Devil		ok	section: Glam Metal
+55	Tesla	Mechanical Resonance		ok	section: Glam Metal
+56	Twisted Sister	Stay Hungry		ok	section: Glam Metal
+57	W.A.S.P.	W.A.S.P.		ok	section: Glam Metal
+58	Whitesnake	Whitesnake		ok	section: Glam Metal
+59	White Lion	Pride		ok	section: Glam Metal
+60	Winger	Winger		ok	section: Glam Metal
+61	Bedemon	Child of Darkness		ok	section: Trad Doom
+62	Black Hole	Land Of Mystery		ok	section: Trad Doom
+63	Black Sabbath	Paranoid		ok	section: Trad Doom
+64	Blood Ceremony	The Eldritch Dark		ok	section: Trad Doom
+65	Cirith Ungol	King of the Dead		ok	section: Trad Doom
+66	Count Raven	High on Infinity		ok	section: Trad Doom
+67	Flower Travellin' Band	Satori		ok	section: Trad Doom
+68	Iron Man	Black Night		ok	section: Trad Doom
+69	Mercy	Witchburner		ok	section: Trad Doom
+70	Orchid	The Mouths of Madness		ok	section: Trad Doom
+71	Pagan Altar	Pagan Altar		ok	section: Trad Doom
+72	Pentagram	Pentagram		ok	section: Trad Doom
+73	Saint Vitus	Born Too Late		ok	section: Trad Doom
+74	Sorcery	Sinister Soldiers		ok	section: Trad Doom
+75	Spiritus Mortis	The God Behind the God		ok	section: Trad Doom
+76	The Obsessed	Lunar Womb		ok	section: Trad Doom
+77	Trouble	Psalm 9		ok	section: Trad Doom
+78	Reverend Bizarre	In the Rectory of the Bizarre Reverend		ok	section: Trad Doom
+79	Witchcraft	Witchcraft		ok	section: Trad Doom
+80	Witchfinder General	Death Penalty		ok	section: Trad Doom
+81	Altar of Oblivion	Sinews of Anguish		ok	section: Epic Doom
+82	Atlantean Kodex	The White Goddess		ok	section: Epic Doom
+83	Argus	Beyond the Martyrs		ok	section: Epic Doom
+84	Candlemass	Epicus Doomicus Metallicus		ok	section: Epic Doom
+85	Crypt Sermon	Out of the Garden		ok	section: Epic Doom
+86	DoomSword	Let Battle Commence		ok	section: Epic Doom
+87	Ereb Altor	By Honour		ok	section: Epic Doom
+88	Heaven & Hell	The Devil You Know		ok	section: Epic Doom
+89	Isole	Forevermore		ok	section: Epic Doom
+90	Magic Circle	Magic Circle		ok	section: Epic Doom
+91	Memento Mori	Rhymes of Lunacy		ok	section: Epic Doom
+92	Paul Chain	Alkahest		ok	section: Epic Doom
+93	Procession	To Reap Heavens Apart		ok	section: Epic Doom
+94	Scald	Will of the Gods is Great Power		ok	section: Epic Doom
+95	Solitude Aeturnus	Into the Depths of Sorrow		ok	section: Epic Doom
+96	Solstice	New Dark Age		ok	section: Epic Doom
+97	Sorcerer	Sorcerer		ok	section: Epic Doom
+98	Thunderstorm	Sad Symphony		ok	section: Epic Doom
+99	Veni Domine	Material Sanctuary		ok	section: Epic Doom
+100	While Heaven Wept	Vast Oceans Lachrymose		ok	section: Epic Doom
+101	Accept	Balls to the Wall		ok	section: Heavy Metal
+102	Anvil	Metal On Metal		ok	section: Heavy Metal
+103	Aria	Playing with Fire		ok	section: Heavy Metal
+104	Barón Rojo	Volumen Brutal		ok	section: Heavy Metal
+105	Danzig	Danzig		ok	section: Heavy Metal
+106	Dark Quarterer	Dark Quarterer		ok	section: Heavy Metal
+107	Dio	Holy Diver		ok	section: Heavy Metal
+108	Heavy Load	Stronger Than Evil		ok	section: Heavy Metal
+109	Judas Priest	Sad Wings of Destiny		ok	section: Heavy Metal
+110	King Diamond	Abigail		ok	section: Heavy Metal
+111	Loudness	Thunder in the East		ok	section: Heavy Metal
+112	Metal Church	Metal Church		ok	section: Heavy Metal
+113	Ozzy Osbourne	Blizzard of Ozz		ok	section: Heavy Metal
+114	Pretty Maids	Future World		ok	section: Heavy Metal
+115	Running Wild	Death or Glory		ok	section: Heavy Metal
+116	Sortilège	Métamorphose		ok	section: Heavy Metal
+117	Sword	Metalized		ok	section: Heavy Metal
+118	U.D.O.	Animal House		ok	section: Heavy Metal
+119	Warlock	Burning The Witches		ok	section: Heavy Metal
+120	Y&T	Earthshaker		ok	section: Heavy Metal
+121	Angel Witch	Angel Witch		ok	section: NWOBHM
+122	Blitzkrieg	A Time of Changes		ok	section: NWOBHM
+123	Demon	The Unexpected Guest		ok	section: NWOBHM
+124	Diamond Head	Lightning to the Nations		ok	section: NWOBHM
+125	Girlschool	Hit and Run		ok	section: NWOBHM
+126	Grim Reaper	See You in Hell		ok	section: NWOBHM
+127	Holocaust	The Nightcomers		ok	section: NWOBHM
+128	Iron Maiden	Iron Maiden		ok	section: NWOBHM
+129	Jaguar	Power Games		ok	section: NWOBHM
+130	Praying Mantis	Time Tells No Lies		ok	section: NWOBHM
+131	Raven	Rock Until You Drop		ok	section: NWOBHM
+132	Samson	Head On		ok	section: NWOBHM
+133	Saracen	Heroes, Saints & Fools		ok	section: NWOBHM
+134	Satan	Court in the Act		ok	section: NWOBHM
+135	Savage	Loose 'n' Lethal		ok	section: NWOBHM
+136	Saxon	Wheels Of Steel		ok	section: NWOBHM
+137	Tank	Filth Hounds of Hades		ok	section: NWOBHM
+138	Tokyo Blade	Tokyo Blade		ok	section: NWOBHM
+139	Tygers of Pan Tang	Spellbound		ok	section: NWOBHM
+140	Witchfynde	Give 'Em Hell		ok	section: NWOBHM
+141	Armored Saint	March of the Saint		ok	section: USPM
+142	Brocas Helm	Black Death		ok	section: USPM
+143	Cloven Hoof	A Sultan's Ransom		ok	section: USPM
+144	Crimson Glory	Transcendence		ok	section: USPM
+145	Fifth Angel	Fifth Angel		ok	section: USPM
+146	Heir Apparent	Graceful Inheritance		ok	section: USPM
+147	Jag Panzer	Ample Destruction		ok	section: USPM
+148	Leatherwolf	Street Ready		ok	section: USPM
+149	Lethal	Programmed		ok	section: USPM
+150	Manilla Road	Crystal Logic		ok	section: USPM
+151	Manowar	Kings of Metal		ok	section: USPM
+152	Nasty Savage	Nasty Savage		ok	section: USPM
+153	Omen	Battle Cry		ok	section: USPM
+154	Riot	Thundersteel		ok	section: USPM
+155	Sanctuary	Refuge Denied		ok	section: USPM
+156	Savage Grace	Master Of Disguise		ok	section: USPM
+157	Savatage	Hall of the Mountain King		ok	section: USPM
+158	Titan Force	Titan Force		ok	section: USPM
+159	Vicious Rumors	Digital Dictator		ok	section: USPM
+160	Warlord	And the Cannons of Destruction Have Begun...		ok	section: USPM
+161	Acid	Maniac		ok	section: Speed Metal
+162	ADX	Exécution		ok	section: Speed Metal
+163	Agent Steel	Skeptics Apocalypse		ok	section: Speed Metal
+164	Angel Dust	Into the Dark Past		ok	section: Speed Metal
+165	Exciter	Heavy Metal Maniac		ok	section: Speed Metal
+166	Flotsam and Jetsam	Doomsday for the Deceiver		ok	section: Speed Metal
+167	Hallows Eve	Tales Of Terror		ok	section: Speed Metal
+168	Helstar	Nosferatu		ok	section: Speed Metal
+169	Iron Angel	Hellish Crossfire		ok	section: Speed Metal
+170	Liege Lord	Master Control		ok	section: Speed Metal
+171	Motörhead	Ace of Spades		ok	section: Speed Metal
+172	Paradox	Heresy		ok	section: Speed Metal
+173	Powermad	Absolute Power		ok	section: Speed Metal
+174	Racer X	Street Lethal		ok	section: Speed Metal
+175	Rage	Black In Mind		ok	section: Speed Metal
+176	Scanner	Hypertrace		ok	section: Speed Metal
+177	Tankard	Chemical Invasion		ok	section: Speed Metal
+178	Trōjan	Chasing The Storm		ok	section: Speed Metal
+179	Turbo	Kawaleria Szatana		ok	section: Speed Metal
+180	Viper	Theatre of Fate		ok	section: Speed Metal
+181	Angra	Temple of Shadows		ok	section: Power Metal
+182	Avantasia	The Metal Opera		ok	section: Power Metal
+183	Blind Guardian	Nightfall in Middle-Earth		ok	section: Power Metal
+184	Demons & Wizards	Demons & Wizards		ok	section: Power Metal
+185	DragonForce	Inhuman Rampage		ok	section: Power Metal
+186	Edguy	Hellfire Club		ok	section: Power Metal
+187	Gamma Ray	Land of the Free		ok	section: Power Metal
+188	Helloween	Keeper Of The Seven Keys Part I		ok	section: Power Metal
+189	Hibria	Defying the Rules		ok	section: Power Metal
+190	HammerFall	Glory to the Brave		ok	section: Power Metal
+191	Iced Earth	Something Wicked This Way Comes		ok	section: Power Metal
+192	Labyrinth	Return to Heaven Denied		ok	section: Power Metal
+193	Lost Horizon	A Flame to the Ground Beneath		ok	section: Power Metal
+194	Masterplan	Masterplan		ok	section: Power Metal
+195	Powerwolf	Bible Of The Beast		ok	section: Power Metal
+196	Sabaton	The Art of War		ok	section: Power Metal
+197	Sonata Arctica	Ecliptica		ok	section: Power Metal
+198	Stratovarius	Visions		ok	section: Power Metal
+199	Timeless Miracle	Into the Enchanted Chamber		ok	section: Power Metal
+200	Virgin Steele	The Marriage Of Heaven And Hell - Part Two		ok	section: Power Metal
+201	Animals as Leaders	Animals As Leaders		ok	section: Prog Metal
+202	Ayreon	The Human Equation		ok	section: Prog Metal
+203	Disillusion	Back To Times of Splendor		ok	section: Prog Metal
+204	Dream Theater	Images and Words		ok	section: Prog Metal
+205	Evergrey	In Search of Truth		ok	section: Prog Metal
+206	Fates Warning	Awaken the Guardian		ok	section: Prog Metal
+207	Green Carnation	Light Of Day, Day Of Darkness		ok	section: Prog Metal
+208	Haken	The Mountain		ok	section: Prog Metal
+209	King Crimson	The Power to Believe		ok	section: Prog Metal
+210	Leprous	Bilateral		ok	section: Prog Metal
+211	Nevermore	This Godless Endeavor		ok	section: Prog Metal
+212	Novembre	Materia		ok	section: Prog Metal
+213	Ocean Machine	Biomech		ok	section: Prog Metal
+214	Pain of Salvation	Remedy Lane		ok	section: Prog Metal
+215	Psychotic Waltz	A Social Grace		ok	section: Prog Metal
+216	Queensrÿche	Operation: Mindcrime		ok	section: Prog Metal
+217	Riverside	Second Life Syndrome		ok	section: Prog Metal
+218	Seventh Wonder	Mercy Falls		ok	section: Prog Metal
+219	Voivod	Nothingface		ok	section: Prog Metal
+220	X Japan	Art of Life		ok	section: Prog Metal
+221	Apocrypha	The Forgotten Scroll		ok	section: Neoclassical
+222	Cacophony	Speed Metal Symphony		ok	section: Neoclassical
+223	Chris Impellitteri	Stand in Line		ok	section: Neoclassical
+224	Galneryus	Beyond The End Of Despair...		ok	section: Neoclassical
+225	Greg Howe	Greg Howe		ok	section: Neoclassical
+226	Iron Mask	Hordes Of The Brave		ok	section: Neoclassical
+227	Jason Becker	Perpetual Burn		ok	section: Neoclassical
+228	Magic Kingdom	Symphony Of War		ok	section: Neoclassical
+229	M.A.R.S.	Project: Driver		ok	section: Neoclassical
+230	Marty Friedman	Dragon's Kiss		ok	section: Neoclassical
+231	Richard Andersson's Space Odyssey	Embrace the Galaxy		ok	section: Neoclassical
+232	Royal Hunt	Moving Target		ok	section: Neoclassical
+233	Silver Mountain	Shakin' Brains		ok	section: Neoclassical
+234	Symphony X	The Divine Wings Of Tragedy		ok	section: Neoclassical
+235	The Great Kat	Beethoven on Speed		ok	section: Neoclassical
+236	Time Requiem	The Inner Circle of Reality		ok	section: Neoclassical
+237	Tiluland	Axes of the Universe		ok	section: Neoclassical
+238	Tony MacAlpine	Maximum Security		ok	section: Neoclassical
+239	Vinnie Moore	Mind's Eye		ok	section: Neoclassical
+240	Yngwie Malmsteen	Rising Force		ok	section: Neoclassical
+241	After Forever	Decipher		ok	section: Symphonic Metal
+242	Ancient Bards	The Alliance of the Kings: The Black Crystal Sword Saga, Part 1		ok	section: Symphonic Metal
+243	Apocalyptica	Cult		ok	section: Symphonic Metal
+244	Dark Moor	The Gates of Oblivion		ok	section: Symphonic Metal
+245	Delain	April Rain		ok	section: Symphonic Metal
+246	Dragonland	Astronomy		ok	section: Symphonic Metal
+247	Edenbridge	Shine		ok	section: Symphonic Metal
+248	Epica	The Divine Conspiracy		ok	section: Symphonic Metal
+249	Haggard	Eppur Si Muove		ok	section: Symphonic Metal
+250	Hollenthon	With Vilest of Worms to Dwell		ok	section: Symphonic Metal
+251	Kamelot	The Black Halo		ok	section: Symphonic Metal
+252	Lacrimosa	Elodia		ok	section: Symphonic Metal
+253	Leaves' Eyes	Vinland Saga		ok	section: Symphonic Metal
+254	Nightwish	Once		ok	section: Symphonic Metal
+255	Rhapsody	Symphony of Enchanted Lands		ok	section: Symphonic Metal
+256	Septicflesh	Communion		ok	section: Symphonic Metal
+257	Shaman	Ritual		ok	section: Symphonic Metal
+258	Therion	Theli		ok	section: Symphonic Metal
+259	Within Temptation	Mother Earth		ok	section: Symphonic Metal
+260	Xandria	Neverworld's End		ok	section: Symphonic Metal
+261	Draconian	Arcane Rain Fell		ok	section: Gothic Metal
+262	Estatic Fear	A Sombre Dance		ok	section: Gothic Metal
+263	Lacuna Coil	Comalies		ok	section: Gothic Metal
+264	Lake of Tears	Forever Autumn		ok	section: Gothic Metal
+265	Moonspell	Wolfheart		ok	section: Gothic Metal
+266	Paradise Lost	Draconian Times		ok	section: Gothic Metal
+267	Root	The Book		ok	section: Gothic Metal
+268	Samael	Ceremony of Opposites		ok	section: Gothic Metal
+269	Saviour Machine	Saviour Machine		ok	section: Gothic Metal
+270	Sentenced	The Cold White Light		ok	section: Gothic Metal
+271	Sirenia	At Sixes and Sevens		ok	section: Gothic Metal
+272	Theatre of Tragedy	Aégis		ok	section: Gothic Metal
+273	The Gathering	Mandylion		ok	section: Gothic Metal
+274	The Nefilim	Zoon		ok	section: Gothic Metal
+275	The Sins of Thy Beloved	Lake of Sorrow		ok	section: Gothic Metal
+276	Tiamat	Wildhoney		ok	section: Gothic Metal
+277	Tristania	Widow's Weeds		ok	section: Gothic Metal
+278	Type O Negative	Bloody Kisses		ok	section: Gothic Metal
+279	Virgin Black	Requiem - Mezzo Forte		ok	section: Gothic Metal
+280	Woods of Ypres	Woods 5: Grey Skies & Electric Light		ok	section: Gothic Metal
+281	Agalloch	The Mantle		ok	section: Folk Metal
+282	Alestorm	Captain Morgan's Revenge		ok	section: Folk Metal
+283	Arkona	Goi, Rode, Goi!		ok	section: Folk Metal
+284	Åsmegin	Hin Vordende Sod & Sø		ok	section: Folk Metal
+285	Cruachan	Folk-Lore		ok	section: Folk Metal
+286	Elvenking	Heathenreel		ok	section: Folk Metal
+287	Eluveitie	Slania		ok	section: Folk Metal
+288	Empyrium	Where at Night the Wood Grouse Plays		ok	section: Folk Metal
+289	Falconer	Falconer		ok	section: Folk Metal
+290	Finntroll	Jaktens Tid		ok	section: Folk Metal
+291	Finsterforst	...Zum Tode Hin		ok	section: Folk Metal
+292	Forefather	Steadfast		ok	section: Folk Metal
+293	Grave Digger	Tunes of War		ok	section: Folk Metal
+294	Korpiklaani	Voice of Wilderness		ok	section: Folk Metal
+295	Kroda	Fimbulvinter		ok	section: Folk Metal
+296	Myrath	Tales of the Sands		ok	section: Folk Metal
+297	Nokturnal Mortum	The Voice Of Steel		ok	section: Folk Metal
+298	Primordial	To the Nameless Dead		ok	section: Folk Metal
+299	Skyclad	Prince Of The Poverty Line		ok	section: Folk Metal
+300	Wuthering Heights	Far From The Madding Crowd		ok	section: Folk Metal
+301	Annihilator	Alice in Hell		ok	section: Thrash Metal
+302	Anthrax	Among the Living		ok	section: Thrash Metal
+303	Dark Angel	Darkness Descends		ok	section: Thrash Metal
+304	Death Angel	The Ultra-Violence		ok	section: Thrash Metal
+305	Exodus	Bonded by Blood		ok	section: Thrash Metal
+306	Holy Terror	Mind Wars		ok	section: Thrash Metal
+307	Kreator	Pleasure To Kill		ok	section: Thrash Metal
+308	Lääz Rockit	Annihilation Principle		ok	section: Thrash Metal
+309	Megadeth	Rust In Peace		ok	section: Thrash Metal
+310	Meliah Rage	Kill to Survive		ok	section: Thrash Metal
+311	Metallica	Ride the Lightning		ok	section: Thrash Metal
+312	Nuclear Assault	Game Over		ok	section: Thrash Metal
+313	Overkill	The Years of Decay		ok	section: Thrash Metal
+314	Razor	Violent Restitution		ok	section: Thrash Metal
+315	Sacred Reich	The American Way		ok	section: Thrash Metal
+316	Sacrifice	Forward To Termination		ok	section: Thrash Metal
+317	Slayer	Reign in Blood		ok	section: Thrash Metal
+318	Testament	The Legacy		ok	section: Thrash Metal
+319	Vio-Lence	Eternal Nightmare		ok	section: Thrash Metal
+320	Whiplash	Power And Pain		ok	section: Thrash Metal
+321	Anacrusis	Screams and Whispers		ok	section: Tech Thrash
+322	Artillery	By Inheritance		ok	section: Tech Thrash
+323	Aspid	Extravasation		ok	section: Tech Thrash
+324	Believer	Dimensions		ok	section: Tech Thrash
+325	Blind Illusion	The Sane Asylum		ok	section: Tech Thrash
+326	Coroner	No More Color		ok	section: Tech Thrash
+327	Cyclone Temple	I Hate Therefore I Am		ok	section: Tech Thrash
+328	Deathrow	Deception Ignored		ok	section: Tech Thrash
+329	Depressive Age	First Depression		ok	section: Tech Thrash
+330	Forbidden	Twisted Into Form		ok	section: Tech Thrash
+331	Heathen	Victims Of Deception		ok	section: Tech Thrash
+332	Intruder	A Higher Form Of Killing		ok	section: Tech Thrash
+333	Mekong Delta	The Principle of Doubt		ok	section: Tech Thrash
+334	Obliveon	From This Day Forward		ok	section: Tech Thrash
+335	Realm	Endless War		ok	section: Tech Thrash
+336	Thought Industry	Songs for Insects		ok	section: Tech Thrash
+337	Toxik	Think This		ok	section: Tech Thrash
+338	Tourniquet	Pathogenic Ocular Dissonance		ok	section: Tech Thrash
+339	Vektor	Outer Isolation		ok	section: Tech Thrash
+340	Watchtower	Control And Resistance		ok	section: Tech Thrash
+341	Agnostic Front	Cause for Alarm		ok	section: Crossover Thrash
+342	Attitude Adjustment	American Paranoia		ok	section: Crossover Thrash
+343	Aversion	Fit To Be Tied		ok	section: Crossover Thrash
+344	Beowülf	Beowülf		ok	section: Crossover Thrash
+345	Body Count	Body Count		ok	section: Crossover Thrash
+346	Carnivore	Retaliation		ok	section: Crossover Thrash
+347	Cro-Mags	Best Wishes		ok	section: Crossover Thrash
+348	Crumbsuckers	Life of Dreams		ok	section: Crossover Thrash
+349	Cryptic Slaughter	Money Talks		ok	section: Crossover Thrash
+350	D.R.I.	Dealing With It		ok	section: Crossover Thrash
+351	Dr. Know	Wreckage In Flesh		ok	section: Crossover Thrash
+352	Excel	Split Image		ok	section: Crossover Thrash
+353	Lawnmower Deth	Return of the Fabulous Metal Bozo Clowns		ok	section: Crossover Thrash
+354	Leeway	Born To Expire		ok	section: Crossover Thrash
+355	Ludichrist	Powertrip		ok	section: Crossover Thrash
+356	No Mercy	Widespread Bloodshed / Love Runs Red		ok	section: Crossover Thrash
+357	S.O.D.	Speak English or Die		ok	section: Crossover Thrash
+358	Suicidal Tendencies	How Will I Laugh Tomorrow When I Can't Even Smile Today		ok	section: Crossover Thrash
+359	Uncle Slam	Say Uncle		ok	section: Crossover Thrash
+360	Wehrmacht	Shark Attack		ok	section: Crossover Thrash
+361	Deceased	Luck of the Corpse		ok	section: Death Thrash
+362	Demolition Hammer	Epidemic Of Violence		ok	section: Death Thrash
+363	Devastation	Idolatry		ok	section: Death Thrash
+364	Hellwitch	Syzygial Miscreancy		ok	section: Death Thrash
+365	Incubus	Serpent Temptation		ok	section: Death Thrash
+366	Magnus	I Was Watching My Death		ok	section: Death Thrash
+367	Massacra	Enjoy the Violence		ok	section: Death Thrash
+368	Merciless	The Awakening		ok	section: Death Thrash
+369	Messiah	Choir of Horrors		ok	section: Death Thrash
+370	Morbid Saint	Spectrum of Death		ok	section: Death Thrash
+371	Numskull	Ritually Abused		ok	section: Death Thrash
+372	Possessed	Seven Churches		ok	section: Death Thrash
+373	Protector	A Shedding Of Skin		ok	section: Death Thrash
+374	Revenant	Prophecies of a Dying World		ok	section: Death Thrash
+375	Ripping Corpse	Dreaming With the Dead		ok	section: Death Thrash
+376	Sadistik Exekution	The Magus		ok	section: Death Thrash
+377	Sadus	Swallowed in Black		ok	section: Death Thrash
+378	Slaughter	Strappado		ok	section: Death Thrash
+379	Solstice	Solstice		ok	section: Death Thrash
+380	The Crown	Deathrace King		ok	section: Death Thrash
+381	Bathory	Bathory		ok	section: First Wave Black
+382	Bulldozer	The Day of Wrath		ok	section: First Wave Black
+383	Celtic Frost	To Mega Therion		ok	section: First Wave Black
+384	Destruction	Infernal Overkill		ok	section: First Wave Black
+385	Exterminator	Total Extermination Exterminator Experience		ok	section: First Wave Black
+386	Hellhammer	Satanic Rites		ok	section: First Wave Black
+387	Kat	Metal and Hell		ok	section: First Wave Black
+388	Mercyful Fate	Melissa		ok	section: First Wave Black
+389	Morbid	December Moon		ok	section: First Wave Black
+390	Necrodeath	Into the Macabre		ok	section: First Wave Black
+391	Onslaught	The Force		ok	section: First Wave Black
+392	Poison	Into The Abyss		ok	section: First Wave Black
+393	Sabbat	Envenom		ok	section: First Wave Black
+394	Sarcófago	I.N.R.I.		ok	section: First Wave Black
+395	Sepultura	Morbid Visions		ok	section: First Wave Black
+396	Slaughter Lord	Thrash 'til Death 86-87		ok	section: First Wave Black
+397	Sodom	In the Sign of Evil		ok	section: First Wave Black
+398	Tormentor	Anno Domini		ok	section: First Wave Black
+399	Venom	Black Metal		ok	section: First Wave Black
+400	Vulcano	Bloody Vengeance		ok	section: First Wave Black
+401	Autopsy	Severed Survival		ok	section: Death Metal
+402	Bolt Thrower	Realm of Chaos		ok	section: Death Metal
+403	Cancer	Death Shall Rise		ok	section: Death Metal
+404	Carcass	Necroticism: Descanting the Insalubrious		ok	section: Death Metal
+405	Carnage	Dark Recollections		ok	section: Death Metal
+406	Death	Leprosy		ok	section: Death Metal
+407	Deicide	Deicide		ok	section: Death Metal
+408	Demigod	Slumber of Sullen Eyes		ok	section: Death Metal
+409	Dismember	Like An Ever Flowing Stream		ok	section: Death Metal
+410	Entombed	Left Hand Path		ok	section: Death Metal
+411	Grave	Into the Grave		ok	section: Death Metal
+412	Immolation	Here in After		ok	section: Death Metal
+413	Incantation	Onward To Golgotha		ok	section: Death Metal
+414	Infester	To The Depths...in Degradation		ok	section: Death Metal
+415	Malevolent Creation	The Ten Commandments		ok	section: Death Metal
+416	Morbid Angel	Altars of Madness		ok	section: Death Metal
+417	Morgoth	Cursed		ok	section: Death Metal
+418	Obituary	Cause of Death		ok	section: Death Metal
+419	Pestilence	Consuming Impulse		ok	section: Death Metal
+420	Vader	De Profundis		ok	section: Death Metal
+421	!T.O.O.H.!	Order And Punishment		ok	section: Tech Death
+422	Anata	The Conductor's Departure		ok	section: Tech Death
+423	Atrocity	Longing for Death		ok	section: Tech Death
+424	Demilich	Nespithe		ok	section: Tech Death
+425	Gorguts	Obscura		ok	section: Tech Death
+426	Lykathea Aflame	Elvenefris		ok	section: Tech Death
+427	Martyr	Warp Zone		ok	section: Tech Death
+428	Mithras	Worlds Beyond the Veil		ok	section: Tech Death
+429	Necrophagist	Epitaph		ok	section: Tech Death
+430	Nocturnus	The Key		ok	section: Tech Death
+431	Obscura	Cosmogenesis		ok	section: Tech Death
+432	Origin	Antithesis		ok	section: Tech Death
+433	Psycroptic	The Scepter of the Ancients		ok	section: Tech Death
+434	Quo Vadis	Defiant Imagination		ok	section: Tech Death
+435	Sadist	Above the Light		ok	section: Tech Death
+436	Spawn of Possession	Incurso		ok	section: Tech Death
+437	Stargazer	The Scream that Tore the Sky		ok	section: Tech Death
+438	The Faceless	Planetary Duality		ok	section: Tech Death
+439	Theory In Practice	Colonizing the Sun		ok	section: Tech Death
+440	Ulcerate	Everything Is Fire		ok	section: Tech Death
+441	7 H.Target	0.00 Apocalypse		ok	section: Brutal Death
+442	Afflictive Emasculation	OSVII: Esse Deum		ok	section: Brutal Death
+443	Archspire	Relentless Mutation		ok	section: Brutal Death
+444	Beheaded	Ominous Bloodline		ok	section: Brutal Death
+445	Being Killed	Kill Yourself		ok	section: Brutal Death
+446	Cannibal Corpse	Tomb of the Mutilated		ok	section: Brutal Death
+447	Cerebral Effusion	Impulsive Psychopathic Acts		ok	section: Brutal Death
+448	Condemned	Realms of the Ungodly		ok	section: Brutal Death
+449	Cryptopsy	None So Vile		ok	section: Brutal Death
+450	Decapitated	Nihility		ok	section: Brutal Death
+451	Decrepit Birth	Diminishing Between Worlds		ok	section: Brutal Death
+452	Deeds of Flesh	Inbreeding the Anthropophagi		ok	section: Brutal Death
+453	Defeated Sanity	Passages Into Deformity		ok	section: Brutal Death
+454	Disgorge	Cranial Impalement		ok	section: Brutal Death
+455	Dying Fetus	Destroy the Opposition		ok	section: Brutal Death
+456	Fleshgod Apocalypse	Agony		ok	section: Brutal Death
+457	Mortician	Hacked Up for Barbecue		ok	section: Brutal Death
+458	Nile	Annihilation of the Wicked		ok	section: Brutal Death
+459	Suffocation	Effigy of the Forgotten		ok	section: Brutal Death
+460	Viral Load	Practitioners of Perversion		ok	section: Brutal Death
+461	Abominable Putridity	The Anomalies of Artificial Origin		ok	section: Slam Metal
+462	Begging for Incest	Awaiting the Fist		ok	section: Slam Metal
+463	Cephalotripsy	Uterovaginal Insertion of Extirpated Anomalies		ok	section: Slam Metal
+464	Defeated Sanity	Psalms Of The Moribund		ok	section: Slam Metal
+465	Devourment	Molesting the Decapitated		ok	section: Slam Metal
+466	Digested Flesh	The Answer To Infection		ok	section: Slam Metal
+467	Disfiguring the Goddess	Deprive		ok	section: Slam Metal
+468	Epicardiectomy	Abhorrent Stench of Posthumous Gastrorectal Desecration		ok	section: Slam Metal
+469	Human Mastication	Grotesque Mastication of Putrid Innards		ok	section: Slam Metal
+470	Infected Malignity	The Malignity Born from Despair		ok	section: Slam Metal
+471	Ingested	Surpassing the Boundaries of Human Suffering		ok	section: Slam Metal
+472	Internal Bleeding	Voracious Contempt		ok	section: Slam Metal
+473	Jenovavirus	Demo #1		ok	section: Slam Metal
+474	Katalepsy	Autopsychosis		ok	section: Slam Metal
+475	Pathology	The Time Of Great Purification		ok	section: Slam Metal
+476	Pencil Lead Syringe	Suffocated And Embalmed		ok	section: Slam Metal
+477	Perverse Dependence	The Patterns of Depravity		ok	section: Slam Metal
+478	Vomit Remnants	Supreme Entity		ok	section: Slam Metal
+479	Vulvectomy	Putrescent Clitoral Fermentation		ok	section: Slam Metal
+480	Waking the Cadaver	Perverse Recollections of a Necromangler		ok	section: Slam Metal
+481	Aborted	Goremageddon: The Saw and the Carnage Done		ok	section: Death Grind
+482	Assück	Misery Index		ok	section: Death Grind
+483	Benighted	Identisick		ok	section: Death Grind
+484	Brujeria	Matando Güeros		ok	section: Death Grind
+485	Brutal Truth	Extreme Conditions Demand Extreme Responses		ok	section: Death Grind
+486	Carbonized	For the Security		ok	section: Death Grind
+487	Cattle Decapitation	The Harvest Floor		ok	section: Death Grind
+488	Cephalic Carnage	Anomalies		ok	section: Death Grind
+489	Contrastic	Contrastic		ok	section: Death Grind
+490	Exhumed	Gore Metal		ok	section: Death Grind
+491	General Surgery	Left Hand Pathology		ok	section: Death Grind
+492	Ghoul	We Came for the Dead		ok	section: Death Grind
+493	Gorerotted	Only Tools and Corpses		ok	section: Death Grind
+494	Kataklysm	Sorcery		ok	section: Death Grind
+495	Lamb of God	Burn the Priest		ok	section: Death Grind
+496	Macabre	Dahmer		ok	section: Death Grind
+497	Nuclear Death	Bride of Insect		ok	section: Death Grind
+498	Terrorizer	World Downfall		ok	section: Death Grind
+499	The Berzerker	The Berzerker		ok	section: Death Grind
+500	The Red Chord	Fused Together in Revolving Doors		ok	section: Death Grind
+501	Aura Noir	Black Thrash Attack		ok	section: Black Metal
+502	Behemoth	Sventevith (Storming Near the Baltic)		ok	section: Black Metal
+503	Beherit	Drawing Down the Moon		ok	section: Black Metal
+504	Darkthrone	A Blaze in the Northern Sky		ok	section: Black Metal
+505	Dark Funeral	The Secrets of the Black Arts		ok	section: Black Metal
+506	Emperor	In the Nightside Eclipse		ok	section: Black Metal
+507	Gorgoroth	Pentagram		ok	section: Black Metal
+508	Immortal	At the Heart of Winter		ok	section: Black Metal
+509	Impaled Nazarene	Ugra-Karma		ok	section: Black Metal
+510	Judas Iscariot	Heaven In Flames		ok	section: Black Metal
+511	Marduk	Panzer Division Marduk		ok	section: Black Metal
+512	Master's Hammer	Ritual		ok	section: Black Metal
+513	Mayhem	De Mysteriis Dom Sathanas		ok	section: Black Metal
+514	Mgła	Exercises in Futility		ok	section: Black Metal
+515	Oranssi Pazuzu	Värähtelijä		ok	section: Black Metal
+516	Satanic Warmaster	Carelian Satanist Madness		ok	section: Black Metal
+517	Satyricon	Nemesis Divina		ok	section: Black Metal
+518	Taake	Nattestid Ser Porten Vid		ok	section: Black Metal
+519	Vlad Tepes	March to the Black Holocaust		ok	section: Black Metal
+520	Watain	Casus Luciferi		ok	section: Black Metal
+521	Akhlys	The Dreaming I		ok	section: Atmospheric Black
+522	Altar of Plagues	Teethed Glory and Injury		ok	section: Atmospheric Black
+523	Blut aus Nord	The Work Which Transforms God		ok	section: Atmospheric Black
+524	Burzum	Filosofem		ok	section: Atmospheric Black
+525	ColdWorld	Melancholie²		ok	section: Atmospheric Black
+526	Darkspace	Darkspace III		ok	section: Atmospheric Black
+527	Drudkh	Autumn Aurora		ok	section: Atmospheric Black
+528	Forteresse	Métal Noir Québécois		ok	section: Atmospheric Black
+529	In The Woods...	HEart Of The Ages		ok	section: Atmospheric Black
+530	Lunar Aurora	Andacht		ok	section: Atmospheric Black
+531	Lurker of Chalice	Lurker of Chalice		ok	section: Atmospheric Black
+532	Negură Bunget	Om		ok	section: Atmospheric Black
+533	Paysage d'Hiver	Paysage d'Hiver		ok	section: Atmospheric Black
+534	The Ruins of Beverast	Rain Upon the Impure		ok	section: Atmospheric Black
+535	Ulver	Bergtatt - Et eeventyr i 5 capitler		ok	section: Atmospheric Black
+536	Urfaust	Geist Ist Teufel		ok	section: Atmospheric Black
+537	Walknut	Graveforests and their Shadows		ok	section: Atmospheric Black
+538	Weakling	Dead as Dreams		ok	section: Atmospheric Black
+539	Wolves in the Throne Room	Two Hunters		ok	section: Atmospheric Black
+540	Woods of Desolation	Torn Beyond Reason		ok	section: Atmospheric Black
+541	Ancient	Svartalvheim		ok	section: Melodic Black
+542	Dark Fortress	Séance		ok	section: Melodic Black
+543	Dawn	Slaughtersun (Crown of the Triarchy)		ok	section: Melodic Black
+544	Diabolical Masquerade	Nightwork		ok	section: Melodic Black
+545	Dissection	The Somberlain		ok	section: Melodic Black
+546	Dornenreich	Her von welken Nächten		ok	section: Melodic Black
+547	Gehenna	First Spell		ok	section: Melodic Black
+548	Keep of Kalessin	Armada		ok	section: Melodic Black
+549	Kvist	For Kunsten Maa Vi Evig Vike		ok	section: Melodic Black
+550	Lord Belial	Enter the Moonlight Gate		ok	section: Melodic Black
+551	Melechesh	Emissaries		ok	section: Melodic Black
+552	Mörk Gryning	Tusen år har gått...		ok	section: Melodic Black
+553	Nagelfar	Hünengrab Im Herbst		ok	section: Melodic Black
+554	Obsequiae	Aria Of Vernal Tombs		ok	section: Melodic Black
+555	Old Man's Child	In Defiance of Existence		ok	section: Melodic Black
+556	Rotting Christ	Thy Mighty Contract		ok	section: Melodic Black
+557	Sacramentum	Far Away from the Sun		ok	section: Melodic Black
+558	Thy Serpent	Forests of Witchery		ok	section: Melodic Black
+559	Vinterland	Welcome My Last Chapter		ok	section: Melodic Black
+560	Windir	Arntor		ok	section: Melodic Black
+561	Abigail Williams	In the Shadow of a Thousand Suns		ok	section: Symphonic Black
+562	Anorexia Nervosa	Drudenhaus		ok	section: Symphonic Black
+563	Antestor	The Forsaken		ok	section: Symphonic Black
+564	Aquilus	Griseus		ok	section: Symphonic Black
+565	Arcturus	Aspera Hiems Symfonia		ok	section: Symphonic Black
+566	Bal-Sagoth	Starfire Burning Upon the Ice-Veiled Throne of Ultima Thule		ok	section: Symphonic Black
+567	Caladan Brood	Echoes of Battle		ok	section: Symphonic Black
+568	Carach Angren	Death Came Through A Phantom Ship		ok	section: Symphonic Black
+569	Chthonic	Takasago Army		ok	section: Symphonic Black
+570	Cradle of Filth	Dusk and Her Embrace		ok	section: Symphonic Black
+571	Dimmu Borgir	Enthrone Darkness Triumphant		ok	section: Symphonic Black
+572	Graveworm	Engraved in Black		ok	section: Symphonic Black
+573	Limbonic Art	Moon in the Scorpio		ok	section: Symphonic Black
+574	Mirrorthrone	Carriers of Dust		ok	section: Symphonic Black
+575	Necromantia	Scarlet Evil Witching Black		ok	section: Symphonic Black
+576	Obtained Enslavement	Witchcraft		ok	section: Symphonic Black
+577	Shade Empire	Omega Arcane		ok	section: Symphonic Black
+578	Stormlord	Mare Nostrum		ok	section: Symphonic Black
+579	Summoning	Stronghold		ok	section: Symphonic Black
+580	The Kovenant	Nexus Polaris		ok	section: Symphonic Black
+581	Abyssic Hate	Suicidal Emotions		ok	section: DSBM
+582	Austere	To Lay Like Old Ashes		ok	section: DSBM
+583	Bethlehem	Dictius Te Necare		ok	section: DSBM
+584	Forgotten Tomb	Songs to Leave		ok	section: DSBM
+585	Forgotten Woods	As the Wolves Gather		ok	section: DSBM
+586	Gris	Il était une forêt...		ok	section: DSBM
+587	Krohm	The Haunting Presence		ok	section: DSBM
+588	Leviathan	The Tenth Sub Level of Suicide		ok	section: DSBM
+589	Lifelover	Konkurs		ok	section: DSBM
+590	Make a Change... Kill Yourself	II		ok	section: DSBM
+591	Mortifera	Vastiia Tenebrd Mortifera		ok	section: DSBM
+592	Nyktalgia	Nyktalgia		ok	section: DSBM
+593	Shining	V - Halmstad (Niklas angående Niklas)		ok	section: DSBM
+594	Silencer	Death - Pierce Me		ok	section: DSBM
+595	Sombres Forêts	Royaume De Glace		ok	section: DSBM
+596	Sortsind	Sår		ok	section: DSBM
+597	Totalselfhatred	Totalselfhatred		ok	section: DSBM
+598	Trist	Zrcadlení melancholie		ok	section: DSBM
+599	Wigrid	Hoffnungstod		ok	section: DSBM
+600	Xasthur	To Violate the Oblivious		ok	section: DSBM
+601	Absu	Tara		ok	section: Black Death
+602	Akercocke	Words That Go Unspoken, Deeds That Go Undone		ok	section: Black Death
+603	Anal Vomit	Demoniac Flagellations		ok	section: Black Death
+604	Arkhon Infaustus	Orthodoxyn		ok	section: Black Death
+605	Axamenta	Ever-Arch-I-Tech-Ture		ok	section: Black Death
+606	Behemoth	The Satanist		ok	section: Black Death
+607	Belphegor	Bondage Goat Zombie		ok	section: Black Death
+608	God Dethroned	Bloody Blasphemy		ok	section: Black Death
+609	Goatwhore	Carving Out The Eyes Of God		ok	section: Black Death
+610	Infernal War	Terrorfront		ok	section: Black Death
+611	Mystifier	Göetia		ok	section: Black Death
+612	Nazxul	Totem		ok	section: Black Death
+613	Necrophobic	The Nocturnal Silence		ok	section: Black Death
+614	Necros Christos	Triune Impurity Rites		ok	section: Black Death
+615	Portal	Outre		ok	section: Black Death
+616	Rites Of Thy Degringolade	An Ode To Sin		ok	section: Black Death
+617	Sextrash	Sexual Carnage		ok	section: Black Death
+618	The Moaning	Blood from Stone		ok	section: Black Death
+619	Witchery	Witchkrieg		ok	section: Black Death
+620	Zyklon	World ov Worms		ok	section: Black Death
+621	Archgoat	Whore of Bethlehem		ok	section: War Metal
+622	Axis of Advance	Obey		ok	section: War Metal
+623	Bestial Warlust	Vengeance War Till Death		ok	section: War Metal
+624	Black Witchery	Desecration Of The Holy Kingdom		ok	section: War Metal
+625	Blasphemophagher	Nuclear Empire of Apocalypse		ok	section: War Metal
+626	Blasphemy	Fallen Angel of Doom		ok	section: War Metal
+627	Conqueror	War Cult Supremacy		ok	section: War Metal
+628	Deiphago	Filipino Antichrist		ok	section: War Metal
+629	Diocletian	Doom Cult		ok	section: War Metal
+630	Goatpenis	Inhumanization		ok	section: War Metal
+631	Impiety	Kaos Kommand 696		ok	section: War Metal
+632	Morbosidad	Profana la Cruz del Nazareno		ok	section: War Metal
+633	Naked Whipper	Painstreaks		ok	section: War Metal
+634	Nuclear Desecration	Desecrated Temple Of Impurity		ok	section: War Metal
+635	Proclamation	Execration of Cruel Beastiality		ok	section: War Metal
+636	Revenge	Triumph.Genocide.Antichrist		ok	section: War Metal
+637	Rites Of Thy Degringolade	An Ode To Sin		ok	section: War Metal
+638	Sadomator	Goats Brew Alcolust		ok	section: War Metal
+639	Teitanblood	Seven Chalices		ok	section: War Metal
+640	Truppensturm	Fields of Devastation		ok	section: War Metal
+641	Agoraphobic Nosebleed	Altered States of America		ok	section: Grindcore
+642	Anaal Nathrakh	Hell Is Empty, and All the Devils Are Here		ok	section: Grindcore
+643	Anal Cunt	I Like It When You Die		ok	section: Grindcore
+644	Asterisk*	Dogma I: Death of A Dromologist		ok	section: Grindcore
+645	Bucket Full of Teeth	IV		ok	section: Grindcore
+646	Combatwoundedveteran	I Know a Girl Who Develops Crime Scene Photos		ok	section: Grindcore
+647	Discordance Axis	The Inalienable Dreamless		ok	section: Grindcore
+648	Full of Hell	Full of Hell & Merzbow		ok	section: Grindcore
+649	Gridlink	Longhena		ok	section: Grindcore
+650	Insect Warfare	World Extermination		ok	section: Grindcore
+651	Magrudergrind	Magrudergrind		ok	section: Grindcore
+652	Nails	Unsilent Death		ok	section: Grindcore
+653	Napalm Death	Scum		ok	section: Grindcore
+654	Nasum	Helvete		ok	section: Grindcore
+655	Painkiller	Guts Of A Virgin		ok	section: Grindcore
+656	Pig Destroyer	Terrifyer		ok	section: Grindcore
+657	Repulsion	Horrified		ok	section: Grindcore
+658	Rotten Sound	Exit		ok	section: Grindcore
+659	The Hirs Collective	Friends. Lovers. Favorites		ok	section: Grindcore
+660	Wormrot	Abuse		ok	section: Grindcore
+661	Diablo Swing Orchestra	The Butcher's Ballroom		ok	section: Avant-Garde Metal
+662	DIR EN GREY	Uroboros		ok	section: Avant-Garde Metal
+663	Ephel Duath	The Painter's Palette		ok	section: Avant-Garde Metal
+664	Fantômas	The Director's Cut		ok	section: Avant-Garde Metal
+665	Fredrik Thordendal's Special Defects	Sol Niger Within		ok	section: Avant-Garde Metal
+666	Genghis Tron	Dead Mountain Mouth		ok	section: Avant-Garde Metal
+667	Kayo Dot	Choirs of the Eye		ok	section: Avant-Garde Metal
+668	maudlin of the Well	Bath		ok	section: Avant-Garde Metal
+669	Mr. Bungle	Mr. Bungle		ok	section: Avant-Garde Metal
+670	NEPTUNIAN MAXIMALISM	Éons		ok	section: Avant-Garde Metal
+671	Orthrelm	OV		ok	section: Avant-Garde Metal
+672	Pan.Thy.Monium	Khaooohs & Kon-Fus-Ion		ok	section: Avant-Garde Metal
+673	Sigh	Imaginary Sonicscape		ok	section: Avant-Garde Metal
+674	Sleepytime Gorilla Museum	Of Natural History		ok	section: Avant-Garde Metal
+675	Solefald	In Harmonia Universali		ok	section: Avant-Garde Metal
+676	Thy Catafalque	Róka Hasa Rádió		ok	section: Avant-Garde Metal
+677	Today Is The Day	Sadness Will Prevail		ok	section: Avant-Garde Metal
+678	Unexpect	In A Flesh Aquarium		ok	section: Avant-Garde Metal
+679	Ved Buens Ende	Written In Waters		ok	section: Avant-Garde Metal
+680	Zu	Carboniferous		ok	section: Avant-Garde Metal
+681	Dødheimsgard	666 International		ok	section: Industrial
+682	Fear Factory	Demanufacture		ok	section: Industrial
+683	God	The Anatomy of Addiction		ok	section: Industrial
+684	Godflesh	Streetcleaner		ok	section: Industrial
+685	Killing Joke	Pandemonium		ok	section: Industrial
+686	KMFDM	Nihil		ok	section: Industrial
+687	Lard	The Last Temptation Of Reid		ok	section: Industrial
+688	Marilyn Manson	Antichrist Superstar		ok	section: Industrial
+689	Ministry	ΚΕΦΑΛΗΞΘ (Psalm 69)		ok	section: Industrial
+690	Mnemic	The Audio Injected Soul		ok	section: Industrial
+691	Nailbomb	Point Blank		ok	section: Industrial
+692	O.L.D.	Lo Flux Tube		ok	section: Industrial
+693	Rammstein	Mutter		ok	section: Industrial
+694	Rob Zombie	Hellbilly Deluxe		ok	section: Industrial
+695	Scorn	Vae Solis		ok	section: Industrial
+696	Static-X	Wisconsin Death Trip		ok	section: Industrial
+697	Strapping Young Lad	City		ok	section: Industrial
+698	The Axis of Perdition	Deleted Scenes from the Transition Hospital		ok	section: Industrial
+699	The Kovenant	Animatronic		ok	section: Industrial
+700	Thorns	Thorns		ok	section: Industrial
+701	Bathory	Hammerheart		ok	section: Viking Metal
+702	Borknagar	The Olden Domain		ok	section: Viking Metal
+703	Demonaz	March of the Norse		ok	section: Viking Metal
+704	Einherjer	Blot		ok	section: Viking Metal
+705	Ensiferum	Ensiferum		ok	section: Viking Metal
+706	Enslaved	Frost		ok	section: Viking Metal
+707	Equilibrium	Sagas		ok	section: Viking Metal
+708	Falkenbach	...Magni Blandinn Ok Megintiri...		ok	section: Viking Metal
+709	Graveland	Thousand Swords		ok	section: Viking Metal
+710	Hades	The Dawn Of The Dying Sun		ok	section: Viking Metal
+711	Isengard	Høstmørke		ok	section: Viking Metal
+712	Månegarm	Vredens tid		ok	section: Viking Metal
+713	Mithotyn	King of the Distant Forest		ok	section: Viking Metal
+714	Moonsorrow	Kivenkantaja		ok	section: Viking Metal
+715	Myrkgrav	Trollskau, Skrømt og Kølabrenning		ok	section: Viking Metal
+716	Storm	Nordavind		ok	section: Viking Metal
+717	Thyrfing	Vansinnesvisor		ok	section: Viking Metal
+718	Turisas	The Varangian Way		ok	section: Viking Metal
+719	Týr	Eric the Red		ok	section: Viking Metal
+720	Vintersorg	Till Fjälls		ok	section: Viking Metal
+721	Anathema	Serenades		ok	section: Deathdoom
+722	Asphyx	Last One On Earth		ok	section: Deathdoom
+723	Disembowelment	Transcendence Into the Peripheral		ok	section: Deathdoom
+724	Doom:VS	Dead Words Speak		ok	section: Deathdoom
+725	Dragged Into Sunlight	Hatred For Mankind		ok	section: Deathdoom
+726	Dusk	...Majestic Thou In Ruin		ok	section: Deathdoom
+727	Katatonia	Brave Murder Day		ok	section: Deathdoom
+728	Morgion	Solinari		ok	section: Deathdoom
+729	Mourning Beloveth	The Sullen Sulcus		ok	section: Deathdoom
+730	My Dying Bride	Turn Loose the Swans		ok	section: Deathdoom
+731	October Tide	Rain Without End		ok	section: Deathdoom
+732	Paramaecium	Exhumed Of The Earth		ok	section: Deathdoom
+733	Rapture	Futile		ok	section: Deathdoom
+734	Rippikoulu	Musta Seremonia		ok	section: Deathdoom
+735	Saturnus	Paradise Belongs to You		ok	section: Deathdoom
+736	Slumber	Fallout		ok	section: Deathdoom
+737	Swallow the Sun	The Morning Never Came		ok	section: Deathdoom
+738	Thorr's Hammer	Dommedagsnatt		ok	section: Deathdoom
+739	Unholy	The Second Ring of Power		ok	section: Deathdoom
+740	Winter	Into Darkness		ok	section: Deathdoom
+741	Ahab	The Call of the Wretched Sea		ok	section: Funeral Doom
+742	Asunder	A Clarion Call		ok	section: Funeral Doom
+743	Bell Witch	Mirror Reaper		ok	section: Funeral Doom
+744	Catacombs	In the Depths of R'lyeh		ok	section: Funeral Doom
+745	Ea	Ea Taesse		ok	section: Funeral Doom
+746	Esoteric	Metamorphogenesis		ok	section: Funeral Doom
+747	Evoken	Quietus		ok	section: Funeral Doom
+748	Funeral	Tragedies		ok	section: Funeral Doom
+749	Lycus	Chasms		ok	section: Funeral Doom
+750	Monolithe	Monolithe I		ok	section: Funeral Doom
+751	Mournful Congregation	The Monad of Creation		ok	section: Funeral Doom
+752	My Shameful	The Return To Nothing		ok	section: Funeral Doom
+753	Nortt	Ligfærd		ok	section: Funeral Doom
+754	Pantheist	O Solitude		ok	section: Funeral Doom
+755	Shape of Despair	Angels of Distress		ok	section: Funeral Doom
+756	Skepticism	Stormcrowfleet		ok	section: Funeral Doom
+757	Thergothon	Stream From the Heavens		ok	section: Funeral Doom
+758	Tyranny	Tides of Awakening		ok	section: Funeral Doom
+759	Wormphlegm	Tomb Of The Ancient King		ok	section: Funeral Doom
+760	Worship	Last Tape before Doomsday		ok	section: Funeral Doom
+761	Ascend	Ample Fire Within		ok	section: Drone
+762	Asva	What You Don't Know Is Frontier		ok	section: Drone
+763	Black Boned Angel	Supereclipse		ok	section: Drone
+764	Bong	Mana-Yood-Sushai		ok	section: Drone
+765	Conan	Horseback Battle Hammer		ok	section: Drone
+766	Earth	Earth 2: Special Low Frequency Version		ok	section: Drone
+767	Gnaw Their Tongues	An Epiphanic Vomiting Of Blood		ok	section: Drone
+768	Greymachine	Disconnected		ok	section: Drone
+769	Indian	From All Purity		ok	section: Drone
+770	Jesu	Jesu		ok	section: Drone
+771	Khanate	Khanate		ok	section: Drone
+772	Khlyst	Chaos Is My Name		ok	section: Drone
+773	Menace Ruine	The Die Is Cast		ok	section: Drone
+774	Moss	Sub Templum		ok	section: Drone
+775	Nadja	Radiance of Shadows		ok	section: Drone
+776	Naked City	Leng Tch'e		ok	section: Drone
+777	Sunn O)))	Black One		ok	section: Drone
+778	Teeth of Lions Rule the Divine	Rampton		ok	section: Drone
+779	The Angelic Process	Weighing Souls With Sand		ok	section: Drone
+780	The Body	I Shall Die Here		ok	section: Drone
+781	Acid Bath	When the Kite String Pops		ok	section: Doomsludge
+782	Admiral Angry	Buster		ok	section: Doomsludge
+783	Bongripper	Hippie Killer		ok	section: Doomsludge
+784	Corrupted	El Mundo Frio		ok	section: Doomsludge
+785	Crowbar	Sonic Excess in Its Purest Form		ok	section: Doomsludge
+786	Down	NOLA		ok	section: Doomsludge
+787	Dystopia	Human = Garbage		ok	section: Doomsludge
+788	Eyehategod	Take As Needed For Pain		ok	section: Doomsludge
+789	Grief	Come To Grief		ok	section: Doomsludge
+790	Harvey Milk	Courtesy And Good Will Toward Men		ok	section: Doomsludge
+791	Hell	Hell III		ok	section: Doomsludge
+792	Iron Monkey	Our Problem		ok	section: Doomsludge
+793	Melvins	Houdini		ok	section: Doomsludge
+794	Meth Drinker	Meth Drinker		ok	section: Doomsludge
+795	Noothgrush	Erode the Person		ok	section: Doomsludge
+796	Thou	Heathen		ok	section: Doomsludge
+797	Toadliquor	Feel My Hate, The Power is the Weight		ok	section: Doomsludge
+798	Ufomammut	Snailking		ok	section: Doomsludge
+799	Warhorse	As Heaven Turns to Ash		ok	section: Doomsludge
+800	YOB	The Unreal Never Lived		ok	section: Doomsludge
+801	7 Angels 7 Plagues	Jhazmyne's Lullaby		ok	section: Metalcore
+802	Botch	We Are the Romans		ok	section: Metalcore
+803	Burst	Lazarus Bird		ok	section: Metalcore
+804	Catharsis	Passion		ok	section: Metalcore
+805	Cave In	Until Your Heart Stops		ok	section: Metalcore
+806	Converge	Jane Doe		ok	section: Metalcore
+807	Cursed	Two		ok	section: Metalcore
+808	Deadguy	Fixation On A Coworker		ok	section: Metalcore
+809	Gaza	I Don't Care Where I Go When I Die		ok	section: Metalcore
+810	Hopesfall	The Satellite Years		ok	section: Metalcore
+811	Integrity	Those Who Fear Tomorrow		ok	section: Metalcore
+812	Merauder	Master Killer		ok	section: Metalcore
+813	Norma Jean	Bless the Martyr and Kiss the Child		ok	section: Metalcore
+814	Poison the Well	The Opposite Of December		ok	section: Metalcore
+815	Skycamefalling	10.21		ok	section: Metalcore
+816	Snapcase	Progression Through Unlearning		ok	section: Metalcore
+817	The Chariot	One Wing		ok	section: Metalcore
+818	The Dillinger Escape Plan	Calculating Infinity		ok	section: Metalcore
+819	Unbroken	Life. Love. Regret.		ok	section: Metalcore
+820	Zao	Where Blood and Fire Bring Rest		ok	section: Metalcore
+821	Amenra	Mass IIII		ok	section: Atmo Sludge
+822	Baroness	Red Album		ok	section: Atmo Sludge
+823	Black Tusk	Taste The Sin		ok	section: Atmo Sludge
+824	Blindead	Affliction XXIX II MXMVI		ok	section: Atmo Sludge
+825	Breach	It's Me God		ok	section: Atmo Sludge
+826	Buried Inside	Chronoclast		ok	section: Atmo Sludge
+827	Callisto	Noir		ok	section: Atmo Sludge
+828	Cult of Luna	Somewhere Along The Highway		ok	section: Atmo Sludge
+829	Dirge	Elysian Magnetic Fields		ok	section: Atmo Sludge
+830	Fall of Efrafa	Inlé		ok	section: Atmo Sludge
+831	Ghost Brigade	Isolation Songs		ok	section: Atmo Sludge
+832	Isis	Panopticon		ok	section: Atmo Sludge
+833	Kylesa	Static Tensions		ok	section: Atmo Sludge
+834	Mastodon	Leviathan		ok	section: Atmo Sludge
+835	Minsk	The Ritual Fires of Abandonment		ok	section: Atmo Sludge
+836	Neurosis	Through Silver In Blood		ok	section: Atmo Sludge
+837	Rosetta	The Galilean Satellites		ok	section: Atmo Sludge
+838	Sólstafir	Svartir Sandar		ok	section: Atmo Sludge
+839	Taint	The Ruin of Nová Roma		ok	section: Atmo Sludge
+840	The Ocean	Pelagial		ok	section: Atmo Sludge
+841	Acid King	Busse Woods		ok	section: Stoner Metal
+842	Acrimony	Tumuli Shroomaroom		ok	section: Stoner Metal
+843	Bongripper	Hippie Killer		ok	section: Stoner Metal
+844	Bongzilla	Gateway		ok	section: Stoner Metal
+845	Boris	Pink		ok	section: Stoner Metal
+846	Cathedral	The Ethereal Mirror		ok	section: Stoner Metal
+847	Corrosion of Conformity	Deliverance		ok	section: Stoner Metal
+848	Elder	Dead Roots Stirring		ok	section: Stoner Metal
+849	Electric Wizard	Dopethrone		ok	section: Stoner Metal
+850	High on Fire	Blessed Black Wings		ok	section: Stoner Metal
+851	Kyuss	Welcome to Sky Valley		ok	section: Stoner Metal
+852	Om	Advaitic Songs		ok	section: Stoner Metal
+853	Orange Goblin	Frequencies From Planet Ten		ok	section: Stoner Metal
+854	Red Fang	Murder the Mountains		ok	section: Stoner Metal
+855	Sleep	Sleep's Holy Mountain		ok	section: Stoner Metal
+856	Spiritual Beggars	Ad Astra		ok	section: Stoner Metal
+857	Stoned Jesus	Seven Thunders Roar		ok	section: Stoner Metal
+858	The Sword	Age of Winters		ok	section: Stoner Metal
+859	Weedeater	God Luck and Good Speed		ok	section: Stoner Metal
+860	Windhand	Soma		ok	section: Stoner Metal
+861	Amon Amarth	With Oden On Our Side		ok	section: Melodeath
+862	Amorphis	Tales From the Thousand Lakes		ok	section: Melodeath
+863	Arch Enemy	Doomsday Machine		ok	section: Melodeath
+864	Arghoslent	Incorrigible Bigotry		ok	section: Melodeath
+865	Arsis	A Celebration of Guilt		ok	section: Melodeath
+866	At the Gates	Slaughter of the Soul		ok	section: Melodeath
+867	Be'lakor	Stone's Reach		ok	section: Melodeath
+868	Carcass	Heartwork		ok	section: Melodeath
+869	Children of Bodom	Are You Dead Yet?		ok	section: Melodeath
+870	Dark Tranquillity	The Gallery		ok	section: Melodeath
+871	Garden of Shadows	Oracle Moon		ok	section: Melodeath
+872	Hypocrisy	Abducted		ok	section: Melodeath
+873	In Flames	The Jester Race		ok	section: Melodeath
+874	Insomnium	Above the Weeping World		ok	section: Melodeath
+875	Kalmah	The Black Waltz		ok	section: Melodeath
+876	Sacrilege	The Fifth Season		ok	section: Melodeath
+877	Scar Symmetry	Pitch Black Progress		ok	section: Melodeath
+878	Soilwork	Natural Born Chaos		ok	section: Melodeath
+879	Unanimated	Ancient God Of Evil		ok	section: Melodeath
+880	Wintersun	Wintersun		ok	section: Melodeath
+881	Atheist	Unquestionable Presence		ok	section: Progressive Death
+882	Augury	Concealed		ok	section: Progressive Death
+883	Barren Earth	Curse Of The Red River		ok	section: Progressive Death
+884	Between the Buried and Me	Colors		ok	section: Progressive Death
+885	Beyond Creation	The Aura		ok	section: Progressive Death
+886	Blotted Science	The Machinations Of Dementia		ok	section: Progressive Death
+887	Cynic	Focus		ok	section: Progressive Death
+888	Edge of Sanity	Crimson		ok	section: Progressive Death
+889	Gojira	From Mars to Sirius		ok	section: Progressive Death
+890	In Mourning	The Weight of Oceans		ok	section: Progressive Death
+891	In Vain	The Latter Rain		ok	section: Progressive Death
+892	Into Eternity	Buried In Oblivion		ok	section: Progressive Death
+893	Meshuggah	ObZen		ok	section: Progressive Death
+894	Ne Obliviscaris	Portal Of I		ok	section: Progressive Death
+895	Opeth	Blackwater Park		ok	section: Progressive Death
+896	Orphaned Land	Mabool - The Story Of The Three Sons Of Seven		ok	section: Progressive Death
+897	Persefone	Spiritual Migration		ok	section: Progressive Death
+898	Phlebotomized	Immense Intense Suspense		ok	section: Progressive Death
+899	Sludgge	Esoteric Malacology		ok	section: Progressive Death
+900	Timeghoul	1992-1994 Discography		ok	section: Progressive Death
+901	Black Label Society	Mafia		ok	section: Groove Metal
+902	Cavalera Conspiracy	Inflikted		ok	section: Groove Metal
+903	Chimaira	Chimaira		ok	section: Groove Metal
+904	DevilDriver	The Fury of Our Maker's Hand		ok	section: Groove Metal
+905	Diablo	Eternium		ok	section: Groove Metal
+906	Earth Crisis	Destroy The Machines		ok	section: Groove Metal
+907	Exhorder	Slaughter In The Vatican		ok	section: Groove Metal
+908	Fight	War Of Words		ok	section: Groove Metal
+909	Five Finger Death Punch	The Way Of The Fist		ok	section: Groove Metal
+910	Grip Inc.	Power of Inner Strength		ok	section: Groove Metal
+911	Hellyeah	Hellyeah		ok	section: Groove Metal
+912	Lamb of God	Ashes Of The Wake		ok	section: Groove Metal
+913	Lazarus	The Onslaught		ok	section: Groove Metal
+914	Machine Head	Burn My Eyes		ok	section: Groove Metal
+915	Pantera	Cowboys From Hell		ok	section: Groove Metal
+916	Prong	Cleansing		ok	section: Groove Metal
+917	Pro-Pain	Foul Taste of Freedom		ok	section: Groove Metal
+918	Soulfly	Soulfly		ok	section: Groove Metal
+919	Vision of Disorder	Imprint		ok	section: Groove Metal
+920	White Zombie	Astro Creep: 2000 Songs Of Love, Destruction And Other Synthetic Delusions Of The Electric Head		ok	section: Groove Metal
+921	Alice in Chains	Dirt		ok	section: Alt Metal
+922	Avenged Sevenfold	City of Evil		ok	section: Alt Metal
+923	Babes in Toyland	Fontanelle		ok	section: Alt Metal
+924	BABYMETAL	BABYMETAL		ok	section: Alt Metal
+925	Bullet for My Valentine	The Poison		ok	section: Alt Metal
+926	Evanescence	Fallen		ok	section: Alt Metal
+927	Faith No More	Angel Dust		ok	section: Alt Metal
+928	Godsmack	Godsmack		ok	section: Alt Metal
+929	Helmet	Meantime		ok	section: Alt Metal
+930	Incubus	Make Yourself		ok	section: Alt Metal
+931	Jerry Cantrell	Boggy Depot		ok	section: Alt Metal
+932	Maximum the Hormone	Buiikikaesu		ok	section: Alt Metal
+933	Primus	Sailing The Seas Of Cheese		ok	section: Alt Metal
+934	Queens of the Stone Age	Songs for the Deaf		ok	section: Alt Metal
+935	Rage Against the Machine	Rage Against the Machine		ok	section: Alt Metal
+936	Rollins Band	The End of Silence		ok	section: Alt Metal
+937	Soundgarden	Superunknown		ok	section: Alt Metal
+938	The God Machine	Scenes From The Second Storey		ok	section: Alt Metal
+939	Therapy?	Troublegum		ok	section: Alt Metal
+940	Tool	Lateralus		ok	section: Alt Metal
+941	Coal Chamber	Coal Chamber		ok	section: Nu Metal
+942	Deftones	Around the Fur		ok	section: Nu Metal
+943	Disturbed	The Sickness		ok	section: Nu Metal
+944	Dope	Felons and Revolutionaries		ok	section: Nu Metal
+945	Drowning Pool	Sinner		ok	section: Nu Metal
+946	(hed) p.e.	Broke		ok	section: Nu Metal
+947	Ill Niño	Revolution Revolución		ok	section: Nu Metal
+948	Kittie	Spit		ok	section: Nu Metal
+949	Korn	Korn		ok	section: Nu Metal
+950	Limp Bizkit	Chocolate Starfish and the Hot Dog Flavored Water		ok	section: Nu Metal
+951	Linkin Park	Hybrid Theory		ok	section: Nu Metal
+952	Mudvayne	L.D. 50		ok	section: Nu Metal
+953	Mushroomhead	XIII		ok	section: Nu Metal
+954	Nothingface	Violence		ok	section: Nu Metal
+955	Sevendust	Home		ok	section: Nu Metal
+956	Slipknot	Slipknot		ok	section: Nu Metal
+957	Snot	Get Some		ok	section: Nu Metal
+958	Soil	Scars		ok	section: Nu Metal
+959	Spineshank	The Height of Callousness		ok	section: Nu Metal
+960	System of a Down	Toxicity		ok	section: Nu Metal
+961	All That Remains	The Fall of Ideals		ok	section: Melodic Metalcore
+962	August Burns Red	Constellations		ok	section: Melodic Metalcore
+963	Darkest Hour	Undoing Ruin		ok	section: Melodic Metalcore
+964	Demon Hunter	The Triptych		ok	section: Melodic Metalcore
+965	Erra	Augment		ok	section: Melodic Metalcore
+966	Heaven Shall Burn	Iconoclast		ok	section: Melodic Metalcore
+967	HORSE the Band	The Mechanical Hand		ok	section: Melodic Metalcore
+968	Ictus	Imperivm		ok	section: Melodic Metalcore
+969	Jinjer	King Of Everything		ok	section: Melodic Metalcore
+970	Killswitch Engage	Alive or Just Breathing		ok	section: Melodic Metalcore
+971	Misery Signals	Controller		ok	section: Melodic Metalcore
+972	Parkway Drive	Horizons		ok	section: Melodic Metalcore
+973	Protest the Hero	Fortress		ok	section: Melodic Metalcore
+974	Shadows Fall	The War Within		ok	section: Melodic Metalcore
+975	Shai Hulud	That Within Blood Ill-Tempered		ok	section: Melodic Metalcore
+976	The Human Abstract	Nocturne		ok	section: Melodic Metalcore
+977	Times of Grace	The Hymn of a Broken Man		ok	section: Melodic Metalcore
+978	Trivium	Ascendancy		ok	section: Melodic Metalcore
+979	Unearth	The Oncoming Storm		ok	section: Melodic Metalcore
+980	While She Sleeps	This Is The Six		ok	section: Melodic Metalcore
+981	All Shall Perish	The Price Of Existence		ok	section: Deathcore
+982	Arsonists Get All The Girls	Portals		ok	section: Deathcore
+983	As Blood Runs Black	Allegiance		ok	section: Deathcore
+984	Born of Osiris	The Discovery		ok	section: Deathcore
+985	Bring Me the Horizon	Count Your Blessings		ok	section: Deathcore
+986	Carnifex	Dead in My Arms		ok	section: Deathcore
+987	Chelsea Grin	Desolation of Eden		ok	section: Deathcore
+988	Despised Icon	The Ills of Modern Man		ok	section: Deathcore
+989	Fit For An Autopsy	Absolute Hope Absolute Hell		ok	section: Deathcore
+990	Impending Doom	Baptized In Filth		ok	section: Deathcore
+991	Infant Annihilator	The Palpable Leprosy of Pollution		ok	section: Deathcore
+992	Job for a Cowboy	Doom		ok	section: Deathcore
+993	Make Them Suffer	Neverbloom		ok	section: Deathcore
+994	Oceano	Depths		ok	section: Deathcore
+995	Rings of Saturn	Lugal Ki En		ok	section: Deathcore
+996	Shadow Of Intent	Primordial		ok	section: Deathcore
+997	Suicide Silence	The Cleansing		ok	section: Deathcore
+998	Thy Art Is Murder	Infinite Death		ok	section: Deathcore
+999	Veil of Maya	The Common Man's Collapse		ok	section: Deathcore
+1000	Whitechapel	The Somatic Defilement		ok	section: Deathcore

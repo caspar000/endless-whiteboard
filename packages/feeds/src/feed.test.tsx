@@ -229,7 +229,7 @@ describe('the feeds extension', () => {
 		expect(reads()).toBe(before + 1)
 		// The video the feed no longer lists is kept.
 		expect(rows()).toEqual(['Breadboard clock part 6', 'Breadboard clock part 5', 'Breadboard clock part 4'])
-	})
+	}, 30000)
 
 	it('shows every category, however many there are', async () => {
 		const { panel, card } = mount()

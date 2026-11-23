@@ -11,6 +11,8 @@ const item = (itemId: string, over: Partial<ItemDef> = {}): ItemDef => ({
 	kind: 'Study',
 	medium: '',
 	cover: '',
+	url: '',
+	tracks: 0,
 	tags: [],
 	core: false,
 	childRule: 'core',
@@ -80,6 +82,37 @@ describe('syllabi as a randomizer source', () => {
 		expect(albumParts('Ancient Greek: Gregorio Paniagua - Musique de la Grèce antique (800 BC - 600 AD)')).toEqual({ title: 'Musique de la Grèce antique', creator: 'Gregorio Paniagua', year: '800 BC - 600 AD' })
 		expect(albumParts('Bogino Duu: J. Nansalmaa - Mongolian Traditional Songs')).toEqual({ title: 'Mongolian Traditional Songs', creator: 'J. Nansalmaa', year: '' })
 		expect(albumParts('Iliad')).toBeNull()
+	})
+})
+
+describe('a work with a link and a track count', () => {
+	afterEach(resetSyllabus)
+
+	it('opens its link and says how many tracks it has; a work without either says nothing', () => {
+		const url = 'https://www.youtube.com/results?search_query=burzum+filosofem'
+		const items = {
+			g: item('g', { title: 'Black Metal', medium: 'album', children: ['g/a', 'g/b', 'g/c'] }),
+			'g/a': item('g/a', { title: 'Black Metal: Burzum - Filosofem (1996)', medium: 'album', parent: 'g', url, tracks: 6 }),
+			'g/b': item('g/b', { title: 'Black Metal: Mayhem - Deathcrush', medium: 'album', parent: 'g', tracks: 1 }),
+			'g/c': item('g/c', { title: 'Black Metal: Darkthrone - Transilvanian Hunger', medium: 'album', parent: 'g' }),
+		}
+		const entries = syllabusEntries(items, { t: track('t', 'T', 'g', ['g']) }, 't')
+		expect(entries.map((e) => [e.url, e.detail])).toEqual([
+			[url, '6 tracks'],
+			['', '1 track'],
+			['', undefined],
+		])
+	})
+
+	it('keeps them through an import, and a re-import that leaves them out', () => {
+		const source = (fields: string) => `goal: m\nname: M\ntracks:\n  - id: t\n    items:\n      - { id: a, title: "A - B", medium: album${fields} }\n`
+		const first = parseSyllabus(source(', url: "https://www.youtube.com/results?search_query=a+b", tracks: 9'))
+		if (!first.ok) throw new Error(first.errors.join('\n'))
+		putItems(mergeDoc(first.doc, {}, {}, '').items)
+		const again = parseSyllabus(source(''))
+		if (!again.ok) throw new Error(again.errors.join('\n'))
+		const merged = mergeDoc(again.doc, getItems(), getTracks(), '').items.find((i) => i.itemId === 'm/a')!
+		expect([merged.url, merged.tracks]).toEqual(['https://www.youtube.com/results?search_query=a+b', 9])
 	})
 })
 

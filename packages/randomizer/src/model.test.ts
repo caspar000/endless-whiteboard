@@ -239,8 +239,9 @@ describe("another source's entries", () => {
 		expect(items[1]).toMatchObject({ stamps: stamped.stamps, cover: 'asset:mine' })
 	})
 
-	it('are stored only while stamped or covered, and never with the source\'s url or picture', () => {
-		const [shown] = withEntries([], FEED, [entry('a')])
+	it('are stored only while stamped or covered, and never with the source\'s url, picture or detail', () => {
+		const [shown] = withEntries([], FEED, [entry('a', { detail: '11 tracks' })])
+		expect(shown!.detail).toBe('11 tracks')
 		const stamps: Stamp[] = [{ kind: 'liked', date: '2026-11-20' }]
 		const stored = storeItem([], shown!, { stamps })
 		expect(stored).toEqual([{ id: 'a', source: FEED, title: 'Video a', creator: 'A channel', year: '12 Nov 2026', cover: '', stamps }])

@@ -144,6 +144,12 @@ describe('syllabi/mucore.yaml', () => {
 		}
 	})
 
+	it('gives every entry and every node an id of its own', () => {
+		expect(new Set(all.map((u) => u.itemId)).size).toBe(all.length)
+		const nodes = doc.trees[0]!.nodes.map((n) => n.nodeId)
+		expect(new Set(nodes).size).toBe(nodes.length)
+	})
+
 	it('feeds every family node, and the tree holds together', () => {
 		const tree = doc.trees[0]!
 		const pillars = tree.nodes.filter((n) => n.kind === 'pillar')

@@ -65,8 +65,15 @@ describe('a backlog as a source', () => {
 		expect(backlogEntries(b, () => [{ ...entry('a'), weight: 4 }])[0]).not.toHaveProperty('weight')
 	})
 
+	it('passes on what its sources say beside the year, for things added one by one and in collections', () => {
+		let b = addItem(newBacklog('b'), { ...entry('1'), detail: '9 tracks' }, 'syllabus:mucore', 'Syllabi')
+		b = addCollection(b, 'syllabus:mucore', 'Syllabi')
+		const counted = (key: string) => (key === 'syllabus:mucore' ? [{ ...entry('a'), detail: '11 tracks' }, entry('b')] : [])
+		expect(backlogEntries(b, counted).map((e) => e.detail)).toEqual(['11 tracks', undefined, '9 tracks'])
+	})
+
 	it('is read back whole from storage, and what can’t be read is dropped', () => {
-		const b = addCollection(addItem(newBacklog('b'), entry('1'), 'feeds:all', 'Feeds'), 'syllabus:mucore', 'Syllabi')
+		const b = addCollection(addItem(newBacklog('b'), { ...entry('1'), detail: '9 tracks' }, 'feeds:all', 'Feeds'), 'syllabus:mucore', 'Syllabi')
 		expect(readBacklog(JSON.parse(JSON.stringify(b)))).toEqual(b)
 		expect(readBacklog({ backlogId: 'b', entries: [{ kind: 'item', id: 'x' }, { kind: 'odd', id: 'y' }, 3] })).toEqual({ backlogId: 'b', boardId: '', name: 'Backlog', entries: [] })
 		expect(readBacklog({})).toBeNull()

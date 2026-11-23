@@ -46,6 +46,8 @@ export interface SourceEntry {
 	cover: string
 	/** Where it opens, or ''. */
 	url: string
+	/** A line beside the year on a card: "11 tracks". Optional, and never stored. */
+	detail?: string
 	/**
 	 * How much more often a draw should land on it than on an entry of weight 1. Only a ranking with
 	 * weighted shuffle on gives weights; a source that gives none is drawn evenly.
@@ -263,7 +265,7 @@ export function getDraggedItem(data: DataTransfer): DraggedItem | null {
 		const e = entry as Record<string, unknown>
 		if (!str(e.id) || !str(e.title)) return null
 		return {
-			entry: { id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url) },
+			entry: { id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), ...(str(e.detail) ? { detail: str(e.detail) } : {}) },
 			from: str(from),
 			via: str(via),
 		}

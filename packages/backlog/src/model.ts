@@ -22,6 +22,8 @@ export interface BacklogItem {
 	year: string
 	cover: string
 	url: string
+	/** The source's line beside the year ("11 tracks"), when it had one. */
+	detail?: string
 	/** Where it came from, said under it: "Feeds", "Syllabi". '' for a typed one. */
 	via: string
 }
@@ -104,7 +106,7 @@ const sameWork = (a: Pick<BacklogItem, 'title' | 'creator'>, b: Pick<BacklogItem
  */
 export function addItem(backlog: Backlog, entry: SourceEntry, from: string, via: string): Backlog {
 	const id = from ? itemKey(from, entry.id) : entry.id
-	const item: BacklogItem = { kind: 'item', id, title: entry.title, creator: entry.creator, year: entry.year, cover: entry.cover, url: entry.url, via }
+	const item: BacklogItem = { kind: 'item', id, title: entry.title, creator: entry.creator, year: entry.year, cover: entry.cover, url: entry.url, ...(entry.detail ? { detail: entry.detail } : {}), via }
 	return { ...backlog, entries: [item, ...backlog.entries.filter((e) => e.id !== id && !(e.kind === 'item' && sameWork(e, item)))] }
 }
 
@@ -137,8 +139,10 @@ export function backlogEntries(backlog: Backlog, entriesOf: (sourceKey: string) 
 		out.push(entry)
 	}
 	for (const e of backlog.entries) {
-		if (e.kind === 'item') push({ id: e.id, title: e.title, creator: e.creator, year: e.year, cover: e.cover, url: e.url })
-		else for (const { id, title, creator, year, cover, url } of entriesOf(collectionKey(e))) push({ id: itemKey(e.id, id), title, creator, year, cover, url })
+		if (e.kind === 'item') push({ id: e.id, title: e.title, creator: e.creator, year: e.year, cover: e.cover, url: e.url, ...(e.detail ? { detail: e.detail } : {}) })
+		else
+			for (const { id, title, creator, year, cover, url, detail } of entriesOf(collectionKey(e)))
+				push({ id: itemKey(e.id, id), title, creator, year, cover, url, ...(detail ? { detail } : {}) })
 	}
 	return out
 }
@@ -157,7 +161,7 @@ export function readBacklog(raw: Record<string, unknown>): Backlog | null {
 		if (!isObject(e) || !str(e.id)) continue
 		if (e.kind === 'collection') entries.push({ kind: 'collection', id: str(e.id), ...(str(e.key) ? { key: str(e.key) } : {}), via: str(e.via) })
 		else if (e.kind === 'item' && str(e.title))
-			entries.push({ kind: 'item', id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), via: str(e.via) })
+			entries.push({ kind: 'item', id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), ...(str(e.detail) ? { detail: str(e.detail) } : {}), via: str(e.via) })
 	}
 	return { backlogId, boardId: str(raw.boardId), name: str(raw.name) || DEFAULT_NAME, entries }
 }

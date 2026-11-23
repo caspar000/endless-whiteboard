@@ -21,7 +21,8 @@ Which genre an album gets:
   only an artist. genres.md lists the second kind, to add by hand.
 
     python3 organise.py          # prints the genres and their album counts, writes genres.md
-    python3 organise.py --write  # also adds the genres and albums to ../mucore.yaml
+    python3 organise.py --write  # also puts the genres and albums in ../mucore.yaml, in place of any
+                                 # it put there before
 
 Nodes need only their parent: unlock counts are on their way out of the app.
 """
@@ -196,7 +197,7 @@ G = {
     'big-band': ('Big Band', 'jazz-big-band'),
     'bebop-hard-bop': ('Bebop, Hard Bop, Modal', 'jazz-bebop-cool'),
     'free-jazz': ('Free Jazz', 'jazz-avant-garde'),
-    'jazz-fusion': ('Jazz Fusion', 'jazz-fusion'),
+    'jazz-rock-fusion': ('Jazz Fusion', 'jazz-fusion'),
     'chamber-jazz': ('Chamber Jazz', 'jazz-fusion'),
     # Rhythm & Blues
     'soul': ('Soul', 'rhythm-and-blues-soul'),
@@ -359,7 +360,7 @@ CHART = {
     'instrumental-metal': S([('Doom', 'doom-metal'), ('Drone', 'drone-metal'), ('Atmosludge', 'sludge-metal'), ('Black', 'black-metal'), ('Jazz Fusion', 'progressive-metal'), ('Misc, power', 'power-metal'), ('Misc, tech death', 'death-metal'), ('Misc, symphonic', 'symphonic-gothic-metal'), ('', 'progressive-metal')]),
     'instrumental-hip-hop': 'instrumental-hip-hop', 'instrumental-hip-hop-2': S([('Turntablism', 'turntablism'), ('', 'instrumental-hip-hop')]),
     'italo-disco': 'italo-disco', 'jangle-pop': 'jangle-pop', 'jangle-pop-2': 'jangle-pop', 'jazz': 'jazz-essentials',
-    'jazz-2': S([('Traditional', 'swing'), ('Swing', 'swing'), ('Bebop', 'bebop-hard-bop'), ('Cool', 'bebop-hard-bop'), ('Hard Bop', 'bebop-hard-bop'), ('Late 50s', 'bebop-hard-bop'), ('Modal', 'bebop-hard-bop'), ('Avant-Garde', 'free-jazz'), ('Free Jazz', 'free-jazz'), ('Fusion', 'jazz-fusion'), ('', 'jazz-essentials')]),
+    'jazz-2': S([('Traditional', 'swing'), ('Swing', 'swing'), ('Bebop', 'bebop-hard-bop'), ('Cool', 'bebop-hard-bop'), ('Hard Bop', 'bebop-hard-bop'), ('Late 50s', 'bebop-hard-bop'), ('Modal', 'bebop-hard-bop'), ('Avant-Garde', 'free-jazz'), ('Free Jazz', 'free-jazz'), ('Fusion', 'jazz-rock-fusion'), ('', 'jazz-essentials')]),
     'jazz-3-further-explorations': S([('Piano Trios', 'bebop-hard-bop'), ('Big Band', 'big-band'), ('Vocal Jazz', 'vocal-jazz'), ('Bossa Nova', 'bossa-nova'), ('Jazz Guitar', 'bebop-hard-bop'), ('Mambo', 'latin-jazz'), ('Monk', 'bebop-hard-bop'), ('', 'jazz-essentials')]),
     'jazz-1959-1979': 'jazz-essentials', 'jungle': 'jungle', 'k-pop': 'k-pop', 'kosmische': 'krautrock', 'krautrock': 'krautrock',
     'krautrock-2': 'krautrock', 'krautrock-3': 'krautrock', 'lolicore': 'breakcore', 'mashup': 'sound-collage',
@@ -389,7 +390,7 @@ CHART = {
     'progressive-electronic': 'progressive-electronic', 'progressive-house': 'progressive-house', 'progressive-metal': 'progressive-metal',
     'progressive-metal-introduction': 'progressive-metal', 'progressive-rock-1': 'progressive-rock', 'progressive-rock-2': 'progressive-rock',
     'progressive-rock-3': 'progressive-rock', 'progressive-rock-4': 'progressive-rock',
-    'progressive-rock-5': S([('Psychedelic Rock', 'psychedelic-rock'), ('Acid', 'psychedelic-rock'), ('Raga', 'psychedelic-rock'), ('Space', 'psychedelic-rock'), ('Krautrock', 'krautrock'), ('Progressive Electronic', 'progressive-electronic'), ('Hard Rock', 'hard-rock'), ('Heavy Metal', 'heavy-metal'), ('Glam', 'hard-rock'), ('AOR', 'hard-rock'), ('Canterbury', 'canterbury-scene'), ('Avant-Prog', 'avant-prog'), ('Zeuhl', 'zeuhl'), ('Brutal Prog', 'avant-prog'), ('Baroque Pop', 'baroque-pop'), ('Progressive Folk', 'freak-folk'), ('Progressive Metal', 'progressive-metal'), ('Djent', 'progressive-metal'), ('Jazz Fusion', 'jazz-fusion'), ('Math Rock', 'math-rock'), ('Post-Rock', 'post-rock'), ('', 'progressive-rock')]),
+    'progressive-rock-5': S([('Psychedelic Rock', 'psychedelic-rock'), ('Acid', 'psychedelic-rock'), ('Raga', 'psychedelic-rock'), ('Space', 'psychedelic-rock'), ('Krautrock', 'krautrock'), ('Progressive Electronic', 'progressive-electronic'), ('Hard Rock', 'hard-rock'), ('Heavy Metal', 'heavy-metal'), ('Glam', 'hard-rock'), ('AOR', 'hard-rock'), ('Canterbury', 'canterbury-scene'), ('Avant-Prog', 'avant-prog'), ('Zeuhl', 'zeuhl'), ('Brutal Prog', 'avant-prog'), ('Baroque Pop', 'baroque-pop'), ('Progressive Folk', 'freak-folk'), ('Progressive Metal', 'progressive-metal'), ('Djent', 'progressive-metal'), ('Jazz Fusion', 'jazz-rock-fusion'), ('Math Rock', 'math-rock'), ('Post-Rock', 'post-rock'), ('', 'progressive-rock')]),
     'proto-punk': 'punk-rock', 'psybient-psychill': 'psybient', 'psychedelic-drone': 'drone',
     'psychedelic-rock-pop-1966-1972': 'psychedelic-rock', 'psychedelic-rock-2': 'psychedelic-rock', 'psychobilly': 'psychobilly',
     'punk-hardcore-new-york': 'hardcore-punk', 'punk-2': 'punk-rock', 'raga-rock': 'psychedelic-rock', 'rave': 'electronic-essentials',
@@ -447,10 +448,17 @@ def yaml_string(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
+def mucore_parts() -> tuple[str, str]:
+    """mucore.yaml as /mu/core has it, without what an earlier run added: (tracks, tree)."""
+    with open(MUCORE, encoding='utf-8') as f:
+        head, tree = f.read().split('\ntree:\n', 1)
+    return head.split(f'\n{MARK}\n')[0], tree.split(f'\n    {MARK}\n')[0]
+
+
 def mucore_nodes() -> dict[str, dict]:
-    """The tree's nodes as written in mucore.yaml: id -> {name, icon, sector}."""
+    """The tree's nodes as /mu/core has them: id -> {name, icon, sector}. Not those an earlier run added."""
     nodes = {}
-    for line in open(MUCORE, encoding='utf-8'):
+    for line in mucore_parts()[1].split('\n'):
         m = re.match(r'\s+- \{ id: ([\w-]+), name: "([^"]*)"(?:, kind: \w+)?, icon: ([\w-]+)(?:, sector: ([\w-]+))?', line)
         if m:
             nodes[m[1]] = {'name': m[2], 'icon': m[3], 'sector': m[4] or ''}
@@ -471,8 +479,11 @@ def main() -> None:
         genres[f'{nodes[family]["sector"]}-field-recordings'] = ('Field Recordings', nodes[family]['sector'])
     for family, (_, pillar) in FAMILIES.items():
         assert pillar in nodes, pillar
+    entries = set(re.findall(r'^      - id: (\S+)', mucore_parts()[0], re.M))
     for gid, (_, parent) in genres.items():
         assert parent in nodes or parent in FAMILIES, f'{gid}: no node {parent}'
+        # A genre is a node and an entry: neither id may be one /mu/core already has.
+        assert gid not in nodes and gid not in entries, f'{gid}: /mu/core already has this id'
 
     albums = [a for a in json.load(open(ESSENTIALS, encoding='utf-8')) if not a['mucore']]
     artist_only = sorted({a['artist'] for a in albums if a['artist'] and not a['album']})
@@ -535,10 +546,6 @@ def main() -> None:
 
 
 def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
-    with open(MUCORE, encoding='utf-8') as f:
-        text = f.read()
-    if MARK in text:
-        sys.exit('mucore.yaml already has the genres: restore it from git first')
     order = [gid for gid in genres if placed.get(gid)]
 
     entries = []
@@ -562,9 +569,8 @@ def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
                 fields.append(f'cover: {yaml_string(a["cover"])}')
             if a['tracks']:
                 fields.append(f'tracks: {a["tracks"]}')
-            if a['link']:
-                fields.append(f'link: {yaml_string(a["link"])}')
-            fields.append(f'youtube: {yaml_string(a["youtube"])}')
+            # What the randomizer's card opens: a YouTube search, which finds something for any album.
+            fields.append(f'url: {yaml_string(a["youtube"])}')
             entries[-1] += '\n          - { ' + ', '.join(fields) + ' }'
 
     tree_lines = []
@@ -576,7 +582,8 @@ def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
         p = nodes.get(parent) or nodes[FAMILIES[parent][1]]
         tree_lines.append(f'    - {{ id: {gid}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{parent}] }} ] }}')
 
-    head, tree = text.split('\ntree:\n', 1)
+    # What an earlier run put here goes, so a run can be repeated.
+    head, tree = mucore_parts()
     head = head.rstrip('\n') + f'\n{MARK}\n' + '\n'.join(entries) + '\n\n'
     tree = tree.rstrip('\n') + f'\n    {MARK}\n' + '\n'.join(tree_lines) + '\n'
     with open(MUCORE, 'w', encoding='utf-8') as f:

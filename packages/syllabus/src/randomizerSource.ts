@@ -76,7 +76,8 @@ export function syllabusEntries(items: Items, tracks: Tracks, trackId: string): 
 			creator: album?.creator ?? entry?.title ?? '',
 			year: album?.year ?? '',
 			cover: work.cover,
-			url: '',
+			url: work.url,
+			...(work.tracks ? { detail: `${work.tracks} ${work.tracks === 1 ? 'track' : 'tracks'}` } : {}),
 		}
 	})
 }

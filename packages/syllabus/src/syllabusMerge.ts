@@ -34,6 +34,8 @@ export function mergeDoc(
 			kind: item.kind || had?.kind || '',
 			medium: item.medium || had?.medium || '',
 			cover: item.cover || had?.cover || '',
+			url: item.url || had?.url || '',
+			tracks: item.tracks || had?.tracks || 0,
 			tags,
 			core: item.core,
 			childRule: item.childRule,

@@ -27,6 +27,11 @@ export type Route =
 	 */
 	| { view: 'help'; section?: string }
 	| { view: 'board'; boardId: string; seedDemo?: boolean }
+	/**
+	 * The daily page (DARK-17): `#/daily` is today, `#/daily/2026-11-24` a day, and
+	 * `#/daily/2026-11-29/review` the weekly review of that day's week. A link to a day is worth sending.
+	 */
+	| { view: 'daily'; day?: string; review?: boolean }
 
 function parseHash(hash: string): Route {
 	if (hash === '#/settings') return { view: 'settings' }
@@ -44,6 +49,9 @@ function parseHash(hash: string): Route {
 	// knowing what the sections are, and an unknown one simply falls back to the overview.
 	const help = /^#\/help\/([a-z-]+)$/.exec(hash)
 	if (help) return { view: 'help', section: help[1]! }
+	if (hash === '#/daily') return { view: 'daily' }
+	const daily = /^#\/daily\/(\d{4}-\d{2}-\d{2})(\/review)?$/.exec(hash)
+	if (daily) return daily[2] ? { view: 'daily', day: daily[1]!, review: true } : { view: 'daily', day: daily[1]! }
 	const match = /^#\/board\/([^?]+)(\?.*)?$/.exec(hash)
 	if (!match) return { view: 'list' }
 	const boardId = decodeURIComponent(match[1]!)
@@ -60,6 +68,7 @@ function toHash(route: Route): string {
 			: `#/settings/${route.tab}`
 	}
 	if (route.view === 'help') return route.section ? `#/help/${route.section}` : '#/help'
+	if (route.view === 'daily') return route.day ? `#/daily/${route.day}${route.review ? '/review' : ''}` : '#/daily'
 	const suffix = route.seedDemo ? '?demo=1' : ''
 	return `#/board/${encodeURIComponent(route.boardId)}${suffix}`
 }

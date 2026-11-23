@@ -1,0 +1,1488 @@
+/*
+ * The daily page (DARK-17). Its own file, loaded with the screen, so a board pays nothing for it.
+ * Colours are the app's tokens only, so it follows the theme; printing turns the page to ink on paper.
+ */
+
+.lb-daily {
+	--daily-gap: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--daily-gap);
+	height: 100%;
+	padding: 8px 0 var(--fl-edge);
+	color: var(--lb-text);
+	font-size: 13px;
+	min-height: 0;
+}
+
+.lb-daily-faint {
+	color: var(--lb-text-faint);
+}
+
+/* ------------------------------------------------------------------------------ top bar */
+
+.lb-daily__top {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 44px;
+	flex-wrap: wrap;
+}
+.lb-daily__when {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.2;
+}
+.lb-daily__when strong {
+	font-size: 15px;
+}
+.lb-daily__spacer {
+	flex: 1;
+}
+.lb-daily-pill {
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	font-size: 12px;
+}
+.lb-daily-pill::before {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: currentColor;
+	vertical-align: middle;
+}
+
+.lb-daily-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--fl-radius-ctl);
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	cursor: pointer;
+}
+.lb-daily-btn:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-daily-btn--primary {
+	border-color: transparent;
+	background: var(--lb-accent);
+	color: var(--lb-on-accent);
+	font-weight: 600;
+}
+.lb-daily-btn--primary:hover {
+	background: var(--lb-accent-hover);
+}
+
+.lb-daily-iconbtn {
+	display: inline-grid;
+	place-items: center;
+	min-width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-daily-iconbtn:hover:not(:disabled) {
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+}
+.lb-daily-iconbtn:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+.lb-daily-iconbtn--box {
+	width: 32px;
+	height: 32px;
+	border: 1px solid var(--lb-border);
+	border-radius: var(--fl-radius-ctl);
+}
+
+.lb-daily-linkbtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px;
+	border: 0;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	cursor: pointer;
+}
+.lb-daily-linkbtn:hover:not(:disabled) {
+	color: var(--lb-text);
+}
+.lb-daily-linkbtn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+/* ------------------------------------------------------------------------------- the week */
+
+.lb-daily-week {
+	display: flex;
+	align-items: stretch;
+	gap: 10px;
+	padding: 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 18px;
+	background: var(--lb-bg-raised);
+}
+.lb-daily-week__cycle {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
+	min-width: 230px;
+	padding: 0 4px;
+}
+.lb-daily-week__cyclebtn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.lb-daily-week__days {
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(0, 1.3fr);
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+.lb-daily-day {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 6px;
+	min-width: 0;
+	padding: 8px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-daily-day:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-daily-day[aria-pressed='true'] {
+	border-color: var(--lb-accent);
+	box-shadow: 0 0 0 1px var(--lb-accent);
+}
+.lb-daily-day__top,
+.lb-daily-day__bottom {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	overflow: hidden;
+}
+.lb-daily-day__num {
+	font-size: 20px;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+.lb-daily-day--review {
+	border-color: color-mix(in srgb, var(--lb-star) 40%, var(--lb-border));
+	background: color-mix(in srgb, var(--lb-star) 8%, var(--lb-surface));
+}
+.lb-daily-day--review[aria-pressed='true'] {
+	border-color: var(--lb-star);
+	box-shadow: 0 0 0 1px var(--lb-star);
+}
+.lb-daily-day__review {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--lb-star);
+	letter-spacing: 0;
+	text-transform: none;
+	font-size: 12px;
+}
+.lb-daily-ring {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	letter-spacing: 0;
+	font-weight: 500;
+}
+.lb-daily-ring circle {
+	fill: none;
+	stroke-width: 2.5;
+}
+.lb-daily-ring__track {
+	stroke: var(--lb-border-strong);
+}
+.lb-daily-ring__value {
+	stroke: var(--lb-accent);
+	stroke-linecap: round;
+}
+
+.lb-daily-pop {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	z-index: 5;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 280px;
+	padding: 10px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 12px;
+	background: var(--lb-surface);
+	box-shadow: var(--lb-shadow-2);
+}
+.lb-daily-pop p {
+	margin: 0 0 4px;
+	font-size: 12px;
+}
+.lb-daily-pop__item {
+	padding: 7px 10px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: none;
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-daily-pop__item:hover {
+	background: var(--lb-surface-hover);
+}
+.lb-daily-pop__item[aria-pressed='true'] {
+	border-color: var(--lb-accent);
+	background: var(--lb-accent-tint);
+}
+
+/* ------------------------------------------------------------------------------ the body */
+
+/* One column, the page alone, unless the layout is being edited: then the Library, the page and the Inspector. */
+.lb-daily__body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--daily-gap);
+	flex: 1;
+	min-height: 0;
+}
+.lb-daily--editing .lb-daily__body {
+	grid-template-columns: 300px minmax(0, 1fr) 320px;
+}
+.lb-daily--review.lb-daily--editing .lb-daily__body {
+	grid-template-columns: 230px minmax(0, 1fr) 260px;
+}
+.lb-daily--review .lb-daily__frame {
+	overflow-y: auto;
+}
+
+.lb-daily-panel {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	border: 1px solid var(--lb-border);
+	border-radius: 18px;
+	background: var(--lb-bg-raised);
+	overflow: hidden;
+}
+.lb-daily-panel__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	padding: 14px 16px 8px;
+}
+.lb-daily-panel__head h2 {
+	margin: 0;
+	font-size: 15px;
+}
+.lb-daily-panel__body {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 8px 16px 16px;
+	overflow-y: auto;
+}
+.lb-daily-panel__body > p {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.45;
+}
+.lb-daily-tabs {
+	display: flex;
+	gap: 2px;
+	margin: 0 16px;
+	padding: 3px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+}
+.lb-daily-tabs button {
+	flex: 1;
+	white-space: nowrap;
+	padding: 5px 2px;
+	border: 0;
+	border-radius: 7px;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+}
+.lb-daily-tabs button[aria-selected='true'] {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+}
+
+.lb-daily-libitems,
+.lb-daily-icontasks {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-daily-libitem {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-surface);
+}
+.lb-daily-libitem[draggable='true'] {
+	cursor: grab;
+}
+.lb-daily-libitem__text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+}
+.lb-daily-libitem__text strong {
+	font-size: 13px;
+}
+.lb-daily-libitem__add {
+	width: 26px;
+	height: 26px;
+	border: 1px solid var(--lb-border);
+}
+.lb-daily-icontask {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.lb-daily-dashed {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 7px;
+	border: 1px dashed var(--lb-border-strong);
+	border-radius: 10px;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+.lb-daily-dashed:hover:not(:disabled) {
+	color: var(--lb-text);
+	border-color: var(--lb-text-faint);
+}
+
+/* --------------------------------------------------------------------------- inspector */
+
+.lb-daily-inspector__what {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 10px 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-surface);
+}
+.lb-daily-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-daily-label {
+	color: var(--lb-text-dim);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.lb-daily-input,
+.lb-daily-select {
+	width: 100%;
+	min-width: 0;
+	height: 28px;
+	padding: 0 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12px;
+}
+.lb-daily-input:focus-visible,
+.lb-daily-select:focus-visible {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: -1px;
+}
+.lb-daily-input--number {
+	width: 64px;
+	text-align: right;
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+.lb-daily-input--number::-webkit-inner-spin-button,
+.lb-daily-input--number::-webkit-outer-spin-button {
+	appearance: none;
+	margin: 0;
+}
+.lb-daily-notice {
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
+	font-size: 12px;
+}
+.lb-daily-input--unit {
+	width: 56px;
+}
+.lb-daily-select--tiny {
+	width: auto;
+	height: 22px;
+	padding: 0 4px;
+	font-size: 11px;
+}
+.lb-daily-color {
+	flex: none;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	cursor: pointer;
+}
+.lb-daily-stepper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.lb-daily-stepper .lb-daily-iconbtn {
+	width: 28px;
+	height: 28px;
+	border: 1px solid var(--lb-border);
+}
+.lb-daily-textlist,
+.lb-daily-tracks {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-daily-textlist__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.lb-daily-textlist__name {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+}
+.lb-daily-track {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 6px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+}
+.lb-daily-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	font-size: 12px;
+	cursor: pointer;
+}
+.lb-daily-toggle input {
+	accent-color: var(--lb-accent);
+}
+.lb-daily-danger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	margin-top: 4px;
+	padding: 8px;
+	border: 1px solid var(--lb-danger-line);
+	border-radius: 10px;
+	background: var(--lb-danger-tint);
+	color: var(--lb-danger);
+	font: inherit;
+	cursor: pointer;
+}
+
+/* ------------------------------------------------------------------------------- the page */
+
+.lb-daily__stage {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	min-height: 0;
+}
+.lb-daily__paper {
+	align-self: stretch;
+	margin: 0 0 6px;
+	font-size: 12px;
+	text-align: center;
+}
+.lb-daily__frame {
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	flex: 1;
+	align-self: stretch;
+	min-height: 0;
+	overflow: hidden;
+}
+.lb-daily__sizer {
+	position: relative;
+	flex: none;
+}
+.lb-daily-sheet {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding: 14px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background-color: var(--lb-bg-raised);
+	background-image: radial-gradient(var(--lb-border-strong) 1px, transparent 1px);
+	background-size: 14px 14px;
+	transform-origin: top left;
+	box-shadow: var(--lb-shadow-1);
+	font-size: 12px;
+}
+.lb-daily-grid {
+	display: grid;
+	gap: 7px;
+	width: 100%;
+	height: 100%;
+}
+.lb-daily-cell {
+	display: grid;
+	place-items: center;
+	border: 1px dashed var(--lb-border);
+	border-radius: 10px;
+	color: var(--lb-border-strong);
+}
+.lb-daily-cell[data-hover] {
+	border-color: var(--lb-accent);
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+}
+.lb-daily-slot {
+	position: relative;
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	border-radius: 10px;
+}
+.lb-daily-slot > * {
+	flex: 1;
+	min-width: 0;
+}
+.lb-daily--editing .lb-daily-slot[data-selected] {
+	outline: 2px solid var(--lb-accent);
+	outline-offset: 1px;
+}
+.lb-daily-slot__grip {
+	position: absolute;
+	top: 6px;
+	left: 2px;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 12px;
+	height: 16px;
+	color: var(--lb-text-faint);
+	cursor: grab;
+}
+.lb-daily-slot__resize {
+	position: absolute;
+	left: 50%;
+	bottom: -5px;
+	z-index: 2;
+	flex: none;
+	width: 36px;
+	height: 9px;
+	margin-left: -18px;
+	border: 2px solid var(--lb-accent);
+	border-radius: 5px;
+	background: var(--lb-bg);
+	cursor: ns-resize;
+	touch-action: none;
+}
+
+/* ---------------------------------------------------------------------------- the widgets */
+
+.lb-daily-block {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-height: 0;
+	padding: 8px 10px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-surface);
+	overflow: hidden;
+}
+.lb-daily--editing .lb-daily-block {
+	padding-left: 16px;
+}
+.lb-daily-block__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 6px;
+}
+.lb-daily-block__title {
+	margin: 0;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-daily-block__meta {
+	flex: none;
+	color: var(--lb-text-faint);
+	font-size: 10px;
+}
+.lb-daily-block__body {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-height: 0;
+	overflow-y: auto;
+}
+.lb-daily-empty {
+	margin: 0;
+	color: var(--lb-text-faint);
+	font-size: 11px;
+}
+.lb-daily-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+.lb-daily-badge {
+	flex: none;
+	padding: 0 5px;
+	border-radius: 4px;
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
+	font-size: 10px;
+}
+
+.lb-daily-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 14px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-surface);
+}
+.lb-daily-header__day {
+	margin: 0;
+	font-size: 30px;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+}
+.lb-daily-header__sub {
+	margin: 4px 0 0;
+	color: var(--lb-text-dim);
+	font-size: 12px;
+}
+.lb-daily-header__side {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+}
+.lb-daily-header__strip {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.lb-daily-header__letter {
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 50%;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.lb-daily-header__letter[aria-current='date'] {
+	border-color: var(--lb-text);
+	color: var(--lb-text);
+}
+.lb-daily-header__cycle {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	color: var(--lb-text-dim);
+	font-size: 11px;
+}
+
+.lb-daily-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.lb-daily-chip {
+	--chip: var(--lb-accent);
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 999px;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11px;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.lb-daily-chip:hover:not(:disabled) {
+	color: var(--lb-text);
+}
+.lb-daily-chip[aria-pressed='true'] {
+	border-color: color-mix(in srgb, var(--chip) 60%, transparent);
+	background: color-mix(in srgb, var(--chip) 18%, transparent);
+	color: var(--lb-text);
+}
+.lb-daily-chip:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+.lb-daily-chip--static {
+	cursor: default;
+}
+
+.lb-daily-seg {
+	display: inline-flex;
+	flex-wrap: wrap;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+.lb-daily-seg button {
+	padding: 3px 8px;
+	border: 0;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+.lb-daily-seg button[aria-pressed='true'] {
+	background: var(--lb-surface-2);
+	color: var(--lb-text);
+	font-weight: 600;
+}
+
+.lb-daily-tiles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.lb-daily-tile {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 9px;
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	cursor: pointer;
+}
+.lb-daily-tile--small {
+	width: 26px;
+	height: 26px;
+	border-radius: 6px;
+}
+.lb-daily-tile__icon {
+	display: grid;
+	place-items: center;
+}
+.lb-daily-tile__letter {
+	font-size: 16px;
+	font-weight: 600;
+}
+.lb-daily-tile[aria-pressed='true'] .lb-daily-tile__icon {
+	opacity: 0.35;
+}
+.lb-daily-tile__cross {
+	position: absolute;
+	inset: 3px;
+	width: calc(100% - 6px);
+	height: calc(100% - 6px);
+	fill: none;
+	stroke: var(--lb-text);
+	stroke-width: 2.4;
+	stroke-linecap: round;
+}
+
+.lb-daily-checks {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-daily-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	font-size: 12px;
+	line-height: 1.35;
+}
+.lb-daily-check label {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+	cursor: pointer;
+}
+.lb-daily-check input {
+	flex: none;
+	margin: 2px 0 0;
+	accent-color: var(--lb-accent);
+}
+.lb-daily-check[data-done] .lb-daily-check__text {
+	color: var(--lb-text-faint);
+	text-decoration: line-through;
+}
+.lb-daily-check__remove {
+	opacity: 0;
+}
+.lb-daily-check:hover .lb-daily-check__remove,
+.lb-daily-check__remove:focus-visible {
+	opacity: 1;
+}
+.lb-daily-addrow {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: auto;
+}
+.lb-daily-addrow .lb-daily-input {
+	border-style: dashed;
+}
+
+.lb-daily-physical__top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.lb-daily-physical__top .lb-daily-tile {
+	width: 36px;
+	height: 36px;
+}
+.lb-daily-number {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	color: var(--lb-text-dim);
+}
+.lb-daily-number .lb-daily-input--number {
+	width: 52px;
+	height: 24px;
+}
+.lb-daily-food {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.lb-daily-food__row {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+}
+.lb-daily-food__add {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 40px;
+	height: 40px;
+	border: 1px dashed var(--lb-border-strong);
+	border-radius: 8px;
+	background: none;
+	color: var(--lb-text-dim);
+	cursor: pointer;
+}
+.lb-daily-food__photo {
+	position: relative;
+	flex: none;
+	margin: 0;
+	text-align: center;
+	font-size: 9px;
+	color: var(--lb-text-faint);
+}
+.lb-daily-food__photo img,
+.lb-daily-food__loading {
+	display: block;
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	object-fit: cover;
+	background: var(--lb-surface-2);
+}
+.lb-daily-food__remove {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	display: none;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: var(--lb-surface-hover);
+	color: var(--lb-text);
+	cursor: pointer;
+}
+.lb-daily-food__photo:hover .lb-daily-food__remove,
+.lb-daily-food__remove:focus-visible {
+	display: grid;
+}
+
+.lb-daily-cover {
+	display: block;
+	width: 64px;
+	height: 64px;
+	flex: none;
+	border-radius: 8px;
+	object-fit: cover;
+}
+.lb-daily-cover--empty {
+	border: 1px dashed var(--lb-border-strong);
+}
+.lb-daily-pick {
+	display: flex;
+	gap: 8px;
+}
+.lb-daily-pick__text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+	font-size: 11px;
+}
+.lb-daily-pick__title {
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.lb-daily-pick__by {
+	color: var(--lb-text-dim);
+}
+.lb-daily-stamps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 3px;
+	margin-top: 3px;
+}
+.lb-daily-stamps .lb-daily-chip {
+	padding: 1px 5px;
+	border-radius: 6px;
+	font-size: 10px;
+}
+.lb-daily-stamps .lb-daily-chip[aria-pressed='true'] {
+	--chip: var(--lb-money);
+}
+.lb-daily-pick__impression {
+	border-style: dashed;
+}
+.lb-daily-pick__foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin-top: auto;
+	font-size: 11px;
+}
+
+.lb-daily-focus__area {
+	margin: 0;
+	font-size: 13px;
+}
+.lb-daily-focus__left {
+	margin: auto 0 0;
+	font-size: 11px;
+}
+.lb-daily-bar {
+	height: 3px;
+	border-radius: 2px;
+	background: var(--lb-border);
+	overflow: hidden;
+}
+.lb-daily-bar span {
+	display: block;
+	height: 100%;
+}
+
+.lb-daily-notes {
+	flex: 1;
+	width: 100%;
+	min-height: 32px;
+	padding: 4px 6px;
+	border: 1px dashed var(--lb-border);
+	border-radius: 6px;
+	background: none;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 12px;
+	resize: none;
+}
+
+.lb-daily-reviewlink {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-daily-reviewlink > span {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	font-size: 12px;
+}
+.lb-daily-reviewlink:hover {
+	background: var(--lb-surface-hover);
+}
+
+/* ---------------------------------------------------------------------------- the review */
+
+.lb-review-next {
+	display: grid;
+	grid-template-columns: 220px minmax(0, 1fr);
+	gap: 16px;
+}
+.lb-review-next__cycle,
+.lb-review-next__evenings {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.lb-review-next__days {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 6px;
+}
+.lb-review-next__day {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 6px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	font-size: 10px;
+}
+.lb-review-next__day .lb-daily-chip {
+	justify-content: center;
+}
+.lb-review-next__note {
+	height: 20px;
+	font-size: 10px;
+	border-style: dashed;
+}
+
+.lb-review-bars {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 11px;
+}
+.lb-review-bars li {
+	display: grid;
+	grid-template-columns: 70px minmax(0, 1fr) 20px;
+	align-items: center;
+	gap: 6px;
+}
+.lb-review-bars__track {
+	height: 5px;
+	border-radius: 3px;
+	background: var(--lb-border);
+	overflow: hidden;
+}
+.lb-review-bars__track span {
+	display: block;
+	height: 100%;
+}
+.lb-review-bars__n {
+	text-align: right;
+}
+.lb-review-warn {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	color: var(--lb-star);
+	font-size: 11px;
+}
+.lb-review-q {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	flex-wrap: wrap;
+	font-size: 11px;
+}
+
+.lb-review-logs {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 10px;
+}
+.lb-review-log ul {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 4px 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-review-log li {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+}
+.lb-review-log li .lb-daily-input--number {
+	width: 46px;
+	height: 20px;
+}
+.lb-review-log__title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-review-stars {
+	display: inline-flex;
+}
+.lb-review-stars button {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--lb-text-faint);
+	cursor: pointer;
+}
+.lb-review-stars button[aria-pressed='true'] {
+	color: var(--lb-star);
+}
+
+.lb-review-grid {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 11px;
+}
+.lb-review-grid th,
+.lb-review-grid td {
+	padding: 2px 4px;
+	border-bottom: 1px solid var(--lb-border);
+	text-align: center;
+	font-weight: 400;
+}
+.lb-review-grid thead th {
+	color: var(--lb-text-faint);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+.lb-review-grid thead th[aria-current='date'] {
+	color: var(--lb-text);
+}
+.lb-review-grid tbody th {
+	text-align: left;
+}
+.lb-review-grid__total {
+	font-weight: 600 !important;
+}
+
+.lb-review-numbers {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-review-numbers li {
+	display: flex;
+	flex-direction: column;
+	padding: 4px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+	font-size: 11px;
+}
+.lb-review-numbers strong {
+	font-size: 16px;
+}
+.lb-review-numbers small {
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--lb-text-dim);
+}
+
+.lb-review-creative {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 8px;
+}
+.lb-review-creative__card {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 4px 8px;
+	border: 1px solid var(--lb-border);
+	border-radius: 8px;
+}
+.lb-review-creative__line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--lb-text-dim);
+}
+.lb-review-creative__line span {
+	width: 32px;
+}
+.lb-review-creative__line .lb-daily-input {
+	height: 18px;
+	border-width: 0 0 1px;
+	border-radius: 0;
+	background: none;
+}
+
+.lb-review-reflection {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 10px;
+	height: 100%;
+}
+.lb-review-reflection label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.lb-review-picks {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-review-picks li {
+	display: flex;
+	gap: 6px;
+	min-width: 0;
+}
+.lb-review-picks__day {
+	flex: none;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+}
+.lb-review-picks .lb-daily-cover {
+	width: 44px;
+	height: 44px;
+}
+.lb-review-picks__text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	font-size: 10px;
+}
+.lb-review-picks__text strong {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-review-picks__impression {
+	color: var(--lb-text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-review-stamp {
+	align-self: flex-start;
+	padding: 0 4px;
+	border: 1px solid currentColor;
+	border-radius: 4px;
+	font-size: 9px;
+	text-transform: uppercase;
+}
+.lb-review-stamp--liked {
+	color: #2f9e44;
+}
+.lb-review-stamp--disliked {
+	color: #e03131;
+}
+.lb-review-stamp--unsure {
+	color: #f08c00;
+}
+
+/* ----------------------------------------------------------------------------- narrow screens */
+
+@media (max-width: 1280px) {
+	.lb-daily--daily.lb-daily--editing .lb-daily__body {
+		grid-template-columns: 250px minmax(0, 1fr) 270px;
+	}
+	.lb-daily-week__cycle {
+		min-width: 170px;
+	}
+}
+@media (max-width: 1024px) {
+	.lb-daily {
+		overflow-y: auto;
+	}
+	.lb-daily-week {
+		flex-direction: column;
+	}
+	.lb-daily-week__days {
+		grid-template-columns: repeat(7, minmax(64px, 1fr));
+		overflow-x: auto;
+	}
+	/* As specific as the editing rules above, and after them, so it wins for both pages. */
+	.lb-daily.lb-daily--editing .lb-daily__body {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.lb-daily--editing .lb-daily-panel {
+		max-height: 60vh;
+	}
+	.lb-daily__frame {
+		min-height: 70vh;
+	}
+}
+
+/* -------------------------------------------------------------------------------- printing */
+
+@media print {
+	body * {
+		visibility: hidden;
+	}
+	.lb-daily-print,
+	.lb-daily-print * {
+		visibility: visible;
+	}
+	.lb-daily-print {
+		--lb-text: #111;
+		--lb-text-dim: #444;
+		--lb-text-faint: #777;
+		--lb-border: #bbb;
+		--lb-border-strong: #888;
+		--lb-surface: #fff;
+		--lb-surface-2: #eee;
+		--lb-bg-raised: #fff;
+		--lb-accent: #333;
+		--lb-accent-tint: #eee;
+		position: fixed !important;
+		inset: 0 auto auto 0 !important;
+		transform: none !important;
+		border: 0 !important;
+		border-radius: 0 !important;
+		box-shadow: none !important;
+		background: #fff !important;
+		color: #111;
+		print-color-adjust: exact;
+		-webkit-print-color-adjust: exact;
+	}
+	.lb-daily-noprint,
+	.lb-daily-cell,
+	.lb-daily-slot__grip,
+	.lb-daily-slot__resize {
+		display: none !important;
+	}
+	.lb-daily-input,
+	.lb-daily-notes {
+		border-color: transparent !important;
+	}
+}

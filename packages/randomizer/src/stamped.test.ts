@@ -17,6 +17,7 @@ import {
 	stampedChoices,
 	stampedEntries,
 	stampedKey,
+	stampOutside,
 } from './stamped'
 
 const item = (id: string, stamps: Stamp[], source = TYPED_SOURCE, extra: Partial<RandomItem> = {}): RandomItem => ({
@@ -232,5 +233,30 @@ describe('an item’s latest stamp, for a ranking’s badges and queue', () => {
 		expect(getStamped().old?.board).toBe('')
 		expect(stampOf({ title: 'Old', creator: '' }, 'board-7')).toEqual({ kind: 'liked', date: '2026-10-01' })
 		replaceStamped({})
+	})
+})
+
+describe('a stamp given outside any card (DARK-17)', () => {
+	const entry = { id: 'a1', title: 'Kind of Blue', creator: 'Miles Davis', year: '1959', cover: '', url: '' }
+	const stamp = { boardId: 'music', card: 'daily-2026-11-24', source: 'backlog:b1', entry, date: '2026-11-24' }
+
+	it('is filed on its board, in that board’s lists', () => {
+		const all = stampOutside({}, { ...stamp, kind: 'liked' })
+		const [e] = Object.values(all)
+		expect(e).toMatchObject({ card: cardKey('music', 'daily-2026-11-24'), board: 'music', kind: 'liked', item: stampedKey('backlog:b1', 'a1') })
+		expect(stampedEntries(all, 'liked', { board: 'music', origin: 'backlog:b1' }).map((x) => x.title)).toEqual(['Kind of Blue'])
+		expect(stampedEntries(all, 'liked', { board: 'art', origin: 'backlog:b1' })).toEqual([])
+	})
+
+	it('is changed and taken back, and a card’s own stamps never touch it', () => {
+		const liked = stampOutside({}, { ...stamp, kind: 'liked' })
+		const unsure = stampOutside(liked, { ...stamp, kind: 'unsure' })
+		expect(Object.values(unsure).map((e) => e.kind)).toEqual(['unsure'])
+		expect(nextStamped(unsure, cardKey('music', 'shape:r1'), [], () => undefined)).toEqual(unsure)
+		expect(stampOutside(unsure, { ...stamp, kind: null })).toEqual({})
+		// Nothing to take back leaves the list as it was.
+		expect(stampOutside(liked, { ...stamp, card: 'daily-2026-11-25', kind: null })).toBe(liked)
+		// No board, nowhere to file it.
+		expect(stampOutside({}, { ...stamp, boardId: '', kind: 'liked' })).toEqual({})
 	})
 })

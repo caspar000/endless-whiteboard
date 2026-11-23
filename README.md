@@ -123,6 +123,21 @@ neighbours in reading order. A frame counts as one slide. <kbd>Esc</kbd> or a cl
 the camera back. Holding Space still pans. A node type sets how far it zooms with
 `NodeDefinition.quickLook` (see `apps/web/src/canvas/quickLook.ts`).
 
+**Daily** (DARK-17, `src/daily/`) — a page a day, beside the boards rather than on one: an A5 sheet
+built from widgets on a 2 × 12 grid (the date and week cycle, blocks of icon tasks to cross out, the
+day's tasks, the focus of the day, physical numbers, fasting and food photos, a daily pick, notes),
+with the week across the top and, on the review day, an A4 weekly review built the same way from the
+week's pages. The Library and Inspector edit the layout; Done leaves the page alone to fill in or print.
+Nothing about it is fixed in the code: the areas, the week cycles (chosen by hand each week), the numbers,
+the kinds of fast, the icon tasks, the block templates, the log lists and both layouts are one `dailySetup`
+record, and `defaultSetup` is only where a vault starts. A layout change applies from its day on
+(`withLayout`), so earlier pages keep theirs. The setup, a page per day (`dailyPages`, by date) and a plan
+per week (`dailyWeeks`, by Monday) are vault data, saved as the feeds' are. Food photos are content-addressed
+files like a board's pictures, so both clean-ups that delete unused files read the daily pages too
+(`boards/deleteBoard.ts`, the server's `gc.ts`). The daily pick draws from any item source with a seed
+of the date, so every device draws the same, and files its stamps on a board through the kit's
+`ItemStamps.stamp` (`itemMarks.ts`), which the randomizer implements, so neither imports the other.
+
 ## Nodes & extensions
 
 The live node types ship as extensions — each a bag of node definitions the app registers at startup
@@ -183,6 +198,7 @@ apps/web/                 the app (Vite + React 19 + TS strict, PWA)
   src/app/CommandPalette.tsx  ⌘K, as a view over the command registry
   src/boards/             board index, delete sequencing, first-run demo
   src/canvas/             <Board> wrapper, dotted paper, toolbar, selection toolbar, debug badge
+  src/daily/              the daily page and the weekly review: model.ts is the data and its rules, the rest the screen
   src/canvas/insertNode.ts  placing a node, + the "Add <node>" commands generated from the registry
   src/extensions.ts       the composition root — which extensions this build ships, and their toggles
   src/platform/           PlatformAdapter (the entire future Tauri port surface)

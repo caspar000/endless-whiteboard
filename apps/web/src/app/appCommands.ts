@@ -61,6 +61,8 @@ export interface AppCommandApi {
 	/** `tab` is a settings tab id (`sections.tsx`); omitted means the first one. */
 	goSettings(tab?: string): Promise<void>
 	goHelp(): Promise<void>
+	/** The daily page (DARK-17): today's, or the weekly review of this week. */
+	goDaily(review?: boolean): void
 	setTheme(theme: Theme): void
 	toggleAgentPanel(): void
 	toggleSidebar(): void
@@ -246,6 +248,20 @@ registerCommand({
 	group: NAVIGATE_GROUP,
 	when: () => currentAccount.get()?.isAdmin === true,
 	run: () => void api?.goSettings('server'),
+})
+
+registerCommand({
+	id: 'view.daily',
+	title: 'Open today’s daily page',
+	group: NAVIGATE_GROUP,
+	run: () => api?.goDaily(),
+})
+
+registerCommand({
+	id: 'view.daily-review',
+	title: 'Open the weekly review',
+	group: NAVIGATE_GROUP,
+	run: () => api?.goDaily(true),
 })
 
 registerCommand({

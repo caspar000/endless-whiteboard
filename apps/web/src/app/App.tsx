@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { getBoardKind, type CommandContext } from '@lifeboard/node-kit'
 import { configureGpuSnapshotCache, getGpuScene, getGpuSnapshots, getRendererMode, setRendererMode, type Editor } from '@lifeboard/canvas'
 import { getBoard, listBoards, markDemoSeeded, wasDemoSeeded, type BoardMeta } from '../boards/boardIndex'
@@ -46,6 +46,12 @@ import { useRates } from './useRates'
 import { useTheme } from './useTheme'
 import { BoardPill } from './BoardPill'
 import { useKeyboardInset, usePhone } from './usePhone'
+import { addDays, today, weekOf } from '../daily/model'
+import { getSetup } from '../daily/store'
+import { startPhotoSync } from '../daily/photos'
+
+/** The daily page, loaded the first time it is opened: a board needs none of it. */
+const DailyScreen = lazy(() => import('../daily/DailyScreen'))
 
 // The console/e2e handle on the renderer (docs/gpu-renderer-plan.md): the parity checks draw one
 // board both ways by switching it.
@@ -158,6 +164,8 @@ function useWide(): boolean {
  */
 export function App() {
 	const platform = usePlatform()
+	// The daily pages' food photos reach the server from every day, the daily page open or not (DARK-17).
+	useEffect(() => startPhotoSync(platform.blobs), [platform.blobs])
 	const api = useBoards()
 	const [route, navigate] = useHashRoute()
 	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)
@@ -470,6 +478,14 @@ export function App() {
 		navigate({ view: 'help' })
 	}, [navigate])
 
+	const goDaily = useCallback(
+		(review = false) => {
+			const day = today()
+			navigate(review ? { view: 'daily', day: addDays(weekOf(day), getSetup().reviewDay), review: true } : { view: 'daily' })
+		},
+		[navigate]
+	)
+
 	const createAndOpen = useCallback(
 		async (kindId?: string) => {
 			const kind = kindId ? getBoardKind(kindId) : undefined
@@ -580,6 +596,7 @@ export function App() {
 			goHome,
 			goSettings,
 			goHelp,
+			goDaily,
 			setTheme,
 			toggleAgentPanel,
 			toggleSidebar,
@@ -972,6 +989,18 @@ export function App() {
 						/>
 					)}
 
+					{route.view === 'daily' && (
+						<Suspense fallback={<div className="lb-board__loading">Loading…</div>}>
+							<DailyScreen
+								day={route.day}
+								review={route.review === true}
+								boards={api.boards}
+								onNavigate={(day, review) => navigate(day ? (review ? { view: 'daily', day, review: true } : { view: 'daily', day }) : { view: 'daily' })}
+								onOpenBoard={(board) => void openBoard(board)}
+							/>
+						</Suspense>
+					)}
+
 					{route.view === 'help' && (
 						<HelpPage
 							section={route.section}
@@ -1024,6 +1053,7 @@ export function App() {
 					onAllBoards={leaveSidebar(() => void goHome())}
 					onSettings={leaveSidebar(() => void goSettings())}
 					onHelp={leaveSidebar(() => void goHelp())}
+					onDaily={leaveSidebar(() => goDaily())}
 					onStorage={leaveSidebar(() => void goSettings('storage'))}
 					onOpenBoard={(board) => leaveSidebar(() => void openBoard(board))()}
 					onNewBoard={leaveSidebar(() => void createAndOpen())}

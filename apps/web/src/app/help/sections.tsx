@@ -18,12 +18,14 @@ import {
 	Shuffle,
 	ListOrdered,
 	Inbox,
+	CalendarDays,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { SectionProps } from './kit'
 import { Agent } from './sections/Agent'
 import { Asking } from './sections/Asking'
 import { Books } from './sections/Books'
+import { Daily } from './sections/Daily'
 import { Dice } from './sections/Dice'
 import { Feeds } from './sections/Feeds'
 import { Notes } from './sections/Notes'
@@ -130,6 +132,15 @@ export const HELP_SECTIONS: HelpSection[] = [
 		group: 'Core ideas',
 		icon: <Server size={15} />,
 		Component: ServerSection,
+	},
+	{
+		id: 'daily',
+		label: 'The daily page',
+		title: 'A page a day, and a weekly review',
+		lede: 'An A5 page for each day, built from widgets: blocks of recurring tasks to cross out, the day’s tasks, the focus your week cycle gives it, your body’s numbers and food, and a daily pick to listen to. On the review day, an A4 page that plans next week and gathers this one.',
+		group: 'Core ideas',
+		icon: <CalendarDays size={15} />,
+		Component: Daily,
 	},
 	{
 		id: 'notes',

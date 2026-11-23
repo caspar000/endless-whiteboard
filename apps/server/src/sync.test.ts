@@ -338,6 +338,29 @@ describe('board index', () => {
 		})
 	})
 
+	it('keeps the daily page’s setup, pages and weeks (DARK-17)', async () => {
+		const { app, cookie } = await startServer()
+		const put = (key: string, value: unknown) =>
+			app.inject({ method: 'PUT', url: `/api/vault/settings/${key}`, headers: { cookie }, payload: { value } })
+		expect((await put('dailySetup', { areas: [], layouts: [] })).statusCode).toBe(204)
+		// A vault that was never set up sends none.
+		expect((await put('dailySetup', null)).statusCode).toBe(204)
+		expect((await put('dailySetup', { layouts: [] })).statusCode).toBe(400)
+		expect((await put('dailySetup', [])).statusCode).toBe(400)
+		expect((await put('dailyPages', { '2026-11-24': { date: '2026-11-24', ticks: [] } })).statusCode).toBe(204)
+		expect((await put('dailyPages', { '2026-11-24': { ticks: [] } })).statusCode).toBe(400)
+		expect((await put('dailyWeeks', { '2026-11-23': { week: '2026-11-23', cycleId: 'w1' } })).statusCode).toBe(204)
+		expect((await put('dailyWeeks', { '2026-11-23': { cycleId: 'w1' } })).statusCode).toBe(400)
+		const patch = await app.inject({
+			method: 'PATCH',
+			url: '/api/vault/settings/dailyPages',
+			headers: { cookie },
+			payload: { set: { '2026-11-25': { date: '2026-11-25' } } },
+		})
+		expect(patch.statusCode).toBe(204)
+		expect(Object.keys((await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json().dailyPages)).toEqual(['2026-11-24', '2026-11-25'])
+	})
+
 	it('changes a keyed setting a few entries at a time, and takes a big one whole', async () => {
 		const { app, cookie } = await startServer()
 		const patch = (key: string, payload: unknown) => app.inject({ method: 'PATCH', url: `/api/vault/settings/${key}`, headers: { cookie }, payload: payload as object })
@@ -515,6 +538,15 @@ describe('asset GC', () => {
 		const fakeRooms = { readSnapshot: (id: string) => (id === board.id ? { store: { a: { typeName: 'asset', props: { src: `asset:${kept}` } } }, schema: {} } : null) }
 		expect(collectGarbage(vault, fakeRooms as unknown as Rooms, assets)).toEqual({ deleted: 1 })
 		expect(assets.has(kept) && assets.has(young) && !assets.has(old)).toBe(true)
+
+		// A food photo on a daily page (DARK-17) belongs to no board, and is kept while its page is.
+		const photo = file('a food photo')
+		utimesSync(join(dir, 'assets', photo), twoDaysAgo, twoDaysAgo)
+		vault.setSetting('default', 'dailyPages', { '2026-11-24': { date: '2026-11-24', food: [{ hash: photo, at: '08:40' }, { hash: 'not a hash' }] } })
+		expect(collectGarbage(vault, fakeRooms as unknown as Rooms, assets)).toEqual({ deleted: 0 })
+		expect(assets.has(photo)).toBe(true)
+		vault.setSetting('default', 'dailyPages', {})
+		expect(collectGarbage(vault, fakeRooms as unknown as Rooms, assets)).toEqual({ deleted: 1 })
 
 		// An image still uploading means nothing can be said about what is referenced.
 		const pending = { readSnapshot: () => ({ store: { a: { typeName: 'asset', props: { src: '' } } }, schema: {} }) }

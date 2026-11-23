@@ -89,6 +89,24 @@ export interface ItemStamps {
 	 * old list is moved onto it as the board opens, so another board's stamps never reach it.
 	 */
 	scopeToBoard?(key: string, boardId: string): string | null
+	/**
+	 * Stamps an item from outside any card, filed on `boardId` as a stamp given on a card there is
+	 * (DARK-17: the daily page's pick). `card` names who stamped it, unique on that board; `kind` `null`
+	 * takes the stamp back. Its board's lists, randomizers and rankings then count it like any other.
+	 */
+	stamp?(stamp: OutsideStamp): void
+}
+
+/** A stamp given outside any card: see `ItemStamps.stamp`. */
+export interface OutsideStamp {
+	boardId: string
+	card: string
+	/** The source key the item came from: `backlog:…`, `syllabus:mucore`. */
+	source: string
+	entry: Pick<SourceEntry, 'id' | 'title' | 'creator' | 'year' | 'cover' | 'url'>
+	kind: string | null
+	/** The local day, `YYYY-MM-DD`. */
+	date: string
 }
 
 const stamps = atom<ItemStamps | null>('lifeboard:item-stamps', null)

@@ -179,6 +179,7 @@ export {
 	type ItemReaction,
 	type ItemStamp,
 	type ItemStamps,
+	type OutsideStamp,
 	type RankedItem,
 	type StampKindInfo,
 } from './itemMarks'

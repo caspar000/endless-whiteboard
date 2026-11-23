@@ -5,7 +5,7 @@ import { isExtensionEnabled, subscribeToNodeDefinitions, type NodeToolbarIcon } 
  * Which top-level surface is showing. Mirrors the app's `Route['view']` — declared here
  * structurally so a command (including a future plugin's) can gate on it without importing app code.
  */
-export type CommandView = 'list' | 'settings' | 'help' | 'board'
+export type CommandView = 'list' | 'settings' | 'help' | 'board' | 'daily'
 
 /**
  * What a command runs against. Built fresh by the invoker — the palette, a keymap, a test — at the

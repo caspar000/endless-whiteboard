@@ -29,6 +29,8 @@ export function collectGarbage(vault: Vault, rooms: Rooms, assets: AssetFiles, n
 		if (refs.pending) return { skipped: `board ${board.id} has an image still uploading` }
 		for (const hash of refs.hashes) referenced.add(hash)
 	}
+	// The daily pages' food photos (DARK-17) are kept by the vault, not by any board.
+	for (const pages of vault.settingInEveryVault('dailyPages')) for (const hash of dailyPhotoHashes(pages)) referenced.add(hash)
 
 	let deleted = 0
 	for (const { hash, writtenAt } of assets.list()) {
@@ -37,6 +39,24 @@ export function collectGarbage(vault: Vault, rooms: Rooms, assets: AssetFiles, n
 		deleted++
 	}
 	return { deleted }
+}
+
+/**
+ * The pictures a vault's daily pages keep: each page's `food[].hash` (`apps/web/src/daily/model.ts`).
+ * Read loosely, as the GC reads everything: a page it can't read keeps nothing it can't name.
+ */
+export function dailyPhotoHashes(pages: unknown): string[] {
+	if (!pages || typeof pages !== 'object') return []
+	const out: string[] = []
+	for (const page of Object.values(pages)) {
+		const food = (page as { food?: unknown } | null)?.food
+		if (!Array.isArray(food)) continue
+		for (const photo of food) {
+			const hash = (photo as { hash?: unknown } | null)?.hash
+			if (typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash)) out.push(hash)
+		}
+	}
+	return out
 }
 
 /** Once at startup and then daily. `unref`, so a pending sweep never keeps the process alive. */

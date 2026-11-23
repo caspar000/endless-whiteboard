@@ -90,6 +90,8 @@ const KEYED_SETTINGS: Record<string, string> = {
 	rankings: 'rankingId',
 	backlogs: 'backlogId',
 	randomizerStamped: 'key',
+	dailyPages: 'date',
+	dailyWeeks: 'week',
 }
 
 const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
@@ -143,6 +145,12 @@ const VAULT_SETTINGS: Record<string, (value: unknown) => boolean> = {
 	rankings: (value) => keyedBy(value, KEYED_SETTINGS.rankings!),
 	backlogs: (value) => keyedBy(value, KEYED_SETTINGS.backlogs!),
 	randomizerStamped: (value) => keyedBy(value, KEYED_SETTINGS.randomizerStamped!),
+	// The daily page (DARK-17): its setup (areas, cycles, templates, layouts), and a page per day and a
+	// plan per week, keyed by date. Only the outline is checked; the client reads each and drops what it
+	// can't. A vault that has never been set up sends no setup (`null`).
+	dailySetup: (value) => value === null || (!!value && typeof value === 'object' && !Array.isArray(value) && Array.isArray((value as { areas?: unknown }).areas)),
+	dailyPages: (value) => keyedBy(value, KEYED_SETTINGS.dailyPages!),
+	dailyWeeks: (value) => keyedBy(value, KEYED_SETTINGS.dailyWeeks!),
 	// The skill tree definitions, keyed by tree id. Unlike the indexes these are the only copy of a tree.
 	skillTrees: (value) =>
 		!!value &&

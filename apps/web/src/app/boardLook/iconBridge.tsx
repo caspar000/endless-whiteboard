@@ -10,7 +10,7 @@ import { SUGGESTED, iconName, searchBoardIcons, useBoardIcons, type BoardIcon } 
  * wherever it appears.
  */
 
-function CatalogueIcon({ name, size = 18, strokeWidth = 1.75 }: { name: string; size?: number; strokeWidth?: number }) {
+export function CatalogueIcon({ name, size = 18, strokeWidth = 1.75 }: { name: string; size?: number; strokeWidth?: number }) {
 	const catalogue = useBoardIcons(!!name)
 	const icon = name && catalogue?.byName.get(iconName(name) ?? '')
 	return icon ? <BoardIconSvg icon={icon} size={size} strokeWidth={strokeWidth} /> : null
@@ -19,7 +19,7 @@ function CatalogueIcon({ name, size = 18, strokeWidth = 1.75 }: { name: string; 
 /** How many icons the inline chooser draws: it lives in a node's editor, not a full picker. */
 const INLINE_LIMIT = 60
 
-function InlineIconPicker({ value, onPick }: { value: string; onPick: (name: string | null) => void }) {
+export function InlineIconPicker({ value, onPick }: { value: string; onPick: (name: string | null) => void }) {
 	const catalogue = useBoardIcons()
 	const [query, setQuery] = useState('')
 	const shown = useMemo<readonly BoardIcon[]>(() => {

@@ -17,6 +17,9 @@ const SEEN_KEY = 'lifeboard:serverSeen'
 /** Whether the server answered in this session; vault settings are only pushed while it does. */
 let available = false
 
+/** Whether the server answered this session: a picture taken now can be sent to it. */
+export const isServerAvailable = (): boolean => available
+
 /**
  * Whether this browser has ever had a server vault. Remembered rather than checked live, because the
  * question is asked by local asset GC (`boards/deleteBoard.ts`): server boards keep their images in
@@ -258,6 +261,9 @@ export type VaultSettingKey =
 	| 'rankings'
 	| 'backlogs'
 	| 'randomizerStamped'
+	| 'dailySetup'
+	| 'dailyPages'
+	| 'dailyWeeks'
 
 export async function getVaultSettings(): Promise<Partial<Record<VaultSettingKey, unknown>>> {
 	return (await (await api('/vault/settings')).json()) as Partial<Record<VaultSettingKey, unknown>>

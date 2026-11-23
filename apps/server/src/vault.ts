@@ -167,6 +167,12 @@ export class Vault {
 		return row ? JSON.parse(row.value) : undefined
 	}
 
+	/** One setting's stored value in every vault that has it: what the asset GC marks pictures from. */
+	settingInEveryVault(key: string): unknown[] {
+		const rows = this.db.prepare('SELECT value FROM settings WHERE key = ?').all(key) as unknown as { value: string }[]
+		return rows.map((row) => JSON.parse(row.value))
+	}
+
 	setSetting(vaultId: string, key: string, value: unknown): void {
 		this.db
 			.prepare('INSERT INTO settings (vault_id, key, value) VALUES (?, ?, ?) ON CONFLICT DO UPDATE SET value = excluded.value')

@@ -14,6 +14,7 @@ import { loadCardLayouts } from './app/cardLayouts'
 import { loadSkillIndex } from './app/skillIndex'
 import { loadFeeds } from './app/feeds'
 import { loadCollections } from './app/collections'
+import { loadDaily } from './daily/store'
 import { installIconBridge } from './app/boardLook/iconBridge'
 import { registerNodeCommands } from './canvas/insertNode'
 import { registerToolCommands } from './canvas/toolCommands'
@@ -66,6 +67,7 @@ loadCardLayouts()
 loadSkillIndex()
 loadFeeds()
 loadCollections()
+loadDaily()
 
 /*
  * The user's keymap, over the defaults the table declares.

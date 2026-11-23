@@ -10,6 +10,7 @@ import {
 	type ItemSource,
 	type ItemStamp,
 	type ItemStamps,
+	type OutsideStamp,
 	type SourceChoice,
 	type SourceEntry,
 } from '@lifeboard/node-kit'
@@ -519,10 +520,45 @@ export const stampedReaction: ItemReaction = {
 }
 
 /** The stamps, for a ranking's badges, filters and queue. */
+/**
+ * A stamp given outside any card (the daily page's pick, DARK-17), filed under a card key of its own on
+ * its board, so the board's lists count it and no card's own stamps ever replace it (`nextStamped`
+ * touches only the card it is given).
+ */
+export function stampOutside(all: Stamped, stamp: OutsideStamp): Stamped {
+	const card = cardKey(stamp.boardId, stamp.card)
+	const item = stampedKey(stamp.source, stamp.entry.id)
+	const key = `${card}#${item}`
+	const kind = STAMP_KINDS.find((k) => k === stamp.kind)
+	const next = { ...all }
+	if (!kind || !stamp.boardId) {
+		if (!(key in next)) return all
+		delete next[key]
+		return next
+	}
+	next[key] = {
+		key,
+		card,
+		board: stamp.boardId,
+		item,
+		source: stamp.source,
+		id: stamp.entry.id,
+		title: stamp.entry.title,
+		creator: stamp.entry.creator,
+		year: stamp.entry.year,
+		cover: stamp.entry.cover,
+		url: stamp.entry.url,
+		kind,
+		date: stamp.date,
+	}
+	return next
+}
+
 export const itemStamps: ItemStamps = {
 	extensionId: STAMPED_EXTENSION_ID,
 	sourceId: SOURCE_ID,
 	kinds: STAMP_KINDS.map((kind) => ({ id: kind, label: STAMPS[kind].label, ink: STAMPS[kind].ink })),
 	stampOf,
 	scopeToBoard,
+	stamp: (stamp) => stamped.set(stampOutside(stamped.get(), stamp)),
 }

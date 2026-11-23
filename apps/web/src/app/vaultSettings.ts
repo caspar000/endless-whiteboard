@@ -7,9 +7,10 @@ import { applyRemoteCardLayouts } from './cardLayouts'
 import { applyRemoteSkillIndex } from './skillIndex'
 import { applyRemoteFeeds } from './feeds'
 import { applyRemoteCollections } from './collections'
+import { applyRemoteDaily } from '../daily/store'
 
 /**
- * Saved queries, saved card layouts, the syllabus index, feeds, rankings, backlogs and switched-off extensions follow the vault, not the device:
+ * Saved queries, saved card layouts, the syllabus index, feeds, rankings, backlogs, the daily pages and switched-off extensions follow the vault, not the device:
  * they are part of how you work with your boards, so a new phone should not start from scratch.
  *
  * localStorage stays the cache, which is what lets the first render be right without waiting for the
@@ -37,4 +38,5 @@ export async function syncVaultSettings(): Promise<void> {
 	applyRemoteSkillIndex(remote)
 	applyRemoteFeeds(remote, currentAccount.get()?.vault.id ?? null)
 	applyRemoteCollections(remote, currentAccount.get()?.vault.id ?? null)
+	applyRemoteDaily(remote, currentAccount.get()?.vault.id ?? null)
 }

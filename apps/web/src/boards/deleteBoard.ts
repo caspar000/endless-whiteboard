@@ -1,6 +1,8 @@
 import type { PlatformAdapter } from '../platform/PlatformAdapter'
 import { collectAssetRefs } from '../persistence/assetRefs'
 import { collectGarbageAssets, waitForAssetUploads } from '../persistence/assetStore'
+import { pagePhotoHashes } from '../daily/model'
+import { dailyPages } from '../daily/store'
 import { clearPendingRestore } from '../persistence/pendingRestore'
 import { deleteBoardThumbnail } from '../persistence/thumbnails'
 import {
@@ -83,6 +85,9 @@ async function collectUnreferencedAssets(platform: PlatformAdapter): Promise<voi
 		}
 		for (const hash of refs.hashes) referenced.add(hash)
 	}
+
+	// The daily pages' food photos (DARK-17) belong to no board, and are kept as long as their page is.
+	for (const hash of pagePhotoHashes(Object.values(dailyPages.get()))) referenced.add(hash)
 
 	await collectGarbageAssets(platform.blobs, referenced)
 }

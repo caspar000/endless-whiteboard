@@ -1,4 +1,5 @@
 import {
+	CalendarDays,
 	ChevronDown,
 	CircleHelp,
 	Clock,
@@ -90,12 +91,13 @@ export function Sidebar({
 	onAllBoards,
 	onSettings,
 	onHelp,
+	onDaily,
 	onStorage,
 	onOpenBoard,
 	onNewBoard,
 	onSearch,
 }: {
-	view: 'list' | 'settings' | 'help' | 'board'
+	view: 'list' | 'settings' | 'help' | 'board' | 'daily'
 	activeBoardId: string | null
 	boards: BoardMeta[]
 	collapsed: boolean
@@ -103,6 +105,8 @@ export function Sidebar({
 	onAllBoards: () => void
 	onSettings: () => void
 	onHelp: () => void
+	/** The daily page (DARK-17). */
+	onDaily: () => void
 	onStorage: () => void
 	onOpenBoard: (board: BoardMeta) => void
 	onNewBoard: () => void
@@ -198,6 +202,13 @@ export function Sidebar({
 						label="Favourites"
 						count={favorites.length}
 						onClick={() => reveal(favouritesRef, setFavouritesOpen)}
+					/>
+					<LibraryRow
+						icon={<CalendarDays size={18} strokeWidth={1.75} />}
+						label="Daily"
+						count={new Date().getDate()}
+						active={view === 'daily'}
+						onClick={onDaily}
 					/>
 					<LibraryRow
 						icon={<HardDrive size={18} strokeWidth={1.75} />}

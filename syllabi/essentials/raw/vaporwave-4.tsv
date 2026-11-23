@@ -31,7 +31,7 @@ pos	artist	album	year	confidence	note
 30	Midnight Television	Midnight Television		ok	section: Classic style
 31	Mediafired	The Pathway Through Whatever		ok	section: Classic style
 32	Disconscious	Hologram Plaza		ok	section: Classic style
-33	식료품groceries	슈퍼마켓Yes! We're Open	unsure	section: Classic style; the chart's font drops the Korean characters	
+33	식료품groceries	슈퍼마켓Yes! We're Open		ok	section: Classic style; the chart's font drops the Korean characters, filled in from Vaporwave 5
 34	Oneohtrix Point Never	R Plus Seven		ok	section: Classic style
 35	ghosting	Telenights		ok	section: Classic style
 36	Psychic LCD	Nexxware		ok	section: Classic style
@@ -117,7 +117,7 @@ pos	artist	album	year	confidence	note
 116	bl00dwave	hotel vibes		ok	section: Hypnagogic
 117	bl00dwave	SEA VIBES		ok	section: Hypnagogic
 118	bl00dwave	NEW VISUALS		ok	section: Hypnagogic
-119	회사AUTO	The Lovers Pure	unsure	section: Hypnagogic; the chart's font drops the Korean characters	
+119	회사AUTO	The Lovers Pure		ok	section: Hypnagogic; the chart's font drops the Korean characters, filled in from Vaporwave 5
 120	vice*AIRバイス*空気自然の愛	cyber city dreams サイバーシティーの夢		ok	section: Hypnagogic
 121	Eyeliner	High Fashion Mood Music		ok	section: Hypnagogic
 122	bbrainz	pizza contigo		ok	section: Hypnagogic
@@ -150,7 +150,7 @@ pos	artist	album	year	confidence	note
 149	Rollergirl!	Rollergirl		ok	section: Future funk
 150	VentureX	Together		ok	section: Future funk
 151	.CASTING	LATE TO BE REAL		ok	section: Future funk
-152	Inner Speaker	Flight Wave	unsure	section: Future funk; one character of the artist name is lost in the chart's font	
+152	Inner Speaker	Flight Wave		unsure	section: Future funk; one character of the artist name is lost in the chart's font
 153	Literature	Prose ザ・リズム		ok	section: Future funk
 154	YUNG BAE	Bae		ok	section: Future funk
 155	Blank Banshee	Blank Banshee 0		ok	section: Vaportrap/vaporhop

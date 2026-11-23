@@ -31,7 +31,7 @@ pos	artist	album	year	confidence	note
 30	Hantasi	Vacant Places		ok	section: Hypnagogic
 31	wuso 命	Lonely Streets		ok	section: Hypnagogic
 32	Immune	Breathless		ok	section: Hypnagogic
-33	MindSpring Memories	❄☁❄☁❄☁❄☁❄	unsure	section: Hypnagogic; the title is a row of snowflake and cloud symbols	
+33	MindSpring Memories	❄☁❄☁❄☁❄☁❄		unsure	section: Hypnagogic; the title is a row of snowflake and cloud symbols
 34	EYELINER	BUY NOW		ok	section: Hypnagogic
 35	Nmesh & telepath テレパシー能力者	ロストエデンへのパス		ok	section: Hypnagogic
 36	2047	Snow		ok	section: Hypnagogic
@@ -96,6 +96,6 @@ pos	artist	album	year	confidence	note
 95	身元THIEF	身元THIEF		ok	section: Parodies
 96	Valet Girls	WE NEVER HAD CTRL		ok	section: Parodies
 97	Brabra Broadband	Chicken Nugget Internet		ok	section: Parodies
-98	【ALL CAPS AND ALT KEY CODES™】	ひどく翻訳日本語の文字	unsure	section: Parodies; artist name is written with block and odd unicode characters	
+98	【ALL CAPS AND ALT KEY CODES™】	ひどく翻訳日本語の文字		unsure	section: Parodies; artist name is written with block and odd unicode characters
 99	SAINT PIZZA vs. スポーツのLACROSSE 82-99	Potty Queen		ok	section: Parodies
 100	vhu	roadkill		ok	section: Parodies

@@ -545,15 +545,23 @@ def main() -> None:
         write_yaml(nodes, genres, placed)
 
 
+def same_name(a: str, b: str) -> bool:
+    plain = lambda s: re.sub(r'[^a-z0-9]', '', s.lower().replace('&', 'and'))
+    return plain(a) == plain(b)
+
+
 def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
     order = [gid for gid in genres if placed.get(gid)]
+    # A genre named like the /mu/core node it would hang from (Baroque under Baroque) is that node:
+    # its albums go into the node's own list, and it gets no node of its own.
+    folded = {gid: genres[gid][1] for gid in order if genres[gid][1] in nodes and same_name(genres[gid][0], nodes[genres[gid][1]]['name'])}
 
     entries = []
     for gid in order:
         name, parent = genres[gid]
         # "Field Recordings" is a genre of many families: its entry says whose.
         title = name if name != 'Field Recordings' else f'Field Recordings: {region_name(nodes, parent)}'
-        entries.append(f'      - id: {gid}\n        title: {yaml_string(title)}\n        kind: study\n        medium: album\n        tags: [{gid}]\n        childRule: all\n        children:')
+        entries.append(f'      - id: {gid}\n        title: {yaml_string(title)}\n        kind: study\n        medium: album\n        tags: [{folded.get(gid, gid)}]\n        childRule: all\n        children:')
         seen = set()
         for a in sorted(placed[gid], key=lambda a: (ascii_slug(a['artist']), ascii_slug(a['album']))):
             base = ascii_slug(f'{a["artist"]} {a["album"]}')[:80].strip('-') or 'album-' + hashlib.md5(f'{a["artist"]}\t{a["album"]}'.encode()).hexdigest()[:8]
@@ -579,10 +587,14 @@ def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
         # No albums of its own to tick: a pillar, lit once a genre below it is.
         tree_lines.append(f'    - {{ id: {family}, name: {yaml_string(name)}, kind: pillar, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{pillar}] }} ] }}')
     for gid in order:
+        if gid in folded:
+            continue
         name, parent = genres[gid]
         p = nodes.get(parent) or nodes[FAMILIES[parent][1]]
-        # Lit once one of its albums is ticked; with its parent alone it would be lit with none.
-        tree_lines.append(f'    - {{ id: {gid}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{parent}] }}, {{ count: {{ min: 1 }} }} ] }}')
+        # Drawn from its parent (`after`) without waiting for it: progress here runs from the albums up,
+        # so a genre is never locked. Lit at a fifth of its albums, as /mu/core's own nodes are.
+        least = max(1, int(len(placed[gid]) / 5 + 0.5))
+        tree_lines.append(f'    - {{ id: {gid}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, after: {parent}, requires: [ {{ count: {{ min: {least} }} }} ] }}')
 
     # What an earlier run put here goes, so a run can be repeated.
     head, tree = mucore_parts()

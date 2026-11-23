@@ -28,7 +28,7 @@ import {
 	type Task,
 	type Widget,
 } from './model'
-import { clockNow, storePhoto, usePhotoUrl } from './photos'
+import { PHOTO_ACCEPT, clockNow, storePhoto, usePhotoUrl } from './photos'
 import { updateSetup, updateWeek } from './store'
 
 /** How long the daily pick keeps a draw from coming round again. */
@@ -249,7 +249,6 @@ function Check({ done, text, onToggle, extra, onRemove }: { done: boolean; text:
 
 function TemplateBlock({ widget }: { widget: Widget }) {
 	const { setup, page } = useDaily()
-	const toggle = useToggleTick()
 	const template = setup.templates.find((t) => t.id === widget.config.templateId)
 	const title = widgetTitle(widget, setup.templates)
 	if (!template) {
@@ -263,16 +262,23 @@ function TemplateBlock({ widget }: { widget: Widget }) {
 	const done = ids.filter((id) => page.ticks.includes(id)).length
 	return (
 		<Block title={title} meta={`${done}/${ids.length}`}>
-			{template.kind === 'icons' ? (
-				<IconTiles template={template} />
-			) : (
-				<ul className="lb-daily-checks">
-					{template.items.map((item) => (
-						<Check key={item.id} done={page.ticks.includes(item.id)} text={item.text} onToggle={() => toggle(item.id)} />
-					))}
-				</ul>
-			)}
+			<TemplateItems template={template} />
 		</Block>
+	)
+}
+
+/** A template's tasks as it is made: tiles to cross out, or a checklist. */
+function TemplateItems({ template }: { template: BlockTemplate }) {
+	const { page } = useDaily()
+	const toggle = useToggleTick()
+	if (template.kind === 'icons') return <IconTiles template={template} />
+	if (!template.items.length) return <p className="lb-daily-empty">No items yet: add them in the Inspector.</p>
+	return (
+		<ul className="lb-daily-checks">
+			{template.items.map((item) => (
+				<Check key={item.id} done={page.ticks.includes(item.id)} text={item.text} onToggle={() => toggle(item.id)} />
+			))}
+		</ul>
 	)
 }
 
@@ -362,12 +368,18 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 	const done = ids.filter((id) => page.ticks.includes(id)).length
 	const camera = useRef<HTMLInputElement>(null)
 	const [saving, setSaving] = useState(false)
+	const [refused, setRefused] = useState('')
 	const addPhotos = async (files: FileList | null) => {
 		if (!files?.length) return
 		setSaving(true)
+		setRefused('')
 		try {
 			for (const file of Array.from(files)) {
 				const hash = await storePhoto(blobs, file)
+				if (!hash) {
+					setRefused(`${file.name} isn’t a photo the food log keeps.`)
+					continue
+				}
 				const at = clockNow(new Date(file.lastModified || Date.now()))
 				updatePage((p) => (p.food.some((f) => f.hash === hash) ? p : { ...p, food: [...p.food, { hash, at }] }))
 			}
@@ -405,6 +417,7 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 					</label>
 				))}
 			</div>
+			{template?.kind === 'checklist' && <TemplateItems template={template} />}
 			{widget.config.fasting !== false && (
 				<div className="lb-daily-row">
 					<span className="lb-daily-label">Fasting</span>
@@ -429,7 +442,7 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 						<input
 							ref={camera}
 							type="file"
-							accept="image/*"
+							accept={PHOTO_ACCEPT}
 							capture="environment"
 							multiple
 							hidden
@@ -442,6 +455,11 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 							<FoodPhoto key={photo.hash} hash={photo.hash} at={photo.at} onRemove={() => updatePage((p) => ({ ...p, food: p.food.filter((f) => f.hash !== photo.hash) }))} />
 						))}
 					</div>
+					{refused && (
+						<p className="lb-daily-empty lb-daily-noprint" role="status">
+							{refused}
+						</p>
+					)}
 				</div>
 			)}
 		</Block>

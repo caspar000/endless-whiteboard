@@ -38,7 +38,6 @@ import {
 	type DayPage,
 	type Widget,
 } from './model'
-import { sendPhotos } from './photos'
 import { ReviewWidget } from './reviewWidgets'
 import { dailyPages, dailyWeeks, getSetup, setupAtom, updatePage, updateSetup, updateWeek } from './store'
 import { DailyWidget } from './widgets'
@@ -108,10 +107,6 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 	const focus = focusOf(setup, plan, page, day)
 	const selectedWidget = widgets.find((w) => w.id === selected) ?? null
 
-	// Pictures taken while offline go to the server once it answers.
-	useEffect(() => {
-		if (page.food.length) void sendPhotos(platform.blobs, page.food.map((f) => f.hash))
-	}, [platform.blobs, page.food])
 	useEffect(() => setSelected(null), [mode])
 
 	const openDay = useCallback((d: Day) => onNavigate(d, false), [onNavigate])

@@ -5,6 +5,7 @@ import {
 	dayProgress,
 	defaultSetup,
 	drawPick,
+	editBase,
 	eveningCounts,
 	firstGap,
 	fits,
@@ -151,6 +152,22 @@ describe('a day’s page', () => {
 		expect(pageFor(pages, '2026-11-25', false, ['tasks']).lists).toEqual({})
 		const own = { ...pages, '2026-11-25': { ...newPage('2026-11-25'), lists: { tasks: [] } } }
 		expect(pageFor(own, '2026-11-25', true, ['tasks']).lists.tasks).toEqual([])
+	})
+
+	it('edits a saved day with the tasks it carried, rather than losing them', () => {
+		// The day was saved for something else (its fasting) before carrying was turned on.
+		const saved = { ...pages, '2026-11-25': { ...newPage('2026-11-25'), fasting: 'adf' } }
+		const shown = pageFor(saved, '2026-11-25', true, ['tasks'])
+		expect(shown.lists.tasks?.map((t) => t.text)).toEqual(['Buy shampoo'])
+		const base = editBase(saved['2026-11-25'], shown, '2026-11-25')
+		expect(base.fasting).toBe('adf')
+		expect(base.lists.tasks?.map((t) => t.text)).toEqual(['Buy shampoo'])
+		// A list the day already stores is its own, whatever an older render showed.
+		const own = { ...saved['2026-11-25'], lists: { tasks: [] } }
+		expect(editBase(own, shown, '2026-11-25').lists.tasks).toEqual([])
+		// No stored page: what is shown is where the edit starts.
+		expect(editBase(undefined, shown, '2026-11-25')).toBe(shown)
+		expect(editBase(undefined, undefined, '2026-11-25')).toEqual(newPage('2026-11-25'))
 	})
 
 	it('counts its progress over what its layout shows', () => {

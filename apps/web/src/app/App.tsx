@@ -48,6 +48,7 @@ import { BoardPill } from './BoardPill'
 import { useKeyboardInset, usePhone } from './usePhone'
 import { addDays, today, weekOf } from '../daily/model'
 import { getSetup } from '../daily/store'
+import { startPhotoSync } from '../daily/photos'
 
 /** The daily page, loaded the first time it is opened: a board needs none of it. */
 const DailyScreen = lazy(() => import('../daily/DailyScreen'))
@@ -163,6 +164,8 @@ function useWide(): boolean {
  */
 export function App() {
 	const platform = usePlatform()
+	// The daily pages' food photos reach the server from every day, the daily page open or not (DARK-17).
+	useEffect(() => startPhotoSync(platform.blobs), [platform.blobs])
 	const api = useBoards()
 	const [route, navigate] = useHashRoute()
 	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)

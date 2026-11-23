@@ -679,6 +679,19 @@ export function pageFor(pages: Readonly<Record<string, DayPage>>, day: Day, carr
 	return { ...page, lists }
 }
 
+/**
+ * What an edit starts from: the stored page as it is now, with the lists the day shows but hasn't
+ * stored yet (carried from an earlier page by `pageFor`) put in. Without them, ticking a carried task
+ * on a day that already had a page for something else would edit a list the store doesn't have, and
+ * the carried tasks would be lost.
+ */
+export function editBase(stored: DayPage | undefined, shown: DayPage | undefined, date: Day): DayPage {
+	if (!stored) return shown?.date === date ? shown : newPage(date)
+	if (!shown || shown.date !== date) return stored
+	const carried = Object.fromEntries(Object.entries(shown.lists).filter(([id]) => !(id in stored.lists)))
+	return Object.keys(carried).length ? { ...stored, lists: { ...carried, ...stored.lists } } : stored
+}
+
 /** How much of a day's ticks are done, 0 to 1, over the icon tasks and checklist items its layout shows. */
 export function dayProgress(setup: DailySetup, page: DayPage | undefined, day: Day, focus: string): number | null {
 	if (!page) return null

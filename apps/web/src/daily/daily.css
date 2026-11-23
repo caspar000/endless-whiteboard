@@ -284,18 +284,19 @@
 
 /* ------------------------------------------------------------------------------ the body */
 
+/* One column, the page alone, unless the layout is being edited: then the Library, the page and the Inspector. */
 .lb-daily__body {
 	display: grid;
-	grid-template-columns: 300px minmax(0, 1fr) 320px;
+	grid-template-columns: minmax(0, 1fr);
 	gap: var(--daily-gap);
 	flex: 1;
 	min-height: 0;
 }
+.lb-daily--editing .lb-daily__body {
+	grid-template-columns: 300px minmax(0, 1fr) 320px;
+}
 .lb-daily--review.lb-daily--editing .lb-daily__body {
 	grid-template-columns: 230px minmax(0, 1fr) 260px;
-}
-.lb-daily--clean .lb-daily__body {
-	grid-template-columns: minmax(0, 1fr);
 }
 .lb-daily--review .lb-daily__frame {
 	overflow-y: auto;
@@ -1412,7 +1413,7 @@
 /* ----------------------------------------------------------------------------- narrow screens */
 
 @media (max-width: 1280px) {
-	.lb-daily--daily .lb-daily__body {
+	.lb-daily--daily.lb-daily--editing .lb-daily__body {
 		grid-template-columns: 250px minmax(0, 1fr) 270px;
 	}
 	.lb-daily-week__cycle {
@@ -1430,8 +1431,12 @@
 		grid-template-columns: repeat(7, minmax(64px, 1fr));
 		overflow-x: auto;
 	}
-	.lb-daily__body {
+	/* As specific as the editing rules above, and after them, so it wins for both pages. */
+	.lb-daily.lb-daily--editing .lb-daily__body {
 		grid-template-columns: minmax(0, 1fr);
+	}
+	.lb-daily--editing .lb-daily-panel {
+		max-height: 60vh;
 	}
 	.lb-daily__frame {
 		min-height: 70vh;

@@ -3,7 +3,7 @@ import { keyedStore } from '@lifeboard/node-kit'
 import { vaultCache, type VaultStore } from '../app/vaultCache'
 import {
 	defaultSetup,
-	newPage,
+	editBase,
 	newWeek,
 	readPage,
 	readSetup,
@@ -45,9 +45,12 @@ export function updateSetup(change: (setup: DailySetup) => DailySetup): void {
 export const dailyPages = keyedStore<DayPage>('lifeboard:daily-pages', readPage, (p) => p.date)
 export const dailyWeeks = keyedStore<WeekPlan>('lifeboard:daily-weeks', readWeek, (w) => w.week)
 
-/** Changes a day's page, starting from `base` (what the page shows, carried tasks and all) when it has none yet. */
-export function updatePage(date: Day, change: (page: DayPage) => DayPage, base?: DayPage): void {
-	dailyPages.put(date, change(dailyPages.one(date) ?? base ?? newPage(date)))
+/**
+ * Changes a day's page: the stored one as it is now, with what the page shows and hasn't stored yet
+ * (`shown`: lists carried from an earlier day) put in first (`editBase`).
+ */
+export function updatePage(date: Day, change: (page: DayPage) => DayPage, shown?: DayPage): void {
+	dailyPages.put(date, change(editBase(dailyPages.one(date), shown, date)))
 }
 
 export function updateWeek(week: Day, change: (plan: WeekPlan) => WeekPlan): void {

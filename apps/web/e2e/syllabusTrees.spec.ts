@@ -104,6 +104,67 @@ test('a syllabus arrives as lists, and its tree is made, shown and deleted when 
 	await expect.poll(() => countShapes(page, 'node.skill')).toBe(6)
 })
 
+/** Where each skill node is on the page, by name, rounded. */
+const skillPlaces = (page: Page) =>
+	page.evaluate(() => {
+		const editor = (
+			window as unknown as {
+				editor: {
+					getCurrentPageShapes(): { id: string; type: string; props: { name?: string } }[]
+					getShapePageBounds(id: string): { x: number; y: number } | undefined
+				}
+			}
+		).editor
+		return Object.fromEntries(
+			editor
+				.getCurrentPageShapes()
+				.filter((s) => s.type === 'node.skill')
+				.map((s) => {
+					const b = editor.getShapePageBounds(s.id)!
+					return [s.props.name ?? '', [Math.round(b.x), Math.round(b.y)]]
+				})
+		)
+	})
+
+test('a tree inside a frame stays where it is when its layout is re-calculated', async ({ page }) => {
+	await gotoFresh(page)
+	await skipFirstRunDemo(page)
+	await createBoard(page, 'Reading')
+	await openBoard(page, 'Reading')
+	await importClipboard(page, READING)
+	await command(page, 'Make a skill tree', 'Reading list')
+	await command(page, 'Show a skill tree on this board', 'Reading list')
+	await expect.poll(() => countShapes(page, 'node.skill')).toBe(4)
+	await command(page, 'Re-calculate the tree layout')
+	const laidOut = await skillPlaces(page)
+
+	// A frame far from the page's origin, the tree moved into it where it stands. A shape's x and y
+	// count from its frame, so a layout written in page coordinates would land off by the frame's place.
+	await page.evaluate(() => {
+		const editor = (
+			window as unknown as {
+				editor: {
+					getCurrentPageShapes(): { id: string; type: string }[]
+					getCurrentPageBounds(): { x: number; y: number; w: number; h: number }
+					createShape(shape: object): void
+					reparentShapes(ids: string[], parentId: string): void
+				}
+			}
+		).editor
+		const tree = editor.getCurrentPageShapes().filter((s) => ['node.skill', 'node.skillTree', 'arrow'].includes(s.type))
+		const b = editor.getCurrentPageBounds()
+		editor.createShape({ id: 'shape:e2e-frame', type: 'frame', x: b.x - 4000, y: b.y - 3000, props: { w: b.w + 8000, h: b.h + 6000 } })
+		editor.reparentShapes(
+			tree.map((s) => s.id),
+			'shape:e2e-frame'
+		)
+	})
+	expect(await skillPlaces(page)).toEqual(laidOut)
+
+	await command(page, 'Re-calculate the tree layout')
+	expect(await skillPlaces(page)).toEqual(laidOut)
+})
+
 test('a syllabus without a tree makes a path of its entries, which goes when the syllabus does', async ({ page }) => {
 	await gotoFresh(page)
 	await skipFirstRunDemo(page)

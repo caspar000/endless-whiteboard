@@ -205,7 +205,9 @@ function place(editor: Editor, placed: readonly Placed[], at: Map<string, { x: n
 		const p = at.get(graphId)
 		const b = editor.getShapePageBounds(shape.id)
 		if (!p || !b) return []
-		return [{ id: shape.id, type: shape.type, x: anchor.x + p.x - b.w / 2, y: anchor.y + p.y - b.h / 2 }]
+		// Page coordinates into the shape's parent's: inside a frame, x and y count from the frame.
+		const to = editor.getPointInParentSpace(shape.id, { x: anchor.x + p.x - b.w / 2, y: anchor.y + p.y - b.h / 2 })
+		return [{ id: shape.id, type: shape.type, x: to.x, y: to.y }]
 	})
 	editor.run(() => {
 		if (label) editor.markHistoryStoppingPoint(label)

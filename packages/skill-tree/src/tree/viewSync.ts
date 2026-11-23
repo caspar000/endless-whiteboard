@@ -36,6 +36,22 @@ export const LINE = 'line'
 
 type Places = Record<string, Record<string, [number, number]>>
 
+/**
+ * A shape moved so its top-left is at this point on the page. A shape's own x and y are in its
+ * parent's space: inside a frame they count from the frame, so a page point written straight into
+ * them puts the whole tree off by where the frame is.
+ */
+function moveOnPage(editor: Editor, shape: TLShape, x: number, y: number): { id: TLShapeId; type: string; x: number; y: number } {
+	const at = editor.getPointInParentSpace(shape.id, { x, y })
+	return { id: shape.id, type: shape.type, x: at.x, y: at.y }
+}
+
+/** Where a shape's top-left is on the page. */
+function pagePoint(editor: Editor, shape: TLShape): [number, number] {
+	const at = editor.getShapePageTransform(shape.id).point()
+	return [Math.round(at.x), Math.round(at.y)]
+}
+
 function readPlaces(header: TreeShape): Places {
 	try {
 		const raw = JSON.parse(header.props.places || '{}') as unknown
@@ -183,7 +199,7 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 		const unplaced: string[] = []
 		for (const [key, shape] of shapes) {
 			const at = remembered[key]
-			if (at && (from !== null || created.has(key))) moves.push({ id: shape.id, type: shape.type, x: at[0], y: at[1] })
+			if (at && (from !== null || created.has(key))) moves.push(moveOnPage(editor, shape, at[0], at[1]))
 			else if (!at && created.has(key)) unplaced.push(key)
 		}
 		if (moves.length) editor.updateShapes(moves as never)
@@ -214,13 +230,13 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 	return laidOutNew
 }
 
-/** Where every shape of this header's tree is now, by layout key. */
+/** Where every shape of this header's tree is now on the page, by layout key. */
 function snapshot(editor: Editor, header: TreeShape, graph: TreeGraph): Record<string, [number, number]> {
 	const trees = new Set([header.props.treeId, ...[...reachFrom(graph, viewStart(graph, header.props))].map((id) => graph.nodes.get(id)!.treeId)])
 	const out: Record<string, [number, number]> = {}
 	for (const s of editor.getCurrentPageShapes()) {
-		if (isSkill(s) && trees.has(s.props.treeId)) out[s.props.nodeId] = [Math.round(s.x), Math.round(s.y)]
-		else if (isEntry(s) && s.props.treeId === header.props.treeId) out[itemKey(s.props.itemId)] = [Math.round(s.x), Math.round(s.y)]
+		if (isSkill(s) && trees.has(s.props.treeId)) out[s.props.nodeId] = pagePoint(editor, s)
+		else if (isEntry(s) && s.props.treeId === header.props.treeId) out[itemKey(s.props.itemId)] = pagePoint(editor, s)
 	}
 	return out
 }
@@ -298,7 +314,7 @@ export function layoutView(editor: Editor, header: TreeShape, view: ViewContents
 		keys.flatMap(([key, s]) => {
 			const p = at.get(key)
 			const b = editor.getShape(s.id) && editor.getShapePageBounds(s.id)
-			return p && b ? [{ id: s.id, type: s.type, x: from.x + p.x - b.w / 2, y: from.y + p.y - b.h / 2 }] : []
+			return p && b ? [moveOnPage(editor, s, from.x + p.x - b.w / 2, from.y + p.y - b.h / 2)] : []
 		})
 	const moves = movesTo(at, anchor)
 	editor.run(() => {
@@ -424,7 +440,7 @@ function placeNew(editor: Editor, view: ViewContents, created: ReadonlySet<strin
 			const p = at.get(id)
 			const s = shapes.get(id)!
 			const b = editor.getShapePageBounds(s.id)!
-			return p ? [{ id: s.id, type: s.type, x: anchor.x + p.x + dir.x * step * 60 - b.w / 2, y: anchor.y + p.y + dir.y * step * 60 - b.h / 2 }] : []
+			return p ? [moveOnPage(editor, s, anchor.x + p.x + dir.x * step * 60 - b.w / 2, anchor.y + p.y + dir.y * step * 60 - b.h / 2)] : []
 		})
 		editor.updateShapes(moves as never)
 	}
@@ -520,7 +536,7 @@ function repackClusters(editor: Editor, view: ViewContents, skills: ReadonlySet<
 		for (const [key, p] of cluster.at) {
 			const s = shapes.get(key)
 			const b = s && editor.getShapePageBounds(s.id)
-			if (s && b) moves.push({ id: s.id, type: s.type, x: c.x + p.x - b.w / 2, y: c.y + p.y - b.h / 2 })
+			if (s && b) moves.push(moveOnPage(editor, s, c.x + p.x - b.w / 2, c.y + p.y - b.h / 2))
 		}
 		if (cluster.radius > before + 1) grew = true
 	}

@@ -71,6 +71,34 @@ const isSvgText = (text: string) => {
 const INPUTS = ['input', 'select', 'textarea']
 
 /**
+ * Copied shapes go on the clipboard as html, inside a `<div data-tldraw>` (DARK-16).
+ *
+ * This fork once wrote them inside a made-up `<tldraw>` element, as the tldraw it was taken from did.
+ * Firefox 127 and later sanitize the html a page writes with `navigator.clipboard.write`, and drop an
+ * element they don't know, so the shapes never reached the paste: it fell through to the plain text,
+ * which for a sticky or pinned note is a blank, and nothing was pasted at all. An ordinary element with
+ * a data attribute survives that, which is the fix tldraw itself made (tldraw/tldraw#4003) and what
+ * the app had before it moved onto this fork. The payload is base64, so it holds no `<`.
+ *
+ * @internal
+ */
+export function wrapClipboardPayload(payload: string): string {
+	return `<div data-tldraw>${payload}</div>`
+}
+
+/**
+ * The copied shapes' payload in clipboard html, or undefined if there are none. Reads the old
+ * `<tldraw>` form too, for anything copied before DARK-16 in a browser that kept it.
+ *
+ * @internal
+ */
+export function clipboardPayloadIn(html: string): string | undefined {
+	return (
+		html.match(/<div data-tldraw[^>]*>(.*?)<\/div>/)?.[1] ?? html.match(/<tldraw[^>]*>(.*)<\/tldraw>/)?.[1]
+	)
+}
+
+/**
  * Get whether to disallow clipboard events.
  *
  * @param editor - The editor instance.
@@ -395,8 +423,8 @@ async function handleClipboardThings(editor: Editor, things: ClipboardThing[], p
 						}
 
 						thing.source.then((text) => {
-							// first, see if we can find tldraw content, which is JSON inside of an html comment
-							const tldrawHtmlComment = text.match(/<tldraw[^>]*>(.*)<\/tldraw>/)?.[1]
+							// first, see if we can find tldraw content: the copied shapes, wrapped in html
+							const tldrawHtmlComment = clipboardPayloadIn(text)
 
 							if (tldrawHtmlComment) {
 								try {
@@ -602,7 +630,7 @@ export const handleNativeOrMenuCopy = (editor: Editor, operation: 'copy' | 'cut'
 			.filter(isNonNull)
 
 		if (navigator.clipboard?.write) {
-			const htmlBlob = new Blob([`<tldraw>${stringifiedClipboard}</tldraw>`], {
+			const htmlBlob = new Blob([wrapClipboardPayload(stringifiedClipboard)], {
 				type: 'text/html',
 			})
 
@@ -623,7 +651,7 @@ export const handleNativeOrMenuCopy = (editor: Editor, operation: 'copy' | 'cut'
 				}),
 			])
 		} else if (navigator.clipboard.writeText) {
-			navigator.clipboard.writeText(`<tldraw>${stringifiedClipboard}</tldraw>`)
+			navigator.clipboard.writeText(wrapClipboardPayload(stringifiedClipboard))
 		}
 	}
 	return true

@@ -576,11 +576,13 @@ def write_yaml(nodes: dict, genres: dict, placed: dict) -> None:
     tree_lines = []
     for family, (name, pillar) in FAMILIES.items():
         p = nodes[pillar]
-        tree_lines.append(f'    - {{ id: {family}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{pillar}] }} ] }}')
+        # No albums of its own to tick: a pillar, lit once a genre below it is.
+        tree_lines.append(f'    - {{ id: {family}, name: {yaml_string(name)}, kind: pillar, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{pillar}] }} ] }}')
     for gid in order:
         name, parent = genres[gid]
         p = nodes.get(parent) or nodes[FAMILIES[parent][1]]
-        tree_lines.append(f'    - {{ id: {gid}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{parent}] }} ] }}')
+        # Lit once one of its albums is ticked; with its parent alone it would be lit with none.
+        tree_lines.append(f'    - {{ id: {gid}, name: {yaml_string(name)}, icon: {p["icon"]}, sector: {p["sector"]}, requires: [ {{ node: [{parent}] }}, {{ count: {{ min: 1 }} }} ] }}')
 
     # What an earlier run put here goes, so a run can be repeated.
     head, tree = mucore_parts()

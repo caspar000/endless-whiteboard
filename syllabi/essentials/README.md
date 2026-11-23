@@ -8,6 +8,9 @@ are images only, so each one is transcribed by hand into `raw/`.
 - `charts.json` lists the 320 charts of the Genres gallery, with each chart's id, caption, file and
   image URL. `fetch_charts.py` writes it and downloads the images into a cache folder outside git.
 - `raw/<chart id>.tsv` holds one chart's albums, as the chart writes them.
+- `dedupe.py` merges the rows of `raw/` into one entry per album in `albums.json`, and marks the
+  albums /mu/core already has. `merges.tsv` lists the entries joined from different spellings, to
+  check by eye. The rules are in the script's docstring.
 
 ## raw/*.tsv
 

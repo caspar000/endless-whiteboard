@@ -5,7 +5,7 @@ import filmYaml from '../../../syllabi/film.yaml?raw'
 import theatreYaml from '../../../syllabi/theatre.yaml?raw'
 import gamesYaml from '../../../syllabi/games.yaml?raw'
 import lifeYaml from '../fixtures/whole-life-test.yaml?raw'
-import { evaluateTree, parseRequirements, prerequisitesOf } from '@lifeboard/skill-tree'
+import { evaluateTree, parentsOf, parseRequirements, prerequisitesOf } from '@lifeboard/skill-tree'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
 
 /** The syllabi in syllabi/ at the repo root, and the whole-life fixture: they parse, and their trees hold together. */
@@ -26,7 +26,8 @@ function checkTree(doc: ReturnType<typeof load>) {
 	for (let grew = true; grew; ) {
 		grew = false
 		for (const node of tree.nodes) {
-			const pre = prerequisitesOf(node.requires)
+			// What it grows from: its prerequisites, or the node it is drawn after.
+			const pre = parentsOf(node)
 			if (!reached.has(node.nodeId) && pre.length && pre.every((p) => reached.has(p))) {
 				reached.add(node.nodeId)
 				grew = true
@@ -56,6 +57,8 @@ describe('a syllabus with one track', () => {
 	}, 30000)
 })
 
+/** A name without case, punctuation or "&" for "and": "Drum & Bass" is "Drum and Bass". */
+const plain = (name: string) => name.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '')
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 const leaves = (item: DocItem): number => (item.children.length ? item.children.reduce((n, c) => n + leaves(c), 0) : 1)
 
@@ -132,16 +135,40 @@ describe('syllabi/mucore.yaml', () => {
 		expect(recordings[0]!.title).toMatch(/^Prehistoric: /)
 	})
 
-	it("files the Essential Charts' albums once each, in 178 genres, each the tag of its own node", () => {
+	it("files the Essential Charts' albums once each, in 178 genres, 13 of them folded into the /mu/core node of their name", () => {
 		expect(genres).toHaveLength(178)
 		const albums = genres.flatMap((g) => g.children)
 		expect(albums).toHaveLength(11506)
 		expect(new Set([...units, ...genres].flatMap((u) => u.children).map((a) => a.itemId)).size).toBe(1111 + 11506)
-		const nodes = new Set(doc.trees[0]!.nodes.map((n) => n.nodeId))
-		for (const genre of genres) {
-			expect(genre.tags).toEqual([genre.itemId])
-			expect(nodes.has(genre.itemId), genre.itemId).toBe(true)
+		const nodes = new Map(doc.trees[0]!.nodes.map((n) => [n.nodeId, n]))
+		const own = genres.filter((g) => g.tags[0] === g.itemId)
+		expect(own).toHaveLength(165)
+		for (const genre of own) expect(nodes.has(genre.itemId), genre.itemId).toBe(true)
+		// Baroque's chart albums are Baroque's: no second Baroque node below it.
+		const folded = genres.filter((g) => g.tags[0] !== g.itemId)
+		for (const genre of folded) {
+			expect(nodes.has(genre.itemId), genre.itemId).toBe(false)
+			expect(plain(nodes.get(genre.tags[0]!)?.name ?? ''), genre.itemId).toBe(plain(genre.title))
 		}
+		expect(folded.map((g) => g.itemId)).toContain('mucore/baroque')
+	})
+
+	it('names no node like the skill it grows from', () => {
+		const nodes = new Map(doc.trees[0]!.nodes.map((n) => [n.nodeId, n]))
+		// The chart's own Rhythm & Blues and Experimental families sit under pillars of their name; a
+		// genre under a skill of its name would be that skill twice.
+		const twins = [...nodes.values()].filter((n) => parentsOf(n).some((p) => nodes.get(p)?.kind !== 'pillar' && plain(nodes.get(p)?.name ?? '') === plain(n.name)))
+		expect(twins.map((n) => n.nodeId)).toEqual([])
+	})
+
+	it('locks no node: a genre waits for nothing above it, and lights at a fifth of its albums as /mu/core nodes do', () => {
+		const tree = doc.trees[0]!
+		const statuses = evaluateTree(tree.nodes, [])
+		expect(tree.nodes.filter((n) => statuses.get(n.nodeId)?.state === 'locked').map((n) => n.nodeId)).toEqual([])
+		const black = tree.nodes.find((n) => n.nodeId === 'mucore/black-metal')!
+		expect(parentsOf(black)).toEqual(['mucore/rock-metal'])
+		expect(prerequisitesOf(black.requires)).toEqual([])
+		expect(black.requires).toContain('min: 108')
 	})
 
 	it('gives every entry and every node an id of its own', () => {

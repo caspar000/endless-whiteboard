@@ -5,14 +5,17 @@ import { AGGREGATE_KINDS, draftClass, type SkillNodeProps, type SkillShape } fro
 import { conditionFraction, TIER_AT, TIERS, type NodeStatus } from '../requirements'
 import { treeStatus } from '../tree/status'
 import { branchProgress, inFinishedBranch } from '../tree/branch'
+import { formatFill, nodeFill, type NodeFill } from '../tree/fill'
 import { isDraftNode } from '../treeDefs'
 import { SkillEditor } from './SkillEditor'
 
 const RING = 2 * Math.PI * 44
 
 /**
- * A skill on the tree: a disc whose ring shows how far its requirement is met while it is available,
- * and how far toward the next mastery tier once it is unlocked (docs/skill-tree-plan.md, "States").
+ * A skill on the tree: a disc whose ring shows how much of what it stands for is done (tree/fill.ts):
+ * its own list ("1/25"), or everything below it, each child an equal share ("2.4%"). A node with
+ * neither shows how far its requirement is met while it is available, and how far toward the next
+ * mastery tier once it is unlocked (docs/skill-tree-plan.md, "States").
  */
 function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<SkillNodeProps>) {
 	const skill = shape as unknown as SkillShape
@@ -21,6 +24,7 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 		() => treeStatus(editor, shape.props.treeId).get(shape.props.nodeId) ?? null,
 		[editor, shape.props.treeId, shape.props.nodeId]
 	)
+	const fill = useValue('lifeboard:skill-fill', () => nodeFill(editor, shape.props.nodeId), [editor, shape.props.nodeId])
 	const mastery = useValue(
 		'lifeboard:skill-aggregate',
 		() => (AGGREGATE_KINDS.includes(shape.props.kind) ? progressBelow(editor, shape.props.nodeId) : null),
@@ -32,7 +36,7 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	const state = mastery ? (mastery.lit ? 'unlocked' : 'available') : (status?.state ?? 'locked')
 	// Gold once it and everything below it is unlocked, blue while only it is.
 	const done = useValue('lifeboard:skill-branch-done', () => state === 'unlocked' && inFinishedBranch(editor, shape.props.nodeId), [editor, state, shape.props.nodeId])
-	const { fraction, caption } = mastery ?? ringFor(status)
+	const { fraction, caption } = ringOf(fill, mastery, status)
 	const tier = status?.mastery.tier ?? 0
 	const { Icon } = getIconBridge()
 	const picture = useAssetUrl(shape.props.picture ?? '')
@@ -80,11 +84,23 @@ function SkillComponentImpl({ shape, isEditing, editor }: NodeComponentProps<Ski
 	)
 }
 
-/** For Mastery and a pillar: how much of everything below it is unlocked (tree/branch.ts). */
-function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { fraction: number; caption: string; lit: boolean } {
-	const { trees, total, unlocked } = branchProgress(editor, nodeId)
-	const count = `${trees} ${trees === 1 ? 'tree' : 'trees'}`
-	return { fraction: total ? unlocked / total : 0, caption: `${count} · ${unlocked}/${total}`, lit: unlocked > 0 }
+/** For Mastery and a pillar: the trees below it, and whether anything there is unlocked yet (tree/branch.ts). */
+function progressBelow(editor: NodeComponentProps<SkillNodeProps>['editor'], nodeId: string): { trees: string; lit: boolean } {
+	const { trees, unlocked } = branchProgress(editor, nodeId)
+	return { trees: `${trees} ${trees === 1 ? 'tree' : 'trees'}`, lit: unlocked > 0 }
+}
+
+/**
+ * The ring and its caption. Something below the node: the fill as a share ("2.4%"), since its works
+ * weigh differently by the list they are on. Only a list of its own: its works ("1/25"), whether or
+ * not it is unlocked yet. Neither: its requirement, then its mastery.
+ */
+function ringOf(fill: NodeFill | null, aggregate: { trees: string } | null, status: NodeStatus | null): { fraction: number; caption: string } {
+	const fraction = fill?.fraction ?? 0
+	if (aggregate) return { fraction, caption: `${aggregate.trees} · ${formatFill(fraction)}` }
+	if (fill?.below) return { fraction, caption: formatFill(fraction) }
+	if (fill?.works) return { fraction, caption: `${fill.works.done}/${fill.works.total}` }
+	return ringFor(status)
 }
 
 function ringFor(status: NodeStatus | null): { fraction: number; caption: string } {

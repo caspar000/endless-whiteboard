@@ -20,6 +20,12 @@ export function SkillTrees({ go }: SectionProps) {
 					evidence from the whole tree by how it was made, so "three books read analytically" is met by any
 					three.
 				</p>
+				<p>
+					A node with a list of its own fills its ring by the part of that list done instead: 1 album of 25
+					is "1/25", even if 5 unlock it. A node with nodes under it is the average of them, each an equal
+					share, at any depth: a genre 1/25 done is 1/8 of that on a parent with 8 genres, shown as a
+					percentage.
+				</p>
 				<p className="lb-help__aside">
 					<code>Redraw prerequisite lines</code> redraws a tree's arrows after you edit requirements. Deleting a parent hides its children, so undo brings them
 					back together.
@@ -101,8 +107,8 @@ export function SkillTrees({ go }: SectionProps) {
 				</p>
 				<p>
 					<code>Add Mastery to this board</code> puts a view of it on the open board. A pillar lights up once
-					anything in a tree under it is unlocked, and its ring fills with the share of those trees you have
-					unlocked; You does the same across every pillar.
+					anything in a tree under it is unlocked, and its ring fills with how much of those trees you have
+					done, each tree an equal share; You does the same across every pillar.
 				</p>
 			</Section>
 

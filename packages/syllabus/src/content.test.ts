@@ -5,7 +5,7 @@ import filmYaml from '../../../syllabi/film.yaml?raw'
 import theatreYaml from '../../../syllabi/theatre.yaml?raw'
 import gamesYaml from '../../../syllabi/games.yaml?raw'
 import lifeYaml from '../fixtures/whole-life-test.yaml?raw'
-import { parseRequirements, prerequisitesOf } from '@lifeboard/skill-tree'
+import { evaluateTree, parseRequirements, prerequisitesOf } from '@lifeboard/skill-tree'
 import { parseSyllabus, type DocItem } from './syllabusYaml'
 
 /** The syllabi in syllabi/ at the repo root, and the whole-life fixture: they parse, and their trees hold together. */
@@ -153,9 +153,16 @@ describe('syllabi/mucore.yaml', () => {
 	it('feeds every family node, and the tree holds together', () => {
 		const tree = doc.trees[0]!
 		const pillars = tree.nodes.filter((n) => n.kind === 'pillar')
-		expect(pillars).toHaveLength(16)
+		// The chart's 16 categories, and the 3 hip-hop families the Essential Charts added.
+		expect(pillars).toHaveLength(19)
 		for (const unit of all) expect(unit.tags).toHaveLength(1)
 		checkTree(doc)
+	})
+
+	it('lights no node before an album is ticked, only the root and the pillars standing open', () => {
+		const statuses = evaluateTree(doc.trees[0]!.nodes, [])
+		const lit = doc.trees[0]!.nodes.filter((n) => n.kind !== 'root' && n.kind !== 'pillar' && statuses.get(n.nodeId)?.state === 'unlocked')
+		expect(lit.map((n) => n.nodeId)).toEqual([])
 	})
 })
 

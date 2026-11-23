@@ -14570,184 +14570,184 @@ tree:
     - { id: experimental-experimental, name: "Experimental", icon: flask, sector: experimental, requires: [ { node: [experimental] }, { count: { min: 13 } } ] }
     - { id: experimental-non-music, name: "Non-Music", icon: flask, sector: experimental, requires: [ { node: [experimental] }, { count: { min: 2 } } ] }
     # --- /mu/ Essential Charts genres (organise.py) ---
-    - { id: hip-hop-alternative, name: "Alternative, Experimental", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
-    - { id: hip-hop-instrumental, name: "Instrumental, Turntablism", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
-    - { id: hip-hop-international, name: "International", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
-    - { id: rock-and-roll, name: "Rock & Roll", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: surf, name: "Surf", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: psychobilly, name: "Psychobilly", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: power-pop, name: "Power Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: soft-rock, name: "Soft Rock, Yacht Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: southern-rock, name: "Southern Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: baroque-pop, name: "Baroque Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] } ] }
-    - { id: psychedelic-rock, name: "Psychedelic Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: hard-rock, name: "Hard Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: progressive-rock, name: "Progressive Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: avant-prog, name: "Avant-Prog", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: krautrock, name: "Krautrock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: canterbury-scene, name: "Canterbury Scene", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: zeuhl, name: "Zeuhl", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] } ] }
-    - { id: heavy-metal, name: "Heavy Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: power-metal, name: "Power Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: thrash-metal, name: "Thrash Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: death-metal, name: "Death Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: melodic-death-metal, name: "Melodic Death Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: black-metal, name: "Black Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: depressive-black-metal, name: "Depressive Black Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: blackgaze, name: "Blackgaze", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: doom-metal, name: "Doom Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: sludge-metal, name: "Sludge Metal, Post-Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: stoner-rock, name: "Stoner Rock, Desert Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: drone-metal, name: "Drone Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: folk-metal, name: "Folk Metal, Viking Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: symphonic-gothic-metal, name: "Symphonic Metal, Gothic Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: progressive-metal, name: "Progressive Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: avant-garde-metal, name: "Avant-Garde Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: industrial-metal, name: "Industrial Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: space-metal, name: "Space Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] } ] }
-    - { id: punk-rock, name: "Punk Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: hardcore-punk, name: "Hardcore Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: pop-punk, name: "Pop Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: folk-punk, name: "Folk Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: crust-powerviolence, name: "Crust, Powerviolence", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: grindcore, name: "Grindcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: metalcore, name: "Metalcore, Mathcore, Deathcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: new-wave, name: "New Wave", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: synth-pop, name: "Synth Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] } ] }
-    - { id: post-punk, name: "Post-Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: gothic-rock, name: "Gothic Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: no-wave, name: "No Wave", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: noise-rock, name: "Noise Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: art-punk, name: "Art Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: dance-punk, name: "Dance-Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: neo-psychedelia, name: "Neo-Psychedelia", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: dream-pop, name: "Dream Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: neofolk, name: "Neofolk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: ebm-electro-industrial, name: "EBM, Electro-Industrial", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: post-hardcore, name: "Post-Hardcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: emo, name: "Emo, Screamo", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: math-rock, name: "Math Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] } ] }
-    - { id: alternative-rock, name: "Alternative Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: grunge, name: "Grunge", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: britpop, name: "Britpop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: jangle-pop, name: "Jangle Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: twee-pop, name: "Twee Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: noise-pop, name: "Noise Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: shoegaze, name: "Shoegaze", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: slowcore, name: "Slowcore, Sadcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: post-rock, name: "Post-Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: nu-metal, name: "Nu Metal, Alternative Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: indie-pop, name: "Indie Pop, Bedroom Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: art-pop, name: "Art Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: indietronica, name: "Indietronica", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: bandcamp, name: "Bandcamp Essentials", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] } ] }
-    - { id: electronic-essentials, name: "Essentials", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance] } ] }
-    - { id: electro, name: "Electro", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-electro] } ] }
-    - { id: house, name: "House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] } ] }
-    - { id: deep-house, name: "Deep House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] } ] }
-    - { id: electro-house, name: "Electro House, French House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] } ] }
-    - { id: progressive-house, name: "Progressive House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] } ] }
-    - { id: synthwave, name: "Synthwave", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] } ] }
-    - { id: detroit-techno, name: "Detroit Techno", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] } ] }
-    - { id: minimal-techno, name: "Minimal Techno, Microhouse", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] } ] }
-    - { id: idm, name: "IDM", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] } ] }
-    - { id: breakbeat, name: "Breakbeat", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] } ] }
-    - { id: big-beat, name: "Big Beat", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] } ] }
-    - { id: nu-skool-breaks, name: "Nu Skool Breaks", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] } ] }
-    - { id: trip-hop, name: "Trip Hop", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] } ] }
-    - { id: downtempo, name: "Downtempo, Acid Jazz", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] } ] }
-    - { id: trance, name: "Trance", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] } ] }
-    - { id: goa-trance, name: "Goa Trance", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] } ] }
-    - { id: psybient, name: "Psybient", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] } ] }
-    - { id: drum-and-bass, name: "Drum and Bass", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] } ] }
-    - { id: jungle, name: "Jungle", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] } ] }
-    - { id: neurofunk, name: "Neurofunk", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] } ] }
-    - { id: breakbeat-hardcore, name: "Breakbeat Hardcore", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] } ] }
-    - { id: breakcore, name: "Breakcore", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] } ] }
-    - { id: uk-garage, name: "UK Garage, Future Garage", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] } ] }
-    - { id: dubstep, name: "Dubstep", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] } ] }
-    - { id: brostep, name: "Brostep, Complextro", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] } ] }
-    - { id: deconstructed-club, name: "Deconstructed Club", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] } ] }
-    - { id: glitch-hop, name: "Glitch Hop", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-glitch-hop-future-bass] } ] }
-    - { id: ambient, name: "Ambient", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: dark-ambient, name: "Dark Ambient", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: drone, name: "Drone", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: noise, name: "Noise, Power Electronics", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: industrial, name: "Industrial", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: musique-concrete, name: "Musique Concrète", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: progressive-electronic, name: "Progressive Electronic", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: glitch, name: "Glitch", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: chiptune, name: "Chiptune", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: vaporwave, name: "Vaporwave", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: future-funk, name: "Future Funk", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: chillwave, name: "Chillwave", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: hypnagogic-pop, name: "Hypnagogic Pop", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: witch-house, name: "Witch House", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: dungeon-synth, name: "Dungeon Synth", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: oceangrunge, name: "Oceangrunge", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: outsider-music, name: "Outsider Music", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: sound-collage, name: "Sound Collage, Mashup", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] } ] }
-    - { id: field-recordings, name: "Field Recordings", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] } ] }
-    - { id: spoken-word, name: "Spoken Word", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] } ] }
-    - { id: comedy, name: "Comedy", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] } ] }
-    - { id: hip-hop-essentials, name: "Essentials", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
-    - { id: east-coast-hip-hop, name: "East Coast Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-east-coast-related] } ] }
-    - { id: west-coast-hip-hop, name: "West Coast Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-west-coast-related] } ] }
-    - { id: bay-area-hip-hop, name: "Bay Area Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-west-coast-related] } ] }
-    - { id: southern-hip-hop, name: "Southern Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] } ] }
-    - { id: memphis-rap, name: "Memphis Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] } ] }
-    - { id: cloud-rap, name: "Cloud Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] } ] }
-    - { id: experimental-hip-hop, name: "Experimental Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] } ] }
-    - { id: underground-hip-hop, name: "Underground Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] } ] }
-    - { id: horrorcore, name: "Horrorcore", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] } ] }
-    - { id: instrumental-hip-hop, name: "Instrumental Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-instrumental] } ] }
-    - { id: turntablism, name: "Turntablism", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-instrumental] } ] }
-    - { id: uk-hip-hop, name: "UK Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-international] } ] }
-    - { id: spanish-rap, name: "Spanish Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-international] } ] }
-    - { id: jazz-essentials, name: "Essentials", icon: vinyl, sector: jazz, requires: [ { node: [jazz] } ] }
-    - { id: swing, name: "Swing", icon: vinyl, sector: jazz, requires: [ { node: [jazz-big-band] } ] }
-    - { id: big-band, name: "Big Band", icon: vinyl, sector: jazz, requires: [ { node: [jazz-big-band] } ] }
-    - { id: bebop-hard-bop, name: "Bebop, Hard Bop, Modal", icon: vinyl, sector: jazz, requires: [ { node: [jazz-bebop-cool] } ] }
-    - { id: free-jazz, name: "Free Jazz", icon: vinyl, sector: jazz, requires: [ { node: [jazz-avant-garde] } ] }
-    - { id: jazz-rock-fusion, name: "Jazz Fusion", icon: vinyl, sector: jazz, requires: [ { node: [jazz-fusion] } ] }
-    - { id: chamber-jazz, name: "Chamber Jazz", icon: vinyl, sector: jazz, requires: [ { node: [jazz-fusion] } ] }
-    - { id: soul, name: "Soul", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-soul] } ] }
-    - { id: funk, name: "Funk", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-funk] } ] }
-    - { id: italo-disco, name: "Italo Disco", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-disco] } ] }
-    - { id: reggae, name: "Reggae, Dub", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] } ] }
-    - { id: ska, name: "Ska", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] } ] }
-    - { id: reggaeton, name: "Reggaeton, Neoperreo", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] } ] }
-    - { id: blues, name: "Blues", icon: cactus, sector: north-american, requires: [ { node: [north-american-blues] } ] }
-    - { id: country, name: "Country, Americana", icon: cactus, sector: north-american, requires: [ { node: [north-american-country] } ] }
-    - { id: folk, name: "Folk", icon: cactus, sector: north-american, requires: [ { node: [north-american-contemporary-folk] } ] }
-    - { id: freak-folk, name: "Freak Folk, Psych Folk", icon: cactus, sector: north-american, requires: [ { node: [north-american-contemporary-folk] } ] }
-    - { id: vocal-jazz, name: "Vocal Jazz", icon: cactus, sector: north-american, requires: [ { node: [north-american-other] } ] }
-    - { id: bossa-nova, name: "Bossa Nova, Samba-Jazz", icon: music, sector: latin-american, requires: [ { node: [latin-american-brazilian] } ] }
-    - { id: tropicalia, name: "Tropicália, Vanguarda Paulista", icon: music, sector: latin-american, requires: [ { node: [latin-american-brazilian] } ] }
-    - { id: latin-jazz, name: "Mambo, Salsa", icon: music, sector: latin-american, requires: [ { node: [latin-american-caribbean] } ] }
-    - { id: city-pop, name: "City Pop", icon: bell, sector: east-asian, requires: [ { node: [east-asian-japanese] } ] }
-    - { id: k-pop, name: "K-Pop", icon: bell, sector: east-asian, requires: [ { node: [east-asian-korean-vietnamese] } ] }
-    - { id: tuvan-throat-singing, name: "Tuvan Throat Singing", icon: horse, sector: central-asian, requires: [ { node: [central-asian] } ] }
-    - { id: afrobeat, name: "Afrobeat", icon: world, sector: sub-saharan-african, requires: [ { node: [sub-saharan-african-western] } ] }
-    - { id: classical-essentials, name: "Essentials", icon: piano, sector: western-classical, requires: [ { node: [western-classical] } ] }
-    - { id: ancient-music, name: "Ancient Music", icon: building-arch, sector: ancient, requires: [ { node: [ancient] } ] }
-    - { id: medieval, name: "Medieval", icon: piano, sector: western-classical, requires: [ { node: [western-classical-medieval] } ] }
-    - { id: renaissance, name: "Renaissance", icon: piano, sector: western-classical, requires: [ { node: [western-classical-renaissance] } ] }
-    - { id: baroque, name: "Baroque", icon: piano, sector: western-classical, requires: [ { node: [western-classical-baroque] } ] }
-    - { id: classical-period, name: "Classical Period", icon: piano, sector: western-classical, requires: [ { node: [western-classical-classical] } ] }
-    - { id: romantic, name: "Romantic", icon: piano, sector: western-classical, requires: [ { node: [western-classical-romantic] } ] }
-    - { id: modern-classical, name: "Modern Classical", icon: piano, sector: western-classical, requires: [ { node: [western-classical-modern] } ] }
-    - { id: contemporary-classical, name: "Contemporary Classical", icon: piano, sector: western-classical, requires: [ { node: [western-classical-postmodern] } ] }
-    - { id: minimalism, name: "Minimalism", icon: piano, sector: western-classical, requires: [ { node: [western-classical-postmodern] } ] }
-    - { id: musicals, name: "Musicals", icon: piano, sector: western-classical, requires: [ { node: [western-classical-other] } ] }
-    - { id: sub-saharan-african-field-recordings, name: "Field Recordings", icon: world, sector: sub-saharan-african, requires: [ { node: [sub-saharan-african] } ] }
-    - { id: greater-middle-eastern-field-recordings, name: "Field Recordings", icon: moon-stars, sector: greater-middle-eastern, requires: [ { node: [greater-middle-eastern] } ] }
-    - { id: south-asian-field-recordings, name: "Field Recordings", icon: flower, sector: south-asian, requires: [ { node: [south-asian] } ] }
-    - { id: central-asian-field-recordings, name: "Field Recordings", icon: horse, sector: central-asian, requires: [ { node: [central-asian] } ] }
-    - { id: east-asian-field-recordings, name: "Field Recordings", icon: bell, sector: east-asian, requires: [ { node: [east-asian] } ] }
-    - { id: southeast-asian-and-oceanian-field-recordings, name: "Field Recordings", icon: mountain, sector: southeast-asian-and-oceanian, requires: [ { node: [southeast-asian-and-oceanian] } ] }
-    - { id: european-field-recordings, name: "Field Recordings", icon: building-castle, sector: european, requires: [ { node: [european] } ] }
-    - { id: latin-american-field-recordings, name: "Field Recordings", icon: music, sector: latin-american, requires: [ { node: [latin-american] } ] }
-    - { id: indigenous-american-field-recordings, name: "Field Recordings", icon: feather, sector: indigenous-american, requires: [ { node: [indigenous-american] } ] }
-    - { id: north-american-field-recordings, name: "Field Recordings", icon: cactus, sector: north-american, requires: [ { node: [north-american] } ] }
-    - { id: caribbean-field-recordings, name: "Field Recordings", icon: beach, sector: caribbean, requires: [ { node: [caribbean] } ] }
+    - { id: hip-hop-alternative, name: "Alternative, Experimental", kind: pillar, icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
+    - { id: hip-hop-instrumental, name: "Instrumental, Turntablism", kind: pillar, icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
+    - { id: hip-hop-international, name: "International", kind: pillar, icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] } ] }
+    - { id: rock-and-roll, name: "Rock & Roll", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: surf, name: "Surf", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: psychobilly, name: "Psychobilly", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: power-pop, name: "Power Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: soft-rock, name: "Soft Rock, Yacht Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: southern-rock, name: "Southern Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: baroque-pop, name: "Baroque Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-rock-and-roll-pop-rock] }, { count: { min: 1 } } ] }
+    - { id: psychedelic-rock, name: "Psychedelic Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: hard-rock, name: "Hard Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: progressive-rock, name: "Progressive Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: avant-prog, name: "Avant-Prog", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: krautrock, name: "Krautrock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: canterbury-scene, name: "Canterbury Scene", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: zeuhl, name: "Zeuhl", icon: guitar-pick, sector: rock, requires: [ { node: [rock-psychedelic-hard-progressive] }, { count: { min: 1 } } ] }
+    - { id: heavy-metal, name: "Heavy Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: power-metal, name: "Power Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: thrash-metal, name: "Thrash Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: death-metal, name: "Death Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: melodic-death-metal, name: "Melodic Death Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: black-metal, name: "Black Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: depressive-black-metal, name: "Depressive Black Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: blackgaze, name: "Blackgaze", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: doom-metal, name: "Doom Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: sludge-metal, name: "Sludge Metal, Post-Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: stoner-rock, name: "Stoner Rock, Desert Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: drone-metal, name: "Drone Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: folk-metal, name: "Folk Metal, Viking Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: symphonic-gothic-metal, name: "Symphonic Metal, Gothic Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: progressive-metal, name: "Progressive Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: avant-garde-metal, name: "Avant-Garde Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: industrial-metal, name: "Industrial Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: space-metal, name: "Space Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-metal] }, { count: { min: 1 } } ] }
+    - { id: punk-rock, name: "Punk Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: hardcore-punk, name: "Hardcore Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: pop-punk, name: "Pop Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: folk-punk, name: "Folk Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: crust-powerviolence, name: "Crust, Powerviolence", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: grindcore, name: "Grindcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: metalcore, name: "Metalcore, Mathcore, Deathcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: new-wave, name: "New Wave", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: synth-pop, name: "Synth Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-punk] }, { count: { min: 1 } } ] }
+    - { id: post-punk, name: "Post-Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: gothic-rock, name: "Gothic Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: no-wave, name: "No Wave", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: noise-rock, name: "Noise Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: art-punk, name: "Art Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: dance-punk, name: "Dance-Punk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: neo-psychedelia, name: "Neo-Psychedelia", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: dream-pop, name: "Dream Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: neofolk, name: "Neofolk", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: ebm-electro-industrial, name: "EBM, Electro-Industrial", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: post-hardcore, name: "Post-Hardcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: emo, name: "Emo, Screamo", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: math-rock, name: "Math Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-post-punk-derived] }, { count: { min: 1 } } ] }
+    - { id: alternative-rock, name: "Alternative Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: grunge, name: "Grunge", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: britpop, name: "Britpop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: jangle-pop, name: "Jangle Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: twee-pop, name: "Twee Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: noise-pop, name: "Noise Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: shoegaze, name: "Shoegaze", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: slowcore, name: "Slowcore, Sadcore", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: post-rock, name: "Post-Rock", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: nu-metal, name: "Nu Metal, Alternative Metal", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: indie-pop, name: "Indie Pop, Bedroom Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: art-pop, name: "Art Pop", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: indietronica, name: "Indietronica", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: bandcamp, name: "Bandcamp Essentials", icon: guitar-pick, sector: rock, requires: [ { node: [rock-indie-alternative] }, { count: { min: 1 } } ] }
+    - { id: electronic-essentials, name: "Essentials", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance] }, { count: { min: 1 } } ] }
+    - { id: electro, name: "Electro", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-electro] }, { count: { min: 1 } } ] }
+    - { id: house, name: "House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] }, { count: { min: 1 } } ] }
+    - { id: deep-house, name: "Deep House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] }, { count: { min: 1 } } ] }
+    - { id: electro-house, name: "Electro House, French House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] }, { count: { min: 1 } } ] }
+    - { id: progressive-house, name: "Progressive House", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] }, { count: { min: 1 } } ] }
+    - { id: synthwave, name: "Synthwave", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-house] }, { count: { min: 1 } } ] }
+    - { id: detroit-techno, name: "Detroit Techno", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] }, { count: { min: 1 } } ] }
+    - { id: minimal-techno, name: "Minimal Techno, Microhouse", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] }, { count: { min: 1 } } ] }
+    - { id: idm, name: "IDM", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-techno] }, { count: { min: 1 } } ] }
+    - { id: breakbeat, name: "Breakbeat", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] }, { count: { min: 1 } } ] }
+    - { id: big-beat, name: "Big Beat", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] }, { count: { min: 1 } } ] }
+    - { id: nu-skool-breaks, name: "Nu Skool Breaks", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] }, { count: { min: 1 } } ] }
+    - { id: trip-hop, name: "Trip Hop", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] }, { count: { min: 1 } } ] }
+    - { id: downtempo, name: "Downtempo, Acid Jazz", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-breakbeat] }, { count: { min: 1 } } ] }
+    - { id: trance, name: "Trance", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] }, { count: { min: 1 } } ] }
+    - { id: goa-trance, name: "Goa Trance", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] }, { count: { min: 1 } } ] }
+    - { id: psybient, name: "Psybient", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-trance] }, { count: { min: 1 } } ] }
+    - { id: drum-and-bass, name: "Drum and Bass", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] }, { count: { min: 1 } } ] }
+    - { id: jungle, name: "Jungle", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] }, { count: { min: 1 } } ] }
+    - { id: neurofunk, name: "Neurofunk", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] }, { count: { min: 1 } } ] }
+    - { id: breakbeat-hardcore, name: "Breakbeat Hardcore", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] }, { count: { min: 1 } } ] }
+    - { id: breakcore, name: "Breakcore", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-drum-and-bass] }, { count: { min: 1 } } ] }
+    - { id: uk-garage, name: "UK Garage, Future Garage", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] }, { count: { min: 1 } } ] }
+    - { id: dubstep, name: "Dubstep", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] }, { count: { min: 1 } } ] }
+    - { id: brostep, name: "Brostep, Complextro", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] }, { count: { min: 1 } } ] }
+    - { id: deconstructed-club, name: "Deconstructed Club", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-uk-garage-uk-bass] }, { count: { min: 1 } } ] }
+    - { id: glitch-hop, name: "Glitch Hop", icon: wave-sine, sector: electronic-dance, requires: [ { node: [electronic-dance-glitch-hop-future-bass] }, { count: { min: 1 } } ] }
+    - { id: ambient, name: "Ambient", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: dark-ambient, name: "Dark Ambient", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: drone, name: "Drone", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: noise, name: "Noise, Power Electronics", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: industrial, name: "Industrial", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: musique-concrete, name: "Musique Concrète", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: progressive-electronic, name: "Progressive Electronic", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: glitch, name: "Glitch", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: chiptune, name: "Chiptune", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: vaporwave, name: "Vaporwave", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: future-funk, name: "Future Funk", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: chillwave, name: "Chillwave", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: hypnagogic-pop, name: "Hypnagogic Pop", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: witch-house, name: "Witch House", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: dungeon-synth, name: "Dungeon Synth", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: oceangrunge, name: "Oceangrunge", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: outsider-music, name: "Outsider Music", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: sound-collage, name: "Sound Collage, Mashup", icon: flask, sector: experimental, requires: [ { node: [experimental-experimental] }, { count: { min: 1 } } ] }
+    - { id: field-recordings, name: "Field Recordings", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] }, { count: { min: 1 } } ] }
+    - { id: spoken-word, name: "Spoken Word", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] }, { count: { min: 1 } } ] }
+    - { id: comedy, name: "Comedy", icon: flask, sector: experimental, requires: [ { node: [experimental-non-music] }, { count: { min: 1 } } ] }
+    - { id: hip-hop-essentials, name: "Essentials", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop] }, { count: { min: 1 } } ] }
+    - { id: east-coast-hip-hop, name: "East Coast Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-east-coast-related] }, { count: { min: 1 } } ] }
+    - { id: west-coast-hip-hop, name: "West Coast Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-west-coast-related] }, { count: { min: 1 } } ] }
+    - { id: bay-area-hip-hop, name: "Bay Area Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-west-coast-related] }, { count: { min: 1 } } ] }
+    - { id: southern-hip-hop, name: "Southern Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] }, { count: { min: 1 } } ] }
+    - { id: memphis-rap, name: "Memphis Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] }, { count: { min: 1 } } ] }
+    - { id: cloud-rap, name: "Cloud Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-southern-related] }, { count: { min: 1 } } ] }
+    - { id: experimental-hip-hop, name: "Experimental Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] }, { count: { min: 1 } } ] }
+    - { id: underground-hip-hop, name: "Underground Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] }, { count: { min: 1 } } ] }
+    - { id: horrorcore, name: "Horrorcore", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-alternative] }, { count: { min: 1 } } ] }
+    - { id: instrumental-hip-hop, name: "Instrumental Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-instrumental] }, { count: { min: 1 } } ] }
+    - { id: turntablism, name: "Turntablism", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-instrumental] }, { count: { min: 1 } } ] }
+    - { id: uk-hip-hop, name: "UK Hip Hop", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-international] }, { count: { min: 1 } } ] }
+    - { id: spanish-rap, name: "Spanish Rap", icon: headphones, sector: hip-hop, requires: [ { node: [hip-hop-international] }, { count: { min: 1 } } ] }
+    - { id: jazz-essentials, name: "Essentials", icon: vinyl, sector: jazz, requires: [ { node: [jazz] }, { count: { min: 1 } } ] }
+    - { id: swing, name: "Swing", icon: vinyl, sector: jazz, requires: [ { node: [jazz-big-band] }, { count: { min: 1 } } ] }
+    - { id: big-band, name: "Big Band", icon: vinyl, sector: jazz, requires: [ { node: [jazz-big-band] }, { count: { min: 1 } } ] }
+    - { id: bebop-hard-bop, name: "Bebop, Hard Bop, Modal", icon: vinyl, sector: jazz, requires: [ { node: [jazz-bebop-cool] }, { count: { min: 1 } } ] }
+    - { id: free-jazz, name: "Free Jazz", icon: vinyl, sector: jazz, requires: [ { node: [jazz-avant-garde] }, { count: { min: 1 } } ] }
+    - { id: jazz-rock-fusion, name: "Jazz Fusion", icon: vinyl, sector: jazz, requires: [ { node: [jazz-fusion] }, { count: { min: 1 } } ] }
+    - { id: chamber-jazz, name: "Chamber Jazz", icon: vinyl, sector: jazz, requires: [ { node: [jazz-fusion] }, { count: { min: 1 } } ] }
+    - { id: soul, name: "Soul", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-soul] }, { count: { min: 1 } } ] }
+    - { id: funk, name: "Funk", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-funk] }, { count: { min: 1 } } ] }
+    - { id: italo-disco, name: "Italo Disco", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-disco] }, { count: { min: 1 } } ] }
+    - { id: reggae, name: "Reggae, Dub", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] }, { count: { min: 1 } } ] }
+    - { id: ska, name: "Ska", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] }, { count: { min: 1 } } ] }
+    - { id: reggaeton, name: "Reggaeton, Neoperreo", icon: microphone-2, sector: rhythm-and-blues, requires: [ { node: [rhythm-and-blues-ska-reggae-reggaeton] }, { count: { min: 1 } } ] }
+    - { id: blues, name: "Blues", icon: cactus, sector: north-american, requires: [ { node: [north-american-blues] }, { count: { min: 1 } } ] }
+    - { id: country, name: "Country, Americana", icon: cactus, sector: north-american, requires: [ { node: [north-american-country] }, { count: { min: 1 } } ] }
+    - { id: folk, name: "Folk", icon: cactus, sector: north-american, requires: [ { node: [north-american-contemporary-folk] }, { count: { min: 1 } } ] }
+    - { id: freak-folk, name: "Freak Folk, Psych Folk", icon: cactus, sector: north-american, requires: [ { node: [north-american-contemporary-folk] }, { count: { min: 1 } } ] }
+    - { id: vocal-jazz, name: "Vocal Jazz", icon: cactus, sector: north-american, requires: [ { node: [north-american-other] }, { count: { min: 1 } } ] }
+    - { id: bossa-nova, name: "Bossa Nova, Samba-Jazz", icon: music, sector: latin-american, requires: [ { node: [latin-american-brazilian] }, { count: { min: 1 } } ] }
+    - { id: tropicalia, name: "Tropicália, Vanguarda Paulista", icon: music, sector: latin-american, requires: [ { node: [latin-american-brazilian] }, { count: { min: 1 } } ] }
+    - { id: latin-jazz, name: "Mambo, Salsa", icon: music, sector: latin-american, requires: [ { node: [latin-american-caribbean] }, { count: { min: 1 } } ] }
+    - { id: city-pop, name: "City Pop", icon: bell, sector: east-asian, requires: [ { node: [east-asian-japanese] }, { count: { min: 1 } } ] }
+    - { id: k-pop, name: "K-Pop", icon: bell, sector: east-asian, requires: [ { node: [east-asian-korean-vietnamese] }, { count: { min: 1 } } ] }
+    - { id: tuvan-throat-singing, name: "Tuvan Throat Singing", icon: horse, sector: central-asian, requires: [ { node: [central-asian] }, { count: { min: 1 } } ] }
+    - { id: afrobeat, name: "Afrobeat", icon: world, sector: sub-saharan-african, requires: [ { node: [sub-saharan-african-western] }, { count: { min: 1 } } ] }
+    - { id: classical-essentials, name: "Essentials", icon: piano, sector: western-classical, requires: [ { node: [western-classical] }, { count: { min: 1 } } ] }
+    - { id: ancient-music, name: "Ancient Music", icon: building-arch, sector: ancient, requires: [ { node: [ancient] }, { count: { min: 1 } } ] }
+    - { id: medieval, name: "Medieval", icon: piano, sector: western-classical, requires: [ { node: [western-classical-medieval] }, { count: { min: 1 } } ] }
+    - { id: renaissance, name: "Renaissance", icon: piano, sector: western-classical, requires: [ { node: [western-classical-renaissance] }, { count: { min: 1 } } ] }
+    - { id: baroque, name: "Baroque", icon: piano, sector: western-classical, requires: [ { node: [western-classical-baroque] }, { count: { min: 1 } } ] }
+    - { id: classical-period, name: "Classical Period", icon: piano, sector: western-classical, requires: [ { node: [western-classical-classical] }, { count: { min: 1 } } ] }
+    - { id: romantic, name: "Romantic", icon: piano, sector: western-classical, requires: [ { node: [western-classical-romantic] }, { count: { min: 1 } } ] }
+    - { id: modern-classical, name: "Modern Classical", icon: piano, sector: western-classical, requires: [ { node: [western-classical-modern] }, { count: { min: 1 } } ] }
+    - { id: contemporary-classical, name: "Contemporary Classical", icon: piano, sector: western-classical, requires: [ { node: [western-classical-postmodern] }, { count: { min: 1 } } ] }
+    - { id: minimalism, name: "Minimalism", icon: piano, sector: western-classical, requires: [ { node: [western-classical-postmodern] }, { count: { min: 1 } } ] }
+    - { id: musicals, name: "Musicals", icon: piano, sector: western-classical, requires: [ { node: [western-classical-other] }, { count: { min: 1 } } ] }
+    - { id: sub-saharan-african-field-recordings, name: "Field Recordings", icon: world, sector: sub-saharan-african, requires: [ { node: [sub-saharan-african] }, { count: { min: 1 } } ] }
+    - { id: greater-middle-eastern-field-recordings, name: "Field Recordings", icon: moon-stars, sector: greater-middle-eastern, requires: [ { node: [greater-middle-eastern] }, { count: { min: 1 } } ] }
+    - { id: south-asian-field-recordings, name: "Field Recordings", icon: flower, sector: south-asian, requires: [ { node: [south-asian] }, { count: { min: 1 } } ] }
+    - { id: central-asian-field-recordings, name: "Field Recordings", icon: horse, sector: central-asian, requires: [ { node: [central-asian] }, { count: { min: 1 } } ] }
+    - { id: east-asian-field-recordings, name: "Field Recordings", icon: bell, sector: east-asian, requires: [ { node: [east-asian] }, { count: { min: 1 } } ] }
+    - { id: southeast-asian-and-oceanian-field-recordings, name: "Field Recordings", icon: mountain, sector: southeast-asian-and-oceanian, requires: [ { node: [southeast-asian-and-oceanian] }, { count: { min: 1 } } ] }
+    - { id: european-field-recordings, name: "Field Recordings", icon: building-castle, sector: european, requires: [ { node: [european] }, { count: { min: 1 } } ] }
+    - { id: latin-american-field-recordings, name: "Field Recordings", icon: music, sector: latin-american, requires: [ { node: [latin-american] }, { count: { min: 1 } } ] }
+    - { id: indigenous-american-field-recordings, name: "Field Recordings", icon: feather, sector: indigenous-american, requires: [ { node: [indigenous-american] }, { count: { min: 1 } } ] }
+    - { id: north-american-field-recordings, name: "Field Recordings", icon: cactus, sector: north-american, requires: [ { node: [north-american] }, { count: { min: 1 } } ] }
+    - { id: caribbean-field-recordings, name: "Field Recordings", icon: beach, sector: caribbean, requires: [ { node: [caribbean] }, { count: { min: 1 } } ] }

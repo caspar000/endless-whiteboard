@@ -120,21 +120,35 @@ describe('syllabi/adler.yaml', () => {
 
 describe('syllabi/mucore.yaml', () => {
 	const doc = load(mucoreYaml)
-	const units = doc.tracks[0]!.items
+	const all = doc.tracks[0]!.items
+	// The chart's 84 families come first, then the genres of the /mu/ wiki's Essential Charts.
+	const units = all.slice(0, 84)
+	const genres = all.slice(84)
 
 	it('holds every one of the 1111 recordings once, grouped into 84 families in chart order', () => {
 		const recordings = units.flatMap((u) => u.children)
-		expect(units).toHaveLength(84)
 		expect(recordings).toHaveLength(1111)
 		expect(new Set(recordings.map((r) => r.itemId)).size).toBe(1111)
 		expect(recordings[0]!.title).toMatch(/^Prehistoric: /)
+	})
+
+	it("files the Essential Charts' albums once each, in 178 genres, each the tag of its own node", () => {
+		expect(genres).toHaveLength(178)
+		const albums = genres.flatMap((g) => g.children)
+		expect(albums).toHaveLength(11506)
+		expect(new Set([...units, ...genres].flatMap((u) => u.children).map((a) => a.itemId)).size).toBe(1111 + 11506)
+		const nodes = new Set(doc.trees[0]!.nodes.map((n) => n.nodeId))
+		for (const genre of genres) {
+			expect(genre.tags).toEqual([genre.itemId])
+			expect(nodes.has(genre.itemId), genre.itemId).toBe(true)
+		}
 	})
 
 	it('feeds every family node, and the tree holds together', () => {
 		const tree = doc.trees[0]!
 		const pillars = tree.nodes.filter((n) => n.kind === 'pillar')
 		expect(pillars).toHaveLength(16)
-		for (const unit of units) expect(unit.tags).toHaveLength(1)
+		for (const unit of all) expect(unit.tags).toHaveLength(1)
 		checkTree(doc)
 	})
 })

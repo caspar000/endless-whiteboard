@@ -84,7 +84,7 @@ describe('syllabi as a randomizer source', () => {
 })
 
 describe('/mu/core in the randomizer', () => {
-	it('fills the shuffle with its 1111 albums, each with an artist and a cover from the web or cut from the chart', () => {
+	it('fills the shuffle with its 1111 albums and the Essential Charts\' 11506, the 1111 each with an artist and a cover from the web or cut from the chart', () => {
 		const parsed = parseSyllabus(mucoreYaml)
 		if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
 		const merged = mergeDoc(parsed.doc, {}, {}, '')
@@ -92,7 +92,13 @@ describe('/mu/core in the randomizer', () => {
 		putTracks(merged.tracks)
 		const choice = syllabusChoices(getTracks()).find((c) => c.label === '/mu/core')!
 		expect(choice).toEqual({ id: 'mucore/chart', label: '/mu/core', group: 'Music listener' })
-		const entries = syllabusEntries(getItems(), getTracks(), choice.id)
+		const all = syllabusEntries(getItems(), getTracks(), choice.id)
+		expect(all).toHaveLength(1111 + 11506)
+		expect(all.filter((e) => !e.title)).toEqual([])
+		// /mu/core's own works sit in its first 84 entries; the Essential Charts' albums after them, some
+		// with no cover, or (a chart printing titles only) no artist.
+		const families = new Set(parsed.doc.tracks[0]!.items.slice(0, 84).flatMap((u) => u.children.map((c) => c.itemId)))
+		const entries = all.filter((e) => families.has(e.id))
 		expect(entries).toHaveLength(1111)
 		expect(syllabusKind(getItems(), getTracks(), choice.id).noun).toBe('albums')
 		expect(entries.filter((e) => !e.creator || !e.title)).toEqual([])

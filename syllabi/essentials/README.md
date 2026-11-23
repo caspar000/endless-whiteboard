@@ -11,6 +11,12 @@ are images only, so each one is transcribed by hand into `raw/`.
 - `dedupe.py` merges the rows of `raw/` into one entry per album in `albums.json`, and marks the
   albums /mu/core already has. `merges.tsv` lists the entries joined from different spellings, to
   check by eye. The rules are in the script's docstring.
+- `lookup.py` finds each album not in /mu/core on Deezer, and on MusicBrainz when Deezer has
+  nothing. Its answers are kept in `lookup.json`, so a run can stop and pick up again, and nobody
+  has to ask the services again (the full run takes about two hours, mostly MusicBrainz's).
+- `report.py` joins `albums.json` and `lookup.json` into `essentials.json`: one entry per album,
+  with its track count, cover, link, YouTube search, the chart rows it came from and the /mu/core
+  works it matches. Its docstring describes each field.
 
 ## raw/*.tsv
 

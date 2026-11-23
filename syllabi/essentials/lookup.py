@@ -20,6 +20,7 @@ seconds and at the end), so a run that is stopped picks up where it left off.
     python3 lookup.py            # look up every album not asked yet
     python3 lookup.py --retry    # ask MusicBrainz again about albums it found nothing for
     python3 lookup.py --recheck-deezer   # ask Deezer again about albums it found nothing for
+    python3 lookup.py --revalidate       # ask again where an answer fails changed matching rules
 """
 
 import http.client
@@ -102,13 +103,31 @@ def cache_key(album: dict) -> str:
     return f'{album["artist"]}\t{album["album"]}'
 
 
-def matches(artist: str, album: str, found_artist: str, found_title: str) -> bool:
+def matches(artist: str, album: str, found_artist: str, found_title: str, tracks: int | None = None) -> bool:
     if not same_album(album, found_title):
         return False
-    # A chart row with no artist (Noise Hip Hop prints titles only) needs the title to agree exactly.
+    # A chart row with no artist (Noise Hip Hop prints titles only) needs the title to agree exactly,
+    # and to be more than one word: "Negro" alone finds anyone's "Negro".
     if not artist:
-        return key(album) == key(found_title)
-    return same_artist(artist, found_artist, key(album))
+        return key(album) == key(found_title) and len(key(album).split()) > 1
+    if artist_key(artist) == 'various':
+        # A compilation found under one artist's name needs the exact title ("Music of Bulgaria" is
+        # not J Lion beats' "Magic of Bulgaria"); another compilation only a close one.
+        if artist_key(found_artist) != 'various' and key(album) != key(found_title):
+            return False
+    elif not same_artist(artist, found_artist, key(album)):
+        return False
+    # A release of one or two tracks is often a tribute act's ("Eagles Experience - Hotel
+    # California"): take it only from the chart's own artist, or one the chart's credit holds.
+    if tracks is not None and tracks <= 2:
+        chart, found = artist_key(artist), artist_key(found_artist)
+        return chart == found or (bool(found) and f' {found} ' in f' {chart} ')
+    return True
+
+
+def rank(artist: str, album: str, found_artist: str, found_title: str) -> tuple[bool, bool]:
+    """Sorts matches: the chart's own artist first, then the exact title over "Deluxe Edition"."""
+    return artist_key(found_artist) != artist_key(artist), key(found_title) != key(album)
 
 
 def deezer(artist: str, album: str) -> dict | None:
@@ -118,11 +137,11 @@ def deezer(artist: str, album: str) -> dict | None:
         body = paced_get('deezer', deezer_pace, f'{DEEZER}?{urllib.parse.urlencode({"q": query, "limit": 10})}')
         if not body:
             continue
-        found = [d for d in body.get('data', []) if matches(artist, album, d.get('artist', {}).get('name', ''), d.get('title', ''))]
+        found = [d for d in body.get('data', []) if matches(artist, album, d.get('artist', {}).get('name', ''), d.get('title', ''), d.get('nb_tracks'))]
         if not found:
             continue
-        # An exact title beats "Deluxe Edition"; a full album beats a single of the same name.
-        best = min(found, key=lambda d: (key(d['title']) != key(album), d.get('record_type') != 'album'))
+        # Then a full album beats a single of the same name.
+        best = min(found, key=lambda d: (*rank(artist, album, d['artist']['name'], d['title']), d.get('record_type') != 'album'))
         return {
             'id': best['id'],
             'artist': best['artist']['name'],
@@ -147,12 +166,12 @@ def musicbrainz(artist: str, album: str) -> dict | None:
         found = []
         for release in body.get('releases', []):
             credit = ''.join(c.get('name', '') + c.get('joinphrase', '') for c in release.get('artist-credit', []))
-            if release.get('score', 0) >= 60 and matches(artist, album, credit, release.get('title', '')):
+            if release.get('score', 0) >= 60 and matches(artist, album, credit, release.get('title', ''), release.get('track-count')):
                 found.append((release, credit))
         if not found:
             continue
         # The earliest release with a date stands for the album; its group is what charts mean.
-        release, credit = min(found, key=lambda rc: (key(rc[0]['title']) != key(album), rc[0].get('date') or '9999'))
+        release, credit = min(found, key=lambda rc: (*rank(artist, album, rc[1], rc[0]['title']), rc[0].get('date') or '9999'))
         group = release.get('release-group', {})
         dates = [r.get('date') for r, _ in found if r.get('release-group', {}).get('id') == group.get('id') and r.get('date')]
         return {
@@ -176,6 +195,7 @@ def caa_cover(group: str) -> str:
 def main() -> None:
     retry = '--retry' in sys.argv
     recheck = '--recheck-deezer' in sys.argv
+    revalidate = '--revalidate' in sys.argv
     with open(ALBUMS, encoding='utf-8') as f:
         albums = [a for a in json.load(f) if not a['mucore'] and a['album']]
     try:
@@ -192,6 +212,24 @@ def main() -> None:
         for known in cache.values():
             if known.get('deezer', 0) is None:
                 del known['deezer']
+    if revalidate:
+        # After a change to matches() or rank(): ask again where a kept answer no longer passes, or
+        # credits a longer name holding the chart's artist ("Eagles Experience" for "Eagles"), where
+        # the artist's own release may now rank first. MusicBrainz answers keep the release group's
+        # title, which can be in another script (千のナイフ), so only their artist is checked again.
+        for a in albums:
+            known = cache.get(cache_key(a), {})
+            for service in ('deezer', 'musicbrainz'):
+                found = known.get(service)
+                if not found:
+                    continue
+                title = found['title'] if service == 'deezer' else a['album']
+                chart, credit = artist_key(a['artist']), artist_key(found['artist'])
+                longer = chart != credit and chart != 'various' and f' {chart} ' in f' {credit} '
+                if longer or not matches(a['artist'], a['album'], found['artist'], title, found.get('tracks')):
+                    del known[service]
+                    if service == 'deezer':
+                        known.pop('musicbrainz', None)
     todo_deezer = [a for a in albums if 'deezer' not in cache.get(cache_key(a), {})]
     for a in albums:
         known = cache.get(cache_key(a), {})

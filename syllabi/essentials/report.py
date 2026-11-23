@@ -73,7 +73,7 @@ def release_ids(found: dict | None) -> list[str]:
     if not found:
         return []
     ids = [str(found.get('id', ''))]
-    cover = re.search(r'/images/cover/([0-9a-f]{32})/', found.get('cover', ''))
+    cover = re.search(r'/images/cover/([0-9a-f]{32})/', found.get('cover') or '')
     return [i for i in ids + ([cover[1]] if cover else []) if i]
 
 
@@ -127,8 +127,8 @@ def main() -> None:
             'album': album,
             'year': year,
             'tracks': (found or {}).get('tracks') or None,
-            'cover': (found or {}).get('cover', ''),
-            'link': (found or {}).get('link', ''),
+            'cover': (found or {}).get('cover') or '',
+            'link': (found or {}).get('link') or '',
             'youtube': 'https://www.youtube.com/results?' + urllib.parse.urlencode({'search_query': f'{"" if artist_key(artist) == "various" else artist} {album}'.strip()}),
             'found': source,
             'check': not found and any(r['confidence'] != 'ok' for r in rows),

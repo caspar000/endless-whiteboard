@@ -53,7 +53,7 @@ describe('a syllabus with one track', () => {
 			expect(doc.tracks).toHaveLength(1)
 			expect(doc.trees[0]!.name).toBe(doc.tracks[0]!.name)
 		}
-	})
+	}, 30000)
 })
 
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')

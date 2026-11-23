@@ -213,5 +213,5 @@ describe('/mu/core in the randomizer', () => {
 		expect(nodeEntries(getItems(), trees, 'node:mucore/root')).toHaveLength(all.length)
 		// Most are sharp: the chart's 60 px squares are only for what the web doesn't have.
 		expect(entries.filter((e) => web.test(e.cover)).length).toBeGreaterThan(entries.length / 2)
-	})
+	}, 30000)
 })

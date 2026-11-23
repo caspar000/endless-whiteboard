@@ -338,6 +338,35 @@ describe('board index', () => {
 		})
 	})
 
+	it('changes a keyed setting a few entries at a time, and takes a big one whole', async () => {
+		const { app, cookie } = await startServer()
+		const patch = (key: string, payload: unknown) => app.inject({ method: 'PATCH', url: `/api/vault/settings/${key}`, headers: { cookie }, payload: payload as object })
+		const stored = async (key: string) => (await app.inject({ url: '/api/vault/settings', headers: { cookie } })).json()[key]
+		// Onto nothing stored yet.
+		expect((await patch('rankings', { set: { a: { rankingId: 'a', name: 'old' }, b: { rankingId: 'b' } } })).statusCode).toBe(204)
+		expect((await patch('rankings', { set: { a: { rankingId: 'a', name: 'new' } }, delete: ['b'] })).statusCode).toBe(204)
+		expect(await stored('rankings')).toEqual({ a: { rankingId: 'a', name: 'new' } })
+		// An id of "__proto__" in the JSON sent: refused before it reaches the merge, and nothing changes.
+		const proto = await app.inject({
+			method: 'PATCH',
+			url: '/api/vault/settings/rankings',
+			headers: { cookie, 'content-type': 'application/json' },
+			payload: '{"set":{"__proto__":{"rankingId":"p"}}}',
+		})
+		expect(proto.statusCode).toBe(400)
+		expect(Object.keys(await stored('rankings'))).toEqual(['a'])
+		// Not kept by id, unknown, or not the setting's shape.
+		expect((await patch('disabledExtensions', { set: {} })).statusCode).toBe(404)
+		expect((await patch('constructor', { set: {} })).statusCode).toBe(404)
+		expect((await patch('rankings', { set: { c: { name: 'no id' } } })).statusCode).toBe(400)
+		expect((await patch('rankings', { delete: 'a' })).statusCode).toBe(400)
+		// Whole, above Fastify's default limit of 1 MiB.
+		const big = Object.fromEntries(Array.from({ length: 12000 }, (_, i) => [`i${i}`, { itemId: `i${i}`, title: 'x'.repeat(200) }]))
+		const put = await app.inject({ method: 'PUT', url: '/api/vault/settings/syllabusItems', headers: { cookie }, payload: { value: big } })
+		expect(put.statusCode).toBe(204)
+		expect(Object.keys(await stored('syllabusItems'))).toHaveLength(12000)
+	})
+
 	it('is closed to anyone without a session', async () => {
 		const { app } = await startServer()
 		expect((await app.inject({ url: '/api/boards' })).statusCode).toBe(401)

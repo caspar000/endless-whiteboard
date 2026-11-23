@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import mucoreYaml from '../../../syllabi/mucore.yaml?raw'
-import { albumParts, syllabusChoices, syllabusEntries, syllabusKind, worksOf } from './randomizerSource'
+import type { TreeDefs } from '@lifeboard/skill-tree'
+import { albumParts, nodeChoice, nodeChoices, nodeEntries, syllabusChoices, syllabusEntries, syllabusKind, worksOf } from './randomizerSource'
 import { getItems, getTracks, putItems, putTracks, resetSyllabus, type ItemDef, type TrackDef } from './syllabus'
 import { mergeDoc } from './syllabusMerge'
 import { parseSyllabus } from './syllabusYaml'
@@ -85,6 +86,66 @@ describe('syllabi as a randomizer source', () => {
 	})
 })
 
+describe('a skill node in the randomizer', () => {
+	const SOURCE = `
+goal: m
+name: Music
+tracks:
+  - id: chart
+    items:
+      - { id: metal, title: Metal, tags: [metal], children: [ { id: a, title: "Metal: A - One", medium: album } ] }
+      - { id: black, title: Black Metal, tags: [black-metal], children: [ { id: b, title: "Black Metal: B - Two", medium: album }, { id: c, title: "Black Metal: C - Three", medium: album } ] }
+      - { id: doom, title: Doom Metal, tags: [doom-metal], children: [ { id: d, title: "Doom Metal: D - Four", medium: album } ] }
+tree:
+  id: m
+  name: /mu/core
+  nodes:
+    - { id: root, name: Listen Widely, kind: root }
+    - { id: rock, name: Rock, requires: [ { node: [root] } ] }
+    - { id: metal, name: Metal, requires: [ { node: [rock] } ] }
+    - { id: black-metal, name: Black Metal, requires: [ { node: [metal] } ] }
+    - { id: doom-metal, name: Doom Metal, requires: [ { node: [metal] } ] }
+    - { id: punk, name: Punk, requires: [ { node: [rock] } ] }
+`
+	const load = () => {
+		const parsed = parseSyllabus(SOURCE)
+		if (!parsed.ok) throw new Error(parsed.errors.join('\n'))
+		const items = Object.fromEntries(mergeDoc(parsed.doc, {}, {}, '').items.map((i) => [i.itemId, { ...i, draft: '' }]))
+		const trees: TreeDefs = Object.fromEntries(
+			parsed.doc.trees.map((t) => [t.treeId, { ...t, sectors: '', rings: '', removed: [], draft: '', ticked: {}, madeFrom: [], deleted: false }])
+		)
+		return { items, trees }
+	}
+
+	it('offers every node with works below it, by its path, the root first and families above their genres', () => {
+		const { items, trees } = load()
+		expect(nodeChoices(items, trees).map((c) => [c.id, c.label, c.group])).toEqual([
+			['node:m/root', 'Listen Widely', '/mu/core (skill tree)'],
+			['node:m/rock', 'Rock', '/mu/core (skill tree)'],
+			['node:m/metal', 'Rock › Metal', '/mu/core (skill tree)'],
+			['node:m/black-metal', 'Rock › Metal › Black Metal', '/mu/core (skill tree)'],
+			['node:m/doom-metal', 'Rock › Metal › Doom Metal', '/mu/core (skill tree)'],
+		])
+		expect(nodeChoice(trees, 'node:m/doom-metal')?.label).toBe('Rock › Metal › Doom Metal')
+		expect(nodeChoice(trees, 'node:m/gone')).toBeNull()
+	})
+
+	it("shuffles a node's own works and those of every node below it", () => {
+		const { items, trees } = load()
+		const titles = (id: string) => nodeEntries(items, trees, id).map((e) => e.title)
+		expect(titles('node:m/black-metal')).toEqual(['Two', 'Three'])
+		expect(titles('node:m/metal').sort()).toEqual(['Four', 'One', 'Three', 'Two'])
+		expect(titles('node:m/punk')).toEqual([])
+		expect(syllabusKind(items, {}, 'node:m/metal', trees).noun).toBe('albums')
+	})
+
+	it('leaves out a tree not yet confirmed, and one deleted', () => {
+		const { items, trees } = load()
+		expect(nodeChoices(items, { m: { ...trees.m!, draft: 'board:a' } })).toEqual([])
+		expect(nodeChoices(items, { m: { ...trees.m!, deleted: true } })).toEqual([])
+	})
+})
+
 describe('a work with a link and a track count', () => {
 	afterEach(resetSyllabus)
 
@@ -137,6 +198,19 @@ describe('/mu/core in the randomizer', () => {
 		expect(entries.filter((e) => !e.creator || !e.title)).toEqual([])
 		const web = /^https:\/\/(coverartarchive\.org\/release-group\/[0-9a-f-]{36}\/front-500|cdn-images\.dzcdn\.net\/images\/cover\/[0-9a-f]{32}\/500x500-000000-80-0-0\.jpg)$/
 		expect(entries.filter((e) => !web.test(e.cover) && !/^\/covers\/mucore\/\d{4}\.webp$/.test(e.cover))).toEqual([])
+		// Its tree's nodes are choices too: a genre shuffles its own albums, a family every genre's under it.
+		const trees: TreeDefs = Object.fromEntries(
+			parsed.doc.trees.map((t) => [t.treeId, { ...t, sectors: '', rings: '', removed: [], draft: '', ticked: {}, madeFrom: [], deleted: false }])
+		)
+		const started = performance.now()
+		const nodes = nodeChoices(getItems(), trees)
+		expect(performance.now() - started).toBeLessThan(2000)
+		expect(nodes.find((c) => c.id === 'node:mucore/black-metal')?.label).toBe('Rock › Metal › Black Metal')
+		expect(nodeEntries(getItems(), trees, 'node:mucore/black-metal')).toHaveLength(541)
+		const metal = nodeEntries(getItems(), trees, 'node:mucore/rock-metal')
+		const genres = nodes.filter((c) => c.label.startsWith('Rock › Metal › ')).reduce((n, c) => n + nodeEntries(getItems(), trees, c.id).length, 0)
+		expect(metal).toHaveLength(25 + genres)
+		expect(nodeEntries(getItems(), trees, 'node:mucore/root')).toHaveLength(all.length)
 		// Most are sharp: the chart's 60 px squares are only for what the web doesn't have.
 		expect(entries.filter((e) => web.test(e.cover)).length).toBeGreaterThan(entries.length / 2)
 	})

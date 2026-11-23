@@ -58,10 +58,19 @@ export function Randomizer({ go }: SectionProps) {
 					</Jump>{' '}
 					on, it also lists each track of every syllabus in your vault, under the syllabus's name: pick one
 					and the card shuffles the track's works, ticked or not. Pick <strong>/mu/core</strong> (after
-					dropping <code>syllabi/mucore.yaml</code> on a board) and it shuffles all 1111 albums, each as
-					album, artist and year on its own cover. Most covers come from the web; the few it has no
-					picture for show their square from the /mu/core chart, which is softer. If your /mu/core came
-					in before the covers did, drop the file on a board again: your ticks stay as they are.
+					dropping <code>syllabi/mucore.yaml</code> on a board) and it shuffles all its albums: the 1111 of
+					its chart and over 11,000 more from the /mu/ wiki's Essential Charts, filed by genre. Each shows
+					as album, artist and year on its own cover, with its number of tracks when it is known, and the
+					button beside the count looks the album up on YouTube. Most covers come from the web; the few
+					/mu/core albums it has no picture for show their square from the chart, which is softer. If your
+					/mu/core came in before the covers did, drop the file on a board again: your ticks stay as they
+					are.
+				</p>
+				<p>
+					Once you have made a skill tree from a syllabus, every node of it with works below it is a choice
+					too, listed under the tree's name by its path: <strong>Rock › Metal</strong> shuffles the albums of
+					every metal genre, <strong>Rock › Metal › Black Metal</strong> only black metal's, and the tree's
+					root everything.
 				</p>
 				<p>
 					The name at the top of the card is the source; click it to change to another. Changing it is an

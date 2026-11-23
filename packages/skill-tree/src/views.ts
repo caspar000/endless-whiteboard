@@ -147,6 +147,13 @@ export function draftTreeMeta(shape: SkillShape): Partial<TreeMeta> {
 const draftMounts = (shape: SkillShape) => draftTreeMeta(shape).mounts ?? []
 
 /** What one tree view shows, and what each shown item hangs from. */
+/**
+ * The most entries and works "Show all" draws. Past this a board would hold more cards than it can
+ * lay out or draw (/mu/core with the /mu/ Essential Charts is over 12,000), so such a tree shows its
+ * skill nodes only, whatever its view asks for.
+ */
+export const MAX_SHOWN_ITEMS = 2000
+
 export interface ViewContents {
 	/** Which view this is, for remembering where things were: `overview` or `all`. */
 	context: string
@@ -155,6 +162,8 @@ export interface ViewContents {
 	skills: Set<string>
 	/** Items drawn, by id: what they hang from (a skill node id, or their parent item's id) and how. */
 	items: Map<string, { parent: string; variant: 'entry' | 'work' }>
+	/** How many items "everything" would have drawn, when that is over MAX_SHOWN_ITEMS and none are; else 0. */
+	tooMany: number
 }
 
 type ItemLike = { itemId: string; parent: string; children: readonly string[]; tags: readonly string[] }
@@ -165,6 +174,7 @@ type ItemLike = { itemId: string; parent: string; children: readonly string[]; t
  * - **overview**: the skill nodes its view reaches.
  * - **all**: those, every entry tagged to one of them, and every entry's works. A node that stands
  *   for an entry (`item`) has the entry's works hung from it instead, each drawn as an entry is.
+ *   Above MAX_SHOWN_ITEMS of those, the overview instead, with `tooMany` saying how many there were.
  *
  * An entry hangs from the first of its tags that the view reaches; an entry tagged to nothing in
  * reach is not in this tree.
@@ -201,7 +211,8 @@ export function viewContents(
 		for (const node of reach) for (const id of attached.get(node) ?? []) unfurl(id, node, 'entry')
 		// Each a spoke from the node, as an entry is: a work's chain starts from an entry, which isn't drawn.
 		for (const [itemId, node] of standsFor) for (const work of items[itemId]!.children) unfurl(work, node, 'entry')
-		return { context: 'all', start, skills: reach, items: shown }
+		if (shown.size > MAX_SHOWN_ITEMS) return { context: 'overview', start, skills: reach, items: new Map(), tooMany: shown.size }
+		return { context: 'all', start, skills: reach, items: shown, tooMany: 0 }
 	}
-	return { context: 'overview', start, skills: reach, items: shown }
+	return { context: 'overview', start, skills: reach, items: shown, tooMany: 0 }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NodeDef, TreeDef, TreeDefs } from './treeDefs'
-import { reachFrom, rootOfTree, treeGraph, viewContents, viewStart } from './views'
+import { MAX_SHOWN_ITEMS, reachFrom, rootOfTree, treeGraph, viewContents, viewStart } from './views'
 
 const node = (nodeId: string, requires: string[] = [], kind = 'skill'): NodeDef => ({
 	nodeId,
@@ -106,5 +106,18 @@ describe('viewContents', () => {
 		expect([...v.items.keys()].sort()).toEqual(['a/homer', 'a/homer/iliad', 'a/homer/odyssey', 'a/plato', 'a/virgil'])
 		expect(v.items.get('a/homer')).toEqual({ parent: 'adler/epic', variant: 'entry' })
 		expect(v.items.get('a/homer/iliad')).toEqual({ parent: 'a/homer', variant: 'work' })
+		expect(v.tooMany).toBe(0)
+	})
+
+	it('shows only the skill nodes of a tree with more entries and works than a board can draw', () => {
+		const many = (n: number) => {
+			const works = Array.from({ length: n - 1 }, (_, i) => `big/${i}`)
+			return Object.fromEntries([['big', entry('big', ['adler/epic'], works)], ...works.map((id) => [id, work(id, 'big')])])
+		}
+		const at = viewContents(graph, many(MAX_SHOWN_ITEMS), { treeId: 'adler', root: '', mode: 'all' })
+		expect([at.context, at.items.size, at.tooMany]).toEqual(['all', MAX_SHOWN_ITEMS, 0])
+		const over = viewContents(graph, many(MAX_SHOWN_ITEMS + 1), { treeId: 'adler', root: '', mode: 'all' })
+		expect([over.context, over.items.size, over.tooMany]).toEqual(['overview', 0, MAX_SHOWN_ITEMS + 1])
+		expect([...over.skills].sort()).toEqual(['adler/epic', 'adler/method', 'adler/root'])
 	})
 })

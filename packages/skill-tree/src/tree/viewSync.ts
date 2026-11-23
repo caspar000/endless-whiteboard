@@ -87,9 +87,16 @@ export interface ViewPlan {
 	trees: Set<string>
 	mountsStale: boolean
 	linesStale: boolean
+	/**
+	 * Headers set to show everything when everything is too many to draw: they show the skill nodes, and
+	 * say so in their mode. Left at "everything", a load that has not got the albums yet would find few
+	 * enough to draw, and the board would switch to everything and lay it out from scratch.
+	 */
+	overview: TLShapeId[]
 }
 
 export const planIsEmpty = (p: ViewPlan) =>
+	!p.overview.length &&
 	!p.createSkills.length &&
 	!p.createItems.length &&
 	!p.remove.length &&
@@ -99,7 +106,7 @@ export const planIsEmpty = (p: ViewPlan) =>
 
 /** What the board's views want changed. A board without headers has no views and is left alone. */
 export function planViews(editor: Editor, headers: readonly TreeShape[], going: ReadonlySet<string>): ViewPlan {
-	const plan: ViewPlan = { views: [], createSkills: [], createItems: [], remove: [], trees: new Set(), mountsStale: false, linesStale: false }
+	const plan: ViewPlan = { views: [], createSkills: [], createItems: [], remove: [], trees: new Set(), mountsStale: false, linesStale: false, overview: [] }
 	// Entries only exist inside a view: with no header left (a discarded draft, a deleted header), they go.
 	if (!headers.length) {
 		plan.remove = [...entryShapes(editor).values()]
@@ -117,6 +124,7 @@ export function planViews(editor: Editor, headers: readonly TreeShape[], going: 
 		const last = header.meta[CONTEXT_META]
 		// Recorded as soon as there is a view, so that leaving it, even the first time, saves where things were.
 		plan.views.push({ header, view, from: typeof last === 'string' && last !== view.context ? last : null, unmarked: typeof last !== 'string' })
+		if (view.tooMany && header.props.mode === 'all') plan.overview.push(header.id)
 		for (const id of view.skills) wantSkills.add(id)
 		for (const [id, at] of view.items) wantItems.set(id, { treeId: header.props.treeId, ...at })
 		covered.add(header.props.treeId)
@@ -152,6 +160,7 @@ export function applyViews(editor: Editor, plan: ViewPlan): ViewContents[] {
 	const laidOutNew: ViewContents[] = []
 	const graph = treeGraph(boardTrees(editor))
 	const headerUpdates = new Map<TLShapeId, Places>()
+	if (plan.overview.length) editor.updateShapes(plan.overview.map((id) => ({ id, type: TREE_TYPE, props: { mode: 'overview' } })) as never)
 	// 1. Leaving an arrangement: remember where everything in it was.
 	for (const { header, from } of plan.views) {
 		if (from === null) continue

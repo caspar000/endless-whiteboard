@@ -95,7 +95,13 @@ function cache(key: string, value: unknown): void {
 	try {
 		localStorage.setItem(key, JSON.stringify(value))
 	} catch {
-		// Private-mode Safari can throw on write; the next board open rebuilds what it holds.
+		// Too big for this browser's storage (a syllabus of thousands of works), or private-mode Safari.
+		// The copy from before stays behind otherwise, and the next load starts from that older one.
+		try {
+			localStorage.removeItem(key)
+		} catch {
+			// Nothing to clear.
+		}
 	}
 }
 

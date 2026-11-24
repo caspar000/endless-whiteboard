@@ -54,6 +54,16 @@ async function dropCard(page: Page, url: string) {
 	await page.evaluate(() => (window as unknown as { editor: CardEditor }).editor.selectNone())
 }
 
+/**
+ * Double-clicks the middle of the card, where a person's double-click lands. Not the locator's
+ * `dblclick()`: tldraw lays its selection (`.tl-selection__bg`) over the card, and the canvas, not the
+ * card, takes the pointer, so Playwright's check that the card itself would get the click never passes.
+ */
+async function doubleClickCard(page: Page) {
+	const box = (await page.locator('.lb-linkcard').boundingBox())!
+	await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+}
+
 async function theCard(page: Page) {
 	return page.evaluate(() => {
 		const editor = (window as unknown as { editor: CardEditor }).editor
@@ -123,7 +133,7 @@ test.describe('link cards', () => {
 		await dropUrl(page, 'https://example.com/page')
 		await expect.poll(async () => await countShapes(page, 'bookmark')).toBe(1)
 
-		await page.locator('.lb-linkcard').dblclick()
+		await doubleClickCard(page)
 		const inspector = page.getByRole('dialog', { name: 'Link preview' })
 		await expect(inspector).toBeVisible()
 		await inspector.getByRole('textbox', { name: 'Title' }).fill('The plan')
@@ -155,7 +165,7 @@ test.describe('link cards', () => {
 	test('a new address in the inspector is where the card goes', async ({ page }) => {
 		await dropCard(page, 'https://example.com/page')
 
-		await page.locator('.lb-linkcard').dblclick()
+		await doubleClickCard(page)
 		const inspector = page.getByRole('dialog', { name: 'Link preview' })
 		// Typed the way people do, without the scheme.
 		await inspector.getByRole('textbox', { name: 'URL' }).fill('example.org/elsewhere')
@@ -176,7 +186,7 @@ test.describe('link cards', () => {
 		await dropCard(page, 'https://example.com/page')
 		await expect(page.locator('.lb-linkcard__image')).toHaveCount(0)
 
-		await page.locator('.lb-linkcard').dblclick()
+		await doubleClickCard(page)
 		await expect(page.getByRole('dialog', { name: 'Link preview' })).toBeVisible()
 		// Made in the page, so the test carries no binary fixture (as assets.spec.ts does).
 		await page.evaluate(async () => {

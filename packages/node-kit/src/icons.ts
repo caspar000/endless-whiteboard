@@ -4,7 +4,7 @@ import type { ComponentType } from 'react'
  * The app's icon catalogue, as an extension sees it: draw an icon by name, and pick one.
  *
  * A seam rather than an import, the same shape as `AssetBridge` and `NetworkBridge`: the catalogue
- * (Tabler's outline set, the one boards wear) is the app's, loaded on first use, and an extension must
+ * (Tabler's outline set and the icon packs, the ones boards wear) is the app's, loaded on first use, and an extension must
  * not import app code. Names are stored data, so an icon an extension saved keeps working when the
  * catalogue renames it, because the app resolves old names.
  */

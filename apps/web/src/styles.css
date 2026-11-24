@@ -1297,7 +1297,7 @@ button {
 	outline: 2px solid var(--lb-accent);
 	outline-offset: 1px;
 }
-/* Categories, one row that scrolls sideways: Suggested first, then Tabler's, likeliest first. */
+/* Categories, one row that scrolls sideways: Suggested first, then the icon packs, then Tabler's, likeliest first. */
 .lb-look__tabs {
 	display: flex;
 	gap: 4px;
@@ -17115,6 +17115,15 @@ button.lb-props__eye:hover {
 .lb-iconpick .lb-look__search {
 	height: 30px;
 	font-size: 12px;
+}
+.lb-iconpick__tabs {
+	margin: 0;
+	padding: 0;
+}
+.lb-iconpick__tabs .lb-look__tab {
+	height: 22px;
+	padding: 0 8px;
+	font-size: 11px;
 }
 .lb-iconpick__grid {
 	display: grid;

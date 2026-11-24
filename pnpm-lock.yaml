@@ -233,6 +233,18 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@7.2.0)
     devDependencies:
+      '@iconify-json/fluent-emoji-high-contrast':
+        specifier: 1.2.6
+        version: 1.2.6
+      '@iconify-json/material-symbols':
+        specifier: 1.2.101
+        version: 1.2.101
+      '@iconify-json/mdi':
+        specifier: 1.2.3
+        version: 1.2.3
+      '@iconify-json/temaki':
+        specifier: 1.2.7
+        version: 1.2.7
       '@playwright/test':
         specifier: ^1.62.0
         version: 1.62.0
@@ -266,6 +278,9 @@ importers:
       rollup-plugin-visualizer:
         specifier: ^6.0.4
         version: 6.0.11(rolldown@1.1.5)(rollup@4.62.3)
+      svg-path-bbox:
+        specifier: 2.1.0
+        version: 2.1.0
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -1990,6 +2005,21 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
+
+  '@iconify-json/fluent-emoji-high-contrast@1.2.6':
+    resolution: {integrity: sha512-esqhZPpkrF7sNX3NsLoh8KW64okEr/bzko7WNnFP+qTJGAqDPDYjp0925yxuivXy3HtVQB8xhIKu3+Nq1byX5w==}
+
+  '@iconify-json/material-symbols@1.2.101':
+    resolution: {integrity: sha512-k2cOWfrsLM9TpCr34UZ34toSotApzFDxh+DX7tVk4EkqO2XhoiuDPs1oAbiZSJQQ3JHjhkS9kBlMFa36yYda0Q==}
+
+  '@iconify-json/mdi@1.2.3':
+    resolution: {integrity: sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==}
+
+  '@iconify-json/temaki@1.2.7':
+    resolution: {integrity: sha512-syLZ3bHZt965I81yaxiLZJLkWP16Fl2V9YDE6eo7b85c+lf5dlfteLJZqMfm4xeNJ5D3h7Ash1PSnwmxZ3aNGg==}
+
+  '@iconify/types@2.0.0':
+    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
 
   '@isaacs/cliui@9.0.0':
     resolution: {integrity: sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==}
@@ -5465,6 +5495,14 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
+  svg-path-bbox@2.1.0:
+    resolution: {integrity: sha512-PEoSQFbBvL7FOCE4cN8Knej6L7bXdNkjPcUYsfMMpq0HpnqiO0sE2mcXTd7LX160aOyh5HbaeN/SoY8thMk5Kg==}
+    engines: {node: '>=6.17.1'}
+    hasBin: true
+
+  svgpath@2.6.0:
+    resolution: {integrity: sha512-OIWR6bKzXvdXYyO4DK/UWa1VA1JeKq8E+0ug2DG98Y/vOmMpfZNj+TIG988HjfYSqtcy/hFOtZq/n/j5GSESNg==}
+
   temp-dir@2.0.0:
     resolution: {integrity: sha512-aoBAniQmmwtcKp/7BzsH8Cxzv8OL736p7v1ihGb5e9DJ9kTwGWHrQrVB5+lfVDzfGrdRzXch+ig7LHaY1JTOrg==}
     engines: {node: '>=8'}
@@ -6918,6 +6956,24 @@ snapshots:
   '@hono/node-server@2.1.0(hono@4.13.2)':
     dependencies:
       hono: 4.13.2
+
+  '@iconify-json/fluent-emoji-high-contrast@1.2.6':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/material-symbols@1.2.101':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/mdi@1.2.3':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/temaki@1.2.7':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify/types@2.0.0': {}
 
   '@isaacs/cliui@9.0.0': {}
 
@@ -10755,6 +10811,12 @@ snapshots:
       has-flag: 4.0.0
 
   supports-preserve-symlinks-flag@1.0.0: {}
+
+  svg-path-bbox@2.1.0:
+    dependencies:
+      svgpath: 2.6.0
+
+  svgpath@2.6.0: {}
 
   temp-dir@2.0.0: {}
 

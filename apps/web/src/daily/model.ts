@@ -937,17 +937,17 @@ export function defaultSetup(day: Day = today()): DailySetup {
 		{ id: 'rest', name: 'Rest', color: '#9a9aa4', tasks: [] },
 	]
 	const iconTasks: IconTask[] = [
-		{ id: 'brush-teeth', name: 'Brush teeth', icon: 'dental' },
+		{ id: 'brush-teeth', name: 'Brush teeth', icon: 'everyday:toothbrush' },
 		{ id: 'scrape-tongue', name: 'Scrape tongue', icon: 'mood-tongue' },
-		{ id: 'shower', name: 'Shower', icon: 'bath' },
-		{ id: 'drink-water', name: 'Drink water', icon: 'droplet' },
-		{ id: 'album', name: 'Listen to an album', icon: 'vinyl' },
-		{ id: 'draw', name: 'Draw', icon: 'pencil' },
-		{ id: 'read', name: 'Read', icon: 'book' },
-		{ id: 'journal', name: 'Journal', icon: 'notebook' },
-		{ id: 'workout', name: 'Workout', icon: 'barbell' },
-		{ id: 'swim', name: 'Swim', icon: 'swimming' },
-		{ id: 'ate-to-plan', name: 'Ate to plan', icon: 'salad' },
+		{ id: 'shower', name: 'Shower', icon: 'everyday:shower' },
+		{ id: 'drink-water', name: 'Drink water', icon: 'everyday:drink-water' },
+		{ id: 'album', name: 'Listen to an album', icon: 'everyday:music' },
+		{ id: 'draw', name: 'Draw', icon: 'everyday:draw' },
+		{ id: 'read', name: 'Read', icon: 'everyday:read' },
+		{ id: 'journal', name: 'Journal', icon: 'everyday:journal' },
+		{ id: 'workout', name: 'Workout', icon: 'activities:weightlifting' },
+		{ id: 'swim', name: 'Swim', icon: 'activities:swimming' },
+		{ id: 'ate-to-plan', name: 'Ate to plan', icon: 'everyday:salad' },
 	]
 	const templates: BlockTemplate[] = [
 		{ id: 'morning', name: 'MORNING', iconTaskIds: ['brush-teeth', 'scrape-tongue', 'shower', 'drink-water'], items: [] },

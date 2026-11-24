@@ -40,6 +40,7 @@ import { AgentSignIn } from './AgentSignIn'
 import { AgentUserMessage } from './AgentUserMessage'
 import { AgentFoldRow, AgentWorkingRow } from './AgentWorking'
 import { AgentWorkGroup, WorkRow } from './AgentWorkGroup'
+import { ImageLightbox } from './ImageLightbox'
 
 /**
  * The agent panel: a conversation with Claude Code, floating at the right of the board.
@@ -583,31 +584,3 @@ function Item({
 	}
 }
 
-/** A pasted screenshot, full size. Closed by clicking anywhere or pressing Escape. */
-function ImageLightbox({
-	image,
-	onClose,
-}: {
-	image: { src: string; alt: string }
-	onClose: () => void
-}) {
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') onClose()
-		}
-		document.addEventListener('keydown', onKeyDown)
-		return () => document.removeEventListener('keydown', onKeyDown)
-	}, [onClose])
-
-	return (
-		<div
-			className="lb-agent-lightbox"
-			role="dialog"
-			aria-modal="true"
-			aria-label={image.alt}
-			onClick={onClose}
-		>
-			<img src={image.src} alt={image.alt} />
-		</div>
-	)
-}

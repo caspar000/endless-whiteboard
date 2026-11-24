@@ -36,8 +36,11 @@
 .lb-daily__when strong {
 	font-size: 15px;
 }
-.lb-daily__spacer {
-	flex: 1;
+.lb-daily__actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-left: auto;
 }
 .lb-daily-pill {
 	padding: 4px 10px;
@@ -848,6 +851,21 @@
 	flex-wrap: wrap;
 	gap: 6px;
 }
+/* A block's icon grid takes the room its checklist leaves, and its tiles are sized to fill it (IconGrid). */
+.lb-daily-block--grid .lb-daily-block__body {
+	flex: 1;
+}
+.lb-daily-icongrid {
+	display: flex;
+	align-items: center;
+	flex: 1 1 0;
+	min-height: 16px;
+	overflow: hidden;
+}
+.lb-daily-tiles--grid {
+	display: grid;
+}
+
 .lb-daily-tile {
 	position: relative;
 	display: grid;
@@ -990,6 +1008,13 @@
 	font-size: 9px;
 	color: var(--lb-text-faint);
 }
+.lb-daily-food__open {
+	display: block;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: zoom-in;
+}
 .lb-daily-food__photo img,
 .lb-daily-food__loading {
 	display: block;
@@ -1063,6 +1088,48 @@
 }
 .lb-daily-stamps .lb-daily-chip[aria-pressed='true'] {
 	--chip: var(--lb-money);
+}
+.lb-daily-pick__actions {
+	display: inline-flex;
+	gap: 8px;
+}
+.lb-daily-picksearch {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-height: 0;
+}
+.lb-daily-picksearch__list {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 11px;
+}
+.lb-daily-picksearch__item {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	padding: 3px 6px;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-daily-picksearch__item:hover,
+.lb-daily-picksearch__item:focus-visible {
+	background: var(--lb-surface-hover);
+}
+.lb-daily-picksearch__item strong,
+.lb-daily-picksearch__item span {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .lb-daily-pick__impression {
 	border-style: dashed;
@@ -1440,6 +1507,124 @@
 	}
 	.lb-daily__frame {
 		min-height: 70vh;
+	}
+}
+
+/*
+ * A phone (the app's 767px, docs/mobile-plan.md): the page clears the floating top bar itself, the date
+ * and its arrows take the first row and the actions the second, the week fits seven narrow cells, and
+ * the page is as wide as the screen, which scrolls.
+ */
+@media (max-width: 767px) {
+	.lb-daily {
+		--daily-gap: 10px;
+		padding: var(--fl-card-top) calc(var(--fl-safe-right) + var(--fl-edge) * 2) calc(var(--fl-safe-bottom) + 24px)
+			calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+	}
+
+	.lb-daily__top {
+		gap: 8px;
+		min-height: 0;
+	}
+	.lb-daily__when {
+		flex: 1;
+		min-width: 0;
+		align-items: center;
+		text-align: center;
+	}
+	.lb-daily__when strong {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 100%;
+	}
+	.lb-daily__actions {
+		flex-basis: 100%;
+		margin-left: 0;
+		gap: 8px;
+	}
+	.lb-daily__actions .lb-daily-btn {
+		flex: 1;
+		justify-content: center;
+		height: 36px;
+		padding: 0 10px;
+	}
+	.lb-daily__actions .lb-daily-faint,
+	.lb-daily-btn--print {
+		display: none;
+	}
+	.lb-daily-iconbtn--box {
+		width: 36px;
+		height: 36px;
+	}
+	.lb-daily-pill,
+	.lb-daily-notice {
+		order: 1;
+		flex-basis: 100%;
+		text-align: center;
+	}
+
+	.lb-daily-week {
+		gap: 8px;
+		padding: 8px;
+		border-radius: 14px;
+	}
+	.lb-daily-week__cycle {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		min-width: 0;
+	}
+	.lb-daily-pop {
+		width: min(280px, calc(100vw - 48px));
+	}
+	.lb-daily-week__days {
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+		gap: 4px;
+		overflow: visible;
+	}
+	.lb-daily-day {
+		align-items: center;
+		gap: 2px;
+		padding: 6px 2px 5px;
+		border-radius: 10px;
+		border-bottom: 3px solid var(--area, var(--lb-border));
+		text-align: center;
+	}
+	.lb-daily-day__top,
+	.lb-daily-day__bottom {
+		flex-direction: column;
+		justify-content: center;
+		gap: 2px;
+	}
+	/* The area's name and the percentage don't fit: the area is the cell's coloured foot, the ring stays. */
+	.lb-daily-day__top > :not(:first-child),
+	.lb-daily-ring .lb-daily-faint {
+		display: none;
+	}
+	.lb-daily-day__num {
+		font-size: 16px;
+	}
+	.lb-daily-day--review {
+		border-bottom-color: var(--lb-star);
+	}
+	.lb-daily-day__review {
+		font-size: 0;
+	}
+	.lb-daily-day__review svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.lb-daily__paper {
+		display: none;
+	}
+	.lb-daily__body {
+		flex: none;
+	}
+	.lb-daily__frame {
+		flex: none;
+		min-height: 0;
 	}
 }
 

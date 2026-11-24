@@ -40,8 +40,8 @@ import { Sidebar, SidebarReopen } from './Sidebar'
 import { TabStrip } from './TabStrip'
 import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
-import { useHashRoute } from './useHashRoute'
-import { useTabs } from './useTabs'
+import { useHashRoute, type Route } from './useHashRoute'
+import { DAILY_TAB, useTabs } from './useTabs'
 import { useRates } from './useRates'
 import { useTheme } from './useTheme'
 import { BoardPill } from './BoardPill'
@@ -410,6 +410,15 @@ export function App() {
 		cancelDrainFor(route.boardId)
 	}, [route, routedBoardKnown, openTab, cancelDrainFor])
 
+	// The daily page gets a tab too, by whichever route it was reached (DARK-17), and the tab goes back
+	// to the day last shown, as a board's tab goes back to its board.
+	const lastDaily = useRef<Route>({ view: 'daily' })
+	useEffect(() => {
+		if (route.view !== 'daily') return
+		lastDaily.current = route
+		openTab(DAILY_TAB)
+	}, [route, openTab])
+
 	// Activating an already-mounted tab needs two things onMount only does the first time: keyboard
 	// focus back on that editor (or tool shortcuts go dead after a tab switch), and `window.editor`
 	// (the debug/test seam) pointed at the *active* board rather than whichever mounted last.
@@ -507,7 +516,7 @@ export function App() {
 
 	const closeBoardTab = useCallback(
 		async (id: string) => {
-			const active = route.view === 'board' && route.boardId === id
+			const active = id === DAILY_TAB ? route.view === 'daily' : route.view === 'board' && route.boardId === id
 			// Only a mounted editor can hold a pending write, so only warm tabs need the drain.
 			const meta = api.boards.find((b) => b.id === id)
 			if (meta && warm.current.has(id)) beginDrain(meta)
@@ -519,7 +528,7 @@ export function App() {
 				const rest = tabs.filter((t) => t !== id)
 				const nextId = rest[Math.min(index, rest.length - 1)]
 				if (nextId) {
-					navigate({ view: 'board', boardId: nextId })
+					navigate(nextId === DAILY_TAB ? lastDaily.current : { view: 'board', boardId: nextId })
 				} else {
 					navigate({ view: 'list' })
 					void api.refresh()
@@ -1016,8 +1025,10 @@ export function App() {
 						boards={api.boards}
 						tabs={tabs}
 						home={route.view === 'list'}
+						daily={route.view === 'daily'}
 						activeBoardId={activeBoardId}
 						onSelect={(board) => void openBoard(board)}
+						onDaily={() => navigate(lastDaily.current)}
 						onClose={(id) => void closeBoardTab(id)}
 						onNew={() => void createAndOpen()}
 						onAllBoards={() => void goHome()}
@@ -1030,6 +1041,7 @@ export function App() {
 						view={route.view}
 						activeBoardId={activeBoardId}
 						onHome={() => void goHome()}
+						onDaily={() => navigate(lastDaily.current)}
 						onSelect={(board) => void openBoard(board)}
 						onClose={(id) => void closeBoardTab(id)}
 						onNew={() => void createAndOpen()}

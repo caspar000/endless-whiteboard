@@ -708,6 +708,7 @@
 	flex-direction: column;
 	gap: 6px;
 	min-height: 0;
+	overflow-x: hidden;
 	overflow-y: auto;
 }
 .lb-daily-empty {
@@ -1089,10 +1090,6 @@
 .lb-daily-stamps .lb-daily-chip[aria-pressed='true'] {
 	--chip: var(--lb-money);
 }
-.lb-daily-pick__actions {
-	display: inline-flex;
-	gap: 8px;
-}
 .lb-daily-picksearch {
 	display: flex;
 	flex-direction: column;
@@ -1466,6 +1463,18 @@
 	border-radius: 4px;
 	font-size: 9px;
 	text-transform: uppercase;
+}
+.lb-daily-pick__foot > .lb-daily-linkbtn {
+	flex: none;
+	white-space: nowrap;
+}
+/* Tomorrow's album, to fetch the evening before: as much of its name as fits. */
+.lb-daily-pick__foot > .lb-daily-pick__next {
+	flex: 0 1 auto;
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .lb-review-stamp--liked {
 	color: #2f9e44;

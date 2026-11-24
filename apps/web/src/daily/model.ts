@@ -892,6 +892,17 @@ export function recentPicks(pages: Readonly<Record<string, DayPage>>, day: Day, 
 	return out
 }
 
+/**
+ * What a draw for `day` steers clear of: the days before it (`recentPicks`), and the day after, which
+ * is drawn a day early so its album can be fetched the evening before. Whichever of two neighbouring
+ * days is drawn first, the other skips it.
+ */
+export function nearbyPicks(pages: Readonly<Record<string, DayPage>>, day: Day, days: number): Set<string> {
+	const out = recentPicks(pages, day, days)
+	for (const pick of Object.values(pages[addDays(day, 1)]?.picks ?? {})) out.add(pick.id)
+	return out
+}
+
 /* ------------------------------------------------------------------------------------- the start */
 
 let counter = 0

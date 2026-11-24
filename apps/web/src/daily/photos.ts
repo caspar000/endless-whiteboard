@@ -91,8 +91,11 @@ export function isPhotoType(type: string): boolean {
 	return PHOTO_TYPES.includes(type.toLowerCase())
 }
 
-/** What the file picker offers. */
-export const PHOTO_ACCEPT = PHOTO_TYPES.join(',')
+/**
+ * What the file picker asks for: HEIC left out, so an iPhone hands over a JPEG it converts itself
+ * rather than its camera's HEIC, which only Safari can shrink. A HEIC chosen anyway is still kept.
+ */
+export const PHOTO_ACCEPT = PHOTO_TYPES.filter((type) => !type.includes('hei')).join(',')
 
 /** Keeps a photo and returns its hash, or `null` for a file that isn't a photo. */
 export async function storePhoto(blobs: BlobStore, file: Blob): Promise<string | null> {

@@ -1,7 +1,8 @@
-import { ChevronDown, LayoutGrid, Pencil, Plus, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, LayoutGrid, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { BoardBadge, BoardBadgeButton } from './boardLook/BoardBadge'
+import { DAILY_TAB } from './useTabs'
 import { useStaggerIn } from './useStaggerIn'
 
 /**
@@ -16,8 +17,10 @@ export function BoardPill({
 	boards,
 	tabs,
 	home,
+	daily,
 	activeBoardId,
 	onSelect,
+	onDaily,
 	onClose,
 	onNew,
 	onAllBoards,
@@ -27,8 +30,11 @@ export function BoardPill({
 	tabs: readonly string[]
 	/** On the home screen, where All Boards is the page you are on. */
 	home: boolean
+	/** On the daily page (DARK-17), whose tab sits in the list beside the boards'. */
+	daily: boolean
 	activeBoardId: string | null
 	onSelect: (board: BoardMeta) => void
+	onDaily: () => void
 	onClose: (id: string) => void
 	onNew: () => void
 	onAllBoards: () => void
@@ -40,6 +46,7 @@ export function BoardPill({
 	const stagger = useStaggerIn(open)
 	const byId = new Map(boards.map((board) => [board.id, board]))
 	const openBoards = tabs.flatMap((id) => byId.get(id) ?? [])
+	const dailyOpen = tabs.includes(DAILY_TAB)
 	const active = activeBoardId ? byId.get(activeBoardId) : undefined
 
 	// A press anywhere else puts the list away, like a menu, and so does Escape. On the document, not the
@@ -77,13 +84,31 @@ export function BoardPill({
 				onClick={() => setOpen((was) => !was)}
 			>
 				{active && <BoardBadge board={active} className="lb-pill__badge" />}
-				<span className="lb-pill__name">{active?.name ?? (home ? 'All Boards' : 'Boards')}</span>
+				{daily && <CalendarDays size={16} strokeWidth={1.75} aria-hidden="true" />}
+				<span className="lb-pill__name">{active?.name ?? (daily ? 'Daily' : home ? 'All Boards' : 'Boards')}</span>
 				<ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
 			</button>
 
 			{open && (
 				<div className="lb-pill__menu lb-float" role="menu" aria-label="Open boards">
 					<div className={`lb-pill__list ${stagger}`}>
+						{dailyOpen && (
+							<div className={daily ? 'lb-pill__row lb-pill__row--active' : 'lb-pill__row'}>
+								<CalendarDays className="lb-pill__badge" size={18} strokeWidth={1.75} aria-hidden="true" />
+								<button
+									type="button"
+									role="menuitem"
+									className="lb-pill__open"
+									aria-current={daily ? 'page' : undefined}
+									onClick={pick(onDaily)}
+								>
+									Daily
+								</button>
+								<button type="button" className="lb-icon-btn lb-pill__close" aria-label="Close Daily" onClick={() => onClose(DAILY_TAB)}>
+									<X size={16} strokeWidth={1.75} aria-hidden="true" />
+								</button>
+							</div>
+						)}
 						{openBoards.map((board) => (
 							<div
 								key={board.id}

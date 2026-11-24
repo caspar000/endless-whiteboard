@@ -1,8 +1,9 @@
 import { useValue } from '@lifeboard/canvas'
-import { getItemStamps, resolveItemSource, sourceEntries } from '@lifeboard/node-kit'
-import { ArrowRight, CalendarDays, Camera, CircleHelp, Heart, HeartOff, Pencil, Plus, Shuffle, X } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { foldText, getItemStamps, resolveItemSource, sourceEntries, type SourceEntry } from '@lifeboard/node-kit'
+import { ArrowRight, CalendarDays, Camera, CircleHelp, Heart, HeartOff, Pencil, Plus, Search, Shuffle, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CatalogueIcon } from '../app/boardLook/iconBridge'
+import { ImageLightbox } from '../app/ImageLightbox'
 import { createAssetBridge } from '../persistence/assetStore'
 import { fetchServerAsset } from '../server/serverVault'
 import { useDaily } from './context'
@@ -14,10 +15,12 @@ import {
 	cycleOf,
 	daysOfWeek,
 	drawPick,
+	fitTiles,
 	longDay,
 	newId,
 	recentPicks,
 	shortDay,
+	templateTickIds,
 	today,
 	weekNumber,
 	weekOf,
@@ -63,13 +66,15 @@ export const WIDGET_NAMES: Record<Widget['type'], string> = {
 }
 
 /** A block's frame: its heading, a count on the right, and what it holds. */
-export function Block({ title, meta, children, className }: { title: ReactNode; meta?: ReactNode; children: ReactNode; className?: string }) {
+export function Block({ title, meta, children, className, hideHead }: { title: ReactNode; meta?: ReactNode; children: ReactNode; className?: string; hideHead?: boolean }) {
 	return (
-		<section className={`lb-daily-block ${className ?? ''}`}>
-			<header className="lb-daily-block__head">
-				<h3 className="lb-daily-block__title">{title}</h3>
-				{meta !== undefined && <span className="lb-daily-block__meta">{meta}</span>}
-			</header>
+		<section className={`lb-daily-block ${className ?? ''}`} aria-label={hideHead && typeof title === 'string' ? title : undefined}>
+			{!hideHead && (
+				<header className="lb-daily-block__head">
+					<h3 className="lb-daily-block__title">{title}</h3>
+					{meta !== undefined && <span className="lb-daily-block__meta">{meta}</span>}
+				</header>
+			)}
 			<div className="lb-daily-block__body">{children}</div>
 		</section>
 	)
@@ -188,7 +193,7 @@ function HeaderWidget() {
 /* ---------------------------------------------------------------------------------- icon tasks */
 
 /** A tile to cross out: the icon, struck through with an X once done. */
-export function IconTile({ task, done, onToggle }: { task: IconTask; done: boolean; onToggle: () => void }) {
+export function IconTile({ task, done, onToggle, size }: { task: IconTask; done: boolean; onToggle: () => void; size?: number }) {
 	return (
 		<button
 			type="button"
@@ -197,9 +202,16 @@ export function IconTile({ task, done, onToggle }: { task: IconTask; done: boole
 			aria-label={`${task.name}${done ? ', done' : ''}`}
 			title={task.name}
 			onClick={onToggle}
+			style={size ? { width: size, height: size, borderRadius: Math.max(5, Math.round(size * 0.2)) } : undefined}
 		>
 			<span className="lb-daily-tile__icon">
-				{task.icon ? <CatalogueIcon name={task.icon} size={22} strokeWidth={1.6} /> : <span className="lb-daily-tile__letter">{task.name.slice(0, 1).toUpperCase()}</span>}
+				{task.icon ? (
+					<CatalogueIcon name={task.icon} size={size ? Math.round(size * 0.5) : 22} strokeWidth={1.6} />
+				) : (
+					<span className="lb-daily-tile__letter" style={size ? { fontSize: Math.round(size * 0.38) } : undefined}>
+						{task.name.slice(0, 1).toUpperCase()}
+					</span>
+				)}
 			</span>
 			{done && (
 				<svg className="lb-daily-tile__cross" viewBox="0 0 40 40" aria-hidden="true">
@@ -216,16 +228,56 @@ function useToggleTick() {
 		updatePage((p) => ({ ...p, ticks: p.ticks.includes(id) ? p.ticks.filter((t) => t !== id) : [...p.ticks, id] }))
 }
 
+function useIconTasks(template: BlockTemplate): IconTask[] {
+	const { setup } = useDaily()
+	return template.iconTaskIds.flatMap((id) => setup.iconTasks.find((t) => t.id === id) ?? [])
+}
+
+/** A template's icon tasks in a row that wraps, at their own size: Physical's, beside its numbers. */
 function IconTiles({ template }: { template: BlockTemplate }) {
-	const { setup, page } = useDaily()
+	const { page } = useDaily()
 	const toggle = useToggleTick()
-	const tasks = template.iconTaskIds.flatMap((id) => setup.iconTasks.find((t) => t.id === id) ?? [])
-	if (!tasks.length) return <p className="lb-daily-empty">No icon tasks yet: add them in the Inspector.</p>
+	const tasks = useIconTasks(template)
 	return (
 		<div className="lb-daily-tiles">
 			{tasks.map((t) => (
 				<IconTile key={t.id} task={t} done={page.ticks.includes(t.id)} onToggle={() => toggle(t.id)} />
 			))}
+		</div>
+	)
+}
+
+const TILE_GAP = 6
+
+/**
+ * A block's icon tasks on a grid that fills the room the block leaves them, the tiles growing or
+ * shrinking with it: rows by columns as the widget says, or whatever draws them largest. Measured
+ * unscaled (`clientWidth`), since the page around it is scaled to fit the screen.
+ */
+function IconGrid({ template, rows, cols }: { template: BlockTemplate; rows?: number; cols?: number }) {
+	const { page } = useDaily()
+	const toggle = useToggleTick()
+	const tasks = useIconTasks(template)
+	const box = useRef<HTMLDivElement>(null)
+	const [room, setRoom] = useState({ width: 0, height: 0 })
+	useLayoutEffect(() => {
+		const el = box.current
+		if (!el) return
+		const measure = () => setRoom((was) => (was.width === el.clientWidth && was.height === el.clientHeight ? was : { width: el.clientWidth, height: el.clientHeight }))
+		measure()
+		const observer = new ResizeObserver(measure)
+		observer.observe(el)
+		return () => observer.disconnect()
+	}, [])
+	// Left to itself a tile stays the size it always was; on a grid set by hand it may grow larger.
+	const fit = fitTiles(tasks.length, room, { rows, cols }, { gap: TILE_GAP, min: 16, max: rows || cols ? 96 : 44 })
+	return (
+		<div ref={box} className="lb-daily-icongrid">
+			<div className="lb-daily-tiles lb-daily-tiles--grid" style={{ gridTemplateColumns: `repeat(${fit.cols}, ${fit.size}px)`, gap: TILE_GAP }}>
+				{tasks.map((t) => (
+					<IconTile key={t.id} task={t} size={fit.size} done={page.ticks.includes(t.id)} onToggle={() => toggle(t.id)} />
+				))}
+			</div>
 		</div>
 	)
 }
@@ -258,21 +310,22 @@ function TemplateBlock({ widget }: { widget: Widget }) {
 			</Block>
 		)
 	}
-	const ids = template.kind === 'icons' ? template.iconTaskIds : template.items.map((i) => i.id)
+	const ids = templateTickIds(template)
 	const done = ids.filter((id) => page.ticks.includes(id)).length
 	return (
-		<Block title={title} meta={`${done}/${ids.length}`}>
-			<TemplateItems template={template} />
+		<Block title={title} meta={`${done}/${ids.length}`} className="lb-daily-block--grid" hideHead={widget.config.hideTitle}>
+			{!ids.length && <p className="lb-daily-empty">Nothing in it yet: add icon tasks or a checklist in the Inspector.</p>}
+			{template.iconTaskIds.length > 0 && <IconGrid template={template} rows={widget.config.iconRows} cols={widget.config.iconCols} />}
+			<Checklist template={template} />
 		</Block>
 	)
 }
 
-/** A template's tasks as it is made: tiles to cross out, or a checklist. */
-function TemplateItems({ template }: { template: BlockTemplate }) {
+/** A template's checklist, under its icon tasks. */
+function Checklist({ template }: { template: BlockTemplate }) {
 	const { page } = useDaily()
 	const toggle = useToggleTick()
-	if (template.kind === 'icons') return <IconTiles template={template} />
-	if (!template.items.length) return <p className="lb-daily-empty">No items yet: add them in the Inspector.</p>
+	if (!template.items.length) return null
 	return (
 		<ul className="lb-daily-checks">
 			{template.items.map((item) => (
@@ -364,7 +417,7 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 	const { setup, page, updatePage, blobs } = useDaily()
 	const template = setup.templates.find((t) => t.id === widget.config.templateId)
 	const metrics = (widget.config.metricIds ?? []).flatMap((id) => setup.metrics.find((m) => m.id === id) ?? [])
-	const ids = template ? (template.kind === 'icons' ? template.iconTaskIds : template.items.map((i) => i.id)) : []
+	const ids = template ? templateTickIds(template) : []
 	const done = ids.filter((id) => page.ticks.includes(id)).length
 	const camera = useRef<HTMLInputElement>(null)
 	const [saving, setSaving] = useState(false)
@@ -392,7 +445,7 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 	return (
 		<Block title={widgetTitle(widget, setup.templates)} meta={ids.length ? `${done}/${ids.length}` : undefined}>
 			<div className="lb-daily-physical__top">
-				{template?.kind === 'icons' && <IconTiles template={template} />}
+				{template && template.iconTaskIds.length > 0 && <IconTiles template={template} />}
 				{metrics.map((m) => (
 					<label key={m.id} className="lb-daily-number">
 						<span>{m.name}</span>
@@ -417,7 +470,7 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 					</label>
 				))}
 			</div>
-			{template?.kind === 'checklist' && <TemplateItems template={template} />}
+			{template && <Checklist template={template} />}
 			{widget.config.fasting !== false && (
 				<div className="lb-daily-row">
 					<span className="lb-daily-label">Fasting</span>
@@ -469,15 +522,18 @@ function PhysicalWidget({ widget }: { widget: Widget }) {
 function FoodPhoto({ hash, at, onRemove }: { hash: string; at: string; onRemove: () => void }) {
 	const { blobs } = useDaily()
 	const url = usePhotoUrl(blobs, hash)
+	const [open, setOpen] = useState(false)
+	const alt = `Food at ${at}`
 	return (
 		<figure className="lb-daily-food__photo">
 			{url ? (
-				<a href={url} target="_blank" rel="noreferrer">
-					<img src={url} alt={`Food at ${at}`} />
-				</a>
+				<button type="button" className="lb-daily-food__open" aria-label={`Show the photo from ${at}`} onClick={() => setOpen(true)}>
+					<img src={url} alt={alt} />
+				</button>
 			) : (
 				<span className="lb-daily-food__loading" />
 			)}
+			{open && url && <ImageLightbox image={{ src: url, alt }} onClose={() => setOpen(false)} />}
 			<figcaption>{at}</figcaption>
 			<button type="button" className="lb-daily-food__remove lb-daily-noprint" aria-label={`Remove the photo from ${at}`} onClick={onRemove}>
 				<X size={10} aria-hidden="true" />
@@ -532,6 +588,7 @@ function PickWidget({ widget }: { widget: Widget }) {
 	const stored = page.picks[widget.id]
 	const isToday = day === today()
 	const boardName = useBoardName(board)
+	const [searching, setSearching] = useState(false)
 
 	// The pick of a day nobody drew for yet: today's is drawn and kept the first time it is shown, so it
 	// stays put whatever the list does later. Another day's is left alone.
@@ -551,16 +608,25 @@ function PickWidget({ widget }: { widget: Widget }) {
 	const pick = stored && (stored.source === source || !isToday) ? stored : drawn
 
 	const setPick = (next: DayPick) => updatePage((p) => ({ ...p, picks: { ...p.picks, [widget.id]: next } }))
+	// A stamp is always kept on the page; it is filed on the board too once there is one to file it on.
+	const fileOn = stamps?.stamp && board ? stamps.stamp : null
 	const stamp = (kind: string) => {
 		if (!pick) return
 		const next = pick.stamp === kind ? '' : kind
-		stamps?.stamp?.({ boardId: board, card: `daily-${day}`, source: pick.source, entry: pick, kind: next || null, date: day })
+		fileOn?.({ boardId: board, card: `daily-${day}`, source: pick.source, entry: pick, kind: next || null, date: day })
 		setPick({ ...pick, stamp: next })
 	}
 	const another = () => {
 		if (!pick) return
 		const next = draw(pick.draws + 1, pick.id)
 		if (next) setPick(next)
+	}
+	// One chosen by hand, say an album already heard apart from the draw: it is the day's pick from now
+	// on, with a stamp and an impression of its own.
+	const choose = (entry: SourceEntry) => {
+		const { id, title, creator, year, cover, url } = entry
+		setPick({ source, id, title, creator, year, cover, url, draws: pick?.draws ?? 0, stamp: '', impression: '' })
+		setSearching(false)
 	}
 	const title = widgetTitle(widget, setup.templates)
 
@@ -573,8 +639,17 @@ function PickWidget({ widget }: { widget: Widget }) {
 	}
 	return (
 		<Block title={title} meta={resolved.source?.label === 'Randomizer stamps' ? resolved.name : 'Randomizer'}>
-			{!pick ? (
-				<p className="lb-daily-empty">{day > today() ? 'Draws that morning.' : entries.length ? 'Not drawn that day.' : `${resolved.name} is empty.`}</p>
+			{searching ? (
+				<PickSearch entries={entries} listName={resolved.name} onChoose={choose} onClose={() => setSearching(false)} />
+			) : !pick ? (
+				<>
+					<p className="lb-daily-empty">{day > today() ? 'Draws that morning.' : entries.length ? 'Not drawn that day.' : `${resolved.name} is empty.`}</p>
+					{entries.length > 0 && (
+						<button type="button" className="lb-daily-linkbtn lb-daily-noprint" onClick={() => setSearching(true)}>
+							<Search size={12} aria-hidden="true" /> Choose one
+						</button>
+					)}
+				</>
 			) : (
 				<>
 					<div className="lb-daily-pick">
@@ -598,8 +673,7 @@ function PickWidget({ widget }: { widget: Widget }) {
 										type="button"
 										className="lb-daily-chip"
 										aria-pressed={pick.stamp === id}
-										disabled={!stamps?.stamp || !board}
-										title={!stamps?.stamp ? 'Turn the Randomizer on to stamp' : !board ? 'Choose a board to save to first' : `${label}, saved to ${boardName ?? 'the board'}`}
+										title={fileOn ? `${label}, saved to ${boardName ?? 'the board'}` : `${label}, kept on this page`}
 										onClick={() => stamp(id)}
 									>
 										<Icon size={11} aria-hidden="true" /> {label}
@@ -616,10 +690,17 @@ function PickWidget({ widget }: { widget: Widget }) {
 						onChange={(e) => setPick({ ...pick, impression: e.target.value })}
 					/>
 					<div className="lb-daily-pick__foot lb-daily-noprint">
-						<button type="button" className="lb-daily-linkbtn" onClick={another} disabled={entries.length < 2}>
-							<Shuffle size={12} aria-hidden="true" /> Another one
-						</button>
-						{board ? (
+						<span className="lb-daily-pick__actions">
+							<button type="button" className="lb-daily-linkbtn" onClick={another} disabled={entries.length < 2}>
+								<Shuffle size={12} aria-hidden="true" /> Another one
+							</button>
+							<button type="button" className="lb-daily-linkbtn" onClick={() => setSearching(true)} title={`Search ${resolved.name} for one to pick`}>
+								<Search size={12} aria-hidden="true" /> Search
+							</button>
+						</span>
+						{!stamps?.stamp ? (
+							<span className="lb-daily-faint">Randomizer off: stamps stay on this page</span>
+						) : board ? (
 							<button
 								type="button"
 								className="lb-daily-chip"
@@ -632,12 +713,60 @@ function PickWidget({ widget }: { widget: Widget }) {
 								Save to <ArrowRight size={11} aria-hidden="true" /> {boardName ?? 'a board that is gone'}
 							</button>
 						) : (
-							<span className="lb-daily-faint">No board to save to</span>
+							<span className="lb-daily-faint">No board: stamps stay on this page</span>
 						)}
 					</div>
 				</>
 			)}
 		</Block>
+	)
+}
+
+/** How many matches the pick's search lists at once. */
+const SEARCH_SHOWN = 8
+
+/** Looks through the pick's list for one to make the day's pick: every word typed has to match. */
+function PickSearch({ entries, listName, onChoose, onClose }: { entries: readonly SourceEntry[]; listName: string; onChoose: (entry: SourceEntry) => void; onClose: () => void }) {
+	const [query, setQuery] = useState('')
+	const words = foldText(query).split(' ').filter(Boolean)
+	const found = words.length ? entries.filter((e) => words.every((w) => foldText(`${e.title} ${e.creator} ${e.year}`).includes(w))) : []
+	return (
+		<div className="lb-daily-picksearch lb-daily-noprint">
+			<div className="lb-daily-addrow">
+				{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+				<input
+					autoFocus
+					className="lb-daily-input"
+					placeholder={`Search ${listName}…`}
+					aria-label={`Search ${listName}`}
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
+					onKeyDown={(e) => {
+						if (e.key === 'Escape') onClose()
+						if (e.key === 'Enter' && found[0]) onChoose(found[0])
+					}}
+				/>
+				<button type="button" className="lb-daily-iconbtn" aria-label="Close the search" onClick={onClose}>
+					<X size={14} aria-hidden="true" />
+				</button>
+			</div>
+			{words.length > 0 &&
+				(found.length ? (
+					<ul className="lb-daily-picksearch__list">
+						{found.slice(0, SEARCH_SHOWN).map((e) => (
+							<li key={e.id}>
+								<button type="button" className="lb-daily-picksearch__item" onClick={() => onChoose(e)}>
+									<strong>{e.title}</strong>
+									<span className="lb-daily-faint">{[e.creator, e.year].filter(Boolean).join(' · ')}</span>
+								</button>
+							</li>
+						))}
+						{found.length > SEARCH_SHOWN && <li className="lb-daily-faint">{found.length - SEARCH_SHOWN} more: type more of the name</li>}
+					</ul>
+				) : (
+					<p className="lb-daily-empty">Nothing in {listName} matches.</p>
+				))}
+		</div>
 	)
 }
 

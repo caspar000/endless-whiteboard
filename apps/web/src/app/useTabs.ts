@@ -10,6 +10,9 @@ import type { BoardMeta } from '../boards/boardIndex'
  */
 const TABS_KEY = 'lifeboard:openTabs'
 
+/** The daily page's tab (DARK-17): kept in the same list as the boards' ids, so it sits among them. */
+export const DAILY_TAB = 'daily'
+
 function loadTabs(): string[] {
 	try {
 		const raw = sessionStorage.getItem(TABS_KEY)
@@ -37,7 +40,7 @@ export function useTabs(boards: BoardMeta[], boardsLoading: boolean) {
 		if (boardsLoading) return
 		const known = new Set(boards.map((b) => b.id))
 		setTabs((current) => {
-			const kept = current.filter((id) => known.has(id))
+			const kept = current.filter((id) => id === DAILY_TAB || known.has(id))
 			return kept.length === current.length ? current : kept
 		})
 	}, [boards, boardsLoading])

@@ -140,12 +140,15 @@ function Templates({ setup, widgets, onAdd, mode }: { setup: DailySetup; widgets
 			<ul className="lb-daily-libitems">
 				{setup.templates.map((t) => {
 					const onPage = widgets.some((w) => w.config.templateId === t.id)
-					const count = t.kind === 'icons' ? t.iconTaskIds.length : t.items.length
+					const parts = [
+						t.iconTaskIds.length ? `${t.iconTaskIds.length} icon task${t.iconTaskIds.length === 1 ? '' : 's'}` : '',
+						t.items.length ? `${t.items.length} checklist item${t.items.length === 1 ? '' : 's'}` : '',
+					].filter(Boolean)
 					return (
 						<LibraryItem
 							key={t.id}
 							name={t.name || 'Untitled'}
-							description={`${t.kind === 'icons' ? 'Icon tasks' : 'Checklist'} · ${count} item${count === 1 ? '' : 's'}${onPage ? ' · on this page' : used(t) ? ` · in ${used(t)} layout${used(t) === 1 ? '' : 's'}` : ''}`}
+							description={`${parts.join(' · ') || 'Empty'}${onPage ? ' · on this page' : used(t) ? ` · in ${used(t)} layout${used(t) === 1 ? '' : 's'}` : ''}`}
 							payload={{ kind: 'new', type: 'block', templateId: t.id }}
 							disabled={mode === 'review'}
 							onAdd={() => onAdd({ kind: 'new', type: 'block', templateId: t.id })}
@@ -157,7 +160,7 @@ function Templates({ setup, widgets, onAdd, mode }: { setup: DailySetup; widgets
 				type="button"
 				className="lb-daily-dashed"
 				onClick={() =>
-					updateSetup((s) => ({ ...s, templates: [...s.templates, { id: newId('b'), name: 'NEW BLOCK', kind: 'checklist', iconTaskIds: [], items: [] }] }))
+					updateSetup((s) => ({ ...s, templates: [...s.templates, { id: newId('b'), name: 'NEW BLOCK', iconTaskIds: [], items: [] }] }))
 				}
 			>
 				<Plus size={14} aria-hidden="true" /> New block template

@@ -13,6 +13,7 @@ import {
 	focusOf,
 	freeCells,
 	layoutFor,
+	nearbyPicks,
 	metricTotal,
 	newPage,
 	newWeek,
@@ -242,6 +243,18 @@ describe('the daily pick', () => {
 		const pick = { source: 's', id: 'a', title: '', creator: '', year: '', cover: '', url: '', draws: 0, stamp: '', impression: '' }
 		const pages = { '2026-11-20': { ...newPage('2026-11-20'), picks: { w: pick } }, '2026-10-01': { ...newPage('2026-10-01'), picks: { w: { ...pick, id: 'old' } } } }
 		expect([...recentPicks(pages, '2026-11-24', 30)]).toEqual(['a'])
+	})
+})
+
+describe('drawing a day ahead', () => {
+	it('steers clear of the days before and the day after', () => {
+		const pick = (id: string) => ({ source: 's', id, title: id, creator: '', year: '', cover: '', url: '', draws: 0, stamp: '', impression: '' })
+		const pages = {
+			'2026-11-23': { ...newPage('2026-11-23'), picks: { w: pick('mon') } },
+			'2026-11-25': { ...newPage('2026-11-25'), picks: { w: pick('wed') } },
+			'2026-11-26': { ...newPage('2026-11-26'), picks: { w: pick('thu') } },
+		}
+		expect([...nearbyPicks(pages, '2026-11-24', 30)].sort()).toEqual(['mon', 'wed'])
 	})
 })
 

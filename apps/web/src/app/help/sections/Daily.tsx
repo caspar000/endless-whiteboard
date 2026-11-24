@@ -67,9 +67,11 @@ export function Daily(_props: SectionProps) {
 				</p>
 				<p>
 					The <strong>daily pick</strong> draws one thing a day from any list a randomizer could use, such
-					as a backlog of albums, and draws the same one on every device. <em>Another one</em> draws again,
-					never something drawn in the last 30 days or already stamped. <em>Search</em> looks through the
-					list for one you choose yourself, say an album you heard apart from the draw. Liked, Disliked and Unsure are kept
+					as a backlog of albums, and draws the same one on every device. Each day’s is drawn the day before,
+					and today’s widget names tomorrow’s, so its album can be downloaded the evening before.{' '}
+					<em>Another one</em> draws again, never something drawn in the 30 days before or on the day after,
+					or already stamped. To choose one yourself, say an album you heard apart from the draw, search the
+					list in the Inspector. Liked, Disliked and Unsure are kept
 					on the page, and filed on the board you choose to save to, as a randomizer’s stamps there are, so
 					its rankings and randomizers count them. Choosing a list that belongs to a board saves to that
 					board. Write a one-line impression under it, and the review gathers them.

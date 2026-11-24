@@ -27,7 +27,9 @@ export function Daily(_props: SectionProps) {
 			<Section title="Blocks, icon tasks and templates">
 				<p>
 					An <strong>icon task</strong> is a recurring task drawn as a tile you cross out: brushing teeth,
-					a shower, an album. Make them in the Library’s <em>Icon tasks</em> tab and give each an icon. A{' '}
+					a shower, an album. Make them in the Library’s <em>Icon tasks</em> tab and give each an icon: the picker’s{' '}
+					<em>Activities</em> tab holds sport pictograms (swimming, kendo, weightlifting) and <em>Everyday</em>{' '}
+					things done around the day (a toothbrush, laundry, the bins). A{' '}
 					<strong>block template</strong> (MORNING, HABITS, EVENING) is a set of icon tasks with a checklist
 					under them, either one optional, made once and put on any page. Changing a template changes every
 					page that uses it; Detach in the Inspector makes a copy for one block alone.

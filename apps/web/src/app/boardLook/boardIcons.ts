@@ -1,30 +1,50 @@
 import { useEffect, useSyncExternalStore } from 'react'
 
 /**
- * The icons a board can wear on its tab, its sidebar row and its card: every outline icon of Tabler
- * (tabler.io/icons, MIT), some 4,700 once the crossed-out variants are left out, each searchable by
- * its name, its category and Tabler's own tags. They load on first use, as one chunk (`tablerIcons.json`, written by
- * scripts/build-board-icons.mjs), so a page with no icons on it pays nothing for them.
+ * The icons a board can wear on its tab, its sidebar row and its card, and an icon task on the daily
+ * page: every outline icon of Tabler (tabler.io/icons, MIT), some 4,700 once the crossed-out variants
+ * are left out, each searchable by its name, its category and Tabler's own tags; and before them the
+ * icon packs, hand-picked sets from other open icon sets (`iconPacks.json`, written by
+ * scripts/build-icon-packs.mjs): Activities, pictograms of sports, and Everyday, things done around the
+ * day. They load on first use, as chunks (`tablerIcons.json` is written by scripts/build-board-icons.mjs),
+ * so a page with no icons on it pays nothing for them.
  *
- * A board stores the icon's name, so a name here is stored data. Boards first stored Lucide's names;
- * `RENAMED` maps those that Tabler does not share to its nearest icon, so no board loses its icon.
+ * An icon's name is stored data. A pack's icons are named `<pack>:<name>` (`activities:swimming`), so
+ * they never meet Tabler's. Boards first stored Lucide's names; `RENAMED` maps those that Tabler does not
+ * share to its nearest icon, so no board loses its icon.
  */
 export type IconPath = string | [d: string, attributes: Record<string, string>]
 
 export interface BoardIcon {
 	name: string
+	/** What it is called on screen: its name in words, without its pack. */
+	label: string
+	/** Tabler's category, or the pack's name. */
 	category: string
 	/** Everything it can be found by: its name, category and tags, and our own words for it. */
 	words: string
 	paths: readonly IconPath[]
+	/** The part of its canvas to draw, as a `viewBox`, when it isn't Tabler's 24 units. */
+	box?: string
+}
+
+/** A pack's icons, in its groups, for a picker to show as they were picked. */
+export interface IconPack {
+	id: string
+	name: string
+	groups: readonly (readonly [group: string, icons: readonly BoardIcon[]])[]
 }
 
 export interface IconCatalogue {
 	icons: readonly BoardIcon[]
 	byName: ReadonlyMap<string, BoardIcon>
-	/** Tabler's categories, the ones a board is likeliest to want first. */
+	/** The packs' names, then Tabler's categories, the ones a board is likeliest to want first. */
 	categories: readonly string[]
+	packs: readonly IconPack[]
 }
+
+/** An icon's name without its pack: `swimming` for `activities:swimming`. */
+const bare = (name: string) => name.slice(name.indexOf(':') + 1)
 
 /** Lucide names boards stored before the catalogue moved to Tabler, by the Tabler icon they now show. */
 const RENAMED: Readonly<Record<string, string>> = {
@@ -420,15 +440,33 @@ let catalogue: IconCatalogue | null = null
 let loading: Promise<IconCatalogue> | null = null
 const listeners = new Set<() => void>()
 
-function build(icons: [string, string, string, IconPath[]][]): IconCatalogue {
+/** `iconPacks.json` as written: each icon as [name, words, viewBox or '', paths]. */
+interface PackData {
+	packs: { id: string; name: string; groups: [string, [string, string, string, IconPath[]][]][] }[]
+}
+
+function build(icons: [string, string, string, IconPath[]][], packData: PackData): IconCatalogue {
 	const ours = new Map(SUGGESTED.flatMap(([, entries]) => entries))
-	const list = icons.map(([name, category, tags, paths]) => ({
+	const packs: IconPack[] = packData.packs.map(({ id, name: pack, groups }) => ({
+		id,
+		name: pack,
+		groups: groups.map(([group, entries]) => [
+			group,
+			entries.map(([name, words, box, paths]): BoardIcon => {
+				const label = name.replace(/-/g, ' ')
+				return { name: `${id}:${name}`, label, category: pack, words: `${label} ${words} ${group.toLowerCase()} ${pack.toLowerCase()}`, paths, ...(box ? { box } : {}) }
+			}),
+		]),
+	}))
+	const tabler = icons.map(([name, category, tags, paths]): BoardIcon => ({
 		name,
+		label: name.replace(/-/g, ' '),
 		category: category || OTHER,
 		words: `${name.replace(/-/g, ' ')} ${(category || OTHER).toLowerCase()} ${tags} ${ours.get(name) ?? ''}`.trim(),
 		paths,
 	}))
-	const present = new Set(list.map((icon) => icon.category))
+	const list = [...packs.flatMap((pack) => pack.groups.flatMap(([, entries]) => entries)), ...tabler]
+	const present = new Set(tabler.map((icon) => icon.category))
 	const rank = (category: string) => {
 		const at = CATEGORY_ORDER.indexOf(category)
 		return at === -1 ? CATEGORY_ORDER.length : at
@@ -436,15 +474,16 @@ function build(icons: [string, string, string, IconPath[]][]): IconCatalogue {
 	return {
 		icons: list,
 		byName: new Map(list.map((icon) => [icon.name, icon])),
-		categories: [...present].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)),
+		categories: [...packs.map((pack) => pack.name), ...[...present].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))],
+		packs,
 	}
 }
 
 /** The catalogue, loading it the first time it is asked for. A failed load can be tried again. */
 export function loadBoardIcons(): Promise<IconCatalogue> {
-	loading ??= import('./tablerIcons.json')
-		.then(({ default: data }) => {
-			catalogue = build(data.icons as [string, string, string, IconPath[]][])
+	loading ??= Promise.all([import('./tablerIcons.json'), import('./iconPacks.json')])
+		.then(([{ default: data }, { default: packData }]) => {
+			catalogue = build(data.icons as [string, string, string, IconPath[]][], packData as unknown as PackData)
 			for (const listener of listeners) listener()
 			return catalogue
 		})
@@ -489,14 +528,23 @@ export function searchBoardIcons(
 	for (const icon of icons) {
 		const words = icon.words.split(' ')
 		if (!terms.every((term) => words.some((word) => word.startsWith(term)))) continue
-		const nameWords = icon.name.split('-')
+		const name = bare(icon.name)
+		const nameWords = name.split('-')
 		const score =
-			icon.name === joined ? 0
-			: icon.name.startsWith(joined) ? 1
+			name === joined ? 0
+			: name.startsWith(joined) ? 1
 			: terms.every((term) => nameWords.some((word) => word.startsWith(term))) ? 2
 			: 3
 		scored.push({ icon, score })
 	}
-	scored.sort((a, b) => a.score - b.score || a.icon.name.length - b.icon.name.length || a.icon.name.localeCompare(b.icon.name))
+	// Between two as close, a pack's icon first: the packs were picked for what people look for.
+	const packFirst = (icon: BoardIcon) => (icon.name.includes(':') ? 0 : 1)
+	scored.sort(
+		(a, b) =>
+			a.score - b.score ||
+			bare(a.icon.name).length - bare(b.icon.name).length ||
+			packFirst(a.icon) - packFirst(b.icon) ||
+			a.icon.name.localeCompare(b.icon.name)
+	)
 	return { icons: scored.slice(0, SEARCH_LIMIT).map(({ icon }) => icon), total: scored.length }
 }

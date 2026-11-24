@@ -59,7 +59,14 @@ set (about 4,700, MIT), searched by name, category and Tabler's tags plus words 
 hundred suggested ones, so "gym" finds the dumbbell and "car engine" the engine. They live in
 `app/boardLook/tablerIcons.json`, written by `scripts/build-board-icons.mjs` and loaded only when an
 icon is first needed. A board stores the icon's name, so the names are stored data; boards that stored
-one of Lucide's names before the move show Tabler's nearest (`RENAMED` in `boardIcons.ts`). Every
+one of Lucide's names before the move show Tabler's nearest (`RENAMED` in `boardIcons.ts`). Before
+Tabler's categories come two **icon packs**, each a tab of its own in the board picker and in the inline
+picker the daily page and skill nodes use: *Activities*, 67 sport pictograms (Material Symbols and
+Material Design Icons, Apache-2.0, one from Temaki, CC0), and *Everyday*, 87 things done around the day,
+from a toothbrush to the bins (Fluent Emoji High Contrast, MIT, and a few from Tabler). Their icons are
+named `<pack>:<name>` (`activities:swimming`) so they never meet Tabler's, rank first in search when as
+close, and each brings its own `viewBox`. They are picked by hand in `scripts/build-icon-packs.mjs`,
+which writes `app/boardLook/iconPacks.json` from the `@iconify-json/*` packages. Every
 colour is drawn as the default is, a gradient into a hue 40° on (`boardGradient`), and the swatches
 sit at the default's softness. Both are saved with the board's name, in the board index or the
 server's `boards` table, and changing them does not count as editing the board.

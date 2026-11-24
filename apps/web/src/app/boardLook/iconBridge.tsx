@@ -19,14 +19,21 @@ export function CatalogueIcon({ name, size = 18, strokeWidth = 1.75 }: { name: s
 /** How many icons the inline chooser draws: it lives in a node's editor, not a full picker. */
 const INLINE_LIMIT = 60
 
+const SUGGESTED_TAB = 'Suggested'
+
+/** A search box, then the suggestions or one of the packs (Activities, Everyday), each a tab. */
 export function InlineIconPicker({ value, onPick }: { value: string; onPick: (name: string | null) => void }) {
 	const catalogue = useBoardIcons()
 	const [query, setQuery] = useState('')
+	const [tab, setTab] = useState(SUGGESTED_TAB)
 	const shown = useMemo<readonly BoardIcon[]>(() => {
 		if (!catalogue) return []
 		if (query.trim()) return searchBoardIcons(catalogue, query).icons.slice(0, INLINE_LIMIT)
+		const pack = catalogue.packs.find((p) => p.name === tab)
+		// A pack is shown whole: it is a few dozen icons, picked to be looked through.
+		if (pack) return pack.groups.flatMap(([, icons]) => icons)
 		return SUGGESTED.flatMap(([, entries]) => entries.flatMap(([name]) => catalogue.byName.get(name) ?? [])).slice(0, INLINE_LIMIT)
-	}, [catalogue, query])
+	}, [catalogue, query, tab])
 	const current = iconName(value)
 
 	return (
@@ -48,6 +55,15 @@ export function InlineIconPicker({ value, onPick }: { value: string; onPick: (na
 					</button>
 				)}
 			</div>
+			{catalogue && !query.trim() && (
+				<div className="lb-look__tabs lb-iconpick__tabs" role="tablist" aria-label="Icon sets">
+					{[SUGGESTED_TAB, ...catalogue.packs.map((p) => p.name)].map((name) => (
+						<button key={name} type="button" role="tab" className="lb-look__tab" aria-selected={tab === name} onClick={() => setTab(name)}>
+							{name}
+						</button>
+					))}
+				</div>
+			)}
 			{!catalogue ? (
 				<p className="lb-look__empty">Loading icons…</p>
 			) : shown.length === 0 ? (
@@ -59,8 +75,8 @@ export function InlineIconPicker({ value, onPick }: { value: string; onPick: (na
 							key={icon.name}
 							type="button"
 							className="lb-look__icon"
-							aria-label={icon.name.replace(/-/g, ' ')}
-							title={icon.name.replace(/-/g, ' ')}
+							aria-label={icon.label}
+							title={icon.label}
 							aria-pressed={current === icon.name}
 							onClick={() => onPick(icon.name)}
 						>

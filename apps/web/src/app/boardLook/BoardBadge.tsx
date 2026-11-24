@@ -14,11 +14,11 @@ export function inkOn(hex: string): string {
 	return brightness > 0.62 ? PALE_INK : '#fff'
 }
 
-/** One catalogue icon, drawn the way Tabler draws it: 24 units, a 2-unit round stroke. */
+/** One catalogue icon, drawn the way Tabler draws it: 24 units, a 2-unit round stroke. A pack's icon brings its own canvas and fills. */
 export function BoardIconSvg({ icon, size, strokeWidth = 2 }: { icon: BoardIcon; size?: number; strokeWidth?: number }) {
 	return (
 		<svg
-			viewBox="0 0 24 24"
+			viewBox={icon.box ?? '0 0 24 24'}
 			width={size}
 			height={size}
 			fill="none"

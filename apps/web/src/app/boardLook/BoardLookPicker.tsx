@@ -141,8 +141,8 @@ function BoardLookPicker({
 			key={icon.name}
 			type="button"
 			className="lb-look__icon"
-			aria-label={icon.name.replace(/-/g, ' ')}
-			title={icon.name.replace(/-/g, ' ')}
+			aria-label={icon.label}
+			title={icon.label}
 			aria-pressed={current === icon.name}
 			onClick={() => save({ icon: icon.name })}
 		>
@@ -154,6 +154,16 @@ function BoardLookPicker({
 
 	const browse = () => {
 		if (!catalogue) return null
+		// A pack in the groups it was picked in, like the suggestions.
+		const pack = catalogue.packs.find((p) => p.name === tab)
+		if (pack) {
+			return pack.groups.map(([group, icons]) => (
+				<section key={group} className="lb-look__group">
+					<h3 className="lb-look__group-title">{group}</h3>
+					{grid(icons)}
+				</section>
+			))
+		}
 		if (tab !== SUGGESTED_TAB) return grid(catalogue.icons.filter((icon) => icon.category === tab))
 		return SUGGESTED.map(([group, entries]) => (
 			<section key={group} className="lb-look__group">

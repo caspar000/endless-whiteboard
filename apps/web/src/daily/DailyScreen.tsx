@@ -365,7 +365,8 @@ function WeekStrip({
 							</button>
 						)
 					}
-					const progress = dayProgress(setup, pages[d], d, area?.id ?? '')
+					// A day still to come has nothing done, even when its page is there already (its pick is drawn the day before).
+					const progress = d > now ? null : dayProgress(setup, pages[d], d, area?.id ?? '')
 					return (
 						<button
 							key={d}

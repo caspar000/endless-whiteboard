@@ -1,6 +1,6 @@
 import { useValue } from '@lifeboard/canvas'
 import { foldText, getItemStamps, resolveItemSource, sourceEntries, type SourceEntry } from '@lifeboard/node-kit'
-import { ArrowRight, CalendarDays, Camera, CircleHelp, Heart, HeartOff, Pencil, Plus, Search, Shuffle, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Camera, CircleHelp, Heart, HeartOff, Pencil, Plus, Shuffle, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CatalogueIcon } from '../app/boardLook/iconBridge'
 import { ImageLightbox } from '../app/ImageLightbox'
@@ -18,7 +18,7 @@ import {
 	fitTiles,
 	longDay,
 	newId,
-	recentPicks,
+	nearbyPicks,
 	shortDay,
 	templateTickIds,
 	today,
@@ -26,13 +26,14 @@ import {
 	weekOf,
 	weekday,
 	type BlockTemplate,
+	type Day,
 	type DayPick,
 	type IconTask,
 	type Task,
 	type Widget,
 } from './model'
 import { PHOTO_ACCEPT, clockNow, storePhoto, usePhotoUrl } from './photos'
-import { updateSetup, updateWeek } from './store'
+import { updatePage as updateDayPage, updateSetup, updateWeek } from './store'
 
 /** How long the daily pick keeps a draw from coming round again. */
 const PICK_MEMORY_DAYS = 30
@@ -578,7 +579,7 @@ function useBoardName(boardId: string | undefined): string | null {
 }
 
 function PickWidget({ widget }: { widget: Widget }) {
-	const { setup, page, pages, day, updatePage, editing, boards, openBoard } = useDaily()
+	const { setup, page, pages, day, updatePage, editing, openDay } = useDaily()
 	const source = widget.config.source ?? ''
 	const board = widget.config.board ?? ''
 	const resolved = useValue('lifeboard:daily-pick-source', () => resolveItemSource(source), [source])
@@ -586,47 +587,51 @@ function PickWidget({ widget }: { widget: Widget }) {
 	const stamps = useValue('lifeboard:daily-pick-stamps', () => getItemStamps(), [])
 	useEffect(() => (resolved.source ? resolved.source.watch?.(resolved.choiceId) : undefined), [resolved.source, resolved.choiceId])
 	const stored = page.picks[widget.id]
-	const isToday = day === today()
+	const now = today()
+	const isToday = day === now
+	const tomorrow = addDays(now, 1)
 	const boardName = useBoardName(board)
-	const [searching, setSearching] = useState(false)
 
-	// The pick of a day nobody drew for yet: today's is drawn and kept the first time it is shown, so it
-	// stays put whatever the list does later. Another day's is left alone.
-	const draw = (draws: number, alsoSkip?: string): DayPick | null => {
-		const skip = recentPicks(pages, day, PICK_MEMORY_DAYS)
-		if (alsoSkip) skip.add(alsoSkip)
+	// A day's pick is drawn the day before (so its album can be fetched that evening) or on the day, the
+	// first time it is shown, and kept, whatever the list does later. Other days are left alone.
+	const drawFor = (date: Day, draws: number, alsoSkip: readonly string[] = []): DayPick | null => {
+		const skip = nearbyPicks(pages, date, PICK_MEMORY_DAYS)
+		for (const id of alsoSkip) skip.add(id)
 		if (stamps && board) for (const e of entries) if (stamps.stampOf(e, board)) skip.add(e.id)
-		const entry = drawPick(entries, day, draws, skip)
+		const entry = drawPick(entries, date, draws, skip)
 		return entry ? { source, id: entry.id, title: entry.title, creator: entry.creator, year: entry.year, cover: entry.cover, url: entry.url, draws, stamp: '', impression: '' } : null
 	}
-	const drawn = isToday && (!stored || stored.source !== source) ? draw(0) : null
+	const drawsNow = isToday || day === tomorrow
+	const drawn = drawsNow && (!stored || stored.source !== source) ? drawFor(day, 0) : null
 	useEffect(() => {
-		if (isToday && drawn && (!stored || stored.source !== source)) updatePage((p) => ({ ...p, picks: { ...p.picks, [widget.id]: drawn } }))
+		if (drawn) updatePage((p) => ({ ...p, picks: { ...p.picks, [widget.id]: drawn } }))
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isToday, drawn?.id, source, widget.id])
+	}, [drawn?.id, source, widget.id])
 	// Another day keeps what it drew, even from a list the widget no longer draws from.
-	const pick = stored && (stored.source === source || !isToday) ? stored : drawn
+	const pick = stored && (stored.source === source || !drawsNow) ? stored : drawn
 
-	const setPick = (next: DayPick) => updatePage((p) => ({ ...p, picks: { ...p.picks, [widget.id]: next } }))
+	// Today's page draws tomorrow's too, and says what it is.
+	const ahead = isToday ? pages[tomorrow]?.picks[widget.id] : undefined
+	const aheadDrawn = isToday && pick && (!ahead || ahead.source !== source) ? drawFor(tomorrow, 0, [pick.id]) : null
+	useEffect(() => {
+		if (aheadDrawn) updateDayPage(tomorrow, (p) => ({ ...p, picks: { ...p.picks, [widget.id]: aheadDrawn } }))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [aheadDrawn?.id, tomorrow, source, widget.id])
+	const next = isToday ? (ahead && ahead.source === source ? ahead : aheadDrawn) : null
+
+	const setPick = (value: DayPick) => updatePage((p) => ({ ...p, picks: { ...p.picks, [widget.id]: value } }))
 	// A stamp is always kept on the page; it is filed on the board too once there is one to file it on.
 	const fileOn = stamps?.stamp && board ? stamps.stamp : null
 	const stamp = (kind: string) => {
 		if (!pick) return
-		const next = pick.stamp === kind ? '' : kind
-		fileOn?.({ boardId: board, card: `daily-${day}`, source: pick.source, entry: pick, kind: next || null, date: day })
-		setPick({ ...pick, stamp: next })
+		const value = pick.stamp === kind ? '' : kind
+		fileOn?.({ boardId: board, card: `daily-${day}`, source: pick.source, entry: pick, kind: value || null, date: day })
+		setPick({ ...pick, stamp: value })
 	}
 	const another = () => {
 		if (!pick) return
-		const next = draw(pick.draws + 1, pick.id)
-		if (next) setPick(next)
-	}
-	// One chosen by hand, say an album already heard apart from the draw: it is the day's pick from now
-	// on, with a stamp and an impression of its own.
-	const choose = (entry: SourceEntry) => {
-		const { id, title, creator, year, cover, url } = entry
-		setPick({ source, id, title, creator, year, cover, url, draws: pick?.draws ?? 0, stamp: '', impression: '' })
-		setSearching(false)
+		const value = drawFor(day, pick.draws + 1, [pick.id])
+		if (value) setPick(value)
 	}
 	const title = widgetTitle(widget, setup.templates)
 
@@ -639,17 +644,8 @@ function PickWidget({ widget }: { widget: Widget }) {
 	}
 	return (
 		<Block title={title} meta={resolved.source?.label === 'Randomizer stamps' ? resolved.name : 'Randomizer'}>
-			{searching ? (
-				<PickSearch entries={entries} listName={resolved.name} onChoose={choose} onClose={() => setSearching(false)} />
-			) : !pick ? (
-				<>
-					<p className="lb-daily-empty">{day > today() ? 'Draws that morning.' : entries.length ? 'Not drawn that day.' : `${resolved.name} is empty.`}</p>
-					{entries.length > 0 && (
-						<button type="button" className="lb-daily-linkbtn lb-daily-noprint" onClick={() => setSearching(true)}>
-							<Search size={12} aria-hidden="true" /> Choose one
-						</button>
-					)}
-				</>
+			{!pick ? (
+				<p className="lb-daily-empty">{day > tomorrow ? 'Draws the day before.' : entries.length ? 'Not drawn that day.' : `${resolved.name} is empty.`}</p>
 			) : (
 				<>
 					<div className="lb-daily-pick">
@@ -690,30 +686,18 @@ function PickWidget({ widget }: { widget: Widget }) {
 						onChange={(e) => setPick({ ...pick, impression: e.target.value })}
 					/>
 					<div className="lb-daily-pick__foot lb-daily-noprint">
-						<span className="lb-daily-pick__actions">
-							<button type="button" className="lb-daily-linkbtn" onClick={another} disabled={entries.length < 2}>
-								<Shuffle size={12} aria-hidden="true" /> Another one
-							</button>
-							<button type="button" className="lb-daily-linkbtn" onClick={() => setSearching(true)} title={`Search ${resolved.name} for one to pick`}>
-								<Search size={12} aria-hidden="true" /> Search
-							</button>
-						</span>
-						{!stamps?.stamp ? (
-							<span className="lb-daily-faint">Randomizer off: stamps stay on this page</span>
-						) : board ? (
+						<button type="button" className="lb-daily-linkbtn" onClick={another} disabled={entries.length < 2}>
+							<Shuffle size={12} aria-hidden="true" /> Another one
+						</button>
+						{next && (
 							<button
 								type="button"
-								className="lb-daily-chip"
-								title="Open the board its stamps are saved to"
-								onClick={() => {
-									const b = boards.find((x) => x.id === board)
-									if (b) openBoard(b)
-								}}
+								className="lb-daily-linkbtn lb-daily-pick__next"
+								title={`Tomorrow: ${next.title}${next.creator ? ` by ${next.creator}` : ''}. Open tomorrow's page`}
+								onClick={() => openDay(tomorrow)}
 							>
-								Save to <ArrowRight size={11} aria-hidden="true" /> {boardName ?? 'a board that is gone'}
+								Tomorrow: <strong>{next.title}</strong>
 							</button>
-						) : (
-							<span className="lb-daily-faint">No board: stamps stay on this page</span>
 						)}
 					</div>
 				</>
@@ -726,29 +710,39 @@ function PickWidget({ widget }: { widget: Widget }) {
 const SEARCH_SHOWN = 8
 
 /** Looks through the pick's list for one to make the day's pick: every word typed has to match. */
-function PickSearch({ entries, listName, onChoose, onClose }: { entries: readonly SourceEntry[]; listName: string; onChoose: (entry: SourceEntry) => void; onClose: () => void }) {
+export function PickSearch({
+	entries,
+	listName,
+	onChoose,
+	onClose,
+}: {
+	entries: readonly SourceEntry[]
+	listName: string
+	onChoose: (entry: SourceEntry) => void
+	onClose?: () => void
+}) {
 	const [query, setQuery] = useState('')
 	const words = foldText(query).split(' ').filter(Boolean)
 	const found = words.length ? entries.filter((e) => words.every((w) => foldText(`${e.title} ${e.creator} ${e.year}`).includes(w))) : []
 	return (
 		<div className="lb-daily-picksearch lb-daily-noprint">
 			<div className="lb-daily-addrow">
-				{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
 				<input
-					autoFocus
 					className="lb-daily-input"
 					placeholder={`Search ${listName}…`}
 					aria-label={`Search ${listName}`}
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					onKeyDown={(e) => {
-						if (e.key === 'Escape') onClose()
+						if (e.key === 'Escape') onClose?.()
 						if (e.key === 'Enter' && found[0]) onChoose(found[0])
 					}}
 				/>
-				<button type="button" className="lb-daily-iconbtn" aria-label="Close the search" onClick={onClose}>
-					<X size={14} aria-hidden="true" />
-				</button>
+				{onClose && (
+					<button type="button" className="lb-daily-iconbtn" aria-label="Close the search" onClick={onClose}>
+						<X size={14} aria-hidden="true" />
+					</button>
+				)}
 			</div>
 			{words.length > 0 &&
 				(found.length ? (

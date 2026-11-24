@@ -1,6 +1,6 @@
 import { useValue } from '@lifeboard/canvas'
-import { offeredItemSources, sourceKey } from '@lifeboard/node-kit'
-import { ArrowDown, ArrowUp, Copy, Minus, Plus, X } from 'lucide-react'
+import { getItemStamps, offeredItemSources, resolveItemSource, sourceEntries, sourceKey } from '@lifeboard/node-kit'
+import { ArrowDown, ArrowRight, ArrowUp, Copy, Minus, Plus, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { CatalogueIcon } from '../app/boardLook/iconBridge'
@@ -8,6 +8,7 @@ import { sentence } from './Library'
 import {
 	GRID_MAX,
 	WEEKDAYS,
+	longDay,
 	newId,
 	type BlockTemplate,
 	type DailySetup,
@@ -19,7 +20,8 @@ import {
 } from './model'
 import { rowName } from './reviewWidgets'
 import { updateSetup } from './store'
-import { WIDGET_NAMES, widgetTitle } from './widgets'
+import { useDaily } from './context'
+import { PickSearch, WIDGET_NAMES, widgetTitle } from './widgets'
 
 export function Inspector({
 	mode,
@@ -418,8 +420,51 @@ function PickSection({ widget, boards, set }: { widget: Widget; boards: readonly
 					))}
 				</select>
 				<span className="lb-daily-faint">Liked, Disliked and Unsure are filed on this board, as a randomizer’s stamps there are.</span>
+				<PickBoardStatus widget={widget} boards={boards} />
 			</Field>
+			<PickChooser widget={widget} />
 		</>
+	)
+}
+
+/** Where the pick's stamps end up, and the way to the board they are filed on. */
+function PickBoardStatus({ widget, boards }: { widget: Widget; boards: readonly BoardMeta[] }) {
+	const { openBoard } = useDaily()
+	const stamps = useValue('lifeboard:daily-pick-stamps', () => getItemStamps(), [])
+	const board = boards.find((b) => b.id === widget.config.board)
+	if (!stamps?.stamp) return <span className="lb-daily-faint">The Randomizer is off, so stamps stay on the page.</span>
+	if (!widget.config.board) return <span className="lb-daily-faint">With no board chosen, stamps stay on the page.</span>
+	if (!board) return <span className="lb-daily-faint">That board is gone: stamps stay on the page until another is chosen.</span>
+	return (
+		<button type="button" className="lb-daily-linkbtn" onClick={() => openBoard(board)}>
+			Open {board.name} <ArrowRight size={12} aria-hidden="true" />
+		</button>
+	)
+}
+
+/** The day's pick chosen by hand from its list, say an album heard apart from the draw. */
+function PickChooser({ widget }: { widget: Widget }) {
+	const { day, page, updatePage } = useDaily()
+	const source = widget.config.source ?? ''
+	const resolved = useValue('lifeboard:daily-pick-source', () => resolveItemSource(source), [source])
+	const entries = useValue('lifeboard:daily-pick-entries', () => (source ? sourceEntries(source) : []), [source])
+	if (!source || resolved.type !== 'source' || !entries.length) return null
+	const current = page.picks[widget.id]
+	return (
+		<Field label={`Pick for ${longDay(day)}`}>
+			{current && <span className="lb-daily-faint">Now: {[current.title, current.creator].filter(Boolean).join(' · ')}</span>}
+			<PickSearch
+				entries={entries}
+				listName={resolved.name}
+				onChoose={({ id, title, creator, year, cover, url }) =>
+					updatePage((p) => ({
+						...p,
+						picks: { ...p.picks, [widget.id]: { source, id, title, creator, year, cover, url, draws: current?.draws ?? 0, stamp: '', impression: '' } },
+					}))
+				}
+			/>
+			<span className="lb-daily-faint">Choose one to make it this day’s pick instead of the draw.</span>
+		</Field>
 	)
 }
 

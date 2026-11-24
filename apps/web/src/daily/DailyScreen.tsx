@@ -150,7 +150,7 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 			// A new icon-task block brings a template of its own, to be filled in the Inspector.
 			templateId = newId('b')
 			const fresh = templateId
-			updateSetup((s) => ({ ...s, templates: [...s.templates, { id: fresh, name: 'NEW BLOCK', kind: 'icons', iconTaskIds: [], items: [] }] }))
+			updateSetup((s) => ({ ...s, templates: [...s.templates, { id: fresh, name: 'NEW BLOCK', iconTaskIds: [], items: [] }] }))
 		}
 		const config: Widget['config'] =
 			payload.type === 'physical' ? { metricIds: setup.metrics.slice(0, 1).map((m) => m.id), fasting: true, food: true }
@@ -212,30 +212,31 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 							{notice}
 						</span>
 					)}
-					<span className="lb-daily__spacer" />
-					{mode === 'daily' ? (
-						<button type="button" className="lb-daily-btn" onClick={() => openReview(reviewDay)}>
-							<CalendarDays size={14} aria-hidden="true" /> Weekly review <span className="lb-daily-faint">{WEEKDAYS[setup.reviewDay]!.slice(0, 3)} {Number(reviewDay.slice(8))}</span>
-						</button>
-					) : (
-						<button type="button" className="lb-daily-btn" onClick={() => openDay(isDayInWeek(today(), week) ? today() : day)}>
-							<CalendarDays size={14} aria-hidden="true" /> Daily page
-						</button>
-					)}
-					{!editing && (
-						<button type="button" className="lb-daily-btn" onClick={() => window.print()}>
-							<Printer size={14} aria-hidden="true" /> Print
-						</button>
-					)}
-					<button type="button" className={editing ? 'lb-daily-btn lb-daily-btn--primary' : 'lb-daily-btn'} onClick={() => setEditing(!editing)}>
-						{editing ? (
-							'Done'
+					<div className="lb-daily__actions">
+						{mode === 'daily' ? (
+							<button type="button" className="lb-daily-btn" onClick={() => openReview(reviewDay)}>
+								<CalendarDays size={14} aria-hidden="true" /> Weekly review <span className="lb-daily-faint">{WEEKDAYS[setup.reviewDay]!.slice(0, 3)} {Number(reviewDay.slice(8))}</span>
+							</button>
 						) : (
-							<>
-								<Pencil size={13} aria-hidden="true" /> Edit layout
-							</>
+							<button type="button" className="lb-daily-btn" onClick={() => openDay(isDayInWeek(today(), week) ? today() : day)}>
+								<CalendarDays size={14} aria-hidden="true" /> Daily page
+							</button>
 						)}
-					</button>
+						{!editing && (
+							<button type="button" className="lb-daily-btn lb-daily-btn--print" onClick={() => window.print()}>
+								<Printer size={14} aria-hidden="true" /> Print
+							</button>
+						)}
+						<button type="button" className={editing ? 'lb-daily-btn lb-daily-btn--primary' : 'lb-daily-btn'} onClick={() => setEditing(!editing)}>
+							{editing ? (
+								'Done'
+							) : (
+								<>
+									<Pencil size={13} aria-hidden="true" /> Edit layout
+								</>
+							)}
+						</button>
+					</div>
 				</header>
 
 				<WeekStrip setup={setup} week={week} day={day} review={review} pages={pages} onDay={openDay} onReview={openReview} />
@@ -371,6 +372,7 @@ function WeekStrip({
 							type="button"
 							className="lb-daily-day"
 							aria-pressed={!review && d === day}
+							style={area ? ({ '--area': area.color } as CSSProperties) : undefined}
 							aria-label={`${WEEKDAYS[i]} ${d}${d === now ? ', today' : ''}${area ? `, focus ${area.name}` : ''}${progress === null ? ', no page yet' : `, ${Math.round(progress * 100)}% done`}`}
 							onClick={() => onDay(d)}
 						>
@@ -449,7 +451,9 @@ function PageCanvas({
 			// The A5 page fills the column's height, as on paper; the A4 review, lying on its side, its width,
 			// and scrolls when that makes it taller than the column. Neither is drawn larger than life.
 			const across = (width - 8) / size.w
-			const fit = mode === 'daily' ? Math.min(across, (height - 8) / size.h) : across
+			// On a phone the page is as wide as the screen and the screen scrolls, as the review does.
+			const phone = window.matchMedia('(max-width: 767px)').matches
+			const fit = mode === 'daily' && !phone ? Math.min(across, (height - 8) / size.h) : across
 			setScale(Math.max(0.3, Math.min(mode === 'daily' ? 1.4 : 1, fit)))
 		}
 		fit()

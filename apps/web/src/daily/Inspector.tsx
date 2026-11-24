@@ -6,6 +6,7 @@ import type { BoardMeta } from '../boards/boardIndex'
 import { CatalogueIcon } from '../app/boardLook/iconBridge'
 import { sentence } from './Library'
 import {
+	GRID_MAX,
 	WEEKDAYS,
 	newId,
 	type BlockTemplate,
@@ -114,6 +115,7 @@ export function Inspector({
 				{(widget.type === 'block' || widget.type === 'physical') && (
 					<TemplateSection setup={setup} widget={widget} template={template} onTemplate={(templateId) => set({ templateId })} />
 				)}
+				{widget.type === 'block' && <BlockLookSection widget={widget} set={set} />}
 				{widget.type === 'physical' && <PhysicalSection setup={setup} widget={widget} set={set} />}
 				{widget.type === 'pick' && <PickSection widget={widget} boards={boards} set={set} />}
 				{widget.type === 'focus' && <FocusSection setup={setup} focus={focus} />}
@@ -270,59 +272,75 @@ function TemplateSection({ setup, widget, template, onTemplate }: { setup: Daily
 			</Field>
 			{template && (
 				<>
-					<Field label="Type">
-						<div className="lb-daily-seg">
-							<button type="button" aria-pressed={template.kind === 'icons'} onClick={() => updateTemplate(template.id, { kind: 'icons' })}>
-								Icon tasks
-							</button>
-							<button type="button" aria-pressed={template.kind === 'checklist'} onClick={() => updateTemplate(template.id, { kind: 'checklist' })}>
-								Checklist
-							</button>
+					<Field label={`Icon tasks · ${template.iconTaskIds.length}`}>
+						<div className="lb-daily-textlist">
+							{template.iconTaskIds.map((id, i) => {
+								const task = setup.iconTasks.find((t) => t.id === id)
+								return (
+									<div key={id} className="lb-daily-textlist__row">
+										<span className="lb-daily-tile lb-daily-tile--small" aria-hidden="true">
+											<span className="lb-daily-tile__icon">{task?.icon ? <CatalogueIcon name={task.icon} size={14} /> : null}</span>
+										</span>
+										<span className="lb-daily-textlist__name">{task?.name ?? 'Deleted'}</span>
+										<Reorder i={i} n={template.iconTaskIds.length} onMove={(to) => updateTemplate(template.id, { iconTaskIds: move(template.iconTaskIds, i, to) })} />
+										<button type="button" className="lb-daily-iconbtn" aria-label={`Take ${task?.name ?? 'it'} out`} onClick={() => updateTemplate(template.id, { iconTaskIds: template.iconTaskIds.filter((x) => x !== id) })}>
+											<X size={12} aria-hidden="true" />
+										</button>
+									</div>
+								)
+							})}
+							<select
+								className="lb-daily-select"
+								value=""
+								aria-label="Add an icon task"
+								onChange={(e) => e.target.value && updateTemplate(template.id, { iconTaskIds: [...template.iconTaskIds, e.target.value] })}
+							>
+								<option value="">+ Add icon task</option>
+								{setup.iconTasks
+									.filter((t) => !template.iconTaskIds.includes(t.id))
+									.map((t) => (
+										<option key={t.id} value={t.id}>
+											{t.name}
+										</option>
+									))}
+							</select>
+							<span className="lb-daily-faint">Make new icon tasks in the Library’s Icon tasks tab.</span>
 						</div>
 					</Field>
-					{template.kind === 'icons' ? (
-						<Field label={`Icon tasks · ${template.iconTaskIds.length}`}>
-							<div className="lb-daily-textlist">
-								{template.iconTaskIds.map((id, i) => {
-									const task = setup.iconTasks.find((t) => t.id === id)
-									return (
-										<div key={id} className="lb-daily-textlist__row">
-											<span className="lb-daily-tile lb-daily-tile--small" aria-hidden="true">
-												<span className="lb-daily-tile__icon">{task?.icon ? <CatalogueIcon name={task.icon} size={14} /> : null}</span>
-											</span>
-											<span className="lb-daily-textlist__name">{task?.name ?? 'Deleted'}</span>
-											<Reorder i={i} n={template.iconTaskIds.length} onMove={(to) => updateTemplate(template.id, { iconTaskIds: move(template.iconTaskIds, i, to) })} />
-											<button type="button" className="lb-daily-iconbtn" aria-label={`Take ${task?.name ?? 'it'} out`} onClick={() => updateTemplate(template.id, { iconTaskIds: template.iconTaskIds.filter((x) => x !== id) })}>
-												<X size={12} aria-hidden="true" />
-											</button>
-										</div>
-									)
-								})}
-								<select
-									className="lb-daily-select"
-									value=""
-									aria-label="Add an icon task"
-									onChange={(e) => e.target.value && updateTemplate(template.id, { iconTaskIds: [...template.iconTaskIds, e.target.value] })}
-								>
-									<option value="">+ Add icon task</option>
-									{setup.iconTasks
-										.filter((t) => !template.iconTaskIds.includes(t.id))
-										.map((t) => (
-											<option key={t.id} value={t.id}>
-												{t.name}
-											</option>
-										))}
-								</select>
-								<span className="lb-daily-faint">Make new icon tasks in the Library’s Icon tasks tab.</span>
-							</div>
-						</Field>
-					) : (
-						<Field label={`Items · ${template.items.length}`}>
-							<TextList items={template.items} placeholder="A checklist item" onChange={(items) => updateTemplate(template.id, { items })} />
-						</Field>
-					)}
+					<Field label={`Checklist · ${template.items.length}`}>
+						<TextList items={template.items} placeholder="A checklist item" onChange={(items) => updateTemplate(template.id, { items })} />
+						<span className="lb-daily-faint">Shown under the icon tasks.</span>
+					</Field>
 				</>
 			)}
+		</>
+	)
+}
+
+/** A block's icon grid and heading. */
+function BlockLookSection({ widget, set }: { widget: Widget; set: (config: Partial<Widget['config']>) => void }) {
+	const side = (value: number | undefined, label: string, onPick: (n: number | undefined) => void) => (
+		<select className="lb-daily-select lb-daily-select--tiny" aria-label={label} value={value ?? ''} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : undefined)}>
+			<option value="">Auto</option>
+			{Array.from({ length: GRID_MAX }, (_, i) => i + 1).map((n) => (
+				<option key={n} value={n}>
+					{n}
+				</option>
+			))}
+		</select>
+	)
+	return (
+		<>
+			<Field label="Icon grid">
+				<div className="lb-daily-row">
+					{side(widget.config.iconRows, 'Rows', (iconRows) => set({ iconRows }))}
+					<span className="lb-daily-faint">rows ×</span>
+					{side(widget.config.iconCols, 'Columns', (iconCols) => set({ iconCols }))}
+					<span className="lb-daily-faint">columns</span>
+				</div>
+				<span className="lb-daily-faint">The icons grow or shrink to fill the grid. The checklist takes the room under it.</span>
+			</Field>
+			<Toggle label="Show the heading" checked={!widget.config.hideTitle} onChange={(shown) => set({ hideTitle: !shown })} />
 		</>
 	)
 }
@@ -347,7 +365,7 @@ function PickSection({ widget, boards, set }: { widget: Widget; boards: readonly
 		'lifeboard:daily-pick-lists',
 		() => {
 			const seen = new Set<string>()
-			const out: { board: string; options: { key: string; label: string }[] }[] = []
+			const out: { board: string; boardId: string; options: { key: string; label: string }[] }[] = []
 			for (const board of [{ id: '', name: 'Anywhere' }, ...boards]) {
 				const options: { key: string; label: string }[] = []
 				for (const source of offeredItemSources()) {
@@ -358,7 +376,7 @@ function PickSection({ widget, boards, set }: { widget: Widget; boards: readonly
 						options.push({ key, label: `${source.label}: ${choice.label}` })
 					}
 				}
-				if (options.length) out.push({ board: board.name, options })
+				if (options.length) out.push({ board: board.name, boardId: board.id, options })
 			}
 			return out
 		},
@@ -367,7 +385,16 @@ function PickSection({ widget, boards, set }: { widget: Widget; boards: readonly
 	return (
 		<>
 			<Field label="Draw from">
-				<select className="lb-daily-select" value={widget.config.source ?? ''} onChange={(e) => set({ source: e.target.value })}>
+				<select
+					className="lb-daily-select"
+					value={widget.config.source ?? ''}
+					onChange={(e) => {
+						const source = e.target.value
+						// A list of one board's: its stamps go to that board unless another was chosen.
+						const boardId = groups.find((g) => g.options.some((o) => o.key === source))?.boardId
+						set(!widget.config.board && boardId ? { source, board: boardId } : { source })
+					}}
+				>
 					<option value="">Choose a list</option>
 					{groups.map((g) => (
 						<optgroup key={g.board} label={g.board}>

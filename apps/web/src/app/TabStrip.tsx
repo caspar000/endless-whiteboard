@@ -1,7 +1,8 @@
-import { LayoutGrid, Plus, X } from 'lucide-react'
+import { CalendarDays, LayoutGrid, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
+import { DAILY_TAB } from './useTabs'
 
 /**
  * A label's side: one S-shaped slope from the label's foot up to the window edge, in the label's own
@@ -46,6 +47,7 @@ export function TabStrip({
 	view,
 	activeBoardId,
 	onHome,
+	onDaily,
 	onSelect,
 	onClose,
 	onNew,
@@ -56,6 +58,8 @@ export function TabStrip({
 	view: 'list' | 'settings' | 'help' | 'board' | 'daily'
 	activeBoardId: string | null
 	onHome: () => void
+	/** The daily page's tab (DARK-17), open beside the boards'. */
+	onDaily: () => void
 	onSelect: (board: BoardMeta) => void
 	onClose: (id: string) => void
 	onNew: () => void
@@ -64,14 +68,18 @@ export function TabStrip({
 	const [renaming, setRenaming] = useState<string | null>(null)
 
 	const byId = new Map(boards.map((b) => [b.id, b]))
-	const open = tabs.flatMap((id) => {
+	const open = tabs.flatMap((id): (BoardMeta | typeof DAILY_TAB)[] => {
+		if (id === DAILY_TAB) return [DAILY_TAB]
 		const board = byId.get(id)
 		return board ? [board] : []
 	})
 	// The labels' places in the stack, "All Boards" being the first: 0 is All Boards, 1 the first board.
 	// On Settings and Help (or a board that is gone) none is in front, and every label slopes to the
 	// right, like those after an active one.
-	const boardIndex = view === 'board' ? open.findIndex((board) => board.id === activeBoardId) : -1
+	const boardIndex =
+		view === 'board' ? open.findIndex((tab) => tab !== DAILY_TAB && tab.id === activeBoardId)
+		: view === 'daily' ? open.indexOf(DAILY_TAB)
+		: -1
 	const activeIndex = view === 'list' ? 0 : boardIndex >= 0 ? boardIndex + 1 : -1
 	const layer = (index: number) => ({ zIndex: 50 - Math.abs(index - activeIndex) })
 	const shape = (index: number) => {
@@ -115,9 +123,51 @@ export function TabStrip({
 			</div>
 
 			{open.map((board, i) => {
-				const { id } = board
 				const index = i + 1
 				const { active, slopeLeft, slopeRight, className } = shape(index)
+				if (board === DAILY_TAB) {
+					return (
+						<div
+							key={DAILY_TAB}
+							role="tab"
+							tabIndex={0}
+							aria-selected={active}
+							className={className}
+							style={layer(index)}
+							onClick={onDaily}
+							onMouseDown={(e) => {
+								if (e.button === 1) e.preventDefault()
+							}}
+							onAuxClick={(e) => {
+								if (e.button !== 1) return
+								e.preventDefault()
+								onClose(DAILY_TAB)
+							}}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault()
+									onDaily()
+								}
+							}}
+						>
+							{slopeLeft && <Slope side="left" />}
+							{slopeRight && <Slope side="right" />}
+							<CalendarDays className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+							<span className="lb-tabs__label">Daily</span>
+							<button
+								className="lb-tabs__close"
+								onClick={(e) => {
+									e.stopPropagation()
+									onClose(DAILY_TAB)
+								}}
+								aria-label="Close Daily"
+							>
+								<X size={14} strokeWidth={1.75} aria-hidden="true" />
+							</button>
+						</div>
+					)
+				}
+				const { id } = board
 				return (
 					// The whole label is the click target, like a browser tab — not just the text.
 					// A <div> with button semantics rather than a <button>, because the close control

@@ -8,6 +8,7 @@ import {
 	editBase,
 	eveningCounts,
 	firstGap,
+	fitTiles,
 	fits,
 	focusOf,
 	freeCells,
@@ -266,6 +267,28 @@ describe('reading stored data', () => {
 		expect(setup.carryTasks).toBe(true)
 	})
 
+	it('keeps a template’s icon tasks and checklist, dropping the list an old type kept out of sight', () => {
+		const setup = readSetup({
+			areas: [],
+			templates: [
+				{ id: 'i', name: 'Icons', kind: 'icons', iconTaskIds: ['a'], items: [{ id: 'x', text: 'hidden' }] },
+				{ id: 'c', name: 'List', kind: 'checklist', iconTaskIds: ['b'], items: [{ id: 'y', text: 'shown' }] },
+				{ id: 'both', name: 'Both', iconTaskIds: ['a'], items: [{ id: 'z', text: 'kept' }] },
+			],
+		})!
+		expect(setup.templates).toEqual([
+			{ id: 'i', name: 'Icons', iconTaskIds: ['a'], items: [] },
+			{ id: 'c', name: 'List', iconTaskIds: [], items: [{ id: 'y', text: 'shown' }] },
+			{ id: 'both', name: 'Both', iconTaskIds: ['a'], items: [{ id: 'z', text: 'kept' }] },
+		])
+	})
+
+	it('reads a block’s icon grid within bounds', () => {
+		const read = (config: unknown) => readSetup({ areas: [], review: [{ id: 'w', type: 'block', config }] })!.review[0]!.config
+		expect(read({ iconRows: 2, iconCols: 4, hideTitle: true })).toEqual({ iconRows: 2, iconCols: 4, hideTitle: true })
+		expect(read({ iconRows: 40, iconCols: 0, hideTitle: 'yes' })).toEqual({ iconRows: 8, iconCols: 1 })
+	})
+
 	it('reads pages and weeks, and the photos they keep', () => {
 		const hash = 'a'.repeat(64)
 		const page = readPage({ date: '2026-11-24', ticks: ['x', 'x', 3], food: [{ hash, at: '08:40' }, { hash: 'nope' }], numbers: { weight: 72.4, bad: 'x' } })!
@@ -277,5 +300,31 @@ describe('reading stored data', () => {
 		const week = readWeek({ week: '2026-11-23', evenings: ['music'], tasks: [{ id: 't', text: 'Call', done: false, day: '2026-11-24' }] })!
 		expect(week.evenings).toEqual(['music', '', '', '', '', '', ''])
 		expect(week.tasks[0]!.day).toBe('2026-11-24')
+	})
+})
+
+describe('the icon grid', () => {
+	const opts = { gap: 0, min: 10, max: 100 }
+
+	it('takes the arrangement that draws the tiles largest when left to itself', () => {
+		// Four tiles in a wide, short box: one row.
+		expect(fitTiles(4, { width: 200, height: 50 }, {}, opts)).toEqual({ rows: 1, cols: 4, size: 50 })
+		// In a square box: two by two.
+		expect(fitTiles(4, { width: 100, height: 100 }, {}, opts)).toEqual({ rows: 2, cols: 2, size: 50 })
+	})
+
+	it('follows the rows and columns it is given, and works out the missing one', () => {
+		expect(fitTiles(4, { width: 200, height: 100 }, { rows: 2, cols: 4 }, opts)).toEqual({ rows: 2, cols: 4, size: 50 })
+		expect(fitTiles(4, { width: 200, height: 100 }, { cols: 2 }, opts)).toEqual({ rows: 2, cols: 2, size: 50 })
+		expect(fitTiles(6, { width: 300, height: 100 }, { rows: 2 }, opts)).toEqual({ rows: 2, cols: 3, size: 50 })
+		// A grid too small for every tile grows rows rather than hiding one.
+		expect(fitTiles(6, { width: 200, height: 300 }, { rows: 1, cols: 2 }, opts)).toEqual({ rows: 3, cols: 2, size: 100 })
+	})
+
+	it('keeps the tiles within their bounds and leaves room for the gaps', () => {
+		expect(fitTiles(1, { width: 500, height: 500 }, {}, opts).size).toBe(100)
+		expect(fitTiles(4, { width: 0, height: 0 }, {}, opts).size).toBe(10)
+		expect(fitTiles(4, { width: 218, height: 50 }, { rows: 1 }, { ...opts, gap: 6 }).size).toBe(50)
+		expect(fitTiles(0, { width: 100, height: 100 }, {}, opts)).toEqual({ rows: 0, cols: 0, size: 0 })
 	})
 })

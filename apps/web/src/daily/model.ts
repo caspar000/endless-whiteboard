@@ -143,17 +143,22 @@ export interface IconTask {
 	icon: string
 }
 
-export type BlockKind = 'icons' | 'checklist'
-
-/** MORNING, HABITS, EVENING: a block made once and put on any number of pages. */
+/**
+ * MORNING, HABITS, EVENING: a block made once and put on any number of pages. It holds icon tasks to
+ * cross out, a checklist under them, or both.
+ */
 export interface BlockTemplate {
 	id: string
 	name: string
-	kind: BlockKind
-	/** The icon tasks of an icon block, in order. */
+	/** Its icon tasks, in order. */
 	iconTaskIds: string[]
-	/** The items of a checklist block: "Download album", "Prepare bags". */
+	/** Its checklist: "Download album", "Prepare bags". */
 	items: TaskText[]
+}
+
+/** Everything a template has to tick: its icon tasks, then its checklist. */
+export function templateTickIds(template: BlockTemplate): string[] {
+	return [...template.iconTaskIds, ...template.items.map((i) => i.id)]
 }
 
 export type LogColumn = 'rating' | 'pages' | 'done'
@@ -190,6 +195,14 @@ export interface TrackRow {
 export interface WidgetConfig {
 	/** A block's template. A physical block's icon tasks come from one too. */
 	templateId?: string
+	/**
+	 * A block's icon tasks as a grid, rows by columns, the tiles sized to fill it. Either left out is
+	 * worked out from the other; both left out, the tiles take whatever arrangement draws them largest.
+	 */
+	iconRows?: number
+	iconCols?: number
+	/** A block drawn without its heading, so a row of icons fits a single grid row. */
+	hideTitle?: boolean
 	/** The numbers a physical block asks for. */
 	metricIds?: string[]
 	/** Whether a physical block shows fasting and the food log. */
@@ -403,6 +416,15 @@ function readRow(r: Record<string, unknown>): TrackRow | null {
 function readConfig(r: Record<string, unknown>): WidgetConfig {
 	const out: WidgetConfig = {}
 	if (typeof r.templateId === 'string') out.templateId = r.templateId
+	const gridSide = (v: unknown) => {
+		const n = num(v)
+		return n === undefined ? undefined : Math.max(1, Math.min(GRID_MAX, Math.round(n)))
+	}
+	const iconRows = gridSide(r.iconRows)
+	if (iconRows) out.iconRows = iconRows
+	const iconCols = gridSide(r.iconCols)
+	if (iconCols) out.iconCols = iconCols
+	if (r.hideTitle === true) out.hideTitle = true
 	if (Array.isArray(r.metricIds)) out.metricIds = strings(r.metricIds)
 	if (typeof r.fasting === 'boolean') out.fasting = r.fasting
 	if (typeof r.food === 'boolean') out.food = r.food
@@ -416,6 +438,34 @@ function readConfig(r: Record<string, unknown>): WidgetConfig {
 	if (weeks) out.weeks = Math.max(1, Math.min(12, Math.round(weeks)))
 	if (typeof r.notes === 'boolean') out.notes = r.notes
 	return out
+}
+
+/** The most rows or columns a block's icon grid can have. */
+export const GRID_MAX = 8
+
+/**
+ * How a block draws `n` icon tiles in a box `width` by `height`: rows, columns and the tiles' side, as
+ * large as fits and no larger than `max`. Rows or columns left out are worked out from the other; with
+ * neither, the arrangement that draws the tiles largest. A grid too small for every tile grows rows.
+ */
+export function fitTiles(
+	n: number,
+	box: { width: number; height: number },
+	grid: { rows?: number; cols?: number },
+	{ gap, min, max }: { gap: number; min: number; max: number }
+): { rows: number; cols: number; size: number } {
+	if (n <= 0) return { rows: 0, cols: 0, size: 0 }
+	const side = (rows: number, cols: number) => Math.min((box.width - gap * (cols - 1)) / cols, (box.height - gap * (rows - 1)) / rows)
+	const sized = (rows: number, cols: number) => ({ rows, cols, size: Math.floor(Math.max(min, Math.min(max, side(rows, cols)))) })
+	const { rows, cols } = grid
+	if (cols) return sized(Math.max(rows ?? 1, Math.ceil(n / cols)), cols)
+	if (rows) return sized(rows, Math.ceil(n / rows))
+	let best = { rows: 1, cols: n }
+	for (let r = 2; r <= n; r++) {
+		const c = Math.ceil(n / r)
+		if (side(r, c) > side(best.rows, best.cols)) best = { rows: r, cols: c }
+	}
+	return sized(best.rows, best.cols)
 }
 
 const WIDGET_TYPES: readonly string[] = [...DAILY_WIDGETS, ...REVIEW_WIDGETS]
@@ -453,9 +503,16 @@ export function readSetup(raw: unknown): DailySetup | null {
 		metrics: list(r.metrics, (m) => (str(m.id) ? { id: str(m.id), name: str(m.name), unit: str(m.unit), total: m.total === 'sum' ? 'sum' : 'avg' } : null)),
 		fasting: list(r.fasting, (f) => (str(f.id) ? { id: str(f.id), name: str(f.name) } : null)),
 		iconTasks: list(r.iconTasks, (t) => (str(t.id) ? { id: str(t.id), name: str(t.name), icon: str(t.icon) } : null)),
+		// A template from before it could hold both kept the list of its other type out of sight: that
+		// one is dropped rather than shown for the first time.
 		templates: list(r.templates, (t) =>
 			str(t.id)
-				? { id: str(t.id), name: str(t.name), kind: t.kind === 'checklist' ? 'checklist' : 'icons', iconTaskIds: strings(t.iconTaskIds), items: list(t.items, readText) }
+				? {
+						id: str(t.id),
+						name: str(t.name),
+						iconTaskIds: t.kind === 'checklist' ? [] : strings(t.iconTaskIds),
+						items: t.kind === 'icons' ? [] : list(t.items, readText),
+					}
 				: null
 		),
 		logLists: list(r.logLists, (l) =>
@@ -708,10 +765,7 @@ export function tickIdsOf(setup: DailySetup, widgets: readonly Widget[], focus: 
 	const ids: string[] = []
 	for (const w of widgets) {
 		const template = w.config.templateId ? setup.templates.find((t) => t.id === w.config.templateId) : undefined
-		if ((w.type === 'block' || w.type === 'physical') && template) {
-			if (template.kind === 'icons') ids.push(...template.iconTaskIds)
-			else ids.push(...template.items.map((i) => i.id))
-		}
+		if ((w.type === 'block' || w.type === 'physical') && template) ids.push(...templateTickIds(template))
 		if (w.type === 'focus') ids.push(...(setup.areas.find((a) => a.id === focus)?.tasks.map((t) => t.id) ?? []))
 	}
 	return [...new Set(ids)]
@@ -896,19 +950,18 @@ export function defaultSetup(day: Day = today()): DailySetup {
 		{ id: 'ate-to-plan', name: 'Ate to plan', icon: 'salad' },
 	]
 	const templates: BlockTemplate[] = [
-		{ id: 'morning', name: 'MORNING', kind: 'icons', iconTaskIds: ['brush-teeth', 'scrape-tongue', 'shower', 'drink-water'], items: [] },
-		{ id: 'habits', name: 'HABITS', kind: 'icons', iconTaskIds: ['album', 'draw', 'read', 'journal'], items: [] },
+		{ id: 'morning', name: 'MORNING', iconTaskIds: ['brush-teeth', 'scrape-tongue', 'shower', 'drink-water'], items: [] },
+		{ id: 'habits', name: 'HABITS', iconTaskIds: ['album', 'draw', 'read', 'journal'], items: [] },
 		{
 			id: 'evening',
 			name: 'EVENING',
-			kind: 'checklist',
 			iconTaskIds: [],
 			items: [
 				{ id: 'evening-1', text: 'Download album' },
 				{ id: 'evening-2', text: 'Prepare bags' },
 			],
 		},
-		{ id: 'physical', name: 'PHYSICAL', kind: 'icons', iconTaskIds: ['workout', 'swim', 'ate-to-plan'], items: [] },
+		{ id: 'physical', name: 'PHYSICAL', iconTaskIds: ['workout', 'swim', 'ate-to-plan'], items: [] },
 	]
 	const widget = (id: string, type: WidgetType, col: number, row: number, w: number, h: number, config: WidgetConfig = {}, title?: string): Widget => ({
 		id,

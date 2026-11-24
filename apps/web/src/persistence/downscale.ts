@@ -35,9 +35,24 @@ export interface DownscaleResult {
 }
 
 /** Formats we can safely re-encode. SVG is vector (rasterising would lose quality); GIF may be
- * animated (canvas would keep only the first frame). Both pass through unchanged. */
+ * animated (canvas would keep only the first frame). Both pass through unchanged. HEIC (an iPhone's
+ * camera) is tried too: Safari decodes it, and where it doesn't the file is kept as it is. */
 function isReencodable(type: string): boolean {
-	return type === 'image/jpeg' || type === 'image/png' || type === 'image/webp' || type === 'image/avif'
+	return OPAQUE.has(type) || type === 'image/png' || type === 'image/webp' || type === 'image/avif'
+}
+
+/** Formats without transparency, which lose nothing as JPEG. */
+const OPAQUE = new Set(['image/jpeg', 'image/heic', 'image/heif'])
+
+/**
+ * The canvas as WebP, or as JPEG where the browser can't write WebP and the picture has no
+ * transparency to lose: Safari hands back a PNG for WebP, often bigger than the photo it came from.
+ */
+async function encode(canvas: HTMLCanvasElement, sourceType: string, quality: number): Promise<Blob | null> {
+	const toBlob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality))
+	const webp = await toBlob('image/webp')
+	if (webp?.type === 'image/webp' || !OPAQUE.has(sourceType)) return webp
+	return toBlob('image/jpeg')
 }
 
 export async function downscaleImage(
@@ -73,9 +88,7 @@ export async function downscaleImage(
 		if (!ctx) return { blob: file, width: bitmap.width, height: bitmap.height, changed: false, thumbhash }
 		ctx.drawImage(bitmap, 0, 0, width, height)
 
-		const encoded = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, 'image/webp', quality)
-		)
+		const encoded = await encode(canvas, file.type, quality)
 
 		// Keep the original when re-encoding didn't help — true for already-optimised small images,
 		// where WebP can come out larger than the source.

@@ -137,8 +137,13 @@ with the week across the top and, on the review day, an A4 weekly review built t
 week's pages. The Library and Inspector edit the layout; Done leaves the page alone to fill in or print.
 Nothing about it is fixed in the code: the areas, the week cycles (chosen by hand each week), the numbers,
 the kinds of fast, the icon tasks, the block templates, the log lists and both layouts are one `dailySetup`
-record, and `defaultSetup` is only where a vault starts. A layout change applies from its day on
-(`withLayout`), so earlier pages keep theirs. The setup, a page per day (`dailyPages`, by date) and a plan
+record, and `defaultSetup` is only where a vault starts. Changes made on a page wait in a draft
+(`layoutDraft`, in memory) until Save asks, as a calendar does about a repeating event, whether they are
+for *only this page* (a layout kept for that day alone, `withPageLayout`) or *this and all future pages*
+(`withLayoutFrom`, which also carries the changes into layouts saved for later days, field by field,
+keeping what those days changed for themselves). Earlier pages are never touched. A block follows its
+template until its page changes its tasks, which then become its own (`config.contents`). Only the
+Library's Block templates tab changes a template, and deleting one leaves its blocks as they were. Up to 1024px wide the editing page shows one panel at a time (`data-panel` on `.lb-daily`); on a phone the panels are a sheet over the page, opened from a fixed edit bar (`.lb-daily-dock`), and widgets are selected on a tap, not a touch, so scrolling doesn't select. The setup, a page per day (`dailyPages`, by date) and a plan
 per week (`dailyWeeks`, by Monday) are vault data, saved as the feeds' are. Food photos are content-addressed
 files like a board's pictures, so both clean-ups that delete unused files read the daily pages too
 (`boards/deleteBoard.ts`, the server's `gc.ts`). The daily pick draws from any item source with a seed

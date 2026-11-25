@@ -1,7 +1,8 @@
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { CatalogueIcon, InlineIconPicker } from '../app/boardLook/iconBridge'
-import { DAILY_WIDGETS, REVIEW_WIDGETS, newId, type BlockTemplate, type DailySetup, type Widget, type WidgetType } from './model'
+import { ContentsEditor, Field } from './fields'
+import { DAILY_WIDGETS, REVIEW_WIDGETS, newId, templateUse, withoutTemplate, type BlockTemplate, type DailySetup, type Widget, type WidgetType } from './model'
 import { updateSetup } from './store'
 import { WIDGET_NAMES } from './widgets'
 
@@ -38,14 +39,23 @@ export function Library({
 	widgets,
 	onAdd,
 	onSelect,
+	reveal,
 }: {
 	mode: 'daily' | 'review'
 	setup: DailySetup
 	widgets: readonly Widget[]
 	onAdd: (payload: DragPayload & { kind: 'new' }) => void
 	onSelect: (id: string) => void
+	/** A template to open in the Templates tab (the Inspector's Edit template), with a count so asking twice opens it twice. */
+	reveal: { id: string; n: number } | null
 }) {
 	const [tab, setTab] = useState<Tab>('widgets')
+	const [open, setOpen] = useState<string | null>(null)
+	useEffect(() => {
+		if (!reveal) return
+		setTab('templates')
+		setOpen(reveal.id)
+	}, [reveal])
 	const types = mode === 'daily' ? DAILY_WIDGETS : REVIEW_WIDGETS
 	return (
 		<aside className="lb-daily-panel lb-daily-library" aria-label="Library">
@@ -92,7 +102,7 @@ export function Library({
 						</ul>
 					</>
 				)}
-				{tab === 'templates' && <Templates setup={setup} widgets={widgets} onAdd={onAdd} mode={mode} />}
+				{tab === 'templates' && <Templates setup={setup} widgets={widgets} onAdd={onAdd} mode={mode} open={open} onOpen={setOpen} />}
 				{tab === 'icons' && <IconTasks setup={setup} />}
 			</div>
 		</aside>
@@ -104,7 +114,24 @@ export function sentence(name: string): string {
 	return name === name.toUpperCase() ? name.slice(0, 1) + name.slice(1).toLowerCase() : name
 }
 
-function LibraryItem({ name, description, payload, placed, onAdd, disabled }: { name: string; description: string; payload: DragPayload; placed?: boolean; onAdd: () => void; disabled?: boolean }) {
+function LibraryItem({
+	name,
+	description,
+	payload,
+	placed,
+	onAdd,
+	disabled,
+	before,
+}: {
+	name: string
+	description: string
+	payload: DragPayload
+	placed?: boolean
+	onAdd: () => void
+	disabled?: boolean
+	/** Drawn ahead of the name: a template's open-to-edit chevron. */
+	before?: ReactNode
+}) {
 	return (
 		<li
 			className="lb-daily-libitem"
@@ -114,6 +141,7 @@ function LibraryItem({ name, description, payload, placed, onAdd, disabled }: { 
 				e.dataTransfer.effectAllowed = 'copy'
 			}}
 		>
+			{before}
 			<span className="lb-daily-libitem__text">
 				<strong>{name}</strong>
 				<span className="lb-daily-faint">{description}</span>
@@ -132,39 +160,115 @@ function LibraryItem({ name, description, payload, placed, onAdd, disabled }: { 
 	)
 }
 
-function Templates({ setup, widgets, onAdd, mode }: { setup: DailySetup; widgets: readonly Widget[]; onAdd: (payload: DragPayload & { kind: 'new' }) => void; mode: 'daily' | 'review' }) {
-	const used = (t: BlockTemplate) => setup.layouts.filter((l) => l.widgets.some((w) => w.config.templateId === t.id)).length
+function Templates({
+	setup,
+	widgets,
+	onAdd,
+	mode,
+	open,
+	onOpen,
+}: {
+	setup: DailySetup
+	widgets: readonly Widget[]
+	onAdd: (payload: DragPayload & { kind: 'new' }) => void
+	mode: 'daily' | 'review'
+	open: string | null
+	onOpen: (id: string | null) => void
+}) {
 	return (
 		<>
-			<p className="lb-daily-faint">A block made once and put on any page. Changing it changes every page that uses it.</p>
+			<p className="lb-daily-faint">
+				A block made once and put on any page. Changing a template here changes every block that follows it, straight away. A block changed on its own page keeps its own tasks.
+			</p>
 			<ul className="lb-daily-libitems">
 				{setup.templates.map((t) => {
-					const onPage = widgets.some((w) => w.config.templateId === t.id)
+					const used = templateUse(setup, t.id)
+					const onPage = widgets.some((w) => w.config.templateId === t.id && !w.config.contents)
 					const parts = [
 						t.iconTaskIds.length ? `${t.iconTaskIds.length} icon task${t.iconTaskIds.length === 1 ? '' : 's'}` : '',
 						t.items.length ? `${t.items.length} checklist item${t.items.length === 1 ? '' : 's'}` : '',
 					].filter(Boolean)
+					const isOpen = open === t.id
 					return (
-						<LibraryItem
-							key={t.id}
-							name={t.name || 'Untitled'}
-							description={`${parts.join(' · ') || 'Empty'}${onPage ? ' · on this page' : used(t) ? ` · in ${used(t)} layout${used(t) === 1 ? '' : 's'}` : ''}`}
-							payload={{ kind: 'new', type: 'block', templateId: t.id }}
-							disabled={mode === 'review'}
-							onAdd={() => onAdd({ kind: 'new', type: 'block', templateId: t.id })}
-						/>
+						<Fragment key={t.id}>
+							<LibraryItem
+								name={t.name || 'Untitled'}
+								description={`${parts.join(' · ') || 'Empty'}${onPage ? ' · on this page' : used ? ` · in ${used} layout${used === 1 ? '' : 's'}` : ''}`}
+								payload={{ kind: 'new', type: 'block', templateId: t.id }}
+								disabled={mode === 'review'}
+								onAdd={() => onAdd({ kind: 'new', type: 'block', templateId: t.id })}
+								before={
+									<button
+										type="button"
+										className="lb-daily-iconbtn"
+										aria-expanded={isOpen}
+										aria-label={isOpen ? `Close ${t.name || 'the template'}` : `Edit ${t.name || 'the template'}`}
+										title={isOpen ? 'Close' : 'Edit the template'}
+										onClick={() => onOpen(isOpen ? null : t.id)}
+									>
+										{isOpen ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+									</button>
+								}
+							/>
+							{isOpen && (
+								<li className="lb-daily-template-editor">
+									<TemplateEditor setup={setup} template={t} onDeleted={() => onOpen(null)} />
+								</li>
+							)}
+						</Fragment>
 					)
 				})}
 			</ul>
 			<button
 				type="button"
 				className="lb-daily-dashed"
-				onClick={() =>
-					updateSetup((s) => ({ ...s, templates: [...s.templates, { id: newId('b'), name: 'NEW BLOCK', iconTaskIds: [], items: [] }] }))
-				}
+				onClick={() => {
+					const id = newId('b')
+					updateSetup((s) => ({ ...s, templates: [...s.templates, { id, name: 'NEW BLOCK', iconTaskIds: [], items: [] }] }))
+					onOpen(id)
+				}}
 			>
 				<Plus size={14} aria-hidden="true" /> New block template
 			</button>
+		</>
+	)
+}
+
+function updateTemplate(id: string, change: Partial<BlockTemplate>): void {
+	updateSetup((s) => ({ ...s, templates: s.templates.map((t) => (t.id === id ? { ...t, ...change } : t)) }))
+}
+
+/** A template, edited for every block that follows it. */
+function TemplateEditor({ setup, template, onDeleted }: { setup: DailySetup; template: BlockTemplate; onDeleted: () => void }) {
+	const [confirming, setConfirming] = useState(false)
+	return (
+		<>
+			<Field label="Name">
+				<input className="lb-daily-input" value={template.name} aria-label="Template name" onChange={(e) => updateTemplate(template.id, { name: e.target.value })} />
+			</Field>
+			<ContentsEditor setup={setup} contents={template} onChange={({ iconTaskIds, items }) => updateTemplate(template.id, { iconTaskIds, items })} />
+			{confirming ? (
+				<div className="lb-daily-row">
+					<span className="lb-daily-faint">Delete it? The blocks made from it keep their tasks.</span>
+					<button
+						type="button"
+						className="lb-daily-danger"
+						onClick={() => {
+							updateSetup((s) => withoutTemplate(s, template.id))
+							onDeleted()
+						}}
+					>
+						<Trash2 size={13} aria-hidden="true" /> Delete
+					</button>
+					<button type="button" className="lb-daily-linkbtn" onClick={() => setConfirming(false)}>
+						Cancel
+					</button>
+				</div>
+			) : (
+				<button type="button" className="lb-daily-linkbtn" onClick={() => setConfirming(true)}>
+					<Trash2 size={13} aria-hidden="true" /> Delete template
+				</button>
+			)}
 		</>
 	)
 }

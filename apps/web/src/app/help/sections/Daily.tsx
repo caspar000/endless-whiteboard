@@ -15,12 +15,25 @@ export function Daily(_props: SectionProps) {
 					Every day has its own page, kept in your vault, so it follows you to every device.
 				</p>
 				<p>
-					The page is built from widgets, as a dashboard is. While <strong>Editing layout</strong> is on,
+					The page is built from widgets, as a dashboard is. After <strong>Edit layout</strong>,
 					the Library on the left holds them: drag one onto a free cell, or press + to put it in the first
 					gap. Drag a widget by its grip to move it, and drag its bottom edge (or use the Inspector) to
-					change its height. Select one to change it in the Inspector on the right. <strong>Done</strong>{' '}
-					puts the editor away, and <strong>Print</strong> prints the page on one A5 sheet. A change to the
-					layout applies from the day you make it on; earlier days keep theirs.
+					change its height. Select one to change it in the Inspector on the right; its arrows under{' '}
+					<em>Move</em> move it a cell at a time. <strong>Print</strong> prints the page on one A5 sheet.
+				</p>
+				<p>
+					On a narrower window the page has one panel beside it, and a switch over it picks the Library or
+					the Inspector. On a phone the editing bar is along the bottom: the switch, and{' '}
+					<strong>Save…</strong> (or <strong>Done</strong>). The Library or the Inspector comes up over the
+					lower half of the page, and tapping a widget brings up its Inspector.
+				</p>
+				<p>
+					What you change on a page is that page’s until you save it. <strong>Save…</strong> asks, as a
+					calendar does about a repeating event: <em>Only this page</em> keeps the change on that day
+					alone, and <em>This and all future pages</em> carries it to that day and every page after it,
+					days changed on their own included. Earlier pages never change. Moving to another day with
+					changes not saved asks the same question first, and <em>Discard changes</em> puts the page
+					back as it was.
 				</p>
 			</Section>
 
@@ -31,8 +44,12 @@ export function Daily(_props: SectionProps) {
 					<em>Activities</em> tab holds sport pictograms (swimming, kendo, weightlifting) and <em>Everyday</em>{' '}
 					things done around the day (a toothbrush, laundry, the bins). A{' '}
 					<strong>block template</strong> (MORNING, HABITS, EVENING) is a set of icon tasks with a checklist
-					under them, either one optional, made once and put on any page. Changing a template changes every
-					page that uses it; Detach in the Inspector makes a copy for one block alone.
+					under them, either one optional, made once and put on any page. A block follows its template until
+					you change its tasks on a page in the Inspector: from then on they are that block’s own, and{' '}
+					<em>Reset to template</em> undoes it. To change a template itself, open it in the Library’s{' '}
+					<em>Block templates</em> tab (or press <em>Edit template</em> in the Inspector): the change
+					reaches every block that follows it at once. Deleting a template leaves its blocks as they were,
+					and <em>Save as template</em> makes one from a block’s own tasks.
 				</p>
 				<p>
 					A block’s icons sit on a grid that fills the room its checklist leaves, and grow or shrink with

@@ -1,6 +1,7 @@
 import { useValue } from '@lifeboard/canvas'
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, GripVertical, Pencil, Plus, Printer, Star } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, GripVertical, Pencil, Plus, Printer, RotateCcw, Star } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { usePhone } from '../app/usePhone'
 import type { BoardMeta } from '../boards/boardIndex'
 import { usePlatform } from '../platform/PlatformContext'
 import { DailyContext, type DailyContextValue } from './context'
@@ -27,19 +28,22 @@ import {
 	newId,
 	pageFor,
 	placeAt,
+	sameWidgets,
+	shortDay,
 	today,
 	weekNumber,
 	weekOf,
 	weekRange,
 	weekday,
-	withLayout,
+	withLayoutFrom,
+	withPageLayout,
 	type DailySetup,
 	type Day,
 	type DayPage,
 	type Widget,
 } from './model'
 import { ReviewWidget } from './reviewWidgets'
-import { dailyPages, dailyWeeks, getSetup, setupAtom, updatePage, updateSetup, updateWeek } from './store'
+import { dailyPages, dailyWeeks, getSetup, layoutDraft, setupAtom, updatePage, updateSetup, updateWeek, type LayoutDraft } from './store'
 import { DailyWidget } from './widgets'
 import './daily.css'
 
@@ -72,15 +76,47 @@ export interface DailyScreenProps {
  * Inspector while the layout is being edited, or alone once it is done. On the review day's cell, the
  * weekly review, an A4 page built the same way.
  */
-export default function DailyScreen({ day: routeDay, review, boards, onNavigate, onOpenBoard }: DailyScreenProps) {
+export default function DailyScreen({ day: routeDay, review, boards, onNavigate: navigateNow, onOpenBoard }: DailyScreenProps) {
 	const platform = usePlatform()
+	const phone = usePhone()
 	const day = routeDay && isDay(routeDay) ? routeDay : today()
 	const mode = review ? 'review' : 'daily'
 	const setup = useValue('lifeboard:daily-setup-value', () => setupAtom.get() ?? getSetup(), [])
 	const pages = useValue('lifeboard:daily-pages-value', () => dailyPages.get(), [])
 	const plans = useValue('lifeboard:daily-weeks-value', () => dailyWeeks.get(), [])
+	const draft = useValue('lifeboard:daily-layout-draft-value', () => layoutDraft.get(), [])
+	/**
+	 * The save question is open: asked by Done, or by leaving a page with unsaved changes, and `then` is
+	 * what to do once it is answered.
+	 */
+	const [asking, setAsking] = useState<{ then?: () => void } | null>(null)
+	const [reveal, setReveal] = useState<{ id: string; n: number } | null>(null)
 	const [editing, setEditingState] = useState(readEditing)
 	const [selected, setSelected] = useState<string | null>(null)
+	/**
+	 * Which of the Library and the Inspector is shown where there is room for one only (a tablet, a
+	 * narrow window, a phone), and on a phone whether its sheet is up over the page.
+	 */
+	const [panel, setPanel] = useState<'library' | 'inspector'>('library')
+	const [sheet, setSheet] = useState(false)
+	/** Selecting a widget brings up the Inspector, where it is changed. */
+	const select = useCallback(
+		(id: string | null) => {
+			setSelected(id)
+			if (id) {
+				setPanel('inspector')
+				if (phone) setSheet(true)
+			}
+		},
+		[phone]
+	)
+	const showPanel = (which: 'library' | 'inspector') => {
+		if (phone && sheet && panel === which) setSheet(false)
+		else {
+			setPanel(which)
+			setSheet(true)
+		}
+	}
 	/** Why the last thing asked of the layout couldn't be done, for a few seconds. */
 	const [notice, setNotice] = useState('')
 	useEffect(() => {
@@ -90,7 +126,11 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 	}, [notice])
 	const setEditing = (next: boolean) => {
 		setEditingState(next)
-		if (!next) setSelected(null)
+		if (!next) {
+			setSelected(null)
+			setSheet(false)
+			setNotice('')
+		}
 		try {
 			localStorage.setItem(EDITING_KEY, String(next))
 		} catch {
@@ -98,7 +138,11 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 		}
 	}
 
-	const widgets = mode === 'daily' ? layoutFor(setup, day) : setup.review
+	// The daily layout as saved, or as it is being changed: page edits wait in a draft until it is said
+	// whether they are this page's alone or every page's after it too.
+	const saved = mode === 'daily' ? layoutFor(setup, day) : setup.review
+	const ownDraft = mode === 'daily' && draft?.day === day ? draft : null
+	const widgets = ownDraft?.widgets ?? saved
 	const grid = mode === 'daily' ? DAILY_GRID : REVIEW_GRID
 	const listIds = useMemo(() => widgets.filter((w) => w.type === 'tasks' || w.type === 'focus').map((w) => w.id), [widgets])
 	const page = useMemo(() => pageFor(pages, day, setup.carryTasks, listIds), [pages, day, setup.carryTasks, listIds])
@@ -109,6 +153,23 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 
 	useEffect(() => setSelected(null), [mode])
 
+	// On a phone the Inspector comes up over the page's lower half: the widget it is for is scrolled into
+	// what is left of the screen, the scroll padding (daily.css) keeping it clear of the sheet.
+	const root = useRef<HTMLDivElement>(null)
+	useEffect(() => {
+		if (!phone || !sheet || !selected) return
+		const frame = requestAnimationFrame(() => root.current?.querySelector('.lb-daily-slot[data-selected]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+		return () => cancelAnimationFrame(frame)
+	}, [phone, sheet, selected])
+
+	/** Going to another page asks about unsaved changes first. */
+	const onNavigate = useCallback(
+		(d: Day | undefined, r: boolean) => {
+			if (layoutDraft.get()) setAsking({ then: () => navigateNow(d, r) })
+			else navigateNow(d, r)
+		},
+		[navigateNow]
+	)
 	const openDay = useCallback((d: Day) => onNavigate(d, false), [onNavigate])
 	const openReview = useCallback((d: Day) => onNavigate(d, true), [onNavigate])
 
@@ -132,7 +193,14 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 		[setup, day, page, pages, plans, plan, focus, editing, platform.blobs, boards, openDay, openReview, onOpenBoard]
 	)
 
-	const setWidgets = (next: Widget[]) => updateSetup((s) => (mode === 'daily' ? withLayout(s, day, next) : { ...s, review: next }))
+	const setWidgets = (next: Widget[]) => {
+		if (mode === 'review') {
+			updateSetup((s) => ({ ...s, review: next }))
+			return
+		}
+		const base = ownDraft?.base ?? saved
+		layoutDraft.set(sameWidgets(next, base) ? null : { day, base, widgets: next })
+	}
 	const addWidget = (payload: DragPayload & { kind: 'new' }, cell?: { col: number; row: number }) => {
 		const size = WIDGET_SIZE[payload.type]
 		const fitSize = { w: Math.min(size.w, grid.cols), h: size.h }
@@ -145,23 +213,17 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 			return
 		}
 		const id = newId('wd')
-		let templateId = payload.templateId
-		if (payload.type === 'block' && !templateId) {
-			// A new icon-task block brings a template of its own, to be filled in the Inspector.
-			templateId = newId('b')
-			const fresh = templateId
-			updateSetup((s) => ({ ...s, templates: [...s.templates, { id: fresh, name: 'NEW BLOCK', iconTaskIds: [], items: [] }] }))
-		}
+		const templateId = payload.templateId
+		// A new icon-task block starts empty, with tasks of its own to fill in the Inspector.
 		const config: Widget['config'] =
 			payload.type === 'physical' ? { metricIds: setup.metrics.slice(0, 1).map((m) => m.id), fasting: true, food: true }
 			: templateId ? { templateId }
+			: payload.type === 'block' ? { contents: { iconTaskIds: [], items: [] } }
 			: payload.type === 'reflection' ? { prompts: [{ id: newId('q'), text: 'Went well' }] }
 			: {}
-		const widget: Widget = { id, type: payload.type, ...place, config }
-		// The setup read again: a template made just now is in it.
-		const current = mode === 'daily' ? layoutFor(getSetup(), day) : getSetup().review
-		updateSetup((s) => (mode === 'daily' ? withLayout(s, day, [...current, widget]) : { ...s, review: [...current, widget] }))
-		setSelected(id)
+		const widget: Widget = { id, type: payload.type, ...place, ...(payload.type === 'block' && !templateId ? { title: 'NEW BLOCK' } : {}), config }
+		setWidgets([...widgets, widget])
+		select(id)
 	}
 	const moveWidget = (id: string, cell: { col: number; row: number }) => {
 		const widget = widgets.find((w) => w.id === id)
@@ -169,6 +231,14 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 		const place = placeAt(widgets, cell, widget, grid, id)
 		if (place) setWidgets(widgets.map((w) => (w.id === id ? { ...w, ...place } : w)))
 		else setNotice('It doesn’t fit there: move or shrink what is in the way first.')
+	}
+	/** One cell over, the same size: from the Inspector's arrows. */
+	const nudgeWidget = (id: string, cell: { col: number; row: number }) => {
+		const widget = widgets.find((w) => w.id === id)
+		if (!widget) return
+		const next = { ...widget, ...cell }
+		if (fits(widgets, next, grid, id)) setWidgets(widgets.map((w) => (w.id === id ? next : w)))
+		else setNotice('Something is in the way: move it or shrink this one first.')
 	}
 	const changeWidget = (next: Widget) => {
 		if (!fits(widgets, next, grid, next.id)) {
@@ -186,9 +256,28 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 	const isToday = day === today()
 	const size = PAGE_SIZE[mode]
 
+	// Changes to a page left some other way than through the screen (the browser's Back, a link) are
+	// asked about as soon as they are noticed.
+	const stray = !!draft && (draft.day !== day || mode !== 'daily')
+	const question = asking ?? (stray ? {} : null)
+	const answer = (change: ((d: LayoutDraft) => void) | null) => {
+		const pending = layoutDraft.get()
+		if (pending && change) change(pending)
+		layoutDraft.set(null)
+		const then = asking?.then
+		setAsking(null)
+		then?.()
+	}
+	/** Done, or Save… when the page has changes: they are asked about first. */
+	const finish = () => (editing && ownDraft ? setAsking({ then: () => setEditing(false) }) : setEditing(!editing))
+	const keepEditing = () => {
+		setAsking(null)
+		if (stray && draft) navigateNow(draft.day, false)
+	}
+
 	return (
 		<DailyContext.Provider value={context}>
-			<div className={`lb-daily lb-daily--${mode} ${editing ? 'lb-daily--editing' : 'lb-daily--clean'}`}>
+			<div className={`lb-daily lb-daily--${mode} ${editing ? 'lb-daily--editing' : 'lb-daily--clean'}`} data-panel={panel} data-sheet={editing && sheet ? '' : undefined} ref={root}>
 				<style>{`@page { size: ${size.print}; margin: 0; }`}</style>
 				<header className="lb-daily__top">
 					<button type="button" className="lb-daily-iconbtn lb-daily-iconbtn--box" aria-label={mode === 'daily' ? 'Previous day' : 'Previous week'} onClick={() => onNavigate(addDays(day, mode === 'daily' ? -1 : -7), review)}>
@@ -206,7 +295,7 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 					<button type="button" className="lb-daily-linkbtn" disabled={isToday && !review} onClick={() => onNavigate(undefined, false)}>
 						Today
 					</button>
-					{editing && <span className="lb-daily-pill">Editing layout{mode === 'daily' ? ' · from this day on' : ''}</span>}
+					{editing && <span className="lb-daily-pill">{mode === 'review' ? 'Editing the review' : ownDraft ? 'Editing this page · not saved' : 'Editing this page'}</span>}
 					{notice && (
 						<span className="lb-daily-notice" role="status">
 							{notice}
@@ -227,9 +316,14 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 								<Printer size={14} aria-hidden="true" /> Print
 							</button>
 						)}
-						<button type="button" className={editing ? 'lb-daily-btn lb-daily-btn--primary' : 'lb-daily-btn'} onClick={() => setEditing(!editing)}>
+						{editing && ownDraft && (
+							<button type="button" className="lb-daily-btn lb-daily-btn--save" onClick={() => layoutDraft.set(null)}>
+								Discard changes
+							</button>
+						)}
+						<button type="button" className={editing ? 'lb-daily-btn lb-daily-btn--primary lb-daily-btn--save' : 'lb-daily-btn'} onClick={finish}>
 							{editing ? (
-								'Done'
+								ownDraft ? 'Save…' : 'Done'
 							) : (
 								<>
 									<Pencil size={13} aria-hidden="true" /> Edit layout
@@ -242,7 +336,33 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 				<WeekStrip setup={setup} week={week} day={day} review={review} pages={pages} onDay={openDay} onReview={openReview} />
 
 				<div className="lb-daily__body">
-					{editing && <Library mode={mode} setup={setup} widgets={widgets} onAdd={(p) => addWidget(p)} onSelect={setSelected} />}
+					{editing && (
+						// The switch between the two panels where only one fits, and on a phone the edit bar along
+						// the bottom, with Save… in reach of a thumb.
+						<nav className="lb-daily-dock" aria-label="Layout editing">
+							<div className="lb-daily-switch" role="tablist" aria-label="Panel">
+								{(
+									[
+										['library', 'Library'],
+										['inspector', selectedWidget ? 'Inspector' : 'Page settings'],
+									] as const
+								).map(([id, label]) => (
+									<button key={id} type="button" role="tab" aria-selected={panel === id && (!phone || sheet)} onClick={() => showPanel(id)}>
+										{label}
+									</button>
+								))}
+							</div>
+							{ownDraft && (
+								<button type="button" className="lb-daily-btn lb-daily-dock__discard" aria-label="Discard changes" title="Discard changes" onClick={() => layoutDraft.set(null)}>
+									<RotateCcw size={15} aria-hidden="true" />
+								</button>
+							)}
+							<button type="button" className="lb-daily-btn lb-daily-btn--primary lb-daily-dock__save" onClick={finish}>
+								{ownDraft ? 'Save…' : 'Done'}
+							</button>
+						</nav>
+					)}
+					{editing && <Library mode={mode} setup={setup} widgets={widgets} onAdd={(p) => addWidget(p)} onSelect={select} reveal={reveal} />}
 					<PageCanvas
 						mode={mode}
 						size={size}
@@ -250,7 +370,7 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 						widgets={widgets}
 						editing={editing}
 						selected={selected}
-						onSelect={setSelected}
+						onSelect={select}
 						onDropNew={addWidget}
 						onMove={moveWidget}
 						onResize={(id, h) => {
@@ -268,17 +388,65 @@ export default function DailyScreen({ day: routeDay, review, boards, onNavigate,
 							boards={boards}
 							grid={grid}
 							onChange={changeWidget}
+							onMove={nudgeWidget}
 							onRemove={removeWidget}
 							onClose={() => setSelected(null)}
+							onEditTemplate={(id) => {
+								setPanel('library')
+								setReveal((r) => ({ id, n: (r?.n ?? 0) + 1 }))
+							}}
 						/>
 					)}
 				</div>
+				{question && draft && <SaveDialog day={draft.day} onAnswer={answer} onCancel={keepEditing} stray={stray} />}
 			</div>
 		</DailyContext.Provider>
 	)
 }
 
 const isDayInWeek = (d: Day, week: Day) => weekOf(d) === week
+
+/**
+ * Where a page's changes go, asked as a calendar asks about a repeating event: this page alone, or this
+ * page and every one after it. Earlier pages are never changed.
+ */
+function SaveDialog({ day, stray, onAnswer, onCancel }: { day: Day; stray: boolean; onAnswer: (change: ((d: LayoutDraft) => void) | null) => void; onCancel: () => void }) {
+	const first = useRef<HTMLButtonElement>(null)
+	useEffect(() => first.current?.focus(), [])
+	const name = `${WEEKDAYS[weekday(day)]} ${shortDay(day)}`
+	return (
+		<div
+			className="lb-daily-modal"
+			onPointerDown={(e) => e.target === e.currentTarget && onCancel()}
+			onKeyDown={(e) => {
+				if (e.key === 'Escape') onCancel()
+			}}
+		>
+			<div className="lb-daily-modal__card" role="dialog" aria-modal="true" aria-labelledby="lb-daily-save-title">
+				<h2 id="lb-daily-save-title">Save the changes to {name}’s page</h2>
+				<p className="lb-daily-faint">Pages before it stay as they are.</p>
+				<div className="lb-daily-modal__choices">
+					<button ref={first} type="button" className="lb-daily-modal__choice" onClick={() => onAnswer((d) => updateSetup((s) => withPageLayout(s, d.day, d.widgets)))}>
+						<strong>Only this page</strong>
+						<span className="lb-daily-faint">{name} alone. The pages after it keep the layout they have.</span>
+					</button>
+					<button type="button" className="lb-daily-modal__choice" onClick={() => onAnswer((d) => updateSetup((s) => withLayoutFrom(s, d.day, d.base, d.widgets)))}>
+						<strong>This and all future pages</strong>
+						<span className="lb-daily-faint">{name} and every page after it, including ones changed on their own.</span>
+					</button>
+				</div>
+				<div className="lb-daily-modal__foot">
+					<button type="button" className="lb-daily-linkbtn lb-daily-linkbtn--danger" onClick={() => onAnswer(null)}>
+						Discard changes
+					</button>
+					<button type="button" className="lb-daily-btn" onClick={onCancel}>
+						{stray ? `Back to ${name}` : 'Keep editing'}
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
 
 /* ------------------------------------------------------------------------------------ the week */
 
@@ -372,6 +540,7 @@ function WeekStrip({
 							key={d}
 							type="button"
 							className="lb-daily-day"
+							data-today={d === now ? '' : undefined}
 							aria-pressed={!review && d === day}
 							style={area ? ({ '--area': area.color } as CSSProperties) : undefined}
 							aria-label={`${WEEKDAYS[i]} ${d}${d === now ? ', today' : ''}${area ? `, focus ${area.name}` : ''}${progress === null ? ', no page yet' : `, ${Math.round(progress * 100)}% done`}`}
@@ -380,7 +549,7 @@ function WeekStrip({
 							<span className="lb-daily-day__top">
 								<span>
 									{WEEKDAY_LETTERS[i]}
-									{d === now ? ' · Today' : ''}
+									{d === now && <span className="lb-daily-day__today"> · Today</span>}
 								</span>
 								{area && <span style={{ color: area.color }}>{area.name.toUpperCase()}</span>}
 							</span>
@@ -485,7 +654,7 @@ function PageCanvas({
 			</p>
 			<div className="lb-daily__frame" ref={frame}>
 				<div className="lb-daily__sizer" style={{ width: size.w * scale, height: size.h * scale }}>
-					<article className={`lb-daily-sheet lb-daily-sheet--${mode} lb-daily-print`} style={style} onPointerDown={(e) => editing && e.target === e.currentTarget && onSelect(null)}>
+					<article className={`lb-daily-sheet lb-daily-sheet--${mode} lb-daily-print`} style={style} onClick={(e) => editing && e.target === e.currentTarget && onSelect(null)}>
 						<div
 							className="lb-daily-grid"
 							ref={gridRef}
@@ -521,7 +690,8 @@ function PageCanvas({
 									data-type={w.type}
 									data-selected={editing && selected === w.id ? '' : undefined}
 									style={{ gridColumn: `${w.col + 1} / span ${w.w}`, gridRow: `${w.row + 1} / span ${w.h}` }}
-									onPointerDownCapture={() => editing && onSelect(w.id)}
+									// On a tap, not a touch: a finger put down to scroll the page doesn't select what is under it.
+									onClickCapture={() => editing && onSelect(w.id)}
 								>
 									{editing && (
 										<span

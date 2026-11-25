@@ -13,6 +13,7 @@ import {
 	type Day,
 	type DayPage,
 	type WeekPlan,
+	type Widget,
 } from './model'
 
 /**
@@ -41,6 +42,20 @@ export function setSetup(next: DailySetup): void {
 export function updateSetup(change: (setup: DailySetup) => DailySetup): void {
 	setSetup(change(getSetup()))
 }
+
+/**
+ * A day's layout as it is being edited, not saved until it is said whether the change is that page's
+ * alone or the days' after it too. Kept here rather than in the screen, so leaving the daily page and
+ * coming back doesn't lose it; never stored, so a reload does.
+ */
+export interface LayoutDraft {
+	day: Day
+	/** The layout the day had when the editing began: what "all future pages" takes the changes from. */
+	base: Widget[]
+	widgets: Widget[]
+}
+
+export const layoutDraft = atom<LayoutDraft | null>('lifeboard:daily-layout-draft', null)
 
 export const dailyPages = keyedStore<DayPage>('lifeboard:daily-pages', readPage, (p) => p.date)
 export const dailyWeeks = keyedStore<WeekPlan>('lifeboard:daily-weeks', readWeek, (w) => w.week)

@@ -31,7 +31,16 @@ export default defineConfig({
 				background_color: '#101012',
 				display: 'standalone',
 				orientation: 'any',
+				// A stable identity, so an installed copy stays the same app whatever the start page.
+				id: '/',
+				scope: '/',
 				start_url: '/',
+				// Opening it again (its icon, a shortcut) brings back the window already open rather than a
+				// second one, which would hold the same boards out of step with it.
+				launch_handler: { client_mode: ['focus-existing', 'auto'] },
+				categories: ['productivity'],
+				// A long press on the icon (a right click in the dock or taskbar on a computer).
+				shortcuts: [{ name: 'Today’s page', short_name: 'Today', url: '/#/daily', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] }],
 				icons: [
 					{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
 					{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' },

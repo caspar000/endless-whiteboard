@@ -1,19 +1,19 @@
 import { useValue } from '@lifeboard/canvas'
 import { getItemStamps, offeredItemSources, resolveItemSource, sourceEntries, sourceKey } from '@lifeboard/node-kit'
-import { ArrowDown, ArrowRight, ArrowUp, Copy, Minus, Plus, X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookmarkPlus, Minus, Pencil, Plus, RotateCcw, X } from 'lucide-react'
 import type { BoardMeta } from '../boards/boardIndex'
-import { CatalogueIcon } from '../app/boardLook/iconBridge'
+import { ContentsEditor, Field, Reorder, TextList, Toggle, move } from './fields'
 import { sentence } from './Library'
 import {
 	GRID_MAX,
 	WEEKDAYS,
+	checklistItems,
 	longDay,
 	newId,
-	type BlockTemplate,
+	templateOf,
+	templateUse,
 	type DailySetup,
 	type LogColumn,
-	type TaskText,
 	type TrackRef,
 	type TrackRow,
 	type Widget,
@@ -31,8 +31,10 @@ export function Inspector({
 	boards,
 	grid,
 	onChange,
+	onMove,
 	onRemove,
 	onClose,
+	onEditTemplate,
 }: {
 	mode: 'daily' | 'review'
 	setup: DailySetup
@@ -40,10 +42,14 @@ export function Inspector({
 	/** The day's focus, for a focus widget's tasks. */
 	focus: string
 	boards: readonly BoardMeta[]
-	grid: { rows: number }
+	grid: { cols: number; rows: number }
 	onChange: (widget: Widget) => void
+	/** Moves a widget to another cell, if it fits there. */
+	onMove: (id: string, cell: { col: number; row: number }) => void
 	onRemove: (id: string) => void
 	onClose: () => void
+	/** Opens a template in the Library, where it is edited for every block that follows it. */
+	onEditTemplate: (id: string) => void
 }) {
 	if (!widget) {
 		return (
@@ -53,13 +59,13 @@ export function Inspector({
 					<span className="lb-daily-faint">Page settings</span>
 				</header>
 				<div className="lb-daily-panel__body">
-					<p className="lb-daily-faint">Select a widget on the page to change it. These settings are the whole page’s.</p>
+					<p className="lb-daily-faint">Select a widget on the page to change it. These settings are every page’s, and apply straight away.</p>
 					<PageSettings setup={setup} />
 				</div>
 			</aside>
 		)
 	}
-	const template = setup.templates.find((t) => t.id === widget.config.templateId)
+	const template = templateOf(setup, widget)
 	const set = (config: Partial<Widget['config']>) => onChange({ ...widget, config: { ...widget.config, ...config } })
 	const title = widgetTitle(widget, setup.templates)
 	return (
@@ -79,24 +85,18 @@ export function Inspector({
 					</span>
 				</p>
 
-				{widget.type === 'block' && template ? (
-					<Field label="Name">
-						<input className="lb-daily-input" value={template.name} onChange={(e) => updateTemplate(template.id, { name: e.target.value })} />
+				{widget.type !== 'header' && (
+					<Field label={widget.type === 'block' ? 'Name' : 'Title'}>
+						<input
+							className="lb-daily-input"
+							value={widget.title ?? ''}
+							placeholder={widget.type === 'block' && template ? template.name : title}
+							onChange={(e) => {
+								const { title: _, ...rest } = widget
+								onChange(e.target.value ? { ...rest, title: e.target.value } : rest)
+							}}
+						/>
 					</Field>
-				) : (
-					widget.type !== 'header' && (
-						<Field label="Title">
-							<input
-								className="lb-daily-input"
-								value={widget.title ?? ''}
-								placeholder={title}
-								onChange={(e) => {
-									const { title: _, ...rest } = widget
-									onChange(e.target.value ? { ...rest, title: e.target.value } : rest)
-								}}
-							/>
-						</Field>
-					)
 				)}
 
 				<Field label="Height on grid">
@@ -114,8 +114,27 @@ export function Inspector({
 					</div>
 				</Field>
 
+				{/* Dragging the grip needs a mouse; these work under a finger too. */}
+				<Field label="Move">
+					<div className="lb-daily-stepper">
+						{(
+							[
+								['Left', ArrowLeft, -1, 0, widget.col <= 0],
+								['Right', ArrowRight, 1, 0, widget.col + widget.w >= grid.cols],
+								['Up', ArrowUp, 0, -1, widget.row <= 0],
+								['Down', ArrowDown, 0, 1, widget.row + widget.h >= grid.rows],
+							] as const
+						).map(([name, Icon, dc, dr, edge]) => (
+							<button key={name} type="button" className="lb-daily-iconbtn" aria-label={`Move ${name.toLowerCase()} one cell`} disabled={edge} onClick={() => onMove(widget.id, { col: widget.col + dc, row: widget.row + dr })}>
+								<Icon size={14} aria-hidden="true" />
+							</button>
+						))}
+						<span className="lb-daily-faint">or drag its grip</span>
+					</div>
+				</Field>
+
 				{(widget.type === 'block' || widget.type === 'physical') && (
-					<TemplateSection setup={setup} widget={widget} template={template} onTemplate={(templateId) => set({ templateId })} />
+					<ContentsSection setup={setup} widget={widget} onChange={onChange} onEditTemplate={onEditTemplate} />
 				)}
 				{widget.type === 'block' && <BlockLookSection widget={widget} set={set} />}
 				{widget.type === 'physical' && <PhysicalSection setup={setup} widget={widget} set={set} />}
@@ -155,28 +174,6 @@ export function Inspector({
 	)
 }
 
-function updateTemplate(id: string, change: Partial<BlockTemplate>): void {
-	updateSetup((s) => ({ ...s, templates: s.templates.map((t) => (t.id === id ? { ...t, ...change } : t)) }))
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<div className="lb-daily-field">
-			<span className="lb-daily-label">{label}</span>
-			{children}
-		</div>
-	)
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-	return (
-		<label className="lb-daily-toggle">
-			<span>{label}</span>
-			<input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-		</label>
-	)
-}
-
 /** Several of a list, as chips that switch on and off. */
 function Picks({ options, selected, onChange }: { options: { id: string; label: string }[]; selected: readonly string[]; onChange: (ids: string[]) => void }) {
 	return (
@@ -196,125 +193,77 @@ function Picks({ options, selected, onChange }: { options: { id: string; label: 
 	)
 }
 
-/** Lines of text to edit, reorder and add to. */
-function TextList({ items, placeholder, onChange }: { items: readonly TaskText[]; placeholder: string; onChange: (items: TaskText[]) => void }) {
-	return (
-		<div className="lb-daily-textlist">
-			{items.map((item, i) => (
-				<div key={item.id} className="lb-daily-textlist__row">
-					<input className="lb-daily-input" value={item.text} aria-label={placeholder} onChange={(e) => onChange(items.map((x) => (x.id === item.id ? { ...x, text: e.target.value } : x)))} />
-					<Reorder i={i} n={items.length} onMove={(to) => onChange(move(items, i, to))} />
-					<button type="button" className="lb-daily-iconbtn" aria-label={`Remove ${item.text}`} onClick={() => onChange(items.filter((x) => x.id !== item.id))}>
-						<X size={12} aria-hidden="true" />
-					</button>
-				</div>
-			))}
-			<button type="button" className="lb-daily-dashed" onClick={() => onChange([...items, { id: newId('x'), text: '' }])}>
-				<Plus size={13} aria-hidden="true" /> Add
-			</button>
-		</div>
-	)
-}
-
-function move<T>(items: readonly T[], from: number, to: number): T[] {
-	const out = [...items]
-	const [item] = out.splice(from, 1)
-	out.splice(to, 0, item!)
-	return out
-}
-
-function Reorder({ i, n, onMove }: { i: number; n: number; onMove: (to: number) => void }) {
-	return (
-		<>
-			<button type="button" className="lb-daily-iconbtn" aria-label="Move up" disabled={i === 0} onClick={() => onMove(i - 1)}>
-				<ArrowUp size={12} aria-hidden="true" />
-			</button>
-			<button type="button" className="lb-daily-iconbtn" aria-label="Move down" disabled={i === n - 1} onClick={() => onMove(i + 1)}>
-				<ArrowDown size={12} aria-hidden="true" />
-			</button>
-		</>
-	)
-}
-
 /* ------------------------------------------------------------------------------------- templates */
 
-function TemplateSection({ setup, widget, template, onTemplate }: { setup: DailySetup; widget: Widget; template: BlockTemplate | undefined; onTemplate: (id: string) => void }) {
-	const used = template ? setup.layouts.filter((l) => l.widgets.some((w) => w.config.templateId === template.id)).length : 0
+/**
+ * A block's template and what it holds. Changed here, the contents are this block's own and its
+ * template stays as it was; the template itself is changed in the Library.
+ */
+function ContentsSection({ setup, widget, onChange, onEditTemplate }: { setup: DailySetup; widget: Widget; onChange: (widget: Widget) => void; onEditTemplate: (id: string) => void }) {
+	const template = templateOf(setup, widget)
+	const own = widget.config.contents
+	const contents = own ?? template ?? { iconTaskIds: [], items: [] }
+	const used = template ? templateUse(setup, template.id) : 0
+	const setConfig = (config: Widget['config']) => onChange({ ...widget, config })
+	const { contents: _, templateId: __, ...rest } = widget.config
+	const editTemplate = template && (
+		<button type="button" className="lb-daily-linkbtn" title="Change the template, for every block that follows it" onClick={() => onEditTemplate(template.id)}>
+			<Pencil size={12} aria-hidden="true" /> Edit template
+		</button>
+	)
 	return (
 		<>
-			<Field label="Source template">
-				<select className="lb-daily-select" value={widget.config.templateId ?? ''} onChange={(e) => onTemplate(e.target.value)}>
-					{widget.type === 'physical' && <option value="">No icon tasks</option>}
-					{!template && widget.type === 'block' && <option value="">Choose a template</option>}
+			<Field label="Template">
+				<select
+					className="lb-daily-select"
+					value={widget.config.templateId ?? ''}
+					// Picking a template starts following it; picking none keeps what the block shows, as its own.
+					onChange={(e) => setConfig(e.target.value ? { ...rest, templateId: e.target.value } : contents.iconTaskIds.length || contents.items.length ? { ...rest, contents } : rest)}
+				>
+					<option value="">{widget.type === 'physical' && !own ? 'None' : 'None: its own tasks'}</option>
 					{setup.templates.map((t) => (
 						<option key={t.id} value={t.id}>
 							{t.name || 'Untitled'}
 						</option>
 					))}
 				</select>
-				{template && (
+				{template && !own && (
 					<div className="lb-daily-row">
 						<span className="lb-daily-faint">
-							In {used} layout{used === 1 ? '' : 's'} · changes reach every page using it
+							Follows {template.name || 'its template'} · in {used} layout{used === 1 ? '' : 's'}. Changes below are this block’s own.
 						</span>
+						{editTemplate}
+					</div>
+				)}
+				{template && own && (
+					<div className="lb-daily-row">
+						<span className="lb-daily-faint">Changed from {template.name || 'its template'} on this page.</span>
+						<button type="button" className="lb-daily-linkbtn" title="Show the template’s tasks again" onClick={() => setConfig({ ...rest, templateId: template.id })}>
+							<RotateCcw size={12} aria-hidden="true" /> Reset to template
+						</button>
+						{editTemplate}
+					</div>
+				)}
+				{!template && own && (own.iconTaskIds.length > 0 || own.items.length > 0) && (
+					<div className="lb-daily-row">
+						<span className="lb-daily-faint">From no template.</span>
 						<button
 							type="button"
 							className="lb-daily-linkbtn"
-							title="Make a copy of the template for this block alone"
+							title="Make a template of these tasks, to put on other pages"
 							onClick={() => {
 								const id = newId('b')
-								updateSetup((s) => ({ ...s, templates: [...s.templates, { ...template, id, name: `${template.name} copy` }] }))
-								onTemplate(id)
+								const name = widget.title || (widget.type === 'physical' ? 'PHYSICAL' : 'NEW BLOCK')
+								updateSetup((s) => ({ ...s, templates: [...s.templates, { id, name, iconTaskIds: [...own.iconTaskIds], items: own.items.map((i) => ({ ...i })) }] }))
+								setConfig({ ...rest, templateId: id })
 							}}
 						>
-							<Copy size={12} aria-hidden="true" /> Detach
+							<BookmarkPlus size={12} aria-hidden="true" /> Save as template
 						</button>
 					</div>
 				)}
 			</Field>
-			{template && (
-				<>
-					<Field label={`Icon tasks · ${template.iconTaskIds.length}`}>
-						<div className="lb-daily-textlist">
-							{template.iconTaskIds.map((id, i) => {
-								const task = setup.iconTasks.find((t) => t.id === id)
-								return (
-									<div key={id} className="lb-daily-textlist__row">
-										<span className="lb-daily-tile lb-daily-tile--small" aria-hidden="true">
-											<span className="lb-daily-tile__icon">{task?.icon ? <CatalogueIcon name={task.icon} size={14} /> : null}</span>
-										</span>
-										<span className="lb-daily-textlist__name">{task?.name ?? 'Deleted'}</span>
-										<Reorder i={i} n={template.iconTaskIds.length} onMove={(to) => updateTemplate(template.id, { iconTaskIds: move(template.iconTaskIds, i, to) })} />
-										<button type="button" className="lb-daily-iconbtn" aria-label={`Take ${task?.name ?? 'it'} out`} onClick={() => updateTemplate(template.id, { iconTaskIds: template.iconTaskIds.filter((x) => x !== id) })}>
-											<X size={12} aria-hidden="true" />
-										</button>
-									</div>
-								)
-							})}
-							<select
-								className="lb-daily-select"
-								value=""
-								aria-label="Add an icon task"
-								onChange={(e) => e.target.value && updateTemplate(template.id, { iconTaskIds: [...template.iconTaskIds, e.target.value] })}
-							>
-								<option value="">+ Add icon task</option>
-								{setup.iconTasks
-									.filter((t) => !template.iconTaskIds.includes(t.id))
-									.map((t) => (
-										<option key={t.id} value={t.id}>
-											{t.name}
-										</option>
-									))}
-							</select>
-							<span className="lb-daily-faint">Make new icon tasks in the Library’s Icon tasks tab.</span>
-						</div>
-					</Field>
-					<Field label={`Checklist · ${template.items.length}`}>
-						<TextList items={template.items} placeholder="A checklist item" onChange={(items) => updateTemplate(template.id, { items })} />
-						<span className="lb-daily-faint">Shown under the icon tasks.</span>
-					</Field>
-				</>
-			)}
+			<ContentsEditor setup={setup} contents={contents} onChange={(next) => setConfig({ ...widget.config, contents: next })} />
 		</>
 	)
 }
@@ -486,11 +435,16 @@ function FocusSection({ setup, focus }: { setup: DailySetup; focus: string }) {
 function refOptions(setup: DailySetup): { value: string; label: string; ref: TrackRef }[] {
 	return [
 		...setup.iconTasks.map((t) => ({ value: `tick:${t.id}`, label: `Ticked: ${t.name}`, ref: { kind: 'tick', id: t.id } as TrackRef })),
-		...setup.templates.flatMap((t) => t.items.map((i) => ({ value: `tick:${i.id}`, label: `Ticked: ${i.text || 'item'} (${t.name})`, ref: { kind: 'tick', id: i.id } as TrackRef }))),
+		...checklistItems(setup).map((i) => ({ value: `tick:${i.id}`, label: `Ticked: ${i.text || 'item'}${itemTemplateName(setup, i.id)}`, ref: { kind: 'tick', id: i.id } as TrackRef })),
 		...setup.metrics.map((m) => ({ value: `metric:${m.id}`, label: `Number: ${m.name}`, ref: { kind: 'metric', id: m.id } as TrackRef })),
 		{ value: 'fasting', label: 'Fasted', ref: { kind: 'fasting' } },
 		{ value: 'pick', label: 'Daily pick stamped or noted', ref: { kind: 'pick' } },
 	]
+}
+
+const itemTemplateName = (setup: DailySetup, id: string) => {
+	const t = setup.templates.find((x) => x.items.some((i) => i.id === id))
+	return t ? ` (${t.name})` : ''
 }
 
 const refValue = (ref: TrackRef) => (ref.kind === 'tick' || ref.kind === 'metric' ? `${ref.kind}:${ref.id}` : ref.kind)

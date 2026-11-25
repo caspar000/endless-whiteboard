@@ -143,22 +143,69 @@ export interface IconTask {
 	icon: string
 }
 
-/**
- * MORNING, HABITS, EVENING: a block made once and put on any number of pages. It holds icon tasks to
- * cross out, a checklist under them, or both.
- */
-export interface BlockTemplate {
-	id: string
-	name: string
+/** What a block holds: icon tasks to cross out, a checklist under them, or both. */
+export interface BlockContents {
 	/** Its icon tasks, in order. */
 	iconTaskIds: string[]
 	/** Its checklist: "Download album", "Prepare bags". */
 	items: TaskText[]
 }
 
-/** Everything a template has to tick: its icon tasks, then its checklist. */
-export function templateTickIds(template: BlockTemplate): string[] {
-	return [...template.iconTaskIds, ...template.items.map((i) => i.id)]
+/**
+ * MORNING, HABITS, EVENING: a block made once and put on any number of pages. A block on a page
+ * follows it until that page changes the block's contents, which are then the block's own.
+ */
+export interface BlockTemplate extends BlockContents {
+	id: string
+	name: string
+}
+
+/** Everything a block has to tick: its icon tasks, then its checklist. */
+export function templateTickIds(contents: BlockContents): string[] {
+	return [...contents.iconTaskIds, ...contents.items.map((i) => i.id)]
+}
+
+export function templateOf(setup: DailySetup, widget: Widget): BlockTemplate | undefined {
+	return widget.config.templateId ? setup.templates.find((t) => t.id === widget.config.templateId) : undefined
+}
+
+/** What a block or a physical widget shows: its own contents, else its template's. */
+export function blockContents(setup: DailySetup, widget: Widget): BlockContents | undefined {
+	return widget.config.contents ?? templateOf(setup, widget)
+}
+
+/** Every checklist item there is, in a template or in a block of its own, for naming what a tick was. */
+export function checklistItems(setup: DailySetup): TaskText[] {
+	const seen = new Map<string, TaskText>()
+	for (const t of setup.templates) for (const i of t.items) if (!seen.has(i.id)) seen.set(i.id, i)
+	for (const l of setup.layouts) for (const w of l.widgets) for (const i of w.config.contents?.items ?? []) if (!seen.has(i.id)) seen.set(i.id, i)
+	return [...seen.values()]
+}
+
+/** How many layouts have a block that follows the template (one with contents of its own doesn't). */
+export function templateUse(setup: DailySetup, templateId: string): number {
+	return setup.layouts.filter((l) => l.widgets.some((w) => w.config.templateId === templateId && !w.config.contents)).length
+}
+
+/**
+ * The setup without a template. The blocks made from it keep what they showed, as contents and a
+ * heading of their own, so no page changes.
+ */
+export function withoutTemplate(setup: DailySetup, templateId: string): DailySetup {
+	const template = setup.templates.find((t) => t.id === templateId)
+	if (!template) return setup
+	const bake = (w: Widget): Widget => {
+		if (w.config.templateId !== templateId) return w
+		const { templateId: _, ...config } = w.config
+		const contents = config.contents ?? { iconTaskIds: [...template.iconTaskIds], items: template.items.map((i) => ({ ...i })) }
+		const title = w.title ?? (w.type === 'block' ? template.name : undefined)
+		return { ...w, ...(title ? { title } : {}), config: { ...config, contents } }
+	}
+	return {
+		...setup,
+		templates: setup.templates.filter((t) => t.id !== templateId),
+		layouts: setup.layouts.map((l) => ({ ...l, widgets: l.widgets.map(bake) })),
+	}
 }
 
 export type LogColumn = 'rating' | 'pages' | 'done'
@@ -195,6 +242,11 @@ export interface TrackRow {
 export interface WidgetConfig {
 	/** A block's template. A physical block's icon tasks come from one too. */
 	templateId?: string
+	/**
+	 * The block's own icon tasks and checklist, once they were changed on a page: it shows these and no
+	 * longer follows its template's.
+	 */
+	contents?: BlockContents
 	/**
 	 * A block's icon tasks as a grid, rows by columns, the tiles sized to fill it. Either left out is
 	 * worked out from the other; both left out, the tiles take whatever arrangement draws them largest.
@@ -238,10 +290,15 @@ export interface Widget {
 	config: WidgetConfig
 }
 
-/** The daily page's layout from a day on: a change applies to that day and later, never earlier ones. */
+/**
+ * The daily page's layout from a day on: a change applies to that day and later, never earlier ones.
+ * One saved for "only this page" is that day's alone (`only`), and the days after keep the layout
+ * they had.
+ */
 export interface DailyLayout {
 	from: Day
 	widgets: Widget[]
+	only?: true
 }
 
 export interface DailySetup {
@@ -416,6 +473,10 @@ function readRow(r: Record<string, unknown>): TrackRow | null {
 function readConfig(r: Record<string, unknown>): WidgetConfig {
 	const out: WidgetConfig = {}
 	if (typeof r.templateId === 'string') out.templateId = r.templateId
+	if (r.contents && typeof r.contents === 'object') {
+		const c = obj(r.contents)
+		out.contents = { iconTaskIds: strings(c.iconTaskIds), items: list(c.items, readText) }
+	}
 	const gridSide = (v: unknown) => {
 		const n = num(v)
 		return n === undefined ? undefined : Math.max(1, Math.min(GRID_MAX, Math.round(n)))
@@ -494,7 +555,7 @@ export function readSetup(raw: unknown): DailySetup | null {
 	const layouts = arr(r.layouts)
 		.map((l) => obj(l))
 		.filter((l) => isDay(l.from))
-		.map((l) => ({ from: l.from as Day, widgets: list(l.widgets, readWidget) }))
+		.map((l): DailyLayout => ({ from: l.from as Day, widgets: list(l.widgets, readWidget), ...(l.only === true ? { only: true as const } : {}) }))
 		.sort((a, b) => a.from.localeCompare(b.from))
 	const reviewDay = num(r.reviewDay)
 	return {
@@ -611,11 +672,26 @@ export function pagePhotoHashes(pages: Iterable<DayPage>): Set<string> {
 
 /* ------------------------------------------------------------------------------------ the layout */
 
-/** The daily layout a day is drawn with: the newest one made on or before it, or the first. */
+/**
+ * The daily layout a day is drawn with: one saved for that day alone, else the newest one made on or
+ * before it, else the first.
+ */
 export function layoutFor(setup: DailySetup, day: Day): Widget[] {
+	const own = setup.layouts.find((l) => l.only && l.from === day)
+	if (own) return own.widgets
+	return carriedLayout(setup, day)
+}
+
+/** The layout a day has from the days before it, leaving out any saved for it alone. */
+function carriedLayout(setup: DailySetup, day: Day): Widget[] {
 	let found: DailyLayout | undefined
-	for (const layout of setup.layouts) if (layout.from <= day) found = layout
-	return (found ?? setup.layouts[0])?.widgets ?? []
+	let first: DailyLayout | undefined
+	for (const layout of setup.layouts) {
+		if (layout.only) continue
+		first ??= layout
+		if (layout.from <= day) found = layout
+	}
+	return (found ?? first)?.widgets ?? []
 }
 
 /**
@@ -627,6 +703,81 @@ export function withLayout(setup: DailySetup, day: Day, widgets: Widget[]): Dail
 	layouts.push({ from: day, widgets })
 	layouts.sort((a, b) => a.from.localeCompare(b.from))
 	return { ...setup, layouts }
+}
+
+/**
+ * "Only this page": the layout saved for `day` alone. The days after keep theirs. A layout the same as
+ * the one the day would have anyway is no exception, so none is kept.
+ */
+export function withPageLayout(setup: DailySetup, day: Day, widgets: Widget[]): DailySetup {
+	const layouts = setup.layouts.filter((l) => !(l.only && l.from === day))
+	if (!sameWidgets(widgets, carriedLayout(setup, day))) layouts.push({ from: day, widgets, only: true })
+	layouts.sort((a, b) => a.from.localeCompare(b.from))
+	return { ...setup, layouts }
+}
+
+/**
+ * "This and all future pages": `day` takes the layout from then on, and every layout saved for a later
+ * day, one day's alone or from a day on, takes the same changes (`applyChanges`) while keeping its
+ * own. Earlier days are left as they were.
+ */
+export function withLayoutFrom(setup: DailySetup, day: Day, before: readonly Widget[], after: Widget[]): DailySetup {
+	const layouts = setup.layouts
+		.filter((l) => l.from !== day)
+		.map((l) => (l.from > day ? { ...l, widgets: applyChanges(l.widgets, before, after) } : l))
+	layouts.push({ from: day, widgets: after })
+	layouts.sort((a, b) => a.from.localeCompare(b.from))
+	return { ...setup, layouts }
+}
+
+/** JSON with every object's keys in order, so the same widget compares the same however it was built. */
+const stable = (v: unknown): string =>
+	JSON.stringify(v, (_, x: unknown) =>
+		x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))) : x
+	)
+const same = (a: unknown, b: unknown) => stable(a) === stable(b)
+
+export function sameWidgets(a: readonly Widget[], b: readonly Widget[]): boolean {
+	return same(a, b)
+}
+
+/**
+ * What was changed from `before` to `after`, made to another layout too: widgets taken out go, new
+ * ones come in where they fit, and a changed one takes only what changed (its heading, a setting, its
+ * place), so what the other layout changed for itself stays. A move that would land on another widget
+ * there is left out.
+ */
+export function applyChanges(target: readonly Widget[], before: readonly Widget[], after: readonly Widget[]): Widget[] {
+	const was = new Map(before.map((w) => [w.id, w]))
+	const now = new Set(after.map((w) => w.id))
+	let out = target.filter((w) => !(was.has(w.id) && !now.has(w.id)))
+	for (const a of after) {
+		const b = was.get(a.id)
+		const t = out.find((w) => w.id === a.id)
+		if (!b) {
+			if (!t && fits(out, a, DAILY_GRID)) out = [...out, a]
+			continue
+		}
+		// Gone from that layout on purpose, or not changed here.
+		if (!t || same(a, b)) continue
+		let next: Widget = { ...t, config: { ...t.config } }
+		if (a.title !== b.title) {
+			const { title: _, ...rest } = next
+			next = a.title ? { ...rest, title: a.title } : rest
+		}
+		const keys = new Set([...Object.keys(a.config), ...Object.keys(b.config)] as (keyof WidgetConfig)[])
+		for (const key of keys) {
+			if (same(a.config[key], b.config[key])) continue
+			if (a.config[key] === undefined) delete next.config[key]
+			else (next.config as Record<string, unknown>)[key] = a.config[key]
+		}
+		if (a.col !== b.col || a.row !== b.row || a.w !== b.w || a.h !== b.h) {
+			const placed = { ...next, col: a.col, row: a.row, w: a.w, h: a.h }
+			if (fits(out, placed, DAILY_GRID, t.id)) next = placed
+		}
+		out = out.map((w) => (w.id === t.id ? next : w))
+	}
+	return out
 }
 
 interface Grid {
@@ -764,8 +915,8 @@ export function dayProgress(setup: DailySetup, page: DayPage | undefined, day: D
 export function tickIdsOf(setup: DailySetup, widgets: readonly Widget[], focus: string): string[] {
 	const ids: string[] = []
 	for (const w of widgets) {
-		const template = w.config.templateId ? setup.templates.find((t) => t.id === w.config.templateId) : undefined
-		if ((w.type === 'block' || w.type === 'physical') && template) ids.push(...templateTickIds(template))
+		const contents = blockContents(setup, w)
+		if ((w.type === 'block' || w.type === 'physical') && contents) ids.push(...templateTickIds(contents))
 		if (w.type === 'focus') ids.push(...(setup.areas.find((a) => a.id === focus)?.tasks.map((t) => t.id) ?? []))
 	}
 	return [...new Set(ids)]

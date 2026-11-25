@@ -11,6 +11,7 @@ import {
 	WEEKDAYS,
 	WEEKDAY_LETTERS,
 	addDays,
+	blockContents,
 	cycleLabel,
 	cycleOf,
 	daysOfWeek,
@@ -25,6 +26,7 @@ import {
 	weekNumber,
 	weekOf,
 	weekday,
+	type BlockContents,
 	type BlockTemplate,
 	type Day,
 	type DayPick,
@@ -229,13 +231,13 @@ function useToggleTick() {
 		updatePage((p) => ({ ...p, ticks: p.ticks.includes(id) ? p.ticks.filter((t) => t !== id) : [...p.ticks, id] }))
 }
 
-function useIconTasks(template: BlockTemplate): IconTask[] {
+function useIconTasks(template: BlockContents): IconTask[] {
 	const { setup } = useDaily()
 	return template.iconTaskIds.flatMap((id) => setup.iconTasks.find((t) => t.id === id) ?? [])
 }
 
 /** A template's icon tasks in a row that wraps, at their own size: Physical's, beside its numbers. */
-function IconTiles({ template }: { template: BlockTemplate }) {
+function IconTiles({ template }: { template: BlockContents }) {
 	const { page } = useDaily()
 	const toggle = useToggleTick()
 	const tasks = useIconTasks(template)
@@ -255,7 +257,7 @@ const TILE_GAP = 6
  * shrinking with it: rows by columns as the widget says, or whatever draws them largest. Measured
  * unscaled (`clientWidth`), since the page around it is scaled to fit the screen.
  */
-function IconGrid({ template, rows, cols }: { template: BlockTemplate; rows?: number; cols?: number }) {
+function IconGrid({ template, rows, cols }: { template: BlockContents; rows?: number; cols?: number }) {
 	const { page } = useDaily()
 	const toggle = useToggleTick()
 	const tasks = useIconTasks(template)
@@ -302,12 +304,12 @@ function Check({ done, text, onToggle, extra, onRemove }: { done: boolean; text:
 
 function TemplateBlock({ widget }: { widget: Widget }) {
 	const { setup, page } = useDaily()
-	const template = setup.templates.find((t) => t.id === widget.config.templateId)
+	const template = blockContents(setup, widget)
 	const title = widgetTitle(widget, setup.templates)
 	if (!template) {
 		return (
 			<Block title={title}>
-				<p className="lb-daily-empty">Its template was deleted. Pick another in the Inspector.</p>
+				<p className="lb-daily-empty">Its template was deleted. Pick another in the Inspector, or give it tasks of its own.</p>
 			</Block>
 		)
 	}
@@ -323,7 +325,7 @@ function TemplateBlock({ widget }: { widget: Widget }) {
 }
 
 /** A template's checklist, under its icon tasks. */
-function Checklist({ template }: { template: BlockTemplate }) {
+function Checklist({ template }: { template: BlockContents }) {
 	const { page } = useDaily()
 	const toggle = useToggleTick()
 	if (!template.items.length) return null
@@ -416,7 +418,7 @@ function TasksWidget({ widget }: { widget: Widget }) {
 
 function PhysicalWidget({ widget }: { widget: Widget }) {
 	const { setup, page, updatePage, blobs } = useDaily()
-	const template = setup.templates.find((t) => t.id === widget.config.templateId)
+	const template = blockContents(setup, widget)
 	const metrics = (widget.config.metricIds ?? []).flatMap((id) => setup.metrics.find((m) => m.id === id) ?? [])
 	const ids = template ? templateTickIds(template) : []
 	const done = ids.filter((id) => page.ticks.includes(id)).length

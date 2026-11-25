@@ -5,6 +5,7 @@ import {
 	WEEKDAYS,
 	WEEKDAY_LETTERS,
 	addDays,
+	checklistItems,
 	cycleOf,
 	daysOfWeek,
 	eveningCounts,
@@ -408,7 +409,7 @@ export function rowName(setup: ReturnType<typeof useDaily>['setup'], row: TrackR
 	switch (row.ref.kind) {
 		case 'tick': {
 			const id = row.ref.id
-			return setup.iconTasks.find((t) => t.id === id)?.name ?? setup.templates.flatMap((t) => t.items).find((i) => i.id === id)?.text ?? 'A task that is gone'
+			return setup.iconTasks.find((t) => t.id === id)?.name ?? checklistItems(setup).find((i) => i.id === id)?.text ?? 'A task that is gone'
 		}
 		case 'metric': {
 			const id = row.ref.id

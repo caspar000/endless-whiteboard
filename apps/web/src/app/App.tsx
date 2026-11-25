@@ -49,6 +49,7 @@ import { useKeyboardInset, usePhone } from './usePhone'
 import { addDays, today, weekOf } from '../daily/model'
 import { getSetup } from '../daily/store'
 import { startPhotoSync } from '../daily/photos'
+import { UpdateToast } from '../pwa/UpdateToast'
 
 /** The daily page, loaded the first time it is opened: a board needs none of it. */
 const DailyScreen = lazy(() => import('../daily/DailyScreen'))
@@ -1048,6 +1049,8 @@ export function App() {
 						onRename={(id, name) => void api.rename(id, name)}
 					/>
 				)}
+
+				{(phone || sidebarCollapsed) && <UpdateToast />}
 
 				<button
 					type="button"

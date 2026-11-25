@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
 	DAILY_GRID,
 	addDays,
+	applyChanges,
+	blockContents,
 	dayProgress,
 	defaultSetup,
 	drawPick,
@@ -32,6 +34,9 @@ import {
 	weekRange,
 	weekday,
 	withLayout,
+	withLayoutFrom,
+	withPageLayout,
+	withoutTemplate,
 	type DayPage,
 	type TrackRow,
 	type Widget,
@@ -103,6 +108,71 @@ describe('the layout grid', () => {
 		expect(layoutFor(changed, '2026-10-01').length).toBe(setup.layouts[0]!.widgets.length)
 		// Changing the same day again replaces its layout rather than adding one.
 		expect(withLayout(changed, '2026-11-20', []).layouts).toHaveLength(2)
+	})
+})
+
+describe('saving a page’s changes', () => {
+	const setup = defaultSetup('2026-11-01')
+	const base = layoutFor(setup, '2026-11-25')
+	const morning = base.find((w) => w.id === 'morning')!
+	const more = { iconTaskIds: [...setup.templates[0]!.iconTaskIds, 'nap'], items: [] }
+	const edited = base.map((w) => (w.id === 'morning' ? { ...w, config: { ...w.config, contents: more } } : w))
+
+	it('changes one block on one page, not its template or any other page', () => {
+		const saved = withPageLayout(setup, '2026-11-25', edited)
+		expect(blockContents(saved, layoutFor(saved, '2026-11-25').find((w) => w.id === 'morning')!)).toEqual(more)
+		expect(blockContents(saved, layoutFor(saved, '2026-11-24').find((w) => w.id === 'morning')!)?.iconTaskIds).toHaveLength(4)
+		expect(blockContents(saved, layoutFor(saved, '2026-11-26').find((w) => w.id === 'morning')!)?.iconTaskIds).toHaveLength(4)
+		expect(saved.templates).toEqual(setup.templates)
+		// A day's progress counts what its own page shows.
+		const page = { ...newPage('2026-11-25'), ticks: ['nap'] }
+		expect(dayProgress(saved, page, '2026-11-25', '')).toBeGreaterThan(0)
+		expect(dayProgress(setup, page, '2026-11-25', '')).toBe(0)
+	})
+
+	it('keeps no page of its own when it ends up the same as the days around it', () => {
+		const saved = withPageLayout(withPageLayout(setup, '2026-11-25', edited), '2026-11-25', base)
+		expect(saved.layouts).toEqual(setup.layouts)
+	})
+
+	it('reads a page’s own layout and a block’s own tasks back', () => {
+		const saved = withPageLayout(setup, '2026-11-25', edited)
+		expect(readSetup(JSON.parse(JSON.stringify(saved)))).toEqual(saved)
+	})
+
+	it('carries a change to every page after, keeping what a later page changed for itself', () => {
+		// Friday's notes were given a heading of their own.
+		const friday = layoutFor(setup, '2026-11-27').map((w) => (w.id === 'notes' ? { ...w, title: 'FRIDAY' } : w))
+		const withFriday = withPageLayout(setup, '2026-11-27', friday)
+		const saved = withLayoutFrom(withFriday, '2026-11-25', base, edited)
+		const fridayMorning = layoutFor(saved, '2026-11-27').find((w) => w.id === 'morning')!
+		expect(blockContents(saved, fridayMorning)).toEqual(more)
+		expect(layoutFor(saved, '2026-11-27').find((w) => w.id === 'notes')!.title).toBe('FRIDAY')
+		expect(blockContents(saved, layoutFor(saved, '2026-12-10').find((w) => w.id === 'morning')!)).toEqual(more)
+		// The days before are left alone.
+		expect(blockContents(saved, layoutFor(saved, '2026-11-24').find((w) => w.id === 'morning')!)?.iconTaskIds).toHaveLength(4)
+		expect(morning.config.contents).toBeUndefined()
+	})
+
+	it('takes widgets out, puts new ones in where they fit, and leaves out a move that would collide', () => {
+		const before = [widget('a', 0, 0, 1, 1), widget('b', 1, 0, 1, 1)]
+		const after = [widget('a', 0, 1, 1, 1), widget('c', 1, 1, 1, 1)]
+		const later = [widget('a', 0, 0, 1, 1), widget('b', 1, 0, 1, 1), widget('x', 0, 1, 1, 1)]
+		const out = applyChanges(later, before, after)
+		expect(out.map((w) => w.id).sort()).toEqual(['a', 'c', 'x'])
+		// `a` would land on `x` there, so it stays where that page has it.
+		expect(out.find((w) => w.id === 'a')).toMatchObject({ col: 0, row: 0 })
+	})
+})
+
+describe('templates', () => {
+	it('deleting one leaves its blocks showing what they showed', () => {
+		const setup = defaultSetup('2026-11-01')
+		const out = withoutTemplate(setup, 'morning')
+		const block = layoutFor(out, '2026-11-25').find((w) => w.id === 'morning')!
+		expect(out.templates.some((t) => t.id === 'morning')).toBe(false)
+		expect(block.title).toBe('MORNING')
+		expect(blockContents(out, block)).toEqual({ iconTaskIds: setup.templates[0]!.iconTaskIds, items: [] })
 	})
 })
 

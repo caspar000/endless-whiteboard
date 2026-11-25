@@ -274,6 +274,11 @@ body,
 	margin: 0;
 }
 
+html {
+	/* Installed as an app, a tap shouldn't flash a grey box the way a link in a web page does. */
+	-webkit-tap-highlight-color: transparent;
+}
+
 body {
 	background: var(--lb-bg);
 	color: var(--lb-text);
@@ -287,6 +292,53 @@ button {
 	font-family: inherit;
 	font-size: inherit;
 	cursor: pointer;
+	/* A long press on a button is not a request to copy its label. */
+	-webkit-touch-callout: none;
+}
+
+/* A new version waiting (pwa/UpdateToast.tsx), under the top bar while the sidebar is shut. */
+.lb-update-toast {
+	position: fixed;
+	top: calc(var(--fl-card-top, 56px));
+	left: 0;
+	right: 0;
+	z-index: 70;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	width: max-content;
+	max-width: calc(100vw - 24px);
+	margin: 0 auto;
+	padding: 4px;
+	border-radius: 999px;
+	animation: lb-expand-in var(--mo-pop);
+}
+.lb-update-toast button {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 36px;
+	border: 0;
+	border-radius: 999px;
+	background: none;
+	color: var(--lb-text);
+	font-size: 13px;
+	white-space: nowrap;
+}
+.lb-update-toast__go {
+	padding: 0 12px;
+}
+.lb-update-toast__go > svg {
+	flex: none;
+	color: var(--lb-accent);
+}
+.lb-update-toast__close {
+	justify-content: center;
+	width: 36px;
+	color: var(--lb-text-dim) !important;
+}
+.lb-update-toast button:hover {
+	background: var(--lb-surface-hover);
 }
 
 /* ------------------------------------------------------------------ buttons */

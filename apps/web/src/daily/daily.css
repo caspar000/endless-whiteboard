@@ -9,7 +9,7 @@
 	flex-direction: column;
 	gap: var(--daily-gap);
 	height: 100%;
-	padding: 8px 0 var(--fl-edge);
+	padding: 8px var(--fl-edge) var(--fl-edge) 0;
 	color: var(--lb-text);
 	font-size: 13px;
 	min-height: 0;
@@ -20,6 +20,12 @@
 }
 
 /* ------------------------------------------------------------------------------ top bar */
+
+/* Only the body gives up height; squeezed, the bar and the week would slide under each other. */
+.lb-daily__top,
+.lb-daily-week {
+	flex: none;
+}
 
 .lb-daily__top {
 	display: flex;
@@ -285,6 +291,76 @@
 	background: var(--lb-accent-tint);
 }
 
+/* Where a page's changes go: this page alone, or it and every page after. */
+.lb-daily-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+	background: var(--lb-backdrop);
+}
+.lb-daily-modal__card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: min(420px, 100%);
+	padding: 18px;
+	border: 1px solid var(--lb-border-strong);
+	border-radius: 14px;
+	background: var(--lb-surface);
+	box-shadow: var(--lb-shadow-2);
+}
+.lb-daily-modal__card h2 {
+	margin: 0;
+	font-size: 15px;
+}
+.lb-daily-modal__card p {
+	margin: 0;
+}
+.lb-daily-modal__choices {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.lb-daily-modal__choice {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 10px 12px;
+	border: 1px solid var(--lb-border);
+	border-radius: 10px;
+	background: var(--lb-surface);
+	color: var(--lb-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-daily-modal__choice:hover,
+.lb-daily-modal__choice:focus-visible {
+	border-color: var(--lb-accent);
+	background: var(--lb-accent-tint);
+	outline: none;
+}
+.lb-daily-modal__choice span {
+	font-size: 12px;
+}
+.lb-daily-modal__foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 4px;
+}
+.lb-daily-linkbtn--danger {
+	color: var(--lb-danger);
+}
+.lb-daily-linkbtn--danger:hover:not(:disabled) {
+	color: var(--lb-danger);
+	text-decoration: underline;
+}
+
 /* ------------------------------------------------------------------------------ the body */
 
 /* One column, the page alone, unless the layout is being edited: then the Library, the page and the Inspector. */
@@ -397,6 +473,18 @@
 	width: 26px;
 	height: 26px;
 	border: 1px solid var(--lb-border);
+}
+/* A template opened in the Library, edited for every block that follows it. */
+.lb-daily-template-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: -4px 0 4px;
+	padding: 12px;
+	border: 1px solid var(--lb-border);
+	border-top: 0;
+	border-radius: 0 0 12px 12px;
+	background: var(--lb-bg-raised);
 }
 .lb-daily-icontask {
 	display: flex;
@@ -560,6 +648,44 @@
 	color: var(--lb-danger);
 	font: inherit;
 	cursor: pointer;
+}
+
+/*
+ * The edit bar: the switch between the Library and the Inspector where only one of them fits, and on a
+ * phone Save… beside it. Not needed where both fit beside the page.
+ */
+.lb-daily-dock {
+	display: none;
+}
+.lb-daily-switch {
+	display: flex;
+	flex: 1;
+	gap: 2px;
+	min-width: 0;
+	padding: 3px;
+	border: 1px solid var(--lb-border);
+	border-radius: 12px;
+	background: var(--lb-bg-raised);
+}
+.lb-daily-switch button {
+	flex: 1;
+	min-width: 0;
+	height: 32px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 9px;
+	background: none;
+	color: var(--lb-text-dim);
+	font: inherit;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+.lb-daily-switch button[aria-selected='true'] {
+	background: var(--lb-accent-tint);
+	color: var(--lb-accent);
 }
 
 /* ------------------------------------------------------------------------------- the page */
@@ -1496,6 +1622,11 @@
 		min-width: 170px;
 	}
 }
+/*
+ * A tablet or a narrow window: the week over two rows, and while editing the page beside one panel at a
+ * time, the Library or the Inspector, picked in the switch above it. Too short a window scrolls rather
+ * than squeezing the page.
+ */
 @media (max-width: 1024px) {
 	.lb-daily {
 		overflow-y: auto;
@@ -1503,19 +1634,56 @@
 	.lb-daily-week {
 		flex-direction: column;
 	}
+	.lb-daily-week__cycle {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		min-width: 0;
+	}
 	.lb-daily-week__days {
 		grid-template-columns: repeat(7, minmax(64px, 1fr));
 		overflow-x: auto;
 	}
+	/* The review's cell is no wider than the others here: its star says what it is. */
+	.lb-daily-day--review .lb-daily-day__top > :not(:first-child) {
+		display: none;
+	}
+	.lb-daily-day__review {
+		font-size: 0;
+	}
+	.lb-daily-day__review svg {
+		width: 14px;
+		height: 14px;
+	}
+	.lb-daily__body {
+		min-height: 460px;
+	}
 	/* As specific as the editing rules above, and after them, so it wins for both pages. */
 	.lb-daily.lb-daily--editing .lb-daily__body {
-		grid-template-columns: minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) 300px;
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	.lb-daily--editing .lb-daily__stage {
+		grid-column: 1;
+		grid-row: 1 / span 2;
+	}
+	.lb-daily--editing .lb-daily-dock {
+		display: flex;
+		grid-column: 2;
+		grid-row: 1;
+	}
+	.lb-daily-dock__discard,
+	.lb-daily-dock__save {
+		display: none;
 	}
 	.lb-daily--editing .lb-daily-panel {
-		max-height: 60vh;
+		grid-column: 2;
+		grid-row: 2;
 	}
-	.lb-daily__frame {
-		min-height: 70vh;
+	.lb-daily[data-panel='library'] .lb-daily-inspector,
+	.lb-daily[data-panel='inspector'] .lb-daily-library {
+		display: none;
 	}
 }
 
@@ -1527,8 +1695,125 @@
 @media (max-width: 767px) {
 	.lb-daily {
 		--daily-gap: 10px;
+		/* The edit bar sits on the home indicator's safe area, or on the keyboard when it is up. */
+		--daily-dock-h: 54px;
+		--daily-dock-bottom: calc(max(var(--fl-safe-bottom), var(--lb-keyboard, 0px)) + var(--fl-edge));
+		--daily-sheet-h: min(56dvh, 520px);
+		--daily-over: calc(var(--daily-dock-bottom) + var(--daily-dock-h) + 8px);
 		padding: var(--fl-card-top) calc(var(--fl-safe-right) + var(--fl-edge) * 2) calc(var(--fl-safe-bottom) + 24px)
 			calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+	}
+	/* The page scrolls under the floating top bar: fade it out before it reaches the bar and the clock. */
+	.lb-daily::before {
+		content: '';
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 18;
+		height: calc(var(--fl-safe-top) + var(--fl-edge) + var(--fl-bar));
+		background: linear-gradient(var(--lb-bg) 55%, color-mix(in srgb, var(--lb-bg) 0%, transparent));
+		pointer-events: none;
+	}
+	/* Room to scroll the whole page clear of the edit bar, and of the sheet when it is up. */
+	.lb-daily--editing {
+		padding-bottom: calc(var(--daily-over) + 16px);
+	}
+	.lb-daily--editing[data-sheet] {
+		padding-bottom: calc(var(--daily-over) + var(--daily-sheet-h) + 16px);
+		scroll-padding: var(--fl-card-top) 0 calc(var(--daily-over) + var(--daily-sheet-h) + 8px);
+	}
+	/* The edit bar says it: Save… where there are changes, Done where there are none. */
+	.lb-daily-pill {
+		display: none;
+	}
+	.lb-daily.lb-daily--editing .lb-daily__body {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+		min-height: 0;
+	}
+	.lb-daily--editing .lb-daily__stage {
+		grid-row: auto;
+	}
+	.lb-daily--editing .lb-daily-btn--save {
+		display: none;
+	}
+	.lb-daily--editing .lb-daily-dock {
+		position: fixed;
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+		bottom: var(--daily-dock-bottom);
+		z-index: 20;
+		align-items: center;
+		gap: 6px;
+		height: var(--daily-dock-h);
+		padding: 6px;
+		border-radius: 20px;
+		background: var(--lb-surface);
+		box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	}
+	.lb-daily-switch {
+		height: 100%;
+		border: 0;
+		background: var(--lb-surface-2);
+	}
+	.lb-daily-switch button {
+		height: 100%;
+	}
+	.lb-daily-dock__discard,
+	.lb-daily-dock__save {
+		display: inline-flex;
+		justify-content: center;
+		height: 100%;
+		border-radius: 14px;
+	}
+	.lb-daily-dock__discard {
+		width: 42px;
+		padding: 0;
+		color: var(--lb-danger);
+	}
+	.lb-daily-dock__save {
+		min-width: 76px;
+	}
+	/* The Library or the Inspector, as a sheet over the page's lower half, above the edit bar. */
+	.lb-daily--editing .lb-daily-panel {
+		position: fixed;
+		left: calc(var(--fl-safe-left) + var(--fl-edge));
+		right: calc(var(--fl-safe-right) + var(--fl-edge));
+		bottom: var(--daily-over);
+		z-index: 19;
+		height: var(--daily-sheet-h);
+		max-height: calc(100dvh - var(--daily-over) - var(--fl-card-top));
+		border-radius: 20px;
+		background: var(--lb-surface);
+		box-shadow: var(--fl-ring), var(--fl-shadow);
+		animation: lb-daily-sheet-in 160ms ease-out;
+	}
+	.lb-daily--editing:not([data-sheet]) .lb-daily-panel {
+		display: none;
+	}
+	.lb-daily-panel__body {
+		overscroll-behavior: contain;
+	}
+	/* Dragging from the Library needs a mouse: on a phone it is + to add. */
+	.lb-daily-library .lb-daily-panel__head .lb-daily-faint {
+		display: none;
+	}
+	/* Why something couldn't be done, over the edit bar where it is seen. */
+	.lb-daily-notice {
+		position: fixed;
+		left: calc(var(--fl-safe-left) + var(--fl-edge) * 2);
+		right: calc(var(--fl-safe-right) + var(--fl-edge) * 2);
+		bottom: calc(var(--daily-over) + 4px);
+		z-index: 21;
+		padding: 10px 14px;
+		border-radius: 14px;
+		background: var(--lb-surface);
+		box-shadow: var(--fl-ring), var(--fl-shadow);
+		font-size: 13px;
+	}
+	.lb-daily--editing[data-sheet] .lb-daily-notice {
+		bottom: calc(var(--daily-over) + var(--daily-sheet-h) + 8px);
 	}
 
 	.lb-daily__top {
@@ -1566,10 +1851,7 @@
 		width: 36px;
 		height: 36px;
 	}
-	.lb-daily-pill,
 	.lb-daily-notice {
-		order: 1;
-		flex-basis: 100%;
 		text-align: center;
 	}
 
@@ -1578,11 +1860,21 @@
 		padding: 8px;
 		border-radius: 14px;
 	}
-	.lb-daily-week__cycle {
-		flex-direction: row;
-		align-items: center;
-		justify-content: space-between;
+	.lb-daily-week__cyclebtn {
 		min-width: 0;
+		overflow: hidden;
+	}
+	.lb-daily-week__cyclebtn > span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.lb-daily-week__cyclebtn > strong,
+	.lb-daily-week__cyclebtn > svg {
+		flex: none;
+	}
+	.lb-daily-week__cycle > .lb-daily-faint {
+		flex: none;
+		font-size: 12px;
 	}
 	.lb-daily-pop {
 		width: min(280px, calc(100vw - 48px));
@@ -1614,15 +1906,15 @@
 	.lb-daily-day__num {
 		font-size: 16px;
 	}
+	/* "· Today" doesn't fit a seventh of the screen: today's date is in the accent instead. */
+	.lb-daily-day__today {
+		display: none;
+	}
+	.lb-daily-day[data-today] .lb-daily-day__num {
+		color: var(--lb-accent);
+	}
 	.lb-daily-day--review {
 		border-bottom-color: var(--lb-star);
-	}
-	.lb-daily-day__review {
-		font-size: 0;
-	}
-	.lb-daily-day__review svg {
-		width: 14px;
-		height: 14px;
 	}
 
 	.lb-daily__paper {
@@ -1634,6 +1926,18 @@
 	.lb-daily__frame {
 		flex: none;
 		min-height: 0;
+	}
+}
+
+@keyframes lb-daily-sheet-in {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.lb-daily-panel {
+		animation: none !important;
 	}
 }
 

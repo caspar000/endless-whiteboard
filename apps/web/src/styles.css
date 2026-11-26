@@ -724,6 +724,83 @@ button {
 	top: 0;
 }
 
+/*
+ * A split (app/SplitPanes.tsx, docs/tabs-plan.md): its tabs side by side as cards, below the tab strip
+ * and clear of the sidebar and the agent panel, whichever pane is focused. The panes are placed by
+ * position, so a board in one keeps its editor through every change of the split.
+ */
+.lb-shell.lb-shell--split {
+	background: var(--lb-bg);
+}
+.lb-shell.lb-shell--split .lb-shell__content {
+	top: 46px;
+	left: var(--fl-page-left);
+	right: calc(var(--fl-right) + var(--fl-edge));
+	bottom: var(--fl-edge);
+	overflow: visible;
+	transition:
+		left var(--mo-in),
+		right var(--mo-in);
+}
+.lb-pane {
+	position: absolute;
+	overflow: hidden;
+	border-radius: var(--fl-radius-btn);
+	background: var(--lb-bg);
+	box-shadow: var(--fl-ring), var(--fl-shadow-sm);
+	/* Holds its fixed overlays (menus, the dice) inside the pane, as oritask's panes do. */
+	transform: translateZ(0);
+	/* A pane is clear of the sidebar and the agent panel already: its dock centres in the pane. */
+	--fl-left: 0px;
+	--fl-right: 0px;
+	transition: box-shadow var(--mo-in);
+}
+.lb-board-host.lb-pane {
+	background: var(--lb-canvas);
+}
+.lb-pane--focused {
+	box-shadow:
+		0 0 0 2px color-mix(in srgb, var(--lb-accent) 55%, transparent),
+		var(--fl-shadow-sm);
+}
+/* A page laid out for a wider window scrolls in its pane rather than being cut off. */
+.lb-pane--page {
+	overflow: auto;
+}
+/* A page in a pane starts at the pane's top, not under the tabs. */
+.lb-pane .lb-home__main {
+	padding-top: 24px;
+}
+.lb-pane .lb-daily {
+	padding-left: var(--fl-edge);
+}
+.lb-split-divider {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: col-resize;
+	touch-action: none;
+}
+.lb-split-divider__grip {
+	width: 4px;
+	height: 40px;
+	border-radius: 2px;
+	background: var(--lb-border-strong);
+	transition: background var(--mo-in);
+}
+.lb-split-divider:hover .lb-split-divider__grip,
+.lb-split-divider:active .lb-split-divider__grip,
+.lb-split-divider:focus-visible .lb-split-divider__grip {
+	background: var(--lb-accent);
+}
+.lb-split-divider:focus-visible {
+	outline: none;
+}
+
 /* Small round icon buttons inside the floating panels. */
 .lb-icon-btn {
 	display: grid;
@@ -1036,6 +1113,46 @@ button {
 }
 .lb-tabs__tab--dragging {
 	--tab-bg: var(--tab-label-hover);
+}
+/*
+ * A split's label: one folder label holding its tabs' names side by side, the focused one picked out,
+ * with a rule between them. Wider than a tab's, as two names have to fit.
+ */
+.lb-tabs__tab--split,
+.lb-tabs__tab--split.lb-tabs__tab--active {
+	flex: 0 1 400px;
+	min-width: 220px;
+	max-width: 460px;
+	gap: 4px;
+}
+.lb-tabs__split-icon {
+	color: var(--lb-text-faint);
+}
+.lb-tabs__pane {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1 1 0;
+	min-width: 0;
+	height: 28px;
+	padding: 0 2px 0 6px;
+	border-radius: 9px;
+	font-weight: 500;
+	transition: background var(--mo-in);
+}
+.lb-tabs__pane:hover {
+	background: color-mix(in srgb, var(--lb-text) 5%, transparent);
+}
+.lb-tabs__pane--focused {
+	background: color-mix(in srgb, var(--lb-text) 7%, transparent);
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-tabs__pane-rule {
+	flex: none;
+	width: 1px;
+	height: 16px;
+	background: var(--lb-border-strong);
 }
 /* A label's right-click menu, where the pointer was: the floating chrome's surface, a size down. */
 .lb-tabmenu {

@@ -1,10 +1,12 @@
-# Tabs: reorder, new tab, groups and split view
+# Tabs: reorder, new tab and split view
 
 The tab strip shows the open boards and the daily page as folder labels after a pinned "All Boards"
 label. This plan brings over what the tabs of oritask and oribet-admin do that Lifeboard's don't, in the
 folder-label look and the `--lb-*` / `--tab-*` tokens.
 
-Agreed with the user on 2026-11-26: all four phases, in order, stopping to report after each.
+Agreed with the user on 2026-11-26: the phases in order, stopping to report after each. After phase 2
+was built the user dropped groups (they don't fit Lifeboard) and asked for splits as oritask has them,
+so phases 3 and 4 became one.
 
 - Settings, Help and the pinned "All Boards" stay outside the strip, as now.
 - Tabs stay per browser window (`sessionStorage`).
@@ -35,6 +37,8 @@ tab, because there is one editor per board.
 
 ## Phase 1: the model, reorder, menu, new tab
 
+Built 2026-11-26 (9ddfaf7).
+
 - `app/tabsModel.ts`: a tab is `{ id, route }`, where the route is a board, the daily page (with the day
   it was on) or the home screen (a New tab). `activeId` is the tab on screen, or `null` on a page outside
   the strip. Pure functions for following a route, opening, closing, closing others or those to the
@@ -48,24 +52,32 @@ tab, because there is one editor per board.
 - ⌘K: New tab, Close tab, Next tab, Previous tab, with no default keys (the browser owns ⌘W and ⌃Tab).
 - Phone: the board pill reads the same state and otherwise works as it does now.
 
-## Phase 2: groups
+## Phase 2: groups (dropped)
 
-Chrome-style groups drawn as folder labels: a small label in the group's colour before its tabs, which
-folds them away when clicked. Name and colour from the tab menu (Add to new group, Add to group, Remove
-from group) and from the group label's own menu (Rename, Colour, Ungroup, Close group). Colours from the
-chip tokens. A group's tabs stay together when moved.
+Built and then removed at the user's word: groups are not relevant in Lifeboard.
 
-## Phase 3: a board beside a page
+## Phase 3: split tabs, as oritask's
 
-A split of one board beside the daily page or another non-board view: one editor on screen, so the
-GPU layer, focus and ⌘K need no change. Panes are placed by position, with a divider to resize them
-and a ring on the focused pane. Shown as one label holding both names.
+Built 2026-11-26.
 
-## Phase 4: two boards side by side
-
-Everything that assumes one board on screen becomes per pane: the GPU layer's `shown`, `focusOnly`,
-the keymap's and ⌘K's editor, the agent panel's context, `window.editor`, safe insets, and where the
-dock and the floating controls sit. The focused pane owns them.
+- The model (`TabSplit`, after oritask's): a split's first tab is the left column and the others stack
+  in the right one; `size` is the left column's share. Its tabs sit together in the row and move as one
+  label; the active tab is the focused pane. `splitTabs`, `openBeside`, `unsplit`, `resizeSplit` and
+  `paneRects` are pure and tested. Closing the focused pane hands focus to a partner; a split left with
+  one tab ends.
+- Making one: Split with… in a tab's menu, or ⌥-click a board in the sidebar or on the home screen to
+  open it beside the tab on screen (again to stack it in the right column). Exit split ends it.
+- The page area (`app/SplitPanes.tsx`): below the tabs and clear of the sidebar and the agent panel,
+  the panes are cards placed by position, so a board keeps its editor through every change. A press or
+  the focus going into a pane focuses it. The divider drags or takes ← →.
+- Everything that assumed one board on screen counts the visible ones instead: the GPU layer's
+  `shown`, the eight boards kept mounted, the idle preview redraw, and leaving a board, so an untitled
+  board isn't deleted when the focus moves to the other pane. A pane's board has its own safe insets
+  (only its dock covers it) and `--fl-left`/`--fl-right` of 0, so its dock centres in the pane.
+  `focusOnly`, ⌘K, the keymap, the agent and `window.editor` follow the focused pane through the route.
+- The daily page and a New tab render in their panes from their own tab's route; a page laid out for a
+  wider window scrolls in its pane.
+- Not on a phone: there the split is kept but the route's page shows alone.
 
 Each phase gets unit tests for the model and an e2e spec that opens boards, and its commands reach ⌘K,
 Help and the README (`.claude/skills/extension-surfaces`).

@@ -198,6 +198,79 @@ test.describe('canvas chrome', () => {
 		await expect(labels).toHaveText(['Renamed', 'Fourth'])
 	})
 
+	test('a tab splits with another from its menu, and Exit split ends it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		const focused = strip.locator('.lb-tabs__pane--focused .lb-tabs__label')
+		const panes = page.locator('.lb-board-host.lb-pane:not([data-hidden])')
+
+		await strip.locator('.lb-tabs__tab', { hasText: 'First' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Split with…' }).click()
+		await page.getByRole('menu', { name: 'Split with' }).getByRole('menuitem', { name: 'Second' }).click()
+		await expect(strip.getByRole('group', { name: 'Split: First and Second' })).toBeVisible()
+		await expect(panes).toHaveCount(2)
+		await expect(focused).toHaveText('First')
+		await expect(page.locator('.lb-pane--focused .tl-canvas')).toBeVisible()
+
+		// A press in the other pane focuses it, and its board takes the keys.
+		const right = (await panes.nth(1).boundingBox())!
+		await page.mouse.click(right.x + right.width / 2, right.y + right.height / 3)
+		await expect(focused).toHaveText('Second')
+		await expect(page).toHaveURL(/#\/board\//)
+
+		// Both boards stay: moving the focus between panes leaves neither.
+		await expect(page.locator('.lb-board-host')).toHaveCount(2)
+
+		await strip.locator('.lb-tabs__pane', { hasText: 'Second' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Exit split' }).click()
+		await expect(page.locator('.lb-pane')).toHaveCount(0)
+		await expect(strip.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Second')
+	})
+
+	test('a split’s divider resizes its panes, and the split keeps through a reload', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		await strip.locator('.lb-tabs__tab', { hasText: 'First' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Split with…' }).click()
+		await page.getByRole('menu', { name: 'Split with' }).getByRole('menuitem', { name: 'Second' }).click()
+
+		const divider = page.getByRole('separator', { name: 'Resize the split' })
+		await expect(divider).toHaveAttribute('aria-valuenow', '50')
+		const area = (await page.locator('.lb-shell__content').boundingBox())!
+		await divider.hover()
+		await page.mouse.down()
+		await page.mouse.move(area.x + area.width * 0.3, area.y + area.height / 2, { steps: 8 })
+		await page.mouse.up()
+		await expect(divider).toHaveAttribute('aria-valuenow', '30')
+		const left = (await page.locator('.lb-board-host.lb-pane').first().boundingBox())!
+		expect(left.width).toBeLessThan(area.width * 0.32)
+
+		await page.reload()
+		await expect(divider).toHaveAttribute('aria-valuenow', '30')
+		await expect(page.locator('.lb-board-host.lb-pane:not([data-hidden])')).toHaveCount(2)
+	})
+
+	test('⌥-click opens a board beside the tab on screen, and a New tab in a pane takes the board picked in it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Second')
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		await strip.getByRole('button', { name: 'New tab' }).click()
+		await page.getByRole('button', { name: 'Open Second' }).click({ modifiers: ['Alt'] })
+		await expect(strip.getByRole('group', { name: 'Split: New tab and Second' })).toBeVisible()
+		await expect(strip.locator('.lb-tabs__pane--focused .lb-tabs__label')).toHaveText('Second')
+
+		// The home screen in the other pane: a board picked there opens in that pane.
+		await page.locator('.lb-pane--page').getByRole('button', { name: 'Open Home office shopping' }).click()
+		await expect(strip.getByRole('group', { name: 'Split: Home office shopping and Second' })).toBeVisible()
+		await expect(strip.locator('.lb-tabs__pane--focused .lb-tabs__label')).toHaveText('Home office shopping')
+		await expect(page.locator('.lb-board-host.lb-pane:not([data-hidden])')).toHaveCount(2)
+	})
+
 	test('⌘-click on a board opens it in a tab behind the one on screen', async ({ page }) => {
 		await gotoFresh(page)
 		await skipFirstRunDemo(page)

@@ -7,7 +7,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import { serverPreviewVersion, serverThumbnailUrl } from '../server/serverVault'
 import { useResolvedTheme, type ResolvedTheme } from './useTheme'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
-import { opensBehind } from './tabsModel'
+import { openModeOf, type OpenMode } from './tabsModel'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
@@ -38,8 +38,8 @@ export function BoardCard({
 	deviceOnly?: boolean
 	/** Picking boards for one action on them all: a click ticks the card rather than opening it. */
 	selection?: { selected: boolean; onToggle: () => void }
-	/** `behind`: ⌘-click or middle-click, which opens the board in a tab behind the one on screen. */
-	onOpen: (behind: boolean) => void
+	/** `mode`: ⌘-click or middle-click opens the board behind the tab on screen, ⌥-click beside it. */
+	onOpen: (mode: OpenMode) => void
 	onRename: () => void
 	onToggleFavorite: () => void
 	onDelete: () => void
@@ -83,7 +83,7 @@ export function BoardCard({
 	// Shared with this account from another vault: it can leave the list, not be renamed or deleted.
 	const shared = isSharedWithMe(board)
 	const moving = !!moveJob && !moveJob.error
-	const click = (e: MouseEvent) => (selection ? selection.onToggle() : onOpen(opensBehind(e)))
+	const click = (e: MouseEvent) => (selection ? selection.onToggle() : onOpen(openModeOf(e)))
 
 	return (
 		<li
@@ -104,7 +104,7 @@ export function BoardCard({
 						if (e.button === 1) e.preventDefault()
 					}}
 					onAuxClick={(e) => {
-						if (e.button === 1 && !selection) onOpen(true)
+						if (e.button === 1 && !selection) onOpen('behind')
 					}}
 					aria-label={selection ? `Select ${board.name}` : `Open ${board.name}`}
 					{...(selection ? { 'aria-pressed': selection.selected } : {})}

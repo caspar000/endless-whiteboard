@@ -1,8 +1,8 @@
-import { CalendarDays, LayoutGrid, Plus, X } from 'lucide-react'
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import { CalendarDays, Columns2, LayoutGrid, Plus, X } from 'lucide-react'
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
-import { otherTabIds, tabIdsAfter, type Tab, type TabsState } from './tabsModel'
+import { moveTab, otherTabIds, rowEntries, splitOf, splitTabs, tabIdsAfter, unsplit, type RowEntry, type Tab, type TabsState } from './tabsModel'
 
 /**
  * A label's side: one S-shaped slope from the label's foot up to the window edge, in the label's own
@@ -98,13 +98,26 @@ function useTabDrag(onMove: (id: string, index: number) => void) {
 	}
 }
 
+/** What a tab's label says. */
+function tabName(tab: Tab, board: BoardMeta | null | undefined) {
+	return board ? board.name : tab.route.view === 'daily' ? 'Daily' : 'New tab'
+}
+
+/** A tab's icon: its board's colour square, or the daily page's or a New tab's glyph. */
+function TabIcon({ tab, board }: { tab: Tab; board: BoardMeta | null | undefined }) {
+	if (board) return <BoardBadgeButton board={board} className="lb-tabs__thumb" />
+	const Icon = tab.route.view === 'daily' ? CalendarDays : LayoutGrid
+	return <Icon className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+}
+
 /**
  * The open tabs, as folder labels hanging from the top edge of the window beside the sidebar, after a
  * pinned "All Boards" label that leads home. Shown on every screen, so a board is one click away from
  * Settings or Help too; there no label is in front.
  *
  * A tab is a board, the daily page, or a New tab, which shows the home screen until a board is picked
- * there (`tabsModel.ts`).
+ * there (`tabsModel.ts`). A split is one label holding its tabs side by side, as oritask's split is one
+ * box the size of a tab: click a name to focus its pane.
  *
  * The labels overlap like a stack of folder tabs, the active one in front and each step away from it
  * one layer further back. A label's side away from the active one is a slope that sweeps over the
@@ -112,8 +125,8 @@ function useTabDrag(onMove: (id: string, index: number) => void) {
  * the board shows between the two. The first label meets the window edge square, and "+" sits after
  * the last label's slope.
  *
- * Drag a label along the row to move it; right-click it for its menu; middle-click closes it.
- * Double-clicking the active board's label renames the board in place.
+ * Drag a label along the row to move it (a split's moves whole); right-click a tab for its menu;
+ * middle-click closes it. Double-clicking the active board's name renames the board in place.
  */
 export function TabStrip({
 	boards,
@@ -122,7 +135,7 @@ export function TabStrip({
 	onHome,
 	onSelect,
 	onClose,
-	onMove,
+	onChange,
 	onNew,
 	onRename,
 }: {
@@ -133,26 +146,31 @@ export function TabStrip({
 	onHome: () => void
 	onSelect: (tab: Tab) => void
 	onClose: (ids: readonly string[]) => void
-	onMove: (id: string, index: number) => void
+	/** A change that only rearranges: moving, splitting, ending a split. */
+	onChange: (change: (state: TabsState) => TabsState) => void
 	onNew: () => void
 	onRename: (boardId: string, name: string) => void
 }) {
 	const [renaming, setRenaming] = useState<string | null>(null)
-	const [menu, setMenu] = useState<{ tab: Tab; x: number; y: number } | null>(null)
-	const { dragging, handlersFor, swallowsClick } = useTabDrag(onMove)
+	const [menu, setMenu] = useState<{ tab: Tab; x: number; y: number; page: 'main' | 'split' } | null>(null)
+	const { dragging, handlersFor, swallowsClick } = useTabDrag((id, index) => onChange((state) => moveTab(state, id, index)))
 
 	const byId = new Map(boards.map((b) => [b.id, b]))
-	// A board's tab shows once the index knows the board.
-	const open = tabs.tabs.flatMap((tab): { tab: Tab; board: BoardMeta | null }[] => {
-		if (tab.route.view !== 'board') return [{ tab, board: null }]
-		const board = byId.get(tab.route.boardId)
-		return board ? [{ tab, board }] : []
+	/** A board tab's board, `null` while the index doesn't know it (its tab isn't shown), `undefined` for other tabs. */
+	const boardOf = (tab: Tab) => (tab.route.view === 'board' ? (byId.get(tab.route.boardId) ?? null) : undefined)
+	const known = (tab: Tab) => boardOf(tab) !== null
+	const entries = rowEntries(tabs).flatMap((entry): RowEntry[] => {
+		if (entry.kind === 'tab') return known(entry.tab) ? [entry] : []
+		const shown = entry.tabs.filter(known)
+		return shown.length > 0 ? [{ ...entry, tabs: shown }] : []
 	})
-	// The labels' places in the stack, "All Boards" being the first: 0 is All Boards, 1 the first tab. On
+	// The labels' places in the stack, "All Boards" being the first: 0 is All Boards, 1 the first label. On
 	// Settings and Help (or a board that is gone) none is in front, and every label slopes to the right,
 	// like those after an active one.
-	const tabIndex = open.findIndex(({ tab }) => tab.id === tabs.activeId)
-	const activeIndex = homeActive ? 0 : tabIndex >= 0 ? tabIndex + 1 : -1
+	const holdsActive = (entry: RowEntry) =>
+		entry.kind === 'tab' ? entry.tab.id === tabs.activeId : entry.tabs.some((tab) => tab.id === tabs.activeId)
+	const labelIndex = entries.findIndex(holdsActive)
+	const activeIndex = homeActive ? 0 : labelIndex >= 0 ? labelIndex + 1 : -1
 	const layer = (index: number) => ({ zIndex: 50 - Math.abs(index - activeIndex) })
 	const shape = (index: number) => {
 		const active = index === activeIndex
@@ -173,10 +191,137 @@ export function TabStrip({
 
 	const openMenu = (tab: Tab) => (e: MouseEvent<HTMLElement>) => {
 		e.preventDefault()
+		e.stopPropagation()
 		// From the keyboard (the menu key, ⇧F10) there is no pointer: the menu drops from the label.
 		const rect = e.currentTarget.getBoundingClientRect()
 		const fromKeyboard = e.clientX === 0 && e.clientY === 0
-		setMenu({ tab, x: fromKeyboard ? rect.left : e.clientX, y: fromKeyboard ? rect.bottom : e.clientY })
+		setMenu({ tab, x: fromKeyboard ? rect.left : e.clientX, y: fromKeyboard ? rect.bottom : e.clientY, page: 'main' })
+	}
+
+	/** What a tab answers to, as a label of its own or as one of a split's names. */
+	const tabHandlers = (tab: Tab, active: boolean, board: BoardMeta | null | undefined) => ({
+		role: 'tab',
+		tabIndex: 0,
+		'aria-selected': tab.id === tabs.activeId,
+		onClick: (e: MouseEvent) => {
+			e.stopPropagation()
+			if (!swallowsClick()) onSelect(tab)
+		},
+		// Middle click closes, as a browser tab does. Pressing the wheel would otherwise start the browser's
+		// autoscroll.
+		onMouseDown: (e: MouseEvent) => {
+			if (e.button === 1) e.preventDefault()
+		},
+		onAuxClick: (e: MouseEvent) => {
+			if (e.button !== 1) return
+			e.preventDefault()
+			e.stopPropagation()
+			onClose([tab.id])
+		},
+		onContextMenu: openMenu(tab),
+		onDoubleClick: () => active && tab.id === tabs.activeId && board && !isSharedWithMe(board) && setRenaming(board.id),
+		onKeyDown: (e: KeyboardEvent) => {
+			if (renaming === null && (e.key === 'Enter' || e.key === ' ')) {
+				e.preventDefault()
+				e.stopPropagation()
+				onSelect(tab)
+			}
+		},
+	})
+
+	/** A tab's icon, its name or the field renaming its board, and its ×. */
+	const tabContent = (tab: Tab, board: BoardMeta | null | undefined) => {
+		const name = tabName(tab, board)
+		return (
+			<>
+				<TabIcon tab={tab} board={board} />
+				{board && renaming === board.id ? (
+					<form
+						className="lb-tabs__rename"
+						// A click in the field is not a click on the label, which would bring a tab behind to the front.
+						onClick={(e) => e.stopPropagation()}
+						onSubmit={(e) => {
+							e.preventDefault()
+							const value = new FormData(e.currentTarget).get('name')
+							if (typeof value === 'string' && value.trim()) onRename(board.id, value.trim())
+							setRenaming(null)
+						}}
+					>
+						{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+						<input
+							autoFocus
+							name="name"
+							defaultValue={board.name}
+							aria-label="Board name"
+							onBlur={() => setRenaming(null)}
+							onKeyDown={(e) => {
+								if (e.key === 'Escape') setRenaming(null)
+								// Otherwise the canvas would read these as tool shortcuts.
+								e.stopPropagation()
+							}}
+						/>
+					</form>
+				) : (
+					<span className="lb-tabs__label">{name}</span>
+				)}
+				<button
+					className="lb-tabs__close"
+					onClick={(e) => {
+						e.stopPropagation()
+						onClose([tab.id])
+					}}
+					aria-label={`Close ${name}`}
+				>
+					<X size={14} strokeWidth={1.75} aria-hidden="true" />
+				</button>
+			</>
+		)
+	}
+
+	const menuFor = (tab: Tab, page: 'main' | 'split') => {
+		const board = boardOf(tab)
+		const others = otherTabIds(tabs, tab.id)
+		const after = tabIdsAfter(tabs, tab.id)
+		if (page === 'split') {
+			return tabs.tabs
+				.filter((other) => other.id !== tab.id && known(other))
+				.map((other) => (
+					<TabMenuItem
+						key={other.id}
+						onPick={() => {
+							onChange((state) => splitTabs(state, tab.id, other.id))
+							// The left pane is focused, and the address follows it.
+							onSelect(tab)
+						}}
+					>
+						{tabName(other, boardOf(other))}
+					</TabMenuItem>
+				))
+		}
+		return (
+			<>
+				{board && !isSharedWithMe(board) && (
+					// In its label where it is: bringing it to the front would hand the focus to its board.
+					<TabMenuItem onPick={() => setRenaming(board.id)}>Rename board</TabMenuItem>
+				)}
+				{splitOf(tabs, tab.id) ? (
+					<TabMenuItem onPick={() => onChange((state) => unsplit(state, tab.id))}>Exit split</TabMenuItem>
+				) : (
+					others.length > 0 && (
+						<TabMenuItem keepOpen onPick={() => setMenu((open) => open && { ...open, page: 'split' })}>
+							Split with…
+						</TabMenuItem>
+					)
+				)}
+				<TabMenuItem onPick={() => onClose([tab.id])}>Close tab</TabMenuItem>
+				<TabMenuItem disabled={others.length === 0} onPick={() => onClose(others)}>
+					Close other tabs
+				</TabMenuItem>
+				<TabMenuItem disabled={after.length === 0} onPick={() => onClose(after)}>
+					Close tabs to the right
+				</TabMenuItem>
+			</>
+		)
 	}
 
 	return (
@@ -207,10 +352,49 @@ export function TabStrip({
 					<span className="lb-tabs__close-space" aria-hidden="true" />
 				</div>
 
-				{open.map(({ tab, board }, i) => {
+				{entries.map((entry, i) => {
 					const index = i + 1
 					const { active, slopeLeft, slopeRight, className } = shape(index)
-					const name = board ? board.name : tab.route.view === 'daily' ? 'Daily' : 'New tab'
+					if (entry.kind === 'split') {
+						const key = entry.split.tabs[0]!
+						const names = entry.tabs.map((tab) => tabName(tab, boardOf(tab))).join(' and ')
+						return (
+							// The whole label drags the split; each name in it is a tab of its own.
+							<div
+								key={`split:${key}`}
+								{...handlersFor(key)}
+								className={`${className} lb-tabs__tab--split${dragging === key ? ' lb-tabs__tab--dragging' : ''}`}
+								style={layer(index)}
+								role="group"
+								aria-label={`Split: ${names}`}
+								onClickCapture={(e) => {
+									if (swallowsClick()) e.stopPropagation()
+								}}
+							>
+								{slopeLeft && <Slope side="left" />}
+								{slopeRight && <Slope side="right" />}
+								<Columns2 className="lb-tabs__icon lb-tabs__split-icon" size={15} strokeWidth={1.75} aria-hidden="true" />
+								{entry.tabs.map((tab, j) => {
+									const board = boardOf(tab)
+									const focused = tab.id === tabs.activeId
+									return (
+										<Fragment key={tab.id}>
+											{j > 0 && <span className="lb-tabs__pane-rule" aria-hidden="true" />}
+											<div
+												{...tabHandlers(tab, active, board)}
+												className={focused && active ? 'lb-tabs__pane lb-tabs__pane--focused' : 'lb-tabs__pane'}
+												title={focused && active && board ? 'Double-click to rename' : tabName(tab, board)}
+											>
+												{tabContent(tab, board)}
+											</div>
+										</Fragment>
+									)
+								})}
+							</div>
+						)
+					}
+					const { tab } = entry
+					const board = boardOf(tab)
 					return (
 						// The whole label is the click target, like a browser tab — not just the text. A <div>
 						// with button semantics rather than a <button>, because the close control is a real
@@ -218,84 +402,18 @@ export function TabStrip({
 						<div
 							key={tab.id}
 							{...handlersFor(tab.id)}
-							role="tab"
-							tabIndex={0}
-							aria-selected={active}
+							{...tabHandlers(tab, active, board)}
 							className={dragging === tab.id ? `${className} lb-tabs__tab--dragging` : className}
 							style={layer(index)}
 							// The click a drag ends with reaches nothing in the label, the colour badge included.
 							onClickCapture={(e) => {
 								if (swallowsClick()) e.stopPropagation()
 							}}
-							onClick={() => onSelect(tab)}
-							// Middle click closes, as a browser tab does. Pressing the wheel would otherwise start
-							// the browser's autoscroll.
-							onMouseDown={(e) => {
-								if (e.button === 1) e.preventDefault()
-							}}
-							onAuxClick={(e) => {
-								if (e.button !== 1) return
-								e.preventDefault()
-								onClose([tab.id])
-							}}
-							onContextMenu={openMenu(tab)}
-							onDoubleClick={() => active && board && !isSharedWithMe(board) && setRenaming(board.id)}
-							onKeyDown={(e) => {
-								if (renaming === null && (e.key === 'Enter' || e.key === ' ')) {
-									e.preventDefault()
-									onSelect(tab)
-								}
-							}}
-							title={active && board ? 'Double-click to rename' : name}
+							title={active && board ? 'Double-click to rename' : tabName(tab, board)}
 						>
 							{slopeLeft && <Slope side="left" />}
 							{slopeRight && <Slope side="right" />}
-							{board ? (
-								<BoardBadgeButton board={board} className="lb-tabs__thumb" />
-							) : tab.route.view === 'daily' ? (
-								<CalendarDays className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
-							) : (
-								<LayoutGrid className="lb-tabs__icon" size={16} strokeWidth={1.75} aria-hidden="true" />
-							)}
-							{board && renaming === board.id ? (
-								<form
-									className="lb-tabs__rename"
-									// A click in the field is not a click on the label, which would bring a tab behind to the front.
-									onClick={(e) => e.stopPropagation()}
-									onSubmit={(e) => {
-										e.preventDefault()
-										const value = new FormData(e.currentTarget).get('name')
-										if (typeof value === 'string' && value.trim()) onRename(board.id, value.trim())
-										setRenaming(null)
-									}}
-								>
-									{/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-									<input
-										autoFocus
-										name="name"
-										defaultValue={board.name}
-										aria-label="Board name"
-										onBlur={() => setRenaming(null)}
-										onKeyDown={(e) => {
-											if (e.key === 'Escape') setRenaming(null)
-											// Otherwise the canvas would read these as tool shortcuts.
-											e.stopPropagation()
-										}}
-									/>
-								</form>
-							) : (
-								<span className="lb-tabs__label">{name}</span>
-							)}
-							<button
-								className="lb-tabs__close"
-								onClick={(e) => {
-									e.stopPropagation()
-									onClose([tab.id])
-								}}
-								aria-label={`Close ${name}`}
-							>
-								<X size={14} strokeWidth={1.75} aria-hidden="true" />
-							</button>
+							{tabContent(tab, board)}
 						</div>
 					)
 				})}
@@ -307,29 +425,14 @@ export function TabStrip({
 
 			{/* Outside the strip, which scrolls sideways and would clip it. */}
 			{menu && (
-				<TabMenu x={menu.x} y={menu.y} onDismiss={() => setMenu(null)}>
-					{(() => {
-						const board = menu.tab.route.view === 'board' ? byId.get(menu.tab.route.boardId) : undefined
-						const others = otherTabIds(tabs, menu.tab.id)
-						const after = tabIdsAfter(tabs, menu.tab.id)
-						return (
-							<>
-								{board && !isSharedWithMe(board) && (
-									// In its label where it is: bringing it to the front would hand the focus to its board.
-									<TabMenuItem onPick={() => setRenaming(board.id)}>
-										Rename board
-									</TabMenuItem>
-								)}
-								<TabMenuItem onPick={() => onClose([menu.tab.id])}>Close tab</TabMenuItem>
-								<TabMenuItem disabled={others.length === 0} onPick={() => onClose(others)}>
-									Close other tabs
-								</TabMenuItem>
-								<TabMenuItem disabled={after.length === 0} onPick={() => onClose(after)}>
-									Close tabs to the right
-								</TabMenuItem>
-							</>
-						)
-					})()}
+				<TabMenu
+					key={menu.page}
+					x={menu.x}
+					y={menu.y}
+					label={menu.page === 'split' ? 'Split with' : 'Tab'}
+					onDismiss={() => setMenu(null)}
+				>
+					{menuFor(menu.tab, menu.page)}
 				</TabMenu>
 			)}
 		</>
@@ -340,7 +443,19 @@ export function TabStrip({
  * A label's right-click menu, where the pointer was. A press elsewhere or Escape puts it away; arrow
  * keys walk the rows, which is what `role="menu"` promises a keyboard user.
  */
-function TabMenu({ x, y, onDismiss, children }: { x: number; y: number; onDismiss: () => void; children: ReactNode }) {
+function TabMenu({
+	x,
+	y,
+	label,
+	onDismiss,
+	children,
+}: {
+	x: number
+	y: number
+	label: string
+	onDismiss: () => void
+	children: ReactNode
+}) {
 	const root = useRef<HTMLDivElement>(null)
 	const dismiss = useRef(onDismiss)
 	dismiss.current = onDismiss
@@ -383,12 +498,13 @@ function TabMenu({ x, y, onDismiss, children }: { x: number; y: number; onDismis
 			ref={root}
 			className="lb-tabmenu lb-float"
 			role="menu"
-			aria-label="Tab"
+			aria-label={label}
 			style={{ left: Math.min(x, window.innerWidth - 228), top: y }}
 			onKeyDown={onKeyDown}
-			// A row picked puts the menu away.
+			// A row picked puts the menu away, unless it opens a page of the menu.
 			onClick={(e) => {
-				if ((e.target as Element).closest('button')) onDismiss()
+				const row = (e.target as Element).closest('button')
+				if (row && !row.hasAttribute('data-keep-open')) onDismiss()
 			}}
 		>
 			{children}
@@ -396,9 +512,27 @@ function TabMenu({ x, y, onDismiss, children }: { x: number; y: number; onDismis
 	)
 }
 
-function TabMenuItem({ disabled, onPick, children }: { disabled?: boolean; onPick: () => void; children: ReactNode }) {
+function TabMenuItem({
+	disabled,
+	keepOpen,
+	onPick,
+	children,
+}: {
+	disabled?: boolean
+	/** Opens another page of the menu rather than doing something and closing. */
+	keepOpen?: boolean
+	onPick: () => void
+	children: ReactNode
+}) {
 	return (
-		<button type="button" role="menuitem" className="lb-tabmenu__item" disabled={disabled} onClick={onPick}>
+		<button
+			type="button"
+			role="menuitem"
+			className="lb-tabmenu__item"
+			disabled={disabled}
+			{...(keepOpen && { 'data-keep-open': '', 'aria-haspopup': 'menu' as const })}
+			onClick={onPick}
+		>
 			{children}
 		</button>
 	)

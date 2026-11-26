@@ -9,6 +9,7 @@ import { ThumbnailBackfill } from '../canvas/ThumbnailBackfill'
 import { BoardCard } from './BoardCard'
 import { openShareDialog } from './ShareDialog'
 import { useMoves, type BoardsApi } from './useBoards'
+import type { OpenMode } from './tabsModel'
 
 const MOVE_OFFERED_KEY = 'lifeboard:moveOffered'
 
@@ -57,7 +58,7 @@ export function BoardList({
 	mountedIds,
 }: {
 	api: BoardsApi
-	onOpen: (board: BoardMeta, behind: boolean) => void
+	onOpen: (board: BoardMeta, mode: OpenMode) => void
 	/** Makes and opens an untitled board. The shell's, so every "New board" makes the same one. */
 	onNew: () => void
 	/** Makes and opens a kind of board an extension defines (a Zettelkasten box). */
@@ -331,7 +332,7 @@ export function BoardList({
 							board={board}
 							deviceOnly={api.hasServer && !board.vault}
 							{...(selecting ? { selection: { selected: selected.has(board.id), onToggle: () => toggle(board.id) } } : {})}
-							onOpen={(behind) => onOpen(board, behind)}
+							onOpen={(mode) => onOpen(board, mode)}
 							onRename={() => setRenaming(board.id)}
 							renaming={renaming === board.id}
 							onRenameSubmit={(name) => {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
 	closeTabs,
+	openBeside,
+	paneRects,
+	resizeSplit,
+	rowEntries,
+	splitTabs,
+	unsplit,
+	visibleTabs,
 	dropUnknownBoards,
 	EMPTY_TABS,
 	followRoute,
@@ -23,6 +30,7 @@ const three: TabsState = {
 		{ id: 'c', route: board('C') },
 	],
 	activeId: 'b',
+	splits: [],
 }
 
 const routes = (state: TabsState) => state.tabs.map((tab) => tab.route)
@@ -115,7 +123,7 @@ describe('closeTabs', () => {
 	})
 
 	it('leaves the active tab when another closes', () => {
-		expect(closeTabs(three, ['a'])).toEqual({ tabs: three.tabs.slice(1), activeId: 'b' })
+		expect(closeTabs(three, ['a'])).toEqual({ ...three, tabs: three.tabs.slice(1) })
 	})
 
 	it('closes others and those to the right', () => {
@@ -147,5 +155,84 @@ describe('dropUnknownBoards', () => {
 		expect(state.tabs.map((tab) => tab.id)).toEqual(['a', 'c'])
 		expect(state.activeId).toBeNull()
 		expect(dropUnknownBoards(three, new Set(['A', 'B', 'C']))).toBe(three)
+	})
+})
+
+const ids = (state: TabsState) => state.tabs.map((tab) => tab.id)
+const row = (state: TabsState) =>
+	rowEntries(state).map((entry) => (entry.kind === 'split' ? entry.tabs.map((tab) => tab.id).join('|') : entry.tab.id))
+
+describe('splits', () => {
+	it('shows two tabs side by side, together in the row, the left one focused', () => {
+		const state = splitTabs(three, 'c', 'a')
+		expect(state.splits).toEqual([{ tabs: ['c', 'a'], size: 50 }])
+		expect(state.activeId).toBe('c')
+		expect(ids(state)).toEqual(['b', 'c', 'a'])
+		expect(row(state)).toEqual(['b', 'c|a'])
+		expect(visibleTabs(state).map((tab) => tab.id)).toEqual(['c', 'a'])
+		expect(visibleTabs({ ...state, activeId: 'b' }).map((tab) => tab.id)).toEqual(['b'])
+	})
+
+	it('takes a tab out of the split it was in', () => {
+		const ab = splitTabs(three, 'a', 'b')
+		const bc = splitTabs(ab, 'b', 'c')
+		expect(bc.splits).toEqual([{ tabs: ['b', 'c'], size: 50 }])
+	})
+
+	it('opens a page beside a tab, and stacks more in the right column', () => {
+		const once = openBeside(three, 'a', board('D'), 'd')
+		expect(once.splits).toEqual([{ tabs: ['a', 'd'], size: 50 }])
+		expect(once.activeId).toBe('d')
+		expect(ids(once)).toEqual(['a', 'd', 'b', 'c'])
+		// A board already open joins rather than opening twice.
+		const twice = openBeside(once, 'd', board('C'))
+		expect(twice.splits).toEqual([{ tabs: ['a', 'd', 'c'], size: 50 }])
+		expect(ids(twice)).toEqual(['a', 'd', 'c', 'b'])
+		expect(paneRects(twice.splits[0]!).get('c')).toEqual({ left: 50, width: 50, top: 50, height: 50 })
+	})
+
+	it('hands focus to a partner pane when the focused one closes, and ends a split left alone', () => {
+		const state = { ...splitTabs(three, 'a', 'c'), activeId: 'c' }
+		const closed = closeTabs(state, ['c'])
+		expect(closed.activeId).toBe('a')
+		expect(closed.splits).toEqual([])
+	})
+
+	it('moves a split as one label', () => {
+		const state = splitTabs(three, 'a', 'b')
+		// Row without the split: c. After it.
+		expect(ids(moveTab(state, 'b', 1))).toEqual(['c', 'a', 'b'])
+		// c before the split.
+		expect(ids(moveTab(state, 'c', 0))).toEqual(['c', 'a', 'b'])
+	})
+
+	it('resizes within bounds, and ends on Exit split', () => {
+		const state = splitTabs(three, 'a', 'b')
+		expect(resizeSplit(state, 'a', 95).splits[0]!.size).toBe(80)
+		expect(unsplit(state, 'b').splits).toEqual([])
+	})
+
+	it('keeps a New tab’s pane when a board is picked in it', () => {
+		const withNew = openBeside(three, 'a', { view: 'list' }, 'n')
+		const picked = followRoute(withNew, board('D'))
+		expect(picked.splits).toEqual([{ tabs: ['a', 'n'], size: 50 }])
+		expect(picked.tabs.find((tab) => tab.id === 'n')!.route).toEqual(board('D'))
+		// Picking a board open in another tab closes the New tab, and its split with it.
+		expect(followRoute(withNew, board('C'))).toMatchObject({ activeId: 'c', splits: [] })
+	})
+
+	it('reads saved splits, dropping the broken and keeping their tabs together', () => {
+		const raw = JSON.stringify({
+			tabs: [{ id: 'a', route: board('A') }, { id: 'b', route: board('B') }, { id: 'c', route: board('C') }],
+			activeId: 'a',
+			splits: [
+				{ tabs: ['a', 'c'], size: 5 },
+				{ tabs: ['c', 'b'], size: 50 },
+				{ tabs: ['b', 'gone'], size: 50 },
+			],
+		})
+		const state = parseTabs(raw)
+		expect(state.splits).toEqual([{ tabs: ['a', 'c'], size: 20 }])
+		expect(ids(state)).toEqual(['a', 'c', 'b'])
 	})
 })

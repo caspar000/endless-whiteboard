@@ -38,6 +38,7 @@ import { SettingsPage } from './settings/SettingsPage'
 import { EXTENSIONS_TAB } from './settings/sections'
 import { Sidebar, SidebarReopen } from './Sidebar'
 import { TabStrip } from './TabStrip'
+import { SplitDivider, paneStyle } from './SplitPanes'
 import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
 import { useHashRoute } from './useHashRoute'
@@ -49,11 +50,16 @@ import {
 	boardIds,
 	closeTabs,
 	followRoute,
-	moveTab,
+	openBeside,
 	openTab,
+	paneRects,
+	resizeSplit,
+	splitOf,
+	visibleTabs,
 	tabAlong,
 	touchRecent,
 	withoutBoard,
+	type OpenMode,
 	type Tab,
 } from './tabsModel'
 import { useRates } from './useRates'
@@ -205,6 +211,23 @@ export function App() {
 	// Below 768px the chrome is the phone's (docs/mobile-plan.md): a board pill for the tabs, and the
 	// menu and the agent as floating cards.
 	const phone = usePhone()
+	/**
+	 * The split on screen, when the tab in front is in one (docs/tabs-plan.md). Not on a phone, whose
+	 * layout has room for one page. Its panes are all shown, the active tab being the focused one.
+	 */
+	const split = phone ? undefined : splitOf(tabs, tabs.activeId)
+	/** The boards on screen: the split's, or the one the route shows. */
+	const visibleBoardIds = split
+		? visibleTabs(tabs).flatMap((tab) => boardIdOf(tab) ?? [])
+		: route.view === 'board'
+			? [route.boardId]
+			: []
+	const visibleKey = visibleBoardIds.join(' ')
+	const visibleBoardsRef = useRef(visibleBoardIds)
+	visibleBoardsRef.current = visibleBoardIds
+	/** The page area, which the split's divider measures; and the divider's share while it is dragged. */
+	const contentRef = useRef<HTMLDivElement>(null)
+	const [splitDraft, setSplitDraft] = useState<number | null>(null)
 	useKeyboardInset()
 	/** The agent works on a board, so its button and panel only show on one; the open state is kept. */
 	const agentShown = agentPanelOpen && route.view === 'board'
@@ -321,9 +344,17 @@ export function App() {
 	}
 	const safeInsetsRef = useRef(safeInsets)
 	safeInsetsRef.current = safeInsets
+	/** A board in a split's pane is clear of the tabs and the sidebar already: only its own dock covers it. */
+	const splitRef = useRef(split)
+	splitRef.current = split
+	const insetsFor = (boardId: string) =>
+		splitRef.current && visibleBoardsRef.current.includes(boardId)
+			? { top: 0, right: 0, bottom: CHROME.dock, left: 0 }
+			: safeInsetsRef.current
 	useEffect(() => {
-		for (const editor of editors.current.values()) editor.setSafeInsets(safeInsetsRef.current)
-	}, [safeInsets.left, safeInsets.right])
+		for (const [id, editor] of editors.current) editor.setSafeInsets(insetsFor(id))
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [safeInsets.left, safeInsets.right, visibleKey, !!split])
 
 	/**
 	 * Grid and snapping (see canvasPrefs.ts).
@@ -480,15 +511,29 @@ export function App() {
 		[route, navigate]
 	)
 
-	/** ⌘-click or middle-click on a board: its tab opens behind the one on screen. */
-	const openBoardBehind = useCallback(
-		(board: BoardMeta) => setTabs((state) => openTab(state, { view: 'board', boardId: board.id }, { background: true })),
-		[setTabs]
-	)
 
 	const openBoard = useCallback(
 		async (board: BoardMeta) => openBoardById(board.id),
 		[openBoardById]
+	)
+
+	/**
+	 * A board opened by a click with a modifier: ⌘ or the middle button opens its tab behind the one on
+	 * screen; ⌥ opens it beside that tab, in a split, focused. With no tab on screen, or on a phone, ⌥ just
+	 * opens it.
+	 */
+	const openBoardAs = useCallback(
+		(board: BoardMeta, mode: OpenMode) => {
+			const route = { view: 'board', boardId: board.id } as const
+			if (mode === 'behind') return setTabs((state) => openTab(state, route, { background: true }))
+			if (mode === 'beside' && !phone && tabs.activeId !== null) {
+				setTabs((state) => (state.activeId ? openBeside(state, state.activeId, route) : state))
+				navigate(route)
+				return
+			}
+			void openBoard(board)
+		},
+		[setTabs, phone, tabs.activeId, navigate, openBoard]
 	)
 
 	// The pinned All Boards, not a New tab: none of the tabs is in front.
@@ -607,12 +652,16 @@ export function App() {
 	 * tab, home, settings or help, by closing its tab or by making the next new board. Each of those is
 	 * the board on screen changing, so this watches that rather than every way to leave.
 	 */
-	const shownBoardId = route.view === 'board' ? route.boardId : null
-	const lastShownBoardId = useRef(shownBoardId)
+	// In a split, moving the focus between panes leaves no board: one is left only once it is off screen.
+	const lastVisibleBoards = useRef(visibleBoardIds)
 	useEffect(() => {
-		const left = lastShownBoardId.current
-		lastShownBoardId.current = shownBoardId
-		if (!left || left === shownBoardId) return
+		const before = lastVisibleBoards.current
+		lastVisibleBoards.current = visibleKey ? visibleKey.split(' ') : []
+		for (const left of before) if (!lastVisibleBoards.current.includes(left)) leaveBoard(left)
+		// `leaveBoard` is this render's; the visible boards changing is what this watches.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [visibleKey])
+	function leaveBoard(left: string) {
 		const onServer = boardsRef.current.find((board) => board.id === left)?.vault === 'server'
 		void deleteIfUntouched(left, {
 			kv: platform.kv,
@@ -641,7 +690,7 @@ export function App() {
 				return deleted
 			},
 		}).catch((error) => console.error('Lifeboard: could not delete an untouched board.', error))
-	}, [shownBoardId, platform, api, removeBoard, cancelDrainFor, setTabs])
+	}
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on
@@ -797,8 +846,8 @@ export function App() {
 	// The GPU layer follows the board on screen (docs/gpu-renderer-plan.md): the others, hidden behind
 	// it, give their WebGL context back.
 	useEffect(() => {
-		for (const [id, editor] of editors.current) getGpuScene(editor).shown.set(id === activeBoardId)
-	}, [activeBoardId])
+		for (const [id, editor] of editors.current) getGpuScene(editor).shown.set(visibleBoardsRef.current.includes(id))
+	}, [visibleKey])
 
 	/*
 	 * Redraws the previews of boards that changed since their last one, one board at a time and never
@@ -818,7 +867,7 @@ export function App() {
 			if (drawingThumbnail.current) return
 			if (performance.now() - lastInputAt < THUMBNAIL_IDLE_MS) return
 			const stale = [...editors.current].find(
-				([id, editor]) => id !== activeBoardIdRef.current && isThumbnailStale(editor)
+				([id, editor]) => !visibleBoardsRef.current.includes(id) && isThumbnailStale(editor)
 			)
 			if (!stale) return
 			const [id, editor] = stale
@@ -880,21 +929,22 @@ export function App() {
 		// Leaving the board view for the home screen blurs everything, which is right: a keystroke
 		// aimed at the board list must not reach a board that happens to still be mounted behind it.
 	})
-	if (activeBoardId) warm.current.add(activeBoardId)
+	for (const id of visibleBoardIds) warm.current.add(id)
 
 	// Only the boards most recently shown stay mounted. One past them unmounts as a closed tab does,
 	// through the drain, and mounts again when its tab is shown.
 	useEffect(() => {
-		if (!activeBoardId) return
-		recentBoards.current = touchRecent(recentBoards.current, activeBoardId)
+		const visible = visibleBoardsRef.current
+		if (visible.length === 0) return
+		for (const id of visible) recentBoards.current = touchRecent(recentBoards.current, id)
 		const kept = new Set(recentBoards.current.filter((id) => warm.current.has(id)).slice(0, MAX_MOUNTED_BOARDS))
 		for (const id of [...warm.current]) {
-			if (kept.has(id) || id === activeBoardId) continue
+			if (kept.has(id) || visible.includes(id)) continue
 			warm.current.delete(id)
 			const meta = boardsRef.current.find((board) => board.id === id)
 			if (meta) beginDrain(meta)
 		}
-	}, [activeBoardId, beginDrain])
+	}, [visibleKey, beginDrain])
 
 	/**
 	 * What a command runs against, read at the moment of invocation rather than captured — the
@@ -951,6 +1001,18 @@ export function App() {
 	}
 	for (const board of draining) if (!seen.has(board.id)) mounted.push(board)
 
+	// The split's panes: where each tab sits, and the tab each visible board is shown in.
+	const rects = split ? paneRects(split, splitDraft ?? split.size) : null
+	const paneTabs = split ? visibleTabs(tabs) : []
+	const paneOfBoard = new Map(paneTabs.flatMap((tab) => (boardIdOf(tab) ? [[boardIdOf(tab)!, tab] as const] : [])))
+	/** A press or the focus going into a pane makes its tab the focused one. */
+	const paneProps = (tab: Tab) => ({
+		style: paneStyle(rects!.get(tab.id)!),
+		onPointerDownCapture: () => showTab(tab),
+		onFocusCapture: () => showTab(tab),
+	})
+	const paneClass = (tab: Tab) => (tab.id === tabs.activeId ? 'lb-pane lb-pane--focused' : 'lb-pane')
+
 	return (
 		<CanvasPrefsProvider value={canvasPrefs}>
 			<ShareDialogHost />
@@ -971,6 +1033,7 @@ export function App() {
 					sidebarCollapsed ? 'lb-shell--sidebar-collapsed' : '',
 					agentShown ? 'lb-shell--agent-open' : '',
 					agentResizing ? 'lb-shell--resizing' : '',
+					split ? 'lb-shell--split' : '',
 				]
 					.filter(Boolean)
 					.join(' ')}
@@ -978,12 +1041,15 @@ export function App() {
 				   dock, the dice, the sync pill — as one custom property. */
 				style={{ '--lb-agent-width': `${agentDivider.width}px` } as CSSProperties}
 			>
-				<div className="lb-shell__content">
-					{mounted.map((board) => (
+				<div className="lb-shell__content" ref={contentRef}>
+					{mounted.map((board) => {
+						const pane = paneOfBoard.get(board.id)
+						return (
 						<div
 							key={board.id}
-							className="lb-board-host"
-							{...(board.id === activeBoardId ? {} : { 'data-hidden': 'true' })}
+							className={pane ? `lb-board-host ${paneClass(pane)}` : 'lb-board-host'}
+							{...(pane ? paneProps(pane) : {})}
+							{...(visibleBoardIds.includes(board.id) ? {} : { 'data-hidden': 'true' })}
 						>
 							<Board
 								board={board}
@@ -1001,7 +1067,7 @@ export function App() {
 										void adoptStoredThumbnail(editor, areStoredThumbnailsCurrent(platform.kv, listed))
 										// Only the board on screen may bring up a GPU layer: a tab open behind it is
 										// hidden with `visibility`, keeps its size, and would hold a WebGL context.
-										getGpuScene(editor).shown.set(board.id === activeBoardIdRef.current)
+										getGpuScene(editor).shown.set(visibleBoardsRef.current.includes(board.id))
 										focusOnly(activeBoardIdRef.current)
 										// The agent panel's context, for a board that mounted after its tab was
 										// chosen. `syncAgentContext` ignores this when another board is on screen.
@@ -1010,7 +1076,7 @@ export function App() {
 										// first time an already-open tab is shown.
 										editor.user.updateUserPreferences({ colorScheme: themeRef.current })
 										editor.updateInstanceState({ isGridMode: snapRef.current })
-										editor.setSafeInsets(safeInsetsRef.current)
+										editor.setSafeInsets(insetsFor(board.id))
 									} else {
 										editors.current.delete(board.id)
 										syncAgentContext()
@@ -1018,7 +1084,46 @@ export function App() {
 								}}
 							/>
 						</div>
-					))}
+						)
+					})}
+
+					{/* The split's other pages, each in its pane and from its own tab's route. */}
+					{paneTabs.map((tab) =>
+						tab.route.view === 'list' ? (
+							<div key={tab.id} className={`${paneClass(tab)} lb-pane--page`} {...paneProps(tab)}>
+								<BoardList
+									api={listApi}
+									onOpen={openBoardAs}
+									onNew={() => void createAndOpen()}
+									onNewKind={(kindId) => void createAndOpen(kindId)}
+									mountedIds={mounted.map((board) => board.id)}
+								/>
+							</div>
+						) : tab.route.view === 'daily' ? (
+							<div key={tab.id} className={`${paneClass(tab)} lb-pane--page`} {...paneProps(tab)}>
+								<Suspense fallback={<div className="lb-board__loading">Loading…</div>}>
+									<DailyScreen
+										day={tab.route.day}
+										review={tab.route.review === true}
+										boards={api.boards}
+										onNavigate={(day, review) => navigate(day ? (review ? { view: 'daily', day, review: true } : { view: 'daily', day }) : { view: 'daily' })}
+										onOpenBoard={(board) => void openBoard(board)}
+									/>
+								</Suspense>
+							</div>
+						) : null
+					)}
+					{split && (
+						<SplitDivider
+							size={splitDraft ?? split.size}
+							containerRef={contentRef}
+							onDrag={setSplitDraft}
+							onCommit={(size) => {
+								setSplitDraft(null)
+								setTabs((state) => resizeSplit(state, split.tabs[0]!, size))
+							}}
+						/>
+					)}
 
 					{route.view === 'board' &&
 						(api.loading || lookingFor ? (
@@ -1034,6 +1139,7 @@ export function App() {
 						) : null)}
 
 					{route.view === 'list' &&
+						!split &&
 						(seeding ? (
 							// Without this, first run would flash the "No boards yet" empty state between
 							// the index loading and the demo board being created.
@@ -1041,7 +1147,7 @@ export function App() {
 						) : (
 							<BoardList
 								api={listApi}
-								onOpen={(board, behind) => (behind ? openBoardBehind(board) : void openBoard(board))}
+								onOpen={openBoardAs}
 								onNew={() => void createAndOpen()}
 								onNewKind={(kindId) => void createAndOpen(kindId)}
 								mountedIds={mounted.map((board) => board.id)}
@@ -1070,7 +1176,7 @@ export function App() {
 						/>
 					)}
 
-					{route.view === 'daily' && (
+					{route.view === 'daily' && !split && (
 						<Suspense fallback={<div className="lb-board__loading">Loading…</div>}>
 							<DailyScreen
 								day={route.day}
@@ -1120,7 +1226,7 @@ export function App() {
 						onHome={() => void goHome()}
 						onSelect={showTab}
 						onClose={closeTabsById}
-						onMove={(id, index) => setTabs((state) => moveTab(state, id, index))}
+						onChange={setTabs}
 						onNew={newTab}
 						onRename={(id, name) => void api.rename(id, name)}
 					/>
@@ -1146,7 +1252,7 @@ export function App() {
 					onHelp={leaveSidebar(() => void goHelp())}
 					onDaily={leaveSidebar(() => goDaily())}
 					onStorage={leaveSidebar(() => void goSettings('storage'))}
-					onOpenBoard={(board, behind) => (behind ? openBoardBehind(board) : leaveSidebar(() => void openBoard(board))())}
+					onOpenBoard={(board, mode) => (mode === 'behind' ? openBoardAs(board, mode) : leaveSidebar(() => openBoardAs(board, mode))())}
 					onNewBoard={leaveSidebar(() => void createAndOpen())}
 					onSearch={leaveSidebar(() => setPalette({ seed: '' }))}
 				/>

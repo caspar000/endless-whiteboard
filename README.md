@@ -77,7 +77,11 @@ hang from the top edge beside the sidebar as folder labels, each flaring into th
 tail, after a pinned **All Boards** label; Settings, Help and the board list start below them. **+**
 opens a New tab on the board list, which turns into the board picked or made there; ⌘-click or
 middle-click a board to open it in a tab behind. Drag a label to move it, right-click it to close it,
-the others or those to its right. The tabs are per window (`sessionStorage`), and only the eight
+the others or those to its right, or to **split** it with another tab: the two side by side as cards,
+the first on the left and any more stacked on the right (⌥-click a board to open it beside), with a
+line between them to resize. A split is one label in the row; the focused pane is the tab in front, and
+its board takes the keys while the other keeps drawing. Boards keep their editors through every change
+of a split, since panes are placed by position (`app/SplitPanes.tsx`). The tabs are per window (`sessionStorage`), and only the eight
 boards shown last stay mounted (`app/tabsModel.ts`, `docs/tabs-plan.md`). A phone
 shows the board pill in their place, on every screen too. <kbd>⌘\</kbd> slides the sidebar away and
 leaves a round button in its corner; under 1024px it starts that way and opens over the board. The

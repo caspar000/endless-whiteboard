@@ -23,6 +23,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import { isUpdateReady, reloadToUpdate, subscribeToUpdate } from '../pwa/registerServiceWorker'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
 import { formatBytes } from './settings/StoragePanel'
+import { opensBehind } from './tabsModel'
 import { useMoves } from './useBoards'
 
 /** How many recently edited boards the sidebar lists. */
@@ -108,7 +109,8 @@ export function Sidebar({
 	/** The daily page (DARK-17). */
 	onDaily: () => void
 	onStorage: () => void
-	onOpenBoard: (board: BoardMeta) => void
+	/** `behind`: ⌘-click or middle-click, which opens the board in a tab behind the one on screen. */
+	onOpenBoard: (board: BoardMeta, behind: boolean) => void
 	onNewBoard: () => void
 	/** Opens the palette: on a phone, the only way to it without a keyboard. */
 	onSearch: () => void
@@ -377,7 +379,7 @@ function BoardLink({
 	active: boolean
 	/** A local board shown next to server ones: it exists in this browser and nowhere else. */
 	deviceOnly?: boolean
-	onOpen: (board: BoardMeta) => void
+	onOpen: (board: BoardMeta, behind: boolean) => void
 }) {
 	// The badge is its own button, laid over the row's first column rather than inside the row: buttons
 	// cannot nest, and the rest of the row still opens the board.
@@ -386,7 +388,14 @@ function BoardLink({
 			<button
 				type="button"
 				className={active ? 'lb-sidebar__item lb-sidebar__item--board lb-sidebar__item--active' : 'lb-sidebar__item lb-sidebar__item--board'}
-				onClick={() => onOpen(board)}
+				onClick={(e) => onOpen(board, opensBehind(e))}
+				// Pressing the wheel would otherwise start the browser's autoscroll.
+				onMouseDown={(e) => {
+					if (e.button === 1) e.preventDefault()
+				}}
+				onAuxClick={(e) => {
+					if (e.button === 1) onOpen(board, true)
+				}}
 				aria-current={active ? 'page' : undefined}
 				aria-label={board.name}
 				title={deviceOnly ? `${board.name} — only on this device` : undefined}

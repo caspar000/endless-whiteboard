@@ -74,7 +74,11 @@ server's `boards` table, and changing them does not count as editing the board.
 Both screens share the same chrome, and it floats: the page runs edge to edge and the sidebar, the
 dock and the dice tray are rounded surfaces held off the window edge. On every screen, the open boards
 hang from the top edge beside the sidebar as folder labels, each flaring into the edge with a curved
-tail, after a pinned **All Boards** label; Settings, Help and the board list start below them. A phone
+tail, after a pinned **All Boards** label; Settings, Help and the board list start below them. **+**
+opens a New tab on the board list, which turns into the board picked or made there; ⌘-click or
+middle-click a board to open it in a tab behind. Drag a label to move it, right-click it to close it,
+the others or those to its right. The tabs are per window (`sessionStorage`), and only the eight
+boards shown last stay mounted (`app/tabsModel.ts`, `docs/tabs-plan.md`). A phone
 shows the board pill in their place, on every screen too. <kbd>⌘\</kbd> slides the sidebar away and
 leaves a round button in its corner; under 1024px it starts that way and opens over the board. The
 board runs under all of it, so zoom to fit, quick look and panning a shape into view frame inside

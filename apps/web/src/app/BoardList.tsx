@@ -57,7 +57,7 @@ export function BoardList({
 	mountedIds,
 }: {
 	api: BoardsApi
-	onOpen: (board: BoardMeta) => void
+	onOpen: (board: BoardMeta, behind: boolean) => void
 	/** Makes and opens an untitled board. The shell's, so every "New board" makes the same one. */
 	onNew: () => void
 	/** Makes and opens a kind of board an extension defines (a Zettelkasten box). */
@@ -331,7 +331,7 @@ export function BoardList({
 							board={board}
 							deviceOnly={api.hasServer && !board.vault}
 							{...(selecting ? { selection: { selected: selected.has(board.id), onToggle: () => toggle(board.id) } } : {})}
-							onOpen={() => onOpen(board)}
+							onOpen={(behind) => onOpen(board, behind)}
 							onRename={() => setRenaming(board.id)}
 							renaming={renaming === board.id}
 							onRenameSubmit={(name) => {

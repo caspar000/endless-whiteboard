@@ -40,8 +40,22 @@ import { Sidebar, SidebarReopen } from './Sidebar'
 import { TabStrip } from './TabStrip'
 import { startDrain } from './drainSchedule'
 import { useBoards } from './useBoards'
-import { useHashRoute, type Route } from './useHashRoute'
+import { useHashRoute } from './useHashRoute'
 import { DAILY_TAB, useTabs } from './useTabs'
+import {
+	activateTab,
+	activeTab,
+	boardIdOf,
+	boardIds,
+	closeTabs,
+	followRoute,
+	moveTab,
+	openTab,
+	tabAlong,
+	touchRecent,
+	withoutBoard,
+	type Tab,
+} from './tabsModel'
 import { useRates } from './useRates'
 import { useTheme } from './useTheme'
 import { BoardPill } from './BoardPill'
@@ -79,6 +93,12 @@ if (globalThis.localStorage?.getItem('lifeboard:gpu-cache') !== 'off') {
 registerBoardKindCommands()
 
 const DRAIN_MS = TLDRAW_PERSIST_THROTTLE_MS + 400
+
+/**
+ * How many boards stay mounted at most: the ones most recently shown, as oritask and oribet-admin keep
+ * their 8 most recent tabs. Each holds a tldraw editor and a sync client.
+ */
+const MAX_MOUNTED_BOARDS = 8
 
 /**
  * Upper bound on a drain extended by a running image upload (see `drainSchedule.ts`), so a wedged
@@ -169,7 +189,7 @@ export function App() {
 	useEffect(() => startPhotoSync(platform.blobs), [platform.blobs])
 	const api = useBoards()
 	const [route, navigate] = useHashRoute()
-	const { tabs, openTab, closeTab } = useTabs(api.boards, api.loading)
+	const [tabs, setTabs] = useTabs(api.boards, api.loading)
 	const [seeding, setSeeding] = useState(false)
 	/**
 	 * The palette's state is its *seed*, not a boolean: `null` is closed, and an open palette carries
@@ -244,6 +264,8 @@ export function App() {
 	 * editor mounts the first time its tab is shown, then stays mounted while the tab is open.
 	 */
 	const warm = useRef(new Set<string>())
+	/** Board ids, most recently shown first: past `MAX_MOUNTED_BOARDS` of them, a board unmounts. */
+	const recentBoards = useRef<string[]>([])
 	/** Re-renders once a board has been warmed without being shown (the bridge's `mount`). */
 	const [, rewarm] = useState(0)
 
@@ -404,21 +426,15 @@ export function App() {
 	// to be the active one again, and its timer firing mid-session would unmount it under the user.
 	// Again when the board turns up in the list: a link to one it hadn't seen yet (made since it loaded,
 	// or just shared) has its tab dropped as unknown until the server has been asked.
+	// The daily page gets a tab too (DARK-17), and its tab goes back to the day last shown, as a board's
+	// tab goes back to its board. Keyed on the route itself, not on every render: "+" makes its New tab
+	// active before the address moves to the home screen, and following the old address in between would
+	// turn the New tab into the board it was opened from.
 	const routedBoardKnown = route.view === 'board' && api.boards.some((board) => board.id === route.boardId)
 	useEffect(() => {
-		if (route.view !== 'board') return
-		openTab(route.boardId)
-		cancelDrainFor(route.boardId)
-	}, [route, routedBoardKnown, openTab, cancelDrainFor])
-
-	// The daily page gets a tab too, by whichever route it was reached (DARK-17), and the tab goes back
-	// to the day last shown, as a board's tab goes back to its board.
-	const lastDaily = useRef<Route>({ view: 'daily' })
-	useEffect(() => {
-		if (route.view !== 'daily') return
-		lastDaily.current = route
-		openTab(DAILY_TAB)
-	}, [route, openTab])
+		setTabs((state) => followRoute(state, route))
+		if (route.view === 'board') cancelDrainFor(route.boardId)
+	}, [route, routedBoardKnown, setTabs, cancelDrainFor])
 
 	// Activating an already-mounted tab needs two things onMount only does the first time: keyboard
 	// focus back on that editor (or tool shortcuts go dead after a tab switch), and `window.editor`
@@ -459,10 +475,15 @@ export function App() {
 	const openBoardById = useCallback(
 		async (id: string) => {
 			if (route.view === 'board' && route.boardId === id) return
-			openTab(id)
 			navigate({ view: 'board', boardId: id })
 		},
-		[route, openTab, navigate]
+		[route, navigate]
+	)
+
+	/** ⌘-click or middle-click on a board: its tab opens behind the one on screen. */
+	const openBoardBehind = useCallback(
+		(board: BoardMeta) => setTabs((state) => openTab(state, { view: 'board', boardId: board.id }, { background: true })),
+		[setTabs]
 	)
 
 	const openBoard = useCallback(
@@ -470,10 +491,31 @@ export function App() {
 		[openBoardById]
 	)
 
+	// The pinned All Boards, not a New tab: none of the tabs is in front.
 	const goHome = useCallback(async () => {
+		setTabs((state) => activateTab(state, null))
 		navigate({ view: 'list' })
 		void api.refresh()
-	}, [navigate, api])
+	}, [setTabs, navigate, api])
+
+	/** "+": a New tab showing the home screen, which turns into the board picked there. */
+	const newTab = useCallback(() => {
+		setTabs((state) => openTab(state, { view: 'list' }))
+		navigate({ view: 'list' })
+		void api.refresh()
+	}, [setTabs, navigate, api])
+
+	const showTab = useCallback(
+		(tab: Tab) => {
+			// The tab in front stays as it is. Moving to its address again would refocus its board, which takes
+			// the focus from the name field a double-click on its label opens.
+			if (tab.id === tabs.activeId) return
+			setTabs((state) => activateTab(state, tab.id))
+			navigate(tab.route)
+			if (tab.route.view === 'list') void api.refresh()
+		},
+		[tabs.activeId, setTabs, navigate, api]
+	)
 
 	// The tab is optional so "Open settings" keeps meaning the front of settings, while a command that
 	// is *about* something (extensions) can land on it directly.
@@ -515,29 +557,33 @@ export function App() {
 		[api, platform, openBoard]
 	)
 
-	const closeBoardTab = useCallback(
-		async (id: string) => {
-			const active = id === DAILY_TAB ? route.view === 'daily' : route.view === 'board' && route.boardId === id
-			// Only a mounted editor can hold a pending write, so only warm tabs need the drain.
-			const meta = api.boards.find((b) => b.id === id)
-			if (meta && warm.current.has(id)) beginDrain(meta)
-			warm.current.delete(id)
-			closeTab(id)
-
-			if (active) {
-				const index = tabs.indexOf(id)
-				const rest = tabs.filter((t) => t !== id)
-				const nextId = rest[Math.min(index, rest.length - 1)]
-				if (nextId) {
-					navigate(nextId === DAILY_TAB ? lastDaily.current : { view: 'board', boardId: nextId })
-				} else {
-					navigate({ view: 'list' })
-					void api.refresh()
-				}
+	/**
+	 * Closes tabs, a board's through the drain so its pending write can land. Closing the tab in front
+	 * shows the one that takes its place, or the home screen when none is left.
+	 */
+	const closeTabsById = useCallback(
+		(ids: readonly string[]) => {
+			for (const tab of tabs.tabs) {
+				const id = boardIdOf(tab)
+				if (!id || !ids.includes(tab.id)) continue
+				// Only a mounted editor can hold a pending write, so only warm tabs need the drain.
+				const meta = api.boards.find((b) => b.id === id)
+				if (meta && warm.current.has(id)) beginDrain(meta)
+				warm.current.delete(id)
 			}
+			const next = closeTabs(tabs, ids)
+			setTabs(next)
+			if (tabs.activeId === null || !ids.includes(tabs.activeId)) return
+			const shown = activeTab(next)
+			navigate(shown ? shown.route : { view: 'list' })
+			if (!shown || shown.route.view === 'list') void api.refresh()
 		},
-		[route, tabs, api, beginDrain, closeTab, navigate]
+		[tabs, api, beginDrain, setTabs, navigate]
 	)
+
+	/** The phone's board pill names its rows by board id, and the daily page's by `DAILY_TAB`. */
+	const tabOfPillId = (id: string) =>
+		tabs.tabs.find((tab) => (id === DAILY_TAB ? tab.route.view === 'daily' : boardIdOf(tab) === id))
 
 	/**
 	 * Deleting a board that is still mounted would block its own delete: the editor holds an open
@@ -548,12 +594,12 @@ export function App() {
 		async (id: string) => {
 			cancelDrainFor(id)
 			warm.current.delete(id)
-			closeTab(id)
+			setTabs((state) => withoutBoard(state, id))
 			// Give React a frame to commit the unmount so tldraw closes its connection.
 			await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
 			await api.remove(id)
 		},
-		[cancelDrainFor, closeTab, api]
+		[cancelDrainFor, setTabs, api]
 	)
 
 	/**
@@ -590,12 +636,12 @@ export function App() {
 				if (deleted) {
 					cancelDrainFor(left)
 					warm.current.delete(left)
-					closeTab(left)
+					setTabs((state) => withoutBoard(state, left))
 				}
 				return deleted
 			},
 		}).catch((error) => console.error('Lifeboard: could not delete an untouched board.', error))
-	}, [shownBoardId, platform, api, removeBoard, cancelDrainFor, closeTab])
+	}, [shownBoardId, platform, api, removeBoard, cancelDrainFor, setTabs])
 
 	// Re-point the command table's app capability at this render's callbacks (see appCommands.ts for
 	// why the commands themselves register at module scope instead of here). No dependency array on
@@ -607,6 +653,16 @@ export function App() {
 			goSettings,
 			goHelp,
 			goDaily,
+			newTab,
+			closeTab: () => {
+				if (tabs.activeId) closeTabsById([tabs.activeId])
+			},
+			stepTab: (step) => {
+				const tab = tabAlong(tabs, step)
+				if (tab) showTab(tab)
+			},
+			tabCount: () => tabs.tabs.length,
+			hasActiveTab: () => tabs.activeId !== null,
 			setTheme,
 			toggleAgentPanel,
 			toggleSidebar,
@@ -690,8 +746,9 @@ export function App() {
 			mount: async (id) => {
 				const known = await listBoards(platform.kv)
 				if (!known.some((board) => board.id === id)) return false
-				openTab(id)
+				setTabs((state) => openTab(state, { view: 'board', boardId: id }, { background: true }))
 				warm.current.add(id)
+				recentBoards.current = touchRecent(recentBoards.current, id)
 				rewarm((n) => n + 1)
 				return true
 			},
@@ -825,6 +882,20 @@ export function App() {
 	})
 	if (activeBoardId) warm.current.add(activeBoardId)
 
+	// Only the boards most recently shown stay mounted. One past them unmounts as a closed tab does,
+	// through the drain, and mounts again when its tab is shown.
+	useEffect(() => {
+		if (!activeBoardId) return
+		recentBoards.current = touchRecent(recentBoards.current, activeBoardId)
+		const kept = new Set(recentBoards.current.filter((id) => warm.current.has(id)).slice(0, MAX_MOUNTED_BOARDS))
+		for (const id of [...warm.current]) {
+			if (kept.has(id) || id === activeBoardId) continue
+			warm.current.delete(id)
+			const meta = boardsRef.current.find((board) => board.id === id)
+			if (meta) beginDrain(meta)
+		}
+	}, [activeBoardId, beginDrain])
+
 	/**
 	 * What a command runs against, read at the moment of invocation rather than captured — the
 	 * editors map is a ref, so anything stored would be stale the next time a tab changed.
@@ -870,7 +941,7 @@ export function App() {
 	const byId = new Map(api.boards.map((b) => [b.id, b]))
 	const mounted: BoardMeta[] = []
 	const seen = new Set<string>()
-	for (const id of tabs) {
+	for (const id of boardIds(tabs)) {
 		if (!warm.current.has(id)) continue
 		const meta = byId.get(id)
 		if (meta) {
@@ -970,7 +1041,7 @@ export function App() {
 						) : (
 							<BoardList
 								api={listApi}
-								onOpen={(board) => void openBoard(board)}
+								onOpen={(board, behind) => (behind ? openBoardBehind(board) : void openBoard(board))}
 								onNew={() => void createAndOpen()}
 								onNewKind={(kindId) => void createAndOpen(kindId)}
 								mountedIds={mounted.map((board) => board.id)}
@@ -1024,13 +1095,19 @@ export function App() {
 				{phone ? (
 					<BoardPill
 						boards={api.boards}
-						tabs={tabs}
+						tabs={tabs.tabs.flatMap((tab) => boardIdOf(tab) ?? (tab.route.view === 'daily' ? [DAILY_TAB] : []))}
 						home={route.view === 'list'}
 						daily={route.view === 'daily'}
 						activeBoardId={activeBoardId}
 						onSelect={(board) => void openBoard(board)}
-						onDaily={() => navigate(lastDaily.current)}
-						onClose={(id) => void closeBoardTab(id)}
+						onDaily={() => {
+							const tab = tabOfPillId(DAILY_TAB)
+							if (tab) showTab(tab)
+						}}
+						onClose={(id) => {
+							const tab = tabOfPillId(id)
+							if (tab) closeTabsById([tab.id])
+						}}
 						onNew={() => void createAndOpen()}
 						onAllBoards={() => void goHome()}
 						onRename={(id, name) => void api.rename(id, name)}
@@ -1039,13 +1116,12 @@ export function App() {
 					<TabStrip
 						boards={api.boards}
 						tabs={tabs}
-						view={route.view}
-						activeBoardId={activeBoardId}
+						homeActive={route.view === 'list' && tabs.activeId === null}
 						onHome={() => void goHome()}
-						onDaily={() => navigate(lastDaily.current)}
-						onSelect={(board) => void openBoard(board)}
-						onClose={(id) => void closeBoardTab(id)}
-						onNew={() => void createAndOpen()}
+						onSelect={showTab}
+						onClose={closeTabsById}
+						onMove={(id, index) => setTabs((state) => moveTab(state, id, index))}
+						onNew={newTab}
 						onRename={(id, name) => void api.rename(id, name)}
 					/>
 				)}
@@ -1070,7 +1146,7 @@ export function App() {
 					onHelp={leaveSidebar(() => void goHelp())}
 					onDaily={leaveSidebar(() => goDaily())}
 					onStorage={leaveSidebar(() => void goSettings('storage'))}
-					onOpenBoard={(board) => leaveSidebar(() => void openBoard(board))()}
+					onOpenBoard={(board, behind) => (behind ? openBoardBehind(board) : leaveSidebar(() => void openBoard(board))())}
 					onNewBoard={leaveSidebar(() => void createAndOpen())}
 					onSearch={leaveSidebar(() => setPalette({ seed: '' }))}
 				/>

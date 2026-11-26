@@ -1,57 +1,43 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { BoardMeta } from '../boards/boardIndex'
+import { dropUnknownBoards, parseTabs, type TabsState } from './tabsModel'
 
 /**
- * The open-board tabs shown in the shell's tab strip.
+ * The tab strip's tabs (`tabsModel.ts`).
  *
  * Session-scoped on purpose: tabs are "what I'm working on right now", so they survive a reload but
- * not a new visit — the same policy every browser applies to its own tabs. Board *data* never lives
+ * not a new visit, and each window keeps its own, as a browser's tabs do. Board *data* never lives
  * here, only ids; the strip resolves names against the live index so renames show up immediately.
  */
 const TABS_KEY = 'lifeboard:openTabs'
 
-/** The daily page's tab (DARK-17): kept in the same list as the boards' ids, so it sits among them. */
+/** The daily page's entry in the phone's board pill, which lists board ids and this. */
 export const DAILY_TAB = 'daily'
 
-function loadTabs(): string[] {
-	try {
-		const raw = sessionStorage.getItem(TABS_KEY)
-		const parsed: unknown = raw ? JSON.parse(raw) : []
-		return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
-	} catch {
-		return []
-	}
-}
-
 export function useTabs(boards: BoardMeta[], boardsLoading: boolean) {
-	const [tabs, setTabs] = useState<string[]>(loadTabs)
+	const [state, setState] = useState<TabsState>(() => {
+		try {
+			return parseTabs(sessionStorage.getItem(TABS_KEY))
+		} catch {
+			return parseTabs(null)
+		}
+	})
 
 	useEffect(() => {
 		try {
-			sessionStorage.setItem(TABS_KEY, JSON.stringify(tabs))
+			sessionStorage.setItem(TABS_KEY, JSON.stringify(state))
 		} catch {
 			// Private-mode Safari can throw on write; losing tab restoration is fine.
 		}
-	}, [tabs])
+	}, [state])
 
 	// Drop tabs for boards that no longer exist — but only once the index has actually loaded,
 	// otherwise the initial empty list would wipe every restored tab on startup.
 	useEffect(() => {
 		if (boardsLoading) return
 		const known = new Set(boards.map((b) => b.id))
-		setTabs((current) => {
-			const kept = current.filter((id) => id === DAILY_TAB || known.has(id))
-			return kept.length === current.length ? current : kept
-		})
+		setState((current) => dropUnknownBoards(current, known))
 	}, [boards, boardsLoading])
 
-	const openTab = useCallback((id: string) => {
-		setTabs((current) => (current.includes(id) ? current : [...current, id]))
-	}, [])
-
-	const closeTab = useCallback((id: string) => {
-		setTabs((current) => current.filter((t) => t !== id))
-	}, [])
-
-	return { tabs, openTab, closeTab }
+	return [state, setState] as const
 }

@@ -88,6 +88,18 @@ const GROUPS_AFTER: ShortcutGroup[] = [
 		],
 	},
 	{
+		// The tab strip's gestures (app/TabStrip.tsx). Its commands (New tab, Close tab, Next and Previous
+		// tab) are in the table and list themselves, with no keys until you give them one.
+		title: 'On the tabs',
+		rows: [
+			[['drag'], 'Move a tab along the row'],
+			[['right-click'], 'Rename its board, close it, the other tabs, or those to its right'],
+			[['middle-click'], 'Close a tab'],
+			[['double-click'], 'Rename the board in front'],
+			[['⌘', 'click'], 'A board in the sidebar or in All Boards: open it in a tab behind (a middle click does too)'],
+		],
+	},
+	{
 		// The board list's own keys, bound by the page rather than registered (app/BoardList.tsx).
 		title: 'In All Boards',
 		rows: [

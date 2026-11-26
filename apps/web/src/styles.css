@@ -1029,6 +1029,51 @@ button {
 	font: inherit;
 	outline: none;
 }
+/* A label being dragged along the row (TabStrip.tsx): the row reorders under it as it goes. */
+.lb-tabs--dragging,
+.lb-tabs--dragging .lb-tabs__tab {
+	cursor: grabbing;
+}
+.lb-tabs__tab--dragging {
+	--tab-bg: var(--tab-label-hover);
+}
+/* A label's right-click menu, where the pointer was: the floating chrome's surface, a size down. */
+.lb-tabmenu {
+	position: fixed;
+	z-index: 80;
+	display: flex;
+	flex-direction: column;
+	min-width: 200px;
+	padding: 4px;
+	border-radius: var(--fl-radius-btn);
+	animation: lb-tabmenu-in var(--mo-in);
+}
+@keyframes lb-tabmenu-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+.lb-tabmenu__item {
+	padding: 7px 10px;
+	border: 0;
+	border-radius: var(--fl-radius-ctl);
+	background: transparent;
+	color: var(--lb-text);
+	font: inherit;
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+}
+.lb-tabmenu__item:hover:not(:disabled),
+.lb-tabmenu__item:focus-visible {
+	background: var(--lb-surface-hover);
+	outline: none;
+}
+.lb-tabmenu__item:disabled {
+	color: var(--lb-text-faint);
+	cursor: default;
+}
 
 /* ------------------------------------------------------------------ sidebar */
 

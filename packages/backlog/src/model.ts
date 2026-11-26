@@ -46,6 +46,10 @@ export const collectionKey = (c: Pick<BacklogCollection, 'id' | 'key'>): string 
 
 export type BacklogEntry = BacklogItem | BacklogCollection
 
+/** What a backlog holds, when it is one kind of thing: its + then searches for that kind online. */
+export type BacklogMedia = 'music' | 'film'
+export const MEDIA: readonly BacklogMedia[] = ['music', 'film']
+
 export interface Backlog {
 	backlogId: string
 	/**
@@ -54,6 +58,8 @@ export interface Backlog {
 	 */
 	boardId: string
 	name: string
+	/** Left out for a backlog of anything, which takes only typed and dragged items. */
+	media?: BacklogMedia
 	/** Newest first. */
 	entries: BacklogEntry[]
 }
@@ -93,7 +99,7 @@ export function parseTyped(line: string): Pick<BacklogItem, 'title' | 'creator' 
 const LETTERS: Readonly<Record<string, string>> = { æ: 'ae', ø: 'o', œ: 'oe', ð: 'd', þ: 'th', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' }
 
 /** Text as a backlog compares it: case, accents, punctuation, a leading "the" and what is in brackets set aside. */
-function plain(text: string): string {
+export function plain(text: string): string {
 	const folded = text
 		.normalize('NFKD')
 		.replace(/\p{M}/gu, '')
@@ -160,6 +166,11 @@ export function removeEntry(backlog: Backlog, id: string): Backlog {
 	return { ...backlog, entries: backlog.entries.filter((e) => e.id !== id) }
 }
 
+export function setMedia(backlog: Backlog, media: BacklogMedia | null): Backlog {
+	const { media: _, ...rest } = backlog
+	return media ? { ...rest, media } : rest
+}
+
 export function renameBacklog(backlog: Backlog, name: string): Backlog {
 	const trimmed = name.trim()
 	return trimmed ? { ...backlog, name: trimmed } : backlog
@@ -206,5 +217,6 @@ export function readBacklog(raw: Record<string, unknown>): Backlog | null {
 		else if (e.kind === 'item' && str(e.title))
 			entries.push({ kind: 'item', id: str(e.id), title: str(e.title), creator: str(e.creator), year: str(e.year), cover: str(e.cover), url: str(e.url), ...(str(e.detail) ? { detail: str(e.detail) } : {}), via: str(e.via) })
 	}
-	return { backlogId, boardId: str(raw.boardId), name: str(raw.name) || DEFAULT_NAME, entries }
+	const media = MEDIA.find((m) => m === raw.media)
+	return { backlogId, boardId: str(raw.boardId), name: str(raw.name) || DEFAULT_NAME, ...(media ? { media } : {}), entries }
 }

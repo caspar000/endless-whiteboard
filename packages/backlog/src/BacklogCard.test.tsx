@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { ITEM_DRAG_TYPE, clearItemMarks, clearItemSources, offeredItemSources, registerItemSource, registerItemStamps, setExtensionEnabled, type SourceEntry } from '@lifeboard/node-kit'
+import { ITEM_DRAG_TYPE, clearItemMarks, clearItemSources, offeredItemSources, registerItemSource, registerItemStamps, setExtensionEnabled, setNetworkBridge, type SourceEntry } from '@lifeboard/node-kit'
 import { atom } from '@lifeboard/canvas'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { backlogNodeDefinition } from './definition'
@@ -167,6 +167,47 @@ describe('a backlog card', () => {
 		act(() => setExtensionEnabled(BACKLOG_EXTENSION_ID, false))
 		expect(offeredItemSources().map((s) => s.id)).not.toContain('backlog')
 		expect(within(screen.getByLabelText('To hear')).getByText('/mu/core')).toBeTruthy()
+	})
+})
+
+describe('a backlog of one media type', () => {
+	it('searches online for films once Film is chosen, and adds the one clicked with its poster', async () => {
+		const asked: string[] = []
+		setNetworkBridge({
+			getJson: async (url) => {
+				asked.push(url)
+				if (url.includes('list=search')) return { query: { search: [{ title: 'Q1138968' }] } }
+				if (url.includes('wbgetentities'))
+					return {
+						entities: {
+							Q1138968: {
+								labels: { en: { value: 'Nostalghia' } },
+								descriptions: { en: { value: '1983 film by Andrei Tarkovsky' } },
+								claims: { P577: [{ mainsnak: { datavalue: { value: { time: '+1983-05-17T00:00:00Z' } } } }], P345: [{ mainsnak: { datavalue: { value: 'tt0086022' } } }] },
+								sitelinks: { enwiki: { site: 'enwiki', title: 'Nostalghia' } },
+							},
+						},
+					}
+				if (url.includes('pageimages')) return { query: { pages: [{ title: 'Nostalghia', thumbnail: { source: 'https://upload.wikimedia.org/nostalghia.jpeg' } }] } }
+				return null
+			},
+			getBlob: async () => null,
+			getText: async () => ({ ok: false, reason: 'unavailable', message: '' }),
+		})
+		mount()
+		fireEvent.click(within(card()).getByRole('button', { name: 'Add to the backlog' }))
+		fireEvent.click(screen.getByRole('radio', { name: 'Film' }))
+		expect(backlog().media).toBe('film')
+		fireEvent.change(screen.getByRole('combobox', { name: 'Search films' }), { target: { value: 'Ностальгия' } })
+		const result = await screen.findByRole('option', { name: /Nostalghia/ })
+		expect(within(result).getByText('Andrei Tarkovsky · 1983')).toBeTruthy()
+		fireEvent.click(result)
+		expect(tiles()).toHaveLength(1)
+		expect(within(tiles()[0]!).getByText('from Wikidata')).toBeTruthy()
+		expect(backlog().entries[0]).toMatchObject({ id: 'found|wikidata:Q1138968', title: 'Nostalghia', creator: 'Andrei Tarkovsky', year: '1983', cover: 'https://upload.wikimedia.org/nostalghia.jpeg', url: 'https://www.imdb.com/title/tt0086022/' })
+		expect(card().className).toContain('lb-backlog--film')
+		expect(backlogSource.kind('b1').noun).toBe('films')
+		expect(asked.every((u) => u.includes('wiki'))).toBe(true)
 	})
 })
 

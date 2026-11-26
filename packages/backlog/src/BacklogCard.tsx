@@ -8,13 +8,15 @@ import {
 	resolveItemSource,
 	setDraggedItem,
 	sourceEntries,
-	useItemCover,
 	type NodeComponentProps,
-	type SourceEntry,
+	type SourceKind,
 } from '@lifeboard/node-kit'
 import { ArrowDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from 'react'
-import { addCollection, addItem, backlogEntries, collectionKey, addTyped, parseTyped, removeEntry, renameBacklog, whereIs, type BacklogCollection, type BacklogEntry, type BacklogItem } from './model'
+import { Art } from './Art'
+import type { Found } from './lookup'
+import { MediaSearch } from './MediaSearch'
+import { addCollection, addItem, backlogEntries, collectionKey, addTyped, parseTyped, removeEntry, renameBacklog, setMedia, whereIs, type BacklogCollection, type BacklogEntry, type BacklogItem, type BacklogMedia } from './model'
 import type { BacklogProps } from './props'
 import { BACKLOG_SOURCE_ID, watchBacklog } from './source'
 import { backlogOrNew, shapeDropHint, updateBacklog } from './store'
@@ -40,15 +42,17 @@ function useOpenMenu(editor: Editor, id: string, open: boolean) {
 
 const viaText = (via: string) => (via ? `from ${via}` : 'typed')
 
-function Art({ item, className }: { item: Pick<SourceEntry, 'title' | 'creator' | 'year' | 'cover'>; className?: string }) {
-	const url = useItemCover(item, 'square')
-	return <img className={className ?? 'lb-backlog__art'} src={url} alt="" draggable={false} loading="lazy" />
-}
+const MEDIA_CHOICES: { media: BacklogMedia | null; label: string }[] = [
+	{ media: null, label: 'Anything' },
+	{ media: 'music', label: 'Music' },
+	{ media: 'film', label: 'Film' },
+]
 
 /** One item: its cover, title, creator and where it came from. Dragged out, it goes on to a ranking or another backlog. */
-function ItemTile({ item, onRemove }: { item: BacklogItem; onRemove: () => void }) {
+function ItemTile({ item, shape, onRemove }: { item: BacklogItem; shape: SourceKind['shape']; onRemove: () => void }) {
 	const at = item.id.indexOf('|')
-	const from = at > 0 && !item.id.startsWith('typed|') ? item.id.slice(0, at) : ''
+	// Typed and found ones came from no card: their id is their own.
+	const from = at > 0 && !/^(typed|found)\|/.test(item.id) ? item.id.slice(0, at) : ''
 	return (
 		<div
 			className="lb-backlog__tile"
@@ -62,7 +66,7 @@ function ItemTile({ item, onRemove }: { item: BacklogItem; onRemove: () => void 
 			}}
 		>
 			<div className="lb-backlog__thumb">
-				<Art item={item} />
+				<Art item={item} shape={shape} />
 				<button type="button" className="lb-backlog__remove" aria-label={`Remove ${item.title}`} title="Remove" onPointerDown={swallow} onClick={onRemove}>
 					<X size={12} aria-hidden />
 				</button>
@@ -211,13 +215,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 		return { said: `${what} is already in ${backlog.name}, in ${resolveItemSource(collectionKey(at)).name}.`, add: false }
 	}
 
-	const commitAdd = () => {
-		const line = addRef.current?.value ?? ''
-		if (!line.trim()) {
-			setAddError('Type a title first, and “— creator” if you know it.')
-			addRef.current?.focus()
-			return
-		}
+	const addLine = (line: string) => {
 		const parsed = parseTyped(line)
 		const had = parsed && already(parsed)
 		if (had) {
@@ -225,9 +223,27 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 			else setAnnounce(had.said)
 			setNotice(had.said)
 		} else change((b) => addTyped(b, line), `${line.split(/\s+[—–-]\s+/)[0]} added to ${backlog.name}.`)
+	}
+
+	const commitAdd = () => {
+		const line = addRef.current?.value ?? ''
+		if (!line.trim()) {
+			setAddError('Type a title first, and “— creator” if you know it.')
+			addRef.current?.focus()
+			return
+		}
+		addLine(line)
 		if (addRef.current) addRef.current.value = ''
 		setAddError('')
 		addRef.current?.focus()
+	}
+
+	/** A result of a search online, with its cover and year; one already here is said, as a dropped one is. */
+	const addFound = (found: Found) => {
+		const had = already(found)
+		if (had) setNotice(had.said)
+		if (had && !had.add) setAnnounce(had.said)
+		else change((b) => addItem(b, { ...found, id: `found|${found.id}` }, '', found.via), had?.said ?? `${found.title} added to ${backlog.name}.`)
 	}
 
 	/* ------------------------------------------------------- a cover dragged here from another card */
@@ -270,7 +286,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 			change((b) => removeEntry(b, entry.id), `${entry.kind === 'item' ? entry.title : resolveItemSource(collectionKey(entry)).name} removed from ${backlog.name}.`)
 		const cell =
 			entry.kind === 'item' ? (
-				<ItemTile key={entry.id} item={entry} onRemove={remove} />
+				<ItemTile key={entry.id} item={entry} shape={backlog.media === 'film' ? 'poster' : 'square'} onRemove={remove} />
 			) : (
 				<CollectionTile key={entry.id} collection={entry} open={openId === entry.id} onToggle={() => setOpenId(openId === entry.id ? null : entry.id)} onRemove={remove} />
 			)
@@ -279,7 +295,7 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 
 	return (
 		<div
-			className={`lb-backlog${dropping || shapeHint ? ' lb-backlog--dropping' : ''}`}
+			className={`lb-backlog${backlog.media ? ` lb-backlog--${backlog.media}` : ''}${dropping || shapeHint ? ' lb-backlog--dropping' : ''}`}
 			aria-label={backlog.name}
 			onDragOver={onDragOver}
 			onDragLeave={(e) => {
@@ -339,33 +355,53 @@ function BacklogCardImpl({ shape, editor }: NodeComponentProps<BacklogProps>) {
 
 			{adding && (
 				<div className="lb-backlog__add" onPointerDown={swallow}>
-					<label htmlFor={`${shape.id}-add`}>Add an item</label>
-					<div className="lb-backlog__add-row">
-						<input
-							id={`${shape.id}-add`}
-							ref={addRef}
-							type="text"
-							autoComplete="off"
-							autoFocus
-							placeholder="Title — creator"
-							aria-invalid={addError ? true : undefined}
-							onKeyDown={(e) => {
-								e.stopPropagation()
-								if (e.key === 'Enter') {
-									e.preventDefault()
-									commitAdd()
-								}
-								if (e.key === 'Escape') setAdding(false)
-							}}
-						/>
-						<button type="button" className="lb-backlog__btn lb-backlog__btn--primary" onClick={commitAdd}>
-							Add
-						</button>
-						<button type="button" className="lb-backlog__btn" onClick={() => setAdding(false)}>
-							Cancel
-						</button>
+					<div className="lb-backlog__media" role="radiogroup" aria-label="What it holds">
+						{MEDIA_CHOICES.map((c) => (
+							<button
+								key={c.label}
+								type="button"
+								role="radio"
+								aria-checked={(backlog.media ?? null) === c.media}
+								className="lb-backlog__media-btn"
+								onClick={() => change((b) => setMedia(b, c.media), c.media ? `${backlog.name} holds ${c.label.toLowerCase()}: + searches for it online.` : `${backlog.name} holds anything.`)}
+							>
+								{c.label}
+							</button>
+						))}
 					</div>
-					{addError ? <span className="lb-backlog__err">{addError}</span> : <span className="lb-backlog__hint">A typed item gets a cover drawn from its title.</span>}
+					{backlog.media ? (
+						<MediaSearch id={`${shape.id}-add`} media={backlog.media} onFound={addFound} onTyped={addLine} onClose={() => setAdding(false)} />
+					) : (
+						<>
+						<label htmlFor={`${shape.id}-add`}>Add an item</label>
+						<div className="lb-backlog__add-row">
+							<input
+								id={`${shape.id}-add`}
+								ref={addRef}
+								type="text"
+								autoComplete="off"
+								autoFocus
+								placeholder="Title — creator"
+								aria-invalid={addError ? true : undefined}
+								onKeyDown={(e) => {
+									e.stopPropagation()
+									if (e.key === 'Enter') {
+										e.preventDefault()
+										commitAdd()
+									}
+									if (e.key === 'Escape') setAdding(false)
+								}}
+							/>
+							<button type="button" className="lb-backlog__btn lb-backlog__btn--primary" onClick={commitAdd}>
+								Add
+							</button>
+							<button type="button" className="lb-backlog__btn" onClick={() => setAdding(false)}>
+								Cancel
+							</button>
+						</div>
+						{addError ? <span className="lb-backlog__err">{addError}</span> : <span className="lb-backlog__hint">A typed item gets a cover drawn from its title.</span>}
+						</>
+					)}
 					<label htmlFor={`${shape.id}-collection`}>Or a whole collection</label>
 					<SourceSelect
 						id={`${shape.id}-collection`}

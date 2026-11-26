@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addCollection, addItem, addTyped, backlogEntries, itemKey, newBacklog, parseTyped, readBacklog, removeEntry, renameBacklog, whereIs, workKey, type Backlog } from './model'
+import { addCollection, addItem, addTyped, backlogEntries, itemKey, newBacklog, parseTyped, readBacklog, removeEntry, renameBacklog, setMedia, whereIs, workKey, type Backlog } from './model'
 
 const entry = (id: string, title = `Work ${id}`) => ({ id, title, creator: 'Someone', year: '', cover: '', url: '' })
 let n = 0
@@ -114,5 +114,12 @@ describe('a backlog as a source', () => {
 		expect(readBacklog(JSON.parse(JSON.stringify(b)))).toEqual(b)
 		expect(readBacklog({ backlogId: 'b', entries: [{ kind: 'item', id: 'x' }, { kind: 'odd', id: 'y' }, 3] })).toEqual({ backlogId: 'b', boardId: '', name: 'Backlog', entries: [] })
 		expect(readBacklog({})).toBeNull()
+	})
+
+	it('keeps what a backlog holds, and drops a media type it does not know', () => {
+		const film = setMedia(newBacklog('b'), 'film')
+		expect(readBacklog(JSON.parse(JSON.stringify(film)))?.media).toBe('film')
+		expect(setMedia(film, null)).toEqual(newBacklog('b'))
+		expect(readBacklog({ backlogId: 'b', media: 'podcasts' })).toEqual(newBacklog('b'))
 	})
 })

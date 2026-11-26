@@ -15651,6 +15651,90 @@ button.lb-props__eye:hover {
 	font-size: 12px;
 }
 
+/* What a backlog holds: Anything, Music or Film. Music and Film search online. */
+.lb-backlog__media {
+	display: flex;
+	gap: 2px;
+	justify-self: start;
+	padding: 2px;
+	border-radius: 8px;
+	background: var(--lb-surface);
+}
+.lb-backlog__media-btn {
+	padding: 4px 10px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--lb-text-dim);
+	font-size: 11px;
+	cursor: pointer;
+}
+.lb-backlog__media-btn[aria-checked='true'] {
+	background: var(--lb-bg-raised);
+	color: var(--lb-text);
+	box-shadow: 0 0 0 1px var(--lb-border);
+}
+.lb-backlog__btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+.lb-backlog__results {
+	display: grid;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.lb-backlog__result {
+	display: grid;
+	grid-template-columns: 40px minmax(0, 1fr);
+	align-items: center;
+	gap: 10px;
+	padding: 4px;
+	border-radius: 6px;
+	cursor: pointer;
+}
+.lb-backlog__result[aria-selected='true'] {
+	background: color-mix(in srgb, var(--lb-surface) 80%, var(--lb-accent));
+}
+.lb-backlog__result-art {
+	display: block;
+	width: 40px;
+	aspect-ratio: 1;
+	object-fit: cover;
+	border-radius: 4px;
+	background: var(--lb-surface);
+}
+.lb-backlog__results--film .lb-backlog__result-art {
+	aspect-ratio: 2 / 3;
+}
+.lb-backlog__result-text {
+	display: grid;
+	min-width: 0;
+	font-size: 12px;
+	line-height: 1.35;
+}
+.lb-backlog__result-text > * {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.lb-backlog__result-text strong {
+	color: var(--lb-text);
+	font-weight: 600;
+}
+.lb-backlog__result-text span {
+	color: var(--lb-text-dim);
+}
+.lb-backlog__result-text small {
+	color: var(--lb-text-faint);
+	font-size: 10px;
+}
+/* A film backlog's tiles are posters. */
+.lb-backlog--film .lb-backlog__thumb:not(.lb-backlog__stack, .lb-backlog__more-thumb) {
+	aspect-ratio: 2 / 3;
+}
+
 .lb-backlog__grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));

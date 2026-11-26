@@ -18,6 +18,7 @@ export const backlogExtension: Extension = {
 	details: [
 		'Add a Backlog card from the dock’s node picker or with “Add backlog” in ⌘K. Click its name to rename it.',
 		'+ adds an item you type (Title — creator; it gets a cover drawn from its title), or a whole collection: anything your other extensions offer, such as a syllabus track, a feed or everything you liked on a randomizer.',
+		'At the top of +, choose Music or Film and the field searches online: albums in iTunes, MusicBrainz and Deezer (Deezer only with the Lifeboard server), films in Wikidata, by their title in any language, with posters from Wikipedia. A result clicked goes in with its cover, artist or director and year.',
 		'Drag a cover onto it from a Ranking Tiers card, a randomizer’s last picks or another backlog, or drop a syllabus track’s card on it: the track goes in as one collection, a square stack the size of an album, and the track’s card goes back where it was. A collection lists what its source holds now, so what is added to the track later is in the backlog too. Click it to see inside.',
 		'Hover a tile for × to take it out. Four rows show at first; “Show all” shows the rest.',
 		'Each backlog is offered to other cards as a source, everything in it, collections opened out, each thing once: point a randomizer at it to pick what is next, or a Ranking Tiers card to sort it.',

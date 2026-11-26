@@ -48,6 +48,15 @@ export function Backlog({ go }: SectionProps) {
 					offer as one tile: a syllabus track, a feed, everything you liked.
 				</p>
 				<p>
+					<strong>What it holds.</strong> At the top of <strong>+</strong>, choose <strong>Music</strong> or{' '}
+					<strong>Film</strong> and the field searches online instead: albums in iTunes, MusicBrainz and
+					Deezer, films in Wikidata with their posters from Wikipedia. A film is found by its title in any
+					language (<em>Ностальгия</em>, <em>შერეკილები</em>), and a year or “by Tarkovsky” in the query only
+					helps. Click a result, or use ↑ ↓ and Enter, and it goes in with its cover, artist or director and
+					year. What can't be found still goes in with <strong>Add as typed</strong>. A film backlog's tiles are
+					posters.
+				</p>
+				<p>
 					<strong>Drag a cover onto it</strong> from a{' '}
 					<Jump to="ranking-tiers" go={go}>
 						Ranking Tiers

@@ -1,6 +1,6 @@
-import { resolveItemSource, sourceEntries, sourceKey, watchSourceKeys, type ItemSource, type SourceChoice } from '@lifeboard/node-kit'
+import { resolveItemSource, sourceEntries, sourceKey, watchSourceKeys, type ItemSource, type SourceChoice, type SourceKind } from '@lifeboard/node-kit'
 import { Inbox } from 'lucide-react'
-import { backlogEntries, collectionKey, type Backlog } from './model'
+import { backlogEntries, collectionKey, type Backlog, type BacklogMedia } from './model'
 import { backlogs } from './store'
 
 export const BACKLOG_EXTENSION_ID = 'lifeboard.backlog'
@@ -30,6 +30,13 @@ export function watchBacklog(backlogId: string): () => void {
 	)
 }
 
+/** How a backlog's items are spoken of and drawn, by what it holds. */
+const KINDS: Record<BacklogMedia | '', SourceKind> = {
+	'': { noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' },
+	music: { noun: 'albums', one: 'album', creator: 'Artist', tag: '', shape: 'square' },
+	film: { noun: 'films', one: 'film', creator: 'Director', tag: '', shape: 'poster' },
+}
+
 export const backlogSource: ItemSource = {
 	id: BACKLOG_SOURCE_ID,
 	label: 'Backlogs',
@@ -41,7 +48,7 @@ export const backlogSource: ItemSource = {
 		return backlog ? { id: backlogId, label: backlog.name, group: '' } : null
 	},
 	entries: entriesOfBacklog,
-	kind: () => ({ noun: 'items', one: 'item', creator: 'Creator', tag: '', shape: 'square' }),
+	kind: (backlogId) => KINDS[backlogs.one(backlogId)?.media ?? ''],
 	watch: watchBacklog,
 	// A collection's item opens as its own source would open it (a feed's video, marked watched).
 	open: (entry, boardId) => {

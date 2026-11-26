@@ -63,6 +63,14 @@ export interface AppCommandApi {
 	goHelp(): Promise<void>
 	/** The daily page (DARK-17): today's, or the weekly review of this week. */
 	goDaily(review?: boolean): void
+	/** A New tab on the home screen, which turns into the board picked there. */
+	newTab(): void
+	/** Closes the tab in front, if one is. */
+	closeTab(): void
+	/** Shows the tab `step` places along the row from the one in front, wrapping. */
+	stepTab(step: number): void
+	tabCount(): number
+	hasActiveTab(): boolean
 	setTheme(theme: Theme): void
 	toggleAgentPanel(): void
 	toggleSidebar(): void
@@ -180,6 +188,43 @@ registerCommand({
 	title: 'All Boards',
 	group: NAVIGATE_GROUP,
 	run: () => void api?.goHome(),
+})
+
+/*
+ * The tab strip's own commands (docs/tabs-plan.md). No default keys: in a browser tab ⌘W, ⌘T and ⌃Tab
+ * belong to the browser, which never lets a page have them, so a default would be a key that does
+ * nothing. Each can be given a key in Settings.
+ */
+registerCommand({
+	id: 'tab.new',
+	title: 'New tab',
+	group: NAVIGATE_GROUP,
+	run: () => api?.newTab(),
+})
+
+registerCommand({
+	id: 'tab.close',
+	title: 'Close tab',
+	group: NAVIGATE_GROUP,
+	when: () => !!api?.hasActiveTab(),
+	run: () => api?.closeTab(),
+})
+
+registerCommand({
+	id: 'tab.next',
+	title: 'Next tab',
+	group: NAVIGATE_GROUP,
+	// Somewhere to go: another tab, or any tab from a page outside the strip.
+	when: () => (api?.tabCount() ?? 0) > (api?.hasActiveTab() ? 1 : 0),
+	run: () => api?.stepTab(1),
+})
+
+registerCommand({
+	id: 'tab.previous',
+	title: 'Previous tab',
+	group: NAVIGATE_GROUP,
+	when: () => (api?.tabCount() ?? 0) > (api?.hasActiveTab() ? 1 : 0),
+	run: () => api?.stepTab(-1),
 })
 
 /**

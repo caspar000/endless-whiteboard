@@ -1,5 +1,5 @@
 import { Check, CloudUpload, Ellipsis, HardDriveDownload, LogOut, PencilLine, Star, Trash2, UserPlus } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { isSharedWithMe, type BoardMeta } from '../boards/boardIndex'
 import type { MoveJob } from '../boards/moveQueue'
 import { loadBoardThumbnailUrl, onThumbnailSaved, peekBoardThumbnailUrl } from '../persistence/thumbnails'
@@ -7,6 +7,7 @@ import { usePlatform } from '../platform/PlatformContext'
 import { serverPreviewVersion, serverThumbnailUrl } from '../server/serverVault'
 import { useResolvedTheme, type ResolvedTheme } from './useTheme'
 import { BoardBadgeButton } from './boardLook/BoardBadge'
+import { openModeOf, type OpenMode } from './tabsModel'
 
 /**
  * One board on the home screen: a preview above, a name-and-date footer below — the Freeform card
@@ -37,7 +38,8 @@ export function BoardCard({
 	deviceOnly?: boolean
 	/** Picking boards for one action on them all: a click ticks the card rather than opening it. */
 	selection?: { selected: boolean; onToggle: () => void }
-	onOpen: () => void
+	/** `mode`: ⌘-click or middle-click opens the board behind the tab on screen, ⌥-click beside it. */
+	onOpen: (mode: OpenMode) => void
 	onRename: () => void
 	onToggleFavorite: () => void
 	onDelete: () => void
@@ -81,7 +83,7 @@ export function BoardCard({
 	// Shared with this account from another vault: it can leave the list, not be renamed or deleted.
 	const shared = isSharedWithMe(board)
 	const moving = !!moveJob && !moveJob.error
-	const click = selection ? selection.onToggle : onOpen
+	const click = (e: MouseEvent) => (selection ? selection.onToggle() : onOpen(openModeOf(e)))
 
 	return (
 		<li
@@ -98,6 +100,12 @@ export function BoardCard({
 				<button
 					className="lb-card__preview lb-list__open"
 					onClick={click}
+					onMouseDown={(e) => {
+						if (e.button === 1) e.preventDefault()
+					}}
+					onAuxClick={(e) => {
+						if (e.button === 1 && !selection) onOpen('behind')
+					}}
 					aria-label={selection ? `Select ${board.name}` : `Open ${board.name}`}
 					{...(selection ? { 'aria-pressed': selection.selected } : {})}
 					// Not while it moves: its content is between two homes until the move finishes.

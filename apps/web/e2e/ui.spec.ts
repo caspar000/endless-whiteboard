@@ -105,7 +105,7 @@ test.describe('canvas chrome', () => {
 
 	test('the tabs show on every page, All Boards first', async ({ page }) => {
 		await gotoFresh(page)
-		const strip = page.getByRole('tablist', { name: 'Open boards' })
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
 		const home = strip.getByRole('tab', { name: 'All Boards' })
 		const board = strip.getByRole('tab', { name: /Home office shopping/ })
 		await expect(board).toHaveAttribute('aria-selected', 'true')
@@ -121,6 +121,182 @@ test.describe('canvas chrome', () => {
 		await board.click()
 		await expect(page.locator('.tl-canvas:visible')).toBeVisible()
 		await expect(board).toHaveAttribute('aria-selected', 'true')
+	})
+
+	test('“+” opens a New tab on the home screen, and the board picked there takes it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'First')
+		await createBoard(page, 'Second')
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		const labels = strip.locator('.lb-tabs__tab:has(.lb-tabs__close) .lb-tabs__label')
+		const front = strip.locator('.lb-tabs__tab--active .lb-tabs__label')
+		await expect(labels).toHaveText(['First', 'Second'])
+
+		await strip.getByRole('button', { name: 'New tab' }).click()
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+		await expect(labels).toHaveText(['First', 'Second', 'New tab'])
+		await expect(front).toHaveText('New tab')
+
+		// A board made there opens in the New tab.
+		await createBoard(page, 'Third')
+		await expect(labels).toHaveText(['First', 'Second', 'Third'])
+
+		// A board already open in another tab is shown there, and the New tab goes.
+		await strip.getByRole('button', { name: 'New tab' }).click()
+		await page.locator('.lb-list__board', { hasText: 'First' }).getByText('First').click()
+		await expect(front).toHaveText('First')
+		await expect(labels).toHaveText(['First', 'Second', 'Third'])
+	})
+
+	test('a tab dragged along the row moves there, and keeps its place through a reload', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second', 'Third']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		const labels = strip.locator('.lb-tabs__tab:has(.lb-tabs__close) .lb-tabs__label')
+		await expect(labels).toHaveText(['First', 'Second', 'Third'])
+
+		// Hovered first: that waits for the strip to stop sliding aside for the sidebar.
+		await strip.locator('.lb-tabs__tab', { hasText: 'First' }).locator('.lb-tabs__label').hover()
+		const to = (await strip.locator('.lb-tabs__tab', { hasText: 'Third' }).boundingBox())!
+		await page.mouse.down()
+		await page.mouse.move(to.x + to.width - 20, to.y + to.height / 2, { steps: 12 })
+		await page.mouse.up()
+		await expect(labels).toHaveText(['Second', 'Third', 'First'])
+		// The drag ended on the label, and that was no click: the home screen is still in front.
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+
+		await page.reload()
+		await expect(labels).toHaveText(['Second', 'Third', 'First'])
+	})
+
+	test('a tab’s menu closes the tabs to its right, and the others', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second', 'Third']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		const labels = strip.locator('.lb-tabs__tab:has(.lb-tabs__close) .lb-tabs__label')
+		const menu = page.getByRole('menu', { name: 'Tab' })
+
+		await strip.locator('.lb-tabs__tab', { hasText: 'Second' }).click({ button: 'right' })
+		await menu.getByRole('menuitem', { name: 'Close tabs to the right' }).click()
+		await expect(labels).toHaveText(['First', 'Second'])
+		await expect(menu).toHaveCount(0)
+
+		await strip.locator('.lb-tabs__tab', { hasText: 'Second' }).click({ button: 'right' })
+		await menu.getByRole('menuitem', { name: 'Close other tabs' }).click()
+		await expect(labels).toHaveText(['Second'])
+
+		// Rename, from the menu of a tab behind, in its label where it is.
+		await createBoard(page, 'Fourth')
+		await strip.locator('.lb-tabs__tab', { hasText: 'Second' }).click({ button: 'right' })
+		await menu.getByRole('menuitem', { name: 'Rename board' }).click()
+		const input = strip.getByLabel('Board name')
+		await input.fill('Renamed')
+		await input.press('Enter')
+		await expect(labels).toHaveText(['Renamed', 'Fourth'])
+	})
+
+	test('a tab splits with another from its menu, and Exit split ends it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		const focused = strip.locator('.lb-tabs__pane--focused .lb-tabs__label')
+		const panes = page.locator('.lb-board-host.lb-pane:not([data-hidden])')
+
+		await strip.locator('.lb-tabs__tab', { hasText: 'First' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Split with…' }).click()
+		await page.getByRole('menu', { name: 'Split with' }).getByRole('menuitem', { name: 'Second' }).click()
+		await expect(strip.getByRole('group', { name: 'Split: First and Second' })).toBeVisible()
+		await expect(panes).toHaveCount(2)
+		await expect(focused).toHaveText('First')
+		await expect(page.locator('.lb-pane--focused .tl-canvas')).toBeVisible()
+
+		// A press in the other pane focuses it, and its board takes the keys.
+		const right = (await panes.nth(1).boundingBox())!
+		await page.mouse.click(right.x + right.width / 2, right.y + right.height / 3)
+		await expect(focused).toHaveText('Second')
+		await expect(page).toHaveURL(/#\/board\//)
+
+		// Both boards stay: moving the focus between panes leaves neither.
+		await expect(page.locator('.lb-board-host')).toHaveCount(2)
+
+		await strip.locator('.lb-tabs__pane', { hasText: 'Second' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Exit split' }).click()
+		await expect(page.locator('.lb-pane')).toHaveCount(0)
+		await expect(strip.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Second')
+	})
+
+	test('a split’s divider resizes its panes, and the split keeps through a reload', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		for (const name of ['First', 'Second']) await createBoard(page, name)
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		await strip.locator('.lb-tabs__tab', { hasText: 'First' }).click({ button: 'right' })
+		await page.getByRole('menu', { name: 'Tab' }).getByRole('menuitem', { name: 'Split with…' }).click()
+		await page.getByRole('menu', { name: 'Split with' }).getByRole('menuitem', { name: 'Second' }).click()
+
+		const divider = page.getByRole('separator', { name: 'Resize the split' })
+		await expect(divider).toHaveAttribute('aria-valuenow', '50')
+		const area = (await page.locator('.lb-shell__content').boundingBox())!
+		await divider.hover()
+		await page.mouse.down()
+		await page.mouse.move(area.x + area.width * 0.3, area.y + area.height / 2, { steps: 8 })
+		await page.mouse.up()
+		await expect(divider).toHaveAttribute('aria-valuenow', '30')
+		const left = (await page.locator('.lb-board-host.lb-pane').first().boundingBox())!
+		expect(left.width).toBeLessThan(area.width * 0.32)
+
+		await page.reload()
+		await expect(divider).toHaveAttribute('aria-valuenow', '30')
+		await expect(page.locator('.lb-board-host.lb-pane:not([data-hidden])')).toHaveCount(2)
+	})
+
+	test('⌥-click opens a board beside the tab on screen, and a New tab in a pane takes the board picked in it', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'Second')
+		const strip = page.getByRole('tablist', { name: 'Open tabs' })
+		await strip.getByRole('button', { name: 'New tab' }).click()
+		await page.getByRole('button', { name: 'Open Second' }).click({ modifiers: ['Alt'] })
+		await expect(strip.getByRole('group', { name: 'Split: New tab and Second' })).toBeVisible()
+		await expect(strip.locator('.lb-tabs__pane--focused .lb-tabs__label')).toHaveText('Second')
+
+		// The home screen in the other pane: a board picked there opens in that pane.
+		await page.locator('.lb-pane--page').getByRole('button', { name: 'Open Home office shopping' }).click()
+		await expect(strip.getByRole('group', { name: 'Split: Home office shopping and Second' })).toBeVisible()
+		await expect(strip.locator('.lb-tabs__pane--focused .lb-tabs__label')).toHaveText('Home office shopping')
+		await expect(page.locator('.lb-board-host.lb-pane:not([data-hidden])')).toHaveCount(2)
+	})
+
+	test('⌘-click on a board opens it in a tab behind the one on screen', async ({ page }) => {
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		await createBoard(page, 'First')
+		const labels = page.locator('.lb-tabs__tab:has(.lb-tabs__close) .lb-tabs__label')
+		await page.getByRole('button', { name: 'Open Home office shopping' }).click({ modifiers: ['ControlOrMeta'] })
+		await expect(labels).toHaveText(['First', 'Home office shopping'])
+		await expect(page.locator('.lb-home__header')).toBeVisible()
+		await expect(page.getByRole('tab', { name: 'All Boards' })).toHaveAttribute('aria-selected', 'true')
+	})
+
+	test('only the eight boards last shown stay mounted', async ({ page }) => {
+		test.setTimeout(180_000)
+		await gotoFresh(page)
+		await skipFirstRunDemo(page)
+		const names = Array.from({ length: 9 }, (_, i) => `Board ${i + 1}`)
+		for (const name of names) await createBoard(page, name)
+		// Board 1, shown longest ago, unmounts once its drain is done.
+		await expect(page.locator('.lb-board-host')).toHaveCount(8, { timeout: 20_000 })
+		await expect(page.locator('.lb-tabs__tab:has(.lb-tabs__close)')).toHaveCount(9)
+
+		// Its tab is still there, and shows it again.
+		await page.locator('.lb-tabs__tab', { hasText: /^Board 1$/ }).click()
+		await expect(page.locator('.lb-tabs__tab--active .lb-tabs__label')).toHaveText('Board 1')
+		await expect(page.locator('.lb-board-host:not([data-hidden]) .tl-canvas')).toBeVisible()
+		await expect(page.locator('.lb-board-host')).toHaveCount(8, { timeout: 20_000 })
 	})
 
 	test('double-clicking empty canvas is tldraw\'s again, not a note', async ({ page }) => {

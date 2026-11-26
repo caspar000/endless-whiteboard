@@ -299,8 +299,16 @@ export function Overview({ go }: SectionProps) {
 							Boards are separate documents, listed under All Boards and opened as tabs across the
 							top. The tabs stay there on every page, Settings and Help included, with All Boards as
 							the first one, so any open board is a click away. An open tab keeps its board alive, which is what makes switching instant — and
-							why a keystroke only ever reaches the board you are looking at. Close a tab with its ×, or
-							with a middle click as in a browser; the board stays under All Boards. A board’s card there
+							why a keystroke only ever reaches the board you are looking at; the eight shown last stay
+							loaded, and one further back loads again when you show it. + opens a New tab on All Boards,
+							and the board you pick or make there opens in it. ⌘-click a board, or middle-click it, to
+							open it in a tab behind the one you are on. Drag a tab along the row to move it, and
+							right-click it to rename its board or close it, the others, or those to its right. Split
+							with… in that menu shows two tabs side by side, a board beside another or beside the daily
+							page; ⌥-click a board to open it beside the tab you are on, and again to stack another in
+							the right-hand column. Click in a pane to work in it, drag the line between them to resize,
+							and Exit split puts the tabs back. Close a
+							tab with its ×, or with a middle click as in a browser; the board stays under All Boards. A board’s card there
 							shows its actions over the preview as you point at it: star, rename, share, move and
 							delete, each named as you hover it; on a touch screen, tap the ⋯ instead. To delete
 							several at once, choose Select in All Boards, click the boards, then Delete. The search box above
